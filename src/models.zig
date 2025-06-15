@@ -235,14 +235,8 @@ pub const Model = struct {
 		var quadFaces = main.List(Quad).init(main.stackAllocator);
 		defer quadFaces.deinit();
 
-		var fixed_buffer = std.io.fixedBufferStream(data);
-		var buf_reader = std.io.bufferedReader(fixed_buffer.reader());
-		var in_stream = buf_reader.reader();
-		var buf: [128]u8 = undefined;
-		while(in_stream.readUntilDelimiterOrEof(&buf, '\n') catch |e| blk: {
-			std.log.err("Error reading line while loading model: {any}", .{e});
-			break :blk null;
-		}) |lineUntrimmed| {
+		var splitIterator = std.mem.splitScalar(u8, data, '\n');
+		while(splitIterator.next()) |lineUntrimmed| {
 			if(lineUntrimmed.len < 3)
 				continue;
 
@@ -264,8 +258,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				const coordsCorrect: Vec3f = .{coords[0], coords[1], coords[2]};
-				vertices.append(coordsCorrect);
+				vertices.append(coords);
 			} else if(std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: Vec3f = undefined;
@@ -276,8 +269,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				const normCorrect: Vec3f = .{norm[0], norm[1], norm[2]};
-				normals.append(normCorrect);
+				normals.append(norm);
 			} else if(std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var uv: Vec2f = undefined;
@@ -288,7 +280,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				uvs.append(.{uv[0], uv[1]});
+				uvs.append(uv);
 			} else if(std.mem.eql(u8, line[0..2], "f ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
 				var faceData: [3][4]usize = undefined;

@@ -14,6 +14,7 @@ const ContinuousSlider = @import("../components/ContinuousSlider.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 192},
+	.closeIfMouseIsGrabbed = true,
 };
 
 const padding: f32 = 8;

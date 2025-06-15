@@ -2,9 +2,9 @@
 	.tags = .{.wood},
 	.blockHealth = 4,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{"cubyz:log/toadstool"}},
 	},
-	.rotation = .log,
+	.rotation = .direction,
 	.model = "cubyz:cube",
 	.texture = "cubyz:toadstool_stem",
 }

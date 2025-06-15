@@ -2,8 +2,11 @@ const std = @import("std");
 
 const main = @import("main");
 const Tag = main.Tag;
+const utils = main.utils;
 const ZonElement = @import("zon.zig").ZonElement;
-const Neighbor = @import("chunk.zig").Neighbor;
+const chunk = @import("chunk.zig");
+const Neighbor = chunk.Neighbor;
+const Chunk = chunk.Chunk;
 const graphics = @import("graphics.zig");
 const SSBO = graphics.SSBO;
 const Image = graphics.Image;
@@ -20,6 +23,7 @@ const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
+const Assets = main.assets.Assets;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -76,6 +80,7 @@ var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
+var _tickEvent: [maxBlockCount]?TickEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
@@ -124,7 +129,16 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_touchFunction[size] = TouchFunctions.getFunctionPointer(zon.get([]const u8, "touchFunction", ""));
+	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
+
+	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
+		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
+		if(_function == null) {
+			std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
+		}
+		break :blk _function;
+	} else null;
+
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
 	const oreProperties = zon.getChild("ore");
@@ -199,7 +213,7 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
-pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
+pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
@@ -382,6 +396,10 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
+	pub inline fn tickEvent(self: Block) ?TickEvent {
+		return _tickEvent[self.typ];
+	}
+
 	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
 		return _touchFunction[self.typ];
 	}
@@ -395,34 +413,48 @@ pub const Block = packed struct { // MARK: Block
 	}
 };
 
-pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
+// MARK: Tick
+pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
+pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
+pub const TickFunctions = struct {
+	pub fn replaceWithCobble(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
+		const cobblestone = parseBlock("cubyz:cobblestone");
 
-pub const TouchFunctions = struct {
-	var hashMap: std.StringHashMap(*const TouchFunction) = undefined;
+		const wx = _chunk.super.pos.wx + x;
+		const wy = _chunk.super.pos.wy + y;
+		const wz = _chunk.super.pos.wz + z;
 
-	pub fn init() void {
-		hashMap = .init(main.globalAllocator.allocator);
-		inline for(@typeInfo(TouchFunctions).@"struct".decls) |declaration| {
-			if(@TypeOf(@field(TouchFunctions, declaration.name)) == TouchFunction) {
-				hashMap.putNoClobber(declaration.name, &@field(TouchFunctions, declaration.name)) catch unreachable;
-			}
-		}
-	}
-
-	pub fn deinit() void {
-		hashMap.deinit();
-	}
-
-	pub fn getFunctionPointer(id: []const u8) ?*const TouchFunction {
-		const pointer = hashMap.getPtr(id);
-		if(pointer == null) {
-			if(id.len != 0)
-				std.log.err("Could not find touch function {s}.", .{id});
-			return null;
-		}
-		return pointer.?.*;
+		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
 	}
 };
+
+pub const TickEvent = struct {
+	function: *const TickFunction,
+	chance: f32,
+
+	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
+		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
+
+		const function = tickFunctions.getFunctionPointer(functionName) orelse {
+			std.log.err("Could not find TickFunction {s}.", .{functionName});
+			return null;
+		};
+
+		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
+	}
+
+	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
+			self.function(block, _chunk, x, y, z);
+		}
+	}
+};
+
+// MARK: Touch
+pub var touchFunctions: utils.NamedCallbacks(TouchFunctions, TouchFunction) = undefined;
+pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
+pub const TouchFunctions = struct {};
 
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {

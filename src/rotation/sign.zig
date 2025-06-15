@@ -16,7 +16,6 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
 pub const naturalStandard: u16 = 0;
-pub const dependsOnNeighbors = true;
 var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 
 pub fn init() void {
@@ -127,11 +126,8 @@ fn getRotationFromDir(dir: Vec3f) u16 {
 	return data;
 }
 
-pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool {
+pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 	if(neighbor == null) return false;
-	const neighborModel = blocks.meshes.model(neighborBlock).model();
-	const neighborSupport = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.?.reverse().toInt()].len != 0;
-	if(!neighborSupport) return false;
 	if(!blockPlacing) return false;
 	currentData.data = switch(Neighbor.fromRelPos(relativeDir) orelse unreachable) {
 		.dirNegX => 2*centerRotations,
@@ -144,10 +140,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, r
 	return true;
 }
 
-pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-	const neighborModel = blocks.meshes.model(neighborBlock).model();
-	const neighborSupport = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
-	if(neighborSupport) return false;
+pub fn updateData(block: *Block, neighbor: Neighbor, _: Block) bool {
 	const shouldBeBroken = switch(neighbor) {
 		.dirNegX => block.data == 2*centerRotations,
 		.dirNegY => block.data == 2*centerRotations + 1,
