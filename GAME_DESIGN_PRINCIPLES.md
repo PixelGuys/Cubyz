@@ -88,7 +88,7 @@ If the player is given something to aid them, then it should have an appropriate
 **Examples:**
 - Using rare resources to create a strong tool.
 - An accessory that heals the player, but takes away energy or some other resource.
-- Creating a weapon that has a damage type that is strong against some enemies, and weak against others.
+- Enemies have strengths and weaknesses towards particular damage types
 
 # Little Details
 
