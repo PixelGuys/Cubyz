@@ -42,7 +42,7 @@ In Minecraft, a tool is an investment you can make. You can enchant the tool, re
 This is a very important part of game design in general. When a player encounters and re-encounters a mechanic or feature, put yourself in the player's shoes and ask "how would the player feel?" The goal is to make the player feel what you want them to feel, whether that be satisfaction, frustration, excitement, fear, or all of the above! It also helps to ask for feedback from players and asking how they feel about your addition.
 
 ### Depth in Simplicity
-Cubyz' special sauce is its simplicity, keeping everything simple on the surface makes the game approachable for beginners, while the hidden depth keeps it interesting for skilled players. Avoid features that would add unnecessary tedium to the player's experience. Always think about how it would effect the player's first impressions of the game.
+Cubyz' special sauce is its simplicity; keeping everything simple on the surface makes the game approachable for beginners, while the hidden depth keeps it interesting for skilled players. Avoid features that would add unnecessary tedium to the player's experience. Always think about how it would effect the player's first impressions of the game.
 
 ### Fuel the Player's Curiosity
 The world is filled with secrets, and we want the player to find these secrets on their own without any outside help or guide.
