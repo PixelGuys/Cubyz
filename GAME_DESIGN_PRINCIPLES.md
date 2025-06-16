@@ -96,7 +96,7 @@ If the player is given something to aid them, then it should have an appropriate
 Creatures should not be able to grief players without their input. Destructive creatures are reserved for caves.
 
 # Little Details
-The following contains spoilers for future content. If you are not looking into contributing, you should not read this section.
+This document is intended for contributors and may contain spoilers.
 <details>
   <summary>Open Spoilers</summary>
 
