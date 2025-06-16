@@ -76,7 +76,7 @@ These are tiny things the player does in between larger events; examples include
 These moments are extremely important as they let the player mentally rest, so making sure they're as satisfying and consistent as possible is a must.
 
 ### Make the World Feel Alive
-To add immersion to the game, creatures should perform behaviors outside of player input, such as hunting, migrating, eating, or sleeping.
+To add immersion to the game, creatures should perform behaviors outside of player input, such as hunting, playing, migrating, eating, or sleeping.
 
 # Balancing
 When balancing the game, keep in mind how players might interact with the world, the wildlife, and each other.
