@@ -1,3 +1,5 @@
+This document is intended for contributors and may contain spoilers.
+
 # Cubyz is a Sandbox Game, not a Survival Game
 The goal of this project is to create a game about exploration, adventure, and building. There is no looming threat of hunger or monsters; the player should be able to build in peace and choose how they would like to play. 
 
@@ -82,7 +84,7 @@ To add immersion to the game, creatures should perform behaviors outside of play
 When balancing the game, keep in mind how players might interact with the world, the wildlife, and each other.
 
 ### 2OP4ME
-At no point should the player be extremely hard to kill. Armor, tools, accessories, and buffs should be designed around aiding the player in skill-based encounters, not making them win regardless of skill.
+At no point should the player be extremely hard to kill. Armor, tools, accessories, and buffs should be designed around aiding the player in skill-based encounters, not letting them win regardless of skill.
 
 ### Trade-offs
 If the player is given something to aid them, then it should have an appropriate take-away to balance it.
@@ -92,31 +94,13 @@ If the player is given something to aid them, then it should have an appropriate
 - An accessory that heals the player, but takes away energy or some other resource.
 - Enemies have strengths and weaknesses towards particular damage types
 
-### Mob Griefing
-Creatures should not be able to grief players without their input. Destructive creatures are reserved for caves.
-
 # Little Details
-This document is intended for contributors and may contain spoilers.
-<details>
-  <summary>Open Spoilers</summary>
 
 ### Big Trees vs Small Trees
 There are two categories of trees, big and small. Big trees are designed to be built upon or left as decoration, whereas small trees are designed to be chopped down.
-
-### World Building with Gameplay
-Gameplay elements have implications on the world's lore, and the same goes other way around. It's best to design the gameplay element first, and then apply the world's style to the element during implementation.
 
 ### Vegetation
 Vegetation should always fit the biome's climate. For example, Toadstools prefer humid areas, while Boletes prefer nutritious areas. Think about how a plant would fit into a biome or structure.
 
 ### Caves are Creepy and Mysterious
 As the player goes deeper into Cubyz, they'll find that the music gets scarier, the monsters get harder and more disturbing, and the cave generation becomes an utter spectacle. We want the player to feel uneasy and stressed as they go down because it makes finding underground resources feel more rewarding.
-
-### The Root
-The Root is a cave located at a depth of -50000, sprawling with stone roots.
-
-This area is not required for progression, instead acting as a bonus challenge area that grants the player appropriate rewards for their current place in progression. It is the only area in the game (as of now) that will require a progression step to access, being an accessory that completely nullifies fall damage. As the player goes deeper, they'll find more curious areas that will put various skills to the test.
-
-### Sky Islands
-
-</details>
