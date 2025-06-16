@@ -40,6 +40,9 @@ Instead of animals standing by to let you kill them, they will run from the play
 ### No Unbreakable Tools
 In Minecraft, a tool is an investment you can make. You can enchant the tool, rename it, make it your own; there's an incentive to make it last forever with the use of mending. In Cubyz though, you are not creating an investment, but rather a tool to use until it breaks. If a player gets too attached to their tool, then they won't want to make other types of tools, and lower-tier materials will see less use as they will never be used in tool-making.
 
+### Avoid Clutter
+Inventories in Minecraft will often fill up with random items that the player does not want, making their inventory hard to manage. To mitigate this, try finding uses for existing items before adding new ones, and find ways to prevent items from finding their way into a player's inventory when they don't want it.
+
 ## Player Engagement
 ### "How would the player feel?"
 This is a very important part of game design in general. When a player encounters and re-encounters a mechanic or feature, put yourself in the player's shoes and ask "how would the player feel?" The goal is to make the player feel what you want them to feel, whether that be satisfaction, frustration, excitement, fear, or all of the above! It also helps to ask for feedback from players and asking how they feel about your addition.
