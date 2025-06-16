@@ -1,6 +1,7 @@
+# Game Design Principles
 This document is intended for contributors and may contain spoilers.
 
-# Cubyz is a Sandbox Game, not a Survival Game
+## Cubyz is a Sandbox Game, not a Survival Game
 The goal of this project is to create a game about exploration, adventure, and building. There is no looming threat of hunger or monsters; the player should be able to build in peace and choose how they would like to play. 
 
 ### Avoid Unavoidable Threats
@@ -20,7 +21,7 @@ In order to progress in the game, the player must take risks. The player is othe
 - The player must defeat an enemy, boss, or event to obtain an item that helps them progress.
 - In a multiplayer world, a player could attack an enemy player to rise up in power.
 
-# Break the Cycle
+## Break the Cycle
 ### No Dimensions
 Instead of creating seperate dimensions, we can fit these places physically into Cubyz' massive world to allow the player to come across them on their own.
 
@@ -39,7 +40,7 @@ Instead of animals standing by to let you kill them, they will run from the play
 ### No Unbreakable Tools
 In Minecraft, a tool is an investment you can make. You can enchant the tool, rename it, make it your own; there's an incentive to make it last forever with the use of mending. In Cubyz though, you are not creating an investment, but rather a tool to use until it breaks. If a player gets too attached to their tool, then they won't want to make other types of tools, and lower-tier materials will see less use as they will never be used in tool-making.
 
-# Player Engagement
+## Player Engagement
 ### "How would the player feel?"
 This is a very important part of game design in general. When a player encounters and re-encounters a mechanic or feature, put yourself in the player's shoes and ask "how would the player feel?" The goal is to make the player feel what you want them to feel, whether that be satisfaction, frustration, excitement, fear, or all of the above! It also helps to ask for feedback from players and asking how they feel about your addition.
 
@@ -80,7 +81,7 @@ These moments are extremely important as they let the player mentally rest, so m
 ### Make the World Feel Alive
 To add immersion to the game, creatures should perform behaviors outside of player input, such as hunting, playing, migrating, eating, or sleeping.
 
-# Balancing
+## Balancing
 When balancing the game, keep in mind how players might interact with the world, the wildlife, and each other.
 
 ### 2OP4ME
@@ -94,7 +95,7 @@ If the player is given something to aid them, then it should have an appropriate
 - An accessory that heals the player, but takes away energy or some other resource.
 - Enemies have strengths and weaknesses towards particular damage types
 
-# Little Details
+## Little Details
 
 ### Big Trees vs Small Trees
 There are two categories of trees, big and small. Big trees are designed to be built upon or left as decoration, whereas small trees are designed to be chopped down.
