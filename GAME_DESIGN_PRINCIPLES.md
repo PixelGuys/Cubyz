@@ -92,7 +92,7 @@ If the player is given something to aid them, then it should have an appropriate
 - An accessory that heals the player, but takes away energy or some other resource.
 - Enemies have strengths and weaknesses towards particular damage types
 
-### Mob Greifing
+### Mob Griefing
 Creatures should not be able to grief players without their input. Destructive creatures are reserved for caves.
 
 # Little Details
