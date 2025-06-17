@@ -1177,7 +1177,7 @@ const TextRendering = struct { // MARK: TextRendering
 		try ftError(hbft.FT_Set_Pixel_Sizes(freetypeFace, 0, textureHeight));
 		harfbuzzFace = hbft.hb_ft_face_create_referenced(freetypeFace);
 		harfbuzzFont = hbft.hb_font_create(harfbuzzFace);
-		fontUnitPerPixel = @as(f32, @floatFromInt(freetypeFace.*.units_per_EM))/ @as(f32, @floatFromInt(textureHeight));
+		fontUnitPerPixel = @as(f32, @floatFromInt(freetypeFace.*.units_per_EM))/@as(f32, @floatFromInt(textureHeight));
 
 		glyphMapping = .init(main.globalAllocator);
 		glyphData = .init(main.globalAllocator);
