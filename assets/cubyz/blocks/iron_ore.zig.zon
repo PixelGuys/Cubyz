@@ -11,7 +11,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation = .ore,
+	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
 	.texture = "cubyz:iron_ore",
 	.item = .{

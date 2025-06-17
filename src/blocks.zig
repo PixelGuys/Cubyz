@@ -104,7 +104,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
@@ -143,7 +143,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
-		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
+		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
 			std.log.err("Ore must have rotation mode \"ore\"!", .{});
 			break :blk;
 		}

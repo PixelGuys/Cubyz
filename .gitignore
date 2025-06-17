@@ -10,6 +10,9 @@ gamecontrollerdb.stamp
 
 test.png
 
+/mods/*
+!/mods/cubyz
+
 /assets/*
 !/assets/cubyz
 !/assets/backgrounds/default_background.png

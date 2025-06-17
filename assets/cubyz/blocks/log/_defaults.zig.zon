@@ -4,6 +4,6 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation = .log,
+	.rotation = "cubyz:log",
 	.model = "cubyz:cube",
 }

@@ -40,7 +40,7 @@
 		},
 	},
 	.allowOres = true,
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
 	.texture = "cubyz:sandstone",
 }

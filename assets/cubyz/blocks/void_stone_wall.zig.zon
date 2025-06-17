@@ -4,7 +4,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation = .fence,
+	.rotation = "cubyz:fence",
 	.model = "cubyz:wall",
 	.texture = "cubyz:void_stone_wall",
 	.texture_top = "cubyz:void_stone_wall_top",
