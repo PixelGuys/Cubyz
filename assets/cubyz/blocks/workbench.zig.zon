@@ -4,7 +4,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.gui = .workbench,
+	.gui = "cubyz:workbench",
 	.model = "cubyz:cube",
 	.rotation = "cubyz:planar",
 	.texture = "cubyz:workbench_back",

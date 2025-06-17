@@ -20,7 +20,7 @@ const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
-const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+const gpu_performance_measuring = main.gui.windowlist.@"cubyz:gpu_performance_measuring";
 
 const mesh_storage = @import("mesh_storage.zig");
 
