@@ -843,10 +843,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		// Merge it all together:
 		self.glyphs = allocator.alloc(GlyphData, glyphInfos.len);
 		for(self.glyphs, 0..) |*glyph, i| {
-			glyph.x_advance = @as(f32, @floatFromInt(glyphPositions[i].x_advance))/4.0;
-			glyph.y_advance = @as(f32, @floatFromInt(glyphPositions[i].y_advance))/4.0;
-			glyph.x_offset = @as(f32, @floatFromInt(glyphPositions[i].x_offset))/4.0;
-			glyph.y_offset = @as(f32, @floatFromInt(glyphPositions[i].y_offset))/4.0;
+			glyph.x_advance = @as(f32, @floatFromInt(glyphPositions[i].x_advance))/TextRendering.fontUnitsPerPixel;
+			glyph.y_advance = @as(f32, @floatFromInt(glyphPositions[i].y_advance))/TextRendering.fontUnitsPerPixel;
+			glyph.x_offset = @as(f32, @floatFromInt(glyphPositions[i].x_offset))/TextRendering.fontUnitsPerPixel;
+			glyph.y_offset = @as(f32, @floatFromInt(glyphPositions[i].y_offset))/TextRendering.fontUnitsPerPixel;
 			glyph.character = @intCast(parser.parsedText.items[textIndexGuess[i]]);
 			glyph.index = glyphInfos[i].codepoint;
 			glyph.cluster = glyphInfos[i].cluster;
@@ -1149,6 +1149,7 @@ const TextRendering = struct { // MARK: TextRendering
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
 	var textureOffset: i32 = 0;
+	var fontUnitsPerPixel: f32 = undefined;
 
 	fn ftError(errorCode: hbft.FT_Error) !void {
 		if(errorCode == 0) return;
@@ -1176,6 +1177,7 @@ const TextRendering = struct { // MARK: TextRendering
 		try ftError(hbft.FT_Set_Pixel_Sizes(freetypeFace, 0, textureHeight));
 		harfbuzzFace = hbft.hb_ft_face_create_referenced(freetypeFace);
 		harfbuzzFont = hbft.hb_font_create(harfbuzzFace);
+		fontUnitsPerPixel = @as(f32, @floatFromInt(freetypeFace.*.units_per_EM))/@as(f32, @floatFromInt(textureHeight));
 
 		glyphMapping = .init(main.globalAllocator);
 		glyphData = .init(main.globalAllocator);
