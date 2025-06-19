@@ -162,9 +162,9 @@ pub const collision = struct {
 			for(model.neighborFacingQuads) |quads| {
 				for(quads) |quadIndex| {
 					const quad = quadIndex.quadInfo();
-					if(triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, entityPosition, entityBoundingBoxExtent)) {
-						const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
-						const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+					if(triangleAABB(.{quad.cornerVec(0) + quad.normalVec() + pos, quad.cornerVec(2) + quad.normalVec() + pos, quad.cornerVec(1) + quad.normalVec() + pos}, entityPosition, entityBoundingBoxExtent)) {
+						const min = @min(@min(quad.cornerVec(0), quad.cornerVec(1)), @min(quad.cornerVec(2), quad.cornerVec(3))) + quad.normalVec() + pos;
+						const max = @max(@max(quad.cornerVec(0), quad.cornerVec(1)), @max(quad.cornerVec(2), quad.cornerVec(3))) + quad.normalVec() + pos;
 						const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
 						if(dist < minDistance) {
 							resultBox = .{.min = min, .max = max};
@@ -174,9 +174,9 @@ pub const collision = struct {
 							resultBox.?.max = @min(resultBox.?.max, max);
 						}
 					}
-					if(triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, entityPosition, entityBoundingBoxExtent)) {
-						const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
-						const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+					if(triangleAABB(.{quad.cornerVec(1) + quad.normalVec() + pos, quad.cornerVec(2) + quad.normalVec() + pos, quad.cornerVec(3) + quad.normalVec() + pos}, entityPosition, entityBoundingBoxExtent)) {
+						const min = @min(@min(quad.cornerVec(0), quad.cornerVec(1)), @min(quad.cornerVec(2), quad.cornerVec(3))) + quad.normalVec() + pos;
+						const max = @max(@max(quad.cornerVec(0), quad.cornerVec(1)), @max(quad.cornerVec(2), quad.cornerVec(3))) + quad.normalVec() + pos;
 						const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
 						if(dist < minDistance) {
 							resultBox = .{.min = min, .max = max};
@@ -191,9 +191,9 @@ pub const collision = struct {
 
 			for(model.internalQuads) |quadIndex| {
 				const quad = quadIndex.quadInfo();
-				if(triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, entityPosition, entityBoundingBoxExtent)) {
-					const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
-					const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
+				if(triangleAABB(.{quad.cornerVec(0) + pos, quad.cornerVec(2) + pos, quad.cornerVec(1) + pos}, entityPosition, entityBoundingBoxExtent)) {
+					const min = @min(@min(quad.cornerVec(0), quad.cornerVec(1)), @min(quad.cornerVec(2), quad.cornerVec(3))) + pos;
+					const max = @max(@max(quad.cornerVec(0), quad.cornerVec(1)), @max(quad.cornerVec(2), quad.cornerVec(3))) + pos;
 					const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
 					if(dist < minDistance) {
 						resultBox = .{.min = min, .max = max};
@@ -203,9 +203,9 @@ pub const collision = struct {
 						resultBox.?.max = @min(resultBox.?.max, max);
 					}
 				}
-				if(triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, entityPosition, entityBoundingBoxExtent)) {
-					const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
-					const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
+				if(triangleAABB(.{quad.cornerVec(1) + pos, quad.cornerVec(2) + pos, quad.cornerVec(3) + pos}, entityPosition, entityBoundingBoxExtent)) {
+					const min = @min(@min(quad.cornerVec(0), quad.cornerVec(1)), @min(quad.cornerVec(2), quad.cornerVec(3))) + pos;
+					const max = @max(@max(quad.cornerVec(0), quad.cornerVec(1)), @max(quad.cornerVec(2), quad.cornerVec(3))) + pos;
 					const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
 					if(dist < minDistance) {
 						resultBox = .{.min = min, .max = max};
@@ -371,14 +371,14 @@ pub const collision = struct {
 		for(model.neighborFacingQuads) |quads| {
 			for(quads) |quadIndex| {
 				const quad = quadIndex.quadInfo();
-				if(triangleAABB(.{quad.corners[0] + quad.normal + position, quad.corners[2] + quad.normal + position, quad.corners[1] + quad.normal + position}, center, extent) or
-					triangleAABB(.{quad.corners[1] + quad.normal + position, quad.corners[2] + quad.normal + position, quad.corners[3] + quad.normal + position}, center, extent)) return true;
+				if(triangleAABB(.{quad.cornerVec(0) + quad.normalVec() + position, quad.cornerVec(2) + quad.normalVec() + position, quad.cornerVec(1) + quad.normalVec() + position}, center, extent) or
+					triangleAABB(.{quad.cornerVec(1) + quad.normalVec() + position, quad.cornerVec(2) + quad.normalVec() + position, quad.cornerVec(3) + quad.normalVec() + position}, center, extent)) return true;
 			}
 		}
 		for(model.internalQuads) |quadIndex| {
 			const quad = quadIndex.quadInfo();
-			if(triangleAABB(.{quad.corners[0] + position, quad.corners[2] + position, quad.corners[1] + position}, center, extent) or
-				triangleAABB(.{quad.corners[1] + position, quad.corners[2] + position, quad.corners[3] + position}, center, extent)) return true;
+			if(triangleAABB(.{quad.cornerVec(0) + position, quad.cornerVec(2) + position, quad.cornerVec(1) + position}, center, extent) or
+				triangleAABB(.{quad.cornerVec(1) + position, quad.cornerVec(2) + position, quad.cornerVec(3) + position}, center, extent)) return true;
 		}
 		return false;
 	}

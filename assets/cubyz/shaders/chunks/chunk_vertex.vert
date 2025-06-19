@@ -28,7 +28,7 @@ layout(std430, binding = 3) buffer _faceData
 
 struct QuadInfo {
 	vec3 normal;
-	vec3 corners[4];
+	float corners[4][3];
 	vec2 cornerUV[4];
 	uint textureSlot;
 	int opaqueInLod;
@@ -97,7 +97,7 @@ void main() {
 
 	normal = quads[quadIndex].normal;
 
-	position += quads[quadIndex].corners[vertexID];
+	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
 	position *= voxelSize;
 	position += vec3(chunks[chunkID].position.xyz - playerPositionInteger);
 	position -= playerPositionFraction;

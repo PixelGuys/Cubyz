@@ -118,7 +118,7 @@ fn rotateQuad(pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 			corners3d[3] + offset,
 		},
 		.cornerUV = corners,
-		.normal = @floatFromInt(side.relPos()),
+		.normal = @as(Vec3f, @floatFromInt(side.relPos())),
 		.textureSlot = @intFromEnum(pattern),
 	};
 

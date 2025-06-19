@@ -118,7 +118,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 			corners3d[3] + offset,
 		},
 		.cornerUV = originalCorners,
-		.normal = @floatFromInt(side.relPos()),
+		.normal = @as(Vec3f, @floatFromInt(side.relPos())),
 		.textureSlot = textureSlotOffset + @intFromEnum(pattern),
 	};
 

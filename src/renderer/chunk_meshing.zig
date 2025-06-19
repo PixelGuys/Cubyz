@@ -517,7 +517,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		if(extraQuadInfo.hasOnlyCornerVertices) { // Fast path for simple quads.
 			var rawVals: [4][6]u5 = undefined;
 			for(0..4) |i| {
-				const vertexPos = quadInfo.corners[i];
+				const vertexPos: Vec3f = quadInfo.corners[i];
 				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
 				const fullValues = if(extraQuadInfo.alignedNormalDirection) |dir|
 					getCornerLightAligned(parent, fullPos, dir)
@@ -547,7 +547,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 		var rawVals: [4][6]u5 = undefined;
 		for(0..4) |i| {
-			const vertexPos = quadInfo.corners[i];
+			const vertexPos: Vec3f = quadInfo.corners[i];
 			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
 			const interp = lightPos - @as(Vec3f, @floatFromInt(blockPos));
 			var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
@@ -652,7 +652,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const dz = z + chunkDz;
 			self.isBackFace = self.face.position.isBackFace;
 			const quadIndex = self.face.blockAndQuad.quadIndex;
-			const normalVector = quadIndex.quadInfo().normal;
+			const normalVector: Vec3f = quadIndex.quadInfo().normal;
 			self.shouldBeCulled = vec.dot(normalVector, @floatFromInt(Vec3i{dx, dy, dz})) > 0; // TODO: Adjust for arbitrary voxel models.
 			const fullDx = dx - @as(i32, @intFromFloat(normalVector[0])); // TODO: This calculation should only be done for border faces.
 			const fullDy = dy - @as(i32, @intFromFloat(normalVector[1]));

@@ -15,11 +15,21 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 var quadSSBO: graphics.SSBO = undefined;
 
 pub const QuadInfo = extern struct {
-	normal: Vec3f,
-	corners: [4]Vec3f,
-	cornerUV: [4]Vec2f,
+	normal: [3]f32 align(16),
+	corners: [4][3]f32,
+	cornerUV: [4][2]f32 align(8),
 	textureSlot: u32,
 	opaqueInLod: u32 = 0,
+
+	pub fn normalVec(self: QuadInfo) Vec3f {
+		return self.normal;
+	}
+	pub fn cornerVec(self: QuadInfo, i: usize) Vec3f {
+		return self.corners[i];
+	}
+	pub fn cornerUvVec(self: QuadInfo, i: usize) Vec2f {
+		return self.cornerUV[i];
+	}
 };
 
 const ExtraQuadInfo = struct {
@@ -33,8 +43,9 @@ const gridSize = 4096;
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
-	const int = @as(@Vector(@typeInfo(T).vector.len, i32), @intFromFloat(std.math.round(x*@as(T, @splat(gridSize)))));
-	return @as(T, @floatFromInt(int))/@as(T, @splat(gridSize));
+	const Vec = @Vector(x.len, std.meta.Child(T));
+	const int = @as(@Vector(x.len, i32), @intFromFloat(std.math.round(@as(Vec, x)*@as(Vec, @splat(gridSize)))));
+	return @as(Vec, @floatFromInt(int))/@as(Vec, @splat(gridSize));
 }
 
 const Triangle = struct {
@@ -132,8 +143,8 @@ pub const Model = struct {
 		self.isNeighborOccluded = @splat(false);
 		for(adjustedQuads) |*quad| {
 			for(quad.corners) |corner| {
-				self.min = @min(self.min, corner);
-				self.max = @max(self.max, corner);
+				self.min = @min(self.min, @as(Vec3f, corner));
+				self.max = @max(self.max, @as(Vec3f, corner));
 			}
 			if(getFaceNeighbor(quad)) |neighbor| {
 				amounts[neighbor.toInt()] += 1;
@@ -153,7 +164,7 @@ pub const Model = struct {
 			var quad = _quad;
 			if(getFaceNeighbor(&quad)) |neighbor| {
 				for(&quad.corners) |*corner| {
-					corner.* -= quad.normal;
+					corner.* = @as(Vec3f, corner.*) - @as(Vec3f, quad.normal);
 				}
 				const quadIndex = addQuad(quad) catch continue;
 				self.neighborFacingQuads[neighbor.toInt()][indices[neighbor.toInt()]] = quadIndex;
@@ -202,8 +213,8 @@ pub const Model = struct {
 		for(quadInfos) |*quad| {
 			var minUv: Vec2f = @splat(std.math.inf(f32));
 			for(0..4) |i| {
-				quad.cornerUV[i] *= @splat(4);
-				minUv = @min(minUv, quad.cornerUV[i]);
+				quad.cornerUV[i] = @as(Vec2f, quad.cornerUV[i])*@as(Vec2f, @splat(4));
+				minUv = @min(minUv, @as(Vec2f, quad.cornerUV[i]));
 			}
 			minUv = @floor(minUv);
 			quad.textureSlot = @as(u32, @intFromFloat(minUv[1]))*4 + @as(u32, @intFromFloat(minUv[0]));
@@ -213,7 +224,7 @@ pub const Model = struct {
 			}
 
 			for(0..4) |i| {
-				quad.cornerUV[i] -= minUv;
+				quad.cornerUV[i] = @as(Vec2f, quad.cornerUV[i]) - minUv;
 			}
 		}
 		return Model.init(quadInfos);
@@ -382,7 +393,7 @@ pub const Model = struct {
 			for(model.neighborFacingQuads[neighbor]) |quadIndex| {
 				var quad = quadIndex.quadInfo().*;
 				for(&quad.corners) |*corner| {
-					corner.* += quad.normal;
+					corner.* = @as(Vec3f, corner.*) + @as(Vec3f, quad.normal);
 				}
 				quadList.append(quad);
 			}
@@ -448,7 +459,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	var cornerEqualities: u32 = 0;
 	for(0..4) |i| {
 		for(i + 1..4) |j| {
-			if(@reduce(.And, info.corners[i] == info.corners[j])) cornerEqualities += 1;
+			if(@reduce(.And, @as(Vec3f, info.corners[i]) == @as(Vec3f, info.corners[j]))) cornerEqualities += 1;
 		}
 	}
 	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
