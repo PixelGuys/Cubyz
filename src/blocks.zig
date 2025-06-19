@@ -144,7 +144,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
 		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
-			std.log.err("Ore must have rotation mode \"ore\"!", .{});
+			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
 		ores.append(Ore{
