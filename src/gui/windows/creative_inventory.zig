@@ -50,45 +50,52 @@ pub fn onOpen() void {
 }
 
 fn initContent() void {
-	const list = VerticalList.init(.{padding, padding + 16}, 140, 0);
+	const root = VerticalList.init(.{padding, padding}, 300, 0);
 	{
+		const list = VerticalList.init(.{0, padding + padding}, 48, 0);
 		const row = HorizontalList.init();
-		const label = Label.init(.{0, 2}, 74, "Search: ", .right);
-		searchInput = TextInput.init(.{0, 0}, 284, 22, searchString, .{.callback = &filter}, .{});
+		const label = Label.init(.{0, 3}, 56, "Search:", .right);
+		searchInput = TextInput.init(.{0, 0}, 288, 22, searchString, .{.callback = &filter}, .{});
 		row.add(label);
 		row.add(searchInput);
 		list.add(row);
+		list.finish(.center);
+		root.add(list);
 	}
-
-	items = .init(main.globalAllocator);
-	var itemIterator = main.items.iterator();
-	while(itemIterator.next()) |item| {
-		if(searchString.len != 0 and std.mem.indexOf(u8, item.id(), searchString) == null) continue;
-		items.append(Item{.baseItem = item.*});
-	}
-
-	std.mem.sort(Item, items.items, {}, lessThan);
-	const slotCount = items.items.len + (slotsPerRow - items.items.len%slotsPerRow);
-	inventory = Inventory.init(main.globalAllocator, slotCount, .creative, .other);
-	for(0..items.items.len) |i| {
-		inventory.fillAmountFromCreative(@intCast(i), items.items[i], 1);
-	}
-	var i: u32 = 0;
-	while(i < items.items.len) {
-		const row = HorizontalList.init();
-		for(0..slotsPerRow) |_| {
-			if(i > slotCount) break;
-			if(i >= items.items.len) {
-				row.add(ItemSlot.init(.{0, 0}, inventory, i, .immutable, .immutable));
-			} else {
-				row.add(ItemSlot.init(.{0, 0}, inventory, i, .default, .takeOnly));
-			}
-			i += 1;
+	{
+		const list = VerticalList.init(.{0, padding}, 144, 0);
+		items = .init(main.globalAllocator);
+		var itemIterator = main.items.iterator();
+		while(itemIterator.next()) |item| {
+			if(searchString.len != 0 and std.mem.indexOf(u8, item.id(), searchString) == null) continue;
+			items.append(Item{.baseItem = item.*});
 		}
-		list.add(row);
+
+		std.mem.sort(Item, items.items, {}, lessThan);
+		const slotCount = items.items.len + (slotsPerRow - items.items.len%slotsPerRow);
+		inventory = Inventory.init(main.globalAllocator, slotCount, .creative, .other);
+		for(0..items.items.len) |i| {
+			inventory.fillAmountFromCreative(@intCast(i), items.items[i], 1);
+		}
+		var i: u32 = 0;
+		while(i < items.items.len) {
+			const row = HorizontalList.init();
+			for(0..slotsPerRow) |_| {
+				if(i > slotCount) break;
+				if(i >= items.items.len) {
+					row.add(ItemSlot.init(.{0, 0}, inventory, i, .immutable, .immutable));
+				} else {
+					row.add(ItemSlot.init(.{0, 0}, inventory, i, .default, .takeOnly));
+				}
+				i += 1;
+			}
+			list.add(row);
+		}
+		list.finish(.center);
+		root.add(list);
 	}
-	list.finish(.center);
-	window.rootComponent = list.toComponent();
+	root.finish(.center);
+	window.rootComponent = root.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
