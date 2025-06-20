@@ -23,6 +23,7 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+pub const particles = @import("particles.zig");
 const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
@@ -644,6 +645,9 @@ pub fn main() void { // MARK: main()
 	gui.init();
 	defer gui.deinit();
 
+	particles.ParticleManager.init();
+	defer particles.ParticleManager.deinit();
+
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
@@ -739,6 +743,8 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 		if(comptime std.mem.eql(u8, decl.name, "c")) continue;
 		if(comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
 		if(comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		// TODO: Remove this after Zig removes Managed hashmap PixelGuys/Cubyz#308
+		if(comptime std.mem.eql(u8, decl.name, "Managed")) continue;
 		if(@TypeOf(@field(T, decl.name)) == type) {
 			switch(@typeInfo(@field(T, decl.name))) {
 				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),

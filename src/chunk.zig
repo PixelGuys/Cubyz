@@ -277,11 +277,35 @@ pub const Chunk = struct { // MARK: Chunk
 	}
 
 	pub fn deinit(self: *Chunk) void {
-		// TODO: We should either unload this data here or make sure it was unloaded before.
+		self.deinitContent();
+		memoryPool.destroy(@alignCast(self));
+	}
+
+	fn deinitContent(self: *Chunk) void {
 		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
-		memoryPool.destroy(@alignCast(self));
+	}
+
+	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
+		self.blockPosToEntityDataMapMutex.lock();
+		defer self.blockPosToEntityDataMapMutex.unlock();
+		var iterator = self.blockPosToEntityDataMap.iterator();
+		while(iterator.next()) |elem| {
+			const index = elem.key_ptr.*;
+			const entityDataIndex = elem.value_ptr.*;
+			const block = self.data.getValue(index);
+			const blockEntity = block.blockEntity() orelse unreachable;
+			switch(side) {
+				.client => {
+					blockEntity.onUnloadClient(entityDataIndex);
+				},
+				.server => {
+					blockEntity.onUnloadServer(entityDataIndex);
+				},
+			}
+		}
+		self.blockPosToEntityDataMap.clearRetainingCapacity();
 	}
 
 	/// Updates a block if it is inside this chunk.
@@ -315,6 +339,14 @@ pub const Chunk = struct { // MARK: Chunk
 			(worldPos[1] - self.pos.wy) >> self.voxelSizeShift,
 			(worldPos[2] - self.pos.wz) >> self.voxelSizeShift,
 		);
+	}
+
+	pub fn getGlobalBlockPosFromIndex(self: *const Chunk, index: u16) Vec3i {
+		return .{
+			(extractXFromIndex(index) << self.voxelSizeShift) + self.pos.wx,
+			(extractYFromIndex(index) << self.voxelSizeShift) + self.pos.wy,
+			(extractZFromIndex(index) << self.voxelSizeShift) + self.pos.wz,
+		};
 	}
 };
 
@@ -354,7 +386,8 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
-		self.super.data.deinit();
+		self.super.unloadBlockEntities(.server);
+		self.super.deinitContent();
 		serverPool.destroy(@alignCast(self));
 	}
 
@@ -582,7 +615,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			const regionMask: i32 = regionSize - 1;
 			const region = main.server.storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
 			defer region.decreaseRefCount();
-			const data = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &self.super, false);
+			const data = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &self.super, .toDisk, false);
 			defer main.stackAllocator.free(data);
 			region.storeChunk(
 				data,

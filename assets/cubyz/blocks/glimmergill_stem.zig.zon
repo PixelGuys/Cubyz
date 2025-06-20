@@ -2,9 +2,9 @@
 	.tags = .{.wood},
 	.blockHealth = 4,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{"cubyz:log/glimmergill"}},
 	},
-	.rotation = .log,
+	.rotation = "cubyz:direction",
 	.model = "cubyz:cube",
 	.texture = "cubyz:glimmergill_stem",
 }

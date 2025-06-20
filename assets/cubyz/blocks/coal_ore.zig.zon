@@ -11,7 +11,7 @@
 	.drops = .{
 		.{.items = .{"cubyz:coal"}},
 	},
-	.rotation = .ore,
+	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
 	.texture = "cubyz:coal_ore",
 }

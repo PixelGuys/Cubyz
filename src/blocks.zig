@@ -23,6 +23,7 @@ const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
+const Assets = main.assets.Assets;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -103,7 +104,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
@@ -142,8 +143,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
-		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
-			std.log.err("Ore must have rotation mode \"ore\"!", .{});
+		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
+			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
 		ores.append(Ore{
@@ -212,7 +213,7 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
-pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
+pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);

@@ -5,6 +5,6 @@
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
-	.rotation = .planar,
+	.rotation = "cubyz:planar",
 	.blockEntity = .chest,
 }

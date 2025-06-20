@@ -64,13 +64,14 @@ pub var occlusionTestUniforms: struct {
 } = undefined;
 pub var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
-pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
-pub var lightBuffer: graphics.LargeBuffer(u32) = undefined;
+pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
+pub var lightBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(u32) = undefined;
 pub var chunkBuffer: graphics.LargeBuffer(ChunkData) = undefined;
 pub var commandBuffer: graphics.LargeBuffer(IndirectData) = undefined;
 pub var chunkIDBuffer: graphics.LargeBuffer(u32) = undefined;
 pub var quadsDrawn: usize = 0;
 pub var transparentQuadsDrawn: usize = 0;
+pub const maxQuadsInIndexBuffer = 3 << (3*chunk.chunkShift); // maximum 3 faces/block
 
 pub fn init() void {
 	lighting.init();
@@ -119,7 +120,7 @@ pub fn init() void {
 		}}},
 	);
 
-	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
+	var rawData: [6*maxQuadsInIndexBuffer]u32 = undefined;
 	const lut = [_]u32{0, 2, 1, 1, 2, 3};
 	for(0..rawData.len) |i| {
 		rawData[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
@@ -132,8 +133,10 @@ pub fn init() void {
 	c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, rawData.len*@sizeOf(u32), &rawData, c.GL_STATIC_DRAW);
 	c.glBindVertexArray(0);
 
-	faceBuffer.init(main.globalAllocator, 1 << 20, 3);
-	lightBuffer.init(main.globalAllocator, 1 << 20, 10);
+	for(0..settings.highestSupportedLod + 1) |i| {
+		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3);
+		lightBuffers[i].init(main.globalAllocator, 1 << 20, 10);
+	}
 	chunkBuffer.init(main.globalAllocator, 1 << 20, 6);
 	commandBuffer.init(main.globalAllocator, 1 << 20, 8);
 	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9);
@@ -147,24 +150,30 @@ pub fn deinit() void {
 	commandPipeline.deinit();
 	c.glDeleteVertexArrays(1, &vao);
 	c.glDeleteBuffers(1, &vbo);
-	faceBuffer.deinit();
-	lightBuffer.deinit();
+	for(0..settings.highestSupportedLod + 1) |i| {
+		faceBuffers[i].deinit();
+		lightBuffers[i].deinit();
+	}
 	chunkBuffer.deinit();
 	commandBuffer.deinit();
 	chunkIDBuffer.deinit();
 }
 
 pub fn beginRender() void {
-	faceBuffer.beginRender();
-	lightBuffer.beginRender();
+	for(0..settings.highestSupportedLod + 1) |i| {
+		faceBuffers[i].beginRender();
+		lightBuffers[i].beginRender();
+	}
 	chunkBuffer.beginRender();
 	commandBuffer.beginRender();
 	chunkIDBuffer.beginRender();
 }
 
 pub fn endRender() void {
-	faceBuffer.endRender();
-	lightBuffer.endRender();
+	for(0..settings.highestSupportedLod + 1) |i| {
+		faceBuffers[i].endRender();
+		lightBuffers[i].endRender();
+	}
 	chunkBuffer.endRender();
 	commandBuffer.endRender();
 	chunkIDBuffer.endRender();
@@ -211,7 +220,21 @@ pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playe
 	c.glBindVertexArray(vao);
 }
 
-pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+fn bindBuffers(lod: usize) void {
+	faceBuffers[lod].ssbo.bind(faceBuffers[lod].binding);
+	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
+}
+
+pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.List(u32), projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+	for(0..chunkIds.len) |i| {
+		const lod = if(transparent) main.settings.highestSupportedLod - i else i;
+		bindBuffers(lod);
+		drawChunksOfLod(chunkIds[lod].items, projMatrix, ambient, playerPos, transparent);
+	}
+}
+
+fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+	if(chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if(transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
 	chunkIDBuffer.uploadData(chunkIDs, &chunkIDAllocation);
@@ -226,7 +249,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 	c.glUniform3i(commandUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	if(!transparent) {
-		gpu_performance_measuring.startQuery(.chunk_rendering_previous_visible);
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
 		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
@@ -238,11 +260,9 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
-		gpu_performance_measuring.stopQuery();
 	}
 
 	// Occlusion tests:
-	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering_occlusion_test else .chunk_rendering_occlusion_test);
 	occlusionTestPipeline.bind(null);
 	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
@@ -251,10 +271,8 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	c.glBindVertexArray(vao);
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
-	gpu_performance_measuring.stopQuery();
 
 	// Draw again:
-	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering else .chunk_rendering_new_visible);
 	commandPipeline.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
@@ -267,7 +285,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
-	gpu_performance_measuring.stopQuery();
 }
 
 pub const FaceData = extern struct {
@@ -313,7 +330,7 @@ pub const IndirectData = extern struct {
 	baseInstance: u32,
 };
 
-const PrimitiveMesh = struct { // MARK: PrimitiveMesh
+pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	const FaceGroups = enum(u32) {
 		core,
 		neighbor0,
@@ -346,9 +363,10 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	wasChanged: bool = false,
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
+	lod: u3,
 
 	fn deinit(self: *PrimitiveMesh) void {
-		faceBuffer.free(self.bufferAllocation);
+		faceBuffers[self.lod].free(self.bufferAllocation);
 		self.completeList.deinit(main.globalAllocator);
 	}
 
@@ -484,7 +502,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return result;
 	}
 
-	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
+	pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
 		const quadInfo = quadIndex.quadInfo();
 		const extraQuadInfo = quadIndex.extraQuadInfo();
 		const normal = quadInfo.normal;
@@ -499,7 +517,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		if(extraQuadInfo.hasOnlyCornerVertices) { // Fast path for simple quads.
 			var rawVals: [4][6]u5 = undefined;
 			for(0..4) |i| {
-				const vertexPos = quadInfo.corners[i];
+				const vertexPos: Vec3f = quadInfo.corners[i];
 				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
 				const fullValues = if(extraQuadInfo.alignedNormalDirection) |dir|
 					getCornerLightAligned(parent, fullPos, dir)
@@ -529,7 +547,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 		var rawVals: [4][6]u5 = undefined;
 		for(0..4) |i| {
-			const vertexPos = quadInfo.corners[i];
+			const vertexPos: Vec3f = quadInfo.corners[i];
 			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
 			const interp = lightPos - @as(Vec3f, @floatFromInt(blockPos));
 			var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
@@ -572,8 +590,8 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			len += list[i].len;
 		}
 
-		const fullBuffer = faceBuffer.allocateAndMapRange(len, &self.bufferAllocation);
-		defer faceBuffer.unmapRange(fullBuffer);
+		const fullBuffer = faceBuffers[self.lod].allocateAndMapRange(len, &self.bufferAllocation);
+		defer faceBuffers[self.lod].unmapRange(fullBuffer);
 		// Sort the faces by normal to allow for backface culling on the GPU:
 		var i: u32 = 0;
 		var iStart = i;
@@ -634,7 +652,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const dz = z + chunkDz;
 			self.isBackFace = self.face.position.isBackFace;
 			const quadIndex = self.face.blockAndQuad.quadIndex;
-			const normalVector = quadIndex.quadInfo().normal;
+			const normalVector: Vec3f = quadIndex.quadInfo().normal;
 			self.shouldBeCulled = vec.dot(normalVector, @floatFromInt(Vec3i{dx, dy, dz})) > 0; // TODO: Adjust for arbitrary voxel models.
 			const fullDx = dx - @as(i32, @intFromFloat(normalVector[0])); // TODO: This calculation should only be done for border faces.
 			const fullDy = dy - @as(i32, @intFromFloat(normalVector[1]));
@@ -678,8 +696,12 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.* = ChunkMesh{
 			.pos = pos,
 			.size = chunk.chunkSize*pos.voxelSize,
-			.opaqueMesh = .{},
-			.transparentMesh = .{},
+			.opaqueMesh = .{
+				.lod = @intCast(std.math.log2_int(u32, pos.voxelSize)),
+			},
+			.transparentMesh = .{
+				.lod = @intCast(std.math.log2_int(u32, pos.voxelSize)),
+			},
 			.chunk = ch,
 			.lightingData = .{
 				lighting.ChannelChunk.init(ch, false),
@@ -694,6 +716,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
+		self.chunk.unloadBlockEntities(.client);
 		self.chunk.deinit();
 		main.globalAllocator.free(self.currentSorting);
 		main.globalAllocator.free(self.sortingOutputBuffer);
@@ -703,7 +726,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.blockBreakingFaces.deinit();
 		main.globalAllocator.free(self.blockBreakingFacesSortingData);
 		main.globalAllocator.free(self.lightList);
-		lightBuffer.free(self.lightAllocation);
+		lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].free(self.lightAllocation);
 	}
 
 	pub fn increaseRefCount(self: *ChunkMesh) void {
@@ -1199,7 +1222,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
+	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, blockEntityData: []const u8, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
 		const x: u5 = @intCast(_x & chunk.chunkMask);
 		const y: u5 = @intCast(_y & chunk.chunkMask);
 		const z: u5 = @intCast(_z & chunk.chunkMask);
@@ -1208,13 +1231,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const oldBlock = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 
 		if(oldBlock == newBlock) {
+			if(newBlock.blockEntity()) |blockEntity| {
+				var reader = main.utils.BinaryReader.init(blockEntityData);
+				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
+					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
+				};
+			}
 			self.mutex.unlock();
 			return;
 		}
 		self.mutex.unlock();
 
 		if(oldBlock.blockEntity()) |blockEntity| {
-			blockEntity.onBreakClient(.{_x, _y, _z}, self.chunk);
+			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .remove) catch |err| {
+				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{_x, _y, _z}, oldBlock.id()});
+			};
 		}
 
 		var neighborBlocks: [6]Block = undefined;
@@ -1266,11 +1297,14 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
-		self.mutex.unlock();
 
 		if(newBlock.blockEntity()) |blockEntity| {
-			blockEntity.onPlaceClient(.{_x, _y, _z}, self.chunk);
+			var reader = main.utils.BinaryReader.init(blockEntityData);
+			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
+				std.log.err("Got error {s} while trying to create block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
+			};
 		}
+		self.mutex.unlock();
 
 		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);
 
@@ -1342,7 +1376,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		if(self.lightListNeedsUpload) {
 			self.lightListNeedsUpload = false;
-			lightBuffer.uploadData(self.lightList, &self.lightAllocation);
+			lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].uploadData(self.lightList, &self.lightAllocation);
 		}
 
 		self.uploadChunkPosition();
@@ -1542,15 +1576,15 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}}, &self.chunkAllocation);
 	}
 
-	pub fn prepareRendering(self: *ChunkMesh, chunkList: *main.List(u32)) void {
+	pub fn prepareRendering(self: *ChunkMesh, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
 		if(self.opaqueMesh.vertexCount == 0) return;
 
-		chunkList.append(self.chunkAllocation.start);
+		chunkLists[std.math.log2_int(u32, self.pos.voxelSize)].append(self.chunkAllocation.start);
 
 		quadsDrawn += self.opaqueMesh.vertexCount/6;
 	}
 
-	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkList: *main.List(u32)) void {
+	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
 		if(self.transparentMesh.vertexCount == 0 and self.blockBreakingFaces.items.len == 0) return;
 
 		var needsUpdate: bool = false;
@@ -1683,11 +1717,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 			self.culledSortingCount += @intCast(self.blockBreakingFaces.items.len);
 			// Upload:
-			faceBuffer.uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
+			faceBuffers[std.math.log2_int(u32, self.pos.voxelSize)].uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
 			self.uploadChunkPosition();
 		}
 
-		chunkList.append(self.chunkAllocation.start);
+		chunkLists[std.math.log2_int(u32, self.pos.voxelSize)].append(self.chunkAllocation.start);
 		transparentQuadsDrawn += self.culledSortingCount;
 	}
 };

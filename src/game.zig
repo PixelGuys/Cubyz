@@ -11,6 +11,7 @@ const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const KeyBoard = main.KeyBoard;
 const network = @import("network.zig");
+const particles = @import("particles.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
@@ -161,9 +162,9 @@ pub const collision = struct {
 			for(model.neighborFacingQuads) |quads| {
 				for(quads) |quadIndex| {
 					const quad = quadIndex.quadInfo();
-					if(triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, entityPosition, entityBoundingBoxExtent)) {
-						const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
-						const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+					if(triangleAABB(.{quad.cornerVec(0) + quad.normalVec() + pos, quad.cornerVec(2) + quad.normalVec() + pos, quad.cornerVec(1) + quad.normalVec() + pos}, entityPosition, entityBoundingBoxExtent)) {
+						const min = @min(@min(quad.cornerVec(0), quad.cornerVec(1)), @min(quad.cornerVec(2), quad.cornerVec(3))) + quad.normalVec() + pos;
+						const max = @max(@max(quad.cornerVec(0), quad.cornerVec(1)), @max(quad.cornerVec(2), quad.cornerVec(3))) + quad.normalVec() + pos;
 						const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
 						if(dist < minDistance) {
 							resultBox = .{.min = min, .max = max};
@@ -173,9 +174,9 @@ pub const collision = struct {
 							resultBox.?.max = @min(resultBox.?.max, max);
 						}
 					}
-					if(triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, entityPosition, entityBoundingBoxExtent)) {
-						const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
-						const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+					if(triangleAABB(.{quad.cornerVec(1) + quad.normalVec() + pos, quad.cornerVec(2) + quad.normalVec() + pos, quad.cornerVec(3) + quad.normalVec() + pos}, entityPosition, entityBoundingBoxExtent)) {
+						const min = @min(@min(quad.cornerVec(0), quad.cornerVec(1)), @min(quad.cornerVec(2), quad.cornerVec(3))) + quad.normalVec() + pos;
+						const max = @max(@max(quad.cornerVec(0), quad.cornerVec(1)), @max(quad.cornerVec(2), quad.cornerVec(3))) + quad.normalVec() + pos;
 						const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
 						if(dist < minDistance) {
 							resultBox = .{.min = min, .max = max};
@@ -190,9 +191,9 @@ pub const collision = struct {
 
 			for(model.internalQuads) |quadIndex| {
 				const quad = quadIndex.quadInfo();
-				if(triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, entityPosition, entityBoundingBoxExtent)) {
-					const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
-					const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
+				if(triangleAABB(.{quad.cornerVec(0) + pos, quad.cornerVec(2) + pos, quad.cornerVec(1) + pos}, entityPosition, entityBoundingBoxExtent)) {
+					const min = @min(@min(quad.cornerVec(0), quad.cornerVec(1)), @min(quad.cornerVec(2), quad.cornerVec(3))) + pos;
+					const max = @max(@max(quad.cornerVec(0), quad.cornerVec(1)), @max(quad.cornerVec(2), quad.cornerVec(3))) + pos;
 					const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
 					if(dist < minDistance) {
 						resultBox = .{.min = min, .max = max};
@@ -202,9 +203,9 @@ pub const collision = struct {
 						resultBox.?.max = @min(resultBox.?.max, max);
 					}
 				}
-				if(triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, entityPosition, entityBoundingBoxExtent)) {
-					const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
-					const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
+				if(triangleAABB(.{quad.cornerVec(1) + pos, quad.cornerVec(2) + pos, quad.cornerVec(3) + pos}, entityPosition, entityBoundingBoxExtent)) {
+					const min = @min(@min(quad.cornerVec(0), quad.cornerVec(1)), @min(quad.cornerVec(2), quad.cornerVec(3))) + pos;
+					const max = @max(@max(quad.cornerVec(0), quad.cornerVec(1)), @max(quad.cornerVec(2), quad.cornerVec(3))) + pos;
 					const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
 					if(dist < minDistance) {
 						resultBox = .{.min = min, .max = max};
@@ -370,14 +371,14 @@ pub const collision = struct {
 		for(model.neighborFacingQuads) |quads| {
 			for(quads) |quadIndex| {
 				const quad = quadIndex.quadInfo();
-				if(triangleAABB(.{quad.corners[0] + quad.normal + position, quad.corners[2] + quad.normal + position, quad.corners[1] + quad.normal + position}, center, extent) or
-					triangleAABB(.{quad.corners[1] + quad.normal + position, quad.corners[2] + quad.normal + position, quad.corners[3] + quad.normal + position}, center, extent)) return true;
+				if(triangleAABB(.{quad.cornerVec(0) + quad.normalVec() + position, quad.cornerVec(2) + quad.normalVec() + position, quad.cornerVec(1) + quad.normalVec() + position}, center, extent) or
+					triangleAABB(.{quad.cornerVec(1) + quad.normalVec() + position, quad.cornerVec(2) + quad.normalVec() + position, quad.cornerVec(3) + quad.normalVec() + position}, center, extent)) return true;
 			}
 		}
 		for(model.internalQuads) |quadIndex| {
 			const quad = quadIndex.quadInfo();
-			if(triangleAABB(.{quad.corners[0] + position, quad.corners[2] + position, quad.corners[1] + position}, center, extent) or
-				triangleAABB(.{quad.corners[1] + position, quad.corners[2] + position, quad.corners[3] + position}, center, extent)) return true;
+			if(triangleAABB(.{quad.cornerVec(0) + position, quad.cornerVec(2) + position, quad.cornerVec(1) + position}, center, extent) or
+				triangleAABB(.{quad.cornerVec(1) + position, quad.cornerVec(2) + position, quad.cornerVec(3) + position}, center, extent)) return true;
 		}
 		return false;
 	}
@@ -462,6 +463,7 @@ pub const Player = struct { // MARK: Player
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = .{};
+	pub const inventorySize = 32;
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
@@ -655,6 +657,7 @@ pub const World = struct { // MARK: World
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
+	toolPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
@@ -673,6 +676,7 @@ pub const World = struct { // MARK: World
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
+		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 	}
 
@@ -692,6 +696,7 @@ pub const World = struct { // MARK: World
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
+		self.toolPalette.deinit();
 		self.biomePalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
@@ -713,11 +718,13 @@ pub const World = struct { // MARK: World
 		errdefer self.biomePalette.deinit();
 		self.itemPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("itemPalette"), null);
 		errdefer self.itemPalette.deinit();
+		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
+		errdefer self.toolPalette.deinit();
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
-		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.biomePalette);
+		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
+		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id});
 		Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
@@ -1215,4 +1222,5 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	fog.fogHigher = (biome.fogHigher - fog.fogHigher)*t + fog.fogHigher;
 
 	world.?.update();
+	particles.ParticleSystem.update(@floatCast(deltaTime));
 }

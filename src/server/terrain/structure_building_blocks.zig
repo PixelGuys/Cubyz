@@ -11,6 +11,7 @@ const Neighbor = main.chunk.Neighbor;
 const Block = main.blocks.Block;
 const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Assets = main.assets.Assets;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
@@ -44,6 +45,10 @@ const BlueprintEntry = struct {
 
 		pub inline fn pos(self: StructureBlock) Vec3i {
 			return Vec3i{self.x, self.y, self.z};
+		}
+
+		pub fn id(self: StructureBlock) []const u8 {
+			return childBlockStringId.items[self.index];
 		}
 	};
 
@@ -119,10 +124,14 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] Missing blueprint field.", .{stringId});
 			return error.MissingBlueprintIdField;
 		};
-		const blueprints = blueprintCache.get(blueprintId) orelse {
+		const blueprintsTemplate = blueprintCache.get(blueprintId) orelse {
 			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, blueprintId});
 			return error.MissingBlueprint;
 		};
+
+		const blueprints = arenaAllocator.create([4]BlueprintEntry);
+		blueprints.* = blueprintsTemplate.*;
+
 		const self = StructureBuildingBlock{
 			.id = stringId,
 			.children = arenaAllocator.alloc(AliasTable(Child), childBlockStringId.items.len),
@@ -132,7 +141,53 @@ pub const StructureBuildingBlock = struct {
 		for(childBlockStringId.items, 0..) |colorName, colorIndex| {
 			self.children[colorIndex] = try initChildTableFromZon(stringId, colorName, colorIndex, childrenZon.getChild(colorName));
 		}
+		self.updateBlueprintChildLists();
 		return self;
+	}
+	pub fn updateBlueprintChildLists(self: StructureBuildingBlock) void {
+		for(self.children, 0..) |child, index| found: {
+			if(child.items.len == 0) continue;
+
+			for(self.blueprints[0].childBlocks) |blueprintChild| {
+				if(blueprintChild.index != index) continue;
+				break :found;
+			}
+			std.log.err("['{s}'] Blueprint doesn't contain child '{s}' but configuration for it was specified.", .{self.id, childBlockStringId.items[index]});
+		}
+		for(self.blueprints, 0..) |*blueprint, index| {
+			var childBlocks: ListUnmanaged(BlueprintEntry.StructureBlock) = .{};
+			defer childBlocks.deinit(main.stackAllocator);
+
+			for(blueprint.childBlocks) |child| {
+				if(self.children[child.index].items.len == 0) {
+					if(index == 0) std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{self.id, child.id()});
+					continue;
+				}
+				childBlocks.append(main.stackAllocator, child);
+			}
+			blueprint.childBlocks = arenaAllocator.dupe(BlueprintEntry.StructureBlock, childBlocks.items);
+		}
+	}
+	pub fn initInline(sbbId: []const u8) !StructureBuildingBlock {
+		const blueprintsTemplate = blueprintCache.get(sbbId) orelse {
+			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{sbbId, sbbId});
+			return error.MissingBlueprint;
+		};
+
+		const blueprints = arenaAllocator.create([4]BlueprintEntry);
+		blueprints.* = blueprintsTemplate.*;
+		for(blueprints, 0..) |*blueprint, index| {
+			if(index == 0) {
+				for(blueprint.childBlocks) |child| std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{sbbId, child.id()});
+			}
+			blueprint.childBlocks = &.{};
+		}
+
+		return .{
+			.id = sbbId,
+			.children = &.{},
+			.blueprints = blueprints,
+		};
 	}
 	pub fn getBlueprint(self: StructureBuildingBlock, rotation: Degrees) *BlueprintEntry {
 		return &self.blueprints[@intFromEnum(rotation)];
@@ -149,8 +204,8 @@ fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex
 		return .init(arenaAllocator, &.{});
 	}
 	if(zon.array.items.len == 0) {
-		std.log.err("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
-		return error.EmptyChildrenList;
+		std.log.err("['{s}'->'{s}'] Empty children list not allowed. Remove 'children' field or add child structure configurations.", .{parentId, colorName});
+		return .init(arenaAllocator, &.{});
 	}
 	const list = arenaAllocator.alloc(Child, zon.array.items.len);
 	for(zon.array.items, 0..) |entry, childIndex| {
@@ -175,7 +230,7 @@ const Child = struct {
 	}
 };
 
-pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
+pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	std.debug.assert(structureCache.capacity() == 0);
 	structureCache.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
 	childrenToResolve = .init(main.stackAllocator);
@@ -193,15 +248,37 @@ pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
 		}
 	}
 	{
+		var keyIterator = blueprintCache.keyIterator();
+		while(keyIterator.next()) |key_ptr| {
+			const blueprintId = key_ptr.*;
+
+			if(structureCache.contains(blueprintId)) continue;
+
+			const value = StructureBuildingBlock.initInline(blueprintId) catch |err| {
+				std.log.err("Could not register inline structure building block '{s}' ({s})", .{blueprintId, @errorName(err)});
+				continue;
+			};
+			const key = arenaAllocator.dupe(u8, blueprintId);
+			structureCache.put(arenaAllocator.allocator, key, value) catch unreachable;
+			std.log.debug("Registered inline structure building block: '{s}'", .{blueprintId});
+		}
+	}
+	{
 		for(childrenToResolve.items) |entry| {
 			const parent = structureCache.getPtr(entry.parentId).?;
-			const child = structureCache.getPtr(entry.structureId) orelse {
-				std.log.err("Could not find child structure '{s}' for child resolution.", .{entry.structureId});
+			const child = getByStringId(entry.structureId) orelse {
+				std.log.err("Could not find child structure nor blueprint '{s}' for child resolution.", .{entry.structureId});
 				continue;
 			};
 
+			if(parent.children.len <= entry.colorIndex) {
+				main.utils.panicWithMessage("Error resolving child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
+			}
+
+			const childColor = parent.children[entry.colorIndex];
+
 			std.log.debug("Resolved child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
-			parent.children[entry.colorIndex].items[entry.childIndex].structure = child;
+			childColor.items[entry.childIndex].structure = child;
 		}
 	}
 }
@@ -217,7 +294,7 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	childBlockStringId.append(arenaAllocator, arenaAllocator.dupe(u8, colorName));
 }
 
-pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
+pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 	std.debug.assert(blueprintCache.capacity() == 0);
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;

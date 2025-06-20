@@ -10,5 +10,9 @@ gamecontrollerdb.stamp
 
 test.png
 
-# Ignore user generated backgrounds
-/assets/backgrounds/client_*.png
+/mods/*
+!/mods/cubyz
+
+/assets/*
+!/assets/cubyz
+!/assets/backgrounds/default_background.png
