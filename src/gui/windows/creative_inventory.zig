@@ -9,6 +9,8 @@ const Vec2f = main.vec.Vec2f;
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
+const TextInput = GuiComponent.TextInput;
+const Label = GuiComponent.Label;
 const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const ItemSlot = GuiComponent.ItemSlot;
@@ -18,13 +20,16 @@ pub var window = GuiWindow{
 		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
 		.{.attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
 	},
-	.contentSize = Vec2f{64*8, 64*4},
+	.contentSize = Vec2f{64*8, 64*6},
 	.scale = 0.75,
 };
 
 const padding: f32 = 8;
+const slotsPerRow: u32 = 10;
 var items: main.List(Item) = undefined;
 var inventory: Inventory = undefined;
+var searchInput: *TextInput = undefined;
+var searchString: []const u8 = undefined;
 
 fn lessThan(_: void, lhs: Item, rhs: Item) bool {
 	if(lhs == .baseItem and rhs == .baseItem) {
@@ -40,24 +45,44 @@ fn lessThan(_: void, lhs: Item, rhs: Item) bool {
 }
 
 pub fn onOpen() void {
+	searchString = "";
+	initContent();
+}
+
+fn initContent() void {
+	const list = VerticalList.init(.{padding, padding + 16}, 140, 0);
+	{
+		const row = HorizontalList.init();
+		const label = Label.init(.{0, 2}, 74, "Search: ", .right);
+		searchInput = TextInput.init(.{0, 0}, 284, 22, searchString, .{.callback = &filter}, .{});
+		row.add(label);
+		row.add(searchInput);
+		list.add(row);
+	}
+
 	items = .init(main.globalAllocator);
 	var itemIterator = main.items.iterator();
 	while(itemIterator.next()) |item| {
+		if(searchString.len != 0 and std.mem.indexOf(u8, item.id(), searchString) == null) continue;
 		items.append(Item{.baseItem = item.*});
 	}
+
 	std.mem.sort(Item, items.items, {}, lessThan);
-	inventory = Inventory.init(main.globalAllocator, items.items.len, .creative, .other);
+	const slotCount = items.items.len + (slotsPerRow - items.items.len%slotsPerRow);
+	inventory = Inventory.init(main.globalAllocator, slotCount, .creative, .other);
 	for(0..items.items.len) |i| {
 		inventory.fillAmountFromCreative(@intCast(i), items.items[i], 1);
 	}
-
-	const list = VerticalList.init(.{padding, padding + 16}, 140, 0);
 	var i: u32 = 0;
 	while(i < items.items.len) {
 		const row = HorizontalList.init();
-		for(0..10) |_| {
-			if(i >= items.items.len) break;
-			row.add(ItemSlot.init(.{0, 0}, inventory, i, .default, .takeOnly));
+		for(0..slotsPerRow) |_| {
+			if(i > slotCount) break;
+			if(i >= items.items.len) {
+				row.add(ItemSlot.init(.{0, 0}, inventory, i, .immutable, .immutable));
+			} else {
+				row.add(ItemSlot.init(.{0, 0}, inventory, i, .default, .takeOnly));
+			}
 			i += 1;
 		}
 		list.add(row);
@@ -68,10 +93,22 @@ pub fn onOpen() void {
 	gui.updateWindowPositions();
 }
 
-pub fn onClose() void {
+fn filter(_: usize) void {
+	main.globalAllocator.free(searchString);
+	searchString = main.globalAllocator.dupe(u8, searchInput.currentString.items);
+	deinitContent();
+	initContent();
+}
+
+fn deinitContent() void {
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 	items.deinit();
 	inventory.deinit(main.globalAllocator);
+}
+
+pub fn onClose() void {
+	deinitContent();
+	main.globalAllocator.free(searchString);
 }
