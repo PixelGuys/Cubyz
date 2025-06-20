@@ -794,7 +794,6 @@ pub const ItemEnum = enum {
 	tool,
 };
 
-
 pub const Item = union(ItemEnum) { // MARK: Item
 	baseItem: BaseItemIndex,
 	tool: *Tool,
