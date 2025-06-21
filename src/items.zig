@@ -778,14 +778,12 @@ pub const Tool = struct { // MARK: Tool
 		for(0..craftingGridSize) |i| {
 			if(self.craftingGrid[i]) |baseItem| {
 				baseItem.writeBytes(writer);
-			} else {
-				writer.writeInt(u16, 0);
 			}
 		}
 
 		writer.writeInt(u32, self.durability);
 		writer.writeInt(u32, self.seed);
-		writer.writeInt(u32, self.seed);
+		writer.writeInt(u16, self.type.index);
 	}
 };
 
