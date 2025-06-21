@@ -8,7 +8,7 @@ const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const ListUnmanaged = main.ListUnmanaged;
-const ReaderWriter = main.utils.BinaryWriter;
+const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const chunk = main.chunk;
@@ -203,6 +203,9 @@ pub const BaseItemIndex = packed struct {
 	}
 	pub fn writeBytes(self: BaseItemIndex, writer: *BinaryWriter) void {
 		writer.writeInt(u16, self.index);
+	}
+	pub fn readBytes(reader: *BinaryReader) !BaseItemIndex {
+		return .{.index = try reader.readInt(u16)};
 	}
 };
 
@@ -785,6 +788,21 @@ pub const Tool = struct { // MARK: Tool
 		writer.writeInt(u32, self.seed);
 		writer.writeInt(u16, self.type.index);
 	}
+	pub fn readBytes(reader: *BinaryReader) !*Tool {
+		var craftingGridMask = try reader.readInt(u32);
+		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
+		while(craftingGridMask != 0) {
+			const i = @ctz(craftingGridMask);
+			craftingGridMask &= ~(1 << i);
+			craftingGrid[i] = try BaseItemIndex.readBytes(reader);
+		}
+		const durability = try reader.readInt(u32);
+		const seed = try reader.readInt(u32);
+		const typ = .{.index = try reader.readInt(u16)};
+		const self = initFromCraftingGrid(craftingGrid, seed, typ);
+		self.durability = durability;
+		return self;
+	}
 };
 
 pub const ItemEnum = enum {
@@ -893,6 +911,18 @@ pub const Item = union(ItemEnum) { // MARK: Item
 			inline else => |item| item.writeBytes(writer),
 		}
 	}
+
+	pub fn readBytes(reader: *BinaryReader) !Item {
+		const typ = try reader.readEnum(ItemEnum);
+		switch(typ) {
+			.baseItem => {
+				return .{.baseItem = try BaseItemIndex.readBytes(reader)};
+			},
+			.tool => {
+				return .{.tool = try Tool.readBytes(reader)};
+			},
+		}
+	}
 };
 
 pub const ItemStack = struct { // MARK: ItemStack
@@ -940,6 +970,30 @@ pub const ItemStack = struct { // MARK: ItemStack
 		const result = ZonElement.initObject(allocator);
 		self.storeToZon(allocator, result);
 		return result;
+	}
+
+	pub fn writeBytes(self: *const ItemStack, writer: *BinaryWriter) void {
+		if(self.item) |item| {
+			writer.writeInt(u16, self.amount);
+			item.writeBytes(writer);
+		} else {
+			writer.writeInt(u16, 0);
+		}
+	}
+
+	pub fn readBytes(reader: *BinaryReader) !ItemStack {
+		const amount = try reader.readInt(u16);
+		if(amount == 0) {
+			return .{
+				.item = null,
+				.amount = 0,
+			};
+		}
+		const item = try Item.readBytes(reader);
+		return .{
+			.item = item,
+			.amount = amount,
+		};
 	}
 };
 
