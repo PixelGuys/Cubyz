@@ -773,7 +773,7 @@ pub const Tool = struct { // MARK: Tool
 		var craftingGridMask: u32 = 0;
 		for(0..craftingGridSize) |i| {
 			if(self.craftingGrid[i] != null) {
-				craftingGridMask |= 1 << i;
+				craftingGridMask |= @as(u32, 1) << @intCast(i);
 			}
 		}
 		writer.writeInt(u32, craftingGridMask);
@@ -793,12 +793,12 @@ pub const Tool = struct { // MARK: Tool
 		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
 		while(craftingGridMask != 0) {
 			const i = @ctz(craftingGridMask);
-			craftingGridMask &= ~(1 << i);
+			craftingGridMask &= ~(@as(u32, 1) << @intCast(i));
 			craftingGrid[i] = try BaseItemIndex.readBytes(reader);
 		}
 		const durability = try reader.readInt(u32);
 		const seed = try reader.readInt(u32);
-		const typ = .{.index = try reader.readInt(u16)};
+		const typ: ToolTypeIndex = .{.index = try reader.readInt(u16)};
 		const self = initFromCraftingGrid(craftingGrid, seed, typ);
 		self.durability = durability;
 		return self;
