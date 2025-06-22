@@ -770,7 +770,7 @@ pub const Tool = struct { // MARK: Tool
 		var craftingGridMask: u32 = 0;
 		for(0..craftingGridSize) |i| {
 			if(self.craftingGrid[i] != null) {
-				craftingGridMask |= 1 << i;
+				craftingGridMask |= @as(u32, 1) << @intCast(i);
 			}
 		}
 		writer.writeInt(u32, craftingGridMask);
@@ -785,7 +785,7 @@ pub const Tool = struct { // MARK: Tool
 
 		writer.writeInt(u32, self.durability);
 		writer.writeInt(u32, self.seed);
-		writer.writeInt(u32, self.seed);
+		writer.writeInt(u32, self.type.index);
 	}
 };
 
