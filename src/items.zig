@@ -576,7 +576,7 @@ const ToolProperty = enum {
 
 pub const Tool = struct { // MARK: Tool
 	const craftingGridSize = 25;
-	const CraftingGridMask = std.meta.Int(craftingGridSize);
+	const CraftingGridMask = std.meta.Int(.unsigned, craftingGridSize);
 
 	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
