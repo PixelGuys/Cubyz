@@ -201,10 +201,10 @@ pub const BaseItemIndex = packed struct {
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[self.index].getTooltip();
 	}
-	pub fn writeBytes(self: BaseItemIndex, writer: *BinaryWriter) void {
+	pub fn toBytes(self: BaseItemIndex, writer: *BinaryWriter) void {
 		writer.writeInt(u16, self.index);
 	}
-	pub fn readBytes(reader: *BinaryReader) !BaseItemIndex {
+	pub fn fromBytes(reader: *BinaryReader) !BaseItemIndex {
 		return .{.index = try reader.readInt(u16)};
 	}
 };
@@ -576,6 +576,7 @@ const ToolProperty = enum {
 
 pub const Tool = struct { // MARK: Tool
 	const craftingGridSize = 25;
+	const CraftingGridMask = std.meta.Int(craftingGridSize);
 
 	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
@@ -671,6 +672,22 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
+	pub fn fromBytes(reader: *BinaryReader) !*Tool {
+		var craftingGridMask = try reader.readInt(CraftingGridMask);
+		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
+		while(craftingGridMask != 0) {
+			const i = @ctz(craftingGridMask);
+			craftingGridMask &= ~(@as(CraftingGridMask, 1) << @intCast(i));
+			craftingGrid[i] = try BaseItemIndex.fromBytes(reader);
+		}
+		const durability = try reader.readInt(u32);
+		const seed = try reader.readInt(u32);
+		const typ: ToolTypeIndex = .{.index = try reader.readInt(u16)};
+		const self = initFromCraftingGrid(craftingGrid, seed, typ);
+		self.durability = durability;
+		return self;
+	}
+
 	fn extractItemsFromZon(zonArray: ZonElement) [craftingGridSize]?BaseItemIndex {
 		var items: [craftingGridSize]?BaseItemIndex = undefined;
 		for(&items, 0..) |*item, i| {
@@ -695,6 +712,26 @@ pub const Tool = struct { // MARK: Tool
 		zonObject.put("seed", self.seed);
 		zonObject.put("type", self.type.id());
 		return zonObject;
+	}
+
+	pub fn toBytes(self: Tool, writer: *BinaryWriter) void {
+		var craftingGridMask: CraftingGridMask = 0;
+		for(0..craftingGridSize) |i| {
+			if(self.craftingGrid[i] != null) {
+				craftingGridMask |= @as(CraftingGridMask, 1) << @intCast(i);
+			}
+		}
+		writer.writeInt(CraftingGridMask, craftingGridMask);
+
+		for(0..craftingGridSize) |i| {
+			if(self.craftingGrid[i]) |baseItem| {
+				baseItem.toBytes(writer);
+			}
+		}
+
+		writer.writeInt(u32, self.durability);
+		writer.writeInt(u32, self.seed);
+		writer.writeInt(u16, self.type.index);
 	}
 
 	pub fn hashCode(self: Tool) u32 {
@@ -769,48 +806,14 @@ pub const Tool = struct { // MARK: Tool
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
-	pub fn writeBytes(self: Tool, writer: *BinaryWriter) void {
-		var craftingGridMask: u32 = 0;
-		for(0..craftingGridSize) |i| {
-			if(self.craftingGrid[i] != null) {
-				craftingGridMask |= @as(u32, 1) << @intCast(i);
-			}
-		}
-		writer.writeInt(u32, craftingGridMask);
-
-		for(0..craftingGridSize) |i| {
-			if(self.craftingGrid[i]) |baseItem| {
-				baseItem.writeBytes(writer);
-			}
-		}
-
-		writer.writeInt(u32, self.durability);
-		writer.writeInt(u32, self.seed);
-		writer.writeInt(u16, self.type.index);
-	}
-	pub fn readBytes(reader: *BinaryReader) !*Tool {
-		var craftingGridMask = try reader.readInt(u32);
-		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
-		while(craftingGridMask != 0) {
-			const i = @ctz(craftingGridMask);
-			craftingGridMask &= ~(@as(u32, 1) << @intCast(i));
-			craftingGrid[i] = try BaseItemIndex.readBytes(reader);
-		}
-		const durability = try reader.readInt(u32);
-		const seed = try reader.readInt(u32);
-		const typ: ToolTypeIndex = .{.index = try reader.readInt(u16)};
-		const self = initFromCraftingGrid(craftingGrid, seed, typ);
-		self.durability = durability;
-		return self;
-	}
 };
 
-pub const ItemEnum = enum {
+const ItemType = enum {
 	baseItem,
 	tool,
 };
 
-pub const Item = union(ItemEnum) { // MARK: Item
+pub const Item = union(ItemType) { // MARK: Item
 	baseItem: BaseItemIndex,
 	tool: *Tool,
 
@@ -821,6 +824,18 @@ pub const Item = union(ItemEnum) { // MARK: Item
 			const toolZon = zon.getChild("tool");
 			if(toolZon != .object) return error.ItemNotFound;
 			return Item{.tool = Tool.initFromZon(toolZon)};
+		}
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !Item {
+		const typ = try reader.readEnum(ItemType);
+		switch(typ) {
+			.baseItem => {
+				return .{.baseItem = try BaseItemIndex.fromBytes(reader)};
+			},
+			.tool => {
+				return .{.tool = try Tool.fromBytes(reader)};
+			},
 		}
 	}
 
@@ -864,6 +879,13 @@ pub const Item = union(ItemEnum) { // MARK: Item
 		}
 	}
 
+	pub fn toBytes(self: Item, writer: *BinaryWriter) void {
+		writer.writeEnum(ItemType, self);
+		switch(self) {
+			inline else => |item| item.toBytes(writer),
+		}
+	}
+
 	pub fn getTexture(self: Item) graphics.Texture {
 		switch(self) {
 			.baseItem => |_baseItem| {
@@ -904,25 +926,6 @@ pub const Item = union(ItemEnum) { // MARK: Item
 			},
 		}
 	}
-
-	pub fn writeBytes(self: Item, writer: *BinaryWriter) void {
-		writer.writeEnum(ItemEnum, self);
-		switch(self) {
-			inline else => |item| item.writeBytes(writer),
-		}
-	}
-
-	pub fn readBytes(reader: *BinaryReader) !Item {
-		const typ = try reader.readEnum(ItemEnum);
-		switch(typ) {
-			.baseItem => {
-				return .{.baseItem = try BaseItemIndex.readBytes(reader)};
-			},
-			.tool => {
-				return .{.tool = try Tool.readBytes(reader)};
-			},
-		}
-	}
 };
 
 pub const ItemStack = struct { // MARK: ItemStack
@@ -933,6 +936,21 @@ pub const ItemStack = struct { // MARK: ItemStack
 		return .{
 			.item = try Item.init(zon),
 			.amount = zon.get(?u16, "amount", null) orelse return error.InvalidAmount,
+		};
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
+		const amount = try reader.readInt(u16);
+		if(amount == 0) {
+			return .{
+				.item = null,
+				.amount = 0,
+			};
+		}
+		const item = try Item.fromBytes(reader);
+		return .{
+			.item = item,
+			.amount = amount,
 		};
 	}
 
@@ -972,28 +990,13 @@ pub const ItemStack = struct { // MARK: ItemStack
 		return result;
 	}
 
-	pub fn writeBytes(self: *const ItemStack, writer: *BinaryWriter) void {
+	pub fn toBytes(self: *const ItemStack, writer: *BinaryWriter) void {
 		if(self.item) |item| {
 			writer.writeInt(u16, self.amount);
-			item.writeBytes(writer);
+			item.toBytes(writer);
 		} else {
 			writer.writeInt(u16, 0);
 		}
-	}
-
-	pub fn readBytes(reader: *BinaryReader) !ItemStack {
-		const amount = try reader.readInt(u16);
-		if(amount == 0) {
-			return .{
-				.item = null,
-				.amount = 0,
-			};
-		}
-		const item = try Item.readBytes(reader);
-		return .{
-			.item = item,
-			.amount = amount,
-		};
 	}
 };
 
