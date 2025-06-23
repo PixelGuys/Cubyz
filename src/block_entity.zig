@@ -18,7 +18,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
-const block_entities = @import("block_entities");
+pub const block_entities = @import("block_entities");
 
 pub const BlockEntityIndex = main.utils.DenseId(u32);
 
@@ -44,10 +44,10 @@ pub const BlockEntityType = struct {
 		getServerToClientData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
-	pub fn init(comptime BlockEntityTypeT: type) BlockEntityType {
+	pub fn init(comptime id: []const u8, comptime BlockEntityTypeT: type) BlockEntityType {
 		BlockEntityTypeT.init();
 		var class = BlockEntityType{
-			.id = BlockEntityTypeT.id,
+			.id = id,
 			.vtable = undefined,
 		};
 
@@ -104,7 +104,7 @@ pub fn BlockEntityDataStorage(T: type) type {
 		pub const DataT = T;
 		var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
 		var nextIndex: BlockEntityIndex = @enumFromInt(0);
-		var storage: main.utils.SparseSet(DataT, BlockEntityIndex) = .{};
+		pub var storage: main.utils.SparseSet(DataT, BlockEntityIndex) = .{};
 		pub var mutex: std.Thread.Mutex = .{};
 
 		pub fn init() void {
@@ -197,21 +197,21 @@ var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
 
 pub fn init() void {
 	inline for(@typeInfo(block_entities).@"struct".decls) |declaration| {
-		const class = BlockEntityType.init(@field(block_entities, declaration.name));
-		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
-		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
+		const class = BlockEntityType.init(declaration.name, @field(block_entities, declaration.name));
+		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, declaration.name, class) catch unreachable;
+		std.log.debug("Registered BlockEntityType '{s}'", .{declaration.name});
 	}
 }
 
 pub fn reset() void {
-	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).reset();
+	inline for(@typeInfo(block_entities).@"struct".decls) |declaration| {
+		@field(block_entities, declaration.name).reset();
 	}
 }
 
 pub fn deinit() void {
-	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).deinit();
+	inline for(@typeInfo(block_entities).@"struct".decls) |declaration| {
+		@field(block_entities, declaration.name).deinit();
 	}
 	blockyEntityTypes.deinit(main.globalAllocator.allocator);
 }
@@ -224,7 +224,7 @@ pub fn getByID(_id: ?[]const u8) ?*BlockEntityType {
 }
 
 pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).renderAll(projectionMatrix, ambientLight, playerPos);
+	inline for(@typeInfo(block_entities).@"struct".decls) |declaration| {
+		@field(block_entities, declaration.name).renderAll(projectionMatrix, ambientLight, playerPos);
 	}
 }

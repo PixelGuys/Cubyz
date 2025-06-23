@@ -20,7 +20,6 @@ const StorageServer = BlockEntityDataStorage(
 	},
 );
 
-pub const id = "chest";
 pub fn init() void {
 	StorageServer.init();
 }

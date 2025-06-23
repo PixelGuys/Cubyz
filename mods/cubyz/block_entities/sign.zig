@@ -56,7 +56,6 @@ const textureWidth = 128;
 const textureHeight = 72;
 const textureMargin = 4;
 
-pub const id = "sign";
 pub fn init() void {
 	StorageServer.init();
 	StorageClient.init();
@@ -185,7 +184,7 @@ pub fn updateTextFromClient(pos: Vec3i, newText: []const u8) void {
 		const index = mesh.chunk.getLocalBlockIndex(pos);
 		const block = mesh.chunk.data.getValue(index);
 		const blockEntity = block.blockEntity() orelse return;
-		if(!std.mem.eql(u8, blockEntity.id, id)) return;
+		if(!std.mem.eql(u8, blockEntity.id, "sign")) return;
 
 		StorageClient.mutex.lock();
 		defer StorageClient.mutex.unlock();
