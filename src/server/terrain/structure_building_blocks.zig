@@ -125,7 +125,7 @@ pub const Rotation = union(RotationMode) {
 	random: void,
 	inherit: void,
 
-	pub const FixedRotation = enum(u3) {
+	pub const FixedRotation = enum(u2) {
 		@"0" = 0,
 		@"90" = 1,
 		@"180" = 2,
@@ -146,7 +146,7 @@ pub const Rotation = union(RotationMode) {
 		};
 	}
 	fn sampleRandom(seed: *u64) Rotation {
-		return .{.fixed = @enumFromInt(main.random.nextInt(u8, seed)%4)};
+		return .{.fixed = @enumFromInt(main.random.nextInt(u2, seed))};
 	}
 	pub fn getChildRotation(self: Rotation, seed: *u64, child: Rotation) Rotation {
 		return switch(child) {

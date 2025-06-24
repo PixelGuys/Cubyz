@@ -36,8 +36,8 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	const rotationParam = parameters.getChild("rotation");
 	const rotation = sbb.Rotation.fromZon(rotationParam) catch |err| blk: {
 		switch(err) {
-			error.UnknownString => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}' specified unknown rotation '{s}'", .{structureId, rotationParam.as([]const u8, "")}),
-			error.UnknownType => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}' unsupported type of rotation field '{s}'", .{structureId, @tagName(rotationParam)}),
+			error.UnknownString => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}': Specified unknown rotation '{s}'", .{structureId, rotationParam.as([]const u8, "")}),
+			error.UnknownType => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}': Unsupported type of rotation field '{s}'", .{structureId, @tagName(rotationParam)}),
 		}
 		break :blk .random;
 	};
