@@ -54,7 +54,7 @@ pub fn createBlockModel(block: Block, modeData: *u16, zon: ZonElement) ModelInde
 }
 
 pub fn model(block: Block) ModelIndex {
-	return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, block.modeData() - 1)};
+	return @enumFromInt(@intFromEnum(blocks.meshes.modelIndexStart(block)) + @min(block.data, block.modeData() - 1));
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {

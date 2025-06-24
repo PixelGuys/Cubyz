@@ -60,11 +60,12 @@ const Quad = struct {
 	uvs: [4]usize,
 };
 
-pub const ModelIndex = packed struct {
-	index: u32,
+pub const ModelIndex = enum(u32) {
+	ino_value = std.math.maxInt(u32),
+	_,
 
 	pub fn model(self: ModelIndex) *const Model {
-		return &models.items()[self.index];
+		return &models.items()[@intFromEnum(self)];
 	}
 };
 
@@ -134,7 +135,7 @@ pub const Model = struct {
 			// Snap the normals as well:
 			dest.normal = snapToGrid(dest.normal);
 		}
-		const modelIndex: ModelIndex = .{.index = models.len};
+		const modelIndex: ModelIndex = @enumFromInt(models.len);
 		const self = models.addOne();
 		var amounts: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalAmount: usize = 0;
@@ -440,7 +441,7 @@ var nameToIndex: std.StringHashMap(ModelIndex) = undefined;
 pub fn getModelIndex(string: []const u8) ModelIndex {
 	return nameToIndex.get(string) orelse {
 		std.log.err("Couldn't find voxelModel with name: {s}.", .{string});
-		return .{.index = 0};
+		return @enumFromInt(0);
 	};
 }
 
