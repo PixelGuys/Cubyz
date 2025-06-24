@@ -51,16 +51,16 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.ensureFixed(seed), chunk, seed);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, seed);
 }
 
 fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
 	const origin = structure.blueprints[0].originBlock;
-	const rotationCount = rotation.apply(alignDirections(origin.direction(), placementDirection) catch |err| {
+	const blueprintRotation = rotation.apply(alignDirections(origin.direction(), placementDirection) catch |err| {
 		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
 		return;
 	});
-	const rotated = &structure.blueprints[rotationCount];
+	const rotated = &structure.blueprints[@intFromEnum(blueprintRotation)];
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - placementDirection.relPos();
 
@@ -68,15 +68,12 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 
 	for(rotated.childBlocks) |childBlock| {
 		const child = structure.pickChild(childBlock, seed) orelse continue;
-		const childRotation: sbb.Rotation = switch(childBlock.direction()) {
-			.dirDown, .dirUp => rotation.getChildRotation(seed, child.rotation),
-			else => .{.fixed = .@"0"},
-		};
+		const childRotation = rotation.getChildRotation(seed, child.rotation, childBlock.direction());
 		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed);
 	}
 }
 
-fn alignDirections(input: Neighbor, desired: Neighbor) !usize {
+fn alignDirections(input: Neighbor, desired: Neighbor) !sbb.Rotation.FixedRotation {
 	const Rotation = enum(u3) {
 		@"0" = 0,
 		@"90" = 1,
@@ -100,6 +97,6 @@ fn alignDirections(input: Neighbor, desired: Neighbor) !usize {
 	};
 	switch(alignTable[input.toInt()][desired.toInt()]) {
 		.NotPossibleToAlign => return error.NotPossibleToAlign,
-		else => |v| return @intFromEnum(v),
+		else => |v| return @enumFromInt(@intFromEnum(v)),
 	}
 }

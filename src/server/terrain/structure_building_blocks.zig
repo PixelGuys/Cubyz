@@ -132,13 +132,13 @@ pub const Rotation = union(RotationMode) {
 		@"270" = 3,
 	};
 
-	pub fn apply(self: Rotation, rotationCount: usize) usize {
+	pub fn apply(self: Rotation, rotation: FixedRotation) FixedRotation {
 		return switch(self) {
-			.fixed => |fixed| rotationCount + @intFromEnum(fixed)%4,
-			.random, .inherit => rotationCount,
+			.fixed => |fixed| @enumFromInt(@intFromEnum(rotation) +% @intFromEnum(fixed)),
+			.random, .inherit => rotation,
 		};
 	}
-	pub fn ensureFixed(self: Rotation, seed: *u64) Rotation {
+	pub fn getInitialRotation(self: Rotation, seed: *u64) Rotation {
 		return switch(self) {
 			.fixed => self,
 			.random => sampleRandom(seed),
@@ -148,11 +148,14 @@ pub const Rotation = union(RotationMode) {
 	fn sampleRandom(seed: *u64) Rotation {
 		return .{.fixed = @enumFromInt(main.random.nextInt(u2, seed))};
 	}
-	pub fn getChildRotation(self: Rotation, seed: *u64, child: Rotation) Rotation {
-		return switch(child) {
-			.random => sampleRandom(seed),
-			.inherit => self,
-			else => |r| r,
+	pub fn getChildRotation(self: Rotation, seed: *u64, child: Rotation, direction: Neighbor) Rotation {
+		return switch(direction) {
+			.dirDown, .dirUp => switch(child) {
+				.random => sampleRandom(seed),
+				.inherit => self,
+				else => |r| r,
+			},
+			else => .{.fixed = .@"0"},
 		};
 	}
 	pub fn fromZon(zon: ZonElement) error{UnknownString, UnknownType}!Rotation {
