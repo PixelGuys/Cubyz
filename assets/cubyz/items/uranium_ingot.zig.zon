@@ -4,7 +4,7 @@
 	.material = .{
 		.density = 18,
 		.elasticity = 5.0,
-		.hardness = 8.0,
+		.hardness = 10.0,
 		.textureRoughness = 0.3,
 		.colors = .{
 			0xff395533, 0xff466e45, 0xff5d8a5f, 0xff6da367, 0xff74c761,

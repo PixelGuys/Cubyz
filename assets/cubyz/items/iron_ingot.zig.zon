@@ -2,9 +2,9 @@
 	.tags = .{.metal},
 	.texture = "iron_ingot.png",
 	.material = .{
-		.density = 7.5,
-		.elasticity = 8.0,
-		.hardness = 5.0,
+		.density = 13.0,
+		.elasticity = 7.0,
+		.hardness = 7.0,
 		.textureRoughness = 0.1,
 		.colors = .{
 			0xff616163, 0xff797777, 0xff9c9c9c, 0xffb4b4b4, 0xffd9d9d9,
