@@ -365,8 +365,8 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks_zig.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
-	const index = (items_zig.BaseItemIndex.fromId(stringId) orelse unreachable).index;
-	const item = &items_zig.itemList[index];
+	const index = (items_zig.BaseItemIndex.fromId(stringId) orelse unreachable);
+	const item = &items_zig.itemList[@intFromEnum(index)];
 	item.block = block;
 }
 
