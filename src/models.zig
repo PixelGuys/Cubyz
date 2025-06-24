@@ -61,7 +61,7 @@ const Quad = struct {
 };
 
 pub const ModelIndex = enum(u32) {
-	ino_value = std.math.maxInt(u32),
+	no_value = std.math.maxInt(u32),
 	_,
 
 	pub fn model(self: ModelIndex) *const Model {
