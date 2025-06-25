@@ -17,6 +17,7 @@ layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
+layout(binding = 5) uniform sampler2D ditherTexture;
 
 layout(location = 5) uniform float reflectionMapSize;
 layout(location = 6) uniform float contrast;
@@ -52,10 +53,7 @@ bool passDitherTest(float alpha) {
 		float factor = max(0, distanceForLodCheck - (lodDistance - 32.0))/32.0;
 		alpha = alpha*(1 - factor) + factor;
 	}
-	ivec2 screenPos = ivec2(gl_FragCoord.xy);
-	screenPos += random1to2(ditherSeed);
-	screenPos &= 3;
-	return alpha > ditherThresholds[screenPos.x*4 + screenPos.y];
+	return alpha > texture(ditherTexture, uv).r*255.0/256.0 + 0.5/256.0;
 }
 
 vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012/02/seamless-cube-map-filtering/

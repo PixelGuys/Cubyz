@@ -213,6 +213,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.emissionTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE2);
 	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE5);
+	blocks.meshes.ditherTexture.bind();
 	reflectionCubeMap.bindTo(4);
 
 	chunk_meshing.quadsDrawn = 0;

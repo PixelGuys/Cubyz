@@ -2307,6 +2307,38 @@ pub const Texture = struct { // MARK: Texture
 		return self;
 	}
 
+	pub fn initFromMipmapFiles(pathPrefix: []const u8, largestSize: u31, lodBias: f32) Texture {
+		const self = Texture.init();
+		self.bind();
+
+		const maxLod = std.math.log2_int(u31, largestSize);
+
+		var curSize: u31 = largestSize;
+		while(curSize != 0) : (curSize /= 2) {
+			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		}
+
+		curSize = largestSize;
+		while(curSize != 0) : (curSize /= 2) {
+			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{}.png", .{pathPrefix, curSize}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+				std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
+				break :blk Image.defaultImage;
+			};
+			defer image.deinit(main.stackAllocator);
+			c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+		}
+
+		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLod);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+		c.glTexParameterf(c.GL_TEXTURE_2D, c.GL_TEXTURE_LOD_BIAS, lodBias);
+		return self;
+	}
+
 	pub fn deinit(self: Texture) void {
 		c.glDeleteTextures(1, &self.textureID);
 	}
