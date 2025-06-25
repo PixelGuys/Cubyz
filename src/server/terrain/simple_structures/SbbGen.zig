@@ -73,7 +73,7 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 	}
 }
 
-fn alignDirections(input: Neighbor, desired: Neighbor) !sbb.Rotation.FixedRotation {
+fn alignDirections(input: Neighbor, desired: Neighbor) error{NotPossibleToAlign}!sbb.Rotation.FixedRotation {
 	const Rotation = enum(u3) {
 		@"0" = 0,
 		@"90" = 1,
