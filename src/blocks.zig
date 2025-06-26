@@ -512,6 +512,7 @@ pub const meshes = struct { // MARK: meshes
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
 	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
+	pub var ditherTexture: graphics.Texture = undefined;
 
 	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
 	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
@@ -525,6 +526,7 @@ pub const meshes = struct { // MARK: meshes
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
+		ditherTexture = .initFromMipmapFiles("assets/cubyz/blocks/textures/dither/", 64, 0.5);
 		textureIDs = .init(main.globalAllocator);
 		animation = .init(main.globalAllocator);
 		blockTextures = .init(main.globalAllocator);
@@ -551,6 +553,7 @@ pub const meshes = struct { // MARK: meshes
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		reflectivityAndAbsorptionTextureArray.deinit();
+		ditherTexture.deinit();
 		textureIDs.deinit();
 		animation.deinit();
 		blockTextures.deinit();
