@@ -1149,7 +1149,7 @@ pub const Protocols = struct {
 				}
 				main.server.messageFrom(msg, user);
 			} else {
-				main.gui.windowlist.chat.addMessage(msg);
+				main.gui.windowlist.@"cubyz:chat".addMessage(msg);
 			}
 		}
 
