@@ -73,15 +73,8 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 	}
 }
 
-fn alignDirections(input: Neighbor, desired: Neighbor) error{NotPossibleToAlign}!sbb.Rotation.FixedRotation {
-	const Rotation = enum(u3) {
-		@"0" = 0,
-		@"90" = 1,
-		@"180" = 2,
-		@"270" = 3,
-		NotPossibleToAlign = 4,
-	};
-	comptime var alignTable: [6][6]Rotation = undefined;
+fn alignDirections(input: Neighbor, desired: Neighbor) !sbb.Rotation.FixedRotation {
+	comptime var alignTable: [6][6]error{NotPossibleToAlign}!sbb.Rotation.FixedRotation = undefined;
 	comptime for(Neighbor.iterable) |in| {
 		for(Neighbor.iterable) |out| blk: {
 			var current = in;
@@ -92,11 +85,8 @@ fn alignDirections(input: Neighbor, desired: Neighbor) error{NotPossibleToAlign}
 				}
 				current = current.rotateZ();
 			}
-			alignTable[in.toInt()][out.toInt()] = Rotation.NotPossibleToAlign;
+			alignTable[in.toInt()][out.toInt()] = error.NotPossibleToAlign;
 		}
 	};
-	switch(alignTable[input.toInt()][desired.toInt()]) {
-		.NotPossibleToAlign => return error.NotPossibleToAlign,
-		else => |v| return @enumFromInt(@intFromEnum(v)),
-	}
+	return alignTable[input.toInt()][desired.toInt()];
 }
