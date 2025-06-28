@@ -46,8 +46,7 @@ pub fn __deinit() void {
 const OptionalCallbacks = struct {
 	onUp: ?gui.Callback = null,
 	onDown: ?gui.Callback = null,
-	onInputCharacter: ?gui.Callback = null,
-	onDelete: ?gui.Callback = null,
+	onChange: ?gui.Callback = null,
 };
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
@@ -390,7 +389,7 @@ pub fn deleteLeft(self: *TextInput, _: main.Window.Key.Modifiers) void {
 	self.deleteSelection();
 	self.reloadText();
 	self.ensureCursorVisibility();
-	if(self.optional.onDelete) |cb| cb.run();
+	if(self.optional.onChange) |cb| cb.run();
 }
 
 pub fn deleteRight(self: *TextInput, _: main.Window.Key.Modifiers) void {
@@ -402,7 +401,7 @@ pub fn deleteRight(self: *TextInput, _: main.Window.Key.Modifiers) void {
 	self.deleteSelection();
 	self.reloadText();
 	self.ensureCursorVisibility();
-	if(self.optional.onDelete) |cb| cb.run();
+	if(self.optional.onChange) |cb| cb.run();
 }
 
 pub fn inputCharacter(self: *TextInput, character: u21) void {
@@ -414,7 +413,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 		self.reloadText();
 		cursor.* += @intCast(utf8.len);
 		self.ensureCursorVisibility();
-		if(self.optional.onInputCharacter) |cb| cb.run();
+		if(self.optional.onChange) |cb| cb.run();
 	}
 }
 
@@ -455,6 +454,7 @@ pub fn paste(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		self.cursor.? += @intCast(string.len);
 		self.reloadText();
 		self.ensureCursorVisibility();
+		if(self.optional.onChange) |cb| cb.run();
 	}
 }
 
@@ -464,6 +464,7 @@ pub fn cut(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		self.deleteSelection();
 		self.reloadText();
 		self.ensureCursorVisibility();
+		if(self.optional.onChange) |cb| cb.run();
 	}
 }
 

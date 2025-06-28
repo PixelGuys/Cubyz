@@ -55,7 +55,7 @@ fn initContent() void {
 		const list = VerticalList.init(.{0, padding + padding}, 48, 0);
 		const row = HorizontalList.init();
 		const label = Label.init(.{0, 3}, 56, "Search:", .right);
-		searchInput = TextInput.init(.{0, 0}, 288, 22, searchString, .{.callback = &filter}, .{.onInputCharacter = .{.callback = &filter}, .onDelete = .{.callback = &filter}});
+		searchInput = TextInput.init(.{0, 0}, 288, 22, searchString, .{.callback = &filter}, .{.onChange = .{.callback = &filter}});
 		row.add(label);
 		row.add(searchInput);
 		list.add(row);
