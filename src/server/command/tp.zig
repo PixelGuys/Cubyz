@@ -2,32 +2,32 @@ const std = @import("std");
 
 const main = @import("main");
 const User = main.server.User;
+const ListUnmanaged = main.ListUnmanaged;
 
 pub const description = "Teleport to location.";
 pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 
 const Args = union(enum) {
-	@"/tp <x> <y> <z>": struct {@"<x>": f64, @"<y>": f64, @"<z>": ?f64},
-	@"/tp <biome>": struct {@"<biome>": main.argparse.BiomeId(true)},
+	@"/tp <x> <y> <z>": struct {x: f64, y: f64, z: ?f64},
+	@"/tp <biome>": struct {biome: main.argparse.BiomeId(true)},
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
 
 pub fn execute(args: []const u8, source: *User) void {
-	const result = ArgParser.parse(main.stackAllocator, args);
-	defer result.deinit(main.stackAllocator);
+	var errorMessage: ListUnmanaged(u8) = .{};
+	defer errorMessage.deinit(main.stackAllocator);
 
-	if(result == .failure) {
-		for(result.failure.messages.items) |message| {
-			source.sendMessage("#ff0000{s}", .{message});
-		}
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) orelse {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
-	switch(result.success) {
+	};
+
+	switch(result) {
 		.@"/tp <biome>" => |params| {
-			const biome = main.server.terrain.biomes.getById(params.@"<biome>".id);
-			if(!std.mem.eql(u8, biome.id, params.@"<biome>".id)) {
-				source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{params.@"<biome>".id});
+			const biome = main.server.terrain.biomes.getById(params.biome.id);
+			if(!std.mem.eql(u8, biome.id, params.biome.id)) {
+				source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{params.biome.id});
 				return;
 			}
 			if(biome.isCave) {
@@ -82,9 +82,9 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |params| {
-			var x = params.@"<x>";
-			var y = params.@"<y>";
-			var z = params.@"<z>" orelse source.player.pos[2];
+			var x = params.x;
+			var y = params.y;
+			var z = params.z orelse source.player.pos[2];
 			x = std.math.clamp(x, -1e9, 1e9); // TODO: Remove after #310 is implemented
 			y = std.math.clamp(y, -1e9, 1e9);
 			z = std.math.clamp(z, -1e9, 1e9);

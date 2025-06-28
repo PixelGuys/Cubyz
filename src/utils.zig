@@ -2162,10 +2162,6 @@ pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionRetur
 	return @ptrCast(&function);
 }
 
-pub fn format(allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) []u8 {
-	return std.fmt.allocPrint(allocator.allocator, fmt, args) catch unreachable;
-}
-
 // MARK: Callback
 pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 	return struct {
