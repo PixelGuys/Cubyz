@@ -157,47 +157,47 @@ const MaterialProperty = enum {
 	}
 };
 
-pub const BaseItemIndex = packed struct {
-	index: u16,
+pub const BaseItemIndex = enum(u16) {
+	_,
 
 	pub fn fromId(_id: []const u8) ?BaseItemIndex {
 		return reverseIndices.get(_id);
 	}
 	pub fn image(self: BaseItemIndex) graphics.Image {
-		return itemList[self.index].image;
+		return itemList[@intFromEnum(self)].image;
 	}
 	pub fn texture(self: BaseItemIndex) ?graphics.Texture {
-		return itemList[self.index].texture;
+		return itemList[@intFromEnum(self)].texture;
 	}
 	pub fn id(self: BaseItemIndex) []const u8 {
-		return itemList[self.index].id;
+		return itemList[@intFromEnum(self)].id;
 	}
 	pub fn name(self: BaseItemIndex) []const u8 {
-		return itemList[self.index].name;
+		return itemList[@intFromEnum(self)].name;
 	}
 	pub fn tags(self: BaseItemIndex) []const Tag {
-		return itemList[self.index].tags;
+		return itemList[@intFromEnum(self)].tags;
 	}
 	pub fn stackSize(self: BaseItemIndex) u16 {
-		return itemList[self.index].stackSize;
+		return itemList[@intFromEnum(self)].stackSize;
 	}
 	pub fn material(self: BaseItemIndex) ?Material {
-		return itemList[self.index].material;
+		return itemList[@intFromEnum(self)].material;
 	}
 	pub fn block(self: BaseItemIndex) ?u16 {
-		return itemList[self.index].block;
+		return itemList[@intFromEnum(self)].block;
 	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
-		return itemList[self.index].hasTag(tag);
+		return itemList[@intFromEnum(self)].hasTag(tag);
 	}
 	pub fn hashCode(self: BaseItemIndex) u32 {
-		return itemList[self.index].hashCode();
+		return itemList[@intFromEnum(self)].hashCode();
 	}
 	pub fn getTexture(self: BaseItemIndex) graphics.Texture {
-		return itemList[self.index].getTexture();
+		return itemList[@intFromEnum(self)].getTexture();
 	}
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
-		return itemList[self.index].getTooltip();
+		return itemList[@intFromEnum(self)].getTooltip();
 	}
 };
 
@@ -505,8 +505,8 @@ const PropertyMatrix = struct { // MARK: PropertyMatrix
 	};
 };
 
-pub const ToolTypeIndex = packed struct {
-	index: u16,
+pub const ToolTypeIndex = enum(u16) {
+	_,
 
 	const ToolTypeIterator = struct {
 		i: u16 = 0,
@@ -514,7 +514,7 @@ pub const ToolTypeIndex = packed struct {
 		pub fn next(self: *ToolTypeIterator) ?ToolTypeIndex {
 			if(self.i >= toolTypeList.items.len) return null;
 			defer self.i += 1;
-			return ToolTypeIndex{.index = self.i};
+			return @enumFromInt(self.i);
 		}
 	};
 
@@ -525,22 +525,22 @@ pub const ToolTypeIndex = packed struct {
 		return toolTypeIdToIndex.get(_id);
 	}
 	pub fn id(self: ToolTypeIndex) []const u8 {
-		return toolTypeList.items[self.index].id;
+		return toolTypeList.items[@intFromEnum(self)].id;
 	}
 	pub fn blockTags(self: ToolTypeIndex) []const Tag {
-		return toolTypeList.items[self.index].blockTags;
+		return toolTypeList.items[@intFromEnum(self)].blockTags;
 	}
 	pub fn properties(self: ToolTypeIndex) []const PropertyMatrix {
-		return toolTypeList.items[self.index].properties;
+		return toolTypeList.items[@intFromEnum(self)].properties;
 	}
 	pub fn slotInfos(self: ToolTypeIndex) *const [25]SlotInfo {
-		return &toolTypeList.items[self.index].slotInfos;
+		return &toolTypeList.items[@intFromEnum(self)].slotInfos;
 	}
 	pub fn pixelSources(self: ToolTypeIndex) *const [16][16]u8 {
-		return &toolTypeList.items[self.index].pixelSources;
+		return &toolTypeList.items[@intFromEnum(self)].pixelSources;
 	}
 	pub fn pixelSourcesOverlay(self: ToolTypeIndex) *const [16][16]u8 {
-		return &toolTypeList.items[self.index].pixelSourcesOverlay;
+		return &toolTypeList.items[@intFromEnum(self)].pixelSourcesOverlay;
 	}
 };
 
@@ -982,7 +982,7 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	defer itemListSize += 1;
 
 	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
-	reverseIndices.put(newItem.id, .{.index = itemListSize}) catch unreachable;
+	reverseIndices.put(newItem.id, @enumFromInt(itemListSize)) catch unreachable;
 
 	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
 	return newItem;
@@ -1068,7 +1068,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
-	toolTypeIdToIndex.put(arena.allocator().allocator, idDupe, .{.index = @intCast(toolTypeList.items.len - 1)}) catch unreachable;
+	toolTypeIdToIndex.put(arena.allocator().allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
 
 	std.log.debug("Registered tool: '{s}'", .{id});
 }

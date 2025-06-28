@@ -60,23 +60,26 @@ const Quad = struct {
 	uvs: [4]usize,
 };
 
-pub const ModelIndex = packed struct {
-	index: u32,
+pub const ModelIndex = enum(u32) {
+	_,
 
 	pub fn model(self: ModelIndex) *const Model {
-		return &models.items()[self.index];
+		return &models.items()[@intFromEnum(self)];
+	}
+	pub fn add(self: ModelIndex, offset: u32) ModelIndex {
+		return @enumFromInt(@intFromEnum(self) + offset);
 	}
 };
 
-pub const QuadIndex = packed struct {
-	index: u16,
+pub const QuadIndex = enum(u16) {
+	_,
 
 	pub fn quadInfo(self: QuadIndex) *const QuadInfo {
-		return &quads.items[self.index];
+		return &quads.items[@intFromEnum(self)];
 	}
 
 	pub fn extraQuadInfo(self: QuadIndex) *const ExtraQuadInfo {
-		return &extraQuadInfos.items[self.index];
+		return &extraQuadInfos.items[@intFromEnum(self)];
 	}
 };
 
@@ -134,7 +137,7 @@ pub const Model = struct {
 			// Snap the normals as well:
 			dest.normal = snapToGrid(dest.normal);
 		}
-		const modelIndex: ModelIndex = .{.index = models.len};
+		const modelIndex: ModelIndex = @enumFromInt(models.len);
 		const self = models.addOne();
 		var amounts: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalAmount: usize = 0;
@@ -440,7 +443,7 @@ var nameToIndex: std.StringHashMap(ModelIndex) = undefined;
 pub fn getModelIndex(string: []const u8) ModelIndex {
 	return nameToIndex.get(string) orelse {
 		std.log.err("Couldn't find voxelModel with name: {s}.", .{string});
-		return .{.index = 0};
+		return @enumFromInt(0);
 	};
 }
 
@@ -463,7 +466,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 		}
 	}
 	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
-	const index: QuadIndex = .{.index = @intCast(quads.items.len)};
+	const index: QuadIndex = @enumFromInt(quads.items.len);
 	if(info.opaqueInLod == 2) {
 		info.opaqueInLod = 0;
 	} else {

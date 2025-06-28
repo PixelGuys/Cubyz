@@ -99,7 +99,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return .{.index = blocks.meshes.modelIndexStart(block).index + (block.data & 15)};
+	return blocks.meshes.modelIndexStart(block).add(block.data & 15);
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
