@@ -24,7 +24,7 @@ layout(std430, binding = 2) buffer _modelInfo
 
 struct QuadInfo {
 	vec3 normal;
-	vec3 corners[4];
+	float corners[4][3];
 	vec2 cornerUV[4];
 	uint textureSlot;
 	int opaqueInLod;
@@ -80,7 +80,7 @@ void main() {
 		uint quadIndex = modelAndTexture >> 16u;
 		textureIndex = int(modelAndTexture & 65535u);
 
-		pos = quads[quadIndex].corners[vertexID];
+		pos = vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
 		uv = quads[quadIndex].cornerUV[vertexID];
 		if(offsetByNormal != 0) {
 			pos += quads[quadIndex].normal;

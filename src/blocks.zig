@@ -104,7 +104,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
@@ -143,8 +143,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
-		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
-			std.log.err("Ore must have rotation mode \"ore\"!", .{});
+		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
+			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
 		ores.append(Ore{
@@ -512,6 +512,7 @@ pub const meshes = struct { // MARK: meshes
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
 	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
+	pub var ditherTexture: graphics.Texture = undefined;
 
 	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
 	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
@@ -525,6 +526,7 @@ pub const meshes = struct { // MARK: meshes
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
+		ditherTexture = .initFromMipmapFiles("assets/cubyz/blocks/textures/dither/", 64, 0.5);
 		textureIDs = .init(main.globalAllocator);
 		animation = .init(main.globalAllocator);
 		blockTextures = .init(main.globalAllocator);
@@ -551,6 +553,7 @@ pub const meshes = struct { // MARK: meshes
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		reflectivityAndAbsorptionTextureArray.deinit();
+		ditherTexture.deinit();
 		textureIDs.deinit();
 		animation.deinit();
 		blockTextures.deinit();

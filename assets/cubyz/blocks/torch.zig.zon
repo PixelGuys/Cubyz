@@ -9,7 +9,7 @@
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.collide = false,
-	.rotation = .torch,
+	.rotation = "cubyz:torch",
 	.model = .{
 		.base = "cubyz:torch",
 		.side = "cubyz:torch_side",

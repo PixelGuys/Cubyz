@@ -213,6 +213,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.emissionTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE2);
 	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE5);
+	blocks.meshes.ditherTexture.bind();
 	reflectionCubeMap.bindTo(4);
 
 	chunk_meshing.quadsDrawn = 0;
@@ -225,15 +227,15 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.beginRender();
 
-	var chunkList = main.List(u32).init(main.stackAllocator);
-	defer chunkList.deinit();
+	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	defer for(chunkLists) |list| list.deinit();
 	for(meshes) |mesh| {
-		mesh.prepareRendering(&chunkList);
+		mesh.prepareRendering(&chunkLists);
 	}
 	gpu_performance_measuring.stopQuery();
-	if(chunkList.items.len != 0) {
-		chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, false);
-	}
+	gpu_performance_measuring.startQuery(.chunk_rendering);
+	chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, false);
+	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, playerPos);
@@ -264,17 +266,17 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glTextureBarrier();
 
 	{
-		chunkList.clearRetainingCapacity();
+		for(&chunkLists) |*list| list.clearRetainingCapacity();
 		var i: usize = meshes.len;
 		while(true) {
 			if(i == 0) break;
 			i -= 1;
-			meshes[i].prepareTransparentRendering(playerPos, &chunkList);
+			meshes[i].prepareTransparentRendering(playerPos, &chunkLists);
 		}
 		gpu_performance_measuring.stopQuery();
-		if(chunkList.items.len != 0) {
-			chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, true);
-		}
+		gpu_performance_measuring.startQuery(.transparent_rendering);
+		chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, true);
+		gpu_performance_measuring.stopQuery();
 	}
 
 	c.glDepthRange(0, 0.001);
@@ -1057,7 +1059,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					damage = stack.item.?.tool.getBlockDamage(block);
 				}
 				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id(), "cubyz:chisel");
-				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
+				if(isChisel and block.mode() == main.rotation.getByID("cubyz:stairs")) { // TODO: Remove once the chisel is a tool.
 					damage = block.blockHealth();
 				}
 				damage -= block.blockResistance();

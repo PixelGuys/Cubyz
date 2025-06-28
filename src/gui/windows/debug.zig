@@ -83,28 +83,18 @@ pub fn render() void {
 		}
 		draw.print("Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8, .left);
 		y += 8;
-		{
+		for(0..main.settings.highestLod + 1) |lod| {
 			const faceDataSize: usize = @sizeOf(main.renderer.chunk_meshing.FaceData);
-			const size: usize = main.renderer.chunk_meshing.faceBuffer.capacity*faceDataSize;
-			const used: usize = main.renderer.chunk_meshing.faceBuffer.used*faceDataSize;
-			var largestFreeBlock: usize = 0;
-			for(main.renderer.chunk_meshing.faceBuffer.freeBlocks.items) |freeBlock| {
-				largestFreeBlock = @max(largestFreeBlock, freeBlock.len);
-			}
-			const fragmentation = size - used - largestFreeBlock*faceDataSize;
-			draw.print("ChunkMesh memory: {} MiB / {} MiB (fragmentation: {} MiB)", .{used >> 20, size >> 20, fragmentation >> 20}, 0, y, 8, .left);
+			const size: usize = main.renderer.chunk_meshing.faceBuffers[lod].capacity*faceDataSize;
+			const used: usize = main.renderer.chunk_meshing.faceBuffers[lod].used*faceDataSize;
+			draw.print("ChunkMesh memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8, .left);
 			y += 8;
 		}
-		{
+		for(0..main.settings.highestLod + 1) |lod| {
 			const lightDataSize: usize = @sizeOf(u32);
-			const size: usize = main.renderer.chunk_meshing.lightBuffer.capacity*lightDataSize;
-			const used: usize = main.renderer.chunk_meshing.lightBuffer.used*lightDataSize;
-			var largestFreeBlock: usize = 0;
-			for(main.renderer.chunk_meshing.lightBuffer.freeBlocks.items) |freeBlock| {
-				largestFreeBlock = @max(largestFreeBlock, freeBlock.len);
-			}
-			const fragmentation = size - used - largestFreeBlock*lightDataSize;
-			draw.print("Light memory: {} MiB / {} MiB (fragmentation: {} MiB)", .{used >> 20, size >> 20, fragmentation >> 20}, 0, y, 8, .left);
+			const size: usize = main.renderer.chunk_meshing.lightBuffers[lod].capacity*lightDataSize;
+			const used: usize = main.renderer.chunk_meshing.lightBuffers[lod].used*lightDataSize;
+			draw.print("Light memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8, .left);
 			y += 8;
 		}
 		{

@@ -7,9 +7,8 @@ layout(location = 3) in vec2 uv;
 layout(location = 4) flat in vec3 normal;
 layout(location = 5) flat in int textureIndex;
 layout(location = 6) flat in int isBackFace;
-layout(location = 7) flat in int ditherSeed;
-layout(location = 8) flat in float distanceForLodCheck;
-layout(location = 9) flat in int opaqueInLod;
+layout(location = 7) flat in float distanceForLodCheck;
+layout(location = 8) flat in int opaqueInLod;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -17,6 +16,7 @@ layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
+layout(binding = 5) uniform sampler2D ditherTexture;
 
 layout(location = 5) uniform float reflectionMapSize;
 layout(location = 6) uniform float contrast;
@@ -33,29 +33,13 @@ float lightVariation(vec3 normal) {
 	return baseLighting + dot(normal, directionalPart);
 }
 
-float ditherThresholds[16] = float[16] (
-	1/17.0, 9/17.0, 3/17.0, 11/17.0,
-	13/17.0, 5/17.0, 15/17.0, 7/17.0,
-	4/17.0, 12/17.0, 2/17.0, 10/17.0,
-	16/17.0, 8/17.0, 14/17.0, 6/17.0
-);
-
-ivec2 random1to2(int v) {
-	ivec4 fac = ivec4(11248723, 105436839, 45399083, 5412951);
-	int seed = v.x*fac.x ^ fac.y;
-	return seed*fac.zw;
-}
-
 bool passDitherTest(float alpha) {
 	if(opaqueInLod != 0) {
 		if(distanceForLodCheck > lodDistance) return true;
 		float factor = max(0, distanceForLodCheck - (lodDistance - 32.0))/32.0;
 		alpha = alpha*(1 - factor) + factor;
 	}
-	ivec2 screenPos = ivec2(gl_FragCoord.xy);
-	screenPos += random1to2(ditherSeed);
-	screenPos &= 3;
-	return alpha > ditherThresholds[screenPos.x*4 + screenPos.y];
+	return alpha > texture(ditherTexture, uv).r*255.0/256.0 + 0.5/256.0;
 }
 
 vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012/02/seamless-cube-map-filtering/

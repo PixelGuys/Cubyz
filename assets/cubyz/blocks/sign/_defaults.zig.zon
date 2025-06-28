@@ -7,7 +7,7 @@
 	.viewThrough = true,
 	.alwaysViewThrough = true,
 	.collide = false,
-	.rotation = .sign,
+	.rotation = "cubyz:sign",
 	.model = .{
 		.side = "cubyz:sign/side",
 		.ceiling = "cubyz:sign/ceiling",
