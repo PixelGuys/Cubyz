@@ -71,15 +71,15 @@ pub const ModelIndex = enum(u32) {
 	}
 };
 
-pub const QuadIndex = packed struct {
-	index: u16,
+pub const QuadIndex = enum(u16) {
+	_,
 
 	pub fn quadInfo(self: QuadIndex) *const QuadInfo {
-		return &quads.items[self.index];
+		return &quads.items[@intFromEnum(self)];
 	}
 
 	pub fn extraQuadInfo(self: QuadIndex) *const ExtraQuadInfo {
-		return &extraQuadInfos.items[self.index];
+		return &extraQuadInfos.items[@intFromEnum(self)];
 	}
 };
 
@@ -466,7 +466,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 		}
 	}
 	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
-	const index: QuadIndex = .{.index = @intCast(quads.items.len)};
+	const index: QuadIndex = @enumFromInt(quads.items.len);
 	if(info.opaqueInLod == 2) {
 		info.opaqueInLod = 0;
 	} else {
