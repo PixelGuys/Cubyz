@@ -396,7 +396,7 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 		const directionBitMask = Neighbor.bitMask(direction);
 
 		if((block.data & directionBitMask) != 0) {
-			const modelIndex: ModelIndex = @enumFromInt(@intFromEnum(blocks.meshes.modelIndexStart(block)) + directionBitMask);
+			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(directionBitMask);
 			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
 					closestIntersectionDistance = intersection.distance;

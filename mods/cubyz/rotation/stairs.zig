@@ -259,7 +259,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, relativePlay
 	var resultBit: u16 = 0;
 	for([_]u16{1, 2, 4, 8, 16, 32, 64, 128}) |bit| {
 		if(block.data & bit == 0) {
-			const cornerModelIndex: ModelIndex = @enumFromInt(@intFromEnum(blocks.meshes.modelIndexStart(block)) + (255 ^ bit));
+			const cornerModelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(255 ^ bit);
 			if(RotationMode.DefaultFunctions.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or intersection.distance < result.?.distance) {
 					result = intersection;
