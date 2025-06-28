@@ -2213,7 +2213,7 @@ test "NamedCallbacks registers functions" {
 	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
 }
 
-pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) void {
+pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);
 }
