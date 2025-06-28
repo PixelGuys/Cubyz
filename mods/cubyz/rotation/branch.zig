@@ -301,7 +301,7 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return @enumFromInt(@intFromEnum(blocks.meshes.modelIndexStart(block)) + (block.data & 63));
+	return blocks.meshes.modelIndexStart(block).add(block.data & 63);
 }
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {

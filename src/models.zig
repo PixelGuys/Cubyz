@@ -67,6 +67,9 @@ pub const ModelIndex = enum(u32) {
 	pub fn model(self: ModelIndex) *const Model {
 		return &models.items()[@intFromEnum(self)];
 	}
+	pub fn add(self: ModelIndex, offset: u32) ModelIndex {
+		return @enumFromInt(@intFromEnum(self) + offset);
+	}
 };
 
 pub const QuadIndex = packed struct {

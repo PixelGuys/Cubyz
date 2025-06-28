@@ -120,7 +120,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return @enumFromInt(@intFromEnum(blocks.meshes.modelIndexStart(block)) + (@as(u6, @truncate(block.data)) -| 1));
+	return blocks.meshes.modelIndexStart(block).add(@as(u6, @truncate(block.data)) -| 1);
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, _: ?Neighbor, currentData: *Block, neighbor: Block, _: bool) bool {

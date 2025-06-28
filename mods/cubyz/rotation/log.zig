@@ -179,7 +179,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return @enumFromInt(@intFromEnum(blocks.meshes.modelIndexStart(block)) + (block.data & 63));
+	return blocks.meshes.modelIndexStart(block).add(block.data & 63);
 }
 
 pub const rotateZ = branch.rotateZ;

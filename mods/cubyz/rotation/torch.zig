@@ -94,7 +94,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return @enumFromInt(@intFromEnum(blocks.meshes.modelIndexStart(block)) + (@as(u5, @truncate(block.data)) -| 1));
+	return blocks.meshes.modelIndexStart(block).add(@as(u5, @truncate(block.data)) -| 1);
 }
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {

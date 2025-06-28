@@ -243,7 +243,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return @enumFromInt(@intFromEnum(blocks.meshes.modelIndexStart(block)) + (block.data & 255));
+	return blocks.meshes.modelIndexStart(block).add(block.data & 255);
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
