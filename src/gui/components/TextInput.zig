@@ -86,6 +86,7 @@ pub fn clear(self: *TextInput) void {
 	}
 	self.currentString.clearRetainingCapacity();
 	self.reloadText();
+	if(self.optional.onChange) |cb| cb.run();
 }
 
 pub fn toComponent(self: *TextInput) GuiComponent {
