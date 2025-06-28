@@ -158,7 +158,6 @@ const MaterialProperty = enum {
 };
 
 pub const BaseItemIndex = enum(u16) {
-	no_value = std.math.maxInt(u16),
 	_,
 
 	pub fn fromId(_id: []const u8) ?BaseItemIndex {
@@ -507,7 +506,6 @@ const PropertyMatrix = struct { // MARK: PropertyMatrix
 };
 
 pub const ToolTypeIndex = enum(u16) {
-	no_value = std.math.maxInt(u16),
 	_,
 
 	const ToolTypeIterator = struct {
