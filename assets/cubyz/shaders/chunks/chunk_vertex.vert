@@ -7,9 +7,8 @@ layout(location = 3) out vec2 uv;
 layout(location = 4) flat out vec3 normal;
 layout(location = 5) flat out int textureIndex;
 layout(location = 6) flat out int isBackFace;
-layout(location = 7) flat out int ditherSeed;
-layout(location = 8) flat out float distanceForLodCheck;
-layout(location = 9) flat out int opaqueInLod;
+layout(location = 7) flat out float distanceForLodCheck;
+layout(location = 8) flat out int opaqueInLod;
 
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionMatrix;
@@ -28,7 +27,7 @@ layout(std430, binding = 3) buffer _faceData
 
 struct QuadInfo {
 	vec3 normal;
-	vec3 corners[4];
+	float corners[4][3];
 	vec2 cornerUV[4];
 	uint textureSlot;
 	int opaqueInLod;
@@ -84,7 +83,6 @@ void main() {
 	);
 	light = max(sunLight*ambientLight, blockLight)/31;
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
-	ditherSeed = encodedPositionAndLightIndex & 15;
 
 	textureIndex = textureAndQuad & 65535;
 	int quadIndex = textureAndQuad >> 16;
@@ -97,7 +95,7 @@ void main() {
 
 	normal = quads[quadIndex].normal;
 
-	position += quads[quadIndex].corners[vertexID];
+	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
 	position *= voxelSize;
 	position += vec3(chunks[chunkID].position.xyz - playerPositionInteger);
 	position -= playerPositionFraction;

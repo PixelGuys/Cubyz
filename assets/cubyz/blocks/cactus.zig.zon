@@ -2,9 +2,9 @@
 	.tags = .{.leaf},
 	.blockHealth = 5,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{"cubyz:log/cactus"}},
 	},
-	.rotation = .log,
+	.rotation = "cubyz:direction",
 	.model = "cubyz:cube",
 	.texture = "cubyz:cactus",
 	.texture_top = "cubyz:cactus_top",

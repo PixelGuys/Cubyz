@@ -6,7 +6,7 @@
 	},
 	.gui = .workbench,
 	.model = "cubyz:cube",
-	.rotation = .planar,
+	.rotation = "cubyz:planar",
 	.texture = "cubyz:workbench_back",
 	.texture_front = "cubyz:workbench_front",
 	.texture_left = "cubyz:workbench_side",

@@ -79,6 +79,74 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	}
 }
 
+pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
+	var featureList: std.ArrayListUnmanaged(u8) = .{};
+	defer featureList.deinit(step.owner.allocator);
+
+	var modDir = try std.fs.cwd().openDir("mods", .{.iterate = true});
+	defer modDir.close();
+
+	var iterator = modDir.iterate();
+	while(try iterator.next()) |modEntry| {
+		if(modEntry.kind != .directory) continue;
+
+		var mod = try modDir.openDir(modEntry.name, .{});
+		defer mod.close();
+
+		var featureDir = mod.openDir(name, .{.iterate = true}) catch continue;
+		defer featureDir.close();
+
+		var featureIterator = featureDir.iterate();
+		while(try featureIterator.next()) |featureEntry| {
+			if(featureEntry.kind != .file) continue;
+			if(!std.mem.endsWith(u8, featureEntry.name, ".zig")) continue;
+
+			try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
+				\\pub const @"{s}:{s}" = @import("{s}/{s}/{s}");
+				\\
+			,
+				.{
+					modEntry.name,
+					featureEntry.name[0 .. featureEntry.name.len - 4],
+					modEntry.name,
+					name,
+					featureEntry.name,
+				},
+			));
+		}
+	}
+
+	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
+	try std.fs.cwd().writeFile(.{.data = featureList.items, .sub_path = file_path});
+}
+
+pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
+	const module = b.createModule(.{
+		.root_source_file = b.path(b.fmt("mods/{s}.zig", .{name})),
+		.target = exe.root_module.resolved_target,
+		.optimize = exe.root_module.optimize,
+	});
+	module.addImport("main", exe.root_module);
+	exe.root_module.addImport(name, module);
+}
+
+fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
+	const step = try b.allocator.create(std.Build.Step);
+	step.* = std.Build.Step.init(.{
+		.id = .custom,
+		.name = "Create Mods",
+		.owner = b,
+		.makeFn = makeModFeaturesStep,
+	});
+	exe.step.dependOn(step);
+
+	try addModFeatureModule(b, exe, "rotation");
+}
+
+pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
+	try makeModFeature(step, "rotation");
+}
+
 pub fn build(b: *std.Build) !void {
 	// Standard target options allows the person running `zig build` to choose
 	// what target to build for. Here we do not override the defaults, which
@@ -101,6 +169,7 @@ pub fn build(b: *std.Build) !void {
 		//.use_llvm = false,
 	});
 	exe.root_module.addImport("main", exe.root_module);
+	try addModFeatures(b, exe);
 
 	linkLibraries(b, exe, useLocalDeps);
 
@@ -123,6 +192,7 @@ pub fn build(b: *std.Build) !void {
 	});
 	linkLibraries(b, exe_tests, useLocalDeps);
 	exe_tests.root_module.addImport("main", exe_tests.root_module);
+	try addModFeatures(b, exe_tests);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
 
 	const test_step = b.step("test", "Run unit tests");

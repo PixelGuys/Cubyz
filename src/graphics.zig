@@ -80,9 +80,11 @@ pub const draw = struct { // MARK: draw
 	/// Returns the previous clip.
 	pub fn setClip(clipRect: Vec2f) ?Vec4i {
 		std.debug.assert(@reduce(.And, clipRect >= Vec2f{0, 0}));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		var newClip = Vec4i{
 			std.math.lossyCast(i32, translation[0]),
-			main.Window.height - std.math.lossyCast(i32, translation[1] + clipRect[1]*scale),
+			viewport[3] - std.math.lossyCast(i32, translation[1] + clipRect[1]*scale),
 			std.math.lossyCast(i32, clipRect[0]*scale),
 			std.math.lossyCast(i32, clipRect[1]*scale),
 		};
@@ -181,7 +183,9 @@ pub const draw = struct { // MARK: draw
 
 		rectPipeline.bind(getScissor());
 
-		c.glUniform2f(rectUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(rectUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(rectUniforms.rectColor, @bitCast(color));
@@ -252,7 +256,9 @@ pub const draw = struct { // MARK: draw
 
 		rectBorderPipeline.bind(getScissor());
 
-		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(rectBorderUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(rectBorderUniforms.rectColor, @bitCast(color));
@@ -314,7 +320,9 @@ pub const draw = struct { // MARK: draw
 
 		linePipeline.bind(getScissor());
 
-		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
 		c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
 		c.glUniform1i(lineUniforms.lineColor, @bitCast(color));
@@ -360,7 +368,9 @@ pub const draw = struct { // MARK: draw
 
 		linePipeline.bind(getScissor());
 
-		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
 		c.glUniform1i(lineUniforms.lineColor, @bitCast(color));
@@ -421,7 +431,9 @@ pub const draw = struct { // MARK: draw
 		radius *= scale;
 		circlePipeline.bind(getScissor());
 
-		c.glUniform2f(circleUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(circleUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
 		c.glUniform1i(circleUniforms.circleColor, @bitCast(color));
@@ -476,7 +488,9 @@ pub const draw = struct { // MARK: draw
 
 		imagePipeline.bind(getScissor());
 
-		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(imageUniforms.color, @bitCast(color));
@@ -496,7 +510,9 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		c.glUniform2f(uniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(uniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.size, dim[0], dim[1]);
 		c.glUniform1i(uniforms.color, @bitCast(color));
@@ -519,7 +535,9 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		c.glUniform2f(uniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(uniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.size, dim[0], dim[1]);
 		c.glUniform1i(uniforms.color, @bitCast(color));
@@ -723,7 +741,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
 			var count: usize = 0;
 			var curChar = unicodeIterator.nextCodepoint() orelse return count;
-			while(true) switch(curChar) {
+			outer: while(true) switch(curChar) {
 				'*' => {
 					curChar = unicodeIterator.nextCodepoint() orelse break;
 				},
@@ -749,7 +767,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 					count += 1;
 				},
 				'#' => {
-					for(0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break;
+					for(0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
 				},
 				'§' => {
 					curChar = unicodeIterator.nextCodepoint() orelse break;
@@ -825,10 +843,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		// Merge it all together:
 		self.glyphs = allocator.alloc(GlyphData, glyphInfos.len);
 		for(self.glyphs, 0..) |*glyph, i| {
-			glyph.x_advance = @as(f32, @floatFromInt(glyphPositions[i].x_advance))/4.0;
-			glyph.y_advance = @as(f32, @floatFromInt(glyphPositions[i].y_advance))/4.0;
-			glyph.x_offset = @as(f32, @floatFromInt(glyphPositions[i].x_offset))/4.0;
-			glyph.y_offset = @as(f32, @floatFromInt(glyphPositions[i].y_offset))/4.0;
+			glyph.x_advance = @as(f32, @floatFromInt(glyphPositions[i].x_advance))/TextRendering.fontUnitsPerPixel;
+			glyph.y_advance = @as(f32, @floatFromInt(glyphPositions[i].y_advance))/TextRendering.fontUnitsPerPixel;
+			glyph.x_offset = @as(f32, @floatFromInt(glyphPositions[i].x_offset))/TextRendering.fontUnitsPerPixel;
+			glyph.y_offset = @as(f32, @floatFromInt(glyphPositions[i].y_offset))/TextRendering.fontUnitsPerPixel;
 			glyph.character = @intCast(parser.parsedText.items[textIndexGuess[i]]);
 			glyph.index = glyphInfos[i].codepoint;
 			glyph.cluster = glyphInfos[i].cluster;
@@ -973,6 +991,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 	pub fn render(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) void {
 		self.renderShadow(_x, _y, _fontSize);
+		self.renderTextWithoutShadow(_x, _y, _fontSize);
+	}
+
+	pub fn renderTextWithoutShadow(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) void {
 		const oldTranslation = draw.setTranslation(.{_x, _y});
 		defer draw.restoreTranslation(oldTranslation);
 		const oldScale = draw.setScale(_fontSize/16.0);
@@ -980,7 +1002,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		var x: f32 = 0;
 		var y: f32 = 0;
 		TextRendering.pipeline.bind(draw.getScissor());
-		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
@@ -1046,7 +1070,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		var x: f32 = 0;
 		var y: f32 = 0;
 		TextRendering.pipeline.bind(draw.getScissor());
-		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
@@ -1123,6 +1149,7 @@ const TextRendering = struct { // MARK: TextRendering
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
 	var textureOffset: i32 = 0;
+	var fontUnitsPerPixel: f32 = undefined;
 
 	fn ftError(errorCode: hbft.FT_Error) !void {
 		if(errorCode == 0) return;
@@ -1150,6 +1177,7 @@ const TextRendering = struct { // MARK: TextRendering
 		try ftError(hbft.FT_Set_Pixel_Sizes(freetypeFace, 0, textureHeight));
 		harfbuzzFace = hbft.hb_ft_face_create_referenced(freetypeFace);
 		harfbuzzFont = hbft.hb_font_create(harfbuzzFace);
+		fontUnitsPerPixel = @as(f32, @floatFromInt(freetypeFace.*.units_per_EM))/@as(f32, @floatFromInt(textureHeight));
 
 		glyphMapping = .init(main.globalAllocator);
 		glyphData = .init(main.globalAllocator);
@@ -2279,6 +2307,38 @@ pub const Texture = struct { // MARK: Texture
 		return self;
 	}
 
+	pub fn initFromMipmapFiles(pathPrefix: []const u8, largestSize: u31, lodBias: f32) Texture {
+		const self = Texture.init();
+		self.bind();
+
+		const maxLod = std.math.log2_int(u31, largestSize);
+
+		var curSize: u31 = largestSize;
+		while(curSize != 0) : (curSize /= 2) {
+			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		}
+
+		curSize = largestSize;
+		while(curSize != 0) : (curSize /= 2) {
+			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{}.png", .{pathPrefix, curSize}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+				std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
+				break :blk Image.defaultImage;
+			};
+			defer image.deinit(main.stackAllocator);
+			c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+		}
+
+		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLod);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+		c.glTexParameterf(c.GL_TEXTURE_2D, c.GL_TEXTURE_LOD_BIAS, lodBias);
+		return self;
+	}
+
 	pub fn deinit(self: Texture) void {
 		c.glDeleteTextures(1, &self.textureID);
 	}
@@ -2562,7 +2622,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
 	const oldViewMatrix = main.game.camera.viewMatrix;
-	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-5.0*std.math.pi/4.0));
+	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(1.0*std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
 	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
@@ -2584,12 +2644,14 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		face.position.lightIndex = 0;
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData.items, &allocation);
+	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData.items, &allocation);
+	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
 	var lightAllocation: SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.lightBuffer.uploadData(&.{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}, &lightAllocation);
+	main.renderer.chunk_meshing.lightBuffers[0].uploadData(&.{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}, &lightAllocation);
+	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
 
 	{
-		const i = 6; // Easily switch between the 8 rotations.
+		const i = 4; // Easily switch between the 8 diagonal coordinates.
 		var x: f64 = -65.5 + 1.5;
 		var y: f64 = -65.5 + 1.5;
 		var z: f64 = -92.631 + 1.5;
@@ -2645,7 +2707,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	main.renderer.chunk_meshing.faceBuffer.free(allocation);
 	c.glViewport(0, 0, main.Window.width, main.Window.height);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	return texture;

@@ -12,7 +12,7 @@
 		.{.items = .{.auto}},
 	},
 	.emittedLight = 0x214200,
-	.rotation = .ore,
+	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
 	.texture = "cubyz:uranium_ore",
 	.item = .{

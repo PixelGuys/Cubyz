@@ -34,7 +34,7 @@ pub const ParticleManager = struct {
 	var emissionTextureArray: TextureArray = undefined;
 
 	const ParticleIndex = u16;
-	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = undefined;
+	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
 
 	pub fn init() void {
 		types = .init(arenaAllocator);

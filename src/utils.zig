@@ -1601,6 +1601,8 @@ const endian: std.builtin.Endian = .big;
 pub const BinaryReader = struct {
 	remaining: []const u8,
 
+	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag};
+
 	pub fn init(data: []const u8) BinaryReader {
 		return .{.remaining = data};
 	}
@@ -1633,6 +1635,21 @@ pub const BinaryReader = struct {
 		if(self.remaining.len < bufSize) return error.OutOfBounds;
 		defer self.remaining = self.remaining[bufSize..];
 		return std.mem.readInt(T, self.remaining[0..bufSize], endian);
+	}
+
+	pub fn readVarInt(self: *BinaryReader, T: type) !T {
+		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
+		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
+		var result: T = 0;
+		var shift: std.meta.Int(.unsigned, std.math.log2_int_ceil(usize, @bitSizeOf(T))) = 0;
+		while(true) {
+			const nextByte = try self.readInt(u8);
+			const value: T = nextByte & 0x7f;
+			result |= try std.math.shlExact(T, value, shift);
+			if(nextByte & 0x80 == 0) break;
+			shift = try std.math.add(@TypeOf(shift), shift, 7);
+		}
+		return result;
 	}
 
 	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
@@ -1698,6 +1715,19 @@ pub const BinaryWriter = struct {
 		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, endian);
 	}
 
+	pub fn writeVarInt(self: *BinaryWriter, T: type, value: T) void {
+		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
+		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
+		var remaining: T = value;
+		while(true) {
+			var writeByte: u8 = @intCast(remaining & 0x7f);
+			remaining >>= 7;
+			if(remaining != 0) writeByte |= 0x80;
+			self.writeInt(u8, writeByte);
+			if(remaining == 0) break;
+		}
+	}
+
 	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) void {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
 		self.writeInt(IntT, @bitCast(value));
@@ -1735,6 +1765,19 @@ const ReadWriteTest = struct {
 
 		var reader = getReader(writer.data.items);
 		const actual = try reader.readInt(IntT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+	fn testVarInt(comptime IntT: type, expected: IntT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeVarInt(IntT, expected);
+
+		const expectedWidth = 1 + std.math.log2_int(IntT, @max(1, expected))/7;
+		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readVarInt(IntT);
 
 		try std.testing.expectEqual(expected, actual);
 	}
@@ -1801,6 +1844,17 @@ test "read/write signed int" {
 		try ReadWriteTest.testInt(intT, 0);
 		try ReadWriteTest.testInt(intT, upperMid);
 		try ReadWriteTest.testInt(intT, max);
+	}
+}
+
+test "read/write unsigned varint" {
+	inline for([_]type{u9, u16, u31, u32, u64, u128}) |IntT| {
+		for(0..@bitSizeOf(IntT)) |i| {
+			try ReadWriteTest.testVarInt(IntT, @as(IntT, 1) << @intCast(i));
+			try ReadWriteTest.testVarInt(IntT, (@as(IntT, 1) << @intCast(i)) - 1);
+		}
+		const max = std.math.maxInt(IntT);
+		try ReadWriteTest.testVarInt(IntT, max);
 	}
 }
 
@@ -1940,7 +1994,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
 		}
 
-		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+		pub fn add(self: *Self, allocator: NeverFailingAllocator, id: IdType) *T {
 			std.debug.assert(id != .noValue);
 
 			const denseId: IdType = @enumFromInt(self.dense.items.len);
@@ -1952,22 +2006,31 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 			std.debug.assert(self.sparseToDenseIndex.items[@intFromEnum(id)] == .noValue);
 
 			self.sparseToDenseIndex.items[@intFromEnum(id)] = denseId;
-			self.dense.append(allocator, value);
 			self.denseToSparseIndex.append(allocator, id);
+			return self.dense.addOne(allocator);
 		}
 
-		pub fn remove(self: *Self, id: IdType) !void {
+		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+			self.add(allocator, id).* = value;
+		}
+
+		pub fn fetchRemove(self: *Self, id: IdType) !T {
 			if(!self.contains(id)) return error.ElementNotFound;
 
 			const denseId = @intFromEnum(self.sparseToDenseIndex.items[@intFromEnum(id)]);
 			self.sparseToDenseIndex.items[@intFromEnum(id)] = .noValue;
 
-			_ = self.dense.swapRemove(denseId);
+			const result = self.dense.swapRemove(denseId);
 			_ = self.denseToSparseIndex.swapRemove(denseId);
 
 			if(denseId != self.dense.items.len) {
 				self.sparseToDenseIndex.items[@intFromEnum(self.denseToSparseIndex.items[denseId])] = @enumFromInt(denseId);
 			}
+			return result;
+		}
+
+		pub fn remove(self: *Self, id: IdType) !void {
+			_ = try self.fetchRemove(id);
 		}
 
 		pub fn get(self: *Self, id: IdType) ?*T {
@@ -2152,4 +2215,9 @@ test "NamedCallbacks registers functions" {
 
 	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("functionTest"));
 	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
+}
+
+pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) void {
+	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	@panic(message);
 }
