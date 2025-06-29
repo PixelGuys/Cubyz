@@ -42,21 +42,28 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			var tempErrorMessage: ListUnmanaged(u8) = .{};
 			defer tempErrorMessage.deinit(allocator);
 
-			inline for(s.fields, 1..) |field, count| blk: {
+			inline for(s.fields, 1..) |field, count| {
 				if(nextArgument == null) {
 					nextArgument = split.next();
 				}
+				const currentArgument = nextArgument;
+				nextArgument = null;
 
-				@field(result, field.name) = resolveArgument(field.type, allocator, field.name[0..], nextArgument, &tempErrorMessage) orelse {
+				const value = resolveArgument(field.type, allocator, field.name[0..], currentArgument, &tempErrorMessage);
+
+				if (value) |v| {
+					@field(result, field.name) = v;
+				} else {
 					if(@typeInfo(field.type) != .optional or count == s.fields.len) {
 						errorMessage.appendSlice(allocator, tempErrorMessage.items);
 						return null;
 					} else {
 						@field(result, field.name) = null;
-						break :blk;
+						// Apparently, for some reason you can't use continue here, so we need to do some extra shuffling of variables to
+						// preserve the value for next iteration if it was not used.
+						nextArgument = currentArgument;
 					}
-				};
-				nextArgument = null;
+				}
 			}
 
 			if(split.next() != null) {
