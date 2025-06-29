@@ -42,7 +42,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			var tempErrorMessage: ListUnmanaged(u8) = .{};
 			defer tempErrorMessage.deinit(allocator);
 
-			inline for(s.fields, 1..) |field, count| {
+			inline for(s.fields) |field| {
 				if(nextArgument == null) {
 					nextArgument = split.next();
 				}
@@ -53,15 +53,15 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 
 				if (value) |v| {
 					@field(result, field.name) = v;
+					tempErrorMessage.clearRetainingCapacity();
 				} else {
-					if(@typeInfo(field.type) != .optional or count == s.fields.len) {
+					if(@typeInfo(field.type) == .optional) {
+						@field(result, field.name) = null;
+						tempErrorMessage.clearRetainingCapacity();
+						nextArgument = currentArgument;
+					} else {
 						errorMessage.appendSlice(allocator, tempErrorMessage.items);
 						return null;
-					} else {
-						@field(result, field.name) = null;
-						// Apparently, for some reason you can't use continue here, so we need to do some extra shuffling of variables to
-						// preserve the value for next iteration if it was not used.
-						nextArgument = currentArgument;
 					}
 				}
 			}
@@ -74,14 +74,14 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			return result;
 		}
 
-		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, nextArgument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) ?Field {
+		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) ?Field {
 			switch(@typeInfo(Field)) {
 				inline .optional => |optionalInfo| {
-					if(nextArgument == null) return null;
-					return resolveArgument(optionalInfo.child, allocator, name, nextArgument, errorMessage);
+					if(argument == null) return null;
+					return resolveArgument(optionalInfo.child, allocator, name, argument, errorMessage);
 				},
 				inline .@"struct" => {
-					const arg = nextArgument orelse {
+					const arg = argument orelse {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
 						return null;
 					};
@@ -89,7 +89,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 					return @field(Field, "parse")(allocator, name, arg, errorMessage);
 				},
 				inline .@"enum" => {
-					const arg = nextArgument orelse {
+					const arg = argument orelse {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
 						return null;
 					};
@@ -100,7 +100,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 					};
 				},
 				inline .float => |floatInfo| return {
-					const arg = nextArgument orelse {
+					const arg = argument orelse {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
 						return null;
 					};
@@ -110,7 +110,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 					};
 				},
 				inline .int => |intInfo| {
-					const arg = nextArgument orelse {
+					const arg = argument orelse {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
 						return null;
 					};
@@ -342,12 +342,16 @@ test "float optional int biome id missing" {
 
 	const result = ArgParser.parse(Test.allocator, "33.0 cubyz:foo", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result != null);
+	try std.testing.expect(errors.items.len != 0);
+	try std.testing.expect(result == null);
+	@panic(std.fmt.allocPrint(Test.allocator.allocator, "{s}", .{errors.items}) catch unreachable);
 
-	try std.testing.expect(result.?.x == 33.0);
-	try std.testing.expect(result.?.y == null);
-	try std.testing.expectEqualStrings("cubyz:foo", result.?.z.id);
+	// try std.testing.expect(errors.items.len == 0);
+	// try std.testing.expect(result != null);
+
+	// try std.testing.expect(result.?.x == 33.0);
+	// try std.testing.expect(result.?.y == null);
+	// try std.testing.expectEqualStrings("cubyz:foo", result.?.z.id);
 }
 
 test "float int BiomeId" {
