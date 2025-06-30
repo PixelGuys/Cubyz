@@ -18,7 +18,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	var errorMessage: ListUnmanaged(u8) = .{};
 	defer errorMessage.deinit(main.stackAllocator);
 
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) orelse {
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
 		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
 	};
