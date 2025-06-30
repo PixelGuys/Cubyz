@@ -61,7 +61,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				}
 			}
 
-			if(split.next() != null) {
+			if(split.next() != null or nextArgument != null) {
 				failWithMessage(allocator, errorMessage, "Too many arguments for command, expected {}", .{s.fields.len});
 				return null;
 			}
@@ -338,15 +338,12 @@ test "float optional int biome id missing" {
 
 	const result = ArgParser.parse(Test.allocator, "33.0 cubyz:foo", &errors);
 
-	try std.testing.expect(result == null);
-	try std.testing.expect(errors.items.len != 0);
-	@panic(errors.items);
-	// try std.testing.expect(errors.items.len == 0);
-	// try std.testing.expect(result != null);
+	try std.testing.expect(errors.items.len == 0);
+	try std.testing.expect(result != null);
 
-	// try std.testing.expect(result.?.x == 33.0);
-	// try std.testing.expect(result.?.y == null);
-	// try std.testing.expectEqualStrings("cubyz:foo", result.?.z.id);
+	try std.testing.expect(result.?.x == 33.0);
+	try std.testing.expect(result.?.y == null);
+	try std.testing.expectEqualStrings("cubyz:foo", result.?.z.id);
 }
 
 test "float int BiomeId" {
