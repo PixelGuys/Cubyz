@@ -37,32 +37,27 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		fn resolveStruct(comptime doAutocomplete: bool, comptime s: std.builtin.Type.Struct, allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) if(doAutocomplete) AutocompleteResult else ?T {
 			var result: T = undefined;
 			var split = std.mem.splitScalar(u8, args, ' ');
-			var nextArgument: ?[]const u8 = null;
 
 			var tempErrorMessage: ListUnmanaged(u8) = .{};
 			defer tempErrorMessage.deinit(allocator);
 
+			var nextArgument: ?[]const u8 = split.next();
+
 			inline for(s.fields) |field| {
-				if(nextArgument == null) {
-					nextArgument = split.next();
-				}
-				const currentArgument = nextArgument;
-				nextArgument = null;
+				const value = resolveArgument(field.type, allocator, field.name[0..], nextArgument, &tempErrorMessage);
 
-				const value = resolveArgument(field.type, allocator, field.name[0..], currentArgument, &tempErrorMessage);
-
-				if (value) |v| {
-					@field(result, field.name) = v;
-					tempErrorMessage.clearRetainingCapacity();
-				} else {
+				if(value == error.ParseError) {
 					if(@typeInfo(field.type) == .optional) {
 						@field(result, field.name) = null;
 						tempErrorMessage.clearRetainingCapacity();
-						nextArgument = currentArgument;
 					} else {
 						errorMessage.appendSlice(allocator, tempErrorMessage.items);
 						return null;
 					}
+				} else {
+					@field(result, field.name) = value catch unreachable;
+					tempErrorMessage.clearRetainingCapacity();
+					nextArgument = split.next();
 				}
 			}
 
@@ -74,16 +69,18 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			return result;
 		}
 
-		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) ?Field {
+		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Field {
 			switch(@typeInfo(Field)) {
 				inline .optional => |optionalInfo| {
-					if(argument == null) return null;
-					return resolveArgument(optionalInfo.child, allocator, name, argument, errorMessage);
+					if(argument == null) return error.ParseError;
+					return resolveArgument(optionalInfo.child, allocator, name, argument, errorMessage) catch |err| {
+						return err;
+					};
 				},
 				inline .@"struct" => {
 					const arg = argument orelse {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
-						return null;
+						return error.ParseError;
 					};
 					if(!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
 					return @field(Field, "parse")(allocator, name, arg, errorMessage);
@@ -91,32 +88,31 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				inline .@"enum" => {
 					const arg = argument orelse {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
-						return null;
+						return error.ParseError;
 					};
 					return std.meta.stringToEnum(Field, arg) orelse {
 						failWithMessage(allocator, errorMessage, "Expected one of {} for <{s}>, found \"{s}\"", .{.{std.meta.fieldNames(Field)}, name, arg});
-
-						return null;
+						return error.ParseError;
 					};
 				},
 				inline .float => |floatInfo| return {
 					const arg = argument orelse {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
-						return null;
+						return error.ParseError;
 					};
 					return std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg) catch {
 						failWithMessage(allocator, errorMessage, "Expected a number for <{s}>, found \"{s}\"", .{name, arg});
-						return null;
+						return error.ParseError;
 					};
 				},
 				inline .int => |intInfo| {
 					const arg = argument orelse {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
-						return null;
+						return error.ParseError;
 					};
 					return std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
 						failWithMessage(allocator, errorMessage, "Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
-						return null;
+						return error.ParseError;
 					};
 				},
 				inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
@@ -211,10 +207,10 @@ pub fn BiomeId(comptime checkExists: bool) type {
 
 		id: []const u8,
 
-		pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) ?Self {
+		pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Self {
 			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) {
 				failWithMessage(allocator, errorMessage, "Biome \"{s}\" passed for <{s}> does not exist", .{arg, name});
-				return null;
+				return error.ParseError;
 			}
 			return .{.id = arg};
 		}
@@ -342,10 +338,9 @@ test "float optional int biome id missing" {
 
 	const result = ArgParser.parse(Test.allocator, "33.0 cubyz:foo", &errors);
 
-	try std.testing.expect(errors.items.len != 0);
 	try std.testing.expect(result == null);
-	@panic(std.fmt.allocPrint(Test.allocator.allocator, "{s}", .{errors.items}) catch unreachable);
-
+	try std.testing.expect(errors.items.len != 0);
+	@panic(errors.items);
 	// try std.testing.expect(errors.items.len == 0);
 	// try std.testing.expect(result != null);
 
