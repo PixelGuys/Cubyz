@@ -94,7 +94,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return .{.index = blocks.meshes.modelIndexStart(block).index + (@as(u5, @truncate(block.data)) -| 1)};
+	return blocks.meshes.modelIndexStart(block).add(@as(u5, @truncate(block.data)) -| 1);
 }
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
@@ -172,7 +172,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 	var resultBit: u16 = 0;
 	for([_]u16{1, 2, 4, 8, 16}) |bit| {
 		if(block.data & bit != 0) {
-			const modelIndex = ModelIndex{.index = blocks.meshes.modelIndexStart(block).index + bit - 1};
+			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(bit - 1);
 			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or intersection.distance < result.?.distance) {
 					result = intersection;

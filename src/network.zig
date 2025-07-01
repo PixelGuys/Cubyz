@@ -644,18 +644,13 @@ pub const Protocols = struct {
 	pub const handShake = struct {
 		pub const id: u8 = 1;
 		pub const asynchronous = false;
-		const stepStart: u8 = 0;
-		const stepUserData: u8 = 1;
-		const stepAssets: u8 = 2;
-		const stepServerData: u8 = 3;
-		pub const stepComplete: u8 = 255;
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const newState = try reader.readInt(u8);
-			if(conn.handShakeState.load(.monotonic) < newState) {
+			const newState = try reader.readEnum(Connection.HandShakeState);
+			if(@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 				conn.handShakeState.store(newState, .monotonic);
 				switch(newState) {
-					stepUserData => {
+					.userData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
@@ -673,7 +668,7 @@ pub const Protocols = struct {
 							defer dir.close();
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
-							arrayList.append(stepAssets);
+							arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
 							try utils.Compression.pack(dir, arrayList.writer());
 							conn.send(.fast, id, arrayList.items);
 						}
@@ -689,30 +684,27 @@ pub const Protocols = struct {
 						zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
 
-						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
+						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
 						defer main.stackAllocator.free(outData);
 						conn.send(.fast, id, outData);
-						conn.handShakeState.store(stepServerData, .monotonic);
+						conn.handShakeState.store(.serverData, .monotonic);
 						main.server.connect(conn.user.?);
 					},
-					stepAssets => {
+					.assets => {
 						std.log.info("Received assets.", .{});
 						std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
 						var dir = try std.fs.cwd().makeOpenPath("serverAssets", .{});
 						defer dir.close();
 						try utils.Compression.unpack(dir, reader.remaining);
 					},
-					stepServerData => {
+					.serverData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 						defer zon.deinit(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(zon);
-						conn.handShakeState.store(stepComplete, .monotonic);
+						conn.handShakeState.store(.complete, .monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					},
-					stepComplete => {},
-					else => {
-						std.log.err("Unknown state in HandShakeProtocol {}", .{newState});
-					},
+					.start, .complete => {},
 				}
 			} else {
 				// Ignore packages that refer to an unexpected state. Normally those might be packages that were resent by the other side.
@@ -720,21 +712,22 @@ pub const Protocols = struct {
 		}
 
 		pub fn serverSide(conn: *Connection) void {
-			conn.handShakeState.store(stepStart, .monotonic);
+			conn.handShakeState.store(.start, .monotonic);
 		}
 
-		pub fn clientSide(conn: *Connection, name: []const u8) void {
+		pub fn clientSide(conn: *Connection, name: []const u8) !void {
 			const zonObject = ZonElement.initObject(main.stackAllocator);
 			defer zonObject.deinit(main.stackAllocator);
 			zonObject.putOwnedString("version", settings.version);
 			zonObject.putOwnedString("name", name);
-			const prefix = [1]u8{stepUserData};
+			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 			defer main.stackAllocator.free(data);
 			conn.send(.fast, id, data);
 
 			conn.mutex.lock();
 			conn.handShakeWaiting.wait(&conn.mutex);
+			if(conn.connectionState.load(.monotonic) == .disconnectDesired) return error.DisconnectedByServer;
 			conn.mutex.unlock();
 		}
 	};
@@ -1819,6 +1812,14 @@ pub const Connection = struct { // MARK: Connection
 		disconnectDesired,
 	};
 
+	const HandShakeState = enum(u8) {
+		start = 0,
+		userData = 1,
+		assets = 2,
+		serverData = 3,
+		complete = 255,
+	};
+
 	// MARK: fields
 
 	manager: *ConnectionManager,
@@ -1847,7 +1848,7 @@ pub const Connection = struct { // MARK: Connection
 	relativeIdleTime: i64 = 0,
 
 	connectionState: Atomic(ConnectionState),
-	handShakeState: Atomic(u8) = .init(Protocols.handShake.stepStart),
+	handShakeState: Atomic(HandShakeState) = .init(.start),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
 
@@ -2223,6 +2224,7 @@ pub const Connection = struct { // MARK: Connection
 		if(self.user) |user| {
 			main.server.disconnect(user);
 		} else {
+			self.handShakeWaiting.broadcast();
 			main.exitToMenu(undefined);
 		}
 		std.log.info("Disconnected", .{});

@@ -503,6 +503,15 @@ pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	// Check if a user with that name is already present
+	if(!world.?.testingMode) {
+		for(userList) |other| {
+			if(std.mem.eql(u8, other.name, user.name)) {
+				user.conn.disconnect();
+				return;
+			}
+		}
+	}
 	// Let the other clients know about this new one.
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
@@ -538,7 +547,7 @@ pub fn connectInternal(user: *User) void {
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
-	user.conn.handShakeState.store(main.network.Protocols.handShake.stepComplete, .monotonic);
+	user.conn.handShakeState.store(.complete, .monotonic);
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message

@@ -179,7 +179,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return .{.index = blocks.meshes.modelIndexStart(block).index + (block.data & 63)};
+	return blocks.meshes.modelIndexStart(block).add(block.data & 63);
 }
 
 pub const rotateZ = branch.rotateZ;

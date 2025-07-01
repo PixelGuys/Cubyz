@@ -477,7 +477,7 @@ pub const BlockEntityTypes = struct {
 
 				signData.renderedTexture.?.bindTo(0);
 
-				c.glUniform1i(uniforms.quadIndex, quad.index);
+				c.glUniform1i(uniforms.quadIndex, @intFromEnum(quad));
 				const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
 				defer mesh.decreaseRefCount();
 				mesh.lightingData[0].lock.lockRead();

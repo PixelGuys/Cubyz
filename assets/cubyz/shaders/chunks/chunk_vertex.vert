@@ -7,9 +7,8 @@ layout(location = 3) out vec2 uv;
 layout(location = 4) flat out vec3 normal;
 layout(location = 5) flat out int textureIndex;
 layout(location = 6) flat out int isBackFace;
-layout(location = 7) flat out int ditherSeed;
-layout(location = 8) flat out float distanceForLodCheck;
-layout(location = 9) flat out int opaqueInLod;
+layout(location = 7) flat out float distanceForLodCheck;
+layout(location = 8) flat out int opaqueInLod;
 
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionMatrix;
@@ -84,7 +83,6 @@ void main() {
 	);
 	light = max(sunLight*ambientLight, blockLight)/31;
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
-	ditherSeed = encodedPositionAndLightIndex & 15;
 
 	textureIndex = textureAndQuad & 65535;
 	int quadIndex = textureAndQuad >> 16;

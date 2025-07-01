@@ -607,7 +607,7 @@ pub const Player = struct { // MARK: Player
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 
 			const item: items.Item = for(0..items.itemListSize) |idx| {
-				const baseItem: main.items.BaseItemIndex = .{.index = @intCast(idx)};
+				const baseItem: main.items.BaseItemIndex = @enumFromInt(idx);
 				if(baseItem.block() == block.typ) {
 					break .{.baseItem = baseItem};
 				}
@@ -669,9 +669,11 @@ pub const World = struct { // MARK: World
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
 		};
+		errdefer self.conn.deinit();
 
 		self.itemDrops.init(main.globalAllocator);
-		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
+		errdefer self.itemDrops.deinit();
+		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
 
