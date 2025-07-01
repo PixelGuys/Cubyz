@@ -669,9 +669,11 @@ pub const World = struct { // MARK: World
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
 		};
+		errdefer self.conn.deinit();
 
 		self.itemDrops.init(main.globalAllocator);
-		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
+		errdefer self.itemDrops.deinit();
+		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
 
