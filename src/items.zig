@@ -201,12 +201,6 @@ pub const BaseItemIndex = enum(u16) {
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
-	pub fn toBytes(self: BaseItemIndex, writer: *BinaryWriter) void {
-		writer.writeInt(u16, self.index);
-	}
-	pub fn fromBytes(reader: *BinaryReader) !BaseItemIndex {
-		return .{.index = try reader.readInt(u16)};
-	}
 };
 
 pub const BaseItem = struct { // MARK: BaseItem
@@ -675,15 +669,18 @@ pub const Tool = struct { // MARK: Tool
 	pub fn fromBytes(reader: *BinaryReader) !*Tool {
 		var craftingGridMask = try reader.readInt(CraftingGridMask);
 		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
+
 		while(craftingGridMask != 0) {
 			const i = @ctz(craftingGridMask);
 			craftingGridMask &= ~(@as(CraftingGridMask, 1) << @intCast(i));
-			craftingGrid[i] = try BaseItemIndex.fromBytes(reader);
+			craftingGrid[i] = try reader.readEnum(BaseItemIndex);
 		}
+
 		const durability = try reader.readInt(u32);
 		const seed = try reader.readInt(u32);
-		const typ: ToolTypeIndex = .{.index = try reader.readInt(u16)};
+		const typ = try reader.readEnum(ToolTypeIndex);
 		const self = initFromCraftingGrid(craftingGrid, seed, typ);
+
 		self.durability = durability;
 		return self;
 	}
@@ -725,13 +722,13 @@ pub const Tool = struct { // MARK: Tool
 
 		for(0..craftingGridSize) |i| {
 			if(self.craftingGrid[i]) |baseItem| {
-				baseItem.toBytes(writer);
+				writer.writeEnum(BaseItemIndex, baseItem);
 			}
 		}
 
 		writer.writeInt(u32, self.durability);
 		writer.writeInt(u32, self.seed);
-		writer.writeInt(u16, self.type.index);
+		writer.writeEnum(ToolTypeIndex, self.type);
 	}
 
 	pub fn hashCode(self: Tool) u32 {
@@ -831,7 +828,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		const typ = try reader.readEnum(ItemType);
 		switch(typ) {
 			.baseItem => {
-				return .{.baseItem = try BaseItemIndex.fromBytes(reader)};
+				return .{.baseItem = try reader.readEnum(BaseItemIndex)};
 			},
 			.tool => {
 				return .{.tool = try Tool.fromBytes(reader)};
@@ -882,7 +879,8 @@ pub const Item = union(ItemType) { // MARK: Item
 	pub fn toBytes(self: Item, writer: *BinaryWriter) void {
 		writer.writeEnum(ItemType, self);
 		switch(self) {
-			inline else => |item| item.toBytes(writer),
+			.baseItem => writer.writeEnum(BaseItemIndex, self.baseItem),
+			.tool => |tool| tool.toBytes(writer),
 		}
 	}
 
