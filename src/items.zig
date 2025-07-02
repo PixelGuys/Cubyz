@@ -940,10 +940,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
 		const amount = try reader.readInt(u16);
 		if(amount == 0) {
-			return .{
-				.item = null,
-				.amount = 0,
-			};
+			return .{};
 		}
 		const item = try Item.fromBytes(reader);
 		return .{
