@@ -62,7 +62,7 @@ For example, in the "Pre-Caves Age," the player will not have access to coal, as
 This problem is completely solved as soon as the player gets coal, as they can now explore caves to find more coal with their newfound torches. It's important that the player has these options to prevent them from getting stuck on a seemingly insurmountable barrier. This gives them more freedom in how they can approach the game, as no one option is particularly the best and can change depending on situation and location.
 
 ### Explain when Needed
-Progress-related mechanics need explanations so the players don't get stuck. Remember to keep it simple on the surface so it's easily approachable.
+Progress-related mechanics need explanations so the players don't get stuck. Keep it simple on the surface so it's easily approachable, but leave out details that the player can find themselves through intuition.
 
 ### Micro Moments
 These are tiny things the player does in between larger events; examples include:
