@@ -824,18 +824,6 @@ pub const Item = union(ItemType) { // MARK: Item
 		}
 	}
 
-	pub fn fromBytes(reader: *BinaryReader) !Item {
-		const typ = try reader.readEnum(ItemType);
-		switch(typ) {
-			.baseItem => {
-				return .{.baseItem = try reader.readEnum(BaseItemIndex)};
-			},
-			.tool => {
-				return .{.tool = try Tool.fromBytes(reader)};
-			},
-		}
-	}
-
 	pub fn deinit(self: Item) void {
 		switch(self) {
 			.baseItem => {},
@@ -872,6 +860,18 @@ pub const Item = union(ItemType) { // MARK: Item
 			},
 			.tool => |_tool| {
 				zonObject.put("tool", _tool.save(allocator));
+			},
+		}
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !Item {
+		const typ = try reader.readEnum(ItemType);
+		switch(typ) {
+			.baseItem => {
+				return .{.baseItem = try reader.readEnum(BaseItemIndex)};
+			},
+			.tool => {
+				return .{.tool = try Tool.fromBytes(reader)};
 			},
 		}
 	}
