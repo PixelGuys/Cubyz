@@ -667,6 +667,10 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	pub fn fromBytes(reader: *BinaryReader) !*Tool {
+		const durability = try reader.readInt(u32);
+		const seed = try reader.readInt(u32);
+		const typ = try reader.readEnum(ToolTypeIndex);
+
 		var craftingGridMask = try reader.readInt(CraftingGridMask);
 		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
 
@@ -675,10 +679,6 @@ pub const Tool = struct { // MARK: Tool
 			craftingGridMask &= ~(@as(CraftingGridMask, 1) << @intCast(i));
 			craftingGrid[i] = try reader.readEnum(BaseItemIndex);
 		}
-
-		const durability = try reader.readInt(u32);
-		const seed = try reader.readInt(u32);
-		const typ = try reader.readEnum(ToolTypeIndex);
 		const self = initFromCraftingGrid(craftingGrid, seed, typ);
 
 		self.durability = durability;
@@ -712,6 +712,10 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	pub fn toBytes(self: Tool, writer: *BinaryWriter) void {
+		writer.writeInt(u32, self.durability);
+		writer.writeInt(u32, self.seed);
+		writer.writeEnum(ToolTypeIndex, self.type);
+
 		var craftingGridMask: CraftingGridMask = 0;
 		for(0..craftingGridSize) |i| {
 			if(self.craftingGrid[i] != null) {
@@ -725,10 +729,6 @@ pub const Tool = struct { // MARK: Tool
 				writer.writeEnum(BaseItemIndex, baseItem);
 			}
 		}
-
-		writer.writeInt(u32, self.durability);
-		writer.writeInt(u32, self.seed);
-		writer.writeEnum(ToolTypeIndex, self.type);
 	}
 
 	pub fn hashCode(self: Tool) u32 {
