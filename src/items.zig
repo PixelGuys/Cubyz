@@ -666,25 +666,6 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
-	pub fn fromBytes(reader: *BinaryReader) !*Tool {
-		const durability = try reader.readInt(u32);
-		const seed = try reader.readInt(u32);
-		const typ = try reader.readEnum(ToolTypeIndex);
-
-		var craftingGridMask = try reader.readInt(CraftingGridMask);
-		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
-
-		while(craftingGridMask != 0) {
-			const i = @ctz(craftingGridMask);
-			craftingGridMask &= ~(@as(CraftingGridMask, 1) << @intCast(i));
-			craftingGrid[i] = try reader.readEnum(BaseItemIndex);
-		}
-		const self = initFromCraftingGrid(craftingGrid, seed, typ);
-
-		self.durability = durability;
-		return self;
-	}
-
 	fn extractItemsFromZon(zonArray: ZonElement) [craftingGridSize]?BaseItemIndex {
 		var items: [craftingGridSize]?BaseItemIndex = undefined;
 		for(&items, 0..) |*item, i| {
@@ -709,6 +690,25 @@ pub const Tool = struct { // MARK: Tool
 		zonObject.put("seed", self.seed);
 		zonObject.put("type", self.type.id());
 		return zonObject;
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !*Tool {
+		const durability = try reader.readInt(u32);
+		const seed = try reader.readInt(u32);
+		const typ = try reader.readEnum(ToolTypeIndex);
+
+		var craftingGridMask = try reader.readInt(CraftingGridMask);
+		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
+
+		while(craftingGridMask != 0) {
+			const i = @ctz(craftingGridMask);
+			craftingGridMask &= ~(@as(CraftingGridMask, 1) << @intCast(i));
+			craftingGrid[i] = try reader.readEnum(BaseItemIndex);
+		}
+		const self = initFromCraftingGrid(craftingGrid, seed, typ);
+
+		self.durability = durability;
+		return self;
 	}
 
 	pub fn toBytes(self: Tool, writer: *BinaryWriter) void {
