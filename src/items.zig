@@ -937,18 +937,6 @@ pub const ItemStack = struct { // MARK: ItemStack
 		};
 	}
 
-	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
-		const amount = try reader.readInt(u16);
-		if(amount == 0) {
-			return .{};
-		}
-		const item = try Item.fromBytes(reader);
-		return .{
-			.item = item,
-			.amount = amount,
-		};
-	}
-
 	pub fn deinit(self: *ItemStack) void {
 		if(self.item) |item| {
 			item.deinit();
@@ -983,6 +971,18 @@ pub const ItemStack = struct { // MARK: ItemStack
 		const result = ZonElement.initObject(allocator);
 		self.storeToZon(allocator, result);
 		return result;
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
+		const amount = try reader.readInt(u16);
+		if(amount == 0) {
+			return .{};
+		}
+		const item = try Item.fromBytes(reader);
+		return .{
+			.item = item,
+			.amount = amount,
+		};
 	}
 
 	pub fn toBytes(self: *const ItemStack, writer: *BinaryWriter) void {
