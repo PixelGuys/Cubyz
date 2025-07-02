@@ -805,7 +805,7 @@ pub const Tool = struct { // MARK: Tool
 	}
 };
 
-const ItemType = enum {
+const ItemType = enum(u7) {
 	baseItem,
 	tool,
 };
