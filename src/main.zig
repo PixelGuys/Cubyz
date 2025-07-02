@@ -203,7 +203,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 			logToStdErr(formatString, resultArgs);
 			if(level == .err and !openingErrorWindow) {
 				openingErrorWindow = true;
-				gui.openWindow("error_prompt");
+				gui.openWindow("cubyz:error_prompt");
 				openingErrorWindow = false;
 			}
 		}
@@ -284,30 +284,30 @@ fn ungrabMouse() void {
 fn openInventory() void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
-	gui.openWindow("inventory");
+	gui.openWindow("cubyz:inventory");
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
-	gui.openWindow("creative_inventory");
+	gui.openWindow("cubyz:creative_inventory");
 }
 fn openSharedInventoryTesting() void {
 	if(game.world == null) return;
 	ungrabMouse();
-	gui.openWindow("shared_inventory_testing");
+	gui.openWindow("cubyz:shared_inventory_testing");
 }
 fn openChat() void {
 	if(game.world == null) return;
 	ungrabMouse();
-	gui.openWindow("chat");
-	gui.windowlist.chat.input.select();
+	gui.openWindow("cubyz:chat");
+	gui.windowlist.@"cubyz:chat".input.select();
 }
 fn openCommand() void {
 	if(game.world == null) return;
 	openChat();
-	gui.windowlist.chat.input.clear();
-	gui.windowlist.chat.input.inputCharacter('/');
+	gui.windowlist.@"cubyz:chat".input.clear();
+	gui.windowlist.@"cubyz:chat".input.inputCharacter('/');
 }
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
@@ -649,9 +649,9 @@ pub fn main() void { // MARK: main()
 	defer particles.ParticleManager.deinit();
 
 	if(settings.playerName.len == 0) {
-		gui.openWindow("change_name");
+		gui.openWindow("cubyz:change_name");
 	} else {
-		gui.openWindow("main");
+		gui.openWindow("cubyz:main");
 	}
 
 	server.terrain.initGenerators();
@@ -664,7 +664,7 @@ pub fn main() void { // MARK: main()
 
 	if(settings.developerAutoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
+		gui.windowlist.@"cubyz:save_selection".openWorld(settings.developerAutoEnterWorld);
 	}
 
 	audio.setMusic("cubyz:cubyz");
@@ -674,13 +674,13 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
-			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+			gui.windowlist.@"cubyz:gpu_performance_measuring".startQuery(.screenbuffer_clear);
 			c.glDepthFunc(c.GL_LESS);
 			c.glDepthMask(c.GL_TRUE);
 			c.glDisable(c.GL_SCISSOR_TEST);
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			gui.windowlist.gpu_performance_measuring.stopQuery();
+			gui.windowlist.@"cubyz:gpu_performance_measuring".stopQuery();
 		} else {
 			std.time.sleep(16_000_000);
 		}
@@ -714,9 +714,9 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
-			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
+			gui.windowlist.@"cubyz:gpu_performance_measuring".startQuery(.gui);
 			gui.updateAndRenderGui();
-			gui.windowlist.gpu_performance_measuring.stopQuery();
+			gui.windowlist.@"cubyz:gpu_performance_measuring".stopQuery();
 		}
 
 		if(shouldExitToMenu.load(.monotonic)) {
@@ -725,7 +725,7 @@ pub fn main() void { // MARK: main()
 				world.deinit();
 				game.world = null;
 			}
-			gui.openWindow("main");
+			gui.openWindow("cubyz:main");
 			audio.setMusic("cubyz:cubyz");
 		}
 	}

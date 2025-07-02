@@ -225,8 +225,8 @@ pub const BlockEntityTypes = struct {
 
 			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .normal, .{.blockInventory = pos});
 
-			main.gui.windowlist.chest.setInventory(inventory);
-			main.gui.openWindow("chest");
+			main.gui.windowlist.@"cubyz:chest".setInventory(inventory);
+			main.gui.openWindow("cubyz:chest");
 			main.Window.setMouseGrabbed(false);
 
 			return .handled;
@@ -327,7 +327,7 @@ pub const BlockEntityTypes = struct {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 			const data = StorageClient.get(pos, chunk);
-			main.gui.windowlist.sign_editor.openFromSignData(pos, if(data) |_data| _data.text else "");
+			main.gui.windowlist.@"cubyz:sign_editor".openFromSignData(pos, if(data) |_data| _data.text else "");
 
 			return .handled;
 		}
