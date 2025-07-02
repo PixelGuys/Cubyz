@@ -514,7 +514,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			draw.setColor(0x440000ff);
 			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
-		draw.setColor(0xff747474);
+		draw.setColor(0xffaaaaaa);
 		draw.rect(cursorPos, Vec2f{1, fontSize});
 	}
 }
