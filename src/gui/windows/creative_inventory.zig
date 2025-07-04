@@ -55,7 +55,7 @@ fn initContent() void {
 		const list = VerticalList.init(.{0, padding + padding}, 48, 0);
 		const row = HorizontalList.init();
 		const label = Label.init(.{0, 3}, 56, "Search:", .right);
-		searchInput = TextInput.init(.{0, 0}, 288, 22, searchString, .{.callback = &filter}, .{.onChange = .{.callback = &filter}});
+		searchInput = TextInput.init(.{0, 0}, 288, 22, searchString, .{.callback = &filter}, .{});
 		row.add(label);
 		row.add(searchInput);
 		list.add(row);
@@ -100,20 +100,25 @@ fn initContent() void {
 	gui.updateWindowPositions();
 }
 
-fn filter(_: usize) void {
-	main.globalAllocator.free(searchString);
-	searchString = main.globalAllocator.dupe(u8, searchInput.currentString.items);
-	deinitContent();
-	initContent();
-	searchInput.select();
-}
-
 fn deinitContent() void {
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 	items.deinit();
 	inventory.deinit(main.globalAllocator);
+}
+
+pub fn update() void {
+	if(std.mem.eql(u8, searchInput.currentString.items, searchString)) return;
+	filter(0);
+}
+
+fn filter(_: usize) void {
+	main.globalAllocator.free(searchString);
+	searchString = main.globalAllocator.dupe(u8, searchInput.currentString.items);
+	deinitContent();
+	initContent();
+	searchInput.select();
 }
 
 pub fn onClose() void {
