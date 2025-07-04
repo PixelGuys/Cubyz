@@ -41,6 +41,8 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	};
 
 	exe.addIncludePath(headersDeps.path("include"));
+	exe.addIncludePath(b.path("adsa"));
+	exe.addCSourceFile(.{ .file = b.path("adsa/miniaudio.c"), .flags = &.{"-Os", "-g"} });
 	exe.addObjectFile(libsDeps.path("lib").path(b, artifactName));
 	const subPath = libsDeps.path("lib").path(b, depsLib);
 	exe.addObjectFile(subPath.path(b, libName(b, "glslang", t)));
