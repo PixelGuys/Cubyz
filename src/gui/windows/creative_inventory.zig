@@ -110,7 +110,7 @@ fn deinitContent() void {
 
 pub fn update() void {
 	if(std.mem.eql(u8, searchInput.currentString.items, searchString)) return;
-	filter(0);
+	filter(undefined);
 }
 
 fn filter(_: usize) void {
