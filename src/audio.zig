@@ -196,11 +196,8 @@ pub fn init() error{miniaudioError}!void {
 }
 
 pub fn deinit() void {
-	// Something about this causes a crash later in __GI___pthread_exit, this started happening after adding glslang, which may or may not be related
+	handleError(c.ma_device_stop(&device)) catch {};
 	c.ma_device_uninit(&device);
-	//handleError(c.Pa_StopStream(stream)) catch {};
-	//handleError(c.Pa_CloseStream(stream)) catch {};
-	//handleError(c.Pa_Terminate()) catch {};
 	mutex.lock();
 	defer mutex.unlock();
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
