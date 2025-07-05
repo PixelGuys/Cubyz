@@ -30,6 +30,8 @@ var items: main.List(Item) = undefined;
 var inventory: Inventory = undefined;
 var searchInput: *TextInput = undefined;
 var searchString: []const u8 = undefined;
+var searchSelectionStart: ?u32 = null;
+var searchCursor: ?u32 = null;
 
 fn lessThan(_: void, lhs: Item, rhs: Item) bool {
 	if(lhs == .baseItem and rhs == .baseItem) {
@@ -46,6 +48,8 @@ fn lessThan(_: void, lhs: Item, rhs: Item) bool {
 
 pub fn onOpen() void {
 	searchString = "";
+	searchSelectionStart = null;
+	searchCursor = null;
 	initContent();
 }
 
@@ -60,7 +64,11 @@ fn initContent() void {
 		const list = VerticalList.init(.{0, padding + padding}, 48, 0);
 		const row = HorizontalList.init();
 		const label = Label.init(.{0, 3}, 56, "Search:", .right);
+
 		searchInput = TextInput.init(.{0, 0}, 288, 22, searchString, .{.callback = &filter}, .{});
+		searchInput.cursor = searchCursor;
+		searchInput.selectionStart = searchSelectionStart;
+
 		row.add(label);
 		row.add(searchInput);
 		list.add(row);
@@ -105,6 +113,9 @@ fn initContent() void {
 }
 
 fn deinitContent() void {
+	searchSelectionStart = searchInput.selectionStart;
+	searchCursor = searchInput.cursor;
+
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
