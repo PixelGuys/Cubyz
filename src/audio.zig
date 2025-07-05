@@ -184,7 +184,7 @@ pub fn init() error{miniaudioError}!void {
 	config.playback.format = c.ma_format_f32;
 	config.playback.channels = 2;
 	config.sampleRate = 44100;
-	config.dataCallback = &matestCallback;
+	config.dataCallback = &miniaudioCallback;
 	config.pUserData = undefined;
 
 	try handleError(c.ma_device_init(null, &config, &device));
@@ -304,7 +304,7 @@ fn addMusic(buffer: []f32) void {
 	}
 }
 
-fn matestCallback(
+fn miniaudioCallback(
 	maDevice: ?*anyopaque,
 	output: ?*anyopaque,
 	input: ?*const anyopaque,
