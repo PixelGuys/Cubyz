@@ -41,8 +41,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	};
 
 	exe.addIncludePath(headersDeps.path("include"));
-	exe.addIncludePath(b.path("adsa"));
-	exe.addCSourceFile(.{ .file = b.path("adsa/miniaudio.c"), .flags = &.{"-Os", "-g"} });
 	exe.addObjectFile(libsDeps.path("lib").path(b, artifactName));
 	const subPath = libsDeps.path("lib").path(b, depsLib);
 	exe.addObjectFile(subPath.path(b, libName(b, "glslang", t)));
@@ -54,14 +52,10 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
 
 	if(t.os.tag == .windows) {
-		exe.linkSystemLibrary("ole32");
-		exe.linkSystemLibrary("winmm");
-		exe.linkSystemLibrary("uuid");
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
 	} else if(t.os.tag == .linux) {
-		exe.linkSystemLibrary("asound");
 		exe.linkSystemLibrary("X11");
 		exe.linkSystemLibrary("GL");
 	} else if(t.os.tag == .macos) {
