@@ -332,6 +332,79 @@ pub const collision = struct {
 		return @floatCast(friction/totalArea);
 	}
 
+	const VolumeProperties = struct {
+		terminalVelocity: f64,
+		density: f64,
+		mobility: f64,
+	};
+
+	fn overlapVolume(a: Box, b: Box) f64 {
+		const min = @max(a.min, b.min);
+		const max = @min(a.max, b.max);
+		if(@reduce(.Or, min >= max)) return 0;
+		return @reduce(.Mul, max - min);
+	}
+
+	pub fn calculateVolumeProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaults: VolumeProperties) VolumeProperties {
+		const boundingBox: Box = .{
+			.min = pos + hitBox.min,
+			.max = pos + hitBox.max,
+		};
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
+		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] - 0.0001));
+
+		var invTerminalVelocitySum: f64 = 0;
+		var densitySum: f64 = 0;
+		var mobilitySum: f64 = 0;
+		var volumeSum: f64 = 0;
+
+		var x: i32 = minX;
+		while(x <= maxX) : (x += 1) {
+			var y: i32 = minY;
+			while(y <= maxY) : (y += 1) {
+				var z: i32 = maxZ;
+				while(z >= minZ) : (z -= 1) {
+					const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z) else main.server.world.?.getBlock(x, y, z);
+					const totalBox: Box = .{
+						.min = @floatFromInt(Vec3i{x, y, z}),
+						.max = @floatFromInt(Vec3i{x + 1, y + 1, z + 1}),
+					};
+					const gridVolume = overlapVolume(boundingBox, totalBox);
+					volumeSum += gridVolume;
+
+					if(_block) |block| {
+						const collisionBox: Box = .{ // TODO: Check all AABBs individually
+							.min = totalBox.min + main.blocks.meshes.model(block).model().min,
+							.max = totalBox.min + main.blocks.meshes.model(block).model().max,
+						};
+						const filledVolume = @min(gridVolume, overlapVolume(collisionBox, totalBox));
+						const emptyVolume = gridVolume - filledVolume;
+						invTerminalVelocitySum += emptyVolume/defaults.terminalVelocity;
+						densitySum += emptyVolume*defaults.density;
+						mobilitySum += emptyVolume*defaults.mobility;
+						invTerminalVelocitySum += filledVolume/block.terminalVelocity();
+						densitySum += filledVolume*block.density();
+						mobilitySum += filledVolume*block.mobility();
+					} else {
+						invTerminalVelocitySum += gridVolume/defaults.terminalVelocity;
+						densitySum += gridVolume*defaults.density;
+						mobilitySum += gridVolume*defaults.mobility;
+					}
+				}
+			}
+		}
+
+		return .{
+			.terminalVelocity = volumeSum/invTerminalVelocitySum,
+			.density = densitySum/volumeSum,
+			.mobility = mobilitySum/volumeSum,
+		};
+	}
+
 	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
 		const index = @intFromEnum(dir);
 
@@ -842,28 +915,30 @@ pub fn hyperSpeedToggle() void {
 
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
-	const terminalVelocity = 90.0;
-	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
+	const airTerminalVelocity = 90.0;
+	const airFrictionCoefficient = gravity/airTerminalVelocity; // λ = a/v in equillibrium
+	const playerDensity = 1.2;
 	var move: Vec3d = .{0, 0, 0};
 	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
+		const volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .mobility = 1.0});
+		const effectiveGravity = gravity*(playerDensity - volumeProperties.density)/playerDensity;
+		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
 		var acc = Vec3d{0, 0, 0};
 		if(!Player.isFlying.load(.monotonic)) {
-			acc[2] = -gravity;
+			acc[2] = -effectiveGravity;
 		}
 
-		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
-		var baseFrictionCoefficient: f32 = Player.currentFriction;
+		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
+		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
+		const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else volumeProperties.mobility;
+		const baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
-
-		if(!Player.onGround and !Player.isFlying.load(.monotonic)) {
-			baseFrictionCoefficient = airFrictionCoefficient;
-		}
 
 		var jumping: bool = false;
 		Player.jumpCooldown -= deltaTime;
 		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
-		const fricMul = speedMultiplier*baseFrictionCoefficient;
+		const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
 
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const right = Vec3d{-forward[1], forward[0], 0};
@@ -922,6 +997,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						Player.eyeCoyote = 0;
 					}
 					Player.jumpCoyote = 0;
+				} else {
+					movementSpeed = @max(movementSpeed, walkingSpeed);
+					movementDir[2] += walkingSpeed;
 				}
 			} else {
 				Player.jumpCooldown = 0;
@@ -940,6 +1018,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] -= 5.5;
 					}
+				} else {
+					movementSpeed = @max(movementSpeed, walkingSpeed);
+					movementDir[2] -= walkingSpeed;
 				}
 			}
 			if(movementSpeed != 0 and vec.lengthSquare(movementDir) != 0) {

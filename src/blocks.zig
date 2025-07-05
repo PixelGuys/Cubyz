@@ -77,7 +77,11 @@ var _mode: [maxBlockCount]*RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
+
 var _friction: [maxBlockCount]f32 = undefined;
+var _density: [maxBlockCount]f32 = undefined;
+var _terminalVelocity: [maxBlockCount]f32 = undefined;
+var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 var _tickEvent: [maxBlockCount]?TickEvent = undefined;
@@ -128,6 +132,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
+	_density[size] = zon.get(f32, "density", 0.001);
+	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
+	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 
@@ -390,6 +397,18 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn friction(self: Block) f32 {
 		return _friction[self.typ];
+	}
+
+	pub inline fn density(self: Block) f32 {
+		return _density[self.typ];
+	}
+
+	pub inline fn terminalVelocity(self: Block) f32 {
+		return _terminalVelocity[self.typ];
+	}
+
+	pub inline fn mobility(self: Block) f32 {
+		return _mobility[self.typ];
 	}
 
 	pub inline fn allowOres(self: Block) bool {
