@@ -49,6 +49,11 @@ pub fn onOpen() void {
 	initContent();
 }
 
+pub fn onClose() void {
+	deinitContent();
+	main.globalAllocator.free(searchString);
+}
+
 fn initContent() void {
 	const root = VerticalList.init(.{padding, padding}, 300, 0);
 	{
@@ -81,7 +86,6 @@ fn initContent() void {
 		while(i < items.items.len) {
 			const row = HorizontalList.init();
 			for(0..slotsPerRow) |_| {
-				if(i > slotCount) break;
 				if(i >= items.items.len) {
 					row.add(ItemSlot.init(.{0, 0}, inventory, i, .immutable, .immutable));
 				} else {
@@ -119,9 +123,4 @@ fn filter(_: usize) void {
 	deinitContent();
 	initContent();
 	searchInput.select();
-}
-
-pub fn onClose() void {
-	deinitContent();
-	main.globalAllocator.free(searchString);
 }
