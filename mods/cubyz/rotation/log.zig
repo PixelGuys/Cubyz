@@ -221,10 +221,7 @@ pub fn generateData(
 			}
 		}
 
-		const result: u16 = currentData.enabledConnections;
-		if(result == currentBlock.data) return false;
-
-		currentBlock.data = result;
+		currentBlock.data = currentData.enabledConnections;
 		return true;
 	}
 	return false;
@@ -242,9 +239,6 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 		currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
 	}
 
-	const result: u16 = currentData.enabledConnections;
-	if(result == block.data) return false;
-
-	block.data = result;
+	block.data = currentData.enabledConnections;
 	return true;
 }
