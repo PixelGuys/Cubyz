@@ -120,6 +120,7 @@ pub fn update() void {
 }
 
 fn filter(_: usize) void {
+	const selectionStart = searchInput.selectionStart;
 	const cursor = searchInput.cursor;
 
 	main.globalAllocator.free(searchString);
@@ -127,6 +128,8 @@ fn filter(_: usize) void {
 	deinitContent();
 	initContent();
 
+	searchInput.selectionStart = selectionStart;
 	searchInput.cursor = cursor;
+
 	searchInput.select();
 }
