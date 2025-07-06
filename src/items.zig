@@ -974,7 +974,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
-		const amount = try reader.readInt(u16);
+		const amount = try reader.readVarInt(u16);
 		if(amount == 0) {
 			return .{};
 		}
@@ -987,10 +987,10 @@ pub const ItemStack = struct { // MARK: ItemStack
 
 	pub fn toBytes(self: *const ItemStack, writer: *BinaryWriter) void {
 		if(self.item) |item| {
-			writer.writeInt(u16, self.amount);
+			writer.writeVarInt(u16, self.amount);
 			item.toBytes(writer);
 		} else {
-			writer.writeInt(u16, 0);
+			writer.writeVarInt(u16, 0);
 		}
 	}
 };
