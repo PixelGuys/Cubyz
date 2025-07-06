@@ -22,7 +22,7 @@ In order to progress in the game, the player must face a genre change. The playe
 Instead of creating seperate dimensions, we can fit these places physically into Cubyz' massive world for the player to come across.
 
 ### No Teleportation
-Teleportation makes the game less immersive, as it diminishes the exploring aspect and doesn't let the player get a good scale of the world.
+Teleportation makes the game less immersive, as it diminishes the exploring aspect and doesn't let the player get a good sense of the scale of the world.
 
 ### No Automation
 Automation completely removes the need to explore, so it's important that any mechanisms we add do not do what "exploring" can do.
