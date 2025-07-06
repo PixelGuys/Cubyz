@@ -889,6 +889,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var currentBlockProgress: f32 = 0;
 	var currentSwingProgress: f32 = 0;
 	var currentSwingTime: f32 = 0;
+	var overDamage: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var selectionFace: chunk.Neighbor = undefined;
@@ -1069,6 +1070,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
 					}
+					if(overDamage != 0) {
+						currentBlockProgress += (overDamage - block.blockResistance())/block.blockHealth();
+						overDamage = 0;
+					}
 					currentSwingProgress += @floatCast(deltaTime);
 					while(currentSwingProgress > currentSwingTime) {
 						currentSwingProgress -= currentSwingTime;
@@ -1084,6 +1089,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 						return;
 					} else {
+						overDamage = (currentBlockProgress - 1)*block.blockHealth();
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 					}
