@@ -7,6 +7,10 @@ const Color = graphics.Color;
 const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const ListUnmanaged = main.ListUnmanaged;
+const BinaryReader = main.utils.BinaryReader;
+const BinaryWriter = main.utils.BinaryWriter;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const chunk = main.chunk;
 const random = @import("random.zig");
 const vec = @import("vec.zig");
@@ -15,8 +19,6 @@ const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
-const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const ListUnmanaged = main.ListUnmanaged;
 
 const modifierList = @import("tool/modifiers/_list.zig");
 const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
@@ -567,7 +569,10 @@ const ToolProperty = enum {
 };
 
 pub const Tool = struct { // MARK: Tool
-	craftingGrid: [25]?BaseItemIndex,
+	const craftingGridSize = 25;
+	const CraftingGridMask = std.meta.Int(.unsigned, craftingGridSize);
+
+	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
 	modifiers: []Modifier,
 	tooltip: main.List(u8),
@@ -661,8 +666,8 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
-	fn extractItemsFromZon(zonArray: ZonElement) [25]?BaseItemIndex {
-		var items: [25]?BaseItemIndex = undefined;
+	fn extractItemsFromZon(zonArray: ZonElement) [craftingGridSize]?BaseItemIndex {
+		var items: [craftingGridSize]?BaseItemIndex = undefined;
 		for(&items, 0..) |*item, i| {
 			item.* = .fromId(zonArray.getAtIndex([]const u8, i, "null"));
 			if(item.* != null and item.*.?.material() == null) item.* = null;
@@ -685,6 +690,45 @@ pub const Tool = struct { // MARK: Tool
 		zonObject.put("seed", self.seed);
 		zonObject.put("type", self.type.id());
 		return zonObject;
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !*Tool {
+		const durability = try reader.readInt(u32);
+		const seed = try reader.readInt(u32);
+		const typ = try reader.readEnum(ToolTypeIndex);
+
+		var craftingGridMask = try reader.readInt(CraftingGridMask);
+		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
+
+		while(craftingGridMask != 0) {
+			const i = @ctz(craftingGridMask);
+			craftingGridMask &= ~(@as(CraftingGridMask, 1) << @intCast(i));
+			craftingGrid[i] = try reader.readEnum(BaseItemIndex);
+		}
+		const self = initFromCraftingGrid(craftingGrid, seed, typ);
+
+		self.durability = durability;
+		return self;
+	}
+
+	pub fn toBytes(self: Tool, writer: *BinaryWriter) void {
+		writer.writeInt(u32, self.durability);
+		writer.writeInt(u32, self.seed);
+		writer.writeEnum(ToolTypeIndex, self.type);
+
+		var craftingGridMask: CraftingGridMask = 0;
+		for(0..craftingGridSize) |i| {
+			if(self.craftingGrid[i] != null) {
+				craftingGridMask |= @as(CraftingGridMask, 1) << @intCast(i);
+			}
+		}
+		writer.writeInt(CraftingGridMask, craftingGridMask);
+
+		for(0..craftingGridSize) |i| {
+			if(self.craftingGrid[i]) |baseItem| {
+				writer.writeEnum(BaseItemIndex, baseItem);
+			}
+		}
 	}
 
 	pub fn hashCode(self: Tool) u32 {
@@ -761,7 +805,12 @@ pub const Tool = struct { // MARK: Tool
 	}
 };
 
-pub const Item = union(enum) { // MARK: Item
+const ItemType = enum(u7) {
+	baseItem,
+	tool,
+};
+
+pub const Item = union(ItemType) { // MARK: Item
 	baseItem: BaseItemIndex,
 	tool: *Tool,
 
@@ -812,6 +861,26 @@ pub const Item = union(enum) { // MARK: Item
 			.tool => |_tool| {
 				zonObject.put("tool", _tool.save(allocator));
 			},
+		}
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !Item {
+		const typ = try reader.readEnum(ItemType);
+		switch(typ) {
+			.baseItem => {
+				return .{.baseItem = try reader.readEnum(BaseItemIndex)};
+			},
+			.tool => {
+				return .{.tool = try Tool.fromBytes(reader)};
+			},
+		}
+	}
+
+	pub fn toBytes(self: Item, writer: *BinaryWriter) void {
+		writer.writeEnum(ItemType, self);
+		switch(self) {
+			.baseItem => writer.writeEnum(BaseItemIndex, self.baseItem),
+			.tool => |tool| tool.toBytes(writer),
 		}
 	}
 
@@ -902,6 +971,27 @@ pub const ItemStack = struct { // MARK: ItemStack
 		const result = ZonElement.initObject(allocator);
 		self.storeToZon(allocator, result);
 		return result;
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
+		const amount = try reader.readVarInt(u16);
+		if(amount == 0) {
+			return .{};
+		}
+		const item = try Item.fromBytes(reader);
+		return .{
+			.item = item,
+			.amount = amount,
+		};
+	}
+
+	pub fn toBytes(self: *const ItemStack, writer: *BinaryWriter) void {
+		if(self.item) |item| {
+			writer.writeVarInt(u16, self.amount);
+			item.toBytes(writer);
+		} else {
+			writer.writeVarInt(u16, 0);
+		}
 	}
 };
 
