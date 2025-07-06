@@ -1045,8 +1045,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
-				currentSwingProgress = 0;
-				currentSwingTime = 0;
 			}
 			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
@@ -1084,6 +1082,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 						return;
 					} else {
+						currentSwingProgress += (currentBlockProgress - 1)*block.blockHealth()/damage*currentSwingTime;
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 					}
