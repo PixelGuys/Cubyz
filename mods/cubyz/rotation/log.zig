@@ -221,10 +221,7 @@ pub fn generateData(
 			}
 		}
 
-		const result: u16 = currentData.enabledConnections;
-		if(result == currentBlock.data) return false;
-
-		currentBlock.data = result;
+		currentBlock.data = currentData.enabledConnections;
 		return true;
 	}
 	return false;
