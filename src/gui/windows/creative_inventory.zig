@@ -74,7 +74,7 @@ fn initContent() void {
 		items = .init(main.globalAllocator);
 		var itemIterator = main.items.iterator();
 		while(itemIterator.next()) |item| {
-			if(searchString.len != 0 and std.mem.indexOf(u8, item.id(), searchString) == null) continue;
+			if(searchString.len != 0 and !std.mem.containsAtLeast(u8, item.id(), 1, searchString)) continue;
 			items.append(Item{.baseItem = item.*});
 		}
 
