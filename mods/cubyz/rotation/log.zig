@@ -238,6 +238,9 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 		const neighborData = LogData.init(neighborBlock.data);
 		currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
 	}
+	
+	const result: u16 = currentData.enabledConnections;
+	if(result == block.data) return false;
 
 	block.data = currentData.enabledConnections;
 	return true;
