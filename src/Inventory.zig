@@ -7,6 +7,8 @@ const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const Tool = main.items.Tool;
 const utils = main.utils;
+const BinaryWriter = utils.BinaryWriter;
+const BinaryReader = utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
@@ -364,7 +366,11 @@ pub const Sync = struct { // MARK: Sync
 
 					const inventoryZon = playerData.getChild(@tagName(source));
 
-					inventory.inv.loadFromZon(inventoryZon);
+					switch(inventoryZon) {
+						.object => inventory.inv.loadFromZon(inventoryZon),
+						.string, .stringOwned => |str| inventory.inv.fromBase64(str),
+						else => unreachable,
+					}
 				},
 				.recipe => |recipe| {
 					for(0..recipe.sourceAmounts.len) |i| {
@@ -2022,5 +2028,51 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 			};
 			stack.amount = stackZon.get(u16, "amount", 0);
 		}
+	}
+}
+
+fn toBase64(self: Inventory, allocator: NeverFailingAllocator) ![]const u8 {
+	var writer = BinaryWriter.init(main.stackAllocator);
+	defer writer.deinit();
+
+	try self.toBytes(&writer);
+
+	const destination: []u8 = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(writer.data.items.len));
+	return std.base64.url_safe.Encoder.encode(destination, writer.data.items);
+}
+
+fn toBytes(self: Inventory, writer: *BinaryWriter) !void {
+	writer.writeVarInt(u32, self._items.len);
+	for(self._items) |stack| {
+		stack.toBytes(writer);
+	}
+}
+
+fn fromBase64(self: Inventory, base64: []const u8) void {
+	const destination: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
+	defer main.stackAllocator.free(destination);
+
+	std.base64.url_safe.Decoder.decode(destination, base64) catch unreachable;
+	var reader = BinaryReader.init(destination);
+	fromBytes(self, &reader);
+}
+
+fn fromBytes(self: Inventory, reader: *BinaryReader) void {
+	var count = reader.readVarInt(u32) catch 0;
+	for(self._items) |*stack| {
+		if(count == 0) {
+			stack.clear();
+			continue;
+		}
+		defer count -= 1;
+		stack.* = ItemStack.fromBytes(reader) catch |err| {
+			std.log.err("Failed to read item stack from bytes: {s}", .{@errorName(err)});
+			stack.clear();
+			continue;
+		};
+	}
+	for(0..count) |_| {
+		var stack = ItemStack.fromBytes(reader) catch continue;
+		stack.deinit();
 	}
 }
