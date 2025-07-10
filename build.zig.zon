@@ -36,5 +36,9 @@
 			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/6/cubyz_deps_x86_64-windows-gnu.tar.gz",
 			.hash = "N-V-__8AAIpW1AJNtAJnajSjZfiiqMB2tKQ8qkR2g6nhf5SE",
 		},
+		.cubyz_large_assets = .{
+			.url = "git+https://github.com/PixelGuys/Cubyz-Assets/#e0ea686f86c008b29cd109e1bdd757ce6574eaf3",
+			.hash = "N-V-__8AAAxDUATPdad1MQC8jeiFsoXRet_SvG6acW5Dmxdh",
+		},
 	},
 }

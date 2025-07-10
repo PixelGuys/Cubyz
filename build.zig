@@ -156,6 +156,18 @@ pub fn build(b: *std.Build) !void {
 
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
 
+	const largeAssets = b.dependency("cubyz_large_assets", .{});
+	b.installDirectory(.{
+		.source_dir = largeAssets.path("music"),
+		.install_subdir = "assets/cubyz/music/",
+		.install_dir = .{ .custom = ".." },
+	});
+	b.installDirectory(.{
+		.source_dir = largeAssets.path("fonts"),
+		.install_subdir = "assets/cubyz/fonts/",
+		.install_dir = .{ .custom = ".." },
+	});
+
 	const exe = b.addExecutable(.{
 		.name = "Cubyzig",
 		.root_source_file = b.path("src/main.zig"),
