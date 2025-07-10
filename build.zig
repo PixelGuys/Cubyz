@@ -160,12 +160,12 @@ pub fn build(b: *std.Build) !void {
 	b.installDirectory(.{
 		.source_dir = largeAssets.path("music"),
 		.install_subdir = "assets/cubyz/music/",
-		.install_dir = .{ .custom = ".." },
+		.install_dir = .{.custom = ".."},
 	});
 	b.installDirectory(.{
 		.source_dir = largeAssets.path("fonts"),
 		.install_subdir = "assets/cubyz/fonts/",
-		.install_dir = .{ .custom = ".." },
+		.install_dir = .{.custom = ".."},
 	});
 
 	const exe = b.addExecutable(.{
