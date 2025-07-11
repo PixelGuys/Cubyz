@@ -178,7 +178,7 @@ pub fn build(b: *std.Build) !void {
 		.name = "Cubyzig",
 		.root_module = mainModule,
 		//.sanitize_thread = true,
-		//.use_llvm = false,
+		.use_llvm = true,
 	});
 	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
