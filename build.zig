@@ -168,15 +168,19 @@ pub fn build(b: *std.Build) !void {
 		.install_dir = .{.custom = ".."},
 	});
 
-	const exe = b.addExecutable(.{
-		.name = "Cubyzig",
+	const mainModule = b.addModule("main", .{
 		.root_source_file = b.path("src/main.zig"),
 		.target = target,
 		.optimize = optimize,
+	});
+
+	const exe = b.addExecutable(.{
+		.name = "Cubyzig",
+		.root_module = mainModule,
 		//.sanitize_thread = true,
 		//.use_llvm = false,
 	});
-	exe.root_module.addImport("main", exe.root_module);
+	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
 
 	linkLibraries(b, exe, useLocalDeps);
@@ -193,13 +197,11 @@ pub fn build(b: *std.Build) !void {
 	run_step.dependOn(&run_cmd.step);
 
 	const exe_tests = b.addTest(.{
-		.root_source_file = b.path("src/main.zig"),
+		.root_module = mainModule,
 		.test_runner = .{.path = b.path("test/runner.zig"), .mode = .simple},
-		.target = target,
-		.optimize = optimize,
 	});
 	linkLibraries(b, exe_tests, useLocalDeps);
-	exe_tests.root_module.addImport("main", exe_tests.root_module);
+	exe_tests.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe_tests);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
 
@@ -210,16 +212,14 @@ pub fn build(b: *std.Build) !void {
 
 	const formatter = b.addExecutable(.{
 		.name = "CubyzigFormatter",
-		.root_source_file = b.path("src/formatter/format.zig"),
-		.target = target,
-		.optimize = optimize,
+		.root_module = b.addModule("format", .{
+			.root_source_file = b.path("src/formatter/format.zig"),
+			.target = target,
+			.optimize = optimize,
+		}),
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
-	formatter.root_module.addAnonymousImport("main", .{
-		.target = target,
-		.optimize = optimize,
-		.root_source_file = b.path("src/main.zig"),
-	});
+	formatter.root_module.addImport("main", mainModule);
 
 	const formatter_install = b.addInstallArtifact(formatter, .{});
 
@@ -234,16 +234,14 @@ pub fn build(b: *std.Build) !void {
 
 	const zig_fmt = b.addExecutable(.{
 		.name = "zig_fmt",
-		.root_source_file = b.path("src/formatter/fmt.zig"),
-		.target = target,
-		.optimize = optimize,
+		.root_module = b.addModule("fmt", .{
+			.root_source_file = b.path("src/formatter/fmt.zig"),
+			.target = target,
+			.optimize = optimize,
+		}),
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
-	zig_fmt.root_module.addAnonymousImport("main", .{
-		.target = target,
-		.optimize = optimize,
-		.root_source_file = b.path("src/main.zig"),
-	});
+	zig_fmt.root_module.addImport("main", mainModule);
 
 	const zig_fmt_install = b.addInstallArtifact(zig_fmt, .{});
 
