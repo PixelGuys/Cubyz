@@ -62,7 +62,7 @@ pub fn openWorld(name: []const u8) void {
 	};
 
 	while(!main.server.running.load(.acquire)) {
-		std.time.sleep(1_000_000);
+		std.Thread.sleep(1_000_000);
 	}
 	clientConnection.world = &main.game.testWorld;
 	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;

@@ -309,7 +309,7 @@ pub const Sync = struct { // MARK: Sync
 			const typ = try reader.readEnum(Command.PayloadType);
 			@setEvalBranchQuota(100000);
 			const payload: Command.Payload = switch(typ) {
-				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try std.meta.FieldType(Command.Payload, _typ).deserialize(reader, .server, source)),
+				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try @FieldType(Command.Payload, @tagName(_typ)).deserialize(reader, .server, source)),
 			};
 			executeCommand(payload, source);
 		}
@@ -2001,7 +2001,7 @@ pub fn save(self: Inventory, allocator: NeverFailingAllocator) ZonElement {
 	for(self._items, 0..) |stack, i| {
 		if(!stack.empty()) {
 			var buf: [1024]u8 = undefined;
-			zonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], stack.store(allocator));
+			zonObject.put(buf[0..std.fmt.printInt(&buf, i, 10, .lower, .{})], stack.store(allocator));
 		}
 	}
 	return zonObject;
@@ -2011,7 +2011,7 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 	for(self._items, 0..) |*stack, i| {
 		stack.clear();
 		var buf: [1024]u8 = undefined;
-		const stackZon = zon.getChild(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})]);
+		const stackZon = zon.getChild(buf[0..std.fmt.printInt(&buf, i, 10, .lower, .{})]);
 		if(stackZon == .object) {
 			stack.item = Item.init(stackZon) catch |err| {
 				const msg = stackZon.toStringEfficient(main.stackAllocator, "");
