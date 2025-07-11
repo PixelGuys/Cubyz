@@ -1,18 +1,13 @@
 # Game Design Principles
 This document is intended for contributors and may contain spoilers.
 
-## Cubyz's Genres
-The game will be able to switch genres on the fly depending on the player's location, goals, and motivation. Cubyz' key genres are Explore, Build, Strategy, Survive.
-- Explore: The world is full of structures, resources, and oddities for the player to collect.
-- Build: The player is free to build whenever they want, wherever they want.
-- Strategy: The player can experiment with different solutions to problems they face.
-- Survive: Cubyz has survival elements that can put the player to the test under certain circumstances.
+## What is Cubyz?
+Cubyz is a voxel sandbox game that aims to take advantage of the infinite world it provides. The player has free agency to do whatever they please, though their efforts will always be challenged.
 
-### Game loop
-In order to progress in the game, the player must face a genre change. The player is otherwise free to stay where they are in terms of progression.
-
-**Examples:**
-- Explore to Build: The player needs to interact with exploration to get the resources they want.
+### Cubyz' Progression
+We want to encourage interacting with different mechanics, such as exploring, building, crafting, and etc. Progression therefore requires the player to interact with all of these systems.
+Examples:
+- Explore to Build: The player needs to interact with exploration to get the resources they want for building.
 - Survive to Explore: Caves and structures may have enemies and traps that the player has to face if they want to explore in peace.
 - Strategize to Survive: Prepare for a trip with tools, weapons, and gear in order to make survival easier.
 - Build to Strategize: The player has to build defenses for events, invasions, and bosses. They also need to upgrade their workstations to allow for better gear.
@@ -25,10 +20,10 @@ Instead of creating seperate dimensions, we can fit these places physically into
 Teleportation makes the game less immersive, as it diminishes the exploring aspect and doesn't let the player get a good sense of the scale of the world.
 
 ### No Automation
-Automation completely removes the need to explore, so it's important that any mechanisms we add do not do what "exploring" can do.
+Having quick, infinite resources at the palm of players' hands discourages exploration, as the player will never need to forage or search for blocks they desire.
 
 ### Mobs Don't Respawn Naturally
-If the player wants to build or explore in a dangerous area, they will have to clear out the area first.
+Clearing a dangerous area of its monsters will make it safe to build and explore.
 This rule is also here to prevent mob farming.
 
 ### No Passive Animals
@@ -77,7 +72,7 @@ These are tiny things the player does in between larger events; examples include
 These moments are extremely important as they largely influence the player's mood, so making sure they're as satisfying and consistent as possible is a must.
 
 ### Make the World Feel Alive
-Creatures should perform behaviors outside of player input, such as hunting, playing, migrating, eating, or sleeping. This is to add to the game's immersion.
+To add immersion to the game, creatures should perform behaviors outside of player input, such as hunting, playing, migrating, eating, or sleeping.
 
 ## Balancing
 When balancing the game, keep in mind how players might interact with the world, the wildlife, and each other.
