@@ -65,7 +65,7 @@ const Socket = struct {
 			.addr = destination.ip,
 		};
 		std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-			std.log.info("Got error while sending to {}: {s}", .{destination, @errorName(err)});
+			std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 			return;
 		});
 	}
@@ -139,7 +139,7 @@ pub const Address = struct {
 
 	pub const localHost = 0x0100007f;
 
-	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+	pub fn format(self: Address, writer: anytype) !void {
 		if(self.isSymmetricNAT) {
 			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
 		} else {
@@ -295,7 +295,7 @@ const STUN = struct { // MARK: STUN
 					continue;
 				};
 				if(oldAddress) |other| {
-					std.log.info("{}", .{result});
+					std.log.info("{f}", .{result});
 					if(other.ip == result.ip and other.port == result.port) {
 						return result;
 					} else {
@@ -556,17 +556,17 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		if(self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
 			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{source}) catch unreachable;
+				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
-					std.log.err("Cannot connect user from external IP {}: {s}", .{source, @errorName(err)});
+					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});
 					return;
 				};
 				user.decreaseRefCount();
 			}
 		} else {
 			// TODO: Reduce the number of false alarms in the short period after a disconnect.
-			std.log.warn("Unknown connection from address: {}", .{source});
+			std.log.warn("Unknown connection from address: {f}", .{source});
 			std.log.debug("Message: {any}", .{data});
 		}
 	}
@@ -2025,7 +2025,7 @@ pub const Connection = struct { // MARK: Connection
 		self.tryReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
 			if(@errorReturnTrace()) |trace| {
-				std.log.info("{}", .{trace});
+				std.log.info("{f}", .{trace});
 			}
 			self.disconnect();
 		};

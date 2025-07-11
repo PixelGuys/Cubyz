@@ -48,7 +48,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		defer main.stackAllocator.free(data);
 		self.load(path, data) catch {
 			std.log.err("Corrupted region file: {s}", .{path});
-			if(@errorReturnTrace()) |trace| std.log.info("{}", .{trace});
+			if(@errorReturnTrace()) |trace| std.log.info("{f}", .{trace});
 		};
 		return self;
 	}

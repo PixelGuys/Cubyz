@@ -351,11 +351,10 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch(zon) {
 			.int => |value| {
-				std.fmt.formatInt(value, 10, .lower, .{}, list.writer()) catch unreachable;
+				list.writer().print("{d}", .{value}) catch unreachable;
 			},
 			.float => |value| {
-				var buf: [std.fmt.format_float.bufferSize(.scientific, @TypeOf(value))]u8 = undefined;
-				list.appendSlice(std.fmt.format_float.formatFloat(&buf, value, .{.mode = .scientific}) catch unreachable);
+				list.writer().print("{e}", .{value}) catch unreachable;
 			},
 			.bool => |value| {
 				if(value) {

@@ -34,7 +34,7 @@ fn discoverIpAddress() void {
 		ipAddress = main.globalAllocator.dupe(u8, @errorName(err));
 		return;
 	};
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{}", .{connection.?.externalAddress}) catch unreachable;
+	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{connection.?.externalAddress}) catch unreachable;
 	gotIpAddress.store(true, .release);
 }
 
