@@ -644,7 +644,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		break :blk null;
 	}) |addon| {
 		if(addon.kind == .directory) {
-			const path = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}) catch unreachable;
+			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			std.fs.cwd().access(path, .{}) catch continue;
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
@@ -680,7 +680,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		break :blk null;
 	}) |addon| {
 		if(addon.kind == .directory) {
-			const path = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}) catch unreachable;
+			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			std.fs.cwd().access(path, .{}) catch continue;
 			main.utils.file_monitor.removePath(path);

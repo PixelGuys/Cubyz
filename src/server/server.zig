@@ -444,7 +444,7 @@ pub fn start(name: []const u8, port: ?u16) void {
 	while(running.load(.monotonic)) {
 		const newTime = std.time.nanoTimestamp();
 		if(newTime -% lastTime < updateNanoTime) {
-			std.time.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
+			std.Thread.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
 			lastTime +%= updateNanoTime;
 		} else {
 			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime -% lastTime -% updateNanoTime))/1000000.0});

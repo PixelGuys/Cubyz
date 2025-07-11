@@ -1900,6 +1900,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint) void {
+			self.used = 0;
 			self.binding = binding;
 			self.createBuffer(size);
 			self.activeFence = 0;
@@ -2512,7 +2513,7 @@ pub const Image = struct { // MARK: Image
 	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}", .{path}) catch unreachable; // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		stb_image.stbi_set_flip_vertically_on_load(1);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
@@ -2526,7 +2527,7 @@ pub const Image = struct { // MARK: Image
 	pub fn readUnflippedFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}", .{path}) catch unreachable; // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
