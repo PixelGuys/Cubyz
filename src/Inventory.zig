@@ -324,6 +324,7 @@ pub const Sync = struct { // MARK: Sync
 			switch(zon) {
 				.object => inventory.inv.loadFromZon(zon),
 				.string, .stringOwned => |str| inventory.inv.fromBase64(str),
+				.null => {},
 				else => unreachable,
 			}
 			return inventory.inv.id;
@@ -373,6 +374,7 @@ pub const Sync = struct { // MARK: Sync
 					switch(inventoryZon) {
 						.object => inventory.inv.loadFromZon(inventoryZon),
 						.string, .stringOwned => |str| inventory.inv.fromBase64(str),
+						.null => {},
 						else => unreachable,
 					}
 				},
