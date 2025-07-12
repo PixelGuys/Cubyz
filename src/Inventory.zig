@@ -321,7 +321,11 @@ pub const Sync = struct { // MARK: Sync
 			defer mutex.unlock();
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
 			inventories.items[inventory.inv.id] = inventory;
-			inventory.inv.loadFromZon(zon);
+			switch(zon) {
+				.object => inventory.inv.loadFromZon(zon),
+				.string, .stringOwned => |str| inventory.inv.fromBase64(str),
+				else => unreachable,
+			}
 			return inventory.inv.id;
 		}
 
@@ -2002,15 +2006,7 @@ pub fn getAmount(self: Inventory, slot: usize) u16 {
 }
 
 pub fn save(self: Inventory, allocator: NeverFailingAllocator) ZonElement {
-	const zonObject = ZonElement.initObject(allocator);
-	zonObject.put("capacity", self._items.len);
-	for(self._items, 0..) |stack, i| {
-		if(!stack.empty()) {
-			var buf: [1024]u8 = undefined;
-			zonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], stack.store(allocator));
-		}
-	}
-	return zonObject;
+	return .{.stringOwned = self.toBase64(allocator)};
 }
 
 pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
@@ -2031,18 +2027,18 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 	}
 }
 
-fn toBase64(self: Inventory, allocator: NeverFailingAllocator) ![]const u8 {
+fn toBase64(self: Inventory, allocator: NeverFailingAllocator) []const u8 {
 	var writer = BinaryWriter.init(main.stackAllocator);
 	defer writer.deinit();
 
-	try self.toBytes(&writer);
+	self.toBytes(&writer);
 
 	const destination: []u8 = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(writer.data.items.len));
 	return std.base64.url_safe.Encoder.encode(destination, writer.data.items);
 }
 
-fn toBytes(self: Inventory, writer: *BinaryWriter) !void {
-	writer.writeVarInt(u32, self._items.len);
+fn toBytes(self: Inventory, writer: *BinaryWriter) void {
+	writer.writeVarInt(u32, @intCast(self._items.len));
 	for(self._items) |stack| {
 		stack.toBytes(writer);
 	}
