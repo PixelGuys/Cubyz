@@ -195,7 +195,7 @@ pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
 		const StorageServer = BlockEntityDataStorage(
 			struct {
-				id: ?u32,
+				pos: Vec3i,
 			},
 		);
 
@@ -210,16 +210,15 @@ pub const BlockEntityTypes = struct {
 			StorageServer.reset();
 		}
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
+		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 		}
-		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
-		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
@@ -232,11 +231,37 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
+		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
-		pub fn updateServerData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
-		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
-		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+			return updateServerData(pos, chunk, .{.createOrUpdate = reader});
+		}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
+				_ = StorageServer.remove(pos, chunk);
+				return;
+			}
+
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getOrPut(pos, chunk);
+			data.valuePtr.pos = pos;
+		}
+
+		pub const onStoreServerToClient = onStoreServerToDisk;
+		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getByIndex(dataIndex) orelse return;
+			const inventory = main.items.Inventory.init(main.stackAllocator, 20, .normal, .{.blockInventory = data.pos});
+			defer inventory.deinit(main.stackAllocator);
+
+			inventory.toBytes(writer);
+		}
+		
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 

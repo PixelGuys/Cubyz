@@ -2029,7 +2029,7 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 	}
 }
 
-fn toBase64(self: Inventory, allocator: NeverFailingAllocator) []const u8 {
+pub fn toBase64(self: Inventory, allocator: NeverFailingAllocator) []const u8 {
 	var writer = BinaryWriter.init(main.stackAllocator);
 	defer writer.deinit();
 
@@ -2039,14 +2039,14 @@ fn toBase64(self: Inventory, allocator: NeverFailingAllocator) []const u8 {
 	return std.base64.url_safe.Encoder.encode(destination, writer.data.items);
 }
 
-fn toBytes(self: Inventory, writer: *BinaryWriter) void {
+pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {
 	writer.writeVarInt(u32, @intCast(self._items.len));
 	for(self._items) |stack| {
 		stack.toBytes(writer);
 	}
 }
 
-fn fromBase64(self: Inventory, base64: []const u8) void {
+pub fn fromBase64(self: Inventory, base64: []const u8) void {
 	const destination: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
 	defer main.stackAllocator.free(destination);
 
@@ -2055,7 +2055,7 @@ fn fromBase64(self: Inventory, base64: []const u8) void {
 	fromBytes(self, &reader);
 }
 
-fn fromBytes(self: Inventory, reader: *BinaryReader) void {
+pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	var count = reader.readVarInt(u32) catch 0;
 	for(self._items) |*stack| {
 		if(count == 0) {
