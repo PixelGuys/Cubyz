@@ -489,7 +489,11 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			@floatCast(y),
 		};
 		if(grabbed and !ignoreDataAfterRecentGrab) {
-			deltas[deltaBufferPosition] += (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
+			var newDelta = (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
+			if(settings.invertMouseY) {
+				newDelta[1] *= -1;
+			}
+			deltas[deltaBufferPosition] += newDelta;
 			var averagedDelta: Vec2f = Vec2f{0, 0};
 			for(deltas) |delta| {
 				averagedDelta += delta;
