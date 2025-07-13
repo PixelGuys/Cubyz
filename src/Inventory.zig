@@ -1112,7 +1112,7 @@ pub const Command = struct { // MARK: Command
 		source: Source,
 
 		fn run(self: Open, _: NeverFailingAllocator, _: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
-			if (side == .server and self.source == .blockInventory) {
+			if(side == .server and self.source == .blockInventory) {
 				const pos = self.source.blockInventory;
 
 				const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
@@ -1222,13 +1222,13 @@ pub const Command = struct { // MARK: Command
 		allocator: NeverFailingAllocator,
 
 		fn run(self: Close, _: NeverFailingAllocator, _: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
-			if (user == null) {
+			if(user == null) {
 				return;
 			}
-			
+
 			const serverId = user.?.inventoryClientToServerIdMap.get(self.inv.id) orelse unreachable;
 			const source = Sync.ServerSide.inventories.items[serverId].source;
-			if (side == .server and source == .blockInventory) {
+			if(side == .server and source == .blockInventory) {
 				const pos = source.blockInventory;
 
 				const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
