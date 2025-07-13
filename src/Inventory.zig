@@ -317,8 +317,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, zon: ZonElement) u32 {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
 			inventories.items[inventory.inv.id] = inventory;
 			switch(zon) {
@@ -331,8 +330,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn destroyExternallyManagedInventory(invId: u32) void {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			std.debug.assert(inventories.items[invId].managed == .externallyManaged);
 			inventories.items[invId].deinit();
 		}
@@ -402,6 +400,11 @@ pub const Sync = struct { // MARK: Sync
 		fn getInventory(user: *main.server.User, clientId: u32) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
+			return inventories.items[serverId].inv;
+		}
+
+		pub fn getInventoryFromId(serverId: u32) Inventory {
+			main.utils.assertLocked(&mutex);
 			return inventories.items[serverId].inv;
 		}
 
@@ -2029,7 +2032,7 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 	}
 }
 
-pub fn toBase64(self: Inventory, allocator: NeverFailingAllocator) []const u8 {
+fn toBase64(self: Inventory, allocator: NeverFailingAllocator) []const u8 {
 	var writer = BinaryWriter.init(main.stackAllocator);
 	defer writer.deinit();
 
@@ -2046,7 +2049,7 @@ pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {
 	}
 }
 
-pub fn fromBase64(self: Inventory, base64: []const u8) void {
+fn fromBase64(self: Inventory, base64: []const u8) void {
 	const destination: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
 	defer main.stackAllocator.free(destination);
 

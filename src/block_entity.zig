@@ -195,9 +195,11 @@ pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
 		const StorageServer = BlockEntityDataStorage(
 			struct {
-				pos: Vec3i,
+				id: u32,
 			},
 		);
+
+		pub const chestSize = 20;
 
 		pub const id = "chest";
 		pub fn init() void {
@@ -217,12 +219,15 @@ pub const BlockEntityTypes = struct {
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			const data = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.id);
 		}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
-			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .normal, .{.blockInventory = pos});
+			const inventory = main.items.Inventory.init(main.globalAllocator, chestSize, .normal, .{.blockInventory = pos});
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
@@ -238,8 +243,15 @@ pub const BlockEntityTypes = struct {
 			return updateServerData(pos, chunk, .{.createOrUpdate = reader});
 		}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
-				_ = StorageServer.remove(pos, chunk);
+			const locked = main.items.Inventory.Sync.ServerSide.mutex.tryLock();
+			defer if (locked) {
+				main.items.Inventory.Sync.ServerSide.mutex.unlock();
+			};
+			
+			if(event == .remove) {
+				const data = StorageServer.remove(pos, chunk) orelse return;
+				std.debug.print("Hi\n", .{});
+				main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.id);
 				return;
 			}
 
@@ -247,20 +259,28 @@ pub const BlockEntityTypes = struct {
 			defer StorageServer.mutex.unlock();
 
 			const data = StorageServer.getOrPut(pos, chunk);
-			data.valuePtr.pos = pos;
+			if (data.foundExisting) return;
+			data.valuePtr.id = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(chestSize, .normal, .{.blockInventory = pos}, .null);
+			const inventory = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.valuePtr.id);
+			if (event.createOrUpdate.remaining.len != 0) {
+				inventory.fromBytes(event.createOrUpdate);
+			}
 		}
 
-		pub const onStoreServerToClient = onStoreServerToDisk;
 		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+
 			const data = StorageServer.getByIndex(dataIndex) orelse return;
-			const inventory = main.items.Inventory.init(main.stackAllocator, 20, .normal, .{.blockInventory = data.pos});
-			defer inventory.deinit(main.stackAllocator);
+			const inventory = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.id);
 
 			inventory.toBytes(writer);
 		}
+		
+		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};

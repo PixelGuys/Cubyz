@@ -1538,6 +1538,12 @@ pub fn assertLocked(mutex: *const std.Thread.Mutex) void { // MARK: assertLocked
 	}
 }
 
+pub fn assertLockedRecursive(mutex: *const std.Thread.Mutex.Recursive) void { // MARK: assertLocked()
+	if(builtin.mode == .Debug) {
+		std.debug.assert(!@constCast(mutex).tryLock());
+	}
+}
+
 pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 	if(builtin.mode == .Debug) {
 		std.debug.assert(!@constCast(lock).tryLock());
