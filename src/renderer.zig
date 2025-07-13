@@ -927,7 +927,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								}
 							}
 						},
-						else => {}
+						else => {},
 					}
 				}
 				if(!skipTagCheck) {
