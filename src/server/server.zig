@@ -349,12 +349,13 @@ fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
 
-	main.items.Inventory.Sync.ServerSide.deinit();
-
 	if(world) |_world| {
 		_world.deinit();
 	}
 	world = null;
+
+	main.items.Inventory.Sync.ServerSide.deinit();
+
 	command.deinit();
 }
 

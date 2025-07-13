@@ -250,7 +250,19 @@ pub const BlockEntityTypes = struct {
 			
 			if(event == .remove) {
 				const data = StorageServer.remove(pos, chunk) orelse return;
-				std.debug.print("Hi\n", .{});
+
+				const inventory = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.id);
+				for (inventory._items) |itemStack| {
+					if (itemStack.empty()) {
+						continue;
+					}
+
+					const position = @as(Vec3f, @floatFromInt(pos)) + @as(Vec3f, @splat(0.5));
+					const direction: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
+					const velocity = 0.5 + main.random.nextFloat(&main.seed);
+					main.server.world.?.drop(itemStack.clone(), position, direction, velocity);
+				}
+
 				main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.id);
 				return;
 			}
