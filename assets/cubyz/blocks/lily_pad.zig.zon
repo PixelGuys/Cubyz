@@ -5,6 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.degradable = true,
+	.waterPlaceable = true,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
 	.model = "cubyz:plane",

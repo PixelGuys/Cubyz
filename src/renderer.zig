@@ -917,8 +917,23 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		while(total_tMax < closestDistance) {
 			const block = mesh_storage.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) blk: {
-				for(block.blockTags()) |tag| {
-					if(tag == .fluid or tag == .air) break :blk; // TODO: Buckets could select fluids
+				var skipTagCheck = false;
+				if(item) |realItem| {
+					switch(realItem) {
+						.baseItem => |baseItem| {
+							if(baseItem.block()) |blockItem| {
+								if(blocks.Block.fromInt(blockItem).waterPlaceable() and std.mem.eql(u8, block.id(), "cubyz:water")) {
+									skipTagCheck = true;
+								}
+							}
+						},
+						else => {}
+					}
+				}
+				if(!skipTagCheck) {
+					for(block.blockTags()) |tag| {
+						if(tag == .fluid or tag == .air) break :blk; // TODO: Buckets could select fluids
+					}
 				}
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {

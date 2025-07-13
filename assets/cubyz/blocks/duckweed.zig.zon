@@ -4,6 +4,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
+	.waterPlaceable = true,
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,

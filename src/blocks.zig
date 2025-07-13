@@ -61,6 +61,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replacable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
+var _waterPlaceable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -124,6 +125,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
+	_waterPlaceable[size] = zon.get(bool, "waterPlaceable", false);
 	_replacable[size] = zon.get(bool, "replacable", false);
 	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
 	_transparent[size] = zon.get(bool, "transparent", false);
@@ -329,6 +331,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn selectable(self: Block) bool {
 		return _selectable[self.typ];
+	}
+
+	pub inline fn waterPlaceable(self: Block) bool {
+		return _waterPlaceable[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []BlockDrop {
