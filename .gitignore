@@ -16,3 +16,5 @@ test.png
 /assets/*
 !/assets/cubyz
 !/assets/backgrounds/default_background.png
+/assets/cubyz/music
+/assets/cubyz/fonts
