@@ -7,6 +7,8 @@ const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const Tool = main.items.Tool;
 const utils = main.utils;
+const BinaryWriter = utils.BinaryWriter;
+const BinaryReader = utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
@@ -315,17 +317,20 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, zon: ZonElement) u32 {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
 			inventories.items[inventory.inv.id] = inventory;
-			inventory.inv.loadFromZon(zon);
+			switch(zon) {
+				.object => inventory.inv.loadFromZon(zon),
+				.string, .stringOwned => |str| inventory.inv.fromBase64(str),
+				.null => {},
+				else => unreachable,
+			}
 			return inventory.inv.id;
 		}
 
 		pub fn destroyExternallyManagedInventory(invId: u32) void {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			std.debug.assert(inventories.items[invId].managed == .externallyManaged);
 			inventories.items[invId].deinit();
 		}
@@ -364,7 +369,12 @@ pub const Sync = struct { // MARK: Sync
 
 					const inventoryZon = playerData.getChild(@tagName(source));
 
-					inventory.inv.loadFromZon(inventoryZon);
+					switch(inventoryZon) {
+						.object => inventory.inv.loadFromZon(inventoryZon),
+						.string, .stringOwned => |str| inventory.inv.fromBase64(str),
+						.null => {},
+						else => unreachable,
+					}
 				},
 				.recipe => |recipe| {
 					for(0..recipe.sourceAmounts.len) |i| {
@@ -390,6 +400,11 @@ pub const Sync = struct { // MARK: Sync
 		fn getInventory(user: *main.server.User, clientId: u32) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
+			return inventories.items[serverId].inv;
+		}
+
+		pub fn getInventoryFromId(serverId: u32) Inventory {
+			main.utils.assertLocked(&mutex);
 			return inventories.items[serverId].inv;
 		}
 
@@ -1096,7 +1111,18 @@ pub const Command = struct { // MARK: Command
 		inv: Inventory,
 		source: Source,
 
-		fn run(_: Open, _: NeverFailingAllocator, _: *Command, _: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {}
+		fn run(self: Open, _: NeverFailingAllocator, _: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			if(side == .server and self.source == .blockInventory) {
+				const pos = self.source.blockInventory;
+
+				const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+				defer simChunk.decreaseRefCount();
+				const ch = simChunk.chunk.load(.unordered) orelse return;
+				ch.mutex.lock();
+				defer ch.mutex.unlock();
+				ch.setChanged();
+			}
+		}
 
 		fn finalize(self: Open, side: Side, reader: *utils.BinaryReader) !void {
 			if(side != .client) return;
@@ -1195,7 +1221,24 @@ pub const Command = struct { // MARK: Command
 		inv: Inventory,
 		allocator: NeverFailingAllocator,
 
-		fn run(_: Close, _: NeverFailingAllocator, _: *Command, _: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {}
+		fn run(self: Close, _: NeverFailingAllocator, _: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			if(user == null) {
+				return;
+			}
+
+			const serverId = user.?.inventoryClientToServerIdMap.get(self.inv.id) orelse unreachable;
+			const source = Sync.ServerSide.inventories.items[serverId].source;
+			if(side == .server and source == .blockInventory) {
+				const pos = source.blockInventory;
+
+				const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+				defer simChunk.decreaseRefCount();
+				const ch = simChunk.chunk.load(.unordered) orelse return;
+				ch.mutex.lock();
+				defer ch.mutex.unlock();
+				ch.setChanged();
+			}
+		}
 
 		fn finalize(self: Close, side: Side, reader: *utils.BinaryReader) !void {
 			if(side != .client) return;
@@ -1996,15 +2039,7 @@ pub fn getAmount(self: Inventory, slot: usize) u16 {
 }
 
 pub fn save(self: Inventory, allocator: NeverFailingAllocator) ZonElement {
-	const zonObject = ZonElement.initObject(allocator);
-	zonObject.put("capacity", self._items.len);
-	for(self._items, 0..) |stack, i| {
-		if(!stack.empty()) {
-			var buf: [1024]u8 = undefined;
-			zonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], stack.store(allocator));
-		}
-	}
-	return zonObject;
+	return .{.stringOwned = self.toBase64(allocator)};
 }
 
 pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
@@ -2022,5 +2057,51 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 			};
 			stack.amount = stackZon.get(u16, "amount", 0);
 		}
+	}
+}
+
+fn toBase64(self: Inventory, allocator: NeverFailingAllocator) []const u8 {
+	var writer = BinaryWriter.init(main.stackAllocator);
+	defer writer.deinit();
+
+	self.toBytes(&writer);
+
+	const destination: []u8 = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(writer.data.items.len));
+	return std.base64.url_safe.Encoder.encode(destination, writer.data.items);
+}
+
+pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {
+	writer.writeVarInt(u32, @intCast(self._items.len));
+	for(self._items) |stack| {
+		stack.toBytes(writer);
+	}
+}
+
+fn fromBase64(self: Inventory, base64: []const u8) void {
+	const destination: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
+	defer main.stackAllocator.free(destination);
+
+	std.base64.url_safe.Decoder.decode(destination, base64) catch unreachable;
+	var reader = BinaryReader.init(destination);
+	fromBytes(self, &reader);
+}
+
+pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
+	var count = reader.readVarInt(u32) catch 0;
+	for(self._items) |*stack| {
+		if(count == 0) {
+			stack.clear();
+			continue;
+		}
+		count -= 1;
+		stack.* = ItemStack.fromBytes(reader) catch |err| {
+			std.log.err("Failed to read item stack from bytes: {s}", .{@errorName(err)});
+			stack.clear();
+			continue;
+		};
+	}
+	for(0..count) |_| {
+		var stack = ItemStack.fromBytes(reader) catch continue;
+		stack.deinit();
 	}
 }

@@ -148,6 +148,8 @@ pub const User = struct { // MARK: User
 			return;
 		};
 
+		main.items.Inventory.Sync.ServerSide.mutex.lock();
+		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 		if(self.inventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
 		if(self.handInventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
 
@@ -347,12 +349,13 @@ fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
 
-	main.items.Inventory.Sync.ServerSide.deinit();
-
 	if(world) |_world| {
 		_world.deinit();
 	}
 	world = null;
+
+	main.items.Inventory.Sync.ServerSide.deinit();
+
 	command.deinit();
 }
 
