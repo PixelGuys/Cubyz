@@ -335,6 +335,7 @@ pub const collision = struct {
 	const VolumeProperties = struct {
 		terminalVelocity: f64,
 		density: f64,
+		maxDensity: f64,
 		mobility: f64,
 	};
 
@@ -359,6 +360,7 @@ pub const collision = struct {
 
 		var invTerminalVelocitySum: f64 = 0;
 		var densitySum: f64 = 0;
+		var maxDensity: f64 = defaults.maxDensity;
 		var mobilitySum: f64 = 0;
 		var volumeSum: f64 = 0;
 
@@ -388,6 +390,7 @@ pub const collision = struct {
 						mobilitySum += emptyVolume*defaults.mobility;
 						invTerminalVelocitySum += filledVolume/block.terminalVelocity();
 						densitySum += filledVolume*block.density();
+						maxDensity = @max(maxDensity, block.density());
 						mobilitySum += filledVolume*block.mobility();
 					} else {
 						invTerminalVelocitySum += gridVolume/defaults.terminalVelocity;
@@ -401,6 +404,7 @@ pub const collision = struct {
 		return .{
 			.terminalVelocity = volumeSum/invTerminalVelocitySum,
 			.density = densitySum/volumeSum,
+			.maxDensity = maxDensity,
 			.mobility = mobilitySum/volumeSum,
 		};
 	}
@@ -920,7 +924,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const playerDensity = 1.2;
 	var move: Vec3d = .{0, 0, 0};
 	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
-		const volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .mobility = 1.0});
+		const volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
 		const effectiveGravity = gravity*(playerDensity - volumeProperties.density)/playerDensity;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
 		var acc = Vec3d{0, 0, 0};
@@ -932,6 +936,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
 		const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else volumeProperties.mobility;
 		const density = if(Player.isFlying.load(.monotonic)) 0.0 else volumeProperties.density;
+		const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else volumeProperties.maxDensity;
 		const baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
@@ -942,7 +947,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
 
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
-		const lerpAmount: Vec3d = @splat(density);
+		const lerpAmount: Vec3d = @splat(density / @max(1.0, maxDensity));
 		const lerpedDir = if(density > 0.1) std.math.lerp(forward, camera.direction, lerpAmount) else forward;
 		const right = Vec3d{-forward[1], forward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
