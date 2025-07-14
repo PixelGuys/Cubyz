@@ -1897,6 +1897,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 			c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, bytes, null, flags);
 			self.ssbo.bind(self.binding);
 			self.capacity = size;
+			self.used = 0;
 		}
 
 		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint) void {
