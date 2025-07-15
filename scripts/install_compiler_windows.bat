@@ -14,7 +14,7 @@ IF "%arch%"=="" (
 	set arch=x86_64
 )
 
-set version=zig-windows-%arch%-%baseVersion%
+set version=zig-%arch%-windows-%baseVersion%
 
 if not exist compiler mkdir compiler
 if not exist compiler\version.txt copy NUL compiler\version.txt >NUL

@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: mlugg/setup-zig@v1
         with:
-          version: 0.14.0
+          version: 0.15.0-dev.1034+bd97b6618
       - run: sudo apt install libgl-dev libasound2-dev libx11-dev glslang-tools
       - run: wget -O /opt/hostedtoolcache/zig/0.14.0/x64/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.14.0/render.zig
       - run: zig build
