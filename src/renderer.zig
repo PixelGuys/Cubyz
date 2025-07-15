@@ -1053,6 +1053,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				currentBlockProgress = 0;
 			}
 			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			if(block.hasTag(.fluid) or block.hasTag(.air)) {
+				return;
+			}
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
