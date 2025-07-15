@@ -343,7 +343,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		/// null means naturally aligned
 		comptime alignment: ?Alignment,
 		n: usize,
-	) []align(if (alignment) |a| a.toByteUnits() else @alignOf(T)) T {
+	) []align(if(alignment) |a| a.toByteUnits() else @alignOf(T)) T {
 		return self.allocator.alignedAlloc(T, alignment, n) catch unreachable;
 	}
 
@@ -354,7 +354,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		comptime alignment: ?Alignment,
 		n: usize,
 		return_address: usize,
-	) []align(if (alignment) |a| a.toByteUnits() else @alignOf(T)) T {
+	) []align(if(alignment) |a| a.toByteUnits() else @alignOf(T)) T {
 		return self.allocator.allocAdvancedWithRetAddr(T, alignment, n, return_address) catch unreachable;
 	}
 
