@@ -64,10 +64,16 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-			std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
-			return;
-		});
+		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update
+			const result = posix.system.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			if(result < 0) std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())})
+			else std.debug.assert(@as(usize, @intCast(result)) == data.len);
+		} else {
+			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
+				return;
+			});
+		}
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
@@ -85,7 +91,7 @@ const Socket = struct {
 					else => |err| return std.os.windows.unexpectedWSAError(err),
 				}
 			} else if(length == 0) {
-				std.time.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
+				std.Thread.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
 			}
 		} else {
@@ -2218,7 +2224,7 @@ pub const Connection = struct { // MARK: Connection
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
-			std.time.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+			std.Thread.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
