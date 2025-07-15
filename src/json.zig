@@ -265,11 +265,10 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 	fn recurseToString(json: JsonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch(json) {
 			.JsonInt => |value| {
-				std.fmt.formatInt(value, 10, .lower, .{}, list.writer()) catch unreachable;
+				list.writer().print("{d}", .{value}) catch unreachable;
 			},
 			.JsonFloat => |value| {
-				var buf: [std.fmt.format_float.bufferSize(.scientific, @TypeOf(value))]u8 = undefined;
-				list.appendSlice(std.fmt.format_float.formatFloat(&buf, value, .{.mode = .scientific}) catch unreachable);
+				list.writer().print("{e}", .{value}) catch unreachable;
 			},
 			.JsonBool => |value| {
 				if(value) {

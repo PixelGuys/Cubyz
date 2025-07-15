@@ -231,7 +231,7 @@ fn initLogging() void {
 		return;
 	};
 
-	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
+	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
@@ -264,7 +264,9 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	defer allocator.free(string);
-	nosuspend std.io.getStdErr().writeAll(string) catch {};
+	const writer = std.debug.lockStderrWriter(&.{});
+	defer std.debug.unlockStderrWriter();
+	nosuspend writer.writeAll(string) catch {};
 }
 
 // MARK: Callbacks
@@ -682,7 +684,7 @@ pub fn main() void { // MARK: main()
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		} else {
-			std.time.sleep(16_000_000);
+			std.Thread.sleep(16_000_000);
 		}
 
 		const endRendering = std.time.nanoTimestamp();
@@ -696,7 +698,7 @@ pub fn main() void { // MARK: main()
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-			std.time.sleep(sleep);
+			std.Thread.sleep(sleep);
 		}
 		const begin = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;

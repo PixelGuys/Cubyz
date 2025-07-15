@@ -1717,7 +1717,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 			self.culledSortingCount += @intCast(self.blockBreakingFaces.items.len);
 			// Upload:
-			faceBuffers[std.math.log2_int(u32, self.pos.voxelSize)].uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
+			faceBuffers[self.transparentMesh.lod].uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
 			self.uploadChunkPosition();
 		}
 
