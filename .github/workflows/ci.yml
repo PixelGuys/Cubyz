@@ -18,8 +18,7 @@ jobs:
         with:
           version: 0.15.0-dev.1034+bd97b6618
       - run: sudo apt install libgl-dev libasound2-dev libx11-dev glslang-tools
-      - run: zigPath=$(command -v zig | sed 's/.\{3\}$//')
-      - run: wget -O $zigPath/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.15.0-dev.1034+bd97b6618/render.zig
+      - run: zigPath=$(command -v zig | sed 's/.\{3\}$//') wget -O $zigPath/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.15.0-dev.1034+bd97b6618/render.zig
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build test
