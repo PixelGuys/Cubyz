@@ -919,11 +919,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(block.typ != 0) blk: {
 				var fluidPlaceable = false;
 				if(item) |realItem| {
-					for(realItem.baseItem.tags()) |tag| {
-						if(tag == .fluidPlaceable) {
-							fluidPlaceable = true;
-							break;
-						}
+					if(realItem == .baseItem and realItem.baseItem.hasTag(.fluidPlaceable)) {
+						fluidPlaceable = true;
 					}
 				}
 				for(block.blockTags()) |tag| {
