@@ -231,7 +231,7 @@ fn initLogging() void {
 		return;
 	};
 
-	supportsANSIColors = true; // TODO: std.io.getStdOut().supportsAnsiEscapeCodes();
+	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
