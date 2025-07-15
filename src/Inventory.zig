@@ -2054,7 +2054,7 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 			stack.clear();
 			continue;
 		}
-		defer remainingCount -= 1;
+		remainingCount -= 1;
 		stack.* = ItemStack.fromBytes(reader) catch |err| {
 			std.log.err("Failed to read item stack from bytes: {s}", .{@errorName(err)});
 			stack.clear();
