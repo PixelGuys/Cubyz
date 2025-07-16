@@ -523,11 +523,22 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	pub var showItem: bool = true;
 	var cameraFollow: Vec3f = @splat(0);
 	var cameraFollowVel: Vec3f = @splat(0);
+
+	var swing: f32 = 0;
+	const swingAngle = Vec3f{1.0, 0.0, 0.0};
+	var prevSwingProgress: f32 = 0;
+
 	const damping: Vec3f = @splat(130);
 
 	pub fn update(deltaTime: f64) void {
 		if(deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
+		const currentSwingTime = main.renderer.MeshSelection.currentSwingTime;
+		const swingProgress = main.renderer.MeshSelection.currentSwingProgress / currentSwingTime;
+
+		const isSwinging = swingProgress != prevSwingProgress;
+
+		const targetSwingProgress: f32 = if(isSwinging) std.math.pow(f32, swingProgress, 3) else 0.0;
 
 		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eyeVel[2]*0.0075)), 0, 0};
 		playerVel = vec.clampMag(playerVel, 0.32);
@@ -537,7 +548,19 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
 
+		
+		if(targetSwingProgress < swing) {
+			swing = std.math.lerp(0.0, swing, std.math.pow(f32, 1 - 1 / (currentSwingTime * 0.000001 + 1), dt));
+		} else {
+			swing = targetSwingProgress;
+		}
+		if(std.math.isNan(swing)) {
+			swing = 0;
+		}
+		
+
 		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
+		prevSwingProgress = swingProgress;
 	}
 };
 
@@ -774,6 +797,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
+			const pivotRot: Vec3f = ItemDisplayManager.swingAngle * @as(Vec3f, @splat(ItemDisplayManager.swing));
+			const pivot: Vec3f = Vec3f{0.0, 0.0, 1.0};
 
 			const lightPos = @as(Vec3f, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
 			const blockPos: Vec3i = @intFromFloat(@floor(lightPos));
@@ -834,6 +859,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var modelMatrix = Mat4f.rotationZ(-rot[2]);
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
+			modelMatrix = modelMatrix.mul(Mat4f.translation(-pivot));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-pivotRot[2]));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-pivotRot[1]));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-pivotRot[0]));
+			modelMatrix = modelMatrix.mul(Mat4f.translation(pivot));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
 			if(!isBlock) {
 				if(item == .tool) {
