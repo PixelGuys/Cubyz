@@ -534,7 +534,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		if(deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 		const currentSwingTime = main.renderer.MeshSelection.currentSwingTime;
-		const swingProgress = main.renderer.MeshSelection.currentSwingProgress / currentSwingTime;
+		const swingProgress = main.renderer.MeshSelection.currentSwingProgress/currentSwingTime;
 
 		const isSwinging = swingProgress != prevSwingProgress;
 
@@ -550,7 +550,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 
 		
 		if(targetSwingProgress < swing) {
-			swing = std.math.lerp(0.0, swing, std.math.pow(f32, 1 - 1 / (currentSwingTime * 0.000001 + 1), dt));
+			swing = std.math.lerp(0.0, swing, std.math.pow(f32, 1 - 1/(currentSwingTime*0.000001 + 1), dt));
 		} else {
 			swing = targetSwingProgress;
 		}
@@ -797,7 +797,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
-			const pivotRot: Vec3f = ItemDisplayManager.swingAngle * @as(Vec3f, @splat(ItemDisplayManager.swing));
+			const pivotRot: Vec3f = ItemDisplayManager.swingAngle*@as(Vec3f, @splat(ItemDisplayManager.swing));
 			const pivot: Vec3f = Vec3f{0.0, 0.0, 1.0};
 
 			const lightPos = @as(Vec3f, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
