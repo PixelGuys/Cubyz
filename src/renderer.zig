@@ -888,6 +888,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var lastSelectedBlockPos: Vec3i = undefined;
 	var currentBlockProgress: f32 = 0;
 	pub var currentSwingProgress: f32 = 0;
+	pub var hasHit: bool = false;
+	pub const swingProgressHitTime: f32 = 0.4;
 	pub var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
@@ -1067,11 +1069,25 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
 					}
+					if(currentSwingProgress < currentSwingTime * swingProgressHitTime) {
+						hasHit = false;
+					}
 					currentSwingProgress += @floatCast(deltaTime);
-					while(currentSwingProgress > currentSwingTime) {
-						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage/block.blockHealth();
-						if(currentBlockProgress > 1) break;
+					while(currentSwingProgress > currentSwingTime * swingProgressHitTime) {
+						if(!hasHit and currentSwingProgress > currentSwingTime * swingProgressHitTime) {
+							hasHit = true;
+							currentBlockProgress += damage/block.blockHealth();
+						}
+						if(currentSwingProgress > currentSwingTime) {
+							currentSwingProgress -= currentSwingTime;
+							hasHit = false;
+						} else {
+							break;
+						}
+						if(currentBlockProgress > 1) {
+							hasHit = false;
+							break;
+						}
 					}
 					if(currentBlockProgress < 1) {
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
@@ -1100,6 +1116,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 			}
 		}
+	}
+
+	pub fn pauseBlockBreak() void {
+		currentSwingProgress = 0;
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {

@@ -530,16 +530,27 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 
 	const damping: Vec3f = @splat(130);
 
+	fn swingFunction(x: f32) f32 {
+		return x*x*(3 - 2*x) - 5*x*x*(1 - x);
+	}
+
 	pub fn update(deltaTime: f64) void {
 		if(deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 		const currentSwingTime = main.renderer.MeshSelection.currentSwingTime;
 		const swingProgress = main.renderer.MeshSelection.currentSwingProgress/currentSwingTime;
+		const swingProgressHitTime = main.renderer.MeshSelection.swingProgressHitTime;
 
 		const isSwinging = swingProgress != prevSwingProgress;
 
-		const targetSwingProgress: f32 = if(isSwinging) std.math.pow(f32, swingProgress, 3) else 0.0;
 
+		var targetSwingProgress: f32 = 0;
+		if(swingProgress < swingProgressHitTime) {
+			targetSwingProgress = swingFunction(swingProgress/swingProgressHitTime);
+		} else {
+			targetSwingProgress = std.math.pow(f32, (1 - swingProgress)/(1 - swingProgressHitTime), 2);
+		}
+		
 		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eyeVel[2]*0.0075)), 0, 0};
 		playerVel = vec.clampMag(playerVel, 0.32);
 
@@ -549,8 +560,8 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		cameraFollowVel = n1/(n2*n2);
 
 		
-		if(targetSwingProgress < swing) {
-			swing = std.math.lerp(0.0, swing, std.math.pow(f32, 1 - 1/(currentSwingTime*0.000001 + 1), dt));
+		if(!isSwinging) {
+			swing = std.math.lerp(0.0, swing, std.math.pow(f32, 1 - 1/(currentSwingTime*0.001 + 1), dt));
 		} else {
 			swing = targetSwingProgress;
 		}
