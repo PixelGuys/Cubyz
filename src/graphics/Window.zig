@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const settings = main.settings;
@@ -199,6 +200,7 @@ pub const Gamepad = struct {
 		}
 	};
 	pub fn downloadControllerMappings() void {
+		if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
 		const curTimestamp = std.time.nanoTimestamp();
 		const timestamp: i128 = blk: {
@@ -489,7 +491,11 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			@floatCast(y),
 		};
 		if(grabbed and !ignoreDataAfterRecentGrab) {
-			deltas[deltaBufferPosition] += (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
+			var newDelta = (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
+			if(settings.invertMouseY) {
+				newDelta[1] *= -1;
+			}
+			deltas[deltaBufferPosition] += newDelta;
 			var averagedDelta: Vec2f = Vec2f{0, 0};
 			for(deltas) |delta| {
 				averagedDelta += delta;

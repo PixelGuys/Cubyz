@@ -489,6 +489,73 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				}
 			} else |_| {}
 		}
+		convert_player_data_to_binary: { // TODO: Remove after #480
+			const playerDataPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path});
+			defer main.stackAllocator.free(playerDataPath);
+
+			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch |err| {
+				std.log.err("Could not open player data directory to migrate file format: {s}. Conversion aborted.", .{@errorName(err)});
+				break :convert_player_data_to_binary;
+			};
+			defer playerDataDirectory.close();
+
+			{
+				var walker = playerDataDirectory.walk(main.stackAllocator.allocator) catch unreachable;
+				defer walker.deinit();
+
+				while(walker.next() catch |err| {
+					std.log.err("Couldn't fetch next directory entry due to an error: {s}", .{@errorName(err)});
+					break :convert_player_data_to_binary;
+				}) |entry| {
+					if(entry.kind != .file) continue;
+					if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
+
+					const absolutePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{playerDataPath, entry.path}) catch unreachable;
+					defer main.stackAllocator.free(absolutePath);
+
+					const playerData = files.readToZon(main.stackAllocator, absolutePath) catch |err| {
+						std.log.err("Could not read player data file {s}: {s}.", .{absolutePath, @errorName(err)});
+						continue;
+					};
+					defer playerData.deinit(main.stackAllocator);
+
+					const entryKeys: [2][]const u8 = .{
+						"playerInventory",
+						"hand",
+					};
+					for(entryKeys) |key| {
+						const zon = playerData.getChild(key);
+						switch(zon) {
+							.object => {
+								var temp: main.items.Inventory = undefined;
+								temp._items = main.stackAllocator.alloc(ItemStack, zon.get(u32, "count", 0));
+								for(temp._items) |*stack| {
+									stack.* = ItemStack{};
+								}
+								defer {
+									for(temp._items) |*stack| {
+										stack.deinit();
+									}
+									main.stackAllocator.free(temp._items);
+								}
+
+								temp.loadFromZon(zon);
+								const base64Data = temp.toBase64(main.stackAllocator);
+								const old = playerData.object.fetchPut(key, .{.stringOwned = base64Data}) catch unreachable orelse unreachable;
+								old.value.deinit(main.stackAllocator);
+							},
+							.string, .stringOwned, .null => continue,
+							else => unreachable,
+						}
+					}
+					files.writeZon(absolutePath, playerData) catch |err| {
+						std.log.err("Could not write player data file {s}: {s}.", .{absolutePath, @errorName(err)});
+						continue;
+					};
+				}
+			}
+		}
+
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
@@ -863,10 +930,26 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
-		main.items.Inventory.Sync.ServerSide.mutex.lock();
-		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
-		user.inventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, playerData.getChild("playerInventory"));
-		user.handInventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(1, .normal, .{.hand = user.id}, playerData.getChild("hand"));
+
+		const base64EncodedEmptyInventory = "AA==";
+		{
+			const base64 = playerData.get([]const u8, "playerInventory", base64EncodedEmptyInventory);
+			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
+			defer main.stackAllocator.free(bytes);
+
+			std.base64.url_safe.Decoder.decode(bytes, base64) catch unreachable;
+			var reader: main.utils.BinaryReader = .init(bytes);
+			user.inventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, &reader);
+		}
+		{
+			const base64 = playerData.get([]const u8, "hand", base64EncodedEmptyInventory);
+			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
+			defer main.stackAllocator.free(bytes);
+
+			std.base64.url_safe.Decoder.decode(bytes, base64) catch unreachable;
+			var reader: main.utils.BinaryReader = .init(bytes);
+			user.handInventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(1, .normal, .{.hand = user.id}, &reader);
+		}
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
@@ -894,11 +977,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
-				playerZon.put("playerInventory", inv.save(main.stackAllocator));
+				playerZon.put("playerInventory", inv.toBase64(main.stackAllocator));
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
-				playerZon.put("hand", inv.save(main.stackAllocator));
+				playerZon.put("hand", inv.toBase64(main.stackAllocator));
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
 
