@@ -525,13 +525,14 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	var cameraFollowVel: Vec3f = @splat(0);
 
 	var swing: f32 = 0;
-	const swingAngle = Vec3f{1.0, 0.0, 0.0};
+	const swingAngle = Vec3f{1.0, 0.0, -0.5};
+	const swingOffset = Vec3f{0.4, 0.0, 0.2};
 	var prevSwingProgress: f32 = 0;
 
 	const damping: Vec3f = @splat(130);
 
 	fn swingFunction(x: f32) f32 {
-		return x*x*(3 - 2*x) - 5*x*x*(1 - x);
+		return x*x*(3 - 2*x) - 8*x*x*(1 - x);
 	}
 
 	pub fn update(deltaTime: f64) void {
@@ -809,6 +810,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 			const pivotRot: Vec3f = ItemDisplayManager.swingAngle*@as(Vec3f, @splat(ItemDisplayManager.swing));
+			const swingOffset: Vec3f = ItemDisplayManager.swingOffset*@as(Vec3f, @splat(ItemDisplayManager.swing));
 			const pivot: Vec3f = Vec3f{0.0, 0.0, 1.0};
 
 			const lightPos = @as(Vec3f, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
@@ -876,6 +878,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-pivotRot[0]));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(pivot));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
+			modelMatrix = modelMatrix.mul(Mat4f.translation(swingOffset));
 			if(!isBlock) {
 				if(item == .tool) {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
