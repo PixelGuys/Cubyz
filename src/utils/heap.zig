@@ -17,7 +17,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 	pub fn init(backingAllocator: NeverFailingAllocator, size: u31) StackAllocator {
 		return .{
 			.backingAllocator = backingAllocator,
-			.buffer = backingAllocator.alignedAlloc(u8, 4096, size),
+			.buffer = backingAllocator.alignedAlloc(u8, .fromByteUnits(4096), size),
 			.index = 0,
 		};
 	}
@@ -341,9 +341,9 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		self: NeverFailingAllocator,
 		comptime T: type,
 		/// null means naturally aligned
-		comptime alignment: ?u29,
+		comptime alignment: ?Alignment,
 		n: usize,
-	) []align(alignment orelse @alignOf(T)) T {
+	) []align(if(alignment) |a| a.toByteUnits() else @alignOf(T)) T {
 		return self.allocator.alignedAlloc(T, alignment, n) catch unreachable;
 	}
 
@@ -351,10 +351,10 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		self: NeverFailingAllocator,
 		comptime T: type,
 		/// null means naturally aligned
-		comptime alignment: ?u29,
+		comptime alignment: ?Alignment,
 		n: usize,
 		return_address: usize,
-	) []align(alignment orelse @alignOf(T)) T {
+	) []align(if(alignment) |a| a.toByteUnits() else @alignOf(T)) T {
 		return self.allocator.allocAdvancedWithRetAddr(T, alignment, n, return_address) catch unreachable;
 	}
 
@@ -483,6 +483,7 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 	}
 
 	pub fn shrinkAndFree(self: *NeverFailingArenaAllocator) void {
+		if(true) return;
 		const node = self.arena.state.buffer_list.first orelse return;
 		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
 		const dataSize = std.mem.alignForward(usize, @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index, @alignOf(std.SinglyLinkedList(usize).Node));
@@ -570,7 +571,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 			main.utils.assertLocked(&pool.mutex);
 			pool.totalAllocations += 1;
 			pool.freeAllocations += 1;
-			const mem = pool.arena.allocator().alignedAlloc(u8, item_alignment, item_size);
+			const mem = pool.arena.allocator().alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);
 			return mem[0..item_size]; // coerce slice to array pointer
 		}
 	};
@@ -634,7 +635,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 			fn allocNew(self: *Bucket, arena: NeverFailingAllocator, size: usize) [*]align(alignment) u8 {
 				self.totalAllocations += 1;
 				self.freeAllocations += 1;
-				return arena.alignedAlloc(u8, alignment, size).ptr;
+				return arena.alignedAlloc(u8, .fromByteUnits(alignment), size).ptr;
 			}
 		};
 
