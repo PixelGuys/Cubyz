@@ -931,6 +931,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
 
+		main.items.Inventory.Sync.ServerSide.mutex.lock();
+		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 		const base64EncodedEmptyInventory = "AA==";
 		{
 			const base64 = playerData.get([]const u8, "playerInventory", base64EncodedEmptyInventory);
