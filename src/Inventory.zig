@@ -330,10 +330,19 @@ pub const Sync = struct { // MARK: Sync
 			inventories.items[invId].deinit();
 		}
 
-		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
+		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) !void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
 				.sharedTestingInventory, .recipe, .blockInventory, .playerInventory, .hand => {
+					switch(source) {
+						.playerInventory, .hand => |id| {
+							if(id != user.id) {
+								std.log.err("Player {s} tried to access the inventory of another player.", .{user.name});
+								return error.Invalid;
+							}
+						},
+						else => {},
+					}
 					for(inventories.items) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
@@ -351,21 +360,7 @@ pub const Sync = struct { // MARK: Sync
 
 			switch(source) {
 				.sharedTestingInventory => {},
-				.playerInventory, .hand => {
-					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
-					defer main.stackAllocator.free(dest);
-					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
-
-					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.path, hashedName}) catch unreachable;
-					defer main.stackAllocator.free(path);
-
-					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
-					defer playerData.deinit(main.stackAllocator);
-
-					const inventoryZon = playerData.getChild(@tagName(source));
-
-					inventory.inv.loadFromZon(inventoryZon);
-				},
+				.playerInventory, .hand => unreachable, // Should be loaded on player creation
 				.recipe => |recipe| {
 					for(0..recipe.sourceAmounts.len) |i| {
 						inventory.inv._items[i].amount = recipe.sourceAmounts[i];
@@ -1183,7 +1178,7 @@ pub const Command = struct { // MARK: Command
 				inline .normal, .creative, .crafting => |tag| tag,
 				.workbench => .{.workbench = ToolTypeIndex.fromId(reader.remaining) orelse return error.Invalid},
 			};
-			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
+			try Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
 				.inv = Sync.ServerSide.getInventory(user.?, id) orelse return error.Invalid,
 				.source = source,
