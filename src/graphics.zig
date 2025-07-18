@@ -782,8 +782,14 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	};
 
 	pub fn init(allocator: NeverFailingAllocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) TextBuffer {
-		var self: TextBuffer = undefined;
-		self.alignment = alignment;
+		var self: TextBuffer = .{
+			.alignment = alignment,
+			.width = 1e9,
+			.buffer = null,
+			.glyphs = &.{},
+			.lines = .init(allocator),
+			.lineBreaks = .init(allocator),
+		};
 		// Parse the input text:
 		var parser = Parser{
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
@@ -796,12 +802,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer parser.fontEffects.deinit();
 		defer parser.parsedText.deinit();
 		defer parser.characterIndex.deinit();
-		self.lines = .init(allocator);
-		self.lineBreaks = .init(allocator);
 		parser.parse();
 		if(parser.parsedText.items.len == 0) {
 			self.lineBreaks.append(.{.index = 0, .width = 0});
-			self.glyphs = &[0]GlyphData{};
 			return self;
 		}
 
