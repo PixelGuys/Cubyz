@@ -526,9 +526,9 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 
 	var swing: f32 = 0;
 	var swingStart: f32 = 0;
+	pub var isSwinging: bool = false;
 	const swingAngle = Vec3f{0.75, 0.0, -0.3};
 	const swingOffset = Vec3f{0.4, 0.0, 1.2};
-	var prevSwingProgress: f32 = 0;
 
 	const damping: Vec3f = @splat(130);
 
@@ -552,8 +552,6 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const swingProgress = main.renderer.MeshSelection.currentSwingProgress/currentSwingTime;
 		const swingProgressHitTime = main.renderer.MeshSelection.swingProgressHitTime;
 		const undertimeFactor = main.renderer.MeshSelection.undertimeFactor;
-
-		const isSwinging = swingProgress != prevSwingProgress;
 
 
 		var targetSwingProgress: f32 = 0;
@@ -584,7 +582,6 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		
 
 		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
-		prevSwingProgress = swingProgress;
 	}
 };
 

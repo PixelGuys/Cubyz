@@ -1043,6 +1043,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
 				return;
 			}
+			itemdrop.ItemDisplayManager.isSwinging = true;
 
 			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
@@ -1126,6 +1127,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		currentSwingProgress = 0;
 		undertimeFactor = 1.0;
 		itemdrop.ItemDisplayManager.updateUndertime();
+		itemdrop.ItemDisplayManager.isSwinging = false;
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
