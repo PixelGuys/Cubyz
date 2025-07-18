@@ -525,8 +525,8 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	var cameraFollowVel: Vec3f = @splat(0);
 
 	var swing: f32 = 0;
-	const swingAngle = Vec3f{1.0, 0.0, -0.5};
-	const swingOffset = Vec3f{0.4, 0.0, 0.2};
+	const swingAngle = Vec3f{0.75, 0.0, -0.3};
+	const swingOffset = Vec3f{0.4, 0.0, 1.2};
 	var prevSwingProgress: f32 = 0;
 
 	const damping: Vec3f = @splat(130);
@@ -562,7 +562,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 
 		
 		if(!isSwinging) {
-			swing = std.math.lerp(0.0, swing, std.math.pow(f32, 1 - 1/(currentSwingTime*0.001 + 1), dt));
+			swing *= std.math.pow(f32, 0.05, dt);
 		} else {
 			swing = targetSwingProgress;
 		}
