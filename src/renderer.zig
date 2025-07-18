@@ -1082,6 +1082,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if(currentSwingProgress > currentSwingTime) {
 							currentSwingProgress -= currentSwingTime;
 							hasHit = false;
+							undertimeFactor = 1.0;
+							itemdrop.ItemDisplayManager.updateUndertime();
 						} else {
 							break;
 						}
@@ -1100,6 +1102,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						return;
 					} else {
 						undertimeFactor = 1 - (currentBlockProgress - 1)*block.blockHealth()/damage;
+						itemdrop.ItemDisplayManager.updateUndertime();
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 					}
