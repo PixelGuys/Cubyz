@@ -1962,11 +1962,11 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				return result;
 			} else {
 				std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{@as(usize, self.capacity)*@sizeOf(Entry) >> 20, (@as(usize, self.capacity)*@sizeOf(Entry) >> 20)*2});
+				if(@as(usize, self.capacity)*@sizeOf(Entry)*2 > 1 << 31) @panic("OpenGL 2 GiB buffer size limit reached. Please lower your render distance.");
 				const oldBuffer = self.ssbo;
 				defer oldBuffer.deinit();
 				const oldCapacity = self.capacity;
 				self.createBuffer(self.capacity*|2); // TODO: Is there a way to free the old buffer before creating the new one?
-				if(self.capacity == oldCapacity) @panic("Not enough addressable GPU memory available.");
 				self.used += self.capacity - oldCapacity;
 				self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
 
