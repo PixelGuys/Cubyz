@@ -891,6 +891,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub var hasHit: bool = false;
 	pub const swingProgressHitTime: f32 = 0.4;
 	pub var currentSwingTime: f32 = 0;
+	pub var undertimeFactor: f32 = 1.0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var selectionFace: chunk.Neighbor = undefined;
@@ -1064,7 +1065,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
-					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.5;
+					const swingTime = (if(isTool) stack.item.?.tool.swingTime else 0.5)*undertimeFactor;
 					if(currentSwingTime != swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
@@ -1098,7 +1099,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 						return;
 					} else {
-						currentSwingProgress += (currentBlockProgress - 1)*block.blockHealth()/damage*currentSwingTime;
+						undertimeFactor = 1 - (currentBlockProgress - 1)*block.blockHealth()/damage;
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 					}
