@@ -587,6 +587,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		var lastTime: i64 = networkTimestamp();
 		while(self.running.load(.monotonic)) {
+			main.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
 			if(self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {

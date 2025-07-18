@@ -55,11 +55,80 @@ pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
+	GarbageCollection.addThread();
 }
 
 pub fn deinitThreadLocals() void {
 	stackAllocatorBase.deinit();
+	GarbageCollection.removeThread();
 }
+
+pub const GarbageCollection = struct {
+	var sharedState: std.atomic.Value(u32) = .init(0);
+	threadlocal var threadCycle: u1 = undefined;
+	threadlocal var lastSyncPointTime: i64 = undefined;
+	// TODO: Free lists
+
+	const State = packed struct {
+		waitingThreads: u16 = 0,
+		totalThreads: u15 = 0,
+		cycle: u1 = 0,
+	};
+
+	fn addThread() void {
+		const old: State = @bitCast(sharedState.fetchAdd(@bitCast(State{.totalThreads = 1}), .monotonic));
+		_ = old.totalThreads + 1; // Assert no overflow
+		threadCycle = old.cycle;
+		lastSyncPointTime = std.time.milliTimestamp();
+	}
+
+	fn removeThread() void {
+		const old: State = @bitCast(sharedState.fetchSub(@bitCast(State{.totalThreads = 1}), .monotonic));
+		_ = old.totalThreads - 1; // Assert no overflow
+		if(old.cycle != threadCycle) removeThreadFromWaiting();
+		const newTime = std.time.milliTimestamp();
+		if(newTime -% lastSyncPointTime > 10_000) {
+			std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
+			std.debug.dumpCurrentStackTrace(null);
+		}
+	}
+
+	fn assertAllThreadsStopped() void {
+		std.debug.assert(sharedState.load(.unordered) & ~@as(u32, 0x7fffffff) == 0);
+	}
+
+	fn removeThreadFromWaiting() void {
+		const old: State = @bitCast(sharedState.fetchSub(@bitCast(State{.waitingThreads = 1}), .acq_rel));
+		_ = old.waitingThreads - 1; // Assert no overflow
+		threadCycle = old.cycle;
+
+		// Start a new cycle
+		if(old.waitingThreads == 1) {
+			var cur = sharedState.load(.unordered);
+			while(true) {
+				var new: State = @bitCast(cur);
+				new.waitingThreads = new.totalThreads;
+				new.cycle +%= 1;
+				cur = sharedState.cmpxchgWeak(cur, @bitCast(new), .monotonic, .monotonic) orelse break;
+			}
+		}
+	}
+
+	/// Must be called when no objects originating from other threads are held on the current function stack
+	pub fn syncPoint() void {
+		const newTime = std.time.milliTimestamp();
+		if(newTime -% lastSyncPointTime > 10_000) {
+			std.log.err("No sync point executed in {} ms. Did you forget to add a sync point in the thread's main loop", .{newTime -% lastSyncPointTime});
+			std.debug.dumpCurrentStackTrace(null);
+		}
+		lastSyncPointTime = newTime;
+
+		const old: State = @bitCast(sharedState.load(.unordered));
+		if(old.cycle == threadCycle) return;
+		removeThreadFromWaiting();
+		// TODO: Free all the data here and swap lists
+	}
+};
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 	return str[0..len];
@@ -549,6 +618,7 @@ pub fn main() void { // MARK: main()
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
+	defer GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
 
@@ -672,6 +742,7 @@ pub fn main() void { // MARK: main()
 	audio.setMusic("cubyz:cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		GarbageCollection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);
