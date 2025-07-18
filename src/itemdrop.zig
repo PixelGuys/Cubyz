@@ -560,7 +560,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		} else {
 			targetSwingProgress = std.math.pow(f32, (1 - swingProgress)/(1 - swingProgressHitTime), 2);
 		}
-		
+
 		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eyeVel[2]*0.0075)), 0, 0};
 		playerVel = vec.clampMag(playerVel, 0.32);
 
