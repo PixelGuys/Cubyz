@@ -749,15 +749,15 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 
 		/// Returns the biggest element and removes it from the heap.
 		/// If empty blocks until a new object is added or the datastructure is closed.
-		pub fn extractMax(self: *@This()) !T {
+		pub fn extractMax(self: *@This()) error{Timeout, Closed}!T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 
 			while(true) {
 				if(self.size == 0) {
 					self.waitingThreadCount += 1;
-					self.waitingThreads.wait(&self.mutex);
-					self.waitingThreadCount -= 1;
+					defer self.waitingThreadCount -= 1;
+					try self.waitingThreads.timedWait(&self.mutex, 100_000_000);
 				} else {
 					const ret = self.array[0];
 					self.removeIndex(0);
@@ -909,9 +909,13 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		defer main.deinitThreadLocals();
 
 		var lastUpdate = std.time.milliTimestamp();
-		while(true) {
+		outer: while(true) {
+			main.GarbageCollection.syncPoint();
 			{
-				const task = self.loadList.extractMax() catch break;
+				const task = self.loadList.extractMax() catch |err| switch(err) {
+					error.Timeout => continue :outer,
+					error.Closed => break :outer,
+				};
 				self.currentTasks[id].store(task.vtable, .monotonic);
 				const start = std.time.microTimestamp();
 				task.vtable.run(task.self);
