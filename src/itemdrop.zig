@@ -553,7 +553,6 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const swingProgressHitTime = main.renderer.MeshSelection.swingProgressHitTime;
 		const undertimeFactor = main.renderer.MeshSelection.undertimeFactor;
 
-
 		var targetSwingProgress: f32 = 0;
 		if(swingProgress < swingProgressHitTime) {
 			targetSwingProgress = swingFunction(swingProgress/swingProgressHitTime, undertimeFactor);
@@ -570,7 +569,6 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
 
-		
 		if(!isSwinging) {
 			swing *= std.math.pow(f32, 0.05, dt);
 		} else {
@@ -579,7 +577,6 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		if(std.math.isNan(swing)) {
 			swing = 0;
 		}
-		
 
 		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
 	}
