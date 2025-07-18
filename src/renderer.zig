@@ -1124,6 +1124,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn pauseBlockBreak() void {
 		currentSwingProgress = 0;
+		undertimeFactor = 1.0;
+		itemdrop.ItemDisplayManager.updateUndertime();
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
