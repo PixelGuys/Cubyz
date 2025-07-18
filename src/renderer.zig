@@ -1071,12 +1071,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
 					}
-					if(currentSwingProgress < currentSwingTime * swingProgressHitTime) {
+					if(currentSwingProgress < currentSwingTime*swingProgressHitTime) {
 						hasHit = false;
 					}
 					currentSwingProgress += @floatCast(deltaTime);
-					while(currentSwingProgress > currentSwingTime * swingProgressHitTime) {
-						if(!hasHit and currentSwingProgress > currentSwingTime * swingProgressHitTime) {
+					while(currentSwingProgress > currentSwingTime*swingProgressHitTime) {
+						if(!hasHit and currentSwingProgress > currentSwingTime*swingProgressHitTime) {
 							hasHit = true;
 							currentBlockProgress += damage/block.blockHealth();
 						}

@@ -557,7 +557,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		var targetSwingProgress: f32 = 0;
 		if(swingProgress < swingProgressHitTime) {
 			targetSwingProgress = swingFunction(swingProgress/swingProgressHitTime, undertimeFactor);
-		targetSwingProgress = targetSwingProgress*(1 - swingStart) + swingStart;
+			targetSwingProgress = targetSwingProgress*(1 - swingStart) + swingStart;
 		} else {
 			targetSwingProgress = std.math.pow(f32, (1 - swingProgress)/(1 - swingProgressHitTime), 2);
 		}
