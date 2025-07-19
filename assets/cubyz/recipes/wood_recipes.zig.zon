@@ -144,7 +144,7 @@
 		.output = "cubyz:sign/willow",
 	},
 	.{
-		.inputs = .{"cubyz:cactus"},
+		.inputs = .{"cubyz:log/cactus"},
 		.output = "2 cubyz:cactus_arm",
 	},
 	.{
