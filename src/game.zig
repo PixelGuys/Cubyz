@@ -1032,12 +1032,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 			}
 
-			const threshold: f64 = 0.1;
-			const mask = @abs(movementDir) < @as(Vec3d, @splat(threshold));
-			movementDir = @select(f64, mask, @as(Vec3d, @splat(0.0)), movementDir);
-
 			if(movementSpeed != 0 and vec.lengthSquare(movementDir) != 0) {
-				movementDir = vec.normalize(movementDir);
+				if(vec.lengthSquare(movementDir) > 1) {
+					movementDir = vec.normalize(movementDir);
+				}
 				acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 			}
 
