@@ -921,7 +921,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const airTerminalVelocity = 90.0;
 	const airFrictionCoefficient = gravity/airTerminalVelocity; // λ = a/v in equillibrium
-	const playerDensity = 1.2;
+	const playerDensity = 1.0;
 	var move: Vec3d = .{0, 0, 0};
 	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		const volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
