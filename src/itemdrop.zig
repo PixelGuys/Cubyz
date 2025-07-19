@@ -532,8 +532,8 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 
 	const damping: Vec3f = @splat(130);
 
-	fn swingFunction(x: f32, undertimeFactor: f32) f32 {
-		return x*x*(3 - 2*x) - 8*undertimeFactor*x*x*(1 - x);
+	fn swingFunction(x: f32, undertimeFactor: f32, swingTime: f32) f32 {
+		return x*x*(3 - 2*x) - 10*undertimeFactor*x*x*(1 - x)/(1 + 1/swingTime);
 	}
 
 	pub fn updateUndertime() void {
@@ -555,7 +555,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 
 		var targetSwingProgress: f32 = 0;
 		if(swingProgress < swingProgressHitTime) {
-			targetSwingProgress = swingFunction(swingProgress/swingProgressHitTime, undertimeFactor);
+			targetSwingProgress = swingFunction(swingProgress/swingProgressHitTime, undertimeFactor, currentSwingTime);
 			targetSwingProgress = targetSwingProgress*(1 - swingStart) + swingStart;
 		} else {
 			targetSwingProgress = std.math.pow(f32, (1 - swingProgress)/(1 - swingProgressHitTime), 2);
