@@ -1974,6 +1974,10 @@ pub fn breakBlock(self: Inventory, slot: u32, deltaTime: f64) void {
 	main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
 }
 
+pub fn pauseBlockBreak() void {
+	main.renderer.MeshSelection.pauseBlockBreak();
+}
+
 pub fn size(self: Inventory) usize {
 	return self._items.len;
 }

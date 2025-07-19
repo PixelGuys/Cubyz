@@ -675,6 +675,10 @@ pub const Player = struct { // MARK: Player
 		inventory.breakBlock(selectedSlot, deltaTime);
 	}
 
+	pub fn pauseBlockBreak() void {
+		Inventory.pauseBlockBreak();
+	}
+
 	pub fn acquireSelectedBlock() void {
 		if(main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
@@ -883,6 +887,7 @@ pub fn pressBreak() void {
 
 pub fn releaseBreak() void {
 	nextBlockBreakTime = null;
+	Player.pauseBlockBreak();
 }
 
 pub fn pressAcquireSelectedBlock() void {

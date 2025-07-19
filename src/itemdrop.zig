@@ -523,11 +523,43 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	pub var showItem: bool = true;
 	var cameraFollow: Vec3f = @splat(0);
 	var cameraFollowVel: Vec3f = @splat(0);
+
+	var swing: f32 = 0;
+	var swingStart: f32 = 0;
+	pub var isSwinging: bool = false;
+	const swingAngle = Vec3f{0.75, 0.0, -0.3};
+	const swingOffset = Vec3f{0.4, 0.0, 1.2};
+
 	const damping: Vec3f = @splat(130);
+
+	fn swingFunction(x: f32, undertimeFactor: f32, swingTime: f32) f32 {
+		return x*x*(3 - 2*x) - 10*undertimeFactor*x*x*(1 - x)/(1 + 1/swingTime);
+	}
+
+	pub fn updateUndertime() void {
+		const undertimeFactor = main.renderer.MeshSelection.undertimeFactor;
+		if(undertimeFactor == 1.0) {
+			swingStart = 0;
+		} else {
+			swingStart = swing;
+		}
+	}
 
 	pub fn update(deltaTime: f64) void {
 		if(deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
+		const currentSwingTime = main.renderer.MeshSelection.currentSwingTime;
+		const swingProgress = main.renderer.MeshSelection.currentSwingProgress/currentSwingTime;
+		const swingProgressHitTime = main.renderer.MeshSelection.swingProgressHitTime;
+		const undertimeFactor = main.renderer.MeshSelection.undertimeFactor;
+
+		var targetSwingProgress: f32 = 0;
+		if(swingProgress < swingProgressHitTime) {
+			targetSwingProgress = swingFunction(swingProgress/swingProgressHitTime, undertimeFactor, currentSwingTime);
+			targetSwingProgress = targetSwingProgress*(1 - swingStart) + swingStart;
+		} else {
+			targetSwingProgress = std.math.pow(f32, (1 - swingProgress)/(1 - swingProgressHitTime), 2);
+		}
 
 		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eyeVel[2]*0.0075)), 0, 0};
 		playerVel = vec.clampMag(playerVel, 0.32);
@@ -536,6 +568,15 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const n1: Vec3f = cameraFollowVel - (cameraFollow - playerVel)*damping*damping*@as(Vec3f, @splat(dt));
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
+
+		if(!isSwinging) {
+			swing *= std.math.pow(f32, 0.05, dt);
+		} else {
+			swing = targetSwingProgress;
+		}
+		if(std.math.isNan(swing)) {
+			swing = 0;
+		}
 
 		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
 	}
@@ -774,6 +815,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
+			const pivotRot: Vec3f = ItemDisplayManager.swingAngle*@as(Vec3f, @splat(ItemDisplayManager.swing));
+			const swingOffset: Vec3f = ItemDisplayManager.swingOffset*@as(Vec3f, @splat(ItemDisplayManager.swing));
+			const pivot: Vec3f = Vec3f{0.0, 0.0, 1.0};
 
 			const lightPos = @as(Vec3f, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
 			const blockPos: Vec3i = @intFromFloat(@floor(lightPos));
@@ -834,7 +878,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var modelMatrix = Mat4f.rotationZ(-rot[2]);
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
+			modelMatrix = modelMatrix.mul(Mat4f.translation(-pivot));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-pivotRot[2]));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-pivotRot[1]));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-pivotRot[0]));
+			modelMatrix = modelMatrix.mul(Mat4f.translation(pivot));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
+			modelMatrix = modelMatrix.mul(Mat4f.translation(swingOffset));
 			if(!isBlock) {
 				if(item == .tool) {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
