@@ -201,6 +201,9 @@ pub const BaseItemIndex = enum(u16) {
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
+	pub fn getName(self: BaseItemIndex) []const u8 {
+		return itemList[@intFromEnum(self)].getName();
+	}
 };
 
 pub const BaseItem = struct { // MARK: BaseItem
@@ -276,6 +279,10 @@ pub const BaseItem = struct { // MARK: BaseItem
 			}
 		}
 		return self.texture.?;
+	}
+
+	fn getName(self: BaseItem) []const u8 {
+		return self.name;
 	}
 
 	fn getTooltip(self: BaseItem) []const u8 {
@@ -761,6 +768,10 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
+	fn getName(self: *Tool) []const u8 {
+		return self.type.id();
+	}
+
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.writer().print(
@@ -891,6 +902,14 @@ pub const Item = union(ItemType) { // MARK: Item
 			},
 			.tool => |_tool| {
 				return _tool.getTexture();
+			},
+		}
+	}
+
+	pub fn getName(self: Item) []const u8 {
+		switch(self) {
+			inline else => |item| {
+				return item.getName();
 			},
 		}
 	}
