@@ -67,7 +67,13 @@ pub const GarbageCollection = struct {
 	var sharedState: std.atomic.Value(u32) = .init(0);
 	threadlocal var threadCycle: u1 = undefined;
 	threadlocal var lastSyncPointTime: i64 = undefined;
-	// TODO: Free lists
+	const FreeItem = struct {
+		ptr: *anyopaque,
+		extraData: usize = 0,
+		freeFunction: *const fn(*anyopaque, usize) void,
+	};
+	threadlocal var activeList: ListUnmanaged(FreeItem) = undefined;
+	threadlocal var waitingList: ListUnmanaged(FreeItem) = undefined;
 
 	const State = packed struct {
 		waitingThreads: u16 = 0,
@@ -80,6 +86,17 @@ pub const GarbageCollection = struct {
 		_ = old.totalThreads + 1; // Assert no overflow
 		threadCycle = old.cycle;
 		lastSyncPointTime = std.time.milliTimestamp();
+		activeList = .initCapacity(globalAllocator, 1024);
+		waitingList = .initCapacity(globalAllocator, 1024);
+		if(old.waitingThreads == 0) {
+			startNewCycle();
+		}
+	}
+
+	fn freeItemsFromList(list: *ListUnmanaged(FreeItem)) void {
+		while(list.popOrNull()) |item| {
+			item.freeFunction(item.ptr, item.extraData);
+		}
 	}
 
 	fn removeThread() void {
@@ -91,10 +108,24 @@ pub const GarbageCollection = struct {
 			std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
 			std.debug.dumpCurrentStackTrace(null);
 		}
+		freeItemsFromList(&waitingList);
+		waitingList.deinit(globalAllocator);
+		freeItemsFromList(&activeList);
+		activeList.deinit(globalAllocator);
 	}
 
 	fn assertAllThreadsStopped() void {
-		std.debug.assert(sharedState.load(.unordered) & ~@as(u32, 0x7fffffff) == 0);
+		std.debug.assert(sharedState.load(.unordered) & 0x7fffffff == 0);
+	}
+
+	fn startNewCycle() void {
+		var cur = sharedState.load(.unordered);
+		while(true) {
+			var new: State = @bitCast(cur);
+			new.waitingThreads = new.totalThreads;
+			new.cycle +%= 1;
+			cur = sharedState.cmpxchgWeak(cur, @bitCast(new), .monotonic, .monotonic) orelse break;
+		}
 	}
 
 	fn removeThreadFromWaiting() void {
@@ -102,16 +133,7 @@ pub const GarbageCollection = struct {
 		_ = old.waitingThreads - 1; // Assert no overflow
 		threadCycle = old.cycle;
 
-		// Start a new cycle
-		if(old.waitingThreads == 1) {
-			var cur = sharedState.load(.unordered);
-			while(true) {
-				var new: State = @bitCast(cur);
-				new.waitingThreads = new.totalThreads;
-				new.cycle +%= 1;
-				cur = sharedState.cmpxchgWeak(cur, @bitCast(new), .monotonic, .monotonic) orelse break;
-			}
-		}
+		if(old.waitingThreads == 1) startNewCycle();
 	}
 
 	/// Must be called when no objects originating from other threads are held on the current function stack
@@ -126,7 +148,30 @@ pub const GarbageCollection = struct {
 		const old: State = @bitCast(sharedState.load(.unordered));
 		if(old.cycle == threadCycle) return;
 		removeThreadFromWaiting();
+		freeItemsFromList(&waitingList);
+		const swap = waitingList;
+		waitingList = activeList;
+		activeList = swap;
 		// TODO: Free all the data here and swap lists
+	}
+
+	pub fn deferredFree(item: FreeItem) void {
+		activeList.append(globalAllocator, item);
+	}
+
+	/// Waits until all deferred frees have been completed.
+	pub fn waitForFreeCompletion() void {
+		const startCycle = threadCycle;
+		while(threadCycle == startCycle) {
+			syncPoint();
+			std.Thread.sleep(1_000_000);
+		}
+		while(threadCycle != startCycle) {
+			syncPoint();
+			std.Thread.sleep(1_000_000);
+		}
+		std.debug.assert(activeList.items.len == 0);
+		std.debug.assert(waitingList.items.len == 0);
 	}
 };
 
