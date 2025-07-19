@@ -917,12 +917,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		while(total_tMax < closestDistance) {
 			const block = mesh_storage.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) blk: {
-				var fluidPlaceable = false;
-				if(item) |realItem| {
-					if(realItem == .baseItem and realItem.baseItem.hasTag(.fluidPlaceable)) {
-						fluidPlaceable = true;
-					}
-				}
+				const fluidPlaceable = item != null and item.? == .baseItem and item.?.baseItem.hasTag(.fluidPlaceable);
 				for(block.blockTags()) |tag| {
 					if(tag == .fluid and !fluidPlaceable or tag == .air) break :blk; // TODO: Buckets could select fluids
 				}
