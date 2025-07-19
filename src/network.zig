@@ -1309,8 +1309,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendClientDataUpdateToServer(conn: *Connection, pos: Vec3i) void {
-			const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(pos, 1)) orelse return;
-			defer mesh.decreaseRefCount();
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 			mesh.mutex.lock();
 			defer mesh.mutex.unlock();
 			const index = mesh.chunk.getLocalBlockIndex(pos);
