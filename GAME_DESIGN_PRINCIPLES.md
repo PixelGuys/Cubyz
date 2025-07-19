@@ -35,6 +35,9 @@ If a player gets too attached to their amazing tool, they won't want to make oth
 ### Avoid Clutter
 Inventories will often fill up with random items that the player does not want, making their inventory hard to manage. To mitigate this, find uses for existing items before adding new ones and prevent items from finding their way into a player's inventory when they don't want it.
 
+### Use Realism Tastefully
+Cubyz is not a realistic game. The world is very whimsical and has rules of its own, sometimes inspired by the real world, but never copying it outright.
+
 ## Player Engagement
 ### "How would the player feel?"
 Put yourself in the shoes of a player encountering a mechanic for the first time and ask yourself this. The goal is to make the player feel how you want them to, whether that be satisfaction, fear, or intrigue.
@@ -59,7 +62,12 @@ This problem is completely solved as soon as the player gets coal, as they can n
 ### Explain when Needed
 Progress-related mechanics need explanations so the players don't get stuck. Keep it simple on the surface so it's easily approachable, but leave out details that the player can find themselves through intuition.
 
-### Micro Moments
+### Show, Don't Tell
+An important rule, showing how a mechanic works instead of telling encourages player experimentation and reduces confusion. Here are some examples:
+- Instead of telling the player what buffs a food item gives, let them eat it and make note of it themselves.
+- Instead of telling the player what progression step to take next, let them explore different options of progress.
+
+### Embrace Micro Moments
 These are tiny things the player does in between larger events; examples include:
 - Travelling
 - Parkour
