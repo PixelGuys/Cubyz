@@ -948,7 +948,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const lerpAmount: Vec3d = @splat(std.math.clamp(density/@max(1.0, maxDensity), 0.0, 1.0));
-		const lerpedDir = if(density > 0.1) std.math.lerp(forward, camera.direction, lerpAmount) else forward;
+		const lerpedDir = std.math.lerp(forward, camera.direction, lerpAmount) else forward;
 		const right = Vec3d{-forward[1], forward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
