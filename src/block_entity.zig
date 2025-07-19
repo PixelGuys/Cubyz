@@ -401,8 +401,7 @@ pub const BlockEntityTypes = struct {
 
 		pub fn updateTextFromClient(pos: Vec3i, newText: []const u8) void {
 			{
-				const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(pos, 1)) orelse return;
-				defer mesh.decreaseRefCount();
+				const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 				mesh.mutex.lock();
 				defer mesh.mutex.unlock();
 				const index = mesh.chunk.getLocalBlockIndex(pos);
@@ -478,8 +477,7 @@ pub const BlockEntityTypes = struct {
 				signData.renderedTexture.?.bindTo(0);
 
 				c.glUniform1i(uniforms.quadIndex, @intFromEnum(quad));
-				const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
-				defer mesh.decreaseRefCount();
+				const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
 				mesh.lightingData[0].lock.lockRead();
 				defer mesh.lightingData[0].lock.unlockRead();
 				mesh.lightingData[1].lock.lockRead();
