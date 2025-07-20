@@ -22,14 +22,13 @@ const chunk_meshing = @import("chunk_meshing.zig");
 const ChunkMesh = chunk_meshing.ChunkMesh;
 
 const ChunkMeshNode = struct {
-	mesh: ?*chunk_meshing.ChunkMesh = null,
+	mesh: Atomic(?*chunk_meshing.ChunkMesh) = .init(null),
 	active: bool = false,
 	rendered: bool = false,
 	finishedMeshing: bool = false, // Must be synced with mesh.finishedMeshing
 	finishedMeshingHigherResolution: u8 = 0, // Must be synced with finishedMeshing of the 8 higher resolution chunks.
 	pos: chunk.ChunkPosition = undefined,
 	isNeighborLod: [6]bool = @splat(false), // Must be synced with mesh.isNeighborLod
-	mutex: std.Thread.Mutex = .{},
 };
 const storageSize = 64;
 const storageMask = storageSize - 1;
@@ -187,18 +186,14 @@ pub fn getLightMapPieceAndIncreaseRefCount(x: i32, y: i32, voxelSize: u31) ?*Lig
 
 pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return null;
+	const mesh = node.mesh.load(.acquire) orelse return null;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	return block;
 }
 
 pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) EventStatus {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return .ignored;
+	const mesh = node.mesh.load(.acquire) orelse return .ignored;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	if(block.blockEntity()) |blockEntity| {
 		return blockEntity.onInteract(.{x, y, z}, mesh.chunk);
@@ -209,9 +204,7 @@ pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) EventStatu
 
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return null;
+	const mesh = node.mesh.load(.acquire) orelse return null;
 	const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 	const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 	const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
@@ -226,9 +219,7 @@ pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
 	while(lod < settings.highestLod) : (lod += 1) {
 		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod});
-		node.mutex.lock();
-		defer node.mutex.unlock();
-		const mesh = node.mesh orelse continue;
+		const mesh = node.mesh.load(.acquire) orelse continue;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask << lod, y & chunk.chunkMask << lod, z & chunk.chunkMask << lod);
 		return block;
 	}
@@ -239,12 +230,7 @@ pub fn getMesh(pos: chunk.ChunkPosition) ?*chunk_meshing.ChunkMesh {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
 	const mask = ~((@as(i32, 1) << lod + chunk.chunkShift) - 1);
 	const node = getNodePointer(pos);
-	node.mutex.lock();
-	const mesh = node.mesh orelse {
-		node.mutex.unlock();
-		return null;
-	};
-	node.mutex.unlock();
+	const mesh = node.mesh.load(.acquire) orelse return null;
 	if(pos.wx & mask != mesh.pos.wx or pos.wy & mask != mesh.pos.wy or pos.wz & mask != mesh.pos.wz) {
 		return null;
 	}
@@ -391,10 +377,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 					const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
 
 					const node = &storageLists[_lod][@intCast(index)];
-					node.mutex.lock();
-					const oldMesh = node.mesh;
-					node.mesh = null;
-					node.mutex.unlock();
+					const oldMesh = node.mesh.swap(null, .monotonic);
 					node.pos = undefined;
 					if(oldMesh) |mesh| {
 						node.finishedMeshing = false;
@@ -537,14 +520,12 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 					const pos = chunk.ChunkPosition{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod};
 
 					const node = &storageLists[_lod][@intCast(index)];
-					node.mutex.lock();
 					node.pos = pos;
-					if(node.mesh) |mesh| {
+					if(node.mesh.load(.acquire)) |mesh| {
 						std.debug.assert(std.meta.eql(pos, mesh.pos));
 					} else {
 						meshRequests.append(pos);
 					}
-					node.mutex.unlock();
 				}
 			}
 		}
@@ -751,7 +732,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 			}
 		}
 		if(!std.meta.eql(node.isNeighborLod, isNeighborLod)) {
-			const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
+			const mesh = node.mesh.load(.acquire).?; // no other thread is allowed to overwrite the mesh (unless it's null).
 			mesh.isNeighborLod = isNeighborLod;
 			node.isNeighborLod = isNeighborLod;
 			mesh.uploadData();
@@ -761,14 +742,12 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		node.rendered = false;
 		if(!node.finishedMeshing) continue;
 
-		const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
+		const mesh = node.mesh.load(.acquire).?; // no other thread is allowed to overwrite the mesh (unless it's null).
 
-		node.mutex.lock();
 		if(mesh.needsMeshUpdate) {
 			mesh.uploadData();
 			mesh.needsMeshUpdate = false;
 		}
-		node.mutex.unlock();
 		// Remove empty meshes.
 		if(!mesh.isEmpty()) {
 			meshList.append(mesh);
@@ -902,12 +881,9 @@ pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored, NoL
 		return error.NoLongerNeeded;
 	}
 	const node = getNodePointer(mesh.pos);
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	if(node.mesh != null) {
+	if(node.mesh.cmpxchgStrong(null, mesh, .release, .monotonic) != null) {
 		return error.AlreadyStored;
 	}
-	node.mesh = mesh;
 	node.finishedMeshing = mesh.finishedMeshing;
 	updateHigherLodNodeFinishedMeshing(mesh.pos, mesh.finishedMeshing);
 }
