@@ -1033,7 +1033,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			}
 
 			if(movementSpeed != 0 and vec.lengthSquare(movementDir) != 0) {
-				if(vec.lengthSquare(movementDir) > 1) {
+				if(vec.lengthSquare(movementDir) > movementSpeed*movementSpeed) {
 					movementDir = vec.normalize(movementDir);
 				}
 				acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
