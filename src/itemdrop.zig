@@ -533,7 +533,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	const damping: Vec3f = @splat(130);
 
 	fn swingFunction(x: f32, undertimeFactor: f32, swingTime: f32) f32 {
-		return x*x*(3 - 2*x) - 10*undertimeFactor*x*x*(1 - x)/(1 + 1/swingTime);
+		return x*x*(3 - 2*x) - 10*undertimeFactor*x*x*(1 - x)*8*swingTime/(1 + 8*swingTime);
 	}
 
 	pub fn updateUndertime() void {
@@ -543,6 +543,10 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		} else {
 			swingStart = swing;
 		}
+	}
+
+	pub fn swingLimitFunction(a: f32, n: f32, x: f32) f32 {
+		return @min(1, -a*n*x + n + a*x);
 	}
 
 	pub fn update(deltaTime: f64) void {
@@ -569,6 +573,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
 
+		targetSwingProgress *= @min(3*currentSwingTime, 1);
 		if(!isSwinging) {
 			swing *= std.math.pow(f32, 0.05, dt);
 		} else {
