@@ -38,7 +38,6 @@ var meshList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var priorityMeshUpdateList: main.utils.ConcurrentQueue(chunk.ChunkPosition) = undefined;
 pub var updatableList = main.List(chunk.ChunkPosition).init(main.globalAllocator);
 var mapUpdatableList: main.utils.ConcurrentQueue(*LightMap.LightMapFragment) = undefined;
-var clearList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
@@ -122,10 +121,6 @@ pub fn deinit() void {
 	}
 	blockUpdateList.deinit();
 	meshList.clearAndFree();
-	for(clearList.items) |mesh| {
-		_ = mesh;
-	}
-	clearList.clearAndFree();
 	meshMemoryPool.deinit();
 }
 
@@ -762,10 +757,6 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 
 	mutex.lock();
 	defer mutex.unlock();
-	for(clearList.items) |mesh| {
-		_ = mesh;
-	}
-	clearList.clearRetainingCapacity();
 	while(priorityMeshUpdateList.dequeue()) |pos| {
 		const mesh = getMesh(pos) orelse continue;
 		if(!mesh.needsMeshUpdate) {
@@ -855,14 +846,6 @@ fn batchUpdateBlocks() void {
 }
 
 // MARK: adders
-
-pub fn addMeshToClearListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
-	std.debug.assert(mesh.refCount.load(.monotonic) == 0);
-	mutex.lock();
-	defer mutex.unlock();
-	clearList.append(mesh);
-	unreachable;
-}
 
 pub fn addToUpdateList(mesh: *chunk_meshing.ChunkMesh) void {
 	std.debug.assert(mesh.refCount.load(.monotonic) != 0);
