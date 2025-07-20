@@ -183,16 +183,10 @@ pub fn deinit() void {
 }
 
 pub fn save() void { // MARK: save()
-	const guiZon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
-		if(err != error.FileNotFound) {
-			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
-		}
-		break :blk ZonElement.initObject(main.stackAllocator);
-	};
+	const guiZon = ZonElement.initObject(main.stackAllocator);
 	defer guiZon.deinit(main.stackAllocator);
-
 	for(windowList.items) |window| {
-		const windowZon = ZonElement.getChild(window.id) orelse ZonElement.initObject(main.stackAllocator);
+		const windowZon = ZonElement.initObject(main.stackAllocator);
 		for(window.relativePosition, 0..) |relPos, i| {
 			const relPosZon = ZonElement.initObject(main.stackAllocator);
 			switch(relPos) {
