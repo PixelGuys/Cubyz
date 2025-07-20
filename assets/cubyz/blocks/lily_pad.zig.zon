@@ -12,6 +12,7 @@
 	.texture = "cubyz:lily_pad",
 	.item = .{
 		.texture = "lily_pad.png",
+		.tags = .{.fluidPlaceable},
 	},
 	.lodReplacement = "cubyz:air",
 }
