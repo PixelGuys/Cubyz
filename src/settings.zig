@@ -153,8 +153,18 @@ pub fn save() void {
 	}
 	zonObject.put("keyboard", keyboard);
 
+	const oldZonObject: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
+		if(err != error.FileNotFound) {
+			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
+		}
+		break :blk .null;
+	};
+	defer oldZonObject.deinit(main.stackAllocator);
+
+	oldZonObject.join(zonObject);
+
 	// Write to file:
-	main.files.cubyzDir().writeZon(settingsFile, zonObject) catch |err| {
+	main.files.cubyzDir().writeZon(settingsFile, oldZonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }
