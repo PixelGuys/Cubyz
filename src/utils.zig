@@ -655,7 +655,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.waitingThreads.broadcast();
 			while(self.waitingThreadCount != 0) {
 				self.mutex.unlock();
-				std.time.sleep(1000000);
+				std.Thread.sleep(1000000);
 				self.mutex.lock();
 			}
 			self.mutex.unlock();
@@ -899,7 +899,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Wait for active tasks:
 		for(self.currentTasks) |*task| {
 			while(task.load(.monotonic) == vtable) {
-				std.time.sleep(1e6);
+				std.Thread.sleep(1e6);
 			}
 		}
 	}
@@ -966,7 +966,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					break;
 				}
 			}
-			std.time.sleep(1000000);
+			std.Thread.sleep(1000000);
 		}
 	}
 
@@ -998,7 +998,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 		pub fn initCapacity(bitSize: u5) Self {
 			std.debug.assert(bitSize == 0 or bitSize & bitSize - 1 == 0); // Must be a power of 2
 			return .{
-				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(u32, 64, @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
+				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(u32, .@"64", @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
 				.bitSize = bitSize,
 			};
 		}
