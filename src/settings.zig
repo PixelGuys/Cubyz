@@ -148,7 +148,7 @@ pub fn save() void {
 	}
 
 	// keyboard settings:
-	const keyboard = ZonElement.initObject(main.stackAllocator);
+	const keyboard = ZonElement.getChild("keyboard") orelse ZonElement.initObject(main.stackAllocator);
 	for(&main.KeyBoard.keys) |key| {
 		const keyZon = ZonElement.initObject(main.stackAllocator);
 		keyZon.put("key", key.key);

@@ -192,7 +192,7 @@ pub fn save() void { // MARK: save()
 	defer guiZon.deinit(main.stackAllocator);
 
 	for(windowList.items) |window| {
-		const windowZon = ZonElement.initObject(main.stackAllocator);
+		const windowZon = ZonElement.getChild(window.id) orelse ZonElement.initObject(main.stackAllocator);
 		for(window.relativePosition, 0..) |relPos, i| {
 			const relPosZon = ZonElement.initObject(main.stackAllocator);
 			switch(relPos) {
