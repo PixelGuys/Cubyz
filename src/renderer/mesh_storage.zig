@@ -185,7 +185,7 @@ pub fn getLightMapPieceAndIncreaseRefCount(x: i32, y: i32, voxelSize: u31) ?*Lig
 	return result;
 }
 
-pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
+pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	node.mutex.lock();
 	defer node.mutex.unlock();
@@ -194,7 +194,7 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	return block;
 }
 
-pub fn triggerOnInteractBlock(x: i32, y: i32, z: i32) EventStatus {
+pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) EventStatus {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	node.mutex.lock();
 	defer node.mutex.unlock();
@@ -222,7 +222,7 @@ pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
 }
 
-pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
+pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
 	while(lod < settings.highestLod) : (lod += 1) {
 		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod});
@@ -981,7 +981,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	const animationFrame: usize = @intFromFloat(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));
 	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
 
-	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
+	const block = getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;
 	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
@@ -1042,7 +1042,7 @@ fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, nei
 }
 
 pub fn removeBreakingAnimation(pos: Vec3i) void {
-	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
+	const block = getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;
 	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {

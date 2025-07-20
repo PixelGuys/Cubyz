@@ -260,7 +260,7 @@ pub const collision = struct {
 			while(y <= maxY) : (y += 1) {
 				var z: i32 = maxZ;
 				while(z >= minZ) : (z -= 1) {
-					const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z) else main.server.world.?.getBlock(x, y, z);
+					const _block = if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
 					if(_block) |block| {
 						if(collideWithBlock(block, x, y, z, boundingBoxCenter, fullBoundingBoxExtent, directionVector)) |res| {
 							if(res.dist < minDistance) {
@@ -298,7 +298,7 @@ pub const collision = struct {
 		while(x <= maxX) : (x += 1) {
 			var y = minY;
 			while(y <= maxY) : (y += 1) {
-				const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z) else main.server.world.?.getBlock(x, y, z);
+				const _block = if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
 
 				if(_block) |block| {
 					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
@@ -368,7 +368,7 @@ pub const collision = struct {
 			while(y <= maxY) : (y += 1) {
 				var z: i32 = maxZ;
 				while(z >= minZ) : (z -= 1) {
-					const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z) else main.server.world.?.getBlock(x, y, z);
+					const _block = if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
 					const totalBox: Box = .{
 						.min = @floatFromInt(Vec3i{x, y, z}),
 						.max = @floatFromInt(Vec3i{x + 1, y + 1, z + 1}),
@@ -480,7 +480,7 @@ pub const collision = struct {
 				var posZ: i32 = minZ;
 				while(posZ <= maxZ) : (posZ += 1) {
 					const block: ?Block =
-						if(side == .client) main.renderer.mesh_storage.getBlock(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
+						if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
 					if(block == null or block.?.touchFunction() == null)
 						continue;
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
@@ -643,9 +643,9 @@ pub const Player = struct { // MARK: Player
 	pub fn placeBlock() void {
 		if(main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
 			if(!main.KeyBoard.key("shift").pressed) {
-				if(main.renderer.mesh_storage.triggerOnInteractBlock(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
+				if(main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
 			}
-			const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
+			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
 			const gui = block.gui();
 			if(gui.len != 0 and !main.KeyBoard.key("shift").pressed) {
 				main.gui.openWindow(gui);
@@ -677,7 +677,7 @@ pub const Player = struct { // MARK: Player
 
 	pub fn acquireSelectedBlock() void {
 		if(main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
-			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			const block = main.renderer.mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 
 			const item: items.Item = for(0..items.itemListSize) |idx| {
 				const baseItem: main.items.BaseItemIndex = @enumFromInt(idx);
@@ -919,7 +919,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const airFrictionCoefficient = gravity/airTerminalVelocity; // λ = a/v in equillibrium
 	const playerDensity = 1.2;
 	var move: Vec3d = .{0, 0, 0};
-	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
+	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		const volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .mobility = 1.0});
 		const effectiveGravity = gravity*(playerDensity - volumeProperties.density)/playerDensity;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);

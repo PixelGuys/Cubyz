@@ -287,7 +287,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
-	const playerBlock = mesh_storage.getBlockFromAnyLod(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock, playerPos, game.camera.viewMatrix);
@@ -915,7 +915,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		selectedBlockPos = null;
 
 		while(total_tMax < closestDistance) {
-			const block = mesh_storage.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
+			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) blk: {
 				const fluidPlaceable = item != null and item.? == .baseItem and item.?.baseItem.hasTag(.fluidPlaceable);
 				for(block.blockTags()) |tag| {
@@ -971,7 +971,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn placeBlock(inventory: main.items.Inventory, slot: u32) void {
 		if(selectedBlockPos) |selectedPos| {
-			var oldBlock = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			var oldBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			var block = oldBlock;
 			if(inventory.getItem(slot)) |item| {
 				switch(item) {
@@ -999,7 +999,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							neighborDir = selectedPos - posBeforeBlock;
 							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 							const neighborBlock = block;
-							oldBlock = mesh_storage.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
+							oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							block = oldBlock;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
@@ -1047,7 +1047,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
 			}
-			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			if(block.hasTag(.fluid) or block.hasTag(.air)) {
 				return;
 			}
