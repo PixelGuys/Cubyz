@@ -580,6 +580,7 @@ pub fn toggleGameMenu() void {
 			}
 		}
 		reorderWindows = false;
+		selectedWindow = null;
 	}
 }
 
