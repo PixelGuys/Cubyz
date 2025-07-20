@@ -527,8 +527,8 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	var swing: f32 = 0;
 	var swingStart: f32 = 0;
 	pub var isSwinging: bool = false;
-	const swingAngle = Vec3f{0.75, 0.0, -0.3};
-	const swingOffset = Vec3f{0.4, 0.0, 1.2};
+	const swingAngle = Vec3f{0.7, 0.0, -0.3};
+	const swingOffset = Vec3f{0.4, 1.2, 1.4};
 
 	const damping: Vec3f = @splat(130);
 
