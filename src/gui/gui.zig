@@ -217,6 +217,7 @@ pub fn save() void { // MARK: save()
 		guiZon.put(window.id, windowZon);
 	}
 
+	// Merge with the old settings file to preserve unknown settings.
 	const oldZon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});

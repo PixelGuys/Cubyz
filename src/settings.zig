@@ -153,6 +153,7 @@ pub fn save() void {
 	}
 	zonObject.put("keyboard", keyboard);
 
+	// Merge with the old settings file to preserve unknown settings.
 	const oldZonObject: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
@@ -163,7 +164,6 @@ pub fn save() void {
 
 	oldZonObject.join(zonObject);
 
-	// Write to file:
 	main.files.cubyzDir().writeZon(settingsFile, oldZonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
