@@ -946,10 +946,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
 		const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
 
-		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
+		const horizontalForward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const lerpAmount: Vec3d = @splat(std.math.clamp(density/@max(1.0, maxDensity), 0.0, 1.0));
-		const lerpedDir = std.math.lerp(forward, camera.direction, lerpAmount);
-		const right = Vec3d{-forward[1], forward[0], 0};
+		const forward = std.math.lerp(horizontalForward, camera.direction, lerpAmount);
+		const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
 
@@ -959,22 +959,22 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				if(KeyBoard.key("sprint").pressed and !Player.crouching) {
 					if(Player.isGhost.load(.monotonic)) {
 						movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
-						movementDir += lerpedDir*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
+						movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
 					} else if(Player.isFlying.load(.monotonic)) {
 						movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
-						movementDir += lerpedDir*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
+						movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
 					} else {
 						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
-						movementDir += lerpedDir*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
+						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
 				} else {
 					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
-					movementDir += lerpedDir*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 				}
 			}
 			if(KeyBoard.key("backward").value > 0.0) {
 				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
-				movementDir += lerpedDir*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
+				movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
 			}
 			if(KeyBoard.key("left").value > 0.0) {
 				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
