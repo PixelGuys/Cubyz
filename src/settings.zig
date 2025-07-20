@@ -124,7 +124,12 @@ pub fn deinit() void {
 }
 
 pub fn save() void {
-	const zonObject = ZonElement.initObject(main.stackAllocator);
+	const zonObject: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
+		if(err != error.FileNotFound) {
+			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
+		}
+		break :blk ZonElement.initObject(main.stackAllocator);
+	};
 	defer zonObject.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
