@@ -73,11 +73,30 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				while(z >= zBiome) : (z -= chunk.super.pos.voxelSize) {
 					const mask = @as(u64, 1) << @intCast(z >> voxelSizeShift);
 					if(heightData & mask != 0) {
+						const cardinalDirections = [_]Vec3i{
+							Vec3i{1, 0, 0},
+							Vec3i{-1, 0, 0},
+							Vec3i{0, 1, 0},
+							Vec3i{0, -1, 0},
+						};
+						
 						const surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
+						var sum: i32 = 0;
+						var num: f32 = 0;
+						for (cardinalDirections) |direction| {
+							const diff = if(caveMap.isSolid(x + direction[0], y + direction[1], z + direction[2]))
+								caveMap.findTerrainChangeAbove(x + direction[0], y + direction[1], z + direction[2]) - chunk.super.pos.voxelSize - surfaceBlock
+							else
+								caveMap.findTerrainChangeBelow(x + direction[0], y + direction[1], z + direction[2]) - surfaceBlock;
+
+							sum += @intCast(@abs(diff));
+							num += 1.0;
+						}
+						const slope = @as(f32, @floatFromInt(sum)) / num;
 						var bseed: u64 = random.initSeed3D(worldSeed, .{chunk.super.pos.wx + x, chunk.super.pos.wy + y, chunk.super.pos.wz + z});
 						const airBlockBelow = caveMap.findTerrainChangeBelow(x, y, z);
 						// Add the biomes surface structure:
-						z = @min(z + chunk.super.pos.voxelSize, biome.structure.addSubTerranian(chunk, surfaceBlock, @max(airBlockBelow, zBiome - 1), x, y, &bseed));
+						z = @min(z + chunk.super.pos.voxelSize, biome.structure.addSubTerranian(chunk, surfaceBlock, @max(airBlockBelow, zBiome - 1), slope, x, y, &bseed));
 						z -= chunk.super.pos.voxelSize;
 						if(z < zBiome) break;
 						if(z > airBlockBelow) {

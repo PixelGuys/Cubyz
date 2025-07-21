@@ -462,17 +462,22 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 		allocator.free(self.structure);
 	}
 
-	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, x: i32, y: i32, seed: *u64) i32 {
+	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, slope: f32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
+		var timer = @max(@as(i32, @intFromFloat(slope*0.5))-1, 0);
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for(0..total) |_| {
-				if(chunk.liesInChunk(x, y, depth)) {
-					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
+				if(timer <= 0) {
+					if(chunk.liesInChunk(x, y, depth)) {
+						chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
+					}
+					depth -%= chunk.super.pos.voxelSize;
+					if(depth -% minDepth <= 0)
+						return depth +% chunk.super.pos.voxelSize;
+				} else {
+					timer -= 1;
 				}
-				depth -%= chunk.super.pos.voxelSize;
-				if(depth -% minDepth <= 0)
-					return depth +% chunk.super.pos.voxelSize;
 			}
 		}
 		return depth +% chunk.super.pos.voxelSize;
