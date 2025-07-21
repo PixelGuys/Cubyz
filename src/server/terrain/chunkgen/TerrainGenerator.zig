@@ -93,10 +93,11 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 							num += 1.0;
 						}
 						const slope = @as(f32, @floatFromInt(sum)) / num;
+						const erosion: f32 = 0.5;
 						var bseed: u64 = random.initSeed3D(worldSeed, .{chunk.super.pos.wx + x, chunk.super.pos.wy + y, chunk.super.pos.wz + z});
 						const airBlockBelow = caveMap.findTerrainChangeBelow(x, y, z);
 						// Add the biomes surface structure:
-						z = @min(z + chunk.super.pos.voxelSize, biome.structure.addSubTerranian(chunk, surfaceBlock, @max(airBlockBelow, zBiome - 1), slope, x, y, &bseed));
+						z = @min(z + chunk.super.pos.voxelSize, biome.structure.addSubTerranian(chunk, surfaceBlock, @max(airBlockBelow, zBiome - 1), slope, erosion, x, y, &bseed));
 						z -= chunk.super.pos.voxelSize;
 						if(z < zBiome) break;
 						if(z > airBlockBelow) {
