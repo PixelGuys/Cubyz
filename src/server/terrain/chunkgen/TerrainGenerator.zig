@@ -79,7 +79,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 							Vec3i{0, 1, 0},
 							Vec3i{0, -1, 0},
 						};
-						
+
 						const surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
 						var sum: i32 = 0;
 						var num: f32 = 0;
