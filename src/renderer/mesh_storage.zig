@@ -102,7 +102,7 @@ pub fn deinit() void {
 	lastPz = 0;
 	lastRD = 0;
 	freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
-	main.GarbageCollection.waitForFreeCompletion();
+	main.heap.GarbageCollection.waitForFreeCompletion();
 	for(storageLists) |storageList| {
 		main.globalAllocator.destroy(storageList);
 	}
@@ -377,7 +377,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 					if(oldMesh) |mesh| {
 						node.finishedMeshing = false;
 						updateHigherLodNodeFinishedMeshing(mesh.pos, false);
-						main.GarbageCollection.deferredFree(.{
+						main.heap.GarbageCollection.deferredFree(.{
 							.ptr = mesh,
 							.freeFunction = main.utils.castFunctionSelfToAnyopaque(ChunkMesh.deinit),
 						});

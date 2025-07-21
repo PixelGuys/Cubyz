@@ -910,7 +910,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 		var lastUpdate = std.time.milliTimestamp();
 		outer: while(true) {
-			main.GarbageCollection.syncPoint();
+			main.heap.GarbageCollection.syncPoint();
 			{
 				const task = self.loadList.extractMax() catch |err| switch(err) {
 					error.Timeout => continue :outer,
