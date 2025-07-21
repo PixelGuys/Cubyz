@@ -83,7 +83,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						const surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
 						var sum: i32 = 0;
 						var num: f32 = 0;
-						for (cardinalDirections) |direction| {
+						for(cardinalDirections) |direction| {
 							const diff = if(caveMap.isSolid(x + direction[0], y + direction[1], z + direction[2]))
 								caveMap.findTerrainChangeAbove(x + direction[0], y + direction[1], z + direction[2]) - chunk.super.pos.voxelSize - surfaceBlock
 							else
@@ -92,8 +92,8 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 							sum += @intCast(@abs(diff));
 							num += 1.0;
 						}
-						const slope = @as(f32, @floatFromInt(sum)) / num;
-						const erosion: f32 = 0.5;
+						const slope = @as(f32, @floatFromInt(sum))/num;
+						const erosion: f32 = biome.erosion;
 						var bseed: u64 = random.initSeed3D(worldSeed, .{chunk.super.pos.wx + x, chunk.super.pos.wy + y, chunk.super.pos.wz + z});
 						const airBlockBelow = caveMap.findTerrainChangeBelow(x, y, z);
 						// Add the biomes surface structure:
