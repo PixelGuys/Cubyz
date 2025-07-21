@@ -73,9 +73,23 @@ fn initContent() void {
 		const list = VerticalList.init(.{0, padding}, 144, 0);
 		items = .init(main.globalAllocator);
 		var itemIterator = main.items.iterator();
-		while(itemIterator.next()) |item| {
-			if(searchString.len != 0 and !std.mem.containsAtLeast(u8, item.id(), 1, searchString)) continue;
-			items.append(Item{.baseItem = item.*});
+		if(searchString.len > 1 and searchString[0] == '.') blk: {
+			const bestTag = main.Tag.findSimilar(searchString[1..]) orelse break :blk;
+			while(itemIterator.next()) |item| {
+				if(!item.hasTag(bestTag)) {
+					if(item.block()) |blockIndex| {
+						if(!(main.blocks.Block {.typ = blockIndex, .data = 0}).hasTag(bestTag)) continue;
+					} else {
+						continue;
+					}
+				}
+				items.append(Item{.baseItem = item.*});
+			}
+		} else {
+			while(itemIterator.next()) |item| {
+				if(searchString.len != 0 and !std.mem.containsAtLeast(u8, item.id(), 1, searchString)) continue;
+				items.append(Item{.baseItem = item.*});
+			}
 		}
 
 		std.mem.sort(Item, items.items, {}, lessThan);
