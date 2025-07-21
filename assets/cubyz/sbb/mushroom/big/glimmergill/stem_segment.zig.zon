@@ -1,0 +1,9 @@
+.{
+	.blueprint = "cubyz:mushroom/big/glimmergill/stem_segment",
+	.children = .{
+		.white = .{
+			.{.structure = "cubyz:mushroom/big/glimmergill/stem_segment"},
+			.{.structure = "cubyz:mushroom/big/glimmergill/cap"},
+		},
+	},
+}
