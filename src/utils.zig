@@ -753,11 +753,14 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.mutex.lock();
 			defer self.mutex.unlock();
 
+			const startTime = std.time.nanoTimestamp();
+
 			while(true) {
 				if(self.size == 0) {
 					self.waitingThreadCount += 1;
 					defer self.waitingThreadCount -= 1;
-					try self.waitingThreads.timedWait(&self.mutex, 100_000_000);
+					try self.waitingThreads.timedWait(&self.mutex, 10_000_000);
+					if(std.time.nanoTimestamp() -% startTime > 10_000_000) return error.Timeout;
 				} else {
 					const ret = self.array[0];
 					self.removeIndex(0);
