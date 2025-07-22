@@ -78,7 +78,7 @@ fn initContent() void {
 			defer bestTags.deinit();
 			while(itemIterator.next()) |item| {
 				for(bestTags.items) |tag| {
-					if(item.hasTag(tag) or (item.block() != null and (main.blocks.Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
+					if(item.hasTag(tag) or (item.block() != null and (main.blocks.Block{.typ = item.block().?, .data = undefined}).hasTag(tag))) {
 						items.append(Item{.baseItem = item.*});
 						break;
 					}
