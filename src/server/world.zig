@@ -526,15 +526,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 							.object => {
 								var temp: main.items.Inventory = undefined;
 								temp._items = main.stackAllocator.alloc(ItemStack, zon.get(u32, "count", 0));
-								for(temp._items) |*stack| {
-									stack.* = ItemStack{};
-								}
-								defer {
-									for(temp._items) |*stack| {
-										stack.deinit();
-									}
-									main.stackAllocator.free(temp._items);
-								}
+								defer main.stackAllocator.free(temp._items);
+
+								for(temp._items) |*stack| stack.* = ItemStack{};
+								defer for(temp._items) |*stack| stack.deinit();
 
 								temp.loadFromZon(zon);
 								const base64Data = temp.toBase64(main.stackAllocator);
