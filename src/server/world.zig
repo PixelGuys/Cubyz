@@ -493,10 +493,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
 			defer main.stackAllocator.free(playerDataPath);
 
-			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch |err| {
-				std.log.err("Could not open player data directory to migrate file format: {s}. Conversion aborted.", .{@errorName(err)});
-				break :convert_player_data_to_binary;
-			};
+			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch break :convert_player_data_to_binary;
 			defer playerDataDirectory.close();
 
 			{
