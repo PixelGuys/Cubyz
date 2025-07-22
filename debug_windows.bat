@@ -10,7 +10,7 @@ if errorlevel 1 (
 
 echo Building Zig Cubyz (%*^) from source. This may take a few minutes...
 
-compiler\zig\zig build %*
+compiler\zig\zig build --prominent-compile-errors %*
 
 if errorlevel 1 (
 	exit /b 1

@@ -190,6 +190,8 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 				return self.equals(notNull);
 			}
 			return false;
+		} else if(@TypeOf(other) == ChunkPosition) {
+			return self.wx == other.wx and self.wy == other.wy and self.wz == other.wz and self.voxelSize == other.voxelSize;
 		} else if(@TypeOf(other.*) == ServerChunk) {
 			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
 		} else if(@typeInfo(@TypeOf(other)) == .pointer) {

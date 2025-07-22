@@ -445,6 +445,7 @@ pub fn start(name: []const u8, port: ?u16) void {
 	defer deinit();
 	running.store(true, .release);
 	while(running.load(.monotonic)) {
+		main.heap.GarbageCollection.syncPoint();
 		const newTime = std.time.nanoTimestamp();
 		if(newTime -% lastTime < updateNanoTime) {
 			std.Thread.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
