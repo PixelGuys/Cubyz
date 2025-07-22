@@ -64,10 +64,19 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-			std.log.info("Got error while sending to {}: {s}", .{destination, @errorName(err)});
-			return;
-		});
+		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
+			const result = posix.system.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			if(result < 0) {
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())});
+			} else {
+				std.debug.assert(@as(usize, @intCast(result)) == data.len);
+			}
+		} else {
+			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
+				return;
+			});
+		}
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
@@ -85,7 +94,7 @@ const Socket = struct {
 					else => |err| return std.os.windows.unexpectedWSAError(err),
 				}
 			} else if(length == 0) {
-				std.time.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
+				std.Thread.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
 			}
 		} else {
@@ -139,7 +148,7 @@ pub const Address = struct {
 
 	pub const localHost = 0x0100007f;
 
-	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+	pub fn format(self: Address, writer: anytype) !void {
 		if(self.isSymmetricNAT) {
 			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
 		} else {
@@ -295,7 +304,7 @@ const STUN = struct { // MARK: STUN
 					continue;
 				};
 				if(oldAddress) |other| {
-					std.log.info("{}", .{result});
+					std.log.info("{f}", .{result});
 					if(other.ip == result.ip and other.port == result.port) {
 						return result;
 					} else {
@@ -556,17 +565,17 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		if(self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
 			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{source}) catch unreachable;
+				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
-					std.log.err("Cannot connect user from external IP {}: {s}", .{source, @errorName(err)});
+					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});
 					return;
 				};
 				user.decreaseRefCount();
 			}
 		} else {
 			// TODO: Reduce the number of false alarms in the short period after a disconnect.
-			std.log.warn("Unknown connection from address: {}", .{source});
+			std.log.warn("Unknown connection from address: {f}", .{source});
 			std.log.debug("Message: {any}", .{data});
 		}
 	}
@@ -578,6 +587,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		var lastTime: i64 = networkTimestamp();
 		while(self.running.load(.monotonic)) {
+			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
 			if(self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
@@ -1299,8 +1309,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendClientDataUpdateToServer(conn: *Connection, pos: Vec3i) void {
-			const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(pos, 1)) orelse return;
-			defer mesh.decreaseRefCount();
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 			mesh.mutex.lock();
 			defer mesh.mutex.unlock();
 			const index = mesh.chunk.getLocalBlockIndex(pos);
@@ -2025,7 +2034,7 @@ pub const Connection = struct { // MARK: Connection
 		self.tryReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
 			if(@errorReturnTrace()) |trace| {
-				std.log.info("{}", .{trace});
+				std.log.info("{f}", .{trace});
 			}
 			self.disconnect();
 		};
@@ -2218,7 +2227,7 @@ pub const Connection = struct { // MARK: Connection
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
-			std.time.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+			std.Thread.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {

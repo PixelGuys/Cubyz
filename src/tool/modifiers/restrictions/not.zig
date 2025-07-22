@@ -21,3 +21,8 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Not
 	};
 	return result;
 }
+
+pub fn printTooltip(self: *const Not, outString: *main.List(u8)) void {
+	outString.appendSlice("not ");
+	self.child.printTooltip(outString);
+}

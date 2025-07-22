@@ -55,10 +55,12 @@ pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
+	heap.GarbageCollection.addThread();
 }
 
 pub fn deinitThreadLocals() void {
 	stackAllocatorBase.deinit();
+	heap.GarbageCollection.removeThread();
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -231,7 +233,7 @@ fn initLogging() void {
 		return;
 	};
 
-	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
+	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
@@ -264,7 +266,9 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	defer allocator.free(string);
-	nosuspend std.io.getStdErr().writeAll(string) catch {};
+	const writer = std.debug.lockStderrWriter(&.{});
+	defer std.debug.unlockStderrWriter();
+	nosuspend writer.writeAll(string) catch {};
 }
 
 // MARK: Callbacks
@@ -547,6 +551,7 @@ pub fn main() void { // MARK: main()
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
+	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
 
@@ -670,6 +675,7 @@ pub fn main() void { // MARK: main()
 	audio.setMusic("cubyz:cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		heap.GarbageCollection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);
@@ -682,7 +688,7 @@ pub fn main() void { // MARK: main()
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		} else {
-			std.time.sleep(16_000_000);
+			std.Thread.sleep(16_000_000);
 		}
 
 		const endRendering = std.time.nanoTimestamp();
@@ -696,7 +702,7 @@ pub fn main() void { // MARK: main()
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-			std.time.sleep(sleep);
+			std.Thread.sleep(sleep);
 		}
 		const begin = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;

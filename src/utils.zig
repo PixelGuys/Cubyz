@@ -655,7 +655,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.waitingThreads.broadcast();
 			while(self.waitingThreadCount != 0) {
 				self.mutex.unlock();
-				std.time.sleep(1000000);
+				std.Thread.sleep(1000000);
 				self.mutex.lock();
 			}
 			self.mutex.unlock();
@@ -749,15 +749,17 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 
 		/// Returns the biggest element and removes it from the heap.
 		/// If empty blocks until a new object is added or the datastructure is closed.
-		pub fn extractMax(self: *@This()) !T {
+		pub fn extractMax(self: *@This()) error{Timeout, Closed}!T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
+
+			const startTime = std.time.nanoTimestamp();
 
 			while(true) {
 				if(self.size == 0) {
 					self.waitingThreadCount += 1;
-					self.waitingThreads.wait(&self.mutex);
-					self.waitingThreadCount -= 1;
+					defer self.waitingThreadCount -= 1;
+					try self.waitingThreads.timedWait(&self.mutex, 10_000_000);
 				} else {
 					const ret = self.array[0];
 					self.removeIndex(0);
@@ -766,6 +768,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 				if(self.closed) {
 					return error.Closed;
 				}
+				if(std.time.nanoTimestamp() -% startTime > 10_000_000) return error.Timeout;
 			}
 		}
 
@@ -899,7 +902,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Wait for active tasks:
 		for(self.currentTasks) |*task| {
 			while(task.load(.monotonic) == vtable) {
-				std.time.sleep(1e6);
+				std.Thread.sleep(1e6);
 			}
 		}
 	}
@@ -909,9 +912,13 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		defer main.deinitThreadLocals();
 
 		var lastUpdate = std.time.milliTimestamp();
-		while(true) {
+		outer: while(true) {
+			main.heap.GarbageCollection.syncPoint();
 			{
-				const task = self.loadList.extractMax() catch break;
+				const task = self.loadList.extractMax() catch |err| switch(err) {
+					error.Timeout => continue :outer,
+					error.Closed => break :outer,
+				};
 				self.currentTasks[id].store(task.vtable, .monotonic);
 				const start = std.time.microTimestamp();
 				task.vtable.run(task.self);
@@ -966,7 +973,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					break;
 				}
 			}
-			std.time.sleep(1000000);
+			std.Thread.sleep(1000000);
 		}
 	}
 
@@ -998,7 +1005,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 		pub fn initCapacity(bitSize: u5) Self {
 			std.debug.assert(bitSize == 0 or bitSize & bitSize - 1 == 0); // Must be a power of 2
 			return .{
-				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(u32, 64, @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
+				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(u32, .@"64", @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
 				.bitSize = bitSize,
 			};
 		}

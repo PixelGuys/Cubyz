@@ -751,7 +751,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				updateRequest.region.decreaseRefCount();
 			}
 			self.mutex.unlock();
-			std.time.sleep(1_000_000);
+			std.Thread.sleep(1_000_000);
 			self.mutex.lock();
 			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peek() == null and self.regionUpdateQueue.peek() == null) break;
 		}

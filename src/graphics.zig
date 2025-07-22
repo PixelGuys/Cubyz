@@ -782,8 +782,14 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	};
 
 	pub fn init(allocator: NeverFailingAllocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) TextBuffer {
-		var self: TextBuffer = undefined;
-		self.alignment = alignment;
+		var self: TextBuffer = .{
+			.alignment = alignment,
+			.width = 1e9,
+			.buffer = null,
+			.glyphs = &.{},
+			.lines = .init(allocator),
+			.lineBreaks = .init(allocator),
+		};
 		// Parse the input text:
 		var parser = Parser{
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
@@ -796,12 +802,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer parser.fontEffects.deinit();
 		defer parser.parsedText.deinit();
 		defer parser.characterIndex.deinit();
-		self.lines = .init(allocator);
-		self.lineBreaks = .init(allocator);
 		parser.parse();
 		if(parser.parsedText.items.len == 0) {
 			self.lineBreaks.append(.{.index = 0, .width = 0});
-			self.glyphs = &[0]GlyphData{};
 			return self;
 		}
 
@@ -1900,6 +1903,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint) void {
+			self.used = 0;
 			self.binding = binding;
 			self.createBuffer(size);
 			self.activeFence = 0;
@@ -1961,11 +1965,11 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				return result;
 			} else {
 				std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{@as(usize, self.capacity)*@sizeOf(Entry) >> 20, (@as(usize, self.capacity)*@sizeOf(Entry) >> 20)*2});
+				if(@as(usize, self.capacity)*@sizeOf(Entry)*2 > 1 << 31) @panic("OpenGL 2 GiB buffer size limit reached. Please lower your render distance.");
 				const oldBuffer = self.ssbo;
 				defer oldBuffer.deinit();
 				const oldCapacity = self.capacity;
 				self.createBuffer(self.capacity*|2); // TODO: Is there a way to free the old buffer before creating the new one?
-				if(self.capacity == oldCapacity) @panic("Not enough addressable GPU memory available.");
 				self.used += self.capacity - oldCapacity;
 				self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
 
@@ -2512,7 +2516,7 @@ pub const Image = struct { // MARK: Image
 	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}", .{path}) catch unreachable; // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		stb_image.stbi_set_flip_vertically_on_load(1);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
@@ -2526,7 +2530,7 @@ pub const Image = struct { // MARK: Image
 	pub fn readUnflippedFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}", .{path}) catch unreachable; // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;

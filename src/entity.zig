@@ -110,8 +110,8 @@ pub const ClientEntityManager = struct {
 			.{.attachments = &.{.alphaBlending}},
 		);
 
-		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snail_player.png");
-		const modelFile = main.files.read(main.stackAllocator, "assets/cubyz/entity/models/snail_player.obj") catch |err| blk: {
+		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snale.png");
+		const modelFile = main.files.read(main.stackAllocator, "assets/cubyz/entity/models/snale.obj") catch |err| blk: {
 			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
 			break :blk &.{};
 		};
