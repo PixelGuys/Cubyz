@@ -947,6 +947,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		};
 		var reader: main.utils.BinaryReader = .init(bytes);
+
+		main.items.Inventory.Sync.ServerSide.mutex.lock();
+		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 		return main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader);
 	}
 
