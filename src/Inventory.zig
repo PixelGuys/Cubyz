@@ -2028,15 +2028,6 @@ fn toBytes(self: Inventory, writer: *BinaryWriter) void {
 	}
 }
 
-pub fn fromBase64(self: Inventory, base64: []const u8) void {
-	const destination: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
-	defer main.stackAllocator.free(destination);
-
-	std.base64.url_safe.Decoder.decode(destination, base64) catch unreachable;
-	var reader = BinaryReader.init(destination);
-	fromBytes(self, &reader);
-}
-
 pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	var remainingCount = reader.readVarInt(u32) catch 0;
 	for(self._items) |*stack| {
