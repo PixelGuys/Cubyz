@@ -1133,7 +1133,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
 			if(i == 2 and jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
-				Player.super.vel[i] = @sqrt(Player.jumpHeight*gravity*2);
+				Player.super.vel[i] += @sqrt(Player.jumpHeight*gravity*2);
 				frictionCoefficient = airFrictionCoefficient;
 			}
 			const v_0 = Player.super.vel[i];

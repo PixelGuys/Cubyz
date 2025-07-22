@@ -1,7 +1,7 @@
 .{
 	.tags = .{.wood},
 	.blockHealth = 3,
-	.bounce = 1.5,
+	.bounce = 1.0,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
