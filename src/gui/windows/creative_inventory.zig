@@ -78,7 +78,7 @@ fn initContent() void {
 			while(itemIterator.next()) |item| {
 				if(!item.hasTag(bestTag)) {
 					if(item.block()) |blockIndex| {
-						if(!(main.blocks.Block {.typ = blockIndex, .data = 0}).hasTag(bestTag)) continue;
+						if(!(main.blocks.Block{.typ = blockIndex, .data = 0}).hasTag(bestTag)) continue;
 					} else {
 						continue;
 					}
