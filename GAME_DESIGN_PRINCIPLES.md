@@ -38,6 +38,9 @@ Inventories will often fill up with random items that the player does not want, 
 ### Use Realism Tastefully
 Cubyz is not a realistic game. The world is very whimsical and has rules of its own, sometimes inspired by the real world, but never copied without a good reason.
 
+### Avoid Excessive Additions
+Unless there is a genuine functional reason for a variant or addition to be added, they should be avoided. Try to use or modify existing items and blocks first before creating new ones.
+
 ## Player Engagement
 ### "How would the player feel?"
 Put yourself in the shoes of a player encountering a mechanic for the first time and ask yourself this. The goal is to make the player feel how you want them to, whether that be satisfaction, fear, or intrigue.
@@ -60,12 +63,7 @@ For example, in the "Pre-Caves Age," the player will not have access to coal, as
 This problem is completely solved as soon as the player gets coal, as they can now explore caves to find more coal with their newfound torches. It's important that the player has these options to prevent them from getting stuck on a seemingly insurmountable barrier. This gives them more freedom in how they can approach the game, as no one option is particularly the best and can change depending on situation and location.
 
 ### Explain when Needed
-Progress-related mechanics need explanations so the players don't get stuck. Keep it simple on the surface so it's easily approachable, but leave out details that the player can find themselves through intuition.
-
-### Show, Don't Tell
-An important rule, showing how a mechanic works instead of telling encourages player experimentation and reduces confusion. Here are some examples:
-- Instead of telling the player what buffs a food item gives, let them eat it and make note of it themselves.
-- Instead of telling the player what progression step to take next, let them explore different options of progress.
+Progress-related mechanics need explanations or subtle hints so players don't get stuck. Keep it simple on the surface so it's easily approachable, but leave out details that the player can find themselves through intuition.
 
 ### Embrace Micro Moments
 These are tiny things the player does in between larger events; examples include:
