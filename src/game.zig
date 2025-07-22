@@ -1329,7 +1329,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 				}
 
-				
 				Player.super.vel[2] = 0;
 			}
 
