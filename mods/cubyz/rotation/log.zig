@@ -212,7 +212,7 @@ pub fn generateData(
 			}
 
 			const sidePos = pos + side.relPos();
-			const sideBlock = main.renderer.mesh_storage.getBlock(sidePos[0], sidePos[1], sidePos[2]) orelse continue;
+			const sideBlock = main.renderer.mesh_storage.getBlockFromRenderThread(sidePos[0], sidePos[1], sidePos[2]) orelse continue;
 			const canConnectToSide = currentBlock.mode() == sideBlock.mode() and currentBlock.modeData() == sideBlock.modeData();
 
 			if(canConnectToSide) {

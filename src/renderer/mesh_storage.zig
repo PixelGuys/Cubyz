@@ -22,24 +22,22 @@ const chunk_meshing = @import("chunk_meshing.zig");
 const ChunkMesh = chunk_meshing.ChunkMesh;
 
 const ChunkMeshNode = struct {
-	mesh: ?*chunk_meshing.ChunkMesh = null,
+	mesh: Atomic(?*chunk_meshing.ChunkMesh) = .init(null),
 	active: bool = false,
 	rendered: bool = false,
 	finishedMeshing: bool = false, // Must be synced with mesh.finishedMeshing
 	finishedMeshingHigherResolution: u8 = 0, // Must be synced with finishedMeshing of the 8 higher resolution chunks.
 	pos: chunk.ChunkPosition = undefined,
 	isNeighborLod: [6]bool = @splat(false), // Must be synced with mesh.isNeighborLod
-	mutex: std.Thread.Mutex = .{},
 };
 const storageSize = 64;
 const storageMask = storageSize - 1;
 var storageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 var mapStorageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize]?*LightMap.LightMapFragment = undefined;
 var meshList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
-var priorityMeshUpdateList: main.utils.ConcurrentQueue(*chunk_meshing.ChunkMesh) = undefined;
-pub var updatableList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
+var priorityMeshUpdateList: main.utils.ConcurrentQueue(chunk.ChunkPosition) = undefined;
+pub var updatableList = main.List(chunk.ChunkPosition).init(main.globalAllocator);
 var mapUpdatableList: main.utils.ConcurrentQueue(*LightMap.LightMapFragment) = undefined;
-var clearList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
@@ -74,7 +72,7 @@ pub const BlockUpdate = struct {
 
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
 
-var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
+pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
@@ -104,6 +102,7 @@ pub fn deinit() void {
 	lastPz = 0;
 	lastRD = 0;
 	freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
+	main.heap.GarbageCollection.waitForFreeCompletion();
 	for(storageLists) |storageList| {
 		main.globalAllocator.destroy(storageList);
 	}
@@ -111,28 +110,17 @@ pub fn deinit() void {
 		main.globalAllocator.destroy(mapStorageList);
 	}
 
-	for(updatableList.items) |mesh| {
-		mesh.decreaseRefCount();
-	}
 	updatableList.clearAndFree();
 	while(mapUpdatableList.dequeue()) |map| {
 		map.decreaseRefCount();
 	}
 	mapUpdatableList.deinit();
-	while(priorityMeshUpdateList.dequeue()) |mesh| {
-		mesh.decreaseRefCount();
-	}
 	priorityMeshUpdateList.deinit();
 	while(blockUpdateList.dequeue()) |blockUpdate| {
 		blockUpdate.deinitManaged(main.globalAllocator);
 	}
 	blockUpdateList.deinit();
 	meshList.clearAndFree();
-	for(clearList.items) |mesh| {
-		mesh.deinit();
-		meshMemoryPool.destroy(mesh);
-	}
-	clearList.clearAndFree();
 	meshMemoryPool.deinit();
 }
 
@@ -191,20 +179,16 @@ pub fn getLightMapPieceAndIncreaseRefCount(x: i32, y: i32, voxelSize: u31) ?*Lig
 	return result;
 }
 
-pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
+pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return null;
+	const mesh = node.mesh.load(.acquire) orelse return null;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	return block;
 }
 
-pub fn triggerOnInteractBlock(x: i32, y: i32, z: i32) EventStatus {
+pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) EventStatus {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return .ignored;
+	const mesh = node.mesh.load(.acquire) orelse return .ignored;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	if(block.blockEntity()) |blockEntity| {
 		return blockEntity.onInteract(.{x, y, z}, mesh.chunk);
@@ -215,9 +199,7 @@ pub fn triggerOnInteractBlock(x: i32, y: i32, z: i32) EventStatus {
 
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return null;
+	const mesh = node.mesh.load(.acquire) orelse return null;
 	const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 	const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 	const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
@@ -228,53 +210,44 @@ pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
 }
 
-pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
+pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
 	while(lod < settings.highestLod) : (lod += 1) {
 		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod});
-		node.mutex.lock();
-		defer node.mutex.unlock();
-		const mesh = node.mesh orelse continue;
+		const mesh = node.mesh.load(.acquire) orelse continue;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask << lod, y & chunk.chunkMask << lod, z & chunk.chunkMask << lod);
 		return block;
 	}
 	return blocks.Block{.typ = 0, .data = 0};
 }
 
-pub fn getMeshAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*chunk_meshing.ChunkMesh {
+pub fn getMesh(pos: chunk.ChunkPosition) ?*chunk_meshing.ChunkMesh {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
 	const mask = ~((@as(i32, 1) << lod + chunk.chunkShift) - 1);
 	const node = getNodePointer(pos);
-	node.mutex.lock();
-	const mesh = node.mesh orelse {
-		node.mutex.unlock();
-		return null;
-	};
-	mesh.increaseRefCount();
-	node.mutex.unlock();
+	const mesh = node.mesh.load(.acquire) orelse return null;
 	if(pos.wx & mask != mesh.pos.wx or pos.wy & mask != mesh.pos.wy or pos.wz & mask != mesh.pos.wz) {
-		mesh.decreaseRefCount();
 		return null;
 	}
 	return mesh;
 }
 
-pub fn getMeshFromAnyLodAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) ?*chunk_meshing.ChunkMesh {
+pub fn getMeshFromAnyLod(wx: i32, wy: i32, wz: i32, voxelSize: u31) ?*chunk_meshing.ChunkMesh {
 	var lod: u5 = @ctz(voxelSize);
 	while(lod < settings.highestLod) : (lod += 1) {
-		const mesh = getMeshAndIncreaseRefCount(.{.wx = wx & ~chunk.chunkMask << lod, .wy = wy & ~chunk.chunkMask << lod, .wz = wz & ~chunk.chunkMask << lod, .voxelSize = @as(u31, 1) << lod});
+		const mesh = getMesh(.{.wx = wx & ~chunk.chunkMask << lod, .wy = wy & ~chunk.chunkMask << lod, .wz = wz & ~chunk.chunkMask << lod, .voxelSize = @as(u31, 1) << lod});
 		return mesh orelse continue;
 	}
 	return null;
 }
 
-pub fn getNeighborAndIncreaseRefCount(_pos: chunk.ChunkPosition, resolution: u31, neighbor: chunk.Neighbor) ?*chunk_meshing.ChunkMesh {
+pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: u31, neighbor: chunk.Neighbor) ?*chunk_meshing.ChunkMesh {
 	var pos = _pos;
 	pos.wx +%= pos.voxelSize*chunk.chunkSize*neighbor.relX();
 	pos.wy +%= pos.voxelSize*chunk.chunkSize*neighbor.relY();
 	pos.wz +%= pos.voxelSize*chunk.chunkSize*neighbor.relZ();
 	pos.voxelSize = resolution;
-	return getMeshAndIncreaseRefCount(pos);
+	return getMesh(pos);
 }
 
 fn reduceRenderDistance(fullRenderDistance: i64, reduction: i64) i32 {
@@ -399,15 +372,15 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 					const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
 
 					const node = &storageLists[_lod][@intCast(index)];
-					node.mutex.lock();
-					const oldMesh = node.mesh;
-					node.mesh = null;
-					node.mutex.unlock();
+					const oldMesh = node.mesh.swap(null, .monotonic);
 					node.pos = undefined;
 					if(oldMesh) |mesh| {
 						node.finishedMeshing = false;
 						updateHigherLodNodeFinishedMeshing(mesh.pos, false);
-						mesh.decreaseRefCount();
+						main.heap.GarbageCollection.deferredFree(.{
+							.ptr = mesh,
+							.freeFunction = main.utils.castFunctionSelfToAnyopaque(ChunkMesh.deinit),
+						});
 					}
 					node.isNeighborLod = @splat(false);
 				}
@@ -542,14 +515,12 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 					const pos = chunk.ChunkPosition{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod};
 
 					const node = &storageLists[_lod][@intCast(index)];
-					node.mutex.lock();
 					node.pos = pos;
-					if(node.mesh) |mesh| {
+					if(node.mesh.load(.acquire)) |mesh| {
 						std.debug.assert(std.meta.eql(pos, mesh.pos));
 					} else {
 						meshRequests.append(pos);
 					}
-					node.mutex.unlock();
 				}
 			}
 		}
@@ -756,7 +727,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 			}
 		}
 		if(!std.meta.eql(node.isNeighborLod, isNeighborLod)) {
-			const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
+			const mesh = node.mesh.load(.acquire).?; // no other thread is allowed to overwrite the mesh (unless it's null).
 			mesh.isNeighborLod = isNeighborLod;
 			node.isNeighborLod = isNeighborLod;
 			mesh.uploadData();
@@ -766,14 +737,12 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		node.rendered = false;
 		if(!node.finishedMeshing) continue;
 
-		const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
+		const mesh = node.mesh.load(.acquire).?; // no other thread is allowed to overwrite the mesh (unless it's null).
 
-		node.mutex.lock();
 		if(mesh.needsMeshUpdate) {
 			mesh.uploadData();
 			mesh.needsMeshUpdate = false;
 		}
-		node.mutex.unlock();
 		// Remove empty meshes.
 		if(!mesh.isEmpty()) {
 			meshList.append(mesh);
@@ -788,32 +757,14 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 
 	mutex.lock();
 	defer mutex.unlock();
-	for(clearList.items) |mesh| {
-		mesh.deinit();
-		meshMemoryPool.destroy(mesh);
-	}
-	clearList.clearRetainingCapacity();
-	while(priorityMeshUpdateList.dequeue()) |mesh| {
+	while(priorityMeshUpdateList.dequeue()) |pos| {
+		const mesh = getMesh(pos) orelse continue;
 		if(!mesh.needsMeshUpdate) {
-			mutex.unlock();
-			defer mutex.lock();
-			mesh.decreaseRefCount();
 			continue;
 		}
 		mesh.needsMeshUpdate = false;
-		const node = getNodePointer(mesh.pos);
-		node.mutex.lock();
-		if(node.mesh != mesh) {
-			node.mutex.unlock();
-			mutex.unlock();
-			defer mutex.lock();
-			mesh.decreaseRefCount();
-			continue;
-		}
-		node.mutex.unlock();
 		mutex.unlock();
 		defer mutex.lock();
-		mesh.decreaseRefCount();
 		mesh.uploadData();
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 	}
@@ -836,15 +787,14 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 		{
 			var i: usize = 0;
 			while(i < updatableList.items.len) {
-				const mesh = updatableList.items[i];
-				if(!isInRenderDistance(mesh.pos)) {
+				const pos = updatableList.items[i];
+				if(!isInRenderDistance(pos)) {
 					_ = updatableList.swapRemove(i);
 					mutex.unlock();
 					defer mutex.lock();
-					mesh.decreaseRefCount();
 					continue;
 				}
-				const priority = mesh.pos.getPriority(playerPos);
+				const priority = pos.getPriority(playerPos);
 				if(priority > closestPriority) {
 					closestPriority = priority;
 					closestIndex = i;
@@ -853,32 +803,24 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 			}
 			if(updatableList.items.len == 0) break;
 		}
-		const mesh = updatableList.swapRemove(closestIndex);
+		const pos = updatableList.swapRemove(closestIndex);
 		mutex.unlock();
 		defer mutex.lock();
-		if(isInRenderDistance(mesh.pos)) {
-			const node = getNodePointer(mesh.pos);
-			std.debug.assert(std.meta.eql(node.pos, mesh.pos));
+		if(isInRenderDistance(pos)) {
+			const node = getNodePointer(pos);
+			if(node.finishedMeshing) continue;
+			const mesh = getMesh(pos) orelse continue;
 			node.finishedMeshing = true;
 			mesh.finishedMeshing = true;
-			updateHigherLodNodeFinishedMeshing(mesh.pos, true);
+			updateHigherLodNodeFinishedMeshing(pos, true);
 			mesh.uploadData();
-			node.mutex.lock();
-			const oldMesh = node.mesh;
-			node.mesh = mesh;
-			node.mutex.unlock();
-			if(oldMesh) |_oldMesh| {
-				_oldMesh.decreaseRefCount();
-			}
-		} else {
-			mesh.decreaseRefCount();
 		}
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 	}
 }
 
 fn batchUpdateBlocks() void {
-	var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
+	var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
 	defer lightRefreshList.deinit();
 
 	var regenerateMeshList = main.List(*ChunkMesh).init(main.stackAllocator);
@@ -888,74 +830,51 @@ fn batchUpdateBlocks() void {
 	while(blockUpdateList.dequeue()) |blockUpdate| {
 		defer blockUpdate.deinitManaged(main.globalAllocator);
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
-		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
+		if(getMesh(pos)) |mesh| {
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
-			mesh.decreaseRefCount();
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 	for(regenerateMeshList.items) |mesh| {
 		mesh.generateMesh(&lightRefreshList);
 	}
-	{
-		for(lightRefreshList.items) |mesh| {
-			if(mesh.needsLightRefresh.load(.unordered)) {
-				mesh.scheduleLightRefreshAndDecreaseRefCount();
-			} else {
-				mesh.decreaseRefCount();
-			}
-		}
+	for(lightRefreshList.items) |pos| {
+		ChunkMesh.scheduleLightRefresh(pos);
 	}
 	for(regenerateMeshList.items) |mesh| {
 		mesh.uploadData();
-		mesh.decreaseRefCount();
 	}
 }
 
 // MARK: adders
 
-pub fn addMeshToClearListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
-	std.debug.assert(mesh.refCount.load(.monotonic) == 0);
-	mutex.lock();
-	defer mutex.unlock();
-	clearList.append(mesh);
-}
-
-pub fn addToUpdateListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
+pub fn addToUpdateList(mesh: *chunk_meshing.ChunkMesh) void {
 	std.debug.assert(mesh.refCount.load(.monotonic) != 0);
 	mutex.lock();
 	defer mutex.unlock();
 	if(mesh.finishedMeshing) {
-		priorityMeshUpdateList.enqueue(mesh);
+		priorityMeshUpdateList.enqueue(mesh.pos);
 		mesh.needsMeshUpdate = true;
-	} else {
-		mutex.unlock();
-		defer mutex.lock();
-		mesh.decreaseRefCount();
 	}
 }
 
-pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored}!void {
+pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored, NoLongerNeeded}!void {
 	mutex.lock();
 	defer mutex.unlock();
-	if(isInRenderDistance(mesh.pos)) {
-		const node = getNodePointer(mesh.pos);
-		node.mutex.lock();
-		defer node.mutex.unlock();
-		if(node.mesh != null) {
-			return error.AlreadyStored;
-		}
-		node.mesh = mesh;
-		node.finishedMeshing = mesh.finishedMeshing;
-		updateHigherLodNodeFinishedMeshing(mesh.pos, mesh.finishedMeshing);
-		mesh.increaseRefCount();
+	if(!isInRenderDistance(mesh.pos)) {
+		return error.NoLongerNeeded;
 	}
+	const node = getNodePointer(mesh.pos);
+	if(node.mesh.cmpxchgStrong(null, mesh, .release, .monotonic) != null) {
+		return error.AlreadyStored;
+	}
+	node.finishedMeshing = mesh.finishedMeshing;
+	updateHigherLodNodeFinishedMeshing(mesh.pos, mesh.finishedMeshing);
 }
 
-pub fn finishMesh(mesh: *chunk_meshing.ChunkMesh) void {
+pub fn finishMesh(pos: chunk.ChunkPosition) void {
 	mutex.lock();
 	defer mutex.unlock();
-	mesh.increaseRefCount();
-	updatableList.append(mesh);
+	updatableList.append(pos);
 }
 
 pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
@@ -991,10 +910,8 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	pub fn run(self: *MeshGenerationTask) void {
 		defer main.globalAllocator.destroy(self);
 		const pos = self.mesh.pos;
-		const mesh = meshMemoryPool.create();
-		mesh.init(pos, self.mesh);
-		defer mesh.decreaseRefCount();
-		mesh.generateLightingData() catch return;
+		const mesh = ChunkMesh.init(pos, self.mesh);
+		mesh.generateLightingData() catch mesh.deinit(undefined);
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {
@@ -1023,7 +940,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	const animationFrame: usize = @intFromFloat(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));
 	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
 
-	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
+	const block = getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;
 	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
@@ -1039,8 +956,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
-	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
-	defer mesh.decreaseRefCount();
+	const mesh = getMesh(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
 	mesh.mutex.lock();
 	defer mesh.mutex.unlock();
 	const lightIndex = blk: {
@@ -1074,8 +990,7 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, textur
 fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, neighbor: ?chunk.Neighbor) void {
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
-	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
-	defer mesh.decreaseRefCount();
+	const mesh = getMesh(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
 	for(mesh.blockBreakingFaces.items, 0..) |face, i| {
 		if(face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
 			_ = mesh.blockBreakingFaces.swapRemove(i);
@@ -1086,7 +1001,7 @@ fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, nei
 }
 
 pub fn removeBreakingAnimation(pos: Vec3i) void {
-	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
+	const block = getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;
 	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
