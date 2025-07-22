@@ -1316,8 +1316,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
-			const bounce = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateBounce(.client, Player.super.pos, Player.outerBoundingBox);
-			if(bounce != 0.0 and Player.super.vel[2] < -4.0) {
+			var bounce = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateBounce(.client, Player.super.pos, Player.outerBoundingBox);
+			if(KeyBoard.key("crouch").pressed) {
+				bounce *= 0.5;
+			}
+			if(!bounce != 0.0 and Player.super.vel[2] < -4.0) {
 				Player.super.vel[2] = -Player.super.vel[2]*bounce;
 			} else {
 				const damage: f32 = @floatCast(@round(@max((Player.super.vel[2]*Player.super.vel[2])/(2*gravity) - 7, 0))/2);
