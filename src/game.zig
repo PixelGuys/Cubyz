@@ -1322,6 +1322,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			}
 			if(bounce != 0.0 and Player.super.vel[2] < -4.0) {
 				Player.super.vel[2] = -Player.super.vel[2]*bounce;
+				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			} else {
 				const damage: f32 = @floatCast(@round(@max((Player.super.vel[2]*Player.super.vel[2])/(2*gravity) - 7, 0))/2);
 				if(damage > 0.01) {
