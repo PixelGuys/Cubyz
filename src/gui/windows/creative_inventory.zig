@@ -73,17 +73,16 @@ fn initContent() void {
 		const list = VerticalList.init(.{0, padding}, 144, 0);
 		items = .init(main.globalAllocator);
 		var itemIterator = main.items.iterator();
-		if(searchString.len > 1 and searchString[0] == '.') blk: {
-			const bestTag = main.Tag.findSimilar(searchString[1..]) orelse break :blk;
+		if(searchString.len > 1 and searchString[0] == '.') {
+			const bestTags = main.Tag.findSimilar(searchString[1..]);
+			defer bestTags.deinit();
 			while(itemIterator.next()) |item| {
-				if(!item.hasTag(bestTag)) {
-					if(item.block()) |blockIndex| {
-						if(!(main.blocks.Block{.typ = blockIndex, .data = 0}).hasTag(bestTag)) continue;
-					} else {
-						continue;
+				for(bestTags.items) |tag| {
+					if(item.hasTag(tag) or (item.block() != null and (main.blocks.Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
+						items.append(Item{.baseItem = item.*});
+						break;
 					}
 				}
-				items.append(Item{.baseItem = item.*});
 			}
 		} else {
 			while(itemIterator.next()) |item| {
