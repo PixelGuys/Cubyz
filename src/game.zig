@@ -332,6 +332,59 @@ pub const collision = struct {
 		return @floatCast(friction/totalArea);
 	}
 
+	pub fn calculateBounce(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box) f32 {
+		const boundingBox: Box = .{
+			.min = pos + hitBox.min,
+			.max = pos + hitBox.max,
+		};
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+
+		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
+
+		var bounce: f64 = 0;
+		var totalArea: f64 = 0;
+
+		var x = minX;
+		while(x <= maxX) : (x += 1) {
+			var y = minY;
+			while(y <= maxY) : (y += 1) {
+				const _block = if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
+
+				if(_block) |block| {
+					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
+
+					const blockBox: Box = .{
+						.min = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().min)),
+						.max = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().max)),
+					};
+
+					if(boundingBox.min[2] > blockBox.max[2] or boundingBox.max[2] < blockBox.min[2]) {
+						continue;
+					}
+
+					const max = std.math.clamp(vec.xy(blockBox.max), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
+					const min = std.math.clamp(vec.xy(blockBox.min), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
+
+					const area = (max[0] - min[0])*(max[1] - min[1]);
+
+					if(block.collide()) {
+						totalArea += area;
+						bounce += area*@as(f64, @floatCast(block.bounce()));
+					}
+				}
+			}
+		}
+
+		if(totalArea == 0) {
+			return 0.0;
+		}
+
+		return @floatCast(bounce/totalArea);
+	}
+
 	const VolumeProperties = struct {
 		terminalVelocity: f64,
 		density: f64,
@@ -1263,13 +1316,18 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
+			const bounce = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateBounce(.client, Player.super.pos, Player.outerBoundingBox);
+			if(bounce != 0.0 and Player.super.vel[2] < -0.01) {
+				Player.super.vel[2] = -Player.super.vel[2]*bounce;
+			} else {
+				const damage: f32 = @floatCast(@round(@max((Player.super.vel[2]*Player.super.vel[2])/(2*gravity) - 7, 0))/2);
+				if(damage > 0.01) {
+					Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+				}
 
-			const damage: f32 = @floatCast(@round(@max((Player.super.vel[2]*Player.super.vel[2])/(2*gravity) - 7, 0))/2);
-			if(damage > 0.01) {
-				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+				
+				Player.super.vel[2] = 0;
 			}
-
-			Player.super.vel[2] = 0;
 
 			// Always unstuck upwards for now
 			while(collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
