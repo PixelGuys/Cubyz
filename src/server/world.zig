@@ -926,28 +926,28 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
-		loadPlayerInventory(playerData, user);
+		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
+		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 	}
 
-	fn loadPlayerInventory(playerData: ZonElement, user: *User) void {
-		{
-			const base64 = playerData.get([]const u8, "playerInventory", "");
-			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
-			defer main.stackAllocator.free(bytes);
+	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) u32 {
+		const decodedSize = std.base64.url_safe.Decoder.calcSizeForSlice(base64EncodedData) catch |err| blk: {
+			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
+			break :blk 0;
+		};
 
-			std.base64.url_safe.Decoder.decode(bytes, base64) catch unreachable;
-			var reader: main.utils.BinaryReader = .init(bytes);
-			user.inventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, &reader);
-		}
-		{
-			const base64 = playerData.get([]const u8, "hand", "");
-			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
-			defer main.stackAllocator.free(bytes);
+		const bytes: []u8 = main.stackAllocator.alloc(u8, decodedSize);
+		defer main.stackAllocator.free(bytes);
 
-			std.base64.url_safe.Decoder.decode(bytes, base64) catch unreachable;
-			var reader: main.utils.BinaryReader = .init(bytes);
-			user.handInventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(1, .normal, .{.hand = user.id}, &reader);
-		}
+		var readerInput: []const u8 = bytes;
+
+		std.base64.url_safe.Decoder.decode(bytes, base64EncodedData) catch |err| {
+			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
+			readerInput = "";
+
+		};
+		var reader: main.utils.BinaryReader = .init(bytes);
+		return main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader);
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {

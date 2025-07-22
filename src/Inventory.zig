@@ -1823,7 +1823,7 @@ const SourceType = enum(u8) {
 	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
-const Source = union(SourceType) {
+pub const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: u32,
 	sharedTestingInventory: void,
