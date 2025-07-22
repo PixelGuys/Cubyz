@@ -48,19 +48,6 @@ pub const Tag = enum(u32) {
 		return result;
 	}
 
-	pub fn findSimilar(tag: []const u8) main.List(Tag) {
-		var tags = main.List(Tag).init(allocator);
-		for(tagList.items) |otherTag| {
-			if(std.mem.containsAtLeast(u8, otherTag, 1, tag)) {
-				tags.append(tagIds.get(otherTag).?);
-			}
-			if(std.mem.eql(u8, tag, otherTag)) {
-				return tags;
-			}
-		}
-		return tags;
-	}
-
 	pub fn loadTagsFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []Tag {
 		const result = _allocator.alloc(Tag, zon.toSlice().len);
 		for(zon.toSlice(), 0..) |tagZon, i| {
