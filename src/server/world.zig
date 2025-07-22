@@ -490,7 +490,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			} else |_| {}
 		}
 		convert_player_data_to_binary: { // TODO: Remove after #480
-			const playerDataPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path});
+			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
 			defer main.stackAllocator.free(playerDataPath);
 
 			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch |err| {
@@ -930,10 +930,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
+		loadPlayerInventory(playerData, user);
+	}
 
-		const base64EncodedEmptyInventory = "AA==";
+	fn loadPlayerInventory(playerData: ZonElement, user: *User) void {
 		{
-			const base64 = playerData.get([]const u8, "playerInventory", base64EncodedEmptyInventory);
+			const base64 = playerData.get([]const u8, "playerInventory", "");
 			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
 			defer main.stackAllocator.free(bytes);
 
@@ -942,7 +944,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			user.inventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, &reader);
 		}
 		{
-			const base64 = playerData.get([]const u8, "hand", base64EncodedEmptyInventory);
+			const base64 = playerData.get([]const u8, "hand", "");
 			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
 			defer main.stackAllocator.free(bytes);
 
