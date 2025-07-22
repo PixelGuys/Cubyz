@@ -274,12 +274,7 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			if(data.foundExisting) return;
-			const base64EncodedEmptyInventory: []const u8 = "AA==";
-			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64EncodedEmptyInventory) catch unreachable);
-			defer main.stackAllocator.free(bytes);
-
-			std.base64.url_safe.Decoder.decode(bytes, base64EncodedEmptyInventory) catch unreachable;
-			var reader: main.utils.BinaryReader = .init(bytes);
+			var reader: main.utils.BinaryReader = .init("");
 			data.valuePtr.id = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(chestSize, .normal, .{.blockInventory = pos}, &reader);
 			const inventory = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.valuePtr.id);
 			if(event.createOrUpdate.remaining.len != 0) {
