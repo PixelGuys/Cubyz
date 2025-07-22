@@ -2057,7 +2057,7 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	for(0..remainingCount) |_| {
 		var stack = ItemStack.fromBytes(reader) catch continue;
 		if(stack.item) |item| {
-			std.log.err("Lost {} of {s}", .{stack.amount, item.getName()});
+			std.log.err("Lost {} of {s}", .{stack.amount, item.getId()});
 		}
 		stack.deinit();
 	}
