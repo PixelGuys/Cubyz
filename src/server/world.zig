@@ -944,7 +944,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		std.base64.url_safe.Decoder.decode(bytes, base64EncodedData) catch |err| {
 			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
 			readerInput = "";
-
 		};
 		var reader: main.utils.BinaryReader = .init(bytes);
 		return main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader);
