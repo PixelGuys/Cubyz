@@ -490,13 +490,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			} else |_| {}
 		}
 		convert_player_data_to_binary: { // TODO: Remove after #480
-			const playerDataPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path});
+			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
 			defer main.stackAllocator.free(playerDataPath);
 
-			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch |err| {
-				std.log.err("Could not open player data directory to migrate file format: {s}. Conversion aborted.", .{@errorName(err)});
-				break :convert_player_data_to_binary;
-			};
+			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch break :convert_player_data_to_binary;
 			defer playerDataDirectory.close();
 
 			{
@@ -529,15 +526,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 							.object => {
 								var temp: main.items.Inventory = undefined;
 								temp._items = main.stackAllocator.alloc(ItemStack, zon.get(u32, "count", 0));
-								for(temp._items) |*stack| {
-									stack.* = ItemStack{};
-								}
-								defer {
-									for(temp._items) |*stack| {
-										stack.deinit();
-									}
-									main.stackAllocator.free(temp._items);
-								}
+								defer main.stackAllocator.free(temp._items);
+
+								for(temp._items) |*stack| stack.* = ItemStack{};
+								defer for(temp._items) |*stack| stack.deinit();
 
 								temp.loadFromZon(zon);
 								const base64Data = temp.toBase64(main.stackAllocator);
@@ -545,7 +537,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 								old.value.deinit(main.stackAllocator);
 							},
 							.string, .stringOwned, .null => continue,
-							else => unreachable,
+							else => |other| {
+								const representation = zon.toString(main.stackAllocator);
+								defer main.stackAllocator.free(representation);
+								std.log.err("Encountered unexpected type ({s}) while migrating '{s}': {s}", .{@tagName(other), absolutePath, representation});
+							},
 						}
 					}
 					files.writeZon(absolutePath, playerData) catch |err| {
@@ -930,28 +926,28 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
+		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
+		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
+	}
 
-		main.items.Inventory.Sync.ServerSide.mutex.lock();
-		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
-		const base64EncodedEmptyInventory = "AA==";
-		{
-			const base64 = playerData.get([]const u8, "playerInventory", base64EncodedEmptyInventory);
-			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
-			defer main.stackAllocator.free(bytes);
+	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) u32 {
+		const decodedSize = std.base64.url_safe.Decoder.calcSizeForSlice(base64EncodedData) catch |err| blk: {
+			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
+			break :blk 0;
+		};
 
-			std.base64.url_safe.Decoder.decode(bytes, base64) catch unreachable;
-			var reader: main.utils.BinaryReader = .init(bytes);
-			user.inventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, &reader);
-		}
-		{
-			const base64 = playerData.get([]const u8, "hand", base64EncodedEmptyInventory);
-			const bytes: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Decoder.calcSizeForSlice(base64) catch unreachable);
-			defer main.stackAllocator.free(bytes);
+		const bytes: []u8 = main.stackAllocator.alloc(u8, decodedSize);
+		defer main.stackAllocator.free(bytes);
 
-			std.base64.url_safe.Decoder.decode(bytes, base64) catch unreachable;
-			var reader: main.utils.BinaryReader = .init(bytes);
-			user.handInventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(1, .normal, .{.hand = user.id}, &reader);
-		}
+		var readerInput: []const u8 = bytes;
+
+		std.base64.url_safe.Decoder.decode(bytes, base64EncodedData) catch |err| {
+			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
+			readerInput = "";
+
+		};
+		var reader: main.utils.BinaryReader = .init(bytes);
+		return main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader);
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {

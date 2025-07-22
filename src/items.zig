@@ -159,7 +159,7 @@ const MaterialProperty = enum {
 	}
 };
 
-pub const BaseItemIndex = enum(u16) {
+pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	_,
 
 	pub fn fromId(_id: []const u8) ?BaseItemIndex {
@@ -201,8 +201,8 @@ pub const BaseItemIndex = enum(u16) {
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
-	pub fn getName(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].getName();
+	pub fn getId(self: BaseItemIndex) []const u8 {
+		return itemList[@intFromEnum(self)].id;
 	}
 };
 
@@ -279,10 +279,6 @@ pub const BaseItem = struct { // MARK: BaseItem
 			}
 		}
 		return self.texture.?;
-	}
-
-	fn getName(self: BaseItem) []const u8 {
-		return self.name;
 	}
 
 	fn getTooltip(self: BaseItem) []const u8 {
@@ -768,7 +764,7 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
-	fn getName(self: *Tool) []const u8 {
+	fn getId(self: *Tool) []const u8 {
 		return self.type.id();
 	}
 
@@ -906,10 +902,10 @@ pub const Item = union(ItemType) { // MARK: Item
 		}
 	}
 
-	pub fn getName(self: Item) []const u8 {
+	pub fn getId(self: Item) []const u8 {
 		switch(self) {
 			inline else => |item| {
-				return item.getName();
+				return item.getId();
 			},
 		}
 	}
