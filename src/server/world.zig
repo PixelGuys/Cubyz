@@ -537,7 +537,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 								old.value.deinit(main.stackAllocator);
 							},
 							.string, .stringOwned, .null => continue,
-							else => unreachable,
+							else => |other| {
+								const representation = zon.toString(main.stackAllocator);
+								defer main.stackAllocator.free(representation);
+								std.log.err("Encountered unexpected type ({s}) while migrating '{s}': {s}", .{@tagName(other), absolutePath, representation});
+							},
 						}
 					}
 					files.writeZon(absolutePath, playerData) catch |err| {
