@@ -36,7 +36,7 @@ If a player gets too attached to their amazing tool, they won't want to make oth
 Inventories will often fill up with random items that the player does not want, making their inventory hard to manage. To mitigate this, find uses for existing items before adding new ones and prevent items from finding their way into a player's inventory when they don't want it.
 
 ### Use Realism Tastefully
-Cubyz is not a realistic game. The world is very whimsical and has rules of its own, sometimes inspired by the real world, but never copying it outright.
+Cubyz is not a realistic game. The world is very whimsical and has rules of its own, sometimes inspired by the real world, but never copied without a good reason.
 
 ## Player Engagement
 ### "How would the player feel?"
