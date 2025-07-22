@@ -977,11 +977,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
-				playerZon.put("playerInventory", inv.toBase64(main.stackAllocator));
+				playerZon.put("playerInventory", ZonElement{.stringOwned = inv.toBase64(main.stackAllocator)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
-				playerZon.put("hand", inv.toBase64(main.stackAllocator));
+				playerZon.put("hand", ZonElement{.stringOwned = inv.toBase64(main.stackAllocator)});
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
 
