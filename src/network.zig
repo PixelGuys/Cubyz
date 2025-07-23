@@ -587,6 +587,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		var lastTime: i64 = networkTimestamp();
 		while(self.running.load(.monotonic)) {
+			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
 			if(self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
@@ -1308,8 +1309,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendClientDataUpdateToServer(conn: *Connection, pos: Vec3i) void {
-			const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(pos, 1)) orelse return;
-			defer mesh.decreaseRefCount();
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 			mesh.mutex.lock();
 			defer mesh.mutex.unlock();
 			const index = mesh.chunk.getLocalBlockIndex(pos);

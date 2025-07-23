@@ -81,6 +81,24 @@ const Material = struct { // MARK: Material
 			inline else => |field| return @field(self, @tagName(field)),
 		}
 	}
+
+	pub fn printTooltip(self: Material, outString: *main.List(u8)) void {
+		if(self.modifiers.len == 0) {
+			outString.appendSlice("§#808080Material\n");
+		}
+		for(self.modifiers) |modifier| {
+			if(modifier.restriction.vTable == modifierRestrictions.get("always") orelse unreachable) {
+				modifier.printTooltip(outString);
+				outString.appendSlice("\n");
+			} else {
+				outString.appendSlice("§#808080if ");
+				modifier.restriction.printTooltip(outString);
+				outString.appendSlice("\n  ");
+				modifier.printTooltip(outString);
+				outString.appendSlice("\n");
+			}
+		}
+	}
 };
 
 pub const ModifierRestriction = struct {
@@ -90,6 +108,7 @@ pub const ModifierRestriction = struct {
 	pub const VTable = struct {
 		satisfied: *const fn(data: *anyopaque, tool: *const Tool, x: i32, y: i32) bool,
 		loadFromZon: *const fn(allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
+		printTooltip: *const fn(data: *anyopaque, outString: *main.List(u8)) void,
 	};
 
 	pub fn satisfied(self: ModifierRestriction, tool: *const Tool, x: i32, y: i32) bool {
@@ -106,6 +125,10 @@ pub const ModifierRestriction = struct {
 			.vTable = vTable,
 			.data = vTable.loadFromZon(allocator, zon),
 		};
+	}
+
+	pub fn printTooltip(self: ModifierRestriction, outString: *main.List(u8)) void {
+		self.vTable.printTooltip(self.data, outString);
 	}
 };
 
@@ -209,6 +232,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	id: []const u8,
 	name: []const u8,
 	tags: []const Tag,
+	tooltip: []const u8,
 
 	stackSize: u16,
 	material: ?Material,
@@ -251,6 +275,25 @@ pub const BaseItem = struct { // MARK: BaseItem
 		};
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food", 0);
+
+		var tooltip: main.List(u8) = .init(allocator);
+		tooltip.appendSlice(self.name);
+		tooltip.append('\n');
+		if(self.material) |mat| {
+			mat.printTooltip(&tooltip);
+		}
+		if(self.tags.len != 0) {
+			tooltip.appendSlice("§#808080");
+			for(self.tags, 0..) |tag, i| {
+				if(i != 0) tooltip.append(' ');
+				tooltip.append('.');
+				tooltip.appendSlice(tag.getName());
+			}
+		}
+		if(tooltip.items[tooltip.items.len - 1] == '\n') {
+			_ = tooltip.swapRemove(tooltip.items.len - 1);
+		}
+		self.tooltip = tooltip.toOwnedSlice();
 	}
 
 	fn hashCode(self: BaseItem) u32 {
@@ -279,7 +322,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	}
 
 	fn getTooltip(self: BaseItem) []const u8 {
-		return self.name;
+		return self.tooltip;
 	}
 
 	pub fn hasTag(self: *const BaseItem, tag: Tag) bool {
@@ -1059,6 +1102,7 @@ pub fn globalInit() void {
 		modifierRestrictions.put(decl.name, &.{
 			.satisfied = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
 			.loadFromZon = comptime main.utils.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
+			.printTooltip = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
 	Inventory.Sync.ClientSide.init();
