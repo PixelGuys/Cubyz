@@ -60,17 +60,17 @@ pub const WorldEditData = struct {
 			self.changes.deinit();
 		}
 		pub fn clear(self: *History) void {
-			while(self.changes.dequeue()) |item| item.deinit();
+			while(self.changes.popBack()) |item| item.deinit();
 		}
 		pub fn push(self: *History, value: Value) void {
 			if(self.changes.reachedCapacity()) {
-				if(self.changes.dequeue()) |oldValue| oldValue.deinit();
+				if(self.changes.popBack()) |oldValue| oldValue.deinit();
 			}
 
-			self.changes.enqueue(value);
+			self.changes.pushFront(value);
 		}
 		pub fn pop(self: *History) ?Value {
-			return self.changes.dequeue_front();
+			return self.changes.popFront();
 		}
 	};
 	pub fn init() WorldEditData {

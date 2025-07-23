@@ -638,12 +638,12 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		if(hasMesh) {
 			node.active = true;
 			node.rendered = true;
-			searchList.enqueue(node);
+			searchList.pushFront(node);
 		}
 	}
 	var nodeList = main.List(*ChunkMeshNode).initCapacity(main.stackAllocator, 1024);
 	defer nodeList.deinit();
-	while(searchList.dequeue()) |node| {
+	while(searchList.popBack()) |node| {
 		std.debug.assert(node.finishedMeshing);
 		std.debug.assert(node.active);
 		if(!node.active) continue;
@@ -671,7 +671,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 						continue;
 					node2.active = true;
 					node2.rendered = true;
-					searchList.enqueue(node2);
+					searchList.pushFront(node2);
 				}
 			}
 		}
@@ -699,7 +699,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 						std.debug.assert(node2.finishedMeshing);
 						node2.active = true;
 						node2.rendered = true;
-						searchList.enqueue_back(node2);
+						searchList.pushBack(node2);
 					}
 				}
 			}

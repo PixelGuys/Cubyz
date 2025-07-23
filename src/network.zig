@@ -1612,7 +1612,7 @@ pub const Connection = struct { // MARK: Connection
 				self.lastUnsentTime = time;
 			}
 			if(data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
-			self.buffer.enqueue(protocolIndex);
+			self.buffer.pushFront(protocolIndex);
 			self.nextIndex +%= 1;
 			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			const bits = 1 + if(data.len == 0) 0 else std.math.log2_int(usize, data.len);
@@ -1620,7 +1620,7 @@ pub const Connection = struct { // MARK: Connection
 			for(0..bytes) |i| {
 				const shift = 7*(bytes - i - 1);
 				const byte = (data.len >> @intCast(shift) & 0x7f) | if(i == bytes - 1) @as(u8, 0) else 0x80;
-				self.buffer.enqueue(@intCast(byte));
+				self.buffer.pushFront(@intCast(byte));
 				self.nextIndex +%= 1;
 				_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			}
@@ -1679,7 +1679,7 @@ pub const Connection = struct { // MARK: Connection
 					range.wasResentAsFirstPacket = true;
 				}
 				range.wasResent = true;
-				self.lostRanges.enqueue(range);
+				self.lostRanges.pushFront(range);
 				_ = packetsResent.fetchAdd(1, .monotonic);
 			}
 			if(hadDoubleLoss) return .doubleLoss;
@@ -1690,10 +1690,10 @@ pub const Connection = struct { // MARK: Connection
 		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, allowedDelay: i64) ?usize {
 			self.unconfirmedRanges.ensureUnusedCapacity(1) catch unreachable;
 			// Resend old packet:
-			if(self.lostRanges.dequeue()) |_range| {
+			if(self.lostRanges.popBack()) |_range| {
 				var range = _range;
 				if(range.len > buf.len) { // MTU changed → split the data
-					self.lostRanges.enqueue_back(.{
+					self.lostRanges.pushBack(.{
 						.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
 						.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
 						.timestamp = range.timestamp,
@@ -2019,7 +2019,7 @@ pub const Connection = struct { // MARK: Connection
 
 		writer.writeEnum(ChannelId, .confirmation);
 
-		while(self.queuedConfirmations.dequeue()) |confirmation| {
+		while(self.queuedConfirmations.popBack()) |confirmation| {
 			writer.writeEnum(ChannelId, confirmation.channel);
 			writer.writeInt(u16, std.math.lossyCast(u16, @divTrunc(timestamp -% confirmation.receiveTimeStamp, 2)));
 			writer.writeInt(SequenceIndex, confirmation.start);
@@ -2109,7 +2109,7 @@ pub const Connection = struct { // MARK: Connection
 			.lossy => {
 				const start = try reader.readInt(SequenceIndex);
 				if(try self.lossyChannel.receive(self, start, reader.remaining) == .accepted) {
-					self.queuedConfirmations.enqueue(.{
+					self.queuedConfirmations.pushFront(.{
 						.channel = channel,
 						.start = start,
 						.receiveTimeStamp = networkTimestamp(),
@@ -2119,7 +2119,7 @@ pub const Connection = struct { // MARK: Connection
 			.fast => {
 				const start = try reader.readInt(SequenceIndex);
 				if(try self.fastChannel.receive(self, start, reader.remaining) == .accepted) {
-					self.queuedConfirmations.enqueue(.{
+					self.queuedConfirmations.pushFront(.{
 						.channel = channel,
 						.start = start,
 						.receiveTimeStamp = networkTimestamp(),
@@ -2129,7 +2129,7 @@ pub const Connection = struct { // MARK: Connection
 			.slow => {
 				const start = try reader.readInt(SequenceIndex);
 				if(try self.slowChannel.receive(self, start, reader.remaining) == .accepted) {
-					self.queuedConfirmations.enqueue(.{
+					self.queuedConfirmations.pushFront(.{
 						.channel = channel,
 						.start = start,
 						.receiveTimeStamp = networkTimestamp(),

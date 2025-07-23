@@ -501,7 +501,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.mask = self.mem.len - 1;
 		}
 
-		pub fn enqueue(self: *Self, elem: T) void {
+		pub fn pushFront(self: *Self, elem: T) void {
 			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
@@ -525,7 +525,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += elems.len;
 		}
 
-		pub fn enqueue_back(self: *Self, elem: T) void {
+		pub fn pushBack(self: *Self, elem: T) void {
 			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
@@ -534,7 +534,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += 1;
 		}
 
-		pub fn dequeue(self: *Self) ?T {
+		pub fn popBack(self: *Self) ?T {
 			if(self.empty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & self.mask;
@@ -542,7 +542,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return result;
 		}
 
-		pub fn dequeue_front(self: *Self) ?T {
+		pub fn popFront(self: *Self) ?T {
 			if(self.empty()) return null;
 			self.len -= 1;
 			return self.mem[self.startIndex + self.len & self.mask];
@@ -554,7 +554,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len -= amount;
 		}
 
-		pub fn peek(self: *Self) ?T {
+		pub fn peekBack(self: *Self) ?T {
 			if(self.empty()) return null;
 			return self.mem[self.startIndex];
 		}
@@ -607,13 +607,13 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 		pub fn enqueue(self: *Self, elem: T) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.super.enqueue(elem);
+			self.super.pushFront(elem);
 		}
 
 		pub fn dequeue(self: *Self) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			return self.super.dequeue();
+			return self.super.popBack();
 		}
 
 		pub fn empty(self: *Self) bool {
