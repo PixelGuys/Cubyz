@@ -1,5 +1,5 @@
 .{
-	.tags = .{.choppable},
+	.tags = .{.choppable, .mineable},
 	.blockHealth = 15,
 	.drops = .{
 		.{.items = .{.auto}},
