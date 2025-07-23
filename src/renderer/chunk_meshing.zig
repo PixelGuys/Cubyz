@@ -420,8 +420,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		if(x == x & chunk.chunkMask and y == y & chunk.chunkMask and z == z & chunk.chunkMask) {
 			return getValues(parent, wx, wy, wz);
 		}
-		const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
-		defer neighborMesh.decreaseRefCount();
+		const neighborMesh = mesh_storage.getMesh(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
 		neighborMesh.lightingData[0].lock.lockRead();
 		neighborMesh.lightingData[1].lock.lockRead();
 		defer neighborMesh.lightingData[0].lock.unlockRead();
@@ -692,7 +691,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	blockBreakingFacesSortingData: []SortingData = &.{},
 	blockBreakingFacesChanged: bool = false,
 
-	pub fn init(self: *ChunkMesh, pos: chunk.ChunkPosition, ch: *chunk.Chunk) void {
+	pub fn init(pos: chunk.ChunkPosition, ch: *chunk.Chunk) *ChunkMesh {
+		const self = mesh_storage.meshMemoryPool.create();
 		self.* = ChunkMesh{
 			.pos = pos,
 			.size = chunk.chunkSize*pos.voxelSize,
@@ -709,10 +709,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			},
 			.blockBreakingFaces = .init(main.globalAllocator),
 		};
+		return self;
 	}
 
-	pub fn deinit(self: *ChunkMesh) void {
-		std.debug.assert(self.refCount.load(.monotonic) == 0);
+	pub fn deinit(self: *ChunkMesh, _: usize) void {
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
@@ -727,35 +727,14 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		main.globalAllocator.free(self.blockBreakingFacesSortingData);
 		main.globalAllocator.free(self.lightList);
 		lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].free(self.lightAllocation);
+		mesh_storage.meshMemoryPool.destroy(self);
 	}
 
-	pub fn increaseRefCount(self: *ChunkMesh) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-	}
-
-	/// In cases where it's not certain whether the thing was cleared already.
-	pub fn tryIncreaseRefCount(self: *ChunkMesh) bool {
-		var prevVal = self.refCount.load(.monotonic);
-		while(prevVal != 0) {
-			prevVal = self.refCount.cmpxchgWeak(prevVal, prevVal + 1, .monotonic, .monotonic) orelse return true;
-		}
-		return false;
-	}
-
-	pub fn decreaseRefCount(self: *ChunkMesh) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
-			mesh_storage.addMeshToClearListAndDecreaseRefCount(self);
-		}
-	}
-
-	pub fn scheduleLightRefreshAndDecreaseRefCount(self: *ChunkMesh) void {
-		LightRefreshTask.scheduleAndDecreaseRefCount(self);
+	pub fn scheduleLightRefresh(pos: chunk.ChunkPosition) void {
+		LightRefreshTask.schedule(pos);
 	}
 	const LightRefreshTask = struct {
-		mesh: *ChunkMesh,
+		pos: chunk.ChunkPosition,
 
 		pub const vtable = main.utils.ThreadPool.VTable{
 			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
@@ -765,10 +744,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.taskType = .misc,
 		};
 
-		pub fn scheduleAndDecreaseRefCount(mesh: *ChunkMesh) void {
+		pub fn schedule(pos: chunk.ChunkPosition) void {
 			const task = main.globalAllocator.create(LightRefreshTask);
 			task.* = .{
-				.mesh = mesh,
+				.pos = pos,
 			};
 			main.threadPool.addTask(task, &vtable);
 		}
@@ -778,23 +757,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 
 		pub fn isStillNeeded(_: *LightRefreshTask) bool {
-			return true; // TODO: Is it worth checking for this?
+			return true;
 		}
 
 		pub fn run(self: *LightRefreshTask) void {
-			if(self.mesh.needsLightRefresh.swap(false, .acq_rel)) {
-				self.mesh.mutex.lock();
-				self.mesh.finishData();
-				self.mesh.mutex.unlock();
-				mesh_storage.addToUpdateListAndDecreaseRefCount(self.mesh);
-			} else {
-				self.mesh.decreaseRefCount();
+			defer main.globalAllocator.destroy(self);
+			const mesh = mesh_storage.getMesh(self.pos) orelse return;
+			if(mesh.needsLightRefresh.swap(false, .acq_rel)) {
+				mesh.mutex.lock();
+				mesh.finishData();
+				mesh.mutex.unlock();
+				mesh_storage.addToUpdateList(mesh);
 			}
-			main.globalAllocator.destroy(self);
 		}
 
 		pub fn clean(self: *LightRefreshTask) void {
-			self.mesh.decreaseRefCount();
 			main.globalAllocator.destroy(self);
 		}
 	};
@@ -809,7 +786,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return block.typ != 0 and (other.typ == 0 or (block != other and other.viewThrough()) or other.alwaysViewThrough() or !blocks.meshes.model(other).model().isNeighborOccluded[neighbor.reverse().toInt()]);
 	}
 
-	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
+	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		self.mutex.lock();
 		var lightEmittingBlocks = main.List([3]u8).init(main.stackAllocator);
 		defer lightEmittingBlocks.deinit();
@@ -854,10 +831,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn generateLightingData(self: *ChunkMesh) error{AlreadyStored}!void {
+	pub fn generateLightingData(self: *ChunkMesh) error{AlreadyStored, NoLongerNeeded}!void {
 		try mesh_storage.addMeshToStorage(self);
 
-		var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
+		var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
 		defer lightRefreshList.deinit();
 		self.initLight(&lightRefreshList);
 
@@ -876,8 +853,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					pos.wx +%= pos.voxelSize*chunk.chunkSize*dx;
 					pos.wy +%= pos.voxelSize*chunk.chunkSize*dy;
 					pos.wz +%= pos.voxelSize*chunk.chunkSize*dz;
-					const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(pos) orelse continue;
-					defer neighborMesh.decreaseRefCount();
+					const neighborMesh = mesh_storage.getMesh(pos) orelse continue;
 
 					const shiftSelf: u5 = @intCast(((dx + 1)*3 + dy + 1)*3 + dz + 1);
 					const shiftOther: u5 = @intCast(((-dx + 1)*3 + -dy + 1)*3 + -dz + 1);
@@ -894,12 +870,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 		}
 
-		for(lightRefreshList.items) |other| {
-			if(other.needsLightRefresh.load(.unordered)) {
-				other.scheduleLightRefreshAndDecreaseRefCount();
-			} else {
-				other.decreaseRefCount();
-			}
+		for(lightRefreshList.items) |pos| {
+			scheduleLightRefresh(pos);
 		}
 	}
 
@@ -913,7 +885,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		model.appendNeighborFacingQuadsToList(list, allocator, block, neighbor, x, y, z, backFace);
 	}
 
-	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
+	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		var alwaysViewThroughMask: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		@memset(std.mem.asBytes(&alwaysViewThroughMask), 0);
 		var alwaysViewThroughMask2: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
@@ -1213,7 +1185,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.finishNeighbors(lightRefreshList);
 	}
 
-	fn updateBlockLight(self: *ChunkMesh, x: u5, y: u5, z: u5, newBlock: Block, lightRefreshList: *main.List(*ChunkMesh)) void {
+	fn updateBlockLight(self: *ChunkMesh, x: u5, y: u5, z: u5, newBlock: Block, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		for(self.lightingData[0..]) |lightingData| {
 			lightingData.propagateLightsDestructive(&.{.{x, y, z}}, lightRefreshList);
 		}
@@ -1222,7 +1194,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, blockEntityData: []const u8, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
+	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, blockEntityData: []const u8, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
 		const x: u5 = @intCast(_x & chunk.chunkMask);
 		const y: u5 = @intCast(_y & chunk.chunkMask);
 		const z: u5 = @intCast(_z & chunk.chunkMask);
@@ -1261,8 +1233,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const nny: u5 = @intCast(ny & chunk.chunkMask);
 				const nnz: u5 = @intCast(nz & chunk.chunkMask);
 
-				const neighborChunkMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor) orelse continue;
-				defer neighborChunkMesh.decreaseRefCount();
+				const neighborChunkMesh = mesh_storage.getNeighbor(self.pos, self.pos.voxelSize, neighbor) orelse continue;
 
 				const index = chunk.getIndex(nnx, nny, nnz);
 
@@ -1342,7 +1313,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				return;
 			}
 		}
-		mesh.increaseRefCount();
 		list.append(mesh);
 	}
 
@@ -1392,11 +1362,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
+	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		for(chunk.Neighbor.iterable) |neighbor| {
-			const nullNeighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor);
+			const nullNeighborMesh = mesh_storage.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 			if(nullNeighborMesh) |neighborMesh| sameLodBlock: {
-				defer neighborMesh.decreaseRefCount();
 				std.debug.assert(neighborMesh != self);
 				deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 				defer self.mutex.unlock();
@@ -1470,8 +1439,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				neighborMesh.transparentMesh.replaceRange(.neighbor(neighbor.reverse()), transparentNeighbor.items);
 
 				_ = neighborMesh.needsLightRefresh.store(true, .release);
-				neighborMesh.increaseRefCount();
-				lightRefreshList.append(neighborMesh);
+				lightRefreshList.append(neighborMesh.pos);
 			} else {
 				self.mutex.lock();
 				defer self.mutex.unlock();
@@ -1483,7 +1451,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 			// lod border:
 			if(self.pos.voxelSize == @as(u31, 1) << settings.highestLod) continue;
-			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
+			const neighborMesh = mesh_storage.getNeighbor(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
 				self.mutex.lock();
 				defer self.mutex.unlock();
 				if(self.lastNeighborsHigherLod[neighbor.toInt()] != null) {
@@ -1493,7 +1461,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				}
 				continue;
 			};
-			defer neighborMesh.decreaseRefCount();
 			deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 			defer self.mutex.unlock();
 			defer neighborMesh.mutex.unlock();
@@ -1557,7 +1524,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		defer self.mutex.unlock();
 		_ = self.needsLightRefresh.swap(false, .acq_rel);
 		self.finishData();
-		mesh_storage.finishMesh(self);
+		mesh_storage.finishMesh(self.pos);
 	}
 
 	fn uploadChunkPosition(self: *ChunkMesh) void {
