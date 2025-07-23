@@ -54,7 +54,7 @@ pub fn onClose() void {
 	main.globalAllocator.free(searchString);
 }
 
-fn hasSimilarTag(tags: []const main.Tag, target: []const u8) bool {
+fn hasMatchingTag(tags: []const main.Tag, target: []const u8) bool {
 	for(tags) |tag| {
 		if(std.mem.containsAtLeast(u8, tag.getName(), 1, target)) {
 			return true;
@@ -85,7 +85,7 @@ fn initContent() void {
 		if(searchString.len > 1 and searchString[0] == '.') {
 			const tag = searchString[1..];
 			while(itemIterator.next()) |item| {
-				if(hasSimilarTag(item.tags(), tag) or (item.block() != null and hasSimilarTag((main.blocks.Block{.typ = item.block().?, .data = undefined}).blockTags(), tag))) {
+				if(hasMatchingTag(item.tags(), tag) or (item.block() != null and hasMatchingTag((main.blocks.Block{.typ = item.block().?, .data = undefined}).blockTags(), tag))) {
 					items.append(Item{.baseItem = item.*});
 				}
 			}
