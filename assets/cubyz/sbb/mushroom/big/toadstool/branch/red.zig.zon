@@ -1,0 +1,9 @@
+.{
+	.blueprint = "cubyz:mushroom/big/toadstool/empty_horizontal",
+	.children = .{
+		.white = .{
+			.{.structure = "cubyz:mushroom/big/toadstool/branch/red0"},
+			.{.structure = "cubyz:mushroom/big/toadstool/branch/red1"},
+		},
+	},
+}
