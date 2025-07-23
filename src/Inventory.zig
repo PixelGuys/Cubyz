@@ -1211,9 +1211,12 @@ pub const Command = struct { // MARK: Command
 				return;
 			}
 
-			const serverId = user.?.inventoryClientToServerIdMap.get(self.inv.id) orelse unreachable;
-			const source = Sync.ServerSide.inventories.items[serverId].source;
-			if(side == .server and source == .blockInventory) {
+			if(side == .server) {
+				const serverId = user.?.inventoryClientToServerIdMap.get(self.inv.id) orelse unreachable;
+				const source = Sync.ServerSide.inventories.items[serverId].source;
+
+				if(source != .blockInventory) return;
+
 				const pos = source.blockInventory;
 
 				const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
