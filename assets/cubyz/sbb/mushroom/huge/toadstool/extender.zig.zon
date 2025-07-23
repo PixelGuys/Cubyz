@@ -1,8 +1,0 @@
-.{
-	.blueprint = "cubyz:mushroom/huge/toadstool/extender",
-	.children = .{
-		.white = .{
-			.{.structure = "cubyz:mushroom/huge/toadstool/stem"},
-		},
-	},
-}
