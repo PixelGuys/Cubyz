@@ -1,5 +1,5 @@
 .{
-	.tags = .{.cuttable},
+	.tags = .{.cuttable, .leaf},
 	.hasItem = false,
 	.absorbedLight = 0x222222,
 	.model = "cubyz:cube",
