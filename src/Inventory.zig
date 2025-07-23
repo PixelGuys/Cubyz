@@ -2042,9 +2042,6 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 			continue;
 		};
 	}
-	if(remainingCount > 0) {
-		std.log.err("Detected {} extras items while loading inventory.", .{remainingCount});
-	}
 	for(0..remainingCount) |_| {
 		var stack = ItemStack.fromBytes(reader) catch continue;
 		if(stack.item) |item| {
