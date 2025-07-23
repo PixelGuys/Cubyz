@@ -1,5 +1,5 @@
 .{
-	.tags = .{.leaf},
+	.tags = .{.cuttable},
 	.blockHealth = 5,
 	.drops = .{
 		.{.items = .{"cubyz:log/cactus"}},
