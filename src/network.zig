@@ -1215,7 +1215,6 @@ pub const Protocols = struct {
 			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
 			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
 			map.init(pos.wx, pos.wy, pos.voxelSize);
-			_ = map.refCount.fetchAdd(1, .monotonic);
 			for(&map.startHeight) |*val| {
 				val.* = try ligthMapReader.readInt(i16);
 			}
