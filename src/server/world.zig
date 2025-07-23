@@ -489,7 +489,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				}
 			} else |_| {}
 		}
-
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
