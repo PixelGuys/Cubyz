@@ -489,69 +489,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				}
 			} else |_| {}
 		}
-		convert_player_data_to_binary: { // TODO: Remove after #480
-			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
-			defer main.stackAllocator.free(playerDataPath);
-
-			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch break :convert_player_data_to_binary;
-			defer playerDataDirectory.close();
-
-			{
-				var walker = playerDataDirectory.walk(main.stackAllocator.allocator) catch unreachable;
-				defer walker.deinit();
-
-				while(walker.next() catch |err| {
-					std.log.err("Couldn't fetch next directory entry due to an error: {s}", .{@errorName(err)});
-					break :convert_player_data_to_binary;
-				}) |entry| {
-					if(entry.kind != .file) continue;
-					if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
-
-					const absolutePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{playerDataPath, entry.path}) catch unreachable;
-					defer main.stackAllocator.free(absolutePath);
-
-					const playerData = files.readToZon(main.stackAllocator, absolutePath) catch |err| {
-						std.log.err("Could not read player data file {s}: {s}.", .{absolutePath, @errorName(err)});
-						continue;
-					};
-					defer playerData.deinit(main.stackAllocator);
-
-					const entryKeys: [2][]const u8 = .{
-						"playerInventory",
-						"hand",
-					};
-					for(entryKeys) |key| {
-						const zon = playerData.getChild(key);
-						switch(zon) {
-							.object => {
-								var temp: main.items.Inventory = undefined;
-								temp._items = main.stackAllocator.alloc(ItemStack, zon.get(u32, "count", 0));
-								defer main.stackAllocator.free(temp._items);
-
-								for(temp._items) |*stack| stack.* = ItemStack{};
-								defer for(temp._items) |*stack| stack.deinit();
-
-								temp.loadFromZon(zon);
-								const base64Data = temp.toBase64(main.stackAllocator);
-								const old = playerData.object.fetchPut(key, .{.stringOwned = base64Data}) catch unreachable orelse unreachable;
-								old.value.deinit(main.stackAllocator);
-							},
-							.string, .stringOwned, .null => continue,
-							else => |other| {
-								const representation = zon.toString(main.stackAllocator);
-								defer main.stackAllocator.free(representation);
-								std.log.err("Encountered unexpected type ({s}) while migrating '{s}': {s}", .{@tagName(other), absolutePath, representation});
-							},
-						}
-					}
-					files.writeZon(absolutePath, playerData) catch |err| {
-						std.log.err("Could not write player data file {s}: {s}.", .{absolutePath, @errorName(err)});
-						continue;
-					};
-				}
-			}
-		}
-
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
@@ -602,6 +539,85 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arenaAllocator));
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arenaAllocator));
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arenaAllocator));
+
+		convert_player_data_to_binary: { // TODO: Remove after #480
+			std.log.debug("Migrating old player inventory format to binary.", .{});
+
+			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
+			defer main.stackAllocator.free(playerDataPath);
+
+			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch break :convert_player_data_to_binary;
+			defer playerDataDirectory.close();
+
+			{
+				var walker = playerDataDirectory.walk(main.stackAllocator.allocator) catch unreachable;
+				defer walker.deinit();
+
+				while(walker.next() catch |err| {
+					std.log.err("Couldn't fetch next directory entry due to an error: {s}", .{@errorName(err)});
+					break :convert_player_data_to_binary;
+				}) |entry| {
+					if(entry.kind != .file) continue;
+					if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
+
+					const absolutePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{playerDataPath, entry.path}) catch unreachable;
+					defer main.stackAllocator.free(absolutePath);
+
+					const playerData = files.readToZon(main.stackAllocator, absolutePath) catch |err| {
+						std.log.err("Could not read player data file '{s}'': {s}.", .{absolutePath, @errorName(err)});
+						continue;
+					};
+					defer playerData.deinit(main.stackAllocator);
+
+					std.log.debug("Migrating player data file: '{s}'", .{absolutePath});
+
+					const entryKeys: [2][]const u8 = .{
+						"playerInventory",
+						"hand",
+					};
+					for(entryKeys) |key| {
+						const zon = playerData.getChild(key);
+						switch(zon) {
+							.object => {
+								std.log.debug("Migrating inventory '{s}' '{s}'", .{key, absolutePath});
+
+								var temp: main.items.Inventory = undefined;
+								temp._items = main.stackAllocator.alloc(ItemStack, zon.get(u32, "capacity", 0));
+								defer main.stackAllocator.free(temp._items);
+
+								for(temp._items) |*stack| stack.* = ItemStack{};
+								defer for(temp._items) |*stack| stack.deinit();
+
+								temp.loadFromZon(zon);
+
+								for(temp._items, 0..) |*stack, i| {
+									std.log.debug("Item #{}: {} x {s}", .{i, stack.amount, if(stack.item) |item| item.id() else "null"});
+								}
+
+								const base64Data = temp.toBase64(main.stackAllocator);
+								const old = playerData.object.fetchPut(key, .{.stringOwned = base64Data}) catch unreachable orelse unreachable;
+								old.value.deinit(main.stackAllocator);
+							},
+							.string, .stringOwned => |field| {
+								std.log.debug("Skipping key '{s}', type is 'string', value is '{s}'", .{key, field});
+							},
+							.null => {
+								std.log.debug("Skipping key '{s}', type is 'null'", .{key});
+							},
+							else => |other| {
+								const representation = zon.toString(main.stackAllocator);
+								defer main.stackAllocator.free(representation);
+								std.log.err("Encountered unexpected type ({s}) while migrating '{s}': {s}", .{@tagName(other), absolutePath, representation});
+							},
+						}
+					}
+					files.writeZon(absolutePath, playerData) catch |err| {
+						std.log.err("Could not write player data file {s}: {s}.", .{absolutePath, @errorName(err)});
+						continue;
+					};
+				}
+			}
+		}
 
 		var gamerules = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arenaAllocator);
 

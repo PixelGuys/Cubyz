@@ -224,9 +224,6 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
-	pub fn getId(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].id;
-	}
 };
 
 pub const BaseItem = struct { // MARK: BaseItem
@@ -807,7 +804,7 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
-	fn getId(self: *Tool) []const u8 {
+	fn id(self: *Tool) []const u8 {
 		return self.type.id();
 	}
 
@@ -945,10 +942,10 @@ pub const Item = union(ItemType) { // MARK: Item
 		}
 	}
 
-	pub fn getId(self: Item) []const u8 {
+	pub fn id(self: Item) []const u8 {
 		switch(self) {
 			inline else => |item| {
-				return item.getId();
+				return item.id();
 			},
 		}
 	}
