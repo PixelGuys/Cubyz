@@ -212,7 +212,7 @@ pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 
 pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
-	while(lod < settings.highestLod) : (lod += 1) {
+	while(lod <= settings.highestLod) : (lod += 1) {
 		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod});
 		const mesh = node.mesh.load(.acquire) orelse continue;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask << lod, y & chunk.chunkMask << lod, z & chunk.chunkMask << lod);
