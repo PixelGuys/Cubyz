@@ -5,16 +5,16 @@
 			.{.structure = "cubyz:mushroom/big/toadstool/large_cap"},
 		},
 		.crimson = {
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/red"},
-			.{.structure = null},
+			.{.structure = "cubyz:mushroom/big/toadstool/branch/red", chance = 0.25},
+			.{.structure = null, chance = 0.75},
 		},
 		.green = {
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/green"},
-			.{.structure = null},
+			.{.structure = "cubyz:mushroom/big/toadstool/branch/green", chance = 0.25},
+			.{.structure = null, chance = 0.75},
 		},
 		.blue = {
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/blue"},
-			.{.structure = null},
+			.{.structure = "cubyz:mushroom/big/toadstool/branch/blue", chance = 0.25},
+			.{.structure = null, chance = 0.75},
 		},
 	},
 }
