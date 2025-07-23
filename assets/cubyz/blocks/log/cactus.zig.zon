@@ -1,5 +1,5 @@
 .{
-	.tags = .{.cuttable, .choppable},
+	.tags = .{.choppable, .cuttable},
 	.texture0 = "cubyz:log/cactus/dot",
 	.texture1 = "cubyz:log/cactus/line",
 	.texture2 = "cubyz:log/cactus/bend",
