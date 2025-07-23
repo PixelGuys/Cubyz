@@ -5,7 +5,7 @@
 
 	.chance = 0.125,
 
-	.caves = -0.05,
+	.caves = -0.03,
 
 	.music = "cubyz:la_kubisa_caverna",
 	.stoneBlock = "cubyz:stone",
@@ -24,9 +24,9 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:mushroom/big/toadstool/base",
+			.structure = "cubyz:mushroom/huge/toadstool/base",
 			.placeMode = .degradable,
-			.chance = 0.2,
+			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:flower_patch",
