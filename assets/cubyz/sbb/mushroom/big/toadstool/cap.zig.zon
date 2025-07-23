@@ -4,7 +4,6 @@
 		.white = .{
 			.{.structure = "cubyz:mushroom/big/toadstool/cap/0"},
 			.{.structure = "cubyz:mushroom/big/toadstool/cap/1"},
-			.{.structure = "cubyz:mushroom/big/toadstool/cap/2"},
 		},
 	},
 }
