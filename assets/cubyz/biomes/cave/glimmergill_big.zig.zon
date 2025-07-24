@@ -3,7 +3,7 @@
 	.maxHeight = -512,
 	.minHeight = -48250,
 
-	.chance = 0.1,
+	.chance = 0.15,
 
 	.caves = -0.02,
 
@@ -25,6 +25,12 @@
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:mushroom/big/glimmergill/base",
+			.placeMode = .degradable,
+			.chance = 0.15,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:mushroom/small/glimmergill/base",
 			.placeMode = .degradable,
 			.chance = 0.2,
 		},
