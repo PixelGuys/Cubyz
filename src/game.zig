@@ -334,13 +334,9 @@ pub const collision = struct {
 
 		if(totalArea == 0) {
 			friction = defaultFriction;
-		} else {
-			friction = friction/totalArea;
-		}
-
-		if(totalArea == 0) {
 			bounce = 0.0;
 		} else {
+			friction = friction/totalArea;
 			bounce = bounce/totalArea;
 		}
 
