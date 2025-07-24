@@ -1287,7 +1287,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			}
 			var velocityChange: f64 = undefined;
 			if(bounce != 0.0 and Player.super.vel[2] < -3.0) {
-				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 	- bounce));
+				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounce));
 				Player.super.vel[2] = -Player.super.vel[2]*bounce;
 				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			} else {
