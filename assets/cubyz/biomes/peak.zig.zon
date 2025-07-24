@@ -12,7 +12,7 @@
 
 	.music = "cubyz:DarkTimes",
 
-	.erosion = 1.0,
+	.soilCreep = 1.0,
 
 	.ground_structure = .{
 		"3 to 6 cubyz:snow",
