@@ -1299,7 +1299,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 			}
 
-
 			// Always unstuck upwards for now
 			while(collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
 				Player.super.pos[2] += 1;
