@@ -466,20 +466,20 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 
 	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, slope: i32, erosion: f32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
-		var timer = @max(@as(i32, @intFromFloat(@as(f32, @floatFromInt(slope))*erosion)) - 1, 0);
+		var remainingSkippedBlocks = @as(i32, @intFromFloat(@as(f32, @floatFromInt(slope))*erosion)) - 1;
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for(0..total) |_| {
-				if(timer <= 0) {
-					if(chunk.liesInChunk(x, y, depth)) {
-						chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
-					}
-					depth -%= chunk.super.pos.voxelSize;
-					if(depth -% minDepth <= 0)
-						return depth +% chunk.super.pos.voxelSize;
-				} else {
-					timer -= 1;
+				if(remainingSkippedBlocks > 0) {
+					remainingSkippedBlocks -= 1;
+					continue;
 				}
+				if(chunk.liesInChunk(x, y, depth)) {
+					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
+				}
+				depth -%= chunk.super.pos.voxelSize;
+				if(depth -% minDepth <= 0)
+					return depth +% chunk.super.pos.voxelSize;
 			}
 		}
 		return depth +% chunk.super.pos.voxelSize;

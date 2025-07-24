@@ -84,14 +84,11 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						var maxUp: i32 = 0;
 						var maxDown: i32 = 0;
 						for(cardinalDirections) |direction| {
-							const diff = if(caveMap.isSolid(x + direction[0], y + direction[1], z + direction[2]))
-								caveMap.findTerrainChangeAbove(x + direction[0], y + direction[1], z + direction[2]) - chunk.super.pos.voxelSize - surfaceBlock
-							else
-								caveMap.findTerrainChangeBelow(x + direction[0], y + direction[1], z + direction[2]) - surfaceBlock;
-
-							if(diff > 0) {
+							if(caveMap.isSolid(x + direction[0], y + direction[1], z + direction[2])) {
+								const diff = caveMap.findTerrainChangeAbove(x + direction[0], y + direction[1], z + direction[2]) - chunk.super.pos.voxelSize - surfaceBlock;
 								maxUp = @max(maxUp, diff);
 							} else {
+								const diff = caveMap.findTerrainChangeBelow(x + direction[0], y + direction[1], z + direction[2]) - surfaceBlock;
 								maxDown = @max(maxDown, -diff);
 							}
 						}
