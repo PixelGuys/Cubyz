@@ -31,21 +31,75 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	if(modelCache) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex("cubyz:cube").model();
-	var quadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
-	defer quadList.deinit();
-	baseModel.getRawFaces(&quadList);
-	const len = quadList.items.len;
-	for(0..len) |i| {
-		quadList.append(quadList.items[i]);
-		for (0..4) |j| {
-			for (0..3) |k| {
-				quadList.items[quadList.items.len - 1].corners[j][k] = (quadList.items[quadList.items.len - 1].corners[j][k] - 0.5) * 1.001 + 0.5;
-			}
+	var oldQuadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
+	defer oldQuadList.deinit();
+	baseModel.getRawFaces(&oldQuadList);
+	var quadList = main.stackAllocator.alloc(main.models.QuadInfo, oldQuadList.items.len * 2);
+	defer main.stackAllocator.free(quadList);
+	// const len = oldQuadList.items.len;
+	// var i: usize = 0;
+	// A1 B1 C1 D1 E1 F1
+	// A1 B1 C1 D1 E1 F1 A2
+	// A1 B1 C1 D1 E1 F1 A2 B2
+	// A1 B1 C1 D1 E1 F1 A2 B2 C2
+	// D2 A1 B1 C1 D1 E1 F1 A2 B2 C2
+	// E2 D2 A1 B1 C1 D1 E1 F1 A2 B2 C2
+	// F2 E2 D2 A1 B1 C1 D1 E1 F1 A2 B2 C2
+	var firstHalf: [3]usize = undefined;
+	var firstHalfIndex: usize = 0;
+	var secondHalf: [3]usize = undefined;
+	var secondHalfIndex: usize = 0;
+
+	for(oldQuadList.items, 0..) |quad, i| {
+		switch(quad.textureSlot) {
+			0, 1, 4 => {
+				firstHalf[firstHalfIndex] = i;
+				firstHalfIndex += 1;
+			},
+			else => {
+				secondHalf[secondHalfIndex] = i;
+				secondHalfIndex += 1;
+			},
 		}
-		quadList.items[i + len].textureSlot += 16;
-		quadList.items[i].opaqueInLod = 2;
 	}
-	const modelIndex = main.models.Model.init(quadList.items);
+
+	for(firstHalf) |i| {
+		quadList[i] = oldQuadList.items[i];
+		quadList[i].opaqueInLod = 2;
+	}
+	for(secondHalf) |i| {
+		quadList[i] = oldQuadList.items[i];
+		quadList[i].textureSlot += 16;
+	}
+	for(firstHalf) |i| {
+		quadList[i + 6] = oldQuadList.items[i];
+		quadList[i + 6].textureSlot += 16;
+	}
+	for(secondHalf) |i| {
+		quadList[i + 6] = oldQuadList.items[i];
+		quadList[i + 6].opaqueInLod = 2;
+	}
+	// for(0..len) |_| {
+		// quadList.append(quadList.items[i]);
+		// quadList.items[quadList.items.len - 1].textureSlot += 16;
+		// quadList.items[i].opaqueInLod = 2;
+		// i += 1;
+		// if (switch(quadList.items[i].textureSlot) {
+		// 0, 1, 4 => true,
+		// else => false,
+		// }) {
+		// quadList.append(quadList.items[i]);
+		// quadList.items[quadList.items.len - 1].textureSlot += 16;
+		// quadList.items[i].opaqueInLod = 2;
+		// i += 1;
+		// } else {
+		// quadList.insert(0, quadList.items[i]);
+		// quadList.items[0].textureSlot += 16;
+		// quadList.items[i + 1].opaqueInLod = 2;
+		// i += 2;
+		// }
+	// }
+	const modelIndex = main.models.Model.init(quadList);
 	modelCache = modelIndex;
 	return modelIndex;
 }
