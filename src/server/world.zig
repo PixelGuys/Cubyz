@@ -226,8 +226,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn run(self: *LightMapLoadTask) void {
 			defer self.clean();
-			const map = terrain.LightMap.getOrGenerateFragmentAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.voxelSize);
-			defer map.decreaseRefCount();
+			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			if(self.source) |source| {
 				if(source.connected.load(.unordered)) main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
 			} else {
