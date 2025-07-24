@@ -71,7 +71,6 @@ pub fn init() void {
 		}
 		break :blk .null;
 	};
-	defer zon.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
@@ -154,7 +153,7 @@ pub fn save() void {
 	zonObject.put("keyboard", keyboard);
 
 	// Merge with the old settings file to preserve unknown settings.
-	const oldZonObject: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
+	var oldZonObject: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
 		}
@@ -162,7 +161,13 @@ pub fn save() void {
 	};
 	defer oldZonObject.deinit(main.stackAllocator);
 
-	oldZonObject.join(zonObject);
+
+	if(oldZonObject == .object) {
+		oldZonObject.join(zonObject);
+	} else {
+		oldZonObject.deinit(main.stackAllocator);
+		oldZonObject = zonObject;
+	}
 
 	main.files.cubyzDir().writeZon(settingsFile, oldZonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
