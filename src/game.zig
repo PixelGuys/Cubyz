@@ -1320,17 +1320,20 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if(KeyBoard.key("crouch").pressed) {
 				bounce *= 0.5;
 			}
-			if(bounce != 0.0 and Player.super.vel[2] < -4.0) {
+			var velocityChange: f64 = undefined;
+			if(bounce != 0.0 and Player.super.vel[2] < -3.0) {
+				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1-bounce));
 				Player.super.vel[2] = -Player.super.vel[2]*bounce;
 				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			} else {
-				const damage: f32 = @floatCast(@round(@max((Player.super.vel[2]*Player.super.vel[2])/(2*gravity) - 7, 0))/2);
-				if(damage > 0.01) {
-					Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
-				}
-
+				velocityChange = Player.super.vel[2];
 				Player.super.vel[2] = 0;
 			}
+			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
+			if(damage > 0.01) {
+				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+			}
+
 
 			// Always unstuck upwards for now
 			while(collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
