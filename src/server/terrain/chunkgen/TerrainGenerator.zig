@@ -81,15 +81,22 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						};
 
 						const surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
-						var slope: i32 = std.math.maxInt(i32);
+						var maxUp: i32 = 0;
+						var maxDown: i32 = 0;
 						for(cardinalDirections) |direction| {
 							const diff = if(caveMap.isSolid(x + direction[0], y + direction[1], z + direction[2]))
 								caveMap.findTerrainChangeAbove(x + direction[0], y + direction[1], z + direction[2]) - chunk.super.pos.voxelSize - surfaceBlock
 							else
 								caveMap.findTerrainChangeBelow(x + direction[0], y + direction[1], z + direction[2]) - surfaceBlock;
 
-							slope = @min(@as(i32, @intCast(@abs(diff))), slope);
+							if(diff > 0) {
+								maxUp = @max(maxUp, diff);
+							} else {
+								maxDown = @max(maxDown, -diff);
+							}
 						}
+						const slope = @min(maxUp, maxDown);
+						
 						const erosion: f32 = biome.erosion;
 						var bseed: u64 = random.initSeed3D(worldSeed, .{chunk.super.pos.wx + x, chunk.super.pos.wy + y, chunk.super.pos.wz + z});
 						const airBlockBelow = caveMap.findTerrainChangeBelow(x, y, z);
