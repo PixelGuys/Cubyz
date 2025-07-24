@@ -5,7 +5,7 @@
 
 	.chance = 0.1,
 
-	.caves = -0.05,
+	.caves = -0.02,
 
 	.music = "cubyz:la_kubisa_caverna",
 	.stoneBlock = "cubyz:stone",
