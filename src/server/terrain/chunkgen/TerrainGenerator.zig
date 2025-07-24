@@ -96,7 +96,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 							}
 						}
 						const slope = @min(maxUp, maxDown);
-						
+
 						const erosion: f32 = biome.erosion;
 						var bseed: u64 = random.initSeed3D(worldSeed, .{chunk.super.pos.wx + x, chunk.super.pos.wy + y, chunk.super.pos.wz + z});
 						const airBlockBelow = caveMap.findTerrainChangeBelow(x, y, z);
