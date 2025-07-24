@@ -279,7 +279,12 @@ pub const collision = struct {
 		return resultBox;
 	}
 
-	pub fn calculateFriction(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) f32 {
+	const SurfaceProperties = struct {
+		friction: f32,
+		bounce: f32,
+	};
+
+	pub fn calculateSurfaceProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -292,58 +297,6 @@ pub const collision = struct {
 		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
 
 		var friction: f64 = 0;
-		var totalArea: f64 = 0;
-
-		var x = minX;
-		while(x <= maxX) : (x += 1) {
-			var y = minY;
-			while(y <= maxY) : (y += 1) {
-				const _block = if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
-
-				if(_block) |block| {
-					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-
-					const blockBox: Box = .{
-						.min = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().min)),
-						.max = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().max)),
-					};
-
-					if(boundingBox.min[2] > blockBox.max[2] or boundingBox.max[2] < blockBox.min[2]) {
-						continue;
-					}
-
-					const max = std.math.clamp(vec.xy(blockBox.max), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
-					const min = std.math.clamp(vec.xy(blockBox.min), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
-
-					const area = (max[0] - min[0])*(max[1] - min[1]);
-
-					if(block.collide()) {
-						totalArea += area;
-						friction += area*@as(f64, @floatCast(block.friction()));
-					}
-				}
-			}
-		}
-
-		if(totalArea == 0) {
-			return defaultFriction;
-		}
-
-		return @floatCast(friction/totalArea);
-	}
-
-	pub fn calculateBounce(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box) f32 {
-		const boundingBox: Box = .{
-			.min = pos + hitBox.min,
-			.max = pos + hitBox.max,
-		};
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
-
-		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
-
 		var bounce: f64 = 0;
 		var totalArea: f64 = 0;
 
@@ -372,6 +325,7 @@ pub const collision = struct {
 
 					if(block.collide()) {
 						totalArea += area;
+						friction += area*@as(f64, @floatCast(block.friction()));
 						bounce += area*@as(f64, @floatCast(block.bounce()));
 					}
 				}
@@ -379,10 +333,21 @@ pub const collision = struct {
 		}
 
 		if(totalArea == 0) {
-			return 0.0;
+			friction = defaultFriction;
+		} else {
+			friction = friction/totalArea;
 		}
 
-		return @floatCast(bounce/totalArea);
+		if(totalArea == 0) {
+			bounce = 0.0;
+		} else {
+			bounce = bounce/totalArea;
+		}
+
+		return .{
+			.friction = @floatCast(friction),
+			.bounce = @floatCast(bounce),
+		};
 	}
 
 	const VolumeProperties = struct {
@@ -981,7 +946,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc[2] = -effectiveGravity;
 		}
 
-		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
+		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
 		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
 		const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else volumeProperties.mobility;
 		const baseFrictionCoefficient: f32 = Player.currentFriction;
@@ -1316,13 +1281,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
-			var bounce = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateBounce(.client, Player.super.pos, Player.outerBoundingBox);
+			var bounce = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 0.0).bounce;
 			if(KeyBoard.key("crouch").pressed) {
 				bounce *= 0.5;
 			}
 			var velocityChange: f64 = undefined;
 			if(bounce != 0.0 and Player.super.vel[2] < -3.0) {
-				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1-bounce));
+				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 	- bounce));
 				Player.super.vel[2] = -Player.super.vel[2]*bounce;
 				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			} else {
