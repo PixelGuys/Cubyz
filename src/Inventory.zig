@@ -2011,7 +2011,7 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 	}
 }
 
-fn toBytes(self: Inventory, writer: *BinaryWriter) void {
+pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {
 	writer.writeVarInt(u32, @intCast(self._items.len));
 	for(self._items) |stack| {
 		stack.toBytes(writer);
