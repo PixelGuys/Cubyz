@@ -290,7 +290,7 @@ pub const Biome = struct { // MARK: Biome
 	caveRadiusFactor: f32,
 	crystals: u32,
 	/// How much of the surface structure should be eroded depending on the slope.
-	soilCreep: f32, 
+	soilCreep: f32,
 	stoneBlock: main.blocks.Block,
 	fogLower: f32,
 	fogHigher: f32,
