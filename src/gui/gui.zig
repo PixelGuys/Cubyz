@@ -229,7 +229,9 @@ pub fn save() void { // MARK: save()
 	if(oldZon == .object) {
 		oldZon.join(guiZon);
 	} else {
-		std.mem.swap(ZonElement, &oldZon, &guiZon);
+		oldZon.deinit(main.stackAllocator);
+		oldZon = guiZon;
+		guiZon = .null;
 	}
 
 	main.files.cubyzDir().writeZon("gui_layout.zig.zon", oldZon) catch |err| {
