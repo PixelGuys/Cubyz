@@ -1,10 +1,12 @@
 .{
-	.blueprint = "cubyz:mushroom/big/bolete/base",
+	.blueprint = "cubyz:mushroom/big/bolete/empty",
 	.children = .{
 		.white = .{
-			.{.structure = "cubyz:mushroom/big/bolete/stem_segment"},
-			.{.structure = "cubyz:mushroom/big/bolete/cap"},
-			.{.structure = "cubyz:mushroom/big/bolete/split"},
+			.{.structure = "cubyz:mushroom/big/bolete/base/0"},
+			.{.structure = "cubyz:mushroom/big/bolete/base/1"},
+			.{.structure = "cubyz:mushroom/big/bolete/base/2"},
+			.{.structure = "cubyz:mushroom/big/bolete/base/3"},
+			.{.structure = "cubyz:mushroom/big/bolete/base/4"},
 		},
 	},
 }

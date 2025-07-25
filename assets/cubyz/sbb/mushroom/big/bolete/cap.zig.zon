@@ -5,6 +5,8 @@
 			.{.structure = "cubyz:mushroom/big/bolete/cap/0"},
 			.{.structure = "cubyz:mushroom/big/bolete/cap/1"},
 			.{.structure = "cubyz:mushroom/big/bolete/cap/2"},
+			.{.structure = "cubyz:mushroom/big/bolete/cap/3"},
+			.{.structure = "cubyz:mushroom/big/bolete/cap/4"},
 		},
 	},
 }
