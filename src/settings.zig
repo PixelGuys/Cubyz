@@ -71,6 +71,7 @@ pub fn init() void {
 		}
 		break :blk .null;
 	};
+	defer zon.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
