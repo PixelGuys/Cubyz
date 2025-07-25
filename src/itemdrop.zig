@@ -39,7 +39,7 @@ pub const ItemDropNetworkData = struct {
 	index: u16,
 	pos: Vec3d,
 	vel: Vec3d,
-};:
+};
 
 pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
@@ -352,8 +352,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		// Apply drag:
 		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
 		if(collided) {
-		    const decelerate: f64 = @max(0, 1 - friction*deltaTime);
-		    vel.* *= Vec3d{decelerate,decelerate,1};
+			const decelerate: f64 = @max(0, 1 - friction*deltaTime);
+			vel.* *= Vec3d{decelerate,decelerate,1};
 		}
 	}
 
