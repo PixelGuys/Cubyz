@@ -123,7 +123,7 @@ pub fn deinit() void {
 }
 
 pub fn save() void {
-	const zonObject = ZonElement.initObject(main.stackAllocator);
+	var zonObject = ZonElement.initObject(main.stackAllocator);
 	defer zonObject.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {

@@ -183,7 +183,7 @@ pub fn deinit() void {
 }
 
 pub fn save() void { // MARK: save()
-	const guiZon = ZonElement.initObject(main.stackAllocator);
+	var guiZon = ZonElement.initObject(main.stackAllocator);
 	defer guiZon.deinit(main.stackAllocator);
 	for(windowList.items) |window| {
 		const windowZon = ZonElement.initObject(main.stackAllocator);
@@ -229,8 +229,7 @@ pub fn save() void { // MARK: save()
 	if(oldZon == .object) {
 		oldZon.join(guiZon);
 	} else {
-		oldZon.deinit(main.stackAllocator);
-		oldZon = guiZon;
+		std.mem.swap(ZonElement, &oldZon, &guiZon);
 	}
 
 	main.files.cubyzDir().writeZon("gui_layout.zig.zon", oldZon) catch |err| {
