@@ -39,7 +39,7 @@ pub const ItemDropNetworkData = struct {
 	index: u16,
 	pos: Vec3d,
 	vel: Vec3d,
-};
+};:
 
 pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
