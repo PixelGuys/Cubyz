@@ -31,47 +31,16 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	if(modelCache) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex("cubyz:cube").model();
-	var oldQuadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
-	defer oldQuadList.deinit();
-	baseModel.getRawFaces(&oldQuadList);
-	var quadList = main.stackAllocator.alloc(main.models.QuadInfo, oldQuadList.items.len * 2);
-	defer main.stackAllocator.free(quadList);
-
-	var firstHalf: [3]usize = undefined;
-	var firstHalfIndex: usize = 0;
-	var secondHalf: [3]usize = undefined;
-	var secondHalfIndex: usize = 0;
-
-	for(oldQuadList.items, 0..) |quad, i| {
-		switch(quad.textureSlot) {
-			0, 1, 4 => {
-				firstHalf[firstHalfIndex] = i;
-				firstHalfIndex += 1;
-			},
-			else => {
-				secondHalf[secondHalfIndex] = i;
-				secondHalfIndex += 1;
-			},
-		}
+	var quadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
+	defer quadList.deinit();
+	baseModel.getRawFaces(&quadList);
+	const len = quadList.items.len;
+	for(0..len) |i| {
+		quadList.append(quadList.items[i]);
+		quadList.items[i + len].opaqueInLod = 2;
+		quadList.items[i].textureSlot += 16;
 	}
-
-	for(firstHalf) |i| {
-		quadList[i] = oldQuadList.items[i];
-		quadList[i].opaqueInLod = 2;
-	}
-	for(secondHalf) |i| {
-		quadList[i] = oldQuadList.items[i];
-		quadList[i].textureSlot += 16;
-	}
-	for(firstHalf) |i| {
-		quadList[i + 6] = oldQuadList.items[i];
-		quadList[i + 6].textureSlot += 16;
-	}
-	for(secondHalf) |i| {
-		quadList[i + 6] = oldQuadList.items[i];
-		quadList[i + 6].opaqueInLod = 2;
-	}
-	const modelIndex = main.models.Model.init(quadList);
+	const modelIndex = main.models.Model.init(quadList.items);
 	modelCache = modelIndex;
 	return modelIndex;
 }

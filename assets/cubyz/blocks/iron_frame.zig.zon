@@ -2,9 +2,7 @@
 	.tags = .{.mineable},
 	.blockHealth = 16,
 	.blockResistance = 1,
-	.drops = .{
-		.auto
-	},
+	.drops = .{.auto},
 	.transparent = true,
 	.hasBackFace = true,
 	.rotation = "cubyz:frame",

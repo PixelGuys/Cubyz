@@ -1554,7 +1554,19 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		if(self.transparentMesh.vertexCount == 0 and self.blockBreakingFaces.items.len == 0) return;
 
 		var needsUpdate: bool = false;
-		if(self.transparentMesh.wasChanged) {
+		var relativePos = Vec3d{
+			@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0],
+			@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1],
+			@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2],
+		}/@as(Vec3d, @splat(@as(f64, @floatFromInt(self.pos.voxelSize))));
+		relativePos = @min(relativePos, @as(Vec3d, @splat(0)));
+		relativePos = @max(relativePos, @as(Vec3d, @splat(-32)));
+		const updatePos: Vec3i = @intFromFloat(relativePos);
+		if(@reduce(.Or, updatePos != self.lastTransparentUpdatePos)) {
+			self.lastTransparentUpdatePos = updatePos;
+			needsUpdate = true;
+		}
+		if(self.transparentMesh.wasChanged or needsUpdate) {
 			self.transparentMesh.wasChanged = false;
 			self.transparentMesh.lock.lockRead();
 			defer self.transparentMesh.lock.unlockRead();
@@ -1586,18 +1598,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			needsUpdate = true;
 		}
 
-		var relativePos = Vec3d{
-			@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0],
-			@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1],
-			@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2],
-		}/@as(Vec3d, @splat(@as(f64, @floatFromInt(self.pos.voxelSize))));
-		relativePos = @min(relativePos, @as(Vec3d, @splat(0)));
-		relativePos = @max(relativePos, @as(Vec3d, @splat(-32)));
-		const updatePos: Vec3i = @intFromFloat(relativePos);
-		if(@reduce(.Or, updatePos != self.lastTransparentUpdatePos)) {
-			self.lastTransparentUpdatePos = updatePos;
-			needsUpdate = true;
-		}
 		if(self.blockBreakingFacesChanged) {
 			self.blockBreakingFacesChanged = false;
 			self.sortingOutputBuffer = main.globalAllocator.realloc(self.sortingOutputBuffer, self.currentSorting.len + self.blockBreakingFaces.items.len);
@@ -1630,10 +1630,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					}
 					culledStart -= 1;
 				}
-				while(i < culledStart) : (i += 1) {
+				while(i < culledStart) {
 					if(self.currentSorting[i].shouldBeCulled) {
 						culledStart -= 1;
-						std.mem.swap(SortingData, &self.currentSorting[i], &self.currentSorting[culledStart]);
+						const culled = self.currentSorting[i];
+						std.mem.copyForwards(SortingData, self.currentSorting[i .. self.currentSorting.len - 1], self.currentSorting[i + 1 ..]);
+						self.currentSorting[self.currentSorting.len - 1] = culled;
+						// std.mem.swap(SortingData, &self.currentSorting[i], &self.currentSorting[culledStart]);
 						while(culledStart > 0) {
 							if(!self.currentSorting[culledStart - 1].shouldBeCulled) {
 								break;
@@ -1642,9 +1645,16 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 					}
 					if(!self.currentSorting[i].isBackFace) {
-						std.mem.swap(SortingData, &self.currentSorting[i], &self.currentSorting[backFaceStart]);
+						const backFace = self.currentSorting[i];
+						std.mem.copyBackwards(SortingData, self.currentSorting[backFaceStart + 1 .. i + 1], self.currentSorting[backFaceStart..i]);
+						self.currentSorting[backFaceStart] = backFace;
+
+						i += 1;
+
+						// std.mem.swap(SortingData, &self.currentSorting[i], &self.currentSorting[backFaceStart]);
 						backFaceStart += 1;
 					}
+					i += 1;
 				}
 				self.culledSortingCount = @intCast(culledStart);
 			}
