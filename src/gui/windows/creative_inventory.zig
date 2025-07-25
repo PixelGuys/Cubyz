@@ -54,6 +54,15 @@ pub fn onClose() void {
 	main.globalAllocator.free(searchString);
 }
 
+fn hasMatchingTag(tags: []const main.Tag, target: []const u8) bool {
+	for(tags) |tag| {
+		if(std.mem.containsAtLeast(u8, tag.getName(), 1, target)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 fn initContent() void {
 	const root = VerticalList.init(.{padding, padding}, 300, 0);
 	{
@@ -73,9 +82,18 @@ fn initContent() void {
 		const list = VerticalList.init(.{0, padding}, 144, 0);
 		items = .init(main.globalAllocator);
 		var itemIterator = main.items.iterator();
-		while(itemIterator.next()) |item| {
-			if(searchString.len != 0 and !std.mem.containsAtLeast(u8, item.id(), 1, searchString)) continue;
-			items.append(Item{.baseItem = item.*});
+		if(searchString.len > 1 and searchString[0] == '.') {
+			const tag = searchString[1..];
+			while(itemIterator.next()) |item| {
+				if(hasMatchingTag(item.tags(), tag) or (item.block() != null and hasMatchingTag((main.blocks.Block{.typ = item.block().?, .data = undefined}).blockTags(), tag))) {
+					items.append(Item{.baseItem = item.*});
+				}
+			}
+		} else {
+			while(itemIterator.next()) |item| {
+				if(searchString.len != 0 and !std.mem.containsAtLeast(u8, item.id(), 1, searchString)) continue;
+				items.append(Item{.baseItem = item.*});
+			}
 		}
 
 		std.mem.sort(Item, items.items, {}, lessThan);

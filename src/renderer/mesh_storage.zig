@@ -33,7 +33,7 @@ const ChunkMeshNode = struct {
 const storageSize = 64;
 const storageMask = storageSize - 1;
 var storageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
-var mapStorageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize]?*LightMap.LightMapFragment = undefined;
+var mapStorageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize]Atomic(?*LightMap.LightMapFragment) = undefined;
 var meshList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var priorityMeshUpdateList: main.utils.ConcurrentQueue(chunk.ChunkPosition) = undefined;
 pub var updatableList = main.List(chunk.ChunkPosition).init(main.globalAllocator);
@@ -85,8 +85,8 @@ pub fn init() void { // MARK: init()
 		}
 	}
 	for(&mapStorageLists) |*mapStorageList| {
-		mapStorageList.* = main.globalAllocator.create([storageSize*storageSize]?*LightMap.LightMapFragment);
-		@memset(mapStorageList.*, null);
+		mapStorageList.* = main.globalAllocator.create([storageSize*storageSize]Atomic(?*LightMap.LightMapFragment));
+		@memset(mapStorageList.*, .init(null));
 	}
 	priorityMeshUpdateList = .init(main.globalAllocator, 16);
 	mapUpdatableList = .init(main.globalAllocator, 16);
@@ -102,7 +102,6 @@ pub fn deinit() void {
 	lastPz = 0;
 	lastRD = 0;
 	freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
-	main.heap.GarbageCollection.waitForFreeCompletion();
 	for(storageLists) |storageList| {
 		main.globalAllocator.destroy(storageList);
 	}
@@ -112,7 +111,7 @@ pub fn deinit() void {
 
 	updatableList.clearAndFree();
 	while(mapUpdatableList.dequeue()) |map| {
-		map.decreaseRefCount();
+		map.deferredDeinit();
 	}
 	mapUpdatableList.deinit();
 	priorityMeshUpdateList.deinit();
@@ -121,6 +120,7 @@ pub fn deinit() void {
 	}
 	blockUpdateList.deinit();
 	meshList.clearAndFree();
+	main.heap.GarbageCollection.waitForFreeCompletion();
 	meshMemoryPool.deinit();
 }
 
@@ -159,7 +159,7 @@ fn updateHigherLodNodeFinishedMeshing(pos_: chunk.ChunkPosition, finishedMeshing
 	}
 }
 
-fn getMapPiecePointer(x: i32, y: i32, voxelSize: u31) *?*LightMap.LightMapFragment {
+fn getMapPiecePointer(x: i32, y: i32, voxelSize: u31) *Atomic(?*LightMap.LightMapFragment) {
 	const lod = std.math.log2_int(u31, voxelSize);
 	var xIndex = x >> lod + LightMap.LightMapFragment.mapShift;
 	var yIndex = y >> lod + LightMap.LightMapFragment.mapShift;
@@ -169,14 +169,8 @@ fn getMapPiecePointer(x: i32, y: i32, voxelSize: u31) *?*LightMap.LightMapFragme
 	return &(&mapStorageLists)[lod][@intCast(index)];
 }
 
-pub fn getLightMapPieceAndIncreaseRefCount(x: i32, y: i32, voxelSize: u31) ?*LightMap.LightMapFragment {
-	mutex.lock();
-	defer mutex.unlock();
-	const result: *LightMap.LightMapFragment = getMapPiecePointer(x, y, voxelSize).* orelse {
-		return null;
-	};
-	result.increaseRefCount();
-	return result;
+pub fn getLightMapPiece(x: i32, y: i32, voxelSize: u31) ?*LightMap.LightMapFragment {
+	return getMapPiecePointer(x, y, voxelSize).load(.acquire);
 }
 
 pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
@@ -212,7 +206,7 @@ pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 
 pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
-	while(lod < settings.highestLod) : (lod += 1) {
+	while(lod <= settings.highestLod) : (lod += 1) {
 		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod});
 		const mesh = node.mesh.load(.acquire) orelse continue;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask << lod, y & chunk.chunkMask << lod, z & chunk.chunkMask << lod);
@@ -437,13 +431,9 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 				const yIndex = @divExact(y, size) & storageMask;
 				const index = xIndex*storageSize + yIndex;
 
-				const mapPointer = &mapStorageLists[_lod][@intCast(index)];
-				mutex.lock();
-				const oldMap = mapPointer.*;
-				mapPointer.* = null;
-				mutex.unlock();
+				const oldMap = mapStorageLists[_lod][@intCast(index)].swap(null, .monotonic);
 				if(oldMap) |map| {
-					map.decreaseRefCount();
+					map.deferredDeinit();
 				}
 			}
 		}
@@ -576,14 +566,12 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 				const index = xIndex*storageSize + yIndex;
 				const pos = LightMap.MapFragmentPosition{.wx = x, .wy = y, .voxelSize = @as(u31, 1) << lod, .voxelSizeShift = lod};
 
-				const node = &mapStorageLists[_lod][@intCast(index)];
-				mutex.lock();
-				if(node.*) |map| {
-					std.debug.assert(std.meta.eql(pos, map.pos));
+				const map = mapStorageLists[_lod][@intCast(index)].load(.unordered);
+				if(map) |_map| {
+					std.debug.assert(std.meta.eql(pos, _map.pos));
 				} else {
 					mapRequests.append(pos);
 				}
-				mutex.unlock();
 			}
 		}
 	}
@@ -770,13 +758,12 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 	}
 	while(mapUpdatableList.dequeue()) |map| {
 		if(!isMapInRenderDistance(map.pos)) {
-			map.decreaseRefCount();
+			map.deferredDeinit();
 		} else {
-			const mapPointer = getMapPiecePointer(map.pos.wx, map.pos.wy, map.pos.voxelSize);
-			if(mapPointer.*) |old| {
-				old.decreaseRefCount();
+			const mapPointer = getMapPiecePointer(map.pos.wx, map.pos.wy, map.pos.voxelSize).swap(map, .release);
+			if(mapPointer) |old| {
+				old.deferredDeinit();
 			}
-			mapPointer.* = map;
 		}
 	}
 	while(updatableList.items.len != 0) {
