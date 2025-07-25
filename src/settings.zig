@@ -164,8 +164,7 @@ pub fn save() void {
 	if(oldZonObject == .object) {
 		oldZonObject.join(zonObject);
 	} else {
-		oldZonObject.deinit(main.stackAllocator);
-		oldZonObject = zonObject;
+		std.mem.swap(ZonElement, &oldZonObject, &zonObject);
 	}
 
 	main.files.cubyzDir().writeZon(settingsFile, oldZonObject) catch |err| {
