@@ -2011,16 +2011,6 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 	}
 }
 
-pub fn toBase64(self: Inventory, allocator: NeverFailingAllocator) []const u8 {
-	var writer = BinaryWriter.init(main.stackAllocator);
-	defer writer.deinit();
-
-	self.toBytes(&writer);
-
-	const destination: []u8 = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(writer.data.items.len));
-	return std.base64.url_safe.Encoder.encode(destination, writer.data.items);
-}
-
 fn toBytes(self: Inventory, writer: *BinaryWriter) void {
 	writer.writeVarInt(u32, @intCast(self._items.len));
 	for(self._items) |stack| {
