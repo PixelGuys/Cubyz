@@ -1,0 +1,17 @@
+.{
+	.blueprint = "cubyz:mushroom/small/bolete/empty",
+	.children = .{
+		.white = .{
+			.{.structure = "cubyz:mushroom/small/bolete/variant/0"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/1"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/2"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/3"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/4"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/5"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/6"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/7"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/8"},
+			.{.structure = "cubyz:mushroom/small/bolete/variant/9"},
+		},
+	},
+}

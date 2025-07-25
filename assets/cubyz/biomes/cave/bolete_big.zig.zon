@@ -29,6 +29,12 @@
 			.chance = 0.15,
 		},
 		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:mushroom/small/bolete/base",
+			.placeMode = .degradable,
+			.chance = 0.2,
+		},
+		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:bolete",
 			.chance = 0.1,
