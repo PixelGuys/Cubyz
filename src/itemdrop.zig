@@ -50,7 +50,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	pub const pickupRange: f64 = 1.0;
 
 	const terminalVelocity = 40.0;
-	const gravity = 9.81;
+	const gravity = 19.99;
+	const friction = 5.0;
 
 	const maxCapacity = 65536;
 
@@ -333,9 +334,11 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			return;
 		}
 		vel.* += Vec3d{0, 0, -gravity*deltaTime};
+		var collided: bool = false;
 		inline for(0..3) |i| {
 			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
 			if(main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
+				collided = true;
 				if(move < 0) {
 					pos.*[i] = box.max[i] + radius;
 				} else {
@@ -348,6 +351,10 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 		// Apply drag:
 		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
+		if(collided) {
+		    const decelerate: f64 = @max(0, 1 - friction*deltaTime);
+		    vel.* *= Vec3d{decelerate,decelerate,1};
+		}
 	}
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
