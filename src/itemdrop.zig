@@ -353,7 +353,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
 		if(collided) {
 			const decelerate: f64 = @max(0, 1 - friction*deltaTime);
-			vel.* *= Vec3d{decelerate,decelerate,1};
+			vel.* *= Vec3d{decelerate, decelerate, 1};
 		}
 	}
 
