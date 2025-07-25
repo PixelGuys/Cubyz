@@ -594,7 +594,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 									std.log.debug("Item #{}: {} x {s}", .{i, stack.amount, if(stack.item) |item| item.id() else "null"});
 								}
 
-								const base64Data = temp.toBase64(main.stackAllocator);
+								const base64Data = savePlayerInventory(temp, main.stackAllocator);
 								const old = playerData.object.fetchPut(key, .{.stringOwned = base64Data}) catch unreachable orelse unreachable;
 								old.value.deinit(main.stackAllocator);
 							},
@@ -968,6 +968,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader);
 	}
 
+	fn savePlayerInventory(inv: main.items.Inventory, allocator: NeverFailingAllocator) []const u8 {
+		var writer = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		inv.toBytes(&writer);
+
+		const destination: []u8 = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(writer.data.items.len));
+		return std.base64.url_safe.Encoder.encode(destination, writer.data.items);
+	}
+
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
 		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
 		defer main.stackAllocator.free(dest);
@@ -993,11 +1003,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
-				playerZon.put("playerInventory", ZonElement{.stringOwned = inv.toBase64(main.stackAllocator)});
+				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(inv, main.stackAllocator)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
-				playerZon.put("hand", ZonElement{.stringOwned = inv.toBase64(main.stackAllocator)});
+				playerZon.put("hand", ZonElement{.stringOwned = savePlayerInventory(inv, main.stackAllocator)});
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
 
