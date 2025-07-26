@@ -676,7 +676,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
 	lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
-	refCount: std.atomic.Value(u32) = .init(1),
 	needsLightRefresh: std.atomic.Value(bool) = .init(false),
 	needsMeshUpdate: bool = false,
 	finishedMeshing: bool = false, // Must be synced with node.finishedMeshing in mesh_storage.zig

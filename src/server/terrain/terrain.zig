@@ -133,12 +133,12 @@ pub const TerrainGenerationProfile = struct {
 	}
 };
 
-pub fn initGenerators() void {
-	SurfaceMap.initGenerators();
-	ClimateMap.initGenerators();
-	CaveBiomeMap.initGenerators();
-	CaveMap.initGenerators();
-	StructureMap.initGenerators();
+pub fn globalInit() void {
+	SurfaceMap.globalInit();
+	ClimateMap.globalInit();
+	CaveBiomeMap.globalInit();
+	CaveMap.globalInit();
+	StructureMap.globalInit();
 	const list = @import("chunkgen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		BlockGenerator.registerGenerator(@field(list, decl.name));
@@ -148,12 +148,12 @@ pub fn initGenerators() void {
 	std.log.info("Blue noise took {} ms to load", .{std.time.milliTimestamp() -% t1});
 }
 
-pub fn deinitGenerators() void {
-	SurfaceMap.deinitGenerators();
-	ClimateMap.deinitGenerators();
-	CaveBiomeMap.deinitGenerators();
-	CaveMap.deinitGenerators();
-	StructureMap.deinitGenerators();
+pub fn globalDeinit() void {
+	CaveBiomeMap.globalDeinit();
+	CaveMap.globalDeinit();
+	StructureMap.globalDeinit();
+	ClimateMap.globalDeinit();
+	SurfaceMap.globalDeinit();
 	BlockGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 

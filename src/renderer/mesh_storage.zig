@@ -835,7 +835,6 @@ fn batchUpdateBlocks() void {
 // MARK: adders
 
 pub fn addToUpdateList(mesh: *chunk_meshing.ChunkMesh) void {
-	std.debug.assert(mesh.refCount.load(.monotonic) != 0);
 	mutex.lock();
 	defer mutex.unlock();
 	if(mesh.finishedMeshing) {

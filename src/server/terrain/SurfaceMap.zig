@@ -259,15 +259,17 @@ var profile: TerrainGenerationProfile = undefined;
 
 var memoryPool: main.heap.MemoryPool(MapFragment) = undefined;
 
-pub fn initGenerators() void {
+pub fn globalInit() void {
 	const list = @import("mapgen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		MapGenerator.registerGenerator(@field(list, decl.name));
 	}
+	memoryPool = .init(main.globalAllocator);
 }
 
-pub fn deinitGenerators() void {
+pub fn globalDeinit() void {
 	MapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
+	memoryPool.deinit();
 }
 
 fn cacheInit(pos: MapFragmentPosition) *MapFragment {
@@ -634,12 +636,10 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
-	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
-	memoryPool.deinit();
 }
 
 /// Call deinit on the result.
