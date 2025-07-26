@@ -195,9 +195,11 @@ pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
 		const StorageServer = BlockEntityDataStorage(
 			struct {
-				id: ?u32,
+				id: u32,
 			},
 		);
+
+		pub const chestSize = 20;
 
 		pub const id = "chest";
 		pub fn init() void {
@@ -210,20 +212,24 @@ pub const BlockEntityTypes = struct {
 			StorageServer.reset();
 		}
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
+		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			const data = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			const locked = main.items.Inventory.Sync.ServerSide.mutex.tryLock();
+			defer if(locked) {
+				main.items.Inventory.Sync.ServerSide.mutex.unlock();
+			};
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.id);
 		}
-		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
-		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
-			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .normal, .{.blockInventory = pos});
+			const inventory = main.items.Inventory.init(main.globalAllocator, chestSize, .normal, .{.blockInventory = pos});
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
@@ -232,10 +238,64 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
+		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
-		pub fn updateServerData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
-		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
-		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+			return updateServerData(pos, chunk, .{.createOrUpdate = reader});
+		}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+			const locked = main.items.Inventory.Sync.ServerSide.mutex.tryLock();
+			defer if(locked) {
+				main.items.Inventory.Sync.ServerSide.mutex.unlock();
+			};
+
+			if(event == .remove) {
+				const data = StorageServer.remove(pos, chunk) orelse return;
+
+				const inventory = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.id);
+				for(inventory._items) |itemStack| {
+					if(itemStack.empty()) {
+						continue;
+					}
+
+					const position = @as(Vec3f, @floatFromInt(pos)) + @as(Vec3f, @splat(0.5));
+					const direction: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
+					const velocity = 0.5 + main.random.nextFloat(&main.seed);
+					main.server.world.?.drop(itemStack.clone(), position, direction, velocity);
+				}
+
+				main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.id);
+				return;
+			}
+
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getOrPut(pos, chunk);
+			if(data.foundExisting) return;
+			var reader: main.utils.BinaryReader = .init("");
+			data.valuePtr.id = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(chestSize, .normal, .{.blockInventory = pos}, &reader);
+			const inventory = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.valuePtr.id);
+			if(event.createOrUpdate.remaining.len != 0) {
+				inventory.fromBytes(event.createOrUpdate);
+			}
+		}
+
+		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+
+			const data = StorageServer.getByIndex(dataIndex) orelse return;
+			const inventory = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.id);
+
+			inventory.toBytes(writer);
+		}
+
+		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};

@@ -35,9 +35,13 @@ pub fn init() void {
 
 pub fn deinit() void {
 	itemSlots.deinit();
+
+	if(openInventory) |inv| {
+		inv.deinit(main.globalAllocator);
+	}
 }
 
-pub var openInventory: main.items.Inventory = undefined;
+pub var openInventory: ?main.items.Inventory = null;
 
 pub fn setInventory(selectedInventory: main.items.Inventory) void {
 	openInventory = selectedInventory;
@@ -50,7 +54,7 @@ pub fn onOpen() void {
 		const row = HorizontalList.init();
 		for(0..10) |x| {
 			const index: usize = y*10 + x;
-			const slot = ItemSlot.init(.{0, 0}, openInventory, @intCast(index), .default, .normal);
+			const slot = ItemSlot.init(.{0, 0}, openInventory.?, @intCast(index), .default, .normal);
 			itemSlots.append(slot);
 			row.add(slot);
 		}
@@ -63,7 +67,8 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	openInventory.deinit(main.globalAllocator);
+	openInventory.?.deinit(main.globalAllocator);
+	openInventory = null;
 
 	itemSlots.clearRetainingCapacity();
 	if(window.rootComponent) |*comp| {

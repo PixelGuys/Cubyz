@@ -317,8 +317,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader) u32 {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
 			inventories.items[inventory.inv.id] = inventory;
 			inventory.inv.fromBytes(data);
@@ -326,8 +325,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn destroyExternallyManagedInventory(invId: u32) void {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			std.debug.assert(inventories.items[invId].managed == .externallyManaged);
 			inventories.items[invId].deinit();
 		}
@@ -387,6 +385,11 @@ pub const Sync = struct { // MARK: Sync
 		fn getInventory(user: *main.server.User, clientId: u32) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
+			return inventories.items[serverId].inv;
+		}
+
+		pub fn getInventoryFromId(serverId: u32) Inventory {
+			main.utils.assertLocked(&mutex);
 			return inventories.items[serverId].inv;
 		}
 
@@ -1093,7 +1096,18 @@ pub const Command = struct { // MARK: Command
 		inv: Inventory,
 		source: Source,
 
-		fn run(_: Open, _: NeverFailingAllocator, _: *Command, _: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {}
+		fn run(self: Open, _: NeverFailingAllocator, _: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			if(side == .server and self.source == .blockInventory) {
+				const pos = self.source.blockInventory;
+
+				const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+				defer simChunk.decreaseRefCount();
+				const ch = simChunk.chunk.load(.unordered) orelse return;
+				ch.mutex.lock();
+				defer ch.mutex.unlock();
+				ch.setChanged();
+			}
+		}
 
 		fn finalize(self: Open, side: Side, reader: *utils.BinaryReader) !void {
 			if(side != .client) return;
@@ -1192,7 +1206,27 @@ pub const Command = struct { // MARK: Command
 		inv: Inventory,
 		allocator: NeverFailingAllocator,
 
-		fn run(_: Close, _: NeverFailingAllocator, _: *Command, _: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {}
+		fn run(self: Close, _: NeverFailingAllocator, _: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			if(user == null) {
+				return;
+			}
+
+			if(side == .server) {
+				const serverId = user.?.inventoryClientToServerIdMap.get(self.inv.id) orelse unreachable;
+				const source = Sync.ServerSide.inventories.items[serverId].source;
+
+				if(source != .blockInventory) return;
+
+				const pos = source.blockInventory;
+
+				const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+				defer simChunk.decreaseRefCount();
+				const ch = simChunk.chunk.load(.unordered) orelse return;
+				ch.mutex.lock();
+				defer ch.mutex.unlock();
+				ch.setChanged();
+			}
+		}
 
 		fn finalize(self: Close, side: Side, reader: *utils.BinaryReader) !void {
 			if(side != .client) return;
