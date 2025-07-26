@@ -10,8 +10,6 @@
 			.{.structure = "cubyz:mushroom/small/bolete/variant/5"},
 			.{.structure = "cubyz:mushroom/small/bolete/variant/6"},
 			.{.structure = "cubyz:mushroom/small/bolete/variant/7"},
-			.{.structure = "cubyz:mushroom/small/bolete/variant/8"},
-			.{.structure = "cubyz:mushroom/small/bolete/variant/9"},
 		},
 	},
 }
