@@ -4,7 +4,7 @@ This document is intended for contributors and may contain spoilers.
 ## What is Cubyz?
 Cubyz is a voxel sandbox game with infinite world and focus on great adventures, immersive exploration with numerous challenges along the way. We cherish freedom and we are determined to give it to the players in abundance, so they can chose their own path through the world.
 
-### Cubyz' Progression
+### Progression
 We want to encourage interacting with different mechanics, such as exploring, building, crafting, and etc. Progression therefore encourages the player to interact with all of these systems.
 Examples:
 - Explore to Build: The player needs to interact with exploration to get the resources they want for building.
