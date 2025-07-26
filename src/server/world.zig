@@ -539,6 +539,85 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arenaAllocator));
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arenaAllocator));
 
+		convert_player_data_to_binary: { // TODO: Remove after #480
+			std.log.debug("Migrating old player inventory format to binary.", .{});
+
+			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
+			defer main.stackAllocator.free(playerDataPath);
+
+			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch break :convert_player_data_to_binary;
+			defer playerDataDirectory.close();
+
+			{
+				var walker = playerDataDirectory.walk(main.stackAllocator.allocator) catch unreachable;
+				defer walker.deinit();
+
+				while(walker.next() catch |err| {
+					std.log.err("Couldn't fetch next directory entry due to an error: {s}", .{@errorName(err)});
+					break :convert_player_data_to_binary;
+				}) |entry| {
+					if(entry.kind != .file) continue;
+					if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
+
+					const absolutePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{playerDataPath, entry.path}) catch unreachable;
+					defer main.stackAllocator.free(absolutePath);
+
+					const playerData = files.readToZon(main.stackAllocator, absolutePath) catch |err| {
+						std.log.err("Could not read player data file '{s}'': {s}.", .{absolutePath, @errorName(err)});
+						continue;
+					};
+					defer playerData.deinit(main.stackAllocator);
+
+					std.log.debug("Migrating player data file: '{s}'", .{absolutePath});
+
+					const entryKeys: [2][]const u8 = .{
+						"playerInventory",
+						"hand",
+					};
+					for(entryKeys) |key| {
+						const zon = playerData.getChild(key);
+						switch(zon) {
+							.object => {
+								std.log.debug("Migrating inventory '{s}' '{s}'", .{key, absolutePath});
+
+								var temp: main.items.Inventory = undefined;
+								temp._items = main.stackAllocator.alloc(ItemStack, zon.get(u32, "capacity", 0));
+								defer main.stackAllocator.free(temp._items);
+
+								for(temp._items) |*stack| stack.* = ItemStack{};
+								defer for(temp._items) |*stack| stack.deinit();
+
+								temp.loadFromZon(zon);
+
+								for(temp._items, 0..) |*stack, i| {
+									std.log.debug("Item #{}: {} x {s}", .{i, stack.amount, if(stack.item) |item| item.id() else "null"});
+								}
+
+								const base64Data = savePlayerInventory(main.stackAllocator, temp);
+								const old = playerData.object.fetchPut(key, .{.stringOwned = base64Data}) catch unreachable orelse unreachable;
+								old.value.deinit(main.stackAllocator);
+							},
+							.string, .stringOwned => |field| {
+								std.log.debug("Skipping key '{s}', type is 'string', value is '{s}'", .{key, field});
+							},
+							.null => {
+								std.log.debug("Skipping key '{s}', type is 'null'", .{key});
+							},
+							else => |other| {
+								const representation = zon.toString(main.stackAllocator);
+								defer main.stackAllocator.free(representation);
+								std.log.err("Encountered unexpected type ({s}) while migrating '{s}': {s}", .{@tagName(other), absolutePath, representation});
+							},
+						}
+					}
+					files.writeZon(absolutePath, playerData) catch |err| {
+						std.log.err("Could not write player data file {s}: {s}.", .{absolutePath, @errorName(err)});
+						continue;
+					};
+				}
+			}
+		}
+
 		var gamerules = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arenaAllocator);
 
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
@@ -862,9 +941,37 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
+		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
+		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
+	}
 
-		user.inventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, playerData.getChild("playerInventory"));
-		user.handInventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(1, .normal, .{.hand = user.id}, playerData.getChild("hand"));
+	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) u32 {
+		const decodedSize = std.base64.url_safe.Decoder.calcSizeForSlice(base64EncodedData) catch |err| blk: {
+			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
+			break :blk 0;
+		};
+
+		const bytes: []u8 = main.stackAllocator.alloc(u8, decodedSize);
+		defer main.stackAllocator.free(bytes);
+
+		var readerInput: []const u8 = bytes;
+
+		std.base64.url_safe.Decoder.decode(bytes, base64EncodedData) catch |err| {
+			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
+			readerInput = "";
+		};
+		var reader: main.utils.BinaryReader = .init(readerInput);
+		return main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader);
+	}
+
+	fn savePlayerInventory(allocator: NeverFailingAllocator, inv: main.items.Inventory) []const u8 {
+		var writer = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		inv.toBytes(&writer);
+
+		const destination: []u8 = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(writer.data.items.len));
+		return std.base64.url_safe.Encoder.encode(destination, writer.data.items);
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
@@ -892,11 +999,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
-				playerZon.put("playerInventory", inv.save(main.stackAllocator));
+				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
-				playerZon.put("hand", inv.save(main.stackAllocator));
+				playerZon.put("hand", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
 
