@@ -107,15 +107,17 @@ var profile: TerrainGenerationProfile = undefined;
 
 var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = undefined;
 
-pub fn initGenerators() void {
+pub fn globalInit() void {
 	const list = @import("climategen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		ClimateMapGenerator.registerGenerator(@field(list, decl.name));
 	}
+	memoryPool = .init(main.globalAllocator);
 }
 
-pub fn deinitGenerators() void {
+pub fn globalDeinit() void {
 	ClimateMapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
+	memoryPool.deinit();
 }
 
 fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
@@ -128,12 +130,10 @@ fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
-	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
-	memoryPool.deinit();
 }
 
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32) *ClimateMapFragment {

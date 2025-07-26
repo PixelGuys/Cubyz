@@ -122,9 +122,8 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 						previousTrailer = self.getTrailerBefore(previousTrailer.previousAllocationTrailer);
 					}
 				}
-			} else {
-				trailer.wasFreed = true;
 			}
+			trailer.wasFreed = true;
 		} else {
 			self.backingAllocator.rawFree(memory, alignment, ret_addr);
 		}

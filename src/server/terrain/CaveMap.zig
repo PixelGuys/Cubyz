@@ -304,25 +304,25 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	return mapFragment;
 }
 
-pub fn initGenerators() void {
+pub fn globalInit() void {
 	const list = @import("cavegen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
+	memoryPool = .init(main.globalAllocator);
 }
 
-pub fn deinitGenerators() void {
+pub fn globalDeinit() void {
 	CaveGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
+	memoryPool.deinit();
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
-	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
-	memoryPool.deinit();
 }
 
 fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {

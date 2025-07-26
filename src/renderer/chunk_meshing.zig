@@ -676,7 +676,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
 	lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
-	refCount: std.atomic.Value(u32) = .init(1),
 	needsLightRefresh: std.atomic.Value(bool) = .init(false),
 	needsMeshUpdate: bool = false,
 	finishedMeshing: bool = false, // Must be synced with node.finishedMeshing in mesh_storage.zig
@@ -807,8 +806,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			var allSun: bool = self.chunk.data.paletteLength == 1 and self.chunk.data.palette[0].typ == 0;
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
-			const lightStartMap = mesh_storage.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
-			defer lightStartMap.decreaseRefCount();
+			const lightStartMap = mesh_storage.getLightMapPiece(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
 			x = 0;
 			while(x < chunk.chunkSize) : (x += 1) {
 				var y: u8 = 0;

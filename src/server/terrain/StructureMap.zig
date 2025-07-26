@@ -191,25 +191,25 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 	return mapFragment;
 }
 
-pub fn initGenerators() void {
+pub fn globalInit() void {
 	const list = @import("structuremapgen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		StructureMapGenerator.registerGenerator(@field(list, decl.name));
 	}
+	memoryPool = .init(main.globalAllocator);
 }
 
-pub fn deinitGenerators() void {
+pub fn globalDeinit() void {
 	StructureMapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
+	memoryPool.deinit();
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
-	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
-	memoryPool.deinit();
 }
 
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *StructureMapFragment {
