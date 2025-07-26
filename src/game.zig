@@ -281,7 +281,7 @@ pub const collision = struct {
 
 	const SurfaceProperties = struct {
 		friction: f32,
-		bounce: f32,
+		bounciness: f32,
 	};
 
 	pub fn calculateSurfaceProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
@@ -297,7 +297,7 @@ pub const collision = struct {
 		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
 
 		var friction: f64 = 0;
-		var bounce: f64 = 0;
+		var bounciness: f64 = 0;
 		var totalArea: f64 = 0;
 
 		var x = minX;
@@ -326,7 +326,7 @@ pub const collision = struct {
 					if(block.collide()) {
 						totalArea += area;
 						friction += area*@as(f64, @floatCast(block.friction()));
-						bounce += area*@as(f64, @floatCast(block.bounce()));
+						bounciness += area*@as(f64, @floatCast(block.bounciness()));
 					}
 				}
 			}
@@ -334,15 +334,15 @@ pub const collision = struct {
 
 		if(totalArea == 0) {
 			friction = defaultFriction;
-			bounce = 0.0;
+			bounciness = 0.0;
 		} else {
 			friction = friction/totalArea;
-			bounce = bounce/totalArea;
+			bounciness = bounciness/totalArea;
 		}
 
 		return .{
 			.friction = @floatCast(friction),
-			.bounce = @floatCast(bounce),
+			.bounciness = @floatCast(bounciness),
 		};
 	}
 
@@ -1277,14 +1277,14 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
-			var bounce = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 0.0).bounce;
+			var bounciness = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 0.0).bounciness;
 			if(KeyBoard.key("crouch").pressed) {
-				bounce *= 0.5;
+				bounciness *= 0.5;
 			}
 			var velocityChange: f64 = undefined;
-			if(bounce != 0.0 and Player.super.vel[2] < -3.0) {
-				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounce));
-				Player.super.vel[2] = -Player.super.vel[2]*bounce;
+			if(bounciness != 0.0 and Player.super.vel[2] < -3.0) {
+				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
+				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
 				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			} else {
 				velocityChange = Player.super.vel[2];

@@ -1,7 +1,7 @@
 .{
 	.tags = .{.choppable, .cuttable},
 	.blockHealth = 3,
-	.bounce = 0.75,
+	.bounciness = 0.75,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
