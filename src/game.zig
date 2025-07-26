@@ -1282,7 +1282,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				bounciness *= 0.5;
 			}
 			var velocityChange: f64 = undefined;
-			if(bounciness != 0.0 and Player.super.vel[2] < -3.0) {
+			// Smoothly decrease bounciness
+			// https://www.desmos.com/calculator/qn52dl3qto
+			bounciness *= @floatCast(1 - 1/(Player.super.vel[2]*Player.super.vel[2] + 1));
+			if(bounciness != 0.0 and Player.super.vel[2] < -0.1) {
 				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
 				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
 				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
