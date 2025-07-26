@@ -12,18 +12,6 @@ Examples:
 - Strategize to Survive: Prepare for a trip with tools, weapons, and gear in order to make survival easier.
 - Build to Strategize: The player has to build defenses for events, invasions, and bosses. They also need to upgrade their workstations to allow for better gear.
 
-## New Blocks
-Before adding/suggesting new blocks, run it by these checks.
-
-### "Is it unique?"
-Does the block fill new or underrepresented niches?
-
-### "Is it versatile?"
-Is the block able to be used across multiple biomes and builds?
-
-### "Would the player care?"
-When so many blocks already exist, what makes this one interesting enough for the player to want to collect or seek it out?
-
 ## Break the Cycle
 ### No Dimensions
 Instead of creating seperate dimensions, we can fit these places physically into Cubyz' massive world for the player to come across.
@@ -51,7 +39,7 @@ Inventories will often fill up with random items that the player does not want, 
 Cubyz is not a realistic game. The world is very whimsical and has rules of its own, sometimes inspired by the real world, but never copied without a good reason.
 
 ### Avoid Excessive Additions
-Unless there is a genuine functional reason for a variant or addition to be added, they should be avoided. Try to use or modify existing content first before resorting to new stuff.
+Unless there is a genuine functional reason for a variant or addition to be added, they should be avoided. Try to use or modify existing items and blocks first before creating new ones.
 
 ## Player Engagement
 ### "How would the player feel?"
