@@ -338,54 +338,50 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			allocator.destroy(self.mem);
 		}
 
-		pub fn peekFront(self: Self) ?T {
+		pub fn peekBack(self: Self) ?T {
 			if(self.len == 0) return null;
 			return self.mem[self.startIndex + self.len - 1 & mask];
 		}
 
-		pub fn peekBack(self: Self) ?T {
+		pub fn peekFront(self: Self) ?T {
 			if(self.len == 0) return null;
 			return self.mem[self.startIndex];
 		}
 
-		pub fn enqueueFront(self: *Self, elem: T) !void {
+		pub fn pushBack(self: *Self, elem: T) !void {
 			if(self.len >= capacity) return error.OutOfMemory;
-			self.enqueueFrontAssumeCapacity(elem);
+			self.pushBackAssumeCapacity(elem);
 		}
 
-		pub fn forceEnqueueFront(self: *Self, elem: T) ?T {
-			const result = if(self.len >= capacity) self.dequeueBack() else null;
-			self.enqueueFrontAssumeCapacity(elem);
+		pub fn forcePushBack(self: *Self, elem: T) ?T {
+			const result = if(self.len >= capacity) self.popFront() else null;
+			self.pushBackAssumeCapacity(elem);
 			return result;
 		}
 
-		pub fn enqueueFrontAssumeCapacity(self: *Self, elem: T) void {
+		pub fn pushBackAssumeCapacity(self: *Self, elem: T) void {
 			self.mem[self.startIndex + self.len & mask] = elem;
 			self.len += 1;
 		}
 
-		pub fn enqueue(self: *Self, elem: T) !void {
-			return self.enqueueFront(elem);
-		}
-
-		pub fn enqueueBack(self: *Self, elem: T) !void {
+		pub fn pushFront(self: *Self, elem: T) !void {
 			if(self.len >= capacity) return error.OutOfMemory;
-			self.enqueueBackAssumeCapacity(elem);
+			self.pushFrontAssumeCapacity(elem);
 		}
 
-		pub fn enqueueBackAssumeCapacity(self: *Self, elem: T) void {
+		pub fn pushFrontAssumeCapacity(self: *Self, elem: T) void {
 			self.startIndex = (self.startIndex -% 1) & mask;
 			self.mem[self.startIndex] = elem;
 			self.len += 1;
 		}
 
-		pub fn forceEnqueueBack(self: *Self, elem: T) ?T {
-			const result = if(self.len >= capacity) self.dequeueFront() else null;
-			self.enqueueBackAssumeCapacity(elem);
+		pub fn forcePushFront(self: *Self, elem: T) ?T {
+			const result = if(self.len >= capacity) self.popBack() else null;
+			self.pushFrontAssumeCapacity(elem);
 			return result;
 		}
 
-		pub fn enqueueSlice(self: *Self, elems: []const T) !void {
+		pub fn pushBackSlice(self: *Self, elems: []const T) !void {
 			if(elems.len + self.len > capacity) {
 				return error.OutOfMemory;
 			}
@@ -417,17 +413,13 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			}
 		}
 
-		pub fn dequeue(self: *Self) ?T {
-			return self.dequeueBack();
-		}
-
-		pub fn dequeueFront(self: *Self) ?T {
+		pub fn popBack(self: *Self) ?T {
 			if(self.len == 0) return null;
 			self.len -= 1;
 			return self.mem[self.startIndex + self.len & mask];
 		}
 
-		pub fn dequeueBack(self: *Self) ?T {
+		pub fn popFront(self: *Self) ?T {
 			if(self.len == 0) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & mask;
@@ -435,7 +427,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			return result;
 		}
 
-		pub fn dequeueSlice(self: *Self, out: []T) !void {
+		pub fn popSliceFront(self: *Self, out: []T) !void {
 			if(out.len > self.len) return error.OutOfBounds;
 			const start = self.startIndex;
 			const end = start + out.len;
@@ -450,7 +442,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			self.len -= out.len;
 		}
 
-		pub fn discardElements(self: *Self, n: usize) void {
+		pub fn discardElementsFront(self: *Self, n: usize) void {
 			self.len -= n;
 			self.startIndex = (self.startIndex + n) & mask;
 		}
@@ -501,7 +493,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.mask = self.mem.len - 1;
 		}
 
-		pub fn enqueue(self: *Self, elem: T) void {
+		pub fn pushBack(self: *Self, elem: T) void {
 			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
@@ -509,7 +501,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += 1;
 		}
 
-		pub fn enqueueSlice(self: *Self, elems: []const T) void {
+		pub fn pushBackSlice(self: *Self, elems: []const T) void {
 			while(elems.len + self.len > self.mem.len) {
 				self.increaseCapacity();
 			}
@@ -525,7 +517,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += elems.len;
 		}
 
-		pub fn enqueue_back(self: *Self, elem: T) void {
+		pub fn pushFront(self: *Self, elem: T) void {
 			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
@@ -534,28 +526,28 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += 1;
 		}
 
-		pub fn dequeue(self: *Self) ?T {
-			if(self.empty()) return null;
+		pub fn popFront(self: *Self) ?T {
+			if(self.isEmpty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & self.mask;
 			self.len -= 1;
 			return result;
 		}
 
-		pub fn dequeue_front(self: *Self) ?T {
-			if(self.empty()) return null;
+		pub fn popBack(self: *Self) ?T {
+			if(self.isEmpty()) return null;
 			self.len -= 1;
 			return self.mem[self.startIndex + self.len & self.mask];
 		}
 
-		pub fn discard(self: *Self, amount: usize) !void {
+		pub fn discardFront(self: *Self, amount: usize) !void {
 			if(amount > self.len) return error.OutOfBounds;
 			self.startIndex = (self.startIndex + amount) & self.mask;
 			self.len -= amount;
 		}
 
-		pub fn peek(self: *Self) ?T {
-			if(self.empty()) return null;
+		pub fn peekFront(self: *Self) ?T {
+			if(self.isEmpty()) return null;
 			return self.mem[self.startIndex];
 		}
 
@@ -577,7 +569,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return self.mem[(self.startIndex + offset) & self.mask];
 		}
 
-		pub fn empty(self: *Self) bool {
+		pub fn isEmpty(self: *Self) bool {
 			return self.len == 0;
 		}
 
@@ -604,22 +596,22 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 			self.super.deinit();
 		}
 
-		pub fn enqueue(self: *Self, elem: T) void {
+		pub fn push(self: *Self, elem: T) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.super.enqueue(elem);
+			self.super.pushBack(elem);
 		}
 
-		pub fn dequeue(self: *Self) ?T {
+		pub fn pop(self: *Self) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			return self.super.dequeue();
+			return self.super.popFront();
 		}
 
-		pub fn empty(self: *Self) bool {
+		pub fn isEmpty(self: *Self) bool {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			return self.super.empty();
+			return self.super.isEmpty();
 		}
 	};
 }
