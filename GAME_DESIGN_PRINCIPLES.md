@@ -39,7 +39,7 @@ Inventories will often fill up with random items that the player does not want, 
 Cubyz is not a realistic game. The world is very whimsical and has rules of its own, sometimes inspired by the real world, but never copied without a good reason.
 
 ### Avoid Excessive Additions
-Unless there is a genuine functional reason for a variant or addition to be added, they should be avoided. Try to use or modify existing items and blocks first before creating new ones.
+Unless there is a genuine functional reason for a variant or addition to be added, they should be avoided. Try to use or modify existing content first before creating new stuff.
 
 ## Player Engagement
 ### "How would the player feel?"
