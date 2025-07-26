@@ -1282,9 +1282,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				bounciness *= 0.5;
 			}
 			var velocityChange: f64 = undefined;
-			// Smoothly decrease bounciness
-			// https://www.desmos.com/calculator/qn52dl3qto
-			bounciness *= @floatCast(1 - 1/(Player.super.vel[2]*Player.super.vel[2] + 1));
+
+			bounciness *= @min(1, 0.3*@abs(@as(f32, @floatCast(Player.super.vel[2]))));
 			if(bounciness != 0.0 and Player.super.vel[2] < -0.1) {
 				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
 				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
