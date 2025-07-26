@@ -8,7 +8,6 @@
 			.{.structure = "cubyz:mushroom/big/toadstool/base/3"},
 			.{.structure = "cubyz:mushroom/big/toadstool/base/4"},
 			.{.structure = "cubyz:mushroom/big/toadstool/base/5"},
-			.{.structure = "cubyz:mushroom/big/toadstool/base/6"},
 		},
 	},
 }
