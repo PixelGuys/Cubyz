@@ -60,17 +60,17 @@ pub const WorldEditData = struct {
 			self.changes.deinit();
 		}
 		pub fn clear(self: *History) void {
-			while(self.changes.dequeue()) |item| item.deinit();
+			while(self.changes.popFront()) |item| item.deinit();
 		}
 		pub fn push(self: *History, value: Value) void {
 			if(self.changes.reachedCapacity()) {
-				if(self.changes.dequeue()) |oldValue| oldValue.deinit();
+				if(self.changes.popFront()) |oldValue| oldValue.deinit();
 			}
 
-			self.changes.enqueue(value);
+			self.changes.pushBack(value);
 		}
 		pub fn pop(self: *History) ?Value {
-			return self.changes.dequeue_front();
+			return self.changes.popBack();
 		}
 	};
 	pub fn init() WorldEditData {
@@ -336,7 +336,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 fn deinit() void {
 	users.clearAndFree();
-	while(userDeinitList.dequeue()) |user| {
+	while(userDeinitList.pop()) |user| {
 		user.deinit();
 	}
 	userDeinitList.deinit();
@@ -390,7 +390,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 fn update() void { // MARK: update()
 	world.?.update();
 
-	while(userConnectList.dequeue()) |user| {
+	while(userConnectList.pop()) |user| {
 		connectInternal(user);
 	}
 
@@ -429,7 +429,7 @@ fn update() void { // MARK: update()
 		}
 	}
 
-	while(userDeinitList.dequeue()) |user| {
+	while(userDeinitList.pop()) |user| {
 		user.decreaseRefCount();
 	}
 }
@@ -462,7 +462,7 @@ pub fn stop() void {
 pub fn disconnect(user: *User) void { // MARK: disconnect()
 	if(!user.connected.load(.unordered)) return;
 	removePlayer(user);
-	userDeinitList.enqueue(user);
+	userDeinitList.push(user);
 	user.connected.store(false, .unordered);
 }
 
@@ -497,7 +497,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 }
 
 pub fn connect(user: *User) void {
-	userConnectList.enqueue(user);
+	userConnectList.push(user);
 }
 
 pub fn connectInternal(user: *User) void {
