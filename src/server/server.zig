@@ -148,10 +148,12 @@ pub const User = struct { // MARK: User
 			return;
 		};
 
-		main.items.Inventory.Sync.ServerSide.mutex.lock();
-		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
-		if(self.inventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
-		if(self.handInventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+		{
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+			if(self.inventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+			if(self.handInventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+		}
 
 		self.worldEditData.deinit();
 

@@ -220,10 +220,8 @@ pub const BlockEntityTypes = struct {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
-			const locked = main.items.Inventory.Sync.ServerSide.mutex.tryLock();
-			defer if(locked) {
-				main.items.Inventory.Sync.ServerSide.mutex.unlock();
-			};
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.id);
 		}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
