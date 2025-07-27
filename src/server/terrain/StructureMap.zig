@@ -40,7 +40,6 @@ pub const StructureMapFragment = struct {
 
 	pos: ChunkPosition,
 	voxelShift: u5,
-	refCount: Atomic(u16) = .init(0),
 	arena: main.heap.NeverFailingArenaAllocator,
 	allocator: main.heap.NeverFailingAllocator,
 
@@ -68,9 +67,13 @@ pub const StructureMapFragment = struct {
 		@memset(self.tempData.lists, .{});
 	}
 
-	pub fn deinit(self: *StructureMapFragment) void {
+	fn privateDeinit(self: *StructureMapFragment, _: usize) void {
 		self.arena.deinit();
 		memoryPool.destroy(self);
+	}
+
+	pub fn deferredDeinit(self: *StructureMapFragment) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	fn finishGeneration(self: *StructureMapFragment) void {
@@ -91,19 +94,6 @@ pub const StructureMapFragment = struct {
 	fn getIndex(self: *const StructureMapFragment, x: i32, y: i32, z: i32) usize {
 		std.debug.assert(x >= 0 and x < size*self.pos.voxelSize and y >= 0 and y < size*self.pos.voxelSize and z >= 0 and z < size*self.pos.voxelSize); // Coordinates out of range.
 		return @intCast(((x >> main.chunk.chunkShift + self.voxelShift)*chunkedSize + (y >> main.chunk.chunkShift + self.voxelShift))*chunkedSize + (z >> main.chunk.chunkShift + self.voxelShift));
-	}
-
-	pub fn increaseRefCount(self: *StructureMapFragment) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-	}
-
-	pub fn decreaseRefCount(self: *StructureMapFragment) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
-			self.deinit();
-		}
 	}
 
 	pub fn generateStructuresInChunk(self: *const StructureMapFragment, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
@@ -175,7 +165,7 @@ pub const StructureMapGenerator = struct {
 const cacheSize = 1 << 10; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8;
-var cache: Cache(StructureMapFragment, cacheSize, associativity, StructureMapFragment.decreaseRefCount) = .{};
+var cache: Cache(StructureMapFragment, cacheSize, associativity, StructureMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
 var memoryPool: main.heap.MemoryPool(StructureMapFragment) = undefined;
@@ -187,7 +177,6 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
 	mapFragment.finishGeneration();
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -212,13 +201,13 @@ pub fn deinit() void {
 	cache.clear();
 }
 
-pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *StructureMapFragment {
+pub fn getOrGenerateFragment(wx: i32, wy: i32, wz: i32, voxelSize: u31) *StructureMapFragment {
 	const compare = ChunkPosition{
 		.wx = wx & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize - 1),
 		.wy = wy & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize - 1),
 		.wz = wz & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize - 1),
 		.voxelSize = voxelSize,
 	};
-	const result = cache.findOrCreate(compare, cacheInit, StructureMapFragment.increaseRefCount);
+	const result = cache.findOrCreate(compare, cacheInit, null);
 	return result;
 }

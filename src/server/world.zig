@@ -321,8 +321,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 			return ch;
 		}
 		ch.generated = true;
-		const caveMap = terrain.CaveMap.CaveMapView.init(ch);
-		defer caveMap.deinit();
+		const caveMap = terrain.CaveMap.CaveMapView.findMapsAround(ch);
 		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 		defer biomeMap.deinit();
 		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
@@ -721,8 +720,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 									for(0..2) |dy| {
 										const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
 										const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
-										const map = main.server.terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(mapX, mapY, ch.super.pos.voxelSize);
-										defer map.decreaseRefCount();
+										const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, ch.super.pos.voxelSize);
 										if(!map.wasStored.swap(true, .monotonic)) {
 											map.save(null, .{});
 										}
@@ -855,8 +853,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				var dir: main.chunk.Neighbor = .dirNegX;
 				var stepsRemaining: usize = 1;
 				for(0..spiralLen) |_| {
-					const map = main.server.terrain.ClimateMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy);
-					defer map.decreaseRefCount();
+					const map = main.server.terrain.ClimateMap.getOrGenerateFragment(wx, wy);
 					for(0..map.map.len) |_| {
 						const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
 						const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
@@ -895,8 +892,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				}
 				std.log.err("Found no valid spawn location", .{});
 			}
-			const map = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(self.spawn[0], self.spawn[1], 1);
-			defer map.decreaseRefCount();
+			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
 			self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 		}
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.seed));
@@ -1038,8 +1034,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {
-		const map = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy, 1);
-		defer map.decreaseRefCount();
+		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wy, 1);
 		return map.getBiome(wx, wy).isValidPlayerSpawn;
 	}
 

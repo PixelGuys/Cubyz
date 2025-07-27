@@ -39,12 +39,12 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 		};
 	}
 
-	fn deinit(self: *CaveBiomeMapFragment, _: usize) void {
+	fn privateDeinit(self: *CaveBiomeMapFragment, _: usize) void {
 		memoryPool.destroy(self);
 	}
 
 	pub fn deferredDeinit(self: *CaveBiomeMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(CaveBiomeMapFragment.deinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	const rotationMatrixShift = 30;
@@ -154,10 +154,10 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		var result = InterpolatableCaveBiomeMapView{
 			.fragments = Array3D(*CaveBiomeMapFragment).init(allocator, caveBiomeFragmentWidth, caveBiomeFragmentWidth, caveBiomeFragmentWidth),
 			.surfaceFragments = [_]*MapFragment{
-				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(center[0] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(center[0] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(center[0] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(center[0] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(center[0] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(center[0] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(center[0] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(center[0] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
 			},
 			.pos = pos,
 			.width = width,
@@ -182,9 +182,6 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 
 	pub fn deinit(self: InterpolatableCaveBiomeMapView) void {
 		self.fragments.deinit(self.allocator);
-		for(self.surfaceFragments) |mapFragment| {
-			mapFragment.decreaseRefCount();
-		}
 	}
 
 	fn rotate231(in: Vec3i) Vec3i {

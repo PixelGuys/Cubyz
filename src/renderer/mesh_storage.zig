@@ -371,10 +371,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 					if(oldMesh) |mesh| {
 						node.finishedMeshing = false;
 						updateHigherLodNodeFinishedMeshing(mesh.pos, false);
-						main.heap.GarbageCollection.deferredFree(.{
-							.ptr = mesh,
-							.freeFunction = main.utils.castFunctionSelfToAnyopaque(ChunkMesh.deinit),
-						});
+						mesh.deferredDeinit();
 					}
 					node.isNeighborLod = @splat(false);
 				}
@@ -897,7 +894,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 		defer main.globalAllocator.destroy(self);
 		const pos = self.mesh.pos;
 		const mesh = ChunkMesh.init(pos, self.mesh);
-		mesh.generateLightingData() catch mesh.deinit(undefined);
+		mesh.generateLightingData() catch mesh.deferredDeinit();
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {
