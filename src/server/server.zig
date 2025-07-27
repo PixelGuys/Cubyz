@@ -336,7 +336,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 fn deinit() void {
 	users.clearAndFree();
-	while(userDeinitList.pop()) |user| {
+	while(userDeinitList.popFront()) |user| {
 		user.deinit();
 	}
 	userDeinitList.deinit();
@@ -390,7 +390,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 fn update() void { // MARK: update()
 	world.?.update();
 
-	while(userConnectList.pop()) |user| {
+	while(userConnectList.popFront()) |user| {
 		connectInternal(user);
 	}
 
@@ -429,7 +429,7 @@ fn update() void { // MARK: update()
 		}
 	}
 
-	while(userDeinitList.pop()) |user| {
+	while(userDeinitList.popFront()) |user| {
 		user.decreaseRefCount();
 	}
 }
@@ -462,7 +462,7 @@ pub fn stop() void {
 pub fn disconnect(user: *User) void { // MARK: disconnect()
 	if(!user.connected.load(.unordered)) return;
 	removePlayer(user);
-	userDeinitList.push(user);
+	userDeinitList.pushBack(user);
 	user.connected.store(false, .unordered);
 }
 
@@ -497,7 +497,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 }
 
 pub fn connect(user: *User) void {
-	userConnectList.push(user);
+	userConnectList.pushBack(user);
 }
 
 pub fn connectInternal(user: *User) void {

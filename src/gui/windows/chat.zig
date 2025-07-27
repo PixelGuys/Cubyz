@@ -121,7 +121,7 @@ pub fn deinit() void {
 		label.deinit();
 	}
 	history.deinit();
-	while(messageQueue.pop()) |msg| {
+	while(messageQueue.popFront()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageHistory.deinit();
@@ -190,7 +190,7 @@ pub fn onClose() void {
 	while(history.popOrNull()) |label| {
 		label.deinit();
 	}
-	while(messageQueue.pop()) |msg| {
+	while(messageQueue.popFront()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageHistory.clear();
@@ -206,7 +206,7 @@ pub fn onClose() void {
 pub fn update() void {
 	if(!messageQueue.isEmpty()) {
 		const currentTime: i32 = @truncate(std.time.milliTimestamp());
-		while(messageQueue.pop()) |msg| {
+		while(messageQueue.popFront()) |msg| {
 			history.append(Label.init(.{0, 0}, 256, msg, .left));
 			main.globalAllocator.free(msg);
 			expirationTime.append(currentTime +% messageTimeout);
@@ -243,7 +243,7 @@ pub fn render() void {
 }
 
 pub fn addMessage(msg: []const u8) void {
-	messageQueue.push(main.globalAllocator.dupe(u8, msg));
+	messageQueue.pushBack(main.globalAllocator.dupe(u8, msg));
 }
 
 pub fn sendMessage(_: usize) void {

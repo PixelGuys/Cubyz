@@ -110,12 +110,12 @@ pub fn deinit() void {
 	}
 
 	updatableList.clearAndFree();
-	while(mapUpdatableList.pop()) |map| {
+	while(mapUpdatableList.popFront()) |map| {
 		map.deferredDeinit();
 	}
 	mapUpdatableList.deinit();
 	priorityMeshUpdateList.deinit();
-	while(blockUpdateList.pop()) |blockUpdate| {
+	while(blockUpdateList.popFront()) |blockUpdate| {
 		blockUpdate.deinitManaged(main.globalAllocator);
 	}
 	blockUpdateList.deinit();
@@ -745,7 +745,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 
 	mutex.lock();
 	defer mutex.unlock();
-	while(priorityMeshUpdateList.pop()) |pos| {
+	while(priorityMeshUpdateList.popFront()) |pos| {
 		const mesh = getMesh(pos) orelse continue;
 		if(!mesh.needsMeshUpdate) {
 			continue;
@@ -756,7 +756,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 		mesh.uploadData();
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 	}
-	while(mapUpdatableList.pop()) |map| {
+	while(mapUpdatableList.popFront()) |map| {
 		if(!isMapInRenderDistance(map.pos)) {
 			map.deferredDeinit();
 		} else {
@@ -814,7 +814,7 @@ fn batchUpdateBlocks() void {
 	defer regenerateMeshList.deinit();
 
 	// First of all process all the block updates:
-	while(blockUpdateList.pop()) |blockUpdate| {
+	while(blockUpdateList.popFront()) |blockUpdate| {
 		defer blockUpdate.deinitManaged(main.globalAllocator);
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMesh(pos)) |mesh| {
@@ -839,7 +839,7 @@ pub fn addToUpdateList(mesh: *chunk_meshing.ChunkMesh) void {
 	mutex.lock();
 	defer mutex.unlock();
 	if(mesh.finishedMeshing) {
-		priorityMeshUpdateList.push(mesh.pos);
+		priorityMeshUpdateList.pushBack(mesh.pos);
 		mesh.needsMeshUpdate = true;
 	}
 }
@@ -910,7 +910,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 // MARK: updaters
 
 pub fn updateBlock(update: BlockUpdate) void {
-	blockUpdateList.push(BlockUpdate.initManaged(main.globalAllocator, update));
+	blockUpdateList.pushBack(BlockUpdate.initManaged(main.globalAllocator, update));
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
@@ -918,7 +918,7 @@ pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
 }
 
 pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
-	mapUpdatableList.push(map);
+	mapUpdatableList.pushBack(map);
 }
 
 // MARK: Block breaking animation

@@ -596,13 +596,13 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 			self.super.deinit();
 		}
 
-		pub fn push(self: *Self, elem: T) void {
+		pub fn pushBack(self: *Self, elem: T) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			self.super.pushBack(elem);
 		}
 
-		pub fn pop(self: *Self) ?T {
+		pub fn popFront(self: *Self) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			return self.super.popFront();
