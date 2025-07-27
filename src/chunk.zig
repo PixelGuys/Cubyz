@@ -602,8 +602,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				for(0..2) |dy| {
 					const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
 					const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
-					const map = main.server.terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(mapX, mapY, self.super.pos.voxelSize);
-					defer map.decreaseRefCount();
+					const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, self.super.pos.voxelSize);
 					if(!map.wasStored.swap(true, .monotonic)) {
 						map.save(null, .{});
 					}

@@ -7,6 +7,8 @@ const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const Tool = main.items.Tool;
 const utils = main.utils;
+const BinaryWriter = utils.BinaryWriter;
+const BinaryReader = utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
@@ -314,12 +316,12 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
-		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, zon: ZonElement) u32 {
+		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader) u32 {
 			mutex.lock();
 			defer mutex.unlock();
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
 			inventories.items[inventory.inv.id] = inventory;
-			inventory.inv.loadFromZon(zon);
+			inventory.inv.fromBytes(data);
 			return inventory.inv.id;
 		}
 
@@ -1821,7 +1823,7 @@ const SourceType = enum(u8) {
 	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
-const Source = union(SourceType) {
+pub const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: u32,
 	sharedTestingInventory: void,
@@ -1990,18 +1992,7 @@ pub fn getAmount(self: Inventory, slot: usize) u16 {
 	return self._items[slot].amount;
 }
 
-pub fn save(self: Inventory, allocator: NeverFailingAllocator) ZonElement {
-	const zonObject = ZonElement.initObject(allocator);
-	zonObject.put("capacity", self._items.len);
-	for(self._items, 0..) |stack, i| {
-		if(!stack.empty()) {
-			var buf: [1024]u8 = undefined;
-			zonObject.put(buf[0..std.fmt.printInt(&buf, i, 10, .lower, .{})], stack.store(allocator));
-		}
-	}
-	return zonObject;
-}
-
+// TODO: Remove after #480
 pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 	for(self._items, 0..) |*stack, i| {
 		stack.clear();
@@ -2017,5 +2008,35 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 			};
 			stack.amount = stackZon.get(u16, "amount", 0);
 		}
+	}
+}
+
+pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {
+	writer.writeVarInt(u32, @intCast(self._items.len));
+	for(self._items) |stack| {
+		stack.toBytes(writer);
+	}
+}
+
+pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
+	var remainingCount = reader.readVarInt(u32) catch 0;
+	for(self._items) |*stack| {
+		if(remainingCount == 0) {
+			stack.clear();
+			continue;
+		}
+		remainingCount -= 1;
+		stack.* = ItemStack.fromBytes(reader) catch |err| {
+			std.log.err("Failed to read item stack from bytes: {s}", .{@errorName(err)});
+			stack.clear();
+			continue;
+		};
+	}
+	for(0..remainingCount) |_| {
+		var stack = ItemStack.fromBytes(reader) catch continue;
+		if(stack.item) |item| {
+			std.log.err("Lost {} of {s}", .{stack.amount, item.id()});
+		}
+		stack.deinit();
 	}
 }

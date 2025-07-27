@@ -676,7 +676,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
 	lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
-	refCount: std.atomic.Value(u32) = .init(1),
 	needsLightRefresh: std.atomic.Value(bool) = .init(false),
 	needsMeshUpdate: bool = false,
 	finishedMeshing: bool = false, // Must be synced with node.finishedMeshing in mesh_storage.zig
@@ -712,7 +711,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return self;
 	}
 
-	pub fn deinit(self: *ChunkMesh, _: usize) void {
+	fn privateDeinit(self: *ChunkMesh, _: usize) void {
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
@@ -728,6 +727,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		main.globalAllocator.free(self.lightList);
 		lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].free(self.lightAllocation);
 		mesh_storage.meshMemoryPool.destroy(self);
+	}
+
+	pub fn deferredDeinit(self: *ChunkMesh) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn scheduleLightRefresh(pos: chunk.ChunkPosition) void {

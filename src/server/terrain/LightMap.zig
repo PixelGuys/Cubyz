@@ -26,12 +26,12 @@ pub const LightMapFragment = struct {
 		};
 	}
 
-	fn deinit(self: *const LightMapFragment, _: usize) void {
+	fn privateDeinit(self: *const LightMapFragment, _: usize) void {
 		main.globalAllocator.destroy(self);
 	}
 
 	pub fn deferredDeinit(self: *LightMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(LightMapFragment.deinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn getHeight(self: *LightMapFragment, wx: i32, wy: i32) i32 {
@@ -49,8 +49,7 @@ var cache: Cache(LightMapFragment, cacheSize, associativity, LightMapFragment.de
 fn cacheInit(pos: MapFragmentPosition) *LightMapFragment {
 	const mapFragment = main.globalAllocator.create(LightMapFragment);
 	mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
-	const surfaceMap = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(pos.wx, pos.wy, pos.voxelSize);
-	defer surfaceMap.decreaseRefCount();
+	const surfaceMap = terrain.SurfaceMap.getOrGenerateFragment(pos.wx, pos.wy, pos.voxelSize);
 	comptime std.debug.assert(LightMapFragment.mapSize == terrain.SurfaceMap.MapFragment.mapSize);
 	for(0..LightMapFragment.mapSize) |x| {
 		for(0..LightMapFragment.mapSize) |y| {

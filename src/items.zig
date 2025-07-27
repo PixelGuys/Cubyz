@@ -182,7 +182,7 @@ const MaterialProperty = enum {
 	}
 };
 
-pub const BaseItemIndex = enum(u16) {
+pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	_,
 
 	pub fn fromId(_id: []const u8) ?BaseItemIndex {
@@ -804,6 +804,10 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
+	fn id(self: *Tool) []const u8 {
+		return self.type.id();
+	}
+
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.writer().print(
@@ -934,6 +938,14 @@ pub const Item = union(ItemType) { // MARK: Item
 			},
 			.tool => |_tool| {
 				return _tool.getTexture();
+			},
+		}
+	}
+
+	pub fn id(self: Item) []const u8 {
+		switch(self) {
+			inline else => |item| {
+				return item.id();
 			},
 		}
 	}

@@ -183,7 +183,7 @@ pub fn deinit() void {
 }
 
 pub fn save() void { // MARK: save()
-	const guiZon = ZonElement.initObject(main.stackAllocator);
+	var guiZon = ZonElement.initObject(main.stackAllocator);
 	defer guiZon.deinit(main.stackAllocator);
 	for(windowList.items) |window| {
 		const windowZon = ZonElement.initObject(main.stackAllocator);
@@ -218,7 +218,7 @@ pub fn save() void { // MARK: save()
 	}
 
 	// Merge with the old settings file to preserve unknown settings.
-	const oldZon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
+	var oldZon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
 		}
@@ -226,7 +226,13 @@ pub fn save() void { // MARK: save()
 	};
 	defer oldZon.deinit(main.stackAllocator);
 
-	oldZon.join(guiZon);
+	if(oldZon == .object) {
+		oldZon.join(guiZon);
+	} else {
+		oldZon.deinit(main.stackAllocator);
+		oldZon = guiZon;
+		guiZon = .null;
+	}
 
 	main.files.cubyzDir().writeZon("gui_layout.zig.zon", oldZon) catch |err| {
 		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
