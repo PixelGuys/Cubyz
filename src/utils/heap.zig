@@ -617,7 +617,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		_ = old.totalThreads - 1; // Assert no overflow
 		if(old.cycle != threadCycle) removeThreadFromWaiting();
 		const newTime = std.time.milliTimestamp();
-		if(newTime -% lastSyncPointTime > 10_000) {
+		if(newTime -% lastSyncPointTime > 20_000) {
 			std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
 			std.debug.dumpCurrentStackTrace(null);
 		}
@@ -652,7 +652,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 	/// Must be called when no objects originating from other threads are held on the current function stack
 	pub fn syncPoint() void {
 		const newTime = std.time.milliTimestamp();
-		if(newTime -% lastSyncPointTime > 10_000) {
+		if(newTime -% lastSyncPointTime > 20_000) {
 			std.log.err("No sync point executed in {} ms. Did you forget to add a sync point in the thread's main loop", .{newTime -% lastSyncPointTime});
 			std.debug.dumpCurrentStackTrace(null);
 		}
