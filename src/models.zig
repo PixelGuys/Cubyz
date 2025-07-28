@@ -41,6 +41,7 @@ const ExtraQuadInfo = struct {
 };
 
 const gridSize = 4096;
+const meshGridSize = 16;
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
@@ -233,15 +234,14 @@ pub const Model = struct {
 	}
 
 	fn generateCollision(self: *Model, modelQuads: []QuadInfo) void {
-		const localGridSize = 16;
-		var grid: [localGridSize][localGridSize][localGridSize]bool = undefined;
-		for(0..localGridSize) |x| {
-			for(0..localGridSize) |y| {
-				for(0..localGridSize) |z| {
+		var grid: [meshGridSize][meshGridSize][meshGridSize]bool = undefined;
+		for(0..meshGridSize) |x| {
+			for(0..meshGridSize) |y| {
+				for(0..meshGridSize) |z| {
 					grid[x][y][z] = false;
-					const blockX = (@as(f32, @floatFromInt(x)) + 0.5) / localGridSize;
-					const blockY = (@as(f32, @floatFromInt(y)) + 0.5) / localGridSize;
-					const blockZ = (@as(f32, @floatFromInt(z)) + 0.5) / localGridSize;
+					const blockX = (@as(f32, @floatFromInt(x)) + 0.5) / meshGridSize;
+					const blockY = (@as(f32, @floatFromInt(y)) + 0.5) / meshGridSize;
+					const blockZ = (@as(f32, @floatFromInt(z)) + 0.5) / meshGridSize;
 					
 					const pos = Vec3f{blockX, blockY, blockZ};
 					// Fences have weird models, so this is necesarry to make them work
@@ -277,26 +277,85 @@ pub const Model = struct {
 			}
 		}
 
-		self.collision = main.globalAllocator.alloc(AABB, localGridSize*localGridSize*localGridSize);
+		// The theoretical maximum (I could come up with) is a 3d checkerboard pattern.
+		self.collision = main.globalAllocator.alloc(AABB, meshGridSize*meshGridSize*meshGridSize/2);
 
 		var i: usize = 0;
-		for(0..localGridSize) |x| {
-			for(0..localGridSize) |y| {
-				for(0..localGridSize) |z| {
+		for(0..meshGridSize) |x| {
+			for(0..meshGridSize) |y| {
+				for(0..meshGridSize) |z| {
 					if(grid[x][y][z]) {
-						const blockX = @as(f32, @floatFromInt(x)) / localGridSize;
-						const blockY = @as(f32, @floatFromInt(y)) / localGridSize;
-						const blockZ = @as(f32, @floatFromInt(z)) / localGridSize;
-						const pos = Vec3f{blockX, blockY, blockZ};
+						var boxMin = Vec3i{@intCast(x), @intCast(y), @intCast(z)};
+						var boxMax = Vec3i{@intCast(x+1), @intCast(y+1), @intCast(z+1)};
+						for(Neighbor.iterable) |neighbor| {
+							while(canExpand(&grid, boxMin, boxMax, neighbor)) {
+								if(neighbor.isPositive()) {
+									boxMax += neighbor.relPos();
+								} else {
+									boxMin += neighbor.relPos();
+								}
+							}
+						}
+						setAll(&grid, boxMin, boxMax, false);
+
+						const minBlockX = @as(f32, @floatFromInt(boxMin[0])) / meshGridSize;
+						const minBlockY = @as(f32, @floatFromInt(boxMin[1])) / meshGridSize;
+						const minBlockZ = @as(f32, @floatFromInt(boxMin[2])) / meshGridSize;
+						const min = Vec3f{minBlockX, minBlockY, minBlockZ};
+
+						const maxBlockX = @as(f32, @floatFromInt(boxMax[0])) / meshGridSize;
+						const maxBlockY = @as(f32, @floatFromInt(boxMax[1])) / meshGridSize;
+						const maxBlockZ = @as(f32, @floatFromInt(boxMax[2])) / meshGridSize;
+						const max = Vec3f{maxBlockX, maxBlockY, maxBlockZ};
 
 						self.collision[i] = AABB {
-							.min = pos, 
-							.max = pos + @as(Vec3f, @splat(1.0 / @as(f32, @floatFromInt(localGridSize))))};
+							.min = min, 
+							.max = max
+						};
 						i += 1;
 					}
 				}
 			}
 		}
+
+		self.collision = main.globalAllocator.realloc(self.collision, i);
+	}
+
+	fn allTrue(grid: *const [meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i) bool {
+		if(max[0] > meshGridSize or max[1] > meshGridSize or max[2] > meshGridSize or min[0] < 0 or min[1] < 0 or min[2] < 0) {
+			return false;
+		}
+		for(@intCast(min[0])..@intCast(max[0]))|x| {
+			for(@intCast(min[1])..@intCast(max[1]))|y| {
+				for(@intCast(min[2])..@intCast(max[2]))|z| {
+					if(!grid[x][y][z]) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+
+	fn setAll(grid: *[meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i, value: bool) void {
+		for(@intCast(min[0])..@intCast(max[0]))|x| {
+			for(@intCast(min[1])..@intCast(max[1]))|y| {
+				for(@intCast(min[2])..@intCast(max[2]))|z| {
+					grid[x][y][z] = value;
+				}
+			}
+		}
+	}
+
+	fn canExpand(grid: *const [meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i, dir: Neighbor) bool {
+		return switch(dir) {
+			.dirUp   => allTrue(grid, Vec3i{ min[0],     min[1],     max[2]     }, Vec3i{ max[0],     max[1],     max[2] + 1 }),
+			.dirDown => allTrue(grid, Vec3i{ min[0],     min[1],     min[2] - 1 }, Vec3i{ max[0],     max[1],     min[2]     }),
+			.dirPosX => allTrue(grid, Vec3i{ max[0],     min[1],     min[2]     }, Vec3i{ max[0] + 1, max[1],     max[2]     }),
+			.dirNegX => allTrue(grid, Vec3i{ min[0] - 1, min[1],     min[2]     }, Vec3i{ min[0],     max[1],     max[2]     }),
+			.dirPosY => allTrue(grid, Vec3i{ min[0],     max[1],     min[2]     }, Vec3i{ max[0],     max[1] + 1, max[2]     }),
+			.dirNegY => allTrue(grid, Vec3i{ min[0],     min[1] - 1, min[2]     }, Vec3i{ max[0],     min[1],     max[2]     }),
+		};
 	}
 
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
