@@ -334,14 +334,17 @@ pub const collision = struct {
 	}
 
 	fn isBlockIntersecting(block: Block, posX: i32, posY: i32, posZ: i32, center: Vec3d, extent: Vec3d) bool {
-		_ = block;
-		//const model = block.mode().model(block).model();
+		const model = block.mode().model(block).model();
 		const position = Vec3d{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
-		const blockAABB = AABB {.min = position, .max = position + @as(Vec3d, @splat(1.0))};
-
 		const entityAABB = AABB {.min = center - extent, .max = center + extent};
-
-		return blockAABB.intersects(entityAABB);
+		for(model.collision) |relativeBlockAABB| {
+			const blockAABB = AABB {.min = position + relativeBlockAABB.min, .max = position + relativeBlockAABB.max};
+			if(blockAABB.intersects(entityAABB)) {
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 	pub fn touchBlocks(entity: main.server.Entity, hitBox: AABB, side: main.utils.Side) void {
