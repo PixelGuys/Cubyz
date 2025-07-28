@@ -202,7 +202,7 @@ pub const Model = struct {
 		return modelIndex;
 	}
 
-	fn ray_intersects_triangle(ray_origin: Vec3f, ray_direction: Vec3f, triangle: *const [3]Vec3f) bool {
+	fn rayIntersectsTriangle(ray_origin: Vec3f, ray_direction: Vec3f, triangle: *const [3]Vec3f) bool {
 		const epsilon = 1e-8;
 		const v0 = triangle[0];
 		const v1 = triangle[1];
@@ -248,26 +248,29 @@ pub const Model = struct {
 					for(Neighbor.iterable)|neighbor| {
 						const dir: Vec3f = @floatFromInt(neighbor.relPos());
 						
-						var intersections: usize = 0;
+						var signed_intersections: i32 = 0;
 						for(modelQuads) |quad| {
 							const triangle1: [3]Vec3f = .{
-								@as(Vec3f, quad.corners[0]),
-								@as(Vec3f, quad.corners[1]),
-								@as(Vec3f, quad.corners[2]),
+								quad.cornerVec(0),
+								quad.cornerVec(1),
+								quad.cornerVec(2),
 							};
 							const triangle2: [3]Vec3f = .{
-								@as(Vec3f, quad.corners[1]),
-								@as(Vec3f, quad.corners[2]),
-								@as(Vec3f, quad.corners[3]),
+								quad.cornerVec(1),
+								quad.cornerVec(2),
+								quad.cornerVec(3),
 							};
 
-
-							if(ray_intersects_triangle(pos, dir, &triangle1) or ray_intersects_triangle(pos, dir, &triangle2)) {
-								intersections += 1;
+							if(rayIntersectsTriangle(pos, dir, &triangle1) or rayIntersectsTriangle(pos, dir, &triangle2)) {
+								if(vec.dot(dir, quad.normalVec()) > 0) {
+									signed_intersections -= 1;
+								} else {
+									signed_intersections += 1;
+								}
 							}
 						}
 						
-						if(intersections%2 == 1) {
+						if(signed_intersections != 0) {
 							grid[x][y][z] = true;
 							break;
 						}
