@@ -582,10 +582,14 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 	threadlocal var lastSyncPointTime: i64 = undefined;
 	const FreeItem = struct {
 		ptr: *anyopaque,
-		extraData: usize = 0,
-		freeFunction: *const fn(*anyopaque, usize) void,
+		freeFunction: *const fn(*anyopaque) void,
+	};
+	const FreeSliceItem = struct {
+		slice: []const u8,
+		allocator: NeverFailingAllocator,
 	};
 	threadlocal var lists: [4]main.ListUnmanaged(FreeItem) = undefined;
+	threadlocal var sliceLists: [4]main.ListUnmanaged(FreeSliceItem) = undefined;
 
 	const State = packed struct {
 		waitingThreads: u15 = 0,
@@ -601,6 +605,9 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		for(&lists) |*list| {
 			list.* = .initCapacity(main.globalAllocator, 1024);
 		}
+		for(&sliceLists) |*list| {
+			list.* = .initCapacity(main.globalAllocator, 1024);
+		}
 		if(old.waitingThreads == 0) {
 			startNewCycle();
 		}
@@ -608,7 +615,13 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 
 	fn freeItemsFromList(list: *main.ListUnmanaged(FreeItem)) void {
 		while(list.popOrNull()) |item| {
-			item.freeFunction(item.ptr, item.extraData);
+			item.freeFunction(item.ptr);
+		}
+	}
+
+	fn freeItemsFromSliceList(list: *main.ListUnmanaged(FreeSliceItem)) void {
+		while(list.popOrNull()) |item| {
+			item.allocator.free(item.slice);
 		}
 	}
 
@@ -623,6 +636,10 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		}
 		for(&lists) |*list| {
 			freeItemsFromList(list);
+			list.deinit(main.globalAllocator);
+		}
+		for(&sliceLists) |*list| {
+			freeItemsFromSliceList(list);
 			list.deinit(main.globalAllocator);
 		}
 	}
@@ -662,11 +679,18 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		if(old.cycle == threadCycle) return;
 		removeThreadFromWaiting();
 		freeItemsFromList(&lists[threadCycle]);
-		// TODO: Free all the data here and swap lists
+		freeItemsFromSliceList(&sliceLists[threadCycle]);
 	}
 
 	pub fn deferredFree(item: FreeItem) void {
 		lists[threadCycle].append(main.globalAllocator, item);
+	}
+
+	pub fn deferredFreeSlice(allocator: NeverFailingAllocator, comptime T: type, items: []T) void {
+		sliceLists[threadCycle].append(main.globalAllocator, .{
+			.slice = std.mem.sliceAsBytes(items),
+			.allocator = allocator,
+		});
 	}
 
 	/// Waits until all deferred frees have been completed.
