@@ -66,8 +66,8 @@ pub const collision = struct {
 		
 		pub fn intersects(self: AABB, other: AABB) bool {
 			var i: usize = 0;
-			while (i < 3) : (i += 1) {
-				if (self.max[i] < other.min[i] or self.min[i] > other.max[i]) {
+			while(i < 3) : (i += 1) {
+				if(self.max[i] < other.min[i] or self.min[i] > other.max[i]) {
 					return false;
 				}
 			}
@@ -88,10 +88,10 @@ pub const collision = struct {
 			const model = block.mode().model(block).model();
 
 			const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-			const entityAABB = AABB {.min = entityPosition - entityBoundingBoxExtent, .max = entityPosition + entityBoundingBoxExtent};
+			const entityAABB = AABB{.min = entityPosition - entityBoundingBoxExtent, .max = entityPosition + entityBoundingBoxExtent};
 
 			for(model.collision) |relativeBlockAABB| {
-				const blockAABB = AABB {.min = relativeBlockAABB.min + pos, .max = relativeBlockAABB.max + pos};
+				const blockAABB = AABB{.min = relativeBlockAABB.min + pos, .max = relativeBlockAABB.max + pos};
 				if(blockAABB.intersects(entityAABB)) {
 					const dotMin = vec.dot(directionVector, blockAABB.min);
 					const dotMax = vec.dot(directionVector, blockAABB.max);
@@ -336,9 +336,9 @@ pub const collision = struct {
 	fn isBlockIntersecting(block: Block, posX: i32, posY: i32, posZ: i32, center: Vec3d, extent: Vec3d) bool {
 		const model = block.mode().model(block).model();
 		const position = Vec3d{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
-		const entityAABB = AABB {.min = center - extent, .max = center + extent};
+		const entityAABB = AABB{.min = center - extent, .max = center + extent};
 		for(model.collision) |relativeBlockAABB| {
-			const blockAABB = AABB {.min = position + relativeBlockAABB.min, .max = position + relativeBlockAABB.max};
+			const blockAABB = AABB{.min = position + relativeBlockAABB.min, .max = position + relativeBlockAABB.max};
 			if(blockAABB.intersects(entityAABB)) {
 				return true;
 			}

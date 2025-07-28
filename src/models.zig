@@ -216,20 +216,20 @@ pub const Model = struct {
 			return false;
 		}
 
-		const f = 1.0 / a;
+		const f = 1.0/a;
 		const s = ray_origin - v0;
-		const u = f * vec.dot(s, h);
+		const u = f*vec.dot(s, h);
 		if(u < 0.0 or u > 1.0) {
 			return false;
 		}
 
 		const q = vec.cross(s, edge1);
-		const v = f * vec.dot(ray_direction, q);
+		const v = f*vec.dot(ray_direction, q);
 		if(v < 0.0 or u + v > 1.0) {
 			return false;
 		}
 
-		const t = f * vec.dot(edge2, q);
+		const t = f*vec.dot(edge2, q);
 		return t > epsilon;
 	}
 
@@ -239,13 +239,13 @@ pub const Model = struct {
 			for(0..meshGridSize) |y| {
 				for(0..meshGridSize) |z| {
 					grid[x][y][z] = false;
-					const blockX = (@as(f32, @floatFromInt(x)) + 0.5) / meshGridSize;
-					const blockY = (@as(f32, @floatFromInt(y)) + 0.5) / meshGridSize;
-					const blockZ = (@as(f32, @floatFromInt(z)) + 0.5) / meshGridSize;
+					const blockX = (@as(f32, @floatFromInt(x)) + 0.5)/meshGridSize;
+					const blockY = (@as(f32, @floatFromInt(y)) + 0.5)/meshGridSize;
+					const blockZ = (@as(f32, @floatFromInt(z)) + 0.5)/meshGridSize;
 					
 					const pos = Vec3f{blockX, blockY, blockZ};
 					// Fences have weird models, so this is necesarry to make them work
-					for(Neighbor.iterable)|neighbor| {
+					for(Neighbor.iterable) |neighbor| {
 						const dir: Vec3f = @floatFromInt(neighbor.relPos());
 						
 						var signed_intersections: i32 = 0;
@@ -289,7 +289,7 @@ pub const Model = struct {
 				for(0..meshGridSize) |z| {
 					if(grid[x][y][z]) {
 						var boxMin = Vec3i{@intCast(x), @intCast(y), @intCast(z)};
-						var boxMax = Vec3i{@intCast(x+1), @intCast(y+1), @intCast(z+1)};
+						var boxMax = Vec3i{@intCast(x + 1), @intCast(y + 1), @intCast(z + 1)};
 						for(Neighbor.iterable) |neighbor| {
 							while(canExpand(&grid, boxMin, boxMax, neighbor)) {
 								if(neighbor.isPositive()) {
@@ -301,20 +301,17 @@ pub const Model = struct {
 						}
 						setAll(&grid, boxMin, boxMax, false);
 
-						const minBlockX = @as(f32, @floatFromInt(boxMin[0])) / meshGridSize;
-						const minBlockY = @as(f32, @floatFromInt(boxMin[1])) / meshGridSize;
-						const minBlockZ = @as(f32, @floatFromInt(boxMin[2])) / meshGridSize;
+						const minBlockX = @as(f32, @floatFromInt(boxMin[0]))/meshGridSize;
+						const minBlockY = @as(f32, @floatFromInt(boxMin[1]))/meshGridSize;
+						const minBlockZ = @as(f32, @floatFromInt(boxMin[2]))/meshGridSize;
 						const min = Vec3f{minBlockX, minBlockY, minBlockZ};
 
-						const maxBlockX = @as(f32, @floatFromInt(boxMax[0])) / meshGridSize;
-						const maxBlockY = @as(f32, @floatFromInt(boxMax[1])) / meshGridSize;
-						const maxBlockZ = @as(f32, @floatFromInt(boxMax[2])) / meshGridSize;
+						const maxBlockX = @as(f32, @floatFromInt(boxMax[0]))/meshGridSize;
+						const maxBlockY = @as(f32, @floatFromInt(boxMax[1]))/meshGridSize;
+						const maxBlockZ = @as(f32, @floatFromInt(boxMax[2]))/meshGridSize;
 						const max = Vec3f{maxBlockX, maxBlockY, maxBlockZ};
 
-						self.collision[i] = AABB {
-							.min = min, 
-							.max = max
-						};
+						self.collision[i] = AABB{.min = min, .max = max};
 						i += 1;
 					}
 				}
@@ -328,9 +325,9 @@ pub const Model = struct {
 		if(max[0] > meshGridSize or max[1] > meshGridSize or max[2] > meshGridSize or min[0] < 0 or min[1] < 0 or min[2] < 0) {
 			return false;
 		}
-		for(@intCast(min[0])..@intCast(max[0]))|x| {
-			for(@intCast(min[1])..@intCast(max[1]))|y| {
-				for(@intCast(min[2])..@intCast(max[2]))|z| {
+		for(@intCast(min[0])..@intCast(max[0])) |x| {
+			for(@intCast(min[1])..@intCast(max[1])) |y| {
+				for(@intCast(min[2])..@intCast(max[2])) |z| {
 					if(!grid[x][y][z]) {
 						return false;
 					}
@@ -341,9 +338,9 @@ pub const Model = struct {
 	}
 
 	fn setAll(grid: *[meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i, value: bool) void {
-		for(@intCast(min[0])..@intCast(max[0]))|x| {
-			for(@intCast(min[1])..@intCast(max[1]))|y| {
-				for(@intCast(min[2])..@intCast(max[2]))|z| {
+		for(@intCast(min[0])..@intCast(max[0])) |x| {
+			for(@intCast(min[1])..@intCast(max[1])) |y| {
+				for(@intCast(min[2])..@intCast(max[2])) |z| {
 					grid[x][y][z] = value;
 				}
 			}
@@ -352,12 +349,12 @@ pub const Model = struct {
 
 	fn canExpand(grid: *const [meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i, dir: Neighbor) bool {
 		return switch(dir) {
-			.dirUp   => allTrue(grid, Vec3i{ min[0],     min[1],     max[2]     }, Vec3i{ max[0],     max[1],     max[2] + 1 }),
-			.dirDown => allTrue(grid, Vec3i{ min[0],     min[1],     min[2] - 1 }, Vec3i{ max[0],     max[1],     min[2]     }),
-			.dirPosX => allTrue(grid, Vec3i{ max[0],     min[1],     min[2]     }, Vec3i{ max[0] + 1, max[1],     max[2]     }),
-			.dirNegX => allTrue(grid, Vec3i{ min[0] - 1, min[1],     min[2]     }, Vec3i{ min[0],     max[1],     max[2]     }),
-			.dirPosY => allTrue(grid, Vec3i{ min[0],     max[1],     min[2]     }, Vec3i{ max[0],     max[1] + 1, max[2]     }),
-			.dirNegY => allTrue(grid, Vec3i{ min[0],     min[1] - 1, min[2]     }, Vec3i{ max[0],     min[1],     max[2]     }),
+			.dirUp => allTrue(grid, Vec3i{min[0], min[1], max[2]}, Vec3i{max[0], max[1], max[2] + 1}),
+			.dirDown => allTrue(grid, Vec3i{min[0], min[1], min[2] - 1}, Vec3i{max[0], max[1], min[2]}),
+			.dirPosX => allTrue(grid, Vec3i{max[0], min[1], min[2]}, Vec3i{max[0] + 1, max[1], max[2]}),
+			.dirNegX => allTrue(grid, Vec3i{min[0] - 1, min[1], min[2]}, Vec3i{min[0], max[1], max[2]}),
+			.dirPosY => allTrue(grid, Vec3i{min[0], max[1], min[2]}, Vec3i{max[0], max[1] + 1, max[2]}),
+			.dirNegY => allTrue(grid, Vec3i{min[0], min[1] - 1, min[2]}, Vec3i{max[0], min[1], max[2]}),
 		};
 	}
 
