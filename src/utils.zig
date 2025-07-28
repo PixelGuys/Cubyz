@@ -1252,8 +1252,8 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			for(0..size) |i| {
 				newData.setValue(i, paletteMap[self.data.getValue(i)]);
 			}
-			self.data.deinit();
-			self.data.content.store(newData.content.load(.unordered), .release);
+			newData.content.store(self.data.content.swap(newData.content.load(.unordered), .release), .unordered);
+			newData.deinit();
 			self.paletteLength = self.activePaletteEntries;
 			self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.content.load(.unordered).bitSize);
 			self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.content.load(.unordered).bitSize);
