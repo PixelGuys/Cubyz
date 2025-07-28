@@ -63,7 +63,7 @@ pub const collision = struct {
 		pub fn extent(self: AABB) Vec3d {
 			return (self.max - self.min)*@as(Vec3d, @splat(0.5));
 		}
-		
+
 		pub fn intersects(self: AABB, other: AABB) bool {
 			var i: usize = 0;
 			while(i < 3) : (i += 1) {
@@ -95,7 +95,7 @@ pub const collision = struct {
 				if(blockAABB.intersects(entityAABB)) {
 					const dotMin = vec.dot(directionVector, blockAABB.min);
 					const dotMax = vec.dot(directionVector, blockAABB.max);
-					
+
 					const distance = @min(dotMin, dotMax);
 
 					if(distance < minDistance) {
@@ -105,7 +105,6 @@ pub const collision = struct {
 						resultBox = resultBox.?.join(blockAABB);
 					}
 				}
-
 			}
 		}
 		return .{.box = resultBox orelse return null, .dist = minDistance};
@@ -343,7 +342,7 @@ pub const collision = struct {
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 
