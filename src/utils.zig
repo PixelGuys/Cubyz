@@ -989,7 +989,6 @@ pub fn deinitDynamicIntArrayStorage() void {
 pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
 	std.debug.assert(std.math.isPowerOfTwo(size));
 	return struct {
-
 		const Content = packed struct(usize) {
 			const alignment: std.mem.Alignment = .@"64";
 			bitSize: u5, // Fitting it into the 6 alignment bits
