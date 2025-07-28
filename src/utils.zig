@@ -1124,18 +1124,6 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			self.paletteOccupancy[0] = size;
 		}
 
-		pub fn initCopy(self: *Self, template: *const Self) void {
-			const dataDupe = DynamicPackedIntArray(size).initCapacity(template.data.bitSize);
-			@memcpy(dataDupe.data, template.data.data);
-			self.* = .{
-				.data = dataDupe,
-				.palette = main.globalAllocator.dupe(T, template.palette),
-				.paletteOccupancy = main.globalAllocator.dupe(u32, template.paletteOccupancy),
-				.paletteLength = template.paletteLength,
-				.activePaletteEntries = template.activePaletteEntries,
-			};
-		}
-
 		pub fn initCapacity(self: *Self, paletteLength: u32) void {
 			std.debug.assert(paletteLength < 0x80000000 and paletteLength > 0);
 			const bitSize: u5 = getTargetBitSize(paletteLength);
