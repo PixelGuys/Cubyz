@@ -289,7 +289,7 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 			}
 		}
 
-		const index = main.models.Model.init(quads.items, null);
+		const index = main.models.Model.init(quads.items);
 		if(i == 0) {
 			modelIndex = index;
 		}

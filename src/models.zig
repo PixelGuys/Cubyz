@@ -124,7 +124,7 @@ pub const Model = struct {
 		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
 	}
 
-	pub fn init(quadInfos: []const QuadInfo, collision: ?[]AABB) ModelIndex {
+	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
 		const adjustedQuads = main.stackAllocator.alloc(QuadInfo, quadInfos.len);
 		defer main.stackAllocator.free(adjustedQuads);
 		for(adjustedQuads, quadInfos) |*dest, *src| {
@@ -197,12 +197,8 @@ pub const Model = struct {
 			self.allNeighborsOccluded = self.allNeighborsOccluded and self.isNeighborOccluded[neighbor];
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
-		if(collision)|realCollision| {
-			self.collision = realCollision;
-		} else {
-			self.collision = main.globalAllocator.alloc(AABB, 1);
-			self.collision[0] = AABB {.min = @floatCast(self.min), .max = @floatCast(self.max)};
-		}
+		self.collision = main.globalAllocator.alloc(AABB, 1);
+		self.collision[0] = AABB {.min = @floatCast(self.min), .max = @floatCast(self.max)};
 
 		return modelIndex;
 	}
@@ -239,7 +235,7 @@ pub const Model = struct {
 				quad.cornerUV[i] = @as(Vec2f, quad.cornerUV[i]) - minUv;
 			}
 		}
-		return Model.init(quadInfos, null);
+		return Model.init(quadInfos);
 	}
 
 	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8) []QuadInfo {
@@ -419,7 +415,7 @@ pub const Model = struct {
 		for(modelList) |model| {
 			model.model().getRawFaces(&quadList);
 		}
-		return Model.init(quadList.items, null);
+		return Model.init(quadList.items);
 	}
 
 	pub fn transformModel(model: Model, transformFunction: anytype, transformFunctionParameters: anytype) ModelIndex {
@@ -429,7 +425,7 @@ pub const Model = struct {
 		for(quadList.items) |*quad| {
 			@call(.auto, transformFunction, .{quad} ++ transformFunctionParameters);
 		}
-		return Model.init(quadList.items, null);
+		return Model.init(quadList.items);
 	}
 
 	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
@@ -585,7 +581,7 @@ pub fn init() void {
 
 	nameToIndex = .init(main.globalAllocator.allocator);
 
-	nameToIndex.put("none", Model.init(&.{}, null)) catch unreachable;
+	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }
 
 pub fn reset() void {
@@ -597,7 +593,7 @@ pub fn reset() void {
 	extraQuadInfos.clearRetainingCapacity();
 	quadDeduplication.clearRetainingCapacity();
 	nameToIndex.clearRetainingCapacity();
-	nameToIndex.put("none", Model.init(&.{}, null)) catch unreachable;
+	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }
 
 pub fn deinit() void {

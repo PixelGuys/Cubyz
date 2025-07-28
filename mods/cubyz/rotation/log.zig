@@ -169,7 +169,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 			quads.append(rotateQuad(pattern, neighbor));
 		}
 
-		const index = main.models.Model.init(quads.items, null);
+		const index = main.models.Model.init(quads.items);
 		if(i == 0) {
 			modelIndex = index;
 		}
