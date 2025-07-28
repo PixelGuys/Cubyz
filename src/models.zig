@@ -197,10 +197,106 @@ pub const Model = struct {
 			self.allNeighborsOccluded = self.allNeighborsOccluded and self.isNeighborOccluded[neighbor];
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
-		self.collision = main.globalAllocator.alloc(AABB, 1);
-		self.collision[0] = AABB {.min = @floatCast(self.min), .max = @floatCast(self.max)};
-
+		generateCollision(self, adjustedQuads);
 		return modelIndex;
+	}
+
+	fn ray_intersects_triangle(ray_origin: Vec3f, ray_direction: Vec3f, triangle: *const [3]Vec3f) bool {
+		const epsilon = 1e-8;
+		const v0 = triangle[0];
+		const v1 = triangle[1];
+		const v2 = triangle[2];
+		const edge1 = v1 - v0;
+		const edge2 = v2 - v0;
+		const h = vec.cross(ray_direction, edge2);
+		const a = vec.dot(edge1, h);
+
+		if(-epsilon < a and a < epsilon) {
+			return false;
+		}
+
+		const f = 1.0 / a;
+		const s = ray_origin - v0;
+		const u = f * vec.dot(s, h);
+		if(u < 0.0 or u > 1.0) {
+			return false;
+		}
+
+		const q = vec.cross(s, edge1);
+		const v = f * vec.dot(ray_direction, q);
+		if(v < 0.0 or u + v > 1.0) {
+			return false;
+		}
+
+		const t = f * vec.dot(edge2, q);
+		return t > epsilon;
+	}
+
+	fn generateCollision(self: *Model, modelQuads: []QuadInfo) void {
+		const localGridSize = 16;
+		var grid: [localGridSize][localGridSize][localGridSize]bool = undefined;
+		for(0..localGridSize) |x| {
+			for(0..localGridSize) |y| {
+				for(0..localGridSize) |z| {
+					grid[x][y][z] = false;
+					const blockX = (@as(f32, @floatFromInt(x)) + 0.5) / localGridSize;
+					const blockY = (@as(f32, @floatFromInt(y)) + 0.5) / localGridSize;
+					const blockZ = (@as(f32, @floatFromInt(z)) + 0.5) / localGridSize;
+					
+					const pos = Vec3f{blockX, blockY, blockZ};
+					// Fences have weird models, so this is necesarry to make them work
+					for(Neighbor.iterable)|neighbor| {
+						const dir: Vec3f = @floatFromInt(neighbor.relPos());
+						
+						var intersections: usize = 0;
+						for(modelQuads) |quad| {
+							const triangle1: [3]Vec3f = .{
+								@as(Vec3f, quad.corners[0]),
+								@as(Vec3f, quad.corners[1]),
+								@as(Vec3f, quad.corners[2]),
+							};
+							const triangle2: [3]Vec3f = .{
+								@as(Vec3f, quad.corners[1]),
+								@as(Vec3f, quad.corners[2]),
+								@as(Vec3f, quad.corners[3]),
+							};
+
+
+							if(ray_intersects_triangle(pos, dir, &triangle1) or ray_intersects_triangle(pos, dir, &triangle2)) {
+								intersections += 1;
+							}
+						}
+						
+						if(intersections%2 == 1) {
+							grid[x][y][z] = true;
+							break;
+						}
+					}
+
+				}
+			}
+		}
+
+		self.collision = main.globalAllocator.alloc(AABB, localGridSize*localGridSize*localGridSize);
+
+		var i: usize = 0;
+		for(0..localGridSize) |x| {
+			for(0..localGridSize) |y| {
+				for(0..localGridSize) |z| {
+					if(grid[x][y][z]) {
+						const blockX = @as(f32, @floatFromInt(x)) / localGridSize;
+						const blockY = @as(f32, @floatFromInt(y)) / localGridSize;
+						const blockZ = @as(f32, @floatFromInt(z)) / localGridSize;
+						const pos = Vec3f{blockX, blockY, blockZ};
+
+						self.collision[i] = AABB {
+							.min = pos, 
+							.max = pos + @as(Vec3f, @splat(1.0 / @as(f32, @floatFromInt(localGridSize))))};
+						i += 1;
+					}
+				}
+			}
+		}
 	}
 
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
