@@ -641,12 +641,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.forceSave() catch |err| {
 			std.log.err("Error while saving the world: {s}", .{@errorName(err)});
 		};
-		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+		while(self.chunkUpdateQueue.popFront()) |updateRequest| {
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
 		}
 		self.chunkUpdateQueue.deinit();
-		while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+		while(self.regionUpdateQueue.popFront()) |updateRequest| {
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
 		}
@@ -814,13 +814,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		while(true) {
-			while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+			while(self.chunkUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.ch.save(self);
 				updateRequest.ch.decreaseRefCount();
 			}
-			while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+			while(self.regionUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.region.store();
@@ -829,7 +829,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.mutex.unlock();
 			std.Thread.sleep(1_000_000);
 			self.mutex.lock();
-			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peek() == null and self.regionUpdateQueue.peek() == null) break;
+			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
 		}
 		std.log.info("Finished LOD update.", .{});
 
@@ -1124,14 +1124,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const insertionTime = newTime -% main.settings.storageTime;
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+		while(self.chunkUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
 			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
 		}
-		while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+		while(self.regionUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.region.store();
@@ -1271,13 +1271,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *ServerChunk) void {
 		self.mutex.lock();
-		self.chunkUpdateQueue.enqueue(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
+		self.chunkUpdateQueue.pushBack(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
 		self.mutex.unlock();
 	}
 
 	pub fn queueRegionFileUpdateAndDecreaseRefCount(self: *ServerWorld, region: *storage.RegionFile) void {
 		self.mutex.lock();
-		self.regionUpdateQueue.enqueue(.{.region = region, .milliTimeStamp = std.time.milliTimestamp()});
+		self.regionUpdateQueue.pushBack(.{.region = region, .milliTimeStamp = std.time.milliTimestamp()});
 		self.mutex.unlock();
 	}
 };

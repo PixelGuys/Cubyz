@@ -110,12 +110,12 @@ pub fn deinit() void {
 	}
 
 	updatableList.clearAndFree();
-	while(mapUpdatableList.dequeue()) |map| {
+	while(mapUpdatableList.popFront()) |map| {
 		map.deferredDeinit();
 	}
 	mapUpdatableList.deinit();
 	priorityMeshUpdateList.deinit();
-	while(blockUpdateList.dequeue()) |blockUpdate| {
+	while(blockUpdateList.popFront()) |blockUpdate| {
 		blockUpdate.deinitManaged(main.globalAllocator);
 	}
 	blockUpdateList.deinit();
@@ -623,12 +623,12 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		if(hasMesh) {
 			node.active = true;
 			node.rendered = true;
-			searchList.enqueue(node);
+			searchList.pushBack(node);
 		}
 	}
 	var nodeList = main.List(*ChunkMeshNode).initCapacity(main.stackAllocator, 1024);
 	defer nodeList.deinit();
-	while(searchList.dequeue()) |node| {
+	while(searchList.popFront()) |node| {
 		std.debug.assert(node.finishedMeshing);
 		std.debug.assert(node.active);
 		if(!node.active) continue;
@@ -656,7 +656,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 						continue;
 					node2.active = true;
 					node2.rendered = true;
-					searchList.enqueue(node2);
+					searchList.pushBack(node2);
 				}
 			}
 		}
@@ -684,7 +684,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 						std.debug.assert(node2.finishedMeshing);
 						node2.active = true;
 						node2.rendered = true;
-						searchList.enqueue_back(node2);
+						searchList.pushFront(node2);
 					}
 				}
 			}
@@ -738,11 +738,11 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 }
 
 pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
-	if(!blockUpdateList.empty()) batchUpdateBlocks();
+	if(!blockUpdateList.isEmpty()) batchUpdateBlocks();
 
 	mutex.lock();
 	defer mutex.unlock();
-	while(priorityMeshUpdateList.dequeue()) |pos| {
+	while(priorityMeshUpdateList.popFront()) |pos| {
 		const mesh = getMesh(pos) orelse continue;
 		if(!mesh.needsMeshUpdate) {
 			continue;
@@ -753,7 +753,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 		mesh.uploadData();
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 	}
-	while(mapUpdatableList.dequeue()) |map| {
+	while(mapUpdatableList.popFront()) |map| {
 		if(!isMapInRenderDistance(map.pos)) {
 			map.deferredDeinit();
 		} else {
@@ -811,7 +811,7 @@ fn batchUpdateBlocks() void {
 	defer regenerateMeshList.deinit();
 
 	// First of all process all the block updates:
-	while(blockUpdateList.dequeue()) |blockUpdate| {
+	while(blockUpdateList.popFront()) |blockUpdate| {
 		defer blockUpdate.deinitManaged(main.globalAllocator);
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMesh(pos)) |mesh| {
@@ -835,7 +835,7 @@ pub fn addToUpdateList(mesh: *chunk_meshing.ChunkMesh) void {
 	mutex.lock();
 	defer mutex.unlock();
 	if(mesh.finishedMeshing) {
-		priorityMeshUpdateList.enqueue(mesh.pos);
+		priorityMeshUpdateList.pushBack(mesh.pos);
 		mesh.needsMeshUpdate = true;
 	}
 }
@@ -906,7 +906,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 // MARK: updaters
 
 pub fn updateBlock(update: BlockUpdate) void {
-	blockUpdateList.enqueue(BlockUpdate.initManaged(main.globalAllocator, update));
+	blockUpdateList.pushBack(BlockUpdate.initManaged(main.globalAllocator, update));
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
@@ -914,7 +914,7 @@ pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
 }
 
 pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
-	mapUpdatableList.enqueue(map);
+	mapUpdatableList.pushBack(map);
 }
 
 // MARK: Block breaking animation

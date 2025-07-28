@@ -495,13 +495,13 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		outer: for(tool.materialGrid, 0..) |row, x| {
 			for(row, 0..) |entry, y| {
 				if(entry != null) {
-					floodfillQueue.enqueue(.{@intCast(x), @intCast(y)});
+					floodfillQueue.pushBack(.{@intCast(x), @intCast(y)});
 					gridCellsReached[x][y] = true;
 					break :outer;
 				}
 			}
 		}
-		while(floodfillQueue.dequeue()) |pos| {
+		while(floodfillQueue.popFront()) |pos| {
 			for([4]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}}) |delta| {
 				const newPos = pos + delta;
 				if(newPos[0] < 0 or newPos[0] >= gridCellsReached.len) continue;
@@ -511,7 +511,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				if(gridCellsReached[x][y]) continue;
 				if(tool.materialGrid[x][y] == null) continue;
 				gridCellsReached[x][y] = true;
-				floodfillQueue.enqueue(newPos);
+				floodfillQueue.pushBack(newPos);
 			}
 		}
 		for(tool.materialGrid, 0..) |row, x| {
