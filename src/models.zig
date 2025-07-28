@@ -242,12 +242,12 @@ pub const Model = struct {
 					const blockX = (@as(f32, @floatFromInt(x)) + 0.5)/meshGridSize;
 					const blockY = (@as(f32, @floatFromInt(y)) + 0.5)/meshGridSize;
 					const blockZ = (@as(f32, @floatFromInt(z)) + 0.5)/meshGridSize;
-					
+
 					const pos = Vec3f{blockX, blockY, blockZ};
 					// Fences have weird models, so this is necesarry to make them work
 					for(Neighbor.iterable) |neighbor| {
 						const dir: Vec3f = @floatFromInt(neighbor.relPos());
-						
+
 						var signed_intersections: i32 = 0;
 						for(modelQuads) |quad| {
 							const triangle1: [3]Vec3f = .{
@@ -269,13 +269,12 @@ pub const Model = struct {
 								}
 							}
 						}
-						
+
 						if(signed_intersections != 0) {
 							grid[x][y][z] = true;
 							break;
 						}
 					}
-
 				}
 			}
 		}
