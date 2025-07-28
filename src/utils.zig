@@ -989,22 +989,46 @@ pub fn deinitDynamicIntArrayStorage() void {
 pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
 	std.debug.assert(std.math.isPowerOfTwo(size));
 	return struct {
-		data: []align(64) Atomic(u32) = &.{},
-		bitSize: u5 = 0,
+
+		const Content = packed struct(usize) {
+			const alignment: std.mem.Alignment = .@"64";
+			bitSize: u5, // Fitting it into the 6 alignment bits
+			pad: u1 = 0,
+			dataPointer: u58,
+
+			fn fromData(bitSize: u5, dataSlice: []align(64) Atomic(u32)) Content {
+				const expectedLen = @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize;
+				std.debug.assert(expectedLen == dataSlice.len);
+				return .{
+					.bitSize = bitSize,
+					.dataPointer = @intCast(@intFromPtr(dataSlice.ptr) >> @intFromEnum(alignment)),
+				};
+			}
+
+			fn data(self: Content) []align(64) Atomic(u32) {
+				if(self.bitSize == 0) return &.{};
+				const ptr: [*]align(64) Atomic(u32) = @ptrFromInt(@as(usize, self.dataPointer) << @intFromEnum(alignment));
+				const len = @as(usize, @divExact(size, @bitSizeOf(u32)))*self.bitSize;
+				return ptr[0..len];
+			}
+		};
+
+		content: Atomic(Content) = .init(@bitCast(@as(u64, 0))),
 
 		const Self = @This();
 
 		pub fn initCapacity(bitSize: u5) Self {
 			std.debug.assert(bitSize == 0 or bitSize & bitSize - 1 == 0); // Must be a power of 2
 			return .{
-				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(Atomic(u32), .@"64", @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
-				.bitSize = bitSize,
+				.content = .init(.fromData(
+					bitSize,
+					dynamicIntArrayAllocator.allocator().alignedAlloc(Atomic(u32), .@"64", @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
+				)),
 			};
 		}
 
 		pub fn deinit(self: *Self) void {
-			main.heap.GarbageCollection.deferredFreeSlice(dynamicIntArrayAllocator.allocator(), Atomic(u32), self.data);
-			self.* = .{};
+			main.heap.GarbageCollection.deferredFreeSlice(dynamicIntArrayAllocator.allocator(), Atomic(u32), self.content.swap(@bitCast(@as(u64, 0)), .monotonic).data());
 		}
 
 		inline fn bitInterleave(bits: comptime_int, source: u32) u32 {
@@ -1017,56 +1041,61 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 		}
 
 		pub fn resizeOnce(self: *Self) void {
-			const newBitSize = if(self.bitSize != 0) self.bitSize*2 else 1;
-			var newSelf = Self.initCapacity(newBitSize);
+			const oldContent = self.content.load(.unordered);
+			const newBitSize = if(oldContent.bitSize != 0) oldContent.bitSize*2 else 1;
+			const newSelf = Self.initCapacity(newBitSize);
+			const newContent = newSelf.content.raw;
 
-			switch(self.bitSize) {
-				0 => @memset(newSelf.data, .init(0)),
+			switch(oldContent.bitSize) {
+				0 => @memset(newContent.data(), .init(0)),
 				inline 1, 2, 4, 8 => |bits| {
-					for(0..self.data.len) |i| {
-						const oldVal = self.data[i].load(.unordered);
-						newSelf.data[2*i] = .init(bitInterleave(bits, oldVal & 0xffff));
-						newSelf.data[2*i + 1] = .init(bitInterleave(bits, oldVal >> 16));
+					for(0..oldContent.data().len) |i| {
+						const oldVal = oldContent.data()[i].load(.unordered);
+						newContent.data()[2*i] = .init(bitInterleave(bits, oldVal & 0xffff));
+						newContent.data()[2*i + 1] = .init(bitInterleave(bits, oldVal >> 16));
 					}
 				},
 				else => unreachable,
 			}
-			dynamicIntArrayAllocator.allocator().free(self.data);
-			self.* = newSelf;
+			main.heap.GarbageCollection.deferredFreeSlice(dynamicIntArrayAllocator.allocator(), Atomic(u32), oldContent.data());
+			self.content.store(newContent, .release);
 		}
 
 		pub fn getValue(self: *const Self, i: usize) u32 {
 			std.debug.assert(i < size);
-			if(self.bitSize == 0) return 0;
-			const bitIndex = i*self.bitSize;
+			const content = self.content.load(.acquire);
+			if(content.bitSize == 0) return 0;
+			const bitIndex = i*content.bitSize;
 			const intIndex = bitIndex >> 5;
 			const bitOffset: u5 = @intCast(bitIndex & 31);
-			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
-			return self.data[intIndex].load(.unordered) >> bitOffset & bitMask;
+			const bitMask = (@as(u32, 1) << content.bitSize) - 1;
+			return content.data()[intIndex].load(.unordered) >> bitOffset & bitMask;
 		}
 
 		pub fn setValue(self: *Self, i: usize, value: u32) void {
 			std.debug.assert(i < size);
-			if(self.bitSize == 0) return;
-			const bitIndex = i*self.bitSize;
+			const content = self.content.load(.unordered);
+			if(content.bitSize == 0) return;
+			const bitIndex = i*content.bitSize;
 			const intIndex = bitIndex >> 5;
 			const bitOffset: u5 = @intCast(bitIndex & 31);
-			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
+			const bitMask = (@as(u32, 1) << content.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
-			const ptr: *Atomic(u32) = &self.data[intIndex];
+			const ptr: *Atomic(u32) = &content.data()[intIndex];
 			const old = ptr.load(.unordered);
 			ptr.store((old & ~(bitMask << bitOffset)) | value << bitOffset, .unordered);
 		}
 
 		pub fn setAndGetValue(self: *Self, i: usize, value: u32) u32 {
 			std.debug.assert(i < size);
-			if(self.bitSize == 0) return 0;
-			const bitIndex = i*self.bitSize;
+			const content = self.content.load(.unordered);
+			if(content.bitSize == 0) return 0;
+			const bitIndex = i*content.bitSize;
 			const intIndex = bitIndex >> 5;
 			const bitOffset: u5 = @intCast(bitIndex & 31);
-			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
+			const bitMask = (@as(u32, 1) << content.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
-			const ptr: *Atomic(u32) = &self.data[intIndex];
+			const ptr: *Atomic(u32) = &content.data()[intIndex];
 			const old = ptr.load(.unordered);
 			ptr.store((old & ~(bitMask << bitOffset)) | value << bitOffset, .unordered);
 			return old >> bitOffset & bitMask;
@@ -1150,9 +1179,9 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			if(paletteIndex == self.paletteLength) {
 				if(self.paletteLength == self.palette.len) {
 					self.data.resizeOnce();
-					self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
+					self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.content.load(.unordered).bitSize);
 					const oldLen = self.paletteOccupancy.len;
-					self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
+					self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.content.load(.unordered).bitSize);
 					@memset(self.paletteOccupancy[oldLen..], 0);
 				}
 				self.palette[paletteIndex] = val;
@@ -1209,7 +1238,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 
 		pub fn optimizeLayout(self: *Self) void {
 			const newBitSize = getTargetBitSize(@intCast(self.activePaletteEntries));
-			if(self.data.bitSize == newBitSize) return;
+			if(self.data.content.load(.unordered).bitSize == newBitSize) return;
 
 			var newData = main.utils.DynamicPackedIntArray(size).initCapacity(newBitSize);
 			const paletteMap: []u32 = main.stackAllocator.alloc(u32, self.paletteLength);
@@ -1236,10 +1265,10 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 				newData.setValue(i, paletteMap[self.data.getValue(i)]);
 			}
 			self.data.deinit();
-			self.data = newData;
+			self.data.content.store(newData.content.load(.unordered), .release);
 			self.paletteLength = self.activePaletteEntries;
-			self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
-			self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
+			self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.content.load(.unordered).bitSize);
+			self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.content.load(.unordered).bitSize);
 		}
 	};
 }
