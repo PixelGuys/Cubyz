@@ -40,7 +40,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 		quadList.items[i + len].textureSlot += 16;
 		quadList.items[i].opaqueInLod = 2;
 	}
-	const modelIndex = main.models.Model.init(quadList.items);
+	const modelIndex = main.models.Model.init(quadList.items, null);
 	modelCache = modelIndex;
 	return modelIndex;
 }

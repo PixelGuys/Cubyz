@@ -14,7 +14,9 @@ const Mat4f = vec.Mat4f;
 const Vec2f = vec.Vec2f;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const Vec3d = vec.Vec3d;
 const ZonElement = main.ZonElement;
+const AABB = main.game.collision.AABB;
 
 var modelIndex: ?ModelIndex = null;
 
@@ -234,7 +236,26 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 				});
 			}
 		}
-		const index = main.models.Model.init(quads.items);
+		var collision = main.globalAllocator.alloc(AABB, 8);
+		var hasBrokenParts = false;
+		for(0..8) |j| {
+			const x: u1 = @intCast(j & 0b001);
+			const y: u1 = @intCast((j & 0b010) >> 1);
+			const z: u1 = @intCast((j & 0b100) >> 2);
+			if(hasSubBlock(@intCast(i), x, y, z)) {
+				const minX = @as(f64, @floatFromInt(x)) * 0.5;
+				const minY = @as(f64, @floatFromInt(y)) * 0.5;
+				const minZ = @as(f64, @floatFromInt(z)) * 0.5;
+				const maxX = minX + 0.5;
+				const maxY = minY + 0.5;
+				const maxZ = minZ + 0.5;
+
+				collision[j] = AABB {.min = Vec3d{minX, minY, minZ}, .max = Vec3d{maxX, maxY, maxZ}};
+			} else {
+				hasBrokenParts = true;
+			}
+		}
+		const index = main.models.Model.init(quads.items, if(hasBrokenParts) collision else null);
 		if(i == 0) {
 			modelIndex = index;
 		}
