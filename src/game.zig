@@ -73,6 +73,10 @@ pub const collision = struct {
 			}
 			return true;
 		}
+
+		pub fn join(self: AABB, other: AABB) AABB {
+			return .{.min = @min(self.min, other.min), .max = @max(self.max, other.max)};
+		}
 	};
 
 	const Direction = enum(u2) {x = 0, y = 1, z = 2};
@@ -81,19 +85,27 @@ pub const collision = struct {
 		var resultBox: ?AABB = null;
 		var minDistance: f64 = std.math.floatMax(f64);
 		if(block.collide()) {
-			//const model = block.mode().model(block).model();
+			const model = block.mode().model(block).model();
 
 			const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-			const blockAABB = AABB {.min = pos, .max = pos + @as(Vec3d, @splat(1.0))};
-
 			const entityAABB = AABB {.min = entityPosition - entityBoundingBoxExtent, .max = entityPosition + entityBoundingBoxExtent};
 
-			if(blockAABB.intersects(entityAABB)) {
-				resultBox = blockAABB;
-				
-				const dotMin = vec.dot(directionVector, blockAABB.min);
-				const dotMax = vec.dot(directionVector, blockAABB.max);
-				minDistance = @min(dotMin, dotMax);
+			for(model.collision) |relativeBlockAABB| {
+				const blockAABB = AABB {.min = relativeBlockAABB.min + pos, .max = relativeBlockAABB.max + pos};
+				if(blockAABB.intersects(entityAABB)) {
+					const dotMin = vec.dot(directionVector, blockAABB.min);
+					const dotMax = vec.dot(directionVector, blockAABB.max);
+					
+					const distance = @min(dotMin, dotMax);
+
+					if(distance < minDistance) {
+						resultBox = blockAABB;
+						minDistance = distance;
+					} else if(distance == minDistance) {
+						resultBox = resultBox.?.join(blockAABB);
+					}
+				}
+
 			}
 		}
 		return .{.box = resultBox orelse return null, .dist = minDistance};

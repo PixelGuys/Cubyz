@@ -11,6 +11,7 @@ const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const AABB = main.game.collision.AABB;
 
 var quadSSBO: graphics.SSBO = undefined;
 
@@ -92,6 +93,7 @@ pub const Model = struct {
 	allNeighborsOccluded: bool,
 	noNeighborsOccluded: bool,
 	hasNeighborFacingQuads: bool,
+	collision: []AABB,
 
 	fn getFaceNeighbor(quad: *const QuadInfo) ?chunk.Neighbor {
 		var allZero: @Vector(3, bool) = .{true, true, true};
@@ -195,6 +197,9 @@ pub const Model = struct {
 			self.allNeighborsOccluded = self.allNeighborsOccluded and self.isNeighborOccluded[neighbor];
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
+		self.collision = main.globalAllocator.alloc(AABB, 1);
+		self.collision[0] = AABB {.min = @floatCast(self.min), .max = @floatCast(self.max)};
+
 		return modelIndex;
 	}
 
@@ -386,6 +391,7 @@ pub const Model = struct {
 			main.globalAllocator.free(self.neighborFacingQuads[i]);
 		}
 		main.globalAllocator.free(self.internalQuads);
+		main.globalAllocator.free(self.collision);
 	}
 
 	pub fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
