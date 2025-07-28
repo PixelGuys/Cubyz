@@ -1044,7 +1044,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 		}
 
 		pub fn resizeOnce(self: *Self) void {
-			const oldContent = self.content.load(.unordered);
+			const oldContent = self.content.raw;
 			const newBitSize = if(self.bitSizeUnsafe() != 0) self.bitSizeUnsafe()*2 else 1;
 			const newSelf = Self.initCapacity(newBitSize);
 			const newContent = newSelf.content.raw;
@@ -1053,7 +1053,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 				0 => @memset(newContent.toSlice(), .init(0)),
 				inline 1, 2, 4, 8 => |bits| {
 					for(0..oldContent.toSlice().len) |i| {
-						const oldVal = oldContent.toSlice()[i].load(.unordered);
+						const oldVal = oldContent.toSlice()[i].raw;
 						newContent.toSlice()[2*i] = .init(bitInterleave(bits, oldVal & 0xffff));
 						newContent.toSlice()[2*i + 1] = .init(bitInterleave(bits, oldVal >> 16));
 					}
@@ -1078,7 +1078,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 
 		pub fn setValue(self: *Self, i: usize, value: u32) void {
 			std.debug.assert(i < size);
-			const content = self.content.load(.unordered);
+			const content = self.content.raw;
 			if(self.bitSizeUnsafe() == 0) return;
 			const bitIndex = i*self.bitSizeUnsafe();
 			const intIndex = bitIndex >> 5;
@@ -1086,13 +1086,13 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const bitMask = (@as(u32, 1) << self.bitSizeUnsafe()) - 1;
 			std.debug.assert(value <= bitMask);
 			const ptr: *Atomic(u32) = &content.toSlice()[intIndex];
-			const old = ptr.load(.unordered);
+			const old = ptr.raw;
 			ptr.store((old & ~(bitMask << bitOffset)) | value << bitOffset, .unordered);
 		}
 
 		pub fn setAndGetValue(self: *Self, i: usize, value: u32) u32 {
 			std.debug.assert(i < size);
-			const content = self.content.load(.unordered);
+			const content = self.content.raw;
 			if(self.bitSizeUnsafe() == 0) return 0;
 			const bitIndex = i*self.bitSizeUnsafe();
 			const intIndex = bitIndex >> 5;
@@ -1100,7 +1100,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const bitMask = (@as(u32, 1) << self.bitSizeUnsafe()) - 1;
 			std.debug.assert(value <= bitMask);
 			const ptr: *Atomic(u32) = &content.toSlice()[intIndex];
-			const old = ptr.load(.unordered);
+			const old = ptr.raw;
 			ptr.store((old & ~(bitMask << bitOffset)) | value << bitOffset, .unordered);
 			return old >> bitOffset & bitMask;
 		}
@@ -1256,7 +1256,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			for(0..size) |i| {
 				newData.setValue(i, paletteMap[self.data.getValue(i)]);
 			}
-			newData.content.store(self.data.content.swap(newData.content.load(.unordered), .release), .unordered);
+			newData.content.raw = self.data.content.swap(newData.content.raw, .release);
 			newData.deinit();
 			self.paletteLength = self.activePaletteEntries;
 			self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSizeUnsafe());
