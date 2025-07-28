@@ -1312,7 +1312,7 @@ pub const Protocols = struct {
 			mesh.mutex.lock();
 			defer mesh.mutex.unlock();
 			const index = mesh.chunk.getLocalBlockIndex(pos);
-			const block = mesh.chunk.data.getValue(index);
+			const block = mesh.chunk.data.getValueFromOwnerThread(index);
 			const blockEntity = block.blockEntity() orelse return;
 
 			var writer = utils.BinaryWriter.init(main.stackAllocator);

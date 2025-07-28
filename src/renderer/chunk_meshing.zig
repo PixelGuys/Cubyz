@@ -799,7 +799,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			while(y < chunk.chunkSize) : (y += 1) {
 				var z: u8 = 0;
 				while(z < chunk.chunkSize) : (z += 1) {
-					const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+					const block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(x, y, z));
 					if(block.light() != 0) lightEmittingBlocks.append(.{x, y, z});
 				}
 			}
@@ -807,7 +807,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.unlock();
 		self.lightingData[0].propagateLights(lightEmittingBlocks.items, true, lightRefreshList);
 		sunLight: {
-			var allSun: bool = self.chunk.data.paletteLength == 1 and self.chunk.data.palette[0].typ == 0;
+			var allSun: bool = self.chunk.data.paletteLength == 1 and self.chunk.data.palette.raw.toSlice()[0].raw.typ == 0;
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
 			const lightStartMap = mesh_storage.getLightMapPiece(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
@@ -918,7 +918,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.paletteLength);
 		defer main.stackAllocator.free(paletteCache);
 		for(0..self.chunk.data.paletteLength) |i| {
-			const block = self.chunk.data.palette[i];
+			const block = self.chunk.data.palette.raw.toSlice()[i].raw;
 			const model = blocks.meshes.model(block).model();
 			var result: OcclusionInfo = .{};
 			if(model.noNeighborsOccluded or block.viewThrough()) {
@@ -1002,7 +1002,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						hasFaces[x][y] |= setBit;
 					}
 					if(occlusionInfo.hasInternalQuads) {
-						const block = self.chunk.data.palette[paletteId];
+						const block = self.chunk.data.palette.raw.toSlice()[paletteId].raw;
 						if(block.transparent()) {
 							appendInternalQuads(block, x, y, z, false, &transparentCore, main.stackAllocator);
 						} else {
@@ -1022,10 +1022,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						const z = @ctz(bitMask);
 						const setBit = @as(u32, 1) << @intCast(z);
 						bitMask &= ~setBit;
-						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y), z));
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
-							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x - 1), @intCast(y), z));
+							const neighborBlock = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x - 1), @intCast(y), z));
 							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
@@ -1049,10 +1049,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						const z = @ctz(bitMask);
 						const setBit = @as(u32, 1) << @intCast(z);
 						bitMask &= ~setBit;
-						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y), z));
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
-							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x + 1), @intCast(y), z));
+							const neighborBlock = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x + 1), @intCast(y), z));
 							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
@@ -1076,10 +1076,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						const z = @ctz(bitMask);
 						const setBit = @as(u32, 1) << @intCast(z);
 						bitMask &= ~setBit;
-						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y), z));
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
-							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y - 1), z));
+							const neighborBlock = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y - 1), z));
 							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
@@ -1103,10 +1103,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						const z = @ctz(bitMask);
 						const setBit = @as(u32, 1) << @intCast(z);
 						bitMask &= ~setBit;
-						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y), z));
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
-							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y + 1), z));
+							const neighborBlock = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y + 1), z));
 							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
@@ -1130,10 +1130,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						const z = @ctz(bitMask);
 						const setBit = @as(u32, 1) << @intCast(z);
 						bitMask &= ~setBit;
-						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y), z));
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
-							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z - 1));
+							const neighborBlock = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y), z - 1));
 							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
@@ -1157,10 +1157,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						const z = @ctz(bitMask);
 						const setBit = @as(u32, 1) << @intCast(z);
 						bitMask &= ~setBit;
-						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y), z));
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
-							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z + 1));
+							const neighborBlock = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(@intCast(x), @intCast(y), z + 1));
 							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
@@ -1202,7 +1202,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const z: u5 = @intCast(_z & chunk.chunkMask);
 		var newBlock = _newBlock;
 		self.mutex.lock();
-		const oldBlock = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+		const oldBlock = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(x, y, z));
 
 		if(oldBlock == newBlock) {
 			if(newBlock.blockEntity()) |blockEntity| {
@@ -1240,7 +1240,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const index = chunk.getIndex(nnx, nny, nnz);
 
 				neighborChunkMesh.mutex.lock();
-				var neighborBlock = neighborChunkMesh.chunk.data.getValue(index);
+				var neighborBlock = neighborChunkMesh.chunk.data.getValueFromOwnerThread(index);
 
 				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 					neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
@@ -1254,7 +1254,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			} else {
 				const index = chunk.getIndex(nx, ny, nz);
 				self.mutex.lock();
-				var neighborBlock = self.chunk.data.getValue(index);
+				var neighborBlock = self.chunk.data.getValueFromOwnerThread(index);
 				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 					self.chunk.data.setValue(index, neighborBlock);
 					self.updateBlockLight(@intCast(nx), @intCast(ny), @intCast(nz), neighborBlock, lightRefreshList);
@@ -1409,9 +1409,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						const otherX = x +% neighbor.relX() & chunk.chunkMask;
 						const otherY = y +% neighbor.relY() & chunk.chunkMask;
 						const otherZ = z +% neighbor.relZ() & chunk.chunkMask;
-						var block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+						var block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(x, y, z));
 						if(settings.leavesQuality == 0) block.typ = block.opaqueVariant();
-						var otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
+						var otherBlock = neighborMesh.chunk.data.getValueFromOwnerThread(chunk.getIndex(otherX, otherY, otherZ));
 						if(settings.leavesQuality == 0) otherBlock.typ = otherBlock.opaqueVariant();
 						if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 							if(block.transparent()) {
@@ -1501,9 +1501,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					const otherX = (x +% neighbor.relX() +% offsetX >> 1) & chunk.chunkMask;
 					const otherY = (y +% neighbor.relY() +% offsetY >> 1) & chunk.chunkMask;
 					const otherZ = (z +% neighbor.relZ() +% offsetZ >> 1) & chunk.chunkMask;
-					var block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+					var block = self.chunk.data.getValueFromOwnerThread(chunk.getIndex(x, y, z));
 					if(settings.leavesQuality == 0) block.typ = block.opaqueVariant();
-					var otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
+					var otherBlock = neighborMesh.chunk.data.getValueFromOwnerThread(chunk.getIndex(otherX, otherY, otherZ));
 					if(settings.leavesQuality == 0) otherBlock.typ = otherBlock.opaqueVariant();
 					if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor.reverse())) {
 						if(otherBlock.transparent()) {

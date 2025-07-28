@@ -351,7 +351,7 @@ pub const BlockEntityTypes = struct {
 			}
 			data.valuePtr.* = .{
 				.blockPos = pos,
-				.block = chunk.data.getValue(chunk.getLocalBlockIndex(pos)),
+				.block = chunk.data.getValueFromOwnerThread(chunk.getLocalBlockIndex(pos)),
 				.renderedTexture = null,
 				.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining),
 			};
@@ -405,7 +405,7 @@ pub const BlockEntityTypes = struct {
 				mesh.mutex.lock();
 				defer mesh.mutex.unlock();
 				const index = mesh.chunk.getLocalBlockIndex(pos);
-				const block = mesh.chunk.data.getValue(index);
+				const block = mesh.chunk.data.getValueFromOwnerThread(index);
 				const blockEntity = block.blockEntity() orelse return;
 				if(!std.mem.eql(u8, blockEntity.id, id)) return;
 
@@ -418,7 +418,7 @@ pub const BlockEntityTypes = struct {
 				}
 				data.valuePtr.* = .{
 					.blockPos = pos,
-					.block = mesh.chunk.data.getValue(mesh.chunk.getLocalBlockIndex(pos)),
+					.block = mesh.chunk.data.getValueFromOwnerThread(mesh.chunk.getLocalBlockIndex(pos)),
 					.renderedTexture = null,
 					.text = main.globalAllocator.dupe(u8, newText),
 				};

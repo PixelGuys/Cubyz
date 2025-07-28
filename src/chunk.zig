@@ -296,7 +296,7 @@ pub const Chunk = struct { // MARK: Chunk
 		while(iterator.next()) |elem| {
 			const index = elem.key_ptr.*;
 			const entityDataIndex = elem.value_ptr.*;
-			const block = self.data.getValue(index);
+			const block = self.data.getValueFromOwnerThread(index);
 			const blockEntity = block.blockEntity() orelse unreachable;
 			switch(side) {
 				.client => {
@@ -327,7 +327,7 @@ pub const Chunk = struct { // MARK: Chunk
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
-		return self.data.getValue(index);
+		return self.data.getValueFromOwnerThread(index);
 	}
 
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
@@ -437,7 +437,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		const y = _y >> self.super.voxelSizeShift;
 		const z = _z >> self.super.voxelSizeShift;
 		const index = getIndex(x, y, z);
-		return self.super.data.getValue(index);
+		return self.super.data.getValueFromOwnerThread(index);
 	}
 
 	/// Updates a block if it is inside this chunk.
@@ -487,7 +487,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		const y = _y >> self.super.voxelSizeShift;
 		const z = _z >> self.super.voxelSizeShift;
 		const index = getIndex(x, y, z);
-		const oldBlock = self.super.data.getValue(index);
+		const oldBlock = self.super.data.getValueFromOwnerThread(index);
 		if(oldBlock.typ == 0 or oldBlock.degradable()) {
 			self.super.data.setValue(index, newBlock);
 		}
@@ -544,7 +544,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 							while(dz <= 1) : (dz += 1) {
 								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
 								const i = dx*4 + dz*2 + dy;
-								octantBlocks[i] = other.super.data.getValue(index);
+								octantBlocks[i] = other.super.data.getValueFromOwnerThread(index);
 								octantBlocks[i].typ = octantBlocks[i].lodReplacement();
 								if(octantBlocks[i].typ == 0) {
 									neighborCount[i] = 0;
@@ -558,7 +558,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 									const nz = z*2 + dz + n.relZ();
 									if((nx & chunkMask) == nx and (ny & chunkMask) == ny and (nz & chunkMask) == nz) { // If it's inside the chunk.
 										const neighborIndex = getIndex(nx, ny, nz);
-										if(other.super.data.getValue(neighborIndex).transparent()) {
+										if(other.super.data.getValueFromOwnerThread(neighborIndex).transparent()) {
 											count += 5;
 										}
 									} else {

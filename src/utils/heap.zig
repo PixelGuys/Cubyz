@@ -585,8 +585,9 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		freeFunction: *const fn(*anyopaque) void,
 	};
 	const FreeSliceItem = struct {
-		slice: []const u8,
+		slice: []u8,
 		allocator: NeverFailingAllocator,
+		alignment: std.mem.Alignment,
 	};
 	threadlocal var lists: [4]main.ListUnmanaged(FreeItem) = undefined;
 	threadlocal var sliceLists: [4]main.ListUnmanaged(FreeSliceItem) = undefined;
@@ -621,7 +622,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 
 	fn freeItemsFromSliceList(list: *main.ListUnmanaged(FreeSliceItem)) void {
 		while(list.popOrNull()) |item| {
-			item.allocator.free(item.slice);
+			item.allocator.rawFree(item.slice, item.alignment, @returnAddress());
 		}
 	}
 
@@ -686,10 +687,13 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		lists[threadCycle].append(main.globalAllocator, item);
 	}
 
-	pub fn deferredFreeSlice(allocator: NeverFailingAllocator, comptime T: type, items: []T) void {
+	pub fn deferredFreeSlice(allocator: NeverFailingAllocator, items: anytype) void {
+		if(items.len == 0) return;
+		const Slice = @typeInfo(@TypeOf(items)).pointer;
 		sliceLists[threadCycle].append(main.globalAllocator, .{
-			.slice = std.mem.sliceAsBytes(items),
+			.slice = @constCast(std.mem.sliceAsBytes(items)),
 			.allocator = allocator,
+			.alignment = .fromByteUnits(Slice.alignment),
 		});
 	}
 

@@ -1027,7 +1027,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 		}
 
 		pub fn deinit(self: *Self) void {
-			main.heap.GarbageCollection.deferredFreeSlice(dynamicIntArrayAllocator.allocator(), Atomic(u32), self.content.swap(@bitCast(@as(u64, 0)), .monotonic).toSlice());
+			main.heap.GarbageCollection.deferredFreeSlice(dynamicIntArrayAllocator.allocator(), self.content.swap(@bitCast(@as(u64, 0)), .monotonic).toSlice());
 		}
 
 		inline fn bitInterleave(bits: comptime_int, source: u32) u32 {
@@ -1060,7 +1060,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 				},
 				else => unreachable,
 			}
-			main.heap.GarbageCollection.deferredFreeSlice(dynamicIntArrayAllocator.allocator(), Atomic(u32), oldContent.toSlice());
+			main.heap.GarbageCollection.deferredFreeSlice(dynamicIntArrayAllocator.allocator(), oldContent.toSlice());
 			self.content.store(newContent, .release);
 		}
 
@@ -1110,7 +1110,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: PaletteCompressedRegion
 	return struct {
 		data: DynamicPackedIntArray(size) = .{},
-		palette: []T,
+		palette: Atomic(PowerOfTwoSlice(Atomic(T))),
 		paletteOccupancy: []u32,
 		paletteLength: u32,
 		activePaletteEntries: u32,
@@ -1119,12 +1119,12 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 
 		pub fn init(self: *Self) void {
 			self.* = .{
-				.palette = main.globalAllocator.alloc(T, 1),
+				.palette = .init(.fromSlice(main.globalAllocator.alignedAlloc(Atomic(T), .@"64", 1))),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, 1),
 				.paletteLength = 1,
 				.activePaletteEntries = 1,
 			};
-			self.palette[0] = std.mem.zeroes(T);
+			self.palette.raw.toSlice()[0] = .init(std.mem.zeroes(T));
 			self.paletteOccupancy[0] = size;
 		}
 
@@ -1134,18 +1134,18 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			const bufferLength = @as(u32, 1) << bitSize;
 			self.* = .{
 				.data = DynamicPackedIntArray(size).initCapacity(bitSize),
-				.palette = main.globalAllocator.alloc(T, bufferLength),
+				.palette = .init(.fromSlice(main.globalAllocator.alignedAlloc(Atomic(T), .@"64", bufferLength))),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, bufferLength),
 				.paletteLength = paletteLength,
 				.activePaletteEntries = 1,
 			};
-			self.palette[0] = std.mem.zeroes(T);
+			self.palette.raw.toSlice()[0] = .init(std.mem.zeroes(T));
 			self.paletteOccupancy[0] = size;
 		}
 
 		pub fn deinit(self: *Self) void {
 			self.data.deinit();
-			main.globalAllocator.free(self.palette);
+			main.heap.GarbageCollection.deferredFreeSlice(main.globalAllocator, self.palette.raw.toSlice());
 			main.globalAllocator.free(self.paletteOccupancy);
 		}
 
@@ -1156,29 +1156,40 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			return @as(u5, 1) << logLog;
 		}
 
-		pub fn getValue(self: *const Self, i: usize) T {
-			return self.palette[self.data.getValue(i)];
+		/// Uses the Java memory model to get a value.
+		/// In case of congestion a random value may get returned.
+		pub fn getValueUnordered(self: *const Self, i: usize) T {
+			const paletteIndex = self.data.getValue(i);
+			const palette = self.palette.load(.unordered).toSlice();
+			if(paletteIndex >= palette.len) return undefined;
+			return palette[paletteIndex].load(.unordered);
+		}
+
+		pub fn getValueFromOwnerThread(self: *const Self, i: usize) T {
+			return self.palette.raw.toSlice()[self.data.getValue(i)].raw;
 		}
 
 		fn getOrInsertPaletteIndex(noalias self: *Self, val: T) u32 {
-			std.debug.assert(self.paletteLength <= self.palette.len);
+			std.debug.assert(self.paletteLength <= self.palette.raw.toSlice().len);
 			var paletteIndex: u32 = 0;
 			while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
-				if(std.meta.eql(self.palette[paletteIndex], val)) {
+				if(std.meta.eql(self.palette.raw.toSlice()[paletteIndex].raw, val)) {
 					break;
 				}
 			}
 			if(paletteIndex == self.paletteLength) {
-				if(self.paletteLength == self.palette.len) {
+				if(self.paletteLength == self.palette.raw.toSlice().len) {
 					self.data.resizeOnce();
-					self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSizeUnsafe());
+					const newPalette = main.globalAllocator.alignedAlloc(Atomic(T), .@"64", @as(usize, 1) << self.data.bitSizeUnsafe());
+					@memcpy(newPalette[0..self.palette.raw.toSlice().len], self.palette.raw.toSlice());
+					main.heap.GarbageCollection.deferredFreeSlice(main.globalAllocator, self.palette.swap(.fromSlice(newPalette), .monotonic).toSlice());
 					const oldLen = self.paletteOccupancy.len;
 					self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSizeUnsafe());
 					@memset(self.paletteOccupancy[oldLen..], 0);
 				}
-				self.palette[paletteIndex] = val;
+				self.palette.raw.toSlice()[paletteIndex].store(val, .unordered);
 				self.paletteLength += 1;
-				std.debug.assert(self.paletteLength <= self.palette.len);
+				std.debug.assert(self.paletteLength <= self.palette.raw.toSlice().len);
 			}
 			return paletteIndex;
 		}
@@ -1247,7 +1258,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 							if(len == i) break :outer;
 						}
 						paletteMap[len] = i;
-						self.palette[i] = self.palette[len];
+						self.palette.raw.toSlice()[i].store(self.palette.raw.toSlice()[len].raw, .unordered);
 						self.paletteOccupancy[i] = self.paletteOccupancy[len];
 						self.paletteOccupancy[len] = 0;
 					}
@@ -1259,7 +1270,9 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			newData.content.raw = self.data.content.swap(newData.content.raw, .release);
 			newData.deinit();
 			self.paletteLength = self.activePaletteEntries;
-			self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSizeUnsafe());
+			const newPalette = main.globalAllocator.alignedAlloc(Atomic(T), .@"64", @as(usize, 1) << self.data.bitSizeUnsafe());
+			@memcpy(newPalette, self.palette.raw.toSlice()[0..newPalette.len]);
+			main.heap.GarbageCollection.deferredFreeSlice(main.globalAllocator, self.palette.swap(.fromSlice(newPalette), .monotonic).toSlice());
 			self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSizeUnsafe());
 		}
 	};
