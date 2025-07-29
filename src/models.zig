@@ -7,10 +7,13 @@ const main = @import("main");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
+const Vec3d = vec.Vec3d;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
+
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const AABB = main.game.collision.AABB;
 
 var quadSSBO: graphics.SSBO = undefined;
 
@@ -40,6 +43,7 @@ const ExtraQuadInfo = struct {
 };
 
 const gridSize = 4096;
+const meshGridSize = 16;
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
@@ -92,6 +96,7 @@ pub const Model = struct {
 	allNeighborsOccluded: bool,
 	noNeighborsOccluded: bool,
 	hasNeighborFacingQuads: bool,
+	collision: []AABB,
 
 	fn getFaceNeighbor(quad: *const QuadInfo) ?chunk.Neighbor {
 		var allZero: @Vector(3, bool) = .{true, true, true};
@@ -195,7 +200,224 @@ pub const Model = struct {
 			self.allNeighborsOccluded = self.allNeighborsOccluded and self.isNeighborOccluded[neighbor];
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
+		generateCollision(self, adjustedQuads);
 		return modelIndex;
+	}
+
+	fn edgeInterp(y: f32, x0: f32, y0: f32, x1: f32, y1: f32) f32 {
+        if(y1 == y0) return x0;
+        return x0 + (x1 - x0)*(y - y0)/(y1 - y0);
+	}
+
+	fn solveDepth(normal: Vec3f, v0: Vec3f, X: usize, Y: usize, Z: usize, u: f32, v: f32) f32 {
+		const nX = normal[X];
+		const nY = normal[Y];
+		const nZ = normal[Z];
+
+		if (@abs(nZ) < 1e-6) return 0.0;
+
+		const D = -(nX*v0[X] + nY*v0[Y] + nZ*v0[Z]);
+
+		return (-(nX*u + nY*v + D))/nZ;
+	}
+
+	fn rasterize(triangle: [3]Vec3f, grid: *[meshGridSize][meshGridSize][meshGridSize]bool, normal: Vec3f) void {
+		var X: usize = undefined;
+		var Y: usize = undefined;
+		var Z: usize = undefined;
+
+		const v0 = triangle[0];
+		const v1 = triangle[1];
+		const v2 = triangle[2];
+
+		const absNormal = Vec3f{@abs(normal[0]), @abs(normal[1]), @abs(normal[2])};
+		if (absNormal[0] >= absNormal[1] and absNormal[0] >= absNormal[2]) {
+			X = 1; Y = 2; Z = 0;
+		} else if (absNormal[1] >= absNormal[0] and absNormal[1] >= absNormal[2]) {
+			X = 0; Y = 2; Z = 1;
+		} else {
+			X = 0; Y = 1; Z = 2;
+		}
+
+		const min: Vec3f = @min(v0, v1, v2);
+		const max: Vec3f = @max(v0, v1, v2);
+
+		const voxelMin: Vec3i = @max(@as(Vec3i, @intFromFloat(@floor(min*@as(Vec3f, @splat(@floatFromInt(meshGridSize)))))), @as(Vec3i, @splat(0)));
+		const voxelMax: Vec3i = @max(@as(Vec3i, @intFromFloat(@ceil(max*@as(Vec3f, @splat(@floatFromInt(meshGridSize)))))), @as(Vec3i, @splat(0)));
+
+		var p0 = Vec2f{ v0[X], v0[Y] };
+		var p1 = Vec2f{ v1[X], v1[Y] };
+		var p2 = Vec2f{ v2[X], v2[Y] };
+
+		if (p0[1] > p1[1]) {
+			std.mem.swap(Vec2f, &p0, &p1);
+		}
+		if (p0[1] > p2[1]) {
+			std.mem.swap(Vec2f, &p0, &p2);
+		}
+		if (p1[1] > p2[1]) {
+			std.mem.swap(Vec2f, &p1, &p2);
+		}
+
+		for(@intCast(voxelMin[Y])..@intCast(voxelMax[Y]+1)) |y| {
+			if(y >= meshGridSize) continue;
+			const yf = (@as(f32, @floatFromInt(y)) + 0.5)/@as(f32, @floatFromInt(meshGridSize));
+			var xa: f32 = undefined;
+			var xb: f32 = undefined;
+			if(yf < p1[1]) {
+				xa = edgeInterp(yf, p0[0], p0[1], p1[0], p1[1]);
+				xb = edgeInterp(yf, p0[0], p0[1], p2[0], p2[1]);
+			} else {
+				xa = edgeInterp(yf, p1[0], p1[1], p2[0], p2[1]);
+				xb = edgeInterp(yf, p0[0], p0[1], p2[0], p2[1]);
+			}
+
+			const xStart: f32 = @min(xa, xb);
+			const xEnd: f32 = @max(xa, xb);
+
+			const voxelXStart: usize = @intFromFloat(@max(xStart*@as(f32, @floatFromInt(meshGridSize)), 0.0));
+			const voxelXEnd: usize = @intFromFloat(@max(xEnd*@as(f32, @floatFromInt(meshGridSize)), 0.0));
+
+			for(voxelXStart..voxelXEnd+1) |x| {
+				if(x < 0 or x >= meshGridSize) continue;
+				const xf = (@as(f32, @floatFromInt(x)) + 0.5)/@as(f32, @floatFromInt(meshGridSize));
+
+				const zf = solveDepth(normal, v0, X, Y, Z, xf, yf);
+				if(zf < 0.0) continue;
+				const z: usize = @intFromFloat(zf * @as(f32, @floatFromInt(meshGridSize)));
+
+				if(z >= meshGridSize) continue;
+				 
+				const pos: [3]usize = .{x, y, z};
+				grid[pos[X]][pos[Y]][pos[Z]] = true;
+			}
+		}
+	}
+
+	fn generateCollision(self: *Model, modelQuads: []QuadInfo) void {
+		var hollowGrid: [meshGridSize][meshGridSize][meshGridSize]bool = undefined;
+		const voxelSize: Vec3f = @splat(1.0/@as(f32, meshGridSize));
+
+		for(modelQuads) |quad| {
+			const shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
+			const triangle1: [3]Vec3f = .{
+				quad.cornerVec(0) - shift,
+				quad.cornerVec(1) - shift,
+				quad.cornerVec(2) - shift,
+			};
+			const triangle2: [3]Vec3f = .{
+				quad.cornerVec(1) - shift,
+				quad.cornerVec(2) - shift,
+				quad.cornerVec(3) - shift,
+			};
+
+			rasterize(triangle1, &hollowGrid, quad.normalVec());
+			rasterize(triangle2, &hollowGrid, quad.normalVec());
+		}
+
+		var grid: [meshGridSize][meshGridSize][meshGridSize]bool = .{.{.{true} ** meshGridSize} ** meshGridSize} ** meshGridSize;
+
+		const rawSize = 6*meshGridSize*meshGridSize - 12*meshGridSize + 8;
+		const queueSize = std.math.ceilPowerOfTwo(usize, rawSize) catch unreachable;
+		var floodfillQueue = main.utils.CircularBufferQueue(Vec3i).init(main.stackAllocator, queueSize);
+		defer floodfillQueue.deinit();
+
+		for(0..meshGridSize) |x| {
+			for(0..meshGridSize) |y| {
+				for(0..meshGridSize) |z| {
+					if((x == 0 or x == meshGridSize - 1 or y == 0 or y == meshGridSize - 1 or z == 0 or z == meshGridSize - 1) and !hollowGrid[x][y][z]) {
+						floodfillQueue.pushBack(.{@intCast(x), @intCast(y), @intCast(z)});
+						grid[x][y][z] = false;
+					}
+				}
+			}
+		}
+
+		while(floodfillQueue.popFront()) |pos| {
+			for(Neighbor.iterable) |neighbor| {
+				const newPos = pos + neighbor.relPos();
+
+				if(newPos[0] < 0 or newPos[0] >= meshGridSize) continue;
+				if(newPos[1] < 0 or newPos[1] >= meshGridSize) continue;
+				if(newPos[2] < 0 or newPos[2] >= meshGridSize) continue;
+
+				const x: usize = @intCast(newPos[0]);
+				const y: usize = @intCast(newPos[1]);
+				const z: usize = @intCast(newPos[2]);
+
+				if(!grid[x][y][z]) continue;
+				if(hollowGrid[x][y][z]) continue;
+				grid[x][y][z] = false;
+				floodfillQueue.pushBack(newPos);
+			}
+		}
+
+		var collision: std.ArrayList(AABB) = .init(main.globalAllocator.allocator);
+
+		for(0..meshGridSize) |x| {
+			for(0..meshGridSize) |y| {
+				for(0..meshGridSize) |z| {
+					if(grid[x][y][z]) {
+						var boxMin = Vec3i{@intCast(x), @intCast(y), @intCast(z)};
+						var boxMax = Vec3i{@intCast(x + 1), @intCast(y + 1), @intCast(z + 1)};
+						for(Neighbor.iterable) |neighbor| {
+							while(canExpand(&grid, boxMin, boxMax, neighbor)) {
+								if(neighbor.isPositive()) {
+									boxMax += neighbor.relPos();
+								} else {
+									boxMin += neighbor.relPos();
+								}
+							}
+						}
+						setAll(&grid, boxMin, boxMax, false);
+
+						const min = @as(Vec3f, @floatFromInt(boxMin))/@as(Vec3f, @splat(meshGridSize));
+						const max = @as(Vec3f, @floatFromInt(boxMax))/@as(Vec3f, @splat(meshGridSize));
+
+						collision.append(AABB{.min = min, .max = max}) catch unreachable;
+					}
+				}
+			}
+		}
+
+		collision.shrinkAndFree(collision.items.len);
+		self.collision = collision.items;
+	}
+
+	fn allTrue(grid: *const [meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i) bool {
+		if(max[0] > meshGridSize or max[1] > meshGridSize or max[2] > meshGridSize or min[0] < 0 or min[1] < 0 or min[2] < 0) {
+			return false;
+		}
+		for(@intCast(min[0])..@intCast(max[0])) |x| {
+			for(@intCast(min[1])..@intCast(max[1])) |y| {
+				for(@intCast(min[2])..@intCast(max[2])) |z| {
+					if(!grid[x][y][z]) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+
+	fn setAll(grid: *[meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i, value: bool) void {
+		for(@intCast(min[0])..@intCast(max[0])) |x| {
+			for(@intCast(min[1])..@intCast(max[1])) |y| {
+				const row = grid[x][y][@intCast(min[2])..@intCast(max[2])];
+				@memset(row, value);
+			}
+		}
+	}
+
+	fn canExpand(grid: *const [meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i, dir: Neighbor) bool {
+		return switch(dir) {
+			.dirUp => allTrue(grid, Vec3i{min[0], min[1], max[2]}, Vec3i{max[0], max[1], max[2] + 1}),
+			.dirDown => allTrue(grid, Vec3i{min[0], min[1], min[2] - 1}, Vec3i{max[0], max[1], min[2]}),
+			.dirPosX => allTrue(grid, Vec3i{max[0], min[1], min[2]}, Vec3i{max[0] + 1, max[1], max[2]}),
+			.dirNegX => allTrue(grid, Vec3i{min[0] - 1, min[1], min[2]}, Vec3i{min[0], max[1], max[2]}),
+			.dirPosY => allTrue(grid, Vec3i{min[0], max[1], min[2]}, Vec3i{max[0], max[1] + 1, max[2]}),
+			.dirNegY => allTrue(grid, Vec3i{min[0], min[1] - 1, min[2]}, Vec3i{max[0], min[1], max[2]}),
+		};
 	}
 
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
@@ -386,6 +608,7 @@ pub const Model = struct {
 			main.globalAllocator.free(self.neighborFacingQuads[i]);
 		}
 		main.globalAllocator.free(self.internalQuads);
+		main.globalAllocator.free(self.collision);
 	}
 
 	pub fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
