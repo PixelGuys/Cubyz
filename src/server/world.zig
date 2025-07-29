@@ -329,7 +329,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 		}
 		if(pos.voxelSize != 1) { // Generate LOD replacements
 			for(ch.super.data.palette()) |*block| {
-				block.typ = block.lodReplacement();
+				block.store(.{.typ = block.load(.unordered).lodReplacement(), .data = block.load(.unordered).data}, .unordered);
 			}
 		}
 		return ch;

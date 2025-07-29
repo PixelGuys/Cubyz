@@ -1077,7 +1077,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: PaletteCompressedRegion
 	const Impl = struct {
 		data: DynamicPackedIntArray(size) = .{},
-		palette: []T,
+		palette: []Atomic(T),
 		paletteOccupancy: []u32,
 		paletteLength: u32,
 		activePaletteEntries: u32,
@@ -1092,12 +1092,12 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 				.impl = .init(impl),
 			};
 			impl.* = .{
-				.palette = main.globalAllocator.alloc(T, 1),
+				.palette = main.globalAllocator.alloc(Atomic(T), 1),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, 1),
 				.paletteLength = 1,
 				.activePaletteEntries = 1,
 			};
-			impl.palette[0] = std.mem.zeroes(T);
+			impl.palette[0] = .init(std.mem.zeroes(T));
 			impl.paletteOccupancy[0] = size;
 		}
 
@@ -1111,7 +1111,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			};
 			impl.* = .{
 				.data = dataDupe,
-				.palette = main.globalAllocator.dupe(T, templateImpl.palette),
+				.palette = main.globalAllocator.dupe(Atomic(T), templateImpl.palette),
 				.paletteOccupancy = main.globalAllocator.dupe(u32, templateImpl.paletteOccupancy),
 				.paletteLength = templateImpl.paletteLength,
 				.activePaletteEntries = templateImpl.activePaletteEntries,
@@ -1128,12 +1128,12 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			};
 			impl.* = .{
 				.data = DynamicPackedIntArray(size).initCapacity(bitSize),
-				.palette = main.globalAllocator.alloc(T, bufferLength),
+				.palette = main.globalAllocator.alloc(Atomic(T), bufferLength),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, bufferLength),
 				.paletteLength = paletteLength,
 				.activePaletteEntries = 1,
 			};
-			impl.palette[0] = std.mem.zeroes(T);
+			impl.palette[0] = .init(std.mem.zeroes(T));
 			impl.paletteOccupancy[0] = size;
 			@memset(impl.paletteOccupancy[1..], 0);
 			@memset(impl.data.data, .init(0));
@@ -1159,10 +1159,10 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 
 		pub fn getValue(self: *const Self, i: usize) T {
 			const impl = self.impl.load(.acquire);
-			return impl.palette[impl.data.getValue(i)];
+			return impl.palette[impl.data.getValue(i)].load(.unordered);
 		}
 
-		pub fn palette(self: *const Self) []T {
+		pub fn palette(self: *const Self) []Atomic(T) {
 			const impl = self.impl.raw;
 			return impl.palette[0..impl.paletteLength];
 		}
@@ -1172,7 +1172,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			std.debug.assert(impl.paletteLength <= impl.palette.len);
 			var paletteIndex: u32 = 0;
 			while(paletteIndex < impl.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
-				if(std.meta.eql(impl.palette[paletteIndex], val)) {
+				if(std.meta.eql(impl.palette[paletteIndex].load(.unordered), val)) {
 					break;
 				}
 			}
@@ -1192,7 +1192,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 					newSelf.deferredDeinit();
 					impl = newImpl;
 				}
-				impl.palette[paletteIndex] = val;
+				impl.palette[paletteIndex].store(val, .unordered);
 				impl.paletteLength += 1;
 				std.debug.assert(impl.paletteLength <= impl.palette.len);
 			}
@@ -1270,7 +1270,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 					std.debug.assert(iNew < impl.activePaletteEntries);
 					std.debug.assert(iOld < impl.paletteLength);
 					paletteMap[iOld] = iNew;
-					newImpl.palette[iNew] = impl.palette[iOld];
+					newImpl.palette[iNew] = .init(impl.palette[iOld].load(.unordered));
 					newImpl.paletteOccupancy[iNew] = impl.paletteOccupancy[iOld];
 				}
 			}

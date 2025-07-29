@@ -284,7 +284,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	fn compressBlockData(ch: *chunk.Chunk, allowLossy: bool, writer: *BinaryWriter) void {
 		if(ch.data.palette().len == 1) {
 			writer.writeEnum(ChunkCompressionAlgo, .uniform);
-			writer.writeInt(u32, ch.data.palette()[0].toInt());
+			writer.writeInt(u32, ch.data.palette()[0].load(.unordered).toInt());
 			return;
 		}
 		if(ch.data.palette().len < 256) {
@@ -293,7 +293,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			for(0..chunk.chunkVolume) |i| {
 				uncompressedData[i] = @intCast(ch.data.impl.raw.data.getValue(i));
 				if(allowLossy) {
-					const block = ch.data.palette()[uncompressedData[i]];
+					const block = ch.data.palette()[uncompressedData[i]].load(.unordered);
 					const model = main.blocks.meshes.model(block).model();
 					const occluder = model.allNeighborsOccluded and !block.viewThrough();
 					if(occluder) {
@@ -326,7 +326,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			writer.writeInt(u8, @intCast(ch.data.palette().len));
 
 			for(0..ch.data.palette().len) |i| {
-				writer.writeInt(u32, ch.data.palette()[i].toInt());
+				writer.writeInt(u32, ch.data.palette()[i].load(.unordered).toInt());
 			}
 			writer.writeVarInt(usize, compressedData.len);
 			writer.writeSlice(compressedData);
@@ -375,7 +375,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				ch.data.initCapacity(paletteLength);
 
 				for(0..paletteLength) |i| {
-					ch.data.palette()[i] = main.blocks.Block.fromInt(try reader.readInt(u32));
+					ch.data.palette()[i] = .init(main.blocks.Block.fromInt(try reader.readInt(u32)));
 				}
 
 				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
@@ -392,7 +392,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				}
 			},
 			.uniform => {
-				ch.data.palette()[0] = main.blocks.Block.fromInt(try reader.readInt(u32));
+				ch.data.palette()[0] = .init(main.blocks.Block.fromInt(try reader.readInt(u32)));
 			},
 		}
 	}

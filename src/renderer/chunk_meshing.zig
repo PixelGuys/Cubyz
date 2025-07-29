@@ -807,7 +807,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.unlock();
 		self.lightingData[0].propagateLights(lightEmittingBlocks.items, true, lightRefreshList);
 		sunLight: {
-			var allSun: bool = self.chunk.data.palette().len == 1 and self.chunk.data.palette()[0].typ == 0;
+			var allSun: bool = self.chunk.data.palette().len == 1 and self.chunk.data.palette()[0].load(.unordered).typ == 0;
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
 			const lightStartMap = mesh_storage.getLightMapPiece(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
@@ -918,7 +918,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.palette().len);
 		defer main.stackAllocator.free(paletteCache);
 		for(0..self.chunk.data.palette().len) |i| {
-			const block = self.chunk.data.palette()[i];
+			const block = self.chunk.data.palette()[i].load(.unordered);
 			const model = blocks.meshes.model(block).model();
 			var result: OcclusionInfo = .{};
 			if(model.noNeighborsOccluded or block.viewThrough()) {
@@ -1002,7 +1002,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						hasFaces[x][y] |= setBit;
 					}
 					if(occlusionInfo.hasInternalQuads) {
-						const block = self.chunk.data.palette()[paletteId];
+						const block = self.chunk.data.palette()[paletteId].load(.unordered);
 						if(block.transparent()) {
 							appendInternalQuads(block, x, y, z, false, &transparentCore, main.stackAllocator);
 						} else {
