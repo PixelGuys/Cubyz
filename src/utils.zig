@@ -989,7 +989,7 @@ pub fn deinitDynamicIntArrayStorage() void {
 pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
 	std.debug.assert(std.math.isPowerOfTwo(size));
 	return struct {
-		data: []align(64) u32 = &.{},
+		data: []align(64) Atomic(u32) = &.{},
 		bitSize: u5 = 0,
 
 		const Self = @This();
@@ -997,7 +997,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 		pub fn initCapacity(bitSize: u5) Self {
 			std.debug.assert(bitSize == 0 or bitSize & bitSize - 1 == 0); // Must be a power of 2
 			return .{
-				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(u32, .@"64", @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
+				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(Atomic(u32), .@"64", @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
 				.bitSize = bitSize,
 			};
 		}
@@ -1021,12 +1021,12 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			std.debug.assert(self.bitSize == newBitSize);
 
 			switch(other.bitSize) {
-				0 => @memset(self.data, 0),
+				0 => @memset(self.data, .init(0)),
 				inline 1, 2, 4, 8 => |bits| {
 					for(0..other.data.len) |i| {
-						const oldVal = other.data[i];
-						self.data[2*i] = bitInterleave(bits, oldVal & 0xffff);
-						self.data[2*i + 1] = bitInterleave(bits, oldVal >> 16);
+						const oldVal = other.data[i].load(.unordered);
+						self.data[2*i].store(bitInterleave(bits, oldVal & 0xffff), .unordered);
+						self.data[2*i + 1].store(bitInterleave(bits, oldVal >> 16), .unordered);
 					}
 				},
 				else => unreachable,
@@ -1040,7 +1040,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const intIndex = bitIndex >> 5;
 			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
-			return self.data[intIndex] >> bitOffset & bitMask;
+			return self.data[intIndex].load(.unordered) >> bitOffset & bitMask;
 		}
 
 		pub fn setValue(self: *Self, i: usize, value: u32) void {
@@ -1051,9 +1051,9 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
-			const ptr: *u32 = &self.data[intIndex];
-			ptr.* &= ~(bitMask << bitOffset);
-			ptr.* |= value << bitOffset;
+			const ptr: *Atomic(u32) = &self.data[intIndex];
+			const newValue = (ptr.load(.unordered) & ~(bitMask << bitOffset)) | value << bitOffset;
+			ptr.store(newValue, .unordered);
 		}
 
 		pub fn setAndGetValue(self: *Self, i: usize, value: u32) u32 {
@@ -1064,10 +1064,11 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
-			const ptr: *u32 = &self.data[intIndex];
-			const result = ptr.* >> bitOffset & bitMask;
-			ptr.* &= ~(bitMask << bitOffset);
-			ptr.* |= value << bitOffset;
+			const ptr: *Atomic(u32) = &self.data[intIndex];
+			const oldValue = ptr.load(.unordered);
+			const result = oldValue >> bitOffset & bitMask;
+			const newValue = (oldValue & ~(bitMask << bitOffset)) | value << bitOffset;
+			ptr.store(newValue, .unordered);
 			return result;
 		}
 	};
@@ -1135,7 +1136,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			impl.palette[0] = std.mem.zeroes(T);
 			impl.paletteOccupancy[0] = size;
 			@memset(impl.paletteOccupancy[1..], 0);
-			@memset(impl.data.data, 0);
+			@memset(impl.data.data, .init(0));
 		}
 
 		fn privateDeinit(impl: *Impl, _: usize) void {
