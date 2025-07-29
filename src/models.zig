@@ -10,6 +10,7 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
+
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const AABB = main.game.collision.AABB;
@@ -203,38 +204,115 @@ pub const Model = struct {
 		return modelIndex;
 	}
 
+	fn edgeInterp(y: f32, x0: f32, y0: f32, x1: f32, y1: f32) f32 {
+        if(y1 == y0) return x0;
+        return x0 + (x1 - x0)*(y - y0)/(y1 - y0);
+	}
+
+	fn solveDepth(normal: Vec3f, v0: Vec3f, X: usize, Y: usize, Z: usize, u: f32, v: f32) f32 {
+		const nX = normal[X];
+		const nY = normal[Y];
+		const nZ = normal[Z];
+
+		if (@abs(nZ) < 1e-6) return 0.0;
+
+		const D = -(nX*v0[X] + nY*v0[Y] + nZ*v0[Z]);
+
+		return (-(nX*u + nY*v + D))/nZ;
+	}
+
+	fn rasterize(triangle: [3]Vec3f, grid: *[meshGridSize][meshGridSize][meshGridSize]bool, normal: Vec3f) void {
+		var X: usize = undefined;
+		var Y: usize = undefined;
+		var Z: usize = undefined;
+
+		const v0 = triangle[0];
+		const v1 = triangle[1];
+		const v2 = triangle[2];
+
+		const absNormal = Vec3f{@abs(normal[0]), @abs(normal[1]), @abs(normal[2])};
+		if (absNormal[0] >= absNormal[1] and absNormal[0] >= absNormal[2]) {
+			X = 1; Y = 2; Z = 0;
+		} else if (absNormal[1] >= absNormal[0] and absNormal[1] >= absNormal[2]) {
+			X = 0; Y = 2; Z = 1;
+		} else {
+			X = 0; Y = 1; Z = 2;
+		}
+
+		const min: Vec3f = @min(v0, v1, v2);
+		const max: Vec3f = @max(v0, v1, v2);
+
+		const voxelMin: Vec3i = @max(@as(Vec3i, @intFromFloat(@floor(min*@as(Vec3f, @splat(@floatFromInt(meshGridSize)))))), @as(Vec3i, @splat(0)));
+		const voxelMax: Vec3i = @max(@as(Vec3i, @intFromFloat(@ceil(max*@as(Vec3f, @splat(@floatFromInt(meshGridSize)))))), @as(Vec3i, @splat(0)));
+
+		var p0 = Vec2f{ v0[X], v0[Y] };
+		var p1 = Vec2f{ v1[X], v1[Y] };
+		var p2 = Vec2f{ v2[X], v2[Y] };
+
+		if (p0[1] > p1[1]) {
+			std.mem.swap(Vec2f, &p0, &p1);
+		}
+		if (p0[1] > p2[1]) {
+			std.mem.swap(Vec2f, &p0, &p2);
+		}
+		if (p1[1] > p2[1]) {
+			std.mem.swap(Vec2f, &p1, &p2);
+		}
+
+		for(@intCast(voxelMin[Y])..@intCast(voxelMax[Y]+1)) |y| {
+			if(y >= meshGridSize) continue;
+			const yf = (@as(f32, @floatFromInt(y)) + 0.5)/@as(f32, @floatFromInt(meshGridSize));
+			var xa: f32 = undefined;
+			var xb: f32 = undefined;
+			if(yf < p1[1]) {
+				xa = edgeInterp(yf, p0[0], p0[1], p1[0], p1[1]);
+				xb = edgeInterp(yf, p0[0], p0[1], p2[0], p2[1]);
+			} else {
+				xa = edgeInterp(yf, p1[0], p1[1], p2[0], p2[1]);
+				xb = edgeInterp(yf, p0[0], p0[1], p2[0], p2[1]);
+			}
+
+			const xStart: f32 = @min(xa, xb);
+			const xEnd: f32 = @max(xa, xb);
+
+			const voxelXStart: usize = @intFromFloat(@max(xStart*@as(f32, @floatFromInt(meshGridSize)), 0.0));
+			const voxelXEnd: usize = @intFromFloat(@max(xEnd*@as(f32, @floatFromInt(meshGridSize)), 0.0));
+
+			for(voxelXStart..voxelXEnd+1) |x| {
+				if(x < 0 or x >= meshGridSize) continue;
+				const xf = (@as(f32, @floatFromInt(x)) + 0.5)/@as(f32, @floatFromInt(meshGridSize));
+
+				const zf = solveDepth(normal, v0, X, Y, Z, xf, yf);
+				if(zf < 0.0) continue;
+				const z: usize = @intFromFloat(zf * @as(f32, @floatFromInt(meshGridSize)));
+
+				if(z >= meshGridSize) continue;
+				 
+				const pos: [3]usize = .{x, y, z};
+				grid[pos[X]][pos[Y]][pos[Z]] = true;
+			}
+		}
+	}
+
 	fn generateCollision(self: *Model, modelQuads: []QuadInfo) void {
 		var hollowGrid: [meshGridSize][meshGridSize][meshGridSize]bool = undefined;
 		const voxelSize: Vec3f = @splat(1.0/@as(f32, meshGridSize));
-		for(0..meshGridSize) |x| {
-			for(0..meshGridSize) |y| {
-				for(0..meshGridSize) |z| {
-					hollowGrid[x][y][z] = false;
-					const blockX = @as(f32, @floatFromInt(x))/meshGridSize;
-					const blockY = @as(f32, @floatFromInt(y))/meshGridSize;
-					const blockZ = @as(f32, @floatFromInt(z))/meshGridSize;
-					const pos = Vec3f{blockX, blockY, blockZ};
-					const voxel = AABB{.min = @floatCast(pos), .max = @floatCast(pos + voxelSize)};
-					for(modelQuads) |quad| {
-						const shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
-						const triangle1: [3]Vec3d = .{
-							@floatCast(quad.cornerVec(0) - shift),
-							@floatCast(quad.cornerVec(1) - shift),
-							@floatCast(quad.cornerVec(2) - shift),
-						};
-						const triangle2: [3]Vec3d = .{
-							@floatCast(quad.cornerVec(1) - shift),
-							@floatCast(quad.cornerVec(2) - shift),
-							@floatCast(quad.cornerVec(3) - shift),
-						};
 
-						if(main.game.collision.triangleAABB(voxel, triangle1) or main.game.collision.triangleAABB(voxel, triangle2)) {
-							hollowGrid[x][y][z] = true;
-							break;
-						}
-					}
-				}
-			}
+		for(modelQuads) |quad| {
+			const shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
+			const triangle1: [3]Vec3f = .{
+				quad.cornerVec(0) - shift,
+				quad.cornerVec(1) - shift,
+				quad.cornerVec(2) - shift,
+			};
+			const triangle2: [3]Vec3f = .{
+				quad.cornerVec(1) - shift,
+				quad.cornerVec(2) - shift,
+				quad.cornerVec(3) - shift,
+			};
+
+			rasterize(triangle1, &hollowGrid, quad.normalVec());
+			rasterize(triangle2, &hollowGrid, quad.normalVec());
 		}
 
 		var grid: [meshGridSize][meshGridSize][meshGridSize]bool = .{.{.{true} ** meshGridSize} ** meshGridSize} ** meshGridSize;
