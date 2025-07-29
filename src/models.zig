@@ -279,10 +279,8 @@ pub const Model = struct {
 			}
 		}
 
-		// The theoretical maximum (I could come up with) is a 3d checkerboard pattern.
-		self.collision = main.globalAllocator.alloc(AABB, meshGridSize*meshGridSize*meshGridSize/2);
+		var collision: std.ArrayList(AABB) = .init(main.globalAllocator.allocator);
 
-		var i: usize = 0;
 		for(0..meshGridSize) |x| {
 			for(0..meshGridSize) |y| {
 				for(0..meshGridSize) |z| {
@@ -300,24 +298,17 @@ pub const Model = struct {
 						}
 						setAll(&grid, boxMin, boxMax, false);
 
-						const minBlockX = @as(f32, @floatFromInt(boxMin[0]))/meshGridSize;
-						const minBlockY = @as(f32, @floatFromInt(boxMin[1]))/meshGridSize;
-						const minBlockZ = @as(f32, @floatFromInt(boxMin[2]))/meshGridSize;
-						const min = Vec3f{minBlockX, minBlockY, minBlockZ};
+						const min = @as(Vec3f, @floatFromInt(boxMin))/@as(Vec3f, @splat(meshGridSize));
+						const max = @as(Vec3f, @floatFromInt(boxMax))/@as(Vec3f, @splat(meshGridSize));
 
-						const maxBlockX = @as(f32, @floatFromInt(boxMax[0]))/meshGridSize;
-						const maxBlockY = @as(f32, @floatFromInt(boxMax[1]))/meshGridSize;
-						const maxBlockZ = @as(f32, @floatFromInt(boxMax[2]))/meshGridSize;
-						const max = Vec3f{maxBlockX, maxBlockY, maxBlockZ};
-
-						self.collision[i] = AABB{.min = min, .max = max};
-						i += 1;
+						collision.append(AABB{.min = min, .max = max}) catch unreachable;
 					}
 				}
 			}
 		}
 
-		self.collision = main.globalAllocator.realloc(self.collision, i);
+		collision.shrinkAndFree(collision.items.len);
+		self.collision = collision.items;
 	}
 
 	fn allTrue(grid: *const [meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i) bool {
@@ -337,11 +328,10 @@ pub const Model = struct {
 	}
 
 	fn setAll(grid: *[meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i, value: bool) void {
-		for(@intCast(min[0])..@intCast(max[0])) |x| {
-			for(@intCast(min[1])..@intCast(max[1])) |y| {
-				for(@intCast(min[2])..@intCast(max[2])) |z| {
-					grid[x][y][z] = value;
-				}
+		for (@intCast(min[0])..@intCast(max[0])) |x| {
+			for (@intCast(min[1])..@intCast(max[1])) |y| {
+				const row = grid[x][y][@intCast(min[2])..@intCast(max[2])];
+				@memset(row, value);
 			}
 		}
 	}
