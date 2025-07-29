@@ -204,12 +204,12 @@ pub const Model = struct {
 	}
 
 	fn generateCollision(self: *Model, modelQuads: []QuadInfo) void {
-		var grid: [meshGridSize][meshGridSize][meshGridSize]bool = undefined;
+		var hollowGrid: [meshGridSize][meshGridSize][meshGridSize]bool = undefined;
 		const voxelSize: Vec3f = @splat(1.0/@as(f32, meshGridSize));
 		for(0..meshGridSize) |x| {
 			for(0..meshGridSize) |y| {
 				for(0..meshGridSize) |z| {
-					grid[x][y][z] = false;
+					hollowGrid[x][y][z] = false;
 					const blockX = @as(f32, @floatFromInt(x))/meshGridSize;
 					const blockY = @as(f32, @floatFromInt(y))/meshGridSize;
 					const blockZ = @as(f32, @floatFromInt(z))/meshGridSize;
@@ -228,14 +228,18 @@ pub const Model = struct {
 							@floatCast(quad.cornerVec(3) - shift),
 						};
 
-						if(voxel.intersectsTriangle(triangle1) or voxel.intersectsTriangle(triangle2)) {
-							grid[x][y][z] = true;
+
+						if(main.game.collision.triangleAABB(voxel, triangle1) or main.game.collision.triangleAABB(voxel, triangle2)) {
+							hollowGrid[x][y][z] = true;
 							break;
 						}
 					}
 				}
 			}
 		}
+
+
+		var grid: [meshGridSize][meshGridSize][meshGridSize]bool = undefined;
 
 		var collision: std.ArrayList(AABB) = .init(main.globalAllocator.allocator);
 
