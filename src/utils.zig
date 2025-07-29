@@ -1261,7 +1261,10 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 				var iNew: u32 = 0;
 				var iOld: u32 = 0;
 				const len: u32 = impl.paletteLength;
-				while(iOld < len) : ({iNew += 1; iOld += 1;}) outer: {
+				while(iOld < len) : ({
+					iNew += 1;
+					iOld += 1;
+				}) outer: {
 					while(impl.paletteOccupancy[iOld] == 0) {
 						iOld += 1;
 						if(iOld >= len) break :outer;

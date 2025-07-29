@@ -197,10 +197,6 @@ pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 	const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 	const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
-	mesh.lightingData[0].lock.lockRead();
-	defer mesh.lightingData[0].lock.unlockRead();
-	mesh.lightingData[1].lock.lockRead();
-	defer mesh.lightingData[1].lock.unlockRead();
 	return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
 }
 

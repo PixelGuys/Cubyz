@@ -81,7 +81,6 @@ pub const ChannelChunk = struct {
 	};
 
 	pub fn getValue(self: *ChannelChunk, x: i32, y: i32, z: i32) [3]u8 {
-		self.lock.assertLockedRead();
 		const index = chunk.getIndex(x, y, z);
 		return self.data.getValue(index).toArray();
 	}
