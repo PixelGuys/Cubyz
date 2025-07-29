@@ -214,9 +214,9 @@ pub const Model = struct {
 					const blockY = @as(f32, @floatFromInt(y))/meshGridSize;
 					const blockZ = @as(f32, @floatFromInt(z))/meshGridSize;
 					const pos = Vec3f{blockX, blockY, blockZ};
-					const voxel = AABB {.min = @floatCast(pos), .max = @floatCast(pos + voxelSize)};
+					const voxel = AABB{.min = @floatCast(pos), .max = @floatCast(pos + voxelSize)};
 					for(modelQuads) |quad| {
-						const shift = quad.normalVec() * voxelSize * @as(Vec3f, @splat(0.5));
+						const shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
 						const triangle1: [3]Vec3d = .{
 							@floatCast(quad.cornerVec(0) - shift),
 							@floatCast(quad.cornerVec(1) - shift),
@@ -227,7 +227,6 @@ pub const Model = struct {
 							@floatCast(quad.cornerVec(2) - shift),
 							@floatCast(quad.cornerVec(3) - shift),
 						};
-
 
 						if(main.game.collision.triangleAABB(voxel, triangle1) or main.game.collision.triangleAABB(voxel, triangle2)) {
 							hollowGrid[x][y][z] = true;
@@ -324,8 +323,8 @@ pub const Model = struct {
 	}
 
 	fn setAll(grid: *[meshGridSize][meshGridSize][meshGridSize]bool, min: Vec3i, max: Vec3i, value: bool) void {
-		for (@intCast(min[0])..@intCast(max[0])) |x| {
-			for (@intCast(min[1])..@intCast(max[1])) |y| {
+		for(@intCast(min[0])..@intCast(max[0])) |x| {
+			for(@intCast(min[1])..@intCast(max[1])) |y| {
 				const row = grid[x][y][@intCast(min[2])..@intCast(max[2])];
 				@memset(row, value);
 			}
