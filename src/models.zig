@@ -249,14 +249,14 @@ pub const Model = struct {
 			for(0..meshGridSize) |y| {
 				for(0..meshGridSize) |z| {
 					if((x == 0 or x == meshGridSize - 1 or y == 0 or y == meshGridSize - 1 or z == 0 or z == meshGridSize - 1) and !hollowGrid[x][y][z]) {
-						floodfillQueue.enqueue(.{@intCast(x), @intCast(y), @intCast(z)});
+						floodfillQueue.pushBack(.{@intCast(x), @intCast(y), @intCast(z)});
 						grid[x][y][z] = false;
 					}
 				}
 			}
 		}
 
-		while(floodfillQueue.dequeue()) |pos| {
+		while(floodfillQueue.popFront()) |pos| {
 			for(Neighbor.iterable) |neighbor| {
 				const newPos = pos + neighbor.relPos();
 
@@ -271,7 +271,7 @@ pub const Model = struct {
 				if(!grid[x][y][z]) continue;
 				if(hollowGrid[x][y][z]) continue;
 				grid[x][y][z] = false;
-				floodfillQueue.enqueue(newPos);
+				floodfillQueue.pushBack(newPos);
 			}
 		}
 
