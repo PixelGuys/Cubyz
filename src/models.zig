@@ -7,6 +7,7 @@ const main = @import("main");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
+const Vec3d = vec.Vec3d;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
 const FaceData = main.renderer.chunk_meshing.FaceData;
@@ -202,75 +203,32 @@ pub const Model = struct {
 		return modelIndex;
 	}
 
-	fn rayIntersectsTriangle(ray_origin: Vec3f, ray_direction: Vec3f, triangle: *const [3]Vec3f) bool {
-		const epsilon = 1e-8;
-		const v0 = triangle[0];
-		const v1 = triangle[1];
-		const v2 = triangle[2];
-		const edge1 = v1 - v0;
-		const edge2 = v2 - v0;
-		const h = vec.cross(ray_direction, edge2);
-		const a = vec.dot(edge1, h);
-
-		if(-epsilon < a and a < epsilon) {
-			return false;
-		}
-
-		const f = 1.0/a;
-		const s = ray_origin - v0;
-		const u = f*vec.dot(s, h);
-		if(u < 0.0 or u > 1.0) {
-			return false;
-		}
-
-		const q = vec.cross(s, edge1);
-		const v = f*vec.dot(ray_direction, q);
-		if(v < 0.0 or u + v > 1.0) {
-			return false;
-		}
-
-		const t = f*vec.dot(edge2, q);
-		return t > epsilon;
-	}
-
 	fn generateCollision(self: *Model, modelQuads: []QuadInfo) void {
 		var grid: [meshGridSize][meshGridSize][meshGridSize]bool = undefined;
+		const voxelSize: Vec3f = @splat(1.0/@as(f32, meshGridSize));
 		for(0..meshGridSize) |x| {
 			for(0..meshGridSize) |y| {
 				for(0..meshGridSize) |z| {
 					grid[x][y][z] = false;
-					const blockX = (@as(f32, @floatFromInt(x)) + 0.5)/meshGridSize;
-					const blockY = (@as(f32, @floatFromInt(y)) + 0.5)/meshGridSize;
-					const blockZ = (@as(f32, @floatFromInt(z)) + 0.5)/meshGridSize;
-
+					const blockX = @as(f32, @floatFromInt(x))/meshGridSize;
+					const blockY = @as(f32, @floatFromInt(y))/meshGridSize;
+					const blockZ = @as(f32, @floatFromInt(z))/meshGridSize;
 					const pos = Vec3f{blockX, blockY, blockZ};
-					// Fences have weird models, so this is necesarry to make them work
-					for(Neighbor.iterable) |neighbor| {
-						const dir: Vec3f = @floatFromInt(neighbor.relPos());
+					const voxel = AABB {.min = @floatCast(pos), .max = @floatCast(pos + voxelSize)};
+					for(modelQuads) |quad| {
+						const shift = quad.normalVec() * voxelSize * @as(Vec3f, @splat(0.5));
+						const triangle1: [3]Vec3d = .{
+							@floatCast(quad.cornerVec(0) - shift),
+							@floatCast(quad.cornerVec(1) - shift),
+							@floatCast(quad.cornerVec(2) - shift),
+						};
+						const triangle2: [3]Vec3d = .{
+							@floatCast(quad.cornerVec(1) - shift),
+							@floatCast(quad.cornerVec(2) - shift),
+							@floatCast(quad.cornerVec(3) - shift),
+						};
 
-						var signed_intersections: i32 = 0;
-						for(modelQuads) |quad| {
-							const triangle1: [3]Vec3f = .{
-								quad.cornerVec(0),
-								quad.cornerVec(1),
-								quad.cornerVec(2),
-							};
-							const triangle2: [3]Vec3f = .{
-								quad.cornerVec(1),
-								quad.cornerVec(2),
-								quad.cornerVec(3),
-							};
-
-							if(rayIntersectsTriangle(pos, dir, &triangle1) or rayIntersectsTriangle(pos, dir, &triangle2)) {
-								if(vec.dot(dir, quad.normalVec()) > 0) {
-									signed_intersections -= 1;
-								} else {
-									signed_intersections += 1;
-								}
-							}
-						}
-
-						if(signed_intersections != 0) {
+						if(voxel.intersectsTriangle(triangle1) or voxel.intersectsTriangle(triangle2)) {
 							grid[x][y][z] = true;
 							break;
 						}

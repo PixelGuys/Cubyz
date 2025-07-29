@@ -77,6 +77,106 @@ pub const collision = struct {
 		pub fn join(self: AABB, other: AABB) AABB {
 			return .{.min = @min(self.min, other.min), .max = @max(self.max, other.max)};
 		}
+
+		pub fn intersectsTriangle(self: AABB, triangle: [3]Vec3d) bool {
+			const X = 0;
+			const Y = 1;
+			const Z = 2;
+
+			const box_center = self.center();
+			const box_extents = self.extent();
+
+			// Translate triangle as conceptually moving AABB to origin
+			const v0 = triangle[0] - box_center;
+			const v1 = triangle[1] - box_center;
+			const v2 = triangle[2] - box_center;
+
+			// Compute edge vectors for triangle
+			const f0 = triangle[1] - triangle[0];
+			const f1 = triangle[2] - triangle[1];
+			const f2 = triangle[0] - triangle[2];
+
+			// Test axis a00
+			const a00 = Vec3d{0, -f0[Z], f0[Y]};
+			if(!test_axis(a00, v0, v1, v2, box_extents[Y]*@abs(f0[Z]) + box_extents[Z]*@abs(f0[Y]))) {
+				return false;
+			}
+
+			// Test axis a01
+			const a01 = Vec3d{0, -f1[Z], f1[Y]};
+			if(!test_axis(a01, v0, v1, v2, box_extents[Y]*@abs(f1[Z]) + box_extents[Z]*@abs(f1[Y]))) {
+				return false;
+			}
+
+			// Test axis a02
+			const a02 = Vec3d{0, -f2[Z], f2[Y]};
+			if(!test_axis(a02, v0, v1, v2, box_extents[Y]*@abs(f2[Z]) + box_extents[Z]*@abs(f2[Y]))) {
+				return false;
+			}
+
+			// Test axis a10
+			const a10 = Vec3d{f0[Z], 0, -f0[X]};
+			if(!test_axis(a10, v0, v1, v2, box_extents[X]*@abs(f0[Z]) + box_extents[Z]*@abs(f0[X]))) {
+				return false;
+			}
+
+			// Test axis a11
+			const a11 = Vec3d{f1[Z], 0, -f1[X]};
+			if(!test_axis(a11, v0, v1, v2, box_extents[X]*@abs(f1[Z]) + box_extents[Z]*@abs(f1[X]))) {
+				return false;
+			}
+
+			// Test axis a12
+			const a12 = Vec3d{f2[Z], 0, -f2[X]};
+			if(!test_axis(a12, v0, v1, v2, box_extents[X]*@abs(f2[Z]) + box_extents[Z]*@abs(f2[X]))) {
+				return false;
+			}
+
+			// Test axis a20
+			const a20 = Vec3d{-f0[Y], f0[X], 0};
+			if(!test_axis(a20, v0, v1, v2, box_extents[X]*@abs(f0[Y]) + box_extents[Y]*@abs(f0[X]))) {
+				return false;
+			}
+
+			// Test axis a21
+			const a21 = Vec3d{-f1[Y], f1[X], 0};
+			if(!test_axis(a21, v0, v1, v2, box_extents[X]*@abs(f1[Y]) + box_extents[Y]*@abs(f1[X]))) {
+				return false;
+			}
+
+			// Test axis a22
+			const a22 = Vec3d{-f2[Y], f2[X], 0};
+			if(!test_axis(a22, v0, v1, v2, box_extents[X]*@abs(f2[Y]) + box_extents[Y]*@abs(f2[X]))) {
+				return false;
+			}
+
+			// Test the three axes corresponding to the face normals of AABB
+			if(@max(v0[X], @max(v1[X], v2[X])) < -box_extents[X] or @min(v0[X], @min(v1[X], v2[X])) > box_extents[X]) {
+				return false;
+			}
+			if(@max(v0[Y], @max(v1[Y], v2[Y])) < -box_extents[Y] or @min(v0[Y], @min(v1[Y], v2[Y])) > box_extents[Y]) {
+				return false;
+			}
+			if(@max(v0[Z], @max(v1[Z], v2[Z])) < -box_extents[Z] or @min(v0[Z], @min(v1[Z], v2[Z])) > box_extents[Z]) {
+				return false;
+			}
+
+			// Test separating axis corresponding to triangle face normal
+			const plane_normal = vec.cross(f0, f1);
+			const plane_distance = @abs(vec.dot(plane_normal, v0));
+			const r = box_extents[X]*@abs(plane_normal[X]) + box_extents[Y]*@abs(plane_normal[Y]) + box_extents[Z]*@abs(plane_normal[Z]);
+
+			return plane_distance <= r;
+		}
+
+		fn test_axis(axis: Vec3d, v0: Vec3d, v1: Vec3d, v2: Vec3d, r: f64) bool {
+			const p0 = vec.dot(v0, axis);
+			const p1 = vec.dot(v1, axis);
+			const p2 = vec.dot(v2, axis);
+			const min_p = @min(p0, @min(p1, p2));
+			const max_p = @max(p0, @max(p1, p2));
+			return @max(-max_p, min_p) <= r;
+		}
 	};
 
 	const Direction = enum(u2) {x = 0, y = 1, z = 2};
