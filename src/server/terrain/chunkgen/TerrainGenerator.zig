@@ -45,15 +45,15 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 			}
 		}
 		if(minHeight > chunk.super.pos.wz +| chunk.super.width) {
-			chunk.super.data.deinit();
+			chunk.super.data.deferredDeinit();
 			chunk.super.data.init();
-			chunk.super.data.palette[0] = stone;
+			chunk.super.data.palette()[0] = stone;
 			return;
 		}
 		if(maxHeight < chunk.super.pos.wz) {
-			chunk.super.data.deinit();
+			chunk.super.data.deferredDeinit();
 			chunk.super.data.init();
-			chunk.super.data.palette[0] = air;
+			chunk.super.data.palette()[0] = air;
 			return;
 		}
 	}

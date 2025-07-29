@@ -41,7 +41,7 @@ pub const ChannelChunk = struct {
 	}
 
 	pub fn deinit(self: *ChannelChunk) void {
-		self.data.deinit();
+		self.data.deferredDeinit();
 		memoryPool.destroy(self);
 	}
 
@@ -331,11 +331,11 @@ pub const ChannelChunk = struct {
 	pub fn propagateUniformSun(self: *ChannelChunk, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		std.debug.assert(self.isSun);
 		self.lock.lockWrite();
-		if(self.data.paletteLength != 1) {
-			self.data.deinit();
+		if(self.data.palette().len != 1) {
+			self.data.deferredDeinit();
 			self.data.init();
 		}
-		self.data.palette[0] = .{255, 255, 255};
+		self.data.palette()[0] = .{255, 255, 255};
 		self.lock.unlockWrite();
 		const val = 255 -| 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
