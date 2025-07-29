@@ -58,11 +58,11 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn scheduleCommand(command: Command) void {
-		commands.enqueue(command);
+		commands.pushBack(command);
 	}
 
 	fn executeCommands() void {
-		while(commands.dequeue()) |command| {
+		while(commands.popFront()) |command| {
 			switch(command.action) {
 				.open => {
 					executeOpenWindowCommand(command.window);

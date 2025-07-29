@@ -47,7 +47,7 @@ pub const Sync = struct { // MARK: Sync
 
 		pub fn reset() void {
 			mutex.lock();
-			while(commands.dequeue()) |cmd| {
+			while(commands.popFront()) |cmd| {
 				var reader = utils.BinaryReader.init(&.{});
 				cmd.finalize(main.globalAllocator, .client, &reader) catch |err| {
 					std.log.err("Got error while cleaning remaining inventory commands: {s}", .{@errorName(err)});
@@ -68,7 +68,7 @@ pub const Sync = struct { // MARK: Sync
 			const data = cmd.serializePayload(main.stackAllocator);
 			defer main.stackAllocator.free(data);
 			main.network.Protocols.inventory.sendCommand(main.game.world.?.conn, cmd.payload, data);
-			commands.enqueue(cmd);
+			commands.pushBack(cmd);
 		}
 
 		fn nextId() u32 {
@@ -104,7 +104,7 @@ pub const Sync = struct { // MARK: Sync
 		pub fn receiveConfirmation(reader: *utils.BinaryReader) !void {
 			mutex.lock();
 			defer mutex.unlock();
-			try commands.dequeue().?.finalize(main.globalAllocator, .client, reader);
+			try commands.popFront().?.finalize(main.globalAllocator, .client, reader);
 		}
 
 		pub fn receiveFailure() void {
@@ -112,7 +112,7 @@ pub const Sync = struct { // MARK: Sync
 			defer mutex.unlock();
 			var tempData = main.List(Command).init(main.stackAllocator);
 			defer tempData.deinit();
-			while(commands.dequeue_front()) |_cmd| {
+			while(commands.popBack()) |_cmd| {
 				var cmd = _cmd;
 				cmd.undo();
 				tempData.append(cmd);
@@ -127,7 +127,7 @@ pub const Sync = struct { // MARK: Sync
 			while(tempData.popOrNull()) |_cmd| {
 				var cmd = _cmd;
 				cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
-				commands.enqueue(cmd);
+				commands.pushBack(cmd);
 			}
 		}
 
@@ -136,7 +136,7 @@ pub const Sync = struct { // MARK: Sync
 			defer mutex.unlock();
 			var tempData = main.List(Command).init(main.stackAllocator);
 			defer tempData.deinit();
-			while(commands.dequeue_front()) |_cmd| {
+			while(commands.popBack()) |_cmd| {
 				var cmd = _cmd;
 				cmd.undo();
 				tempData.append(cmd);
@@ -145,7 +145,7 @@ pub const Sync = struct { // MARK: Sync
 			while(tempData.popOrNull()) |_cmd| {
 				var cmd = _cmd;
 				cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
-				commands.enqueue(cmd);
+				commands.pushBack(cmd);
 			}
 		}
 
@@ -155,7 +155,7 @@ pub const Sync = struct { // MARK: Sync
 			main.game.Player.setGamemode(gamemode);
 			var tempData = main.List(Command).init(main.stackAllocator);
 			defer tempData.deinit();
-			while(commands.dequeue_front()) |_cmd| {
+			while(commands.popBack()) |_cmd| {
 				var cmd = _cmd;
 				cmd.undo();
 				tempData.append(cmd);
@@ -163,7 +163,7 @@ pub const Sync = struct { // MARK: Sync
 			while(tempData.popOrNull()) |_cmd| {
 				var cmd = _cmd;
 				cmd.do(main.globalAllocator, .client, null, gamemode) catch unreachable;
-				commands.enqueue(cmd);
+				commands.pushBack(cmd);
 			}
 		}
 	};
