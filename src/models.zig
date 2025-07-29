@@ -238,8 +238,42 @@ pub const Model = struct {
 			}
 		}
 
+		var grid: [meshGridSize][meshGridSize][meshGridSize]bool = .{.{.{true} ** meshGridSize} ** meshGridSize} ** meshGridSize;
 
-		var grid: [meshGridSize][meshGridSize][meshGridSize]bool = undefined;
+		const rawSize = 6*meshGridSize*meshGridSize - 12*meshGridSize + 8;
+		const queueSize = std.math.ceilPowerOfTwo(usize, rawSize) catch unreachable;
+		var floodfillQueue = main.utils.CircularBufferQueue(Vec3i).init(main.stackAllocator, queueSize);
+		defer floodfillQueue.deinit();
+
+		for(0..meshGridSize) |x| {
+			for(0..meshGridSize) |y| {
+				for(0..meshGridSize) |z| {
+					if((x == 0 or x == meshGridSize - 1 or y == 0 or y == meshGridSize - 1 or z == 0 or z == meshGridSize - 1) and !hollowGrid[x][y][z]) {
+						floodfillQueue.enqueue(.{@intCast(x), @intCast(y), @intCast(z)});
+						grid[x][y][z] = false;
+					}
+				}
+			}
+		}
+
+		while(floodfillQueue.dequeue()) |pos| {
+			for(Neighbor.iterable) |neighbor| {
+				const newPos = pos + neighbor.relPos();
+
+				if(newPos[0] < 0 or newPos[0] >= meshGridSize) continue;
+				if(newPos[1] < 0 or newPos[1] >= meshGridSize) continue;
+				if(newPos[2] < 0 or newPos[2] >= meshGridSize) continue;
+
+				const x: usize = @intCast(newPos[0]);
+				const y: usize = @intCast(newPos[1]);
+				const z: usize = @intCast(newPos[2]);
+
+				if(!grid[x][y][z]) continue;
+				if(hollowGrid[x][y][z]) continue;
+				grid[x][y][z] = false;
+				floodfillQueue.enqueue(newPos);
+			}
+		}
 
 		var collision: std.ArrayList(AABB) = .init(main.globalAllocator.allocator);
 
