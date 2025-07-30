@@ -381,8 +381,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.max = @splat(-std.math.floatMax(f32));
 
 		self.lock.lockRead();
-		parent.lightingData[0].lock.lockRead();
-		parent.lightingData[1].lock.lockRead();
 		for(self.completeList.getEverything()) |*face| {
 			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex);
 			const result = lightMap.getOrPut(light) catch unreachable;
@@ -401,8 +399,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				self.max = @max(self.max, basePos + cornerPos);
 			}
 		}
-		parent.lightingData[0].lock.unlockRead();
-		parent.lightingData[1].lock.unlockRead();
 		self.lock.unlockRead();
 	}
 
@@ -421,10 +417,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			return getValues(parent, wx, wy, wz);
 		}
 		const neighborMesh = mesh_storage.getMesh(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
-		neighborMesh.lightingData[0].lock.lockRead();
-		neighborMesh.lightingData[1].lock.lockRead();
-		defer neighborMesh.lightingData[0].lock.unlockRead();
-		defer neighborMesh.lightingData[1].lock.unlockRead();
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 

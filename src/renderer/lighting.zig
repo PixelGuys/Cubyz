@@ -42,13 +42,13 @@ fn extractColor(in: u32) [3]u8 {
 
 pub const ChannelChunk = struct {
 	data: main.utils.PaletteCompressedRegion(LightValue, chunk.chunkVolume),
-	lock: main.utils.ReadWriteLock,
+	mutex: std.Thread.Mutex,
 	ch: *chunk.Chunk,
 	isSun: bool,
 
 	pub fn init(ch: *chunk.Chunk, isSun: bool) *ChannelChunk {
 		const self = memoryPool.create();
-		self.lock = .{};
+		self.mutex = .{};
 		self.ch = ch;
 		self.isSun = isSun;
 		self.data.init();
@@ -120,7 +120,7 @@ pub const ChannelChunk = struct {
 			}
 		}
 
-		self.lock.lockWrite();
+		self.mutex.lock();
 		while(lightQueue.popFront()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			const oldValue: [3]u8 = self.data.getValue(index).toArray();
@@ -154,7 +154,7 @@ pub const ChannelChunk = struct {
 			}
 		}
 		self.data.optimizeLayout();
-		self.lock.unlockWrite();
+		self.mutex.unlock();
 		self.addSelfToLightRefreshList(lightRefreshList);
 
 		for(chunk.Neighbor.iterable) |neighbor| {
@@ -186,7 +186,7 @@ pub const ChannelChunk = struct {
 		}
 		var isFirstIteration: bool = isFirstBlock;
 
-		self.lock.lockWrite();
+		self.mutex.lock();
 		while(lightQueue.popFront()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			const oldValue: [3]u8 = self.data.getValue(index).toArray();
@@ -245,7 +245,7 @@ pub const ChannelChunk = struct {
 				lightQueue.pushBack(result);
 			}
 		}
-		self.lock.unlockWrite();
+		self.mutex.unlock();
 		self.addSelfToLightRefreshList(lightRefreshList);
 
 		for(chunk.Neighbor.iterable) |neighbor| {
@@ -321,8 +321,6 @@ pub const ChannelChunk = struct {
 						const otherZ = z +% neighbor.relZ() & chunk.chunkMask;
 						const neighborMesh = mesh_storage.getNeighbor(self.ch.pos, self.ch.pos.voxelSize, neighbor) orelse continue;
 						const neighborLightChunk = neighborMesh.lightingData[@intFromBool(self.isSun)];
-						neighborLightChunk.lock.lockRead();
-						defer neighborLightChunk.lock.unlockRead();
 						const index = chunk.getIndex(x, y, z);
 						const neighborIndex = chunk.getIndex(otherX, otherY, otherZ);
 						var value: [3]u8 = neighborLightChunk.data.getValue(neighborIndex).toArray();
@@ -344,13 +342,13 @@ pub const ChannelChunk = struct {
 
 	pub fn propagateUniformSun(self: *ChannelChunk, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		std.debug.assert(self.isSun);
-		self.lock.lockWrite();
+		self.mutex.lock();
 		if(self.data.palette().len != 1) {
 			self.data.deferredDeinit();
 			self.data.init();
 		}
 		self.data.palette()[0].store(.fromArray(.{255, 255, 255}), .unordered);
-		self.lock.unlockWrite();
+		self.mutex.unlock();
 		const val = 255 -| 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
@@ -392,12 +390,10 @@ pub const ChannelChunk = struct {
 	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const [3]u8, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
-		self.lock.lockRead();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
 			lightQueue.pushBack(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.data.getValue(index).toArray(), .sourceDir = 6, .activeValue = 0b111});
 		}
-		self.lock.unlockRead();
 		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
 		defer constructiveEntries.deinit(main.stackAllocator);
 		constructiveEntries.append(main.stackAllocator, .{
@@ -409,7 +405,7 @@ pub const ChannelChunk = struct {
 			var entryList = entries.entries;
 			defer entryList.deinit(main.stackAllocator);
 			const channelChunk = if(mesh) |_mesh| _mesh.lightingData[@intFromBool(self.isSun)] else self;
-			channelChunk.lock.lockWrite();
+			channelChunk.mutex.lock();
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
 				var value = channelChunk.data.getValue(index).toArray();
@@ -423,7 +419,7 @@ pub const ChannelChunk = struct {
 				channelChunk.data.setValue(index, .fromArray(.{0, 0, 0}));
 				lightQueue.pushBack(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6, .activeValue = 0b111});
 			}
-			channelChunk.lock.unlockWrite();
+			channelChunk.mutex.unlock();
 			channelChunk.propagateDirect(&lightQueue, lightRefreshList);
 		}
 	}
