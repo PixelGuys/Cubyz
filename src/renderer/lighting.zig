@@ -343,11 +343,7 @@ pub const ChannelChunk = struct {
 	pub fn propagateUniformSun(self: *ChannelChunk, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		std.debug.assert(self.isSun);
 		self.mutex.lock();
-		if(self.data.palette().len != 1) {
-			self.data.deferredDeinit();
-			self.data.init();
-		}
-		self.data.palette()[0].store(.fromArray(.{255, 255, 255}), .unordered);
+		self.data.fillUniform(.fromArray(.{255, 255, 255}));
 		self.mutex.unlock();
 		const val = 255 -| 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);

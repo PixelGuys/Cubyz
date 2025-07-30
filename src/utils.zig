@@ -1167,6 +1167,19 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			return impl.palette[0..impl.paletteLength];
 		}
 
+		pub fn fillUniform(self: *Self, value: T) void {
+			const impl = self.impl.raw;
+			if(impl.paletteLength == 1) {
+				impl.palette[0].store(value, .unordered);
+				return;
+			}
+			var newSelf: Self = undefined;
+			newSelf.init();
+			newSelf.impl.raw.palette[0] = .init(value);
+			newSelf.impl.raw = self.impl.swap(newSelf.impl.raw, .release);
+			newSelf.deferredDeinit();
+		}
+
 		fn getOrInsertPaletteIndex(noalias self: *Self, val: T) u32 {
 			var impl = self.impl.raw;
 			std.debug.assert(impl.paletteLength <= impl.palette.len);
