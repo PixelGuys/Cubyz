@@ -79,6 +79,7 @@ var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 
 var _friction: [maxBlockCount]f32 = undefined;
+var _bounciness: [maxBlockCount]f32 = undefined;
 var _density: [maxBlockCount]f32 = undefined;
 var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
@@ -132,6 +133,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
+	_bounciness[size] = zon.get(f32, "bounciness", 0.0);
 	_density[size] = zon.get(f32, "density", 0.001);
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
@@ -397,6 +399,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn friction(self: Block) f32 {
 		return _friction[self.typ];
+	}
+
+	pub inline fn bounciness(self: Block) f32 {
+		return _bounciness[self.typ];
 	}
 
 	pub inline fn density(self: Block) f32 {
