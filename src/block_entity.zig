@@ -171,10 +171,7 @@ fn BlockEntityDataStorage(T: type) type {
 			chunk.blockPosToEntityDataMapMutex.lock();
 			defer chunk.blockPosToEntityDataMapMutex.unlock();
 
-			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse {
-				std.log.warn("Couldn't get entity data of block at position {}", .{pos});
-				return null;
-			};
+			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse return null;
 			return storage.get(dataIndex);
 		}
 		pub const GetOrPutResult = struct {
