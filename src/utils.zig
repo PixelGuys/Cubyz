@@ -1184,7 +1184,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			var impl = self.impl.raw;
 			std.debug.assert(impl.paletteLength <= impl.palette.len);
 			var paletteIndex: u32 = 0;
-			while(paletteIndex < impl.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
+			while(paletteIndex < impl.paletteLength) : (paletteIndex += 1) {
 				if(std.meta.eql(impl.palette[paletteIndex].load(.unordered), val)) {
 					break;
 				}
