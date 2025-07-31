@@ -934,7 +934,6 @@ pub fn hyperSpeedToggle() void {
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const airTerminalVelocity = 90.0;
-	const airFrictionCoefficient = gravity/airTerminalVelocity; // λ = a/v in equillibrium
 	const playerDensity = 1.2;
 	var move: Vec3d = .{0, 0, 0};
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
@@ -1018,7 +1017,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						Player.eyeCoyote = 0;
 					}
 					Player.jumpCoyote = 0;
-				} else {
+				} else if(!KeyBoard.key("fall").pressed) {
 					movementSpeed = @max(movementSpeed, walkingSpeed);
 					movementDir[2] += walkingSpeed;
 				}
@@ -1039,7 +1038,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] -= 5.5;
 					}
-				} else {
+				} else if(!KeyBoard.key("jump").pressed) {
 					movementSpeed = @max(movementSpeed, walkingSpeed);
 					movementDir[2] -= walkingSpeed;
 				}
@@ -1107,7 +1106,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if(i == 2 and jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
 				Player.super.vel[i] += @sqrt(Player.jumpHeight*gravity*2);
-				frictionCoefficient = airFrictionCoefficient;
+				frictionCoefficient = volumeFrictionCoeffecient;
 			}
 			const v_0 = Player.super.vel[i];
 			const a = acc[i];
