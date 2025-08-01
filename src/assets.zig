@@ -155,14 +155,11 @@ pub const Assets = struct {
 				self.localArena.deinit();
 			}
 
-			fn get(self: *Defaults, dir: std.fs.Dir) ZonElement {
-				const path = dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
-				defer main.stackAllocator.free(path);
-
-				const result = self.defaults.getOrPut(self.localAllocator.allocator, path) catch unreachable;
+			fn get(self: *Defaults, dir: std.fs.Dir, dirPath: []const u8) ZonElement {
+				const result = self.defaults.getOrPut(self.localAllocator.allocator, dirPath) catch unreachable;
 
 				if(!result.found_existing) {
-					result.key_ptr.* = self.localAllocator.dupe(u8, path);
+					result.key_ptr.* = self.localAllocator.dupe(u8, dirPath);
 					const default: ZonElement = self.read(dir) catch |err| blk: {
 						std.log.err("Failed to read default file: {s}", .{@errorName(err)});
 						break :blk .null;
@@ -224,7 +221,7 @@ pub const Assets = struct {
 					continue;
 				};
 				if(hasDefaults) {
-					zon.join(defaultsStorage.get(entry.dir));
+					zon.join(defaultsStorage.get(entry.dir, entry.path[0 .. entry.path.len - entry.basename.len]));
 				}
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}
