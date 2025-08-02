@@ -381,8 +381,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.max = @splat(-std.math.floatMax(f32));
 
 		self.lock.lockRead();
-		parent.lightingData[0].lock.lockRead();
-		parent.lightingData[1].lock.lockRead();
 		for(self.completeList.getEverything()) |*face| {
 			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex);
 			const result = lightMap.getOrPut(light) catch unreachable;
@@ -401,8 +399,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				self.max = @max(self.max, basePos + cornerPos);
 			}
 		}
-		parent.lightingData[0].lock.unlockRead();
-		parent.lightingData[1].lock.unlockRead();
 		self.lock.unlockRead();
 	}
 
@@ -421,10 +417,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			return getValues(parent, wx, wy, wz);
 		}
 		const neighborMesh = mesh_storage.getMesh(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
-		neighborMesh.lightingData[0].lock.lockRead();
-		neighborMesh.lightingData[1].lock.lockRead();
-		defer neighborMesh.lightingData[0].lock.unlockRead();
-		defer neighborMesh.lightingData[1].lock.unlockRead();
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
@@ -807,7 +799,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.unlock();
 		self.lightingData[0].propagateLights(lightEmittingBlocks.items, true, lightRefreshList);
 		sunLight: {
-			var allSun: bool = self.chunk.data.paletteLength == 1 and self.chunk.data.palette[0].typ == 0;
+			var allSun: bool = self.chunk.data.palette().len == 1 and self.chunk.data.palette()[0].load(.unordered).typ == 0;
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
 			const lightStartMap = mesh_storage.getLightMapPiece(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
@@ -915,10 +907,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			hasInternalQuads: bool = false,
 			alwaysViewThrough: bool = false,
 		};
-		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.paletteLength);
+		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.palette().len);
 		defer main.stackAllocator.free(paletteCache);
-		for(0..self.chunk.data.paletteLength) |i| {
-			const block = self.chunk.data.palette[i];
+		for(0..self.chunk.data.palette().len) |i| {
+			const block = self.chunk.data.palette()[i].load(.unordered);
 			const model = blocks.meshes.model(block).model();
 			var result: OcclusionInfo = .{};
 			if(model.noNeighborsOccluded or block.viewThrough()) {
@@ -946,7 +938,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const y: u5 = @intCast(_y);
 				for(0..chunk.chunkSize) |_z| {
 					const z: u5 = @intCast(_z);
-					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
+					const paletteId = self.chunk.data.impl.raw.data.getValue(chunk.getIndex(x, y, z));
 					const occlusionInfo = paletteCache[paletteId];
 					const setBit = @as(u32, 1) << z;
 					if(occlusionInfo.alwaysViewThrough or (!occlusionInfo.canSeeAllNeighbors and occlusionInfo.canSeeNeighbor == 0)) {
@@ -986,7 +978,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const y: u5 = @intCast(_y);
 				for(0..chunk.chunkSize) |_z| {
 					const z: u5 = @intCast(_z);
-					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
+					const paletteId = self.chunk.data.impl.raw.data.getValue(chunk.getIndex(x, y, z));
 					const occlusionInfo = paletteCache[paletteId];
 					const setBit = @as(u32, 1) << z;
 					if(depthFilteredViewThroughMask[x][y] & setBit != 0) {} else if(occlusionInfo.canSeeAllNeighbors) {
@@ -1002,7 +994,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						hasFaces[x][y] |= setBit;
 					}
 					if(occlusionInfo.hasInternalQuads) {
-						const block = self.chunk.data.palette[paletteId];
+						const block = self.chunk.data.palette()[paletteId].load(.unordered);
 						if(block.transparent()) {
 							appendInternalQuads(block, x, y, z, false, &transparentCore, main.stackAllocator);
 						} else {

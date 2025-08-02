@@ -286,7 +286,7 @@ pub const Chunk = struct { // MARK: Chunk
 	fn deinitContent(self: *Chunk) void {
 		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
-		self.data.deinit();
+		self.data.deferredDeinit();
 	}
 
 	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
