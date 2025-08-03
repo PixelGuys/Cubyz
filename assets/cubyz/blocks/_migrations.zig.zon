@@ -1,0 +1,7 @@
+.{
+	.{.old = "glow_crystal/dark_gray", .new = "glow_crystal/grey"},
+	.{.old = "glow_crystal/dark_green", .new = "glow_crystal/viridian"},
+	.{.old = "glow_crystal/dark_red", .new = "glow_crystal/crimson"},
+	.{.old = "glow_crystal/gray", .new = "glow_crystal/grey"},
+	.{.old = "glow_crystal/light_blue", .new = "glow_crystal/aqua"},
+}
