@@ -293,7 +293,7 @@ pub const Model = struct {
 				const z: usize = @intFromFloat(zf*@as(f32, @floatFromInt(meshGridSize)));
 
 				if(z >= meshGridSize) continue;
-				 
+
 				const pos: [3]usize = .{x, y, z};
 				var realPos: [3]usize = undefined;
 				realPos[X] = pos[0];
