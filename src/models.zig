@@ -216,7 +216,7 @@ pub const Model = struct {
 
 		if(@abs(nZ) < 1e-6) return 0.0;
 
-		const D = -(nX*v0[X] + nY*v0[Y] + nZ*v0[Z]);
+		const D = -vec.dot(v0, normal);
 
 		return (-(nX*u + nY*v + D))/nZ;
 	}
