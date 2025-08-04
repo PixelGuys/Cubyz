@@ -235,7 +235,6 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 			}
 		}
 		const index = main.models.Model.init(quads.items);
-
 		if(i == 0) {
 			modelIndex = index;
 		}
