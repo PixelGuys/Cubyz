@@ -236,8 +236,6 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 		}
 		const index = main.models.Model.init(quads.items);
 
-		std.debug.assert(index.model().collision.len <= 4);
-		
 		if(i == 0) {
 			modelIndex = index;
 		}
