@@ -228,7 +228,7 @@ pub const ParticleSystem = struct {
 
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
-				const hitBox: game.collision.AABB = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
+				const hitBox: game.collision.Aabb = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference));
 				v3Pos[0] += posDelta[0];
 				if(game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {

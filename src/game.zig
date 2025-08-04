@@ -52,19 +52,19 @@ pub const camera = struct { // MARK: camera
 };
 
 pub const collision = struct {
-	pub const AABB = struct {
+	pub const Aabb = struct {
 		min: Vec3d,
 		max: Vec3d,
 
-		pub fn center(self: AABB) Vec3d {
+		pub fn center(self: Aabb) Vec3d {
 			return (self.min + self.max)*@as(Vec3d, @splat(0.5));
 		}
 
-		pub fn extent(self: AABB) Vec3d {
+		pub fn extent(self: Aabb) Vec3d {
 			return (self.max - self.min)*@as(Vec3d, @splat(0.5));
 		}
 
-		pub fn intersects(self: AABB, other: AABB) bool {
+		pub fn intersects(self: Aabb, other: Aabb) bool {
 			var i: usize = 0;
 			while(i < 3) : (i += 1) {
 				if(self.max[i] < other.min[i] or self.min[i] > other.max[i]) {
@@ -74,101 +74,10 @@ pub const collision = struct {
 			return true;
 		}
 
-		pub fn join(self: AABB, other: AABB) AABB {
+		pub fn join(self: Aabb, other: Aabb) Aabb {
 			return .{.min = @min(self.min, other.min), .max = @max(self.max, other.max)};
 		}
 	};
-
-	pub fn triangleAABB(aabb: AABB, triangle: [3]Vec3d) bool {
-		const X = 0;
-		const Y = 1;
-		const Z = 2;
-
-		const box_center = aabb.center();
-		const box_extents = aabb.extent();
-
-		// Translate triangle as conceptually moving AABB to origin
-		const v0 = triangle[0] - box_center;
-		const v1 = triangle[1] - box_center;
-		const v2 = triangle[2] - box_center;
-
-		// Compute edge vectors for triangle
-		const f0 = triangle[1] - triangle[0];
-		const f1 = triangle[2] - triangle[1];
-		const f2 = triangle[0] - triangle[2];
-
-		// Test axis a00
-		const a00 = Vec3d{0, -f0[Z], f0[Y]};
-		if(!test_axis(a00, v0, v1, v2, box_extents[Y]*@abs(f0[Z]) + box_extents[Z]*@abs(f0[Y]))) {
-			return false;
-		}
-
-		// Test axis a01
-		const a01 = Vec3d{0, -f1[Z], f1[Y]};
-		if(!test_axis(a01, v0, v1, v2, box_extents[Y]*@abs(f1[Z]) + box_extents[Z]*@abs(f1[Y]))) {
-			return false;
-		}
-
-		// Test axis a02
-		const a02 = Vec3d{0, -f2[Z], f2[Y]};
-		if(!test_axis(a02, v0, v1, v2, box_extents[Y]*@abs(f2[Z]) + box_extents[Z]*@abs(f2[Y]))) {
-			return false;
-		}
-
-		// Test axis a10
-		const a10 = Vec3d{f0[Z], 0, -f0[X]};
-		if(!test_axis(a10, v0, v1, v2, box_extents[X]*@abs(f0[Z]) + box_extents[Z]*@abs(f0[X]))) {
-			return false;
-		}
-
-		// Test axis a11
-		const a11 = Vec3d{f1[Z], 0, -f1[X]};
-		if(!test_axis(a11, v0, v1, v2, box_extents[X]*@abs(f1[Z]) + box_extents[Z]*@abs(f1[X]))) {
-			return false;
-		}
-
-		// Test axis a12
-		const a12 = Vec3d{f2[Z], 0, -f2[X]};
-		if(!test_axis(a12, v0, v1, v2, box_extents[X]*@abs(f2[Z]) + box_extents[Z]*@abs(f2[X]))) {
-			return false;
-		}
-
-		// Test axis a20
-		const a20 = Vec3d{-f0[Y], f0[X], 0};
-		if(!test_axis(a20, v0, v1, v2, box_extents[X]*@abs(f0[Y]) + box_extents[Y]*@abs(f0[X]))) {
-			return false;
-		}
-
-		// Test axis a21
-		const a21 = Vec3d{-f1[Y], f1[X], 0};
-		if(!test_axis(a21, v0, v1, v2, box_extents[X]*@abs(f1[Y]) + box_extents[Y]*@abs(f1[X]))) {
-			return false;
-		}
-
-		// Test axis a22
-		const a22 = Vec3d{-f2[Y], f2[X], 0};
-		if(!test_axis(a22, v0, v1, v2, box_extents[X]*@abs(f2[Y]) + box_extents[Y]*@abs(f2[X]))) {
-			return false;
-		}
-
-		// Test the three axes corresponding to the face normals of AABB
-		if(@max(v0[X], @max(v1[X], v2[X])) < -box_extents[X] or @min(v0[X], @min(v1[X], v2[X])) > box_extents[X]) {
-			return false;
-		}
-		if(@max(v0[Y], @max(v1[Y], v2[Y])) < -box_extents[Y] or @min(v0[Y], @min(v1[Y], v2[Y])) > box_extents[Y]) {
-			return false;
-		}
-		if(@max(v0[Z], @max(v1[Z], v2[Z])) < -box_extents[Z] or @min(v0[Z], @min(v1[Z], v2[Z])) > box_extents[Z]) {
-			return false;
-		}
-
-		// Test separating axis corresponding to triangle face normal
-		const plane_normal = vec.cross(f0, f1);
-		const plane_distance = @abs(vec.dot(plane_normal, v0));
-		const r = box_extents[X]*@abs(plane_normal[X]) + box_extents[Y]*@abs(plane_normal[Y]) + box_extents[Z]*@abs(plane_normal[Z]);
-
-		return plane_distance <= r;
-	}
 
 	fn test_axis(axis: Vec3d, v0: Vec3d, v1: Vec3d, v2: Vec3d, r: f64) bool {
 		const p0 = vec.dot(v0, axis);
@@ -181,28 +90,28 @@ pub const collision = struct {
 
 	const Direction = enum(u2) {x = 0, y = 1, z = 2};
 
-	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct {box: AABB, dist: f64} {
-		var resultBox: ?AABB = null;
+	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct {box: Aabb, dist: f64} {
+		var resultBox: ?Aabb = null;
 		var minDistance: f64 = std.math.floatMax(f64);
 		if(block.collide()) {
 			const model = block.mode().model(block).model();
 
 			const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-			const entityAABB = AABB{.min = entityPosition - entityBoundingBoxExtent, .max = entityPosition + entityBoundingBoxExtent};
+			const entityAabb = Aabb{.min = entityPosition - entityBoundingBoxExtent, .max = entityPosition + entityBoundingBoxExtent};
 
-			for(model.collision) |relativeBlockAABB| {
-				const blockAABB = AABB{.min = relativeBlockAABB.min + pos, .max = relativeBlockAABB.max + pos};
-				if(blockAABB.intersects(entityAABB)) {
-					const dotMin = vec.dot(directionVector, blockAABB.min);
-					const dotMax = vec.dot(directionVector, blockAABB.max);
+			for(model.collision) |relativeBlockAabb| {
+				const blockAabb = Aabb{.min = relativeBlockAabb.min + pos, .max = relativeBlockAabb.max + pos};
+				if(blockAabb.intersects(entityAabb)) {
+					const dotMin = vec.dot(directionVector, blockAabb.min);
+					const dotMax = vec.dot(directionVector, blockAabb.max);
 
 					const distance = @min(dotMin, dotMax);
 
 					if(distance < minDistance) {
-						resultBox = blockAABB;
+						resultBox = blockAabb;
 						minDistance = distance;
 					} else if(distance == minDistance) {
-						resultBox = resultBox.?.join(blockAABB);
+						resultBox = .{.min = @min(resultBox.?.min, blockAabb.min), .max = @max(resultBox.?.max, blockAabb.max)};
 					}
 				}
 			}
@@ -210,8 +119,8 @@ pub const collision = struct {
 		return .{.box = resultBox orelse return null, .dist = minDistance};
 	}
 
-	pub fn collides(comptime side: main.utils.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: AABB) ?AABB {
-		var boundingBox: AABB = .{
+	pub fn collides(comptime side: main.utils.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: Aabb) ?Aabb {
+		var boundingBox: Aabb = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
 		};
@@ -236,7 +145,7 @@ pub const collision = struct {
 		const boundingBoxCenter = boundingBox.center();
 		const fullBoundingBoxExtent = boundingBox.extent() - @as(Vec3d, @splat(0.00005));
 
-		var resultBox: ?AABB = null;
+		var resultBox: ?Aabb = null;
 		var minDistance: f64 = std.math.floatMax(f64);
 		const directionVector: Vec3d = switch(dir) {
 			.x => .{-std.math.sign(amount), 0, 0},
@@ -274,8 +183,8 @@ pub const collision = struct {
 		bounciness: f32,
 	};
 
-	pub fn calculateSurfaceProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: AABB, defaultFriction: f32) SurfaceProperties {
-		const boundingBox: AABB = .{
+	pub fn calculateSurfaceProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Aabb, defaultFriction: f32) SurfaceProperties {
+		const boundingBox: Aabb = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
 		};
@@ -299,7 +208,7 @@ pub const collision = struct {
 				if(_block) |block| {
 					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
 
-					const blockBox: AABB = .{
+					const blockBox: Aabb = .{
 						.min = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().min)),
 						.max = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().max)),
 					};
@@ -343,15 +252,15 @@ pub const collision = struct {
 		mobility: f64,
 	};
 
-	fn overlapVolume(a: AABB, b: AABB) f64 {
+	fn overlapVolume(a: Aabb, b: Aabb) f64 {
 		const min = @max(a.min, b.min);
 		const max = @min(a.max, b.max);
 		if(@reduce(.Or, min >= max)) return 0;
 		return @reduce(.Mul, max - min);
 	}
 
-	pub fn calculateVolumeProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: AABB, defaults: VolumeProperties) VolumeProperties {
-		const boundingBox: AABB = .{
+	pub fn calculateVolumeProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Aabb, defaults: VolumeProperties) VolumeProperties {
+		const boundingBox: Aabb = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
 		};
@@ -375,7 +284,7 @@ pub const collision = struct {
 				var z: i32 = maxZ;
 				while(z >= minZ) : (z -= 1) {
 					const _block = if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
-					const totalBox: AABB = .{
+					const totalBox: Aabb = .{
 						.min = @floatFromInt(Vec3i{x, y, z}),
 						.max = @floatFromInt(Vec3i{x + 1, y + 1, z + 1}),
 					};
@@ -383,7 +292,7 @@ pub const collision = struct {
 					volumeSum += gridVolume;
 
 					if(_block) |block| {
-						const collisionBox: AABB = .{ // TODO: Check all AABBs individually
+						const collisionBox: Aabb = .{ // TODO: Check all Aabbs individually
 							.min = totalBox.min + main.blocks.meshes.model(block).model().min,
 							.max = totalBox.min + main.blocks.meshes.model(block).model().max,
 						};
@@ -413,7 +322,7 @@ pub const collision = struct {
 		};
 	}
 
-	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: AABB, steppingHeight: f64) Vec3d {
+	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Aabb, steppingHeight: f64) Vec3d {
 		const index = @intFromEnum(dir);
 
 		// First argument is amount we end up moving in dir, second argument is how far up we step
@@ -449,10 +358,10 @@ pub const collision = struct {
 	fn isBlockIntersecting(block: Block, posX: i32, posY: i32, posZ: i32, center: Vec3d, extent: Vec3d) bool {
 		const model = block.mode().model(block).model();
 		const position = Vec3d{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
-		const entityAABB = AABB{.min = center - extent, .max = center + extent};
-		for(model.collision) |relativeBlockAABB| {
-			const blockAABB = AABB{.min = position + relativeBlockAABB.min, .max = position + relativeBlockAABB.max};
-			if(blockAABB.intersects(entityAABB)) {
+		const entityAabb = Aabb{.min = center - extent, .max = center + extent};
+		for(model.collision) |relativeBlockAabb| {
+			const blockAabb = Aabb{.min = position + relativeBlockAabb.min, .max = position + relativeBlockAabb.max};
+			if(blockAabb.intersects(entityAabb)) {
 				return true;
 			}
 		}
@@ -460,8 +369,8 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: main.server.Entity, hitBox: AABB, side: main.utils.Side) void {
-		const boundingBox: AABB = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
+	pub fn touchBlocks(entity: main.server.Entity, hitBox: Aabb, side: main.utils.Side) void {
+		const boundingBox: Aabb = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
 		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + 0.01));
@@ -547,11 +456,11 @@ pub const Player = struct { // MARK: Player
 	var crouchPerc: f32 = 0;
 
 	var outerBoundingBoxExtent: Vec3d = standingBoundingBoxExtent;
-	pub var outerBoundingBox: collision.AABB = .{
+	pub var outerBoundingBox: collision.Aabb = .{
 		.min = -standingBoundingBoxExtent,
 		.max = standingBoundingBoxExtent,
 	};
-	var eyeBox: collision.AABB = .{
+	var eyeBox: collision.Aabb = .{
 		.min = -Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.6},
 		.max = Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
 	};

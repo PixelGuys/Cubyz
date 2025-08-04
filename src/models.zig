@@ -13,7 +13,7 @@ const Mat4f = vec.Mat4f;
 
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const AABB = main.game.collision.AABB;
+const Aabb = main.game.collision.Aabb;
 
 var quadSSBO: graphics.SSBO = undefined;
 
@@ -96,7 +96,7 @@ pub const Model = struct {
 	allNeighborsOccluded: bool,
 	noNeighborsOccluded: bool,
 	hasNeighborFacingQuads: bool,
-	collision: []AABB,
+	collision: []Aabb,
 
 	fn getFaceNeighbor(quad: *const QuadInfo) ?chunk.Neighbor {
 		var allZero: @Vector(3, bool) = .{true, true, true};
@@ -362,7 +362,7 @@ pub const Model = struct {
 			}
 		}
 
-		var collision: std.ArrayList(AABB) = .init(main.globalAllocator.allocator);
+		var collision: std.ArrayList(Aabb) = .init(main.globalAllocator.allocator);
 
 		for(0..meshGridSize) |x| {
 			for(0..meshGridSize) |y| {
@@ -384,7 +384,7 @@ pub const Model = struct {
 						const min = @as(Vec3f, @floatFromInt(boxMin))/@as(Vec3f, @splat(meshGridSize));
 						const max = @as(Vec3f, @floatFromInt(boxMax))/@as(Vec3f, @splat(meshGridSize));
 
-						collision.append(AABB{.min = min, .max = max}) catch unreachable;
+						collision.append(Aabb{.min = min, .max = max}) catch unreachable;
 					}
 				}
 			}
