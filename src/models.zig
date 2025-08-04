@@ -289,7 +289,11 @@ pub const Model = struct {
 				if(z >= meshGridSize) continue;
 				 
 				const pos: [3]usize = .{x, y, z};
-				grid[pos[X]][pos[Y]][pos[Z]] = true;
+				var realPos: [3]usize = undefined;
+				realPos[X] = pos[0];
+				realPos[Y] = pos[1];
+				realPos[Z] = pos[2];
+				grid[realPos[0]][realPos[1]][realPos[2]] = true;
 			}
 		}
 	}
