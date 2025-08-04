@@ -328,8 +328,8 @@ const ChunkManager = struct { // MARK: ChunkManager
 			generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
 		}
 		if(pos.voxelSize != 1) { // Generate LOD replacements
-			for(ch.super.data.palette[0..ch.super.data.paletteLength]) |*block| {
-				block.typ = block.lodReplacement();
+			for(ch.super.data.palette()) |*block| {
+				block.store(.{.typ = block.load(.unordered).lodReplacement(), .data = block.load(.unordered).data}, .unordered);
 			}
 		}
 		return ch;

@@ -269,7 +269,12 @@ pub const collision = struct {
 		return resultBox;
 	}
 
-	pub fn calculateFriction(comptime side: main.utils.Side, pos: Vec3d, hitBox: AABB, defaultFriction: f32) f32 {
+	const SurfaceProperties = struct {
+		friction: f32,
+		bounciness: f32,
+	};
+
+	pub fn calculateSurfaceProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: AABB, defaultFriction: f32) SurfaceProperties {
 		const boundingBox: AABB = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -282,6 +287,7 @@ pub const collision = struct {
 		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
 
 		var friction: f64 = 0;
+		var bounciness: f64 = 0;
 		var totalArea: f64 = 0;
 
 		var x = minX;
@@ -310,16 +316,24 @@ pub const collision = struct {
 					if(block.collide()) {
 						totalArea += area;
 						friction += area*@as(f64, @floatCast(block.friction()));
+						bounciness += area*@as(f64, @floatCast(block.bounciness()));
 					}
 				}
 			}
 		}
 
 		if(totalArea == 0) {
-			return defaultFriction;
+			friction = defaultFriction;
+			bounciness = 0.0;
+		} else {
+			friction = friction/totalArea;
+			bounciness = bounciness/totalArea;
 		}
 
-		return @floatCast(friction/totalArea);
+		return .{
+			.friction = @floatCast(friction),
+			.bounciness = @floatCast(bounciness),
+		};
 	}
 
 	const VolumeProperties = struct {
@@ -893,7 +907,6 @@ pub fn hyperSpeedToggle() void {
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const airTerminalVelocity = 90.0;
-	const airFrictionCoefficient = gravity/airTerminalVelocity; // λ = a/v in equillibrium
 	const playerDensity = 1.2;
 	var move: Vec3d = .{0, 0, 0};
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
@@ -905,7 +918,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc[2] = -effectiveGravity;
 		}
 
-		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
+		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
 		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
 		const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else volumeProperties.mobility;
 		const density = if(Player.isFlying.load(.monotonic)) 0.0 else volumeProperties.density;
@@ -977,7 +990,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						Player.eyeCoyote = 0;
 					}
 					Player.jumpCoyote = 0;
-				} else {
+				} else if(!KeyBoard.key("fall").pressed) {
 					movementSpeed = @max(movementSpeed, walkingSpeed);
 					movementDir[2] += walkingSpeed;
 				}
@@ -998,7 +1011,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] -= 5.5;
 					}
-				} else {
+				} else if(!KeyBoard.key("jump").pressed) {
 					movementSpeed = @max(movementSpeed, walkingSpeed);
 					movementDir[2] -= walkingSpeed;
 				}
@@ -1065,8 +1078,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
 			if(i == 2 and jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
-				Player.super.vel[i] = @sqrt(Player.jumpHeight*gravity*2);
-				frictionCoefficient = airFrictionCoefficient;
+				Player.super.vel[i] += @sqrt(Player.jumpHeight*gravity*2);
+				frictionCoefficient = volumeFrictionCoeffecient;
 			}
 			const v_0 = Player.super.vel[i];
 			const a = acc[i];
@@ -1248,13 +1261,25 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
+			var bounciness = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 0.0).bounciness;
+			if(KeyBoard.key("crouch").pressed) {
+				bounciness *= 0.5;
+			}
+			var velocityChange: f64 = undefined;
 
-			const damage: f32 = @floatCast(@round(@max((Player.super.vel[2]*Player.super.vel[2])/(2*gravity) - 7, 0))/2);
+			if(bounciness != 0.0 and Player.super.vel[2] < -3.0) {
+				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
+				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
+				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
+				Player.eyeVel[2] *= 2;
+			} else {
+				velocityChange = Player.super.vel[2];
+				Player.super.vel[2] = 0;
+			}
+			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
 			if(damage > 0.01) {
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 			}
-
-			Player.super.vel[2] = 0;
 
 			// Always unstuck upwards for now
 			while(collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
