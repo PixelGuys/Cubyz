@@ -65,13 +65,7 @@ pub const collision = struct {
 		}
 
 		pub fn intersects(self: AABB, other: AABB) bool {
-			var i: usize = 0;
-			while(i < 3) : (i += 1) {
-				if(self.max[i] < other.min[i] or self.min[i] > other.max[i]) {
-					return false;
-				}
-			}
-			return true;
+			return @reduce(.And, (self.max >= other.min)) and @reduce(.And, (self.min <= other.max));
 		}
 
 		pub fn join(self: AABB, other: AABB) AABB {
