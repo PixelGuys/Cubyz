@@ -226,9 +226,9 @@ pub const Model = struct {
 		var Y: usize = undefined;
 		var Z: usize = undefined;
 
-		const v0 = triangle[0];
-		const v1 = triangle[1];
-		const v2 = triangle[2];
+		const v0 = triangle[0] * @as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
+		const v1 = triangle[1] * @as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
+		const v2 = triangle[2] * @as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
 
 		const absNormal = Vec3f{@abs(normal[0]), @abs(normal[1]), @abs(normal[2])};
 		if(absNormal[0] >= absNormal[1] and absNormal[0] >= absNormal[2]) {
@@ -248,8 +248,8 @@ pub const Model = struct {
 		const min: Vec3f = @min(v0, v1, v2);
 		const max: Vec3f = @max(v0, v1, v2);
 
-		const voxelMin: Vec3i = @max(@as(Vec3i, @intFromFloat(@floor(min*@as(Vec3f, @splat(@floatFromInt(collisionGridSize)))))), @as(Vec3i, @splat(0)));
-		const voxelMax: Vec3i = @max(@as(Vec3i, @intFromFloat(@ceil(max*@as(Vec3f, @splat(@floatFromInt(collisionGridSize)))))), @as(Vec3i, @splat(0)));
+		const voxelMin: Vec3i = @max(@as(Vec3i, @intFromFloat(@floor(min))), @as(Vec3i, @splat(0)));
+		const voxelMax: Vec3i = @max(@as(Vec3i, @intFromFloat(@ceil(max))), @as(Vec3i, @splat(0)));
 
 		var p0 = Vec2f{v0[X], v0[Y]};
 		var p1 = Vec2f{v1[X], v1[Y]};
@@ -267,7 +267,7 @@ pub const Model = struct {
 
 		for(@intCast(voxelMin[Y])..@intCast(voxelMax[Y])) |y| {
 			if(y >= collisionGridSize) continue;
-			const yf = (@as(f32, @floatFromInt(y)) + 0.5)/@as(f32, @floatFromInt(collisionGridSize));
+			const yf = @as(f32, @floatFromInt(y)) + 0.5;
 			var xa: f32 = undefined;
 			var xb: f32 = undefined;
 			if(yf < p1[1]) {
@@ -281,16 +281,16 @@ pub const Model = struct {
 			const xStart: f32 = @min(xa, xb);
 			const xEnd: f32 = @max(xa, xb);
 
-			const voxelXStart: usize = @intFromFloat(@max(xStart*@as(f32, @floatFromInt(collisionGridSize)), 0.0));
-			const voxelXEnd: usize = @intFromFloat(@max(xEnd*@as(f32, @floatFromInt(collisionGridSize)), 0.0));
+			const voxelXStart: usize = @intFromFloat(@max(@floor(xStart), 0.0));
+			const voxelXEnd: usize = @intFromFloat(@max(@ceil(xEnd), 0.0));
 
 			for(voxelXStart..voxelXEnd) |x| {
 				if(x < 0 or x >= collisionGridSize) continue;
-				const xf = (@as(f32, @floatFromInt(x)) + 0.5)/@as(f32, @floatFromInt(collisionGridSize));
+				const xf = @as(f32, @floatFromInt(x)) + 0.5;
 
 				const zf = solveDepth(normal, v0, X, Y, Z, xf, yf);
 				if(zf < 0.0) continue;
-				const z: usize = @intFromFloat(zf*@as(f32, @floatFromInt(collisionGridSize)));
+				const z: usize = @intFromFloat(zf);
 
 				if(z >= collisionGridSize) continue;
 
