@@ -259,7 +259,7 @@ pub const Model = struct {
 			std.mem.swap(Vec2f, &p1, &p2);
 		}
 
-		for(@intCast(voxelMin[Y])..@intCast(voxelMax[Y]+1)) |y| {
+		for(@intCast(voxelMin[Y])..@intCast(voxelMax[Y])) |y| {
 			if(y >= meshGridSize) continue;
 			const yf = (@as(f32, @floatFromInt(y)) + 0.5)/@as(f32, @floatFromInt(meshGridSize));
 			var xa: f32 = undefined;
@@ -278,7 +278,7 @@ pub const Model = struct {
 			const voxelXStart: usize = @intFromFloat(@max(xStart*@as(f32, @floatFromInt(meshGridSize)), 0.0));
 			const voxelXEnd: usize = @intFromFloat(@max(xEnd*@as(f32, @floatFromInt(meshGridSize)), 0.0));
 
-			for(voxelXStart..voxelXEnd+1) |x| {
+			for(voxelXStart..voxelXEnd) |x| {
 				if(x < 0 or x >= meshGridSize) continue;
 				const xf = (@as(f32, @floatFromInt(x)) + 0.5)/@as(f32, @floatFromInt(meshGridSize));
 
