@@ -205,8 +205,8 @@ pub const Model = struct {
 	}
 
 	fn edgeInterp(y: f32, x0: f32, y0: f32, x1: f32, y1: f32) f32 {
-        if(y1 == y0) return x0;
-        return x0 + (x1 - x0)*(y - y0)/(y1 - y0);
+		if(y1 == y0) return x0;
+		return x0 + (x1 - x0)*(y - y0)/(y1 - y0);
 	}
 
 	fn solveDepth(normal: Vec3f, v0: Vec3f, X: usize, Y: usize, Z: usize, u: f32, v: f32) f32 {
@@ -214,7 +214,7 @@ pub const Model = struct {
 		const nY = normal[Y];
 		const nZ = normal[Z];
 
-		if (@abs(nZ) < 1e-6) return 0.0;
+		if(@abs(nZ) < 1e-6) return 0.0;
 
 		const D = -(nX*v0[X] + nY*v0[Y] + nZ*v0[Z]);
 
@@ -231,12 +231,18 @@ pub const Model = struct {
 		const v2 = triangle[2];
 
 		const absNormal = Vec3f{@abs(normal[0]), @abs(normal[1]), @abs(normal[2])};
-		if (absNormal[0] >= absNormal[1] and absNormal[0] >= absNormal[2]) {
-			X = 1; Y = 2; Z = 0;
-		} else if (absNormal[1] >= absNormal[0] and absNormal[1] >= absNormal[2]) {
-			X = 0; Y = 2; Z = 1;
+		if(absNormal[0] >= absNormal[1] and absNormal[0] >= absNormal[2]) {
+			X = 1;
+			Y = 2;
+			Z = 0;
+		} else if(absNormal[1] >= absNormal[0] and absNormal[1] >= absNormal[2]) {
+			X = 0;
+			Y = 2;
+			Z = 1;
 		} else {
-			X = 0; Y = 1; Z = 2;
+			X = 0;
+			Y = 1;
+			Z = 2;
 		}
 
 		const min: Vec3f = @min(v0, v1, v2);
@@ -245,17 +251,17 @@ pub const Model = struct {
 		const voxelMin: Vec3i = @max(@as(Vec3i, @intFromFloat(@floor(min*@as(Vec3f, @splat(@floatFromInt(meshGridSize)))))), @as(Vec3i, @splat(0)));
 		const voxelMax: Vec3i = @max(@as(Vec3i, @intFromFloat(@ceil(max*@as(Vec3f, @splat(@floatFromInt(meshGridSize)))))), @as(Vec3i, @splat(0)));
 
-		var p0 = Vec2f{ v0[X], v0[Y] };
-		var p1 = Vec2f{ v1[X], v1[Y] };
-		var p2 = Vec2f{ v2[X], v2[Y] };
+		var p0 = Vec2f{v0[X], v0[Y]};
+		var p1 = Vec2f{v1[X], v1[Y]};
+		var p2 = Vec2f{v2[X], v2[Y]};
 
-		if (p0[1] > p1[1]) {
+		if(p0[1] > p1[1]) {
 			std.mem.swap(Vec2f, &p0, &p1);
 		}
-		if (p0[1] > p2[1]) {
+		if(p0[1] > p2[1]) {
 			std.mem.swap(Vec2f, &p0, &p2);
 		}
-		if (p1[1] > p2[1]) {
+		if(p1[1] > p2[1]) {
 			std.mem.swap(Vec2f, &p1, &p2);
 		}
 
@@ -284,7 +290,7 @@ pub const Model = struct {
 
 				const zf = solveDepth(normal, v0, X, Y, Z, xf, yf);
 				if(zf < 0.0) continue;
-				const z: usize = @intFromFloat(zf * @as(f32, @floatFromInt(meshGridSize)));
+				const z: usize = @intFromFloat(zf*@as(f32, @floatFromInt(meshGridSize)));
 
 				if(z >= meshGridSize) continue;
 				 
