@@ -327,9 +327,7 @@ pub const Model = struct {
 
 		var grid: [collisionGridSize][collisionGridSize][collisionGridSize]bool = .{.{.{true} ** collisionGridSize} ** collisionGridSize} ** collisionGridSize;
 
-		const rawSize = 6*collisionGridSize*collisionGridSize - 12*collisionGridSize + 8;
-		const queueSize = std.math.ceilPowerOfTwo(usize, rawSize) catch unreachable;
-		var floodfillQueue = main.utils.CircularBufferQueue(Vec3i).init(main.stackAllocator, queueSize);
+		var floodfillQueue = main.utils.CircularBufferQueue(Vec3i).init(main.stackAllocator, 1024);
 		defer floodfillQueue.deinit();
 
 		for(0..collisionGridSize) |x| {
