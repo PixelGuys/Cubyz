@@ -226,9 +226,9 @@ pub const Model = struct {
 		var Y: usize = undefined;
 		var Z: usize = undefined;
 
-		const v0 = triangle[0] * @as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
-		const v1 = triangle[1] * @as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
-		const v2 = triangle[2] * @as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
+		const v0 = triangle[0]*@as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
+		const v1 = triangle[1]*@as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
+		const v2 = triangle[2]*@as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
 
 		const absNormal = Vec3f{@abs(normal[0]), @abs(normal[1]), @abs(normal[2])};
 		if(absNormal[0] >= absNormal[1] and absNormal[0] >= absNormal[2]) {
