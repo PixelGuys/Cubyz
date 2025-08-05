@@ -6,6 +6,7 @@ const chunk = main.chunk;
 const network = main.network;
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
+const InventoryId = main.items.Inventory.InventoryId;
 const utils = main.utils;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
@@ -113,9 +114,9 @@ pub const User = struct { // MARK: User
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
-	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
-	inventory: ?u32 = null,
-	handInventory: ?u32 = null,
+	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
+	inventory: ?InventoryId = null,
+	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
 

@@ -941,7 +941,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 	}
 
-	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) u32 {
+	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) main.items.Inventory.InventoryId {
 		const decodedSize = std.base64.url_safe.Decoder.calcSizeForSlice(base64EncodedData) catch |err| blk: {
 			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
 			break :blk 0;

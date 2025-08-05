@@ -23,14 +23,16 @@ const Gamemode = main.game.Gamemode;
 
 const Side = enum {client, server};
 
+pub const InventoryId = enum(u32) {_};
+
 pub const Sync = struct { // MARK: Sync
 
 	pub const ClientSide = struct {
 		pub var mutex: std.Thread.Mutex = .{};
 		var commands: main.utils.CircularBufferQueue(Command) = undefined;
-		var maxId: u32 = 0;
-		var freeIdList: main.List(u32) = undefined;
-		var serverToClientMap: std.AutoHashMap(u32, Inventory) = undefined;
+		var maxId: InventoryId = @enumFromInt(0);
+		var freeIdList: main.List(InventoryId) = undefined;
+		var serverToClientMap: std.AutoHashMap(InventoryId, Inventory) = undefined;
 
 		pub fn init() void {
 			commands = main.utils.CircularBufferQueue(Command).init(main.globalAllocator, 256);
@@ -54,7 +56,7 @@ pub const Sync = struct { // MARK: Sync
 				};
 			}
 			mutex.unlock();
-			std.debug.assert(freeIdList.items.len == maxId); // leak
+			std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
 		}
 
 		pub fn executeCommand(payload: Command.Payload) void {
@@ -71,32 +73,32 @@ pub const Sync = struct { // MARK: Sync
 			commands.pushBack(cmd);
 		}
 
-		fn nextId() u32 {
+		fn nextId() InventoryId {
 			mutex.lock();
 			defer mutex.unlock();
 			if(freeIdList.popOrNull()) |id| {
 				return id;
 			}
-			defer maxId += 1;
+			defer maxId = @enumFromInt(@intFromEnum(maxId) + 1);
 			return maxId;
 		}
 
-		fn freeId(id: u32) void {
+		fn freeId(id: InventoryId) void {
 			main.utils.assertLocked(&mutex);
 			freeIdList.append(id);
 		}
 
-		fn mapServerId(serverId: u32, inventory: Inventory) void {
+		fn mapServerId(serverId: InventoryId, inventory: Inventory) void {
 			main.utils.assertLocked(&mutex);
 			serverToClientMap.put(serverId, inventory) catch unreachable;
 		}
 
-		fn unmapServerId(serverId: u32, clientId: u32) void {
+		fn unmapServerId(serverId: InventoryId, clientId: InventoryId) void {
 			main.utils.assertLocked(&mutex);
 			std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 		}
 
-		fn getInventory(serverId: u32) ?Inventory {
+		fn getInventory(serverId: InventoryId) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			return serverToClientMap.get(serverId);
 		}
@@ -197,13 +199,13 @@ pub const Sync = struct { // MARK: Sync
 				self.managed = .internallyManaged;
 			}
 
-			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: u32) void {
+			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
 				main.utils.assertLocked(&mutex);
 				self.users.append(main.globalAllocator, user);
 				user.inventoryClientToServerIdMap.put(clientId, self.inv.id) catch unreachable;
 			}
 
-			fn removeUser(self: *ServerInventory, user: *main.server.User, clientId: u32) void {
+			fn removeUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
 				main.utils.assertLocked(&mutex);
 				_ = self.users.swapRemove(std.mem.indexOfScalar(*main.server.User, self.users.items, user).?);
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
@@ -219,8 +221,8 @@ pub const Sync = struct { // MARK: Sync
 		pub var mutex: std.Thread.Mutex = .{};
 
 		var inventories: main.List(ServerInventory) = undefined;
-		var maxId: u32 = 0;
-		var freeIdList: main.List(u32) = undefined;
+		var maxId: InventoryId = @enumFromInt(0);
+		var freeIdList: main.List(InventoryId) = undefined;
 
 		pub fn init() void {
 			inventories = .initCapacity(main.globalAllocator, 256);
@@ -228,10 +230,10 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn deinit() void {
-			std.debug.assert(freeIdList.items.len == maxId); // leak
+			std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
 			freeIdList.deinit();
 			inventories.deinit();
-			maxId = 0;
+			maxId = @enumFromInt(0);
 		}
 
 		pub fn disconnectUser(user: *main.server.User) void {
@@ -245,17 +247,17 @@ pub const Sync = struct { // MARK: Sync
 			}
 		}
 
-		fn nextId() u32 {
+		fn nextId() InventoryId {
 			main.utils.assertLocked(&mutex);
 			if(freeIdList.popOrNull()) |id| {
 				return id;
 			}
-			defer maxId += 1;
+			defer maxId = @enumFromInt(@intFromEnum(maxId) + 1);
 			_ = inventories.addOne();
 			return maxId;
 		}
 
-		fn freeId(id: u32) void {
+		fn freeId(id: InventoryId) void {
 			main.utils.assertLocked(&mutex);
 			freeIdList.append(id);
 		}
@@ -316,23 +318,23 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
-		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader) u32 {
+		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader) InventoryId {
 			mutex.lock();
 			defer mutex.unlock();
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
-			inventories.items[inventory.inv.id] = inventory;
+			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
 			inventory.inv.fromBytes(data);
 			return inventory.inv.id;
 		}
 
-		pub fn destroyExternallyManagedInventory(invId: u32) void {
+		pub fn destroyExternallyManagedInventory(invId: InventoryId) void {
 			mutex.lock();
 			defer mutex.unlock();
-			std.debug.assert(inventories.items[invId].managed == .externallyManaged);
-			inventories.items[invId].deinit();
+			std.debug.assert(inventories.items[@intFromEnum(invId)].managed == .externallyManaged);
+			inventories.items[@intFromEnum(invId)].deinit();
 		}
 
-		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) !void {
+		fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
 				.sharedTestingInventory, .recipe, .blockInventory, .playerInventory, .hand => {
@@ -357,8 +359,8 @@ pub const Sync = struct { // MARK: Sync
 			}
 			const inventory = ServerInventory.init(len, typ, source, .internallyManaged);
 
-			inventories.items[inventory.inv.id] = inventory;
-			inventories.items[inventory.inv.id].addUser(user, clientId);
+			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
+			inventories.items[@intFromEnum(inventory.inv.id)].addUser(user, clientId);
 
 			switch(source) {
 				.sharedTestingInventory => {},
@@ -378,16 +380,16 @@ pub const Sync = struct { // MARK: Sync
 			}
 		}
 
-		fn closeInventory(user: *main.server.User, clientId: u32) !void {
+		fn closeInventory(user: *main.server.User, clientId: InventoryId) !void {
 			main.utils.assertLocked(&mutex);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return error.Invalid;
-			inventories.items[serverId].removeUser(user, clientId);
+			inventories.items[@intFromEnum(serverId)].removeUser(user, clientId);
 		}
 
-		fn getInventory(user: *main.server.User, clientId: u32) ?Inventory {
+		fn getInventory(user: *main.server.User, clientId: InventoryId) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
-			return inventories.items[serverId].inv;
+			return inventories.items[@intFromEnum(serverId)].inv;
 		}
 
 		pub fn getInventoryFromSource(source: Source) ?Inventory {
@@ -405,8 +407,8 @@ pub const Sync = struct { // MARK: Sync
 			defer mutex.unlock();
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			while(inventoryIdIterator.next()) |inventoryId| {
-				if(inventories.items[inventoryId.*].source == .playerInventory) {
-					executeCommand(.{.clear = .{.inv = inventories.items[inventoryId.*].inv}}, null);
+				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
+					executeCommand(.{.clear = .{.inv = inventories.items[@intFromEnum(inventoryId.*)].inv}}, null);
 				}
 			}
 		}
@@ -417,8 +419,8 @@ pub const Sync = struct { // MARK: Sync
 			defer mutex.unlock();
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			outer: while(inventoryIdIterator.next()) |inventoryId| {
-				if(inventories.items[inventoryId.*].source == .playerInventory) {
-					const inv = inventories.items[inventoryId.*].inv;
+				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
+					const inv = inventories.items[@intFromEnum(inventoryId.*)].inv;
 					for(inv._items, 0..) |invStack, slot| {
 						if(std.meta.eql(invStack.item, itemStack.item)) {
 							const amount = @min(itemStack.item.?.stackSize() - invStack.amount, itemStack.amount);
@@ -448,15 +450,15 @@ pub const Sync = struct { // MARK: Sync
 		}
 	};
 
-	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, id: u32) void {
+	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
 		if(side == .client) {
-			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = id, .health = health, .cause = cause}});
+			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
 		} else {
-			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = id, .health = health, .cause = cause}}, null);
+			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
 		}
 	}
 
-	pub fn getInventory(id: u32, side: Side, user: ?*main.server.User) ?Inventory {
+	pub fn getInventory(id: InventoryId, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
 			.client => ClientSide.getInventory(id),
 			.server => ServerSide.getInventory(user.?, id),
@@ -519,12 +521,12 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn write(self: InventoryAndSlot, writer: *utils.BinaryWriter) void {
-			writer.writeInt(u32, self.inv.id);
+			writer.writeEnum(InventoryId, self.inv.id);
 			writer.writeInt(u32, self.slot);
 		}
 
 		fn read(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !InventoryAndSlot {
-			const id = try reader.readInt(u32);
+			const id = try reader.readEnum(InventoryId);
 			return .{
 				.inv = Sync.getInventory(id, side, user) orelse return error.Invalid,
 				.slot = try reader.readInt(u32),
@@ -658,7 +660,7 @@ pub const Command = struct { // MARK: Command
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch(self) {
 				inline .create, .delete, .useDurability => |data| {
-					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[data.inv.inv.id].users.items);
+					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[@intFromEnum(data.inv.inv.id)].users.items);
 				},
 				inline .health, .kill, .energy => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
@@ -1040,7 +1042,7 @@ pub const Command = struct { // MARK: Command
 				if(user) |_user| {
 					var it = _user.inventoryClientToServerIdMap.valueIterator();
 					while(it.next()) |serverId| {
-						const serverInventory = &Sync.ServerSide.inventories.items[serverId.*];
+						const serverInventory = &Sync.ServerSide.inventories.items[@intFromEnum(serverId.*)];
 						if(serverInventory.source == .playerInventory)
 							break :blk serverInventory.inv;
 					}
@@ -1098,19 +1100,19 @@ pub const Command = struct { // MARK: Command
 		fn finalize(self: Open, side: Side, reader: *utils.BinaryReader) !void {
 			if(side != .client) return;
 			if(reader.remaining.len != 0) {
-				const serverId = try reader.readInt(u32);
+				const serverId = try reader.readEnum(InventoryId);
 				Sync.ClientSide.mapServerId(serverId, self.inv);
 			}
 		}
 
 		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
 			var writer = utils.BinaryWriter.initCapacity(allocator, 4);
-			writer.writeInt(u32, self.inv.id);
+			writer.writeEnum(InventoryId, self.inv.id);
 			return writer.data.toOwnedSlice();
 		}
 
 		fn serialize(self: Open, writer: *utils.BinaryWriter) void {
-			writer.writeInt(u32, self.inv.id);
+			writer.writeEnum(InventoryId, self.inv.id);
 			writer.writeInt(usize, self.inv._items.len);
 			writer.writeEnum(TypeEnum, self.inv.type);
 			writer.writeEnum(SourceType, self.source);
@@ -1142,7 +1144,7 @@ pub const Command = struct { // MARK: Command
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !Open {
 			if(side != .server or user == null) return error.Invalid;
-			const id = try reader.readInt(u32);
+			const id = try reader.readEnum(InventoryId);
 			const len = try reader.readInt(u64);
 			const typeEnum = try reader.readEnum(TypeEnum);
 			const sourceType = try reader.readEnum(SourceType);
@@ -1198,18 +1200,18 @@ pub const Command = struct { // MARK: Command
 			if(side != .client) return;
 			self.inv._deinit(self.allocator, .client);
 			if(reader.remaining.len != 0) {
-				const serverId = try reader.readInt(u32);
+				const serverId = try reader.readEnum(InventoryId);
 				Sync.ClientSide.unmapServerId(serverId, self.inv.id);
 			}
 		}
 
 		fn serialize(self: Close, writer: *utils.BinaryWriter) void {
-			writer.writeInt(u32, self.inv.id);
+			writer.writeEnum(InventoryId, self.inv.id);
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !Close {
 			if(side != .server or user == null) return error.Invalid;
-			const id = try reader.readInt(u32);
+			const id = try reader.readEnum(InventoryId);
 			try Sync.ServerSide.closeInventory(user.?, id);
 			return undefined;
 		}
@@ -1542,13 +1544,13 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: DepositOrDrop, writer: *utils.BinaryWriter) void {
-			writer.writeInt(u32, self.dest.id);
-			writer.writeInt(u32, self.source.id);
+			writer.writeEnum(InventoryId, self.dest.id);
+			writer.writeEnum(InventoryId, self.source.id);
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DepositOrDrop {
-			const destId = try reader.readInt(u32);
-			const sourceId = try reader.readInt(u32);
+			const destId = try reader.readEnum(InventoryId);
+			const sourceId = try reader.readEnum(InventoryId);
 			return .{
 				.dest = Sync.getInventory(destId, side, user) orelse return error.Invalid,
 				.source = Sync.getInventory(sourceId, side, user) orelse return error.Invalid,
@@ -1575,11 +1577,11 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: Clear, writer: *utils.BinaryWriter) void {
-			writer.writeInt(u32, self.inv.id);
+			writer.writeEnum(InventoryId, self.inv.id);
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !Clear {
-			const invId = try reader.readInt(u32);
+			const invId = try reader.readEnum(InventoryId);
 			return .{
 				.inv = Sync.getInventory(invId, side, user) orelse return error.Invalid,
 			};
@@ -1852,7 +1854,7 @@ const Type = union(TypeEnum) {
 	}
 };
 type: Type,
-id: u32,
+id: InventoryId,
 _items: []ItemStack,
 
 pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source) Inventory {
