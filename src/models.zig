@@ -44,6 +44,8 @@ const ExtraQuadInfo = struct {
 
 const gridSize = 4096;
 const collisionGridSize = 16;
+const Ucollision = std.meta.Int(.unsigned, collisionGridSize);
+const UcollisionPlusOne = std.meta.Int(.unsigned, collisionGridSize+1);
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
@@ -325,7 +327,8 @@ pub const Model = struct {
 			rasterize(triangle2, &hollowGrid, quad.normalVec());
 		}
 
-		var grid: [collisionGridSize][collisionGridSize][collisionGridSize]bool = .{.{.{true} ** collisionGridSize} ** collisionGridSize} ** collisionGridSize;
+		const allOnes: Ucollision = @intCast((std.math.powi(UcollisionPlusOne, 2, collisionGridSize) catch unreachable)-1);
+		var grid: [collisionGridSize][collisionGridSize]Ucollision = .{.{allOnes} ** collisionGridSize} ** collisionGridSize;
 
 		var floodfillQueue = main.utils.CircularBufferQueue(Vec3i).init(main.stackAllocator, 1024);
 		defer floodfillQueue.deinit();
@@ -335,7 +338,7 @@ pub const Model = struct {
 				for(0..collisionGridSize) |z| {
 					if((x == 0 or x == collisionGridSize - 1 or y == 0 or y == collisionGridSize - 1 or z == 0 or z == collisionGridSize - 1) and !hollowGrid[x][y][z]) {
 						floodfillQueue.pushBack(.{@intCast(x), @intCast(y), @intCast(z)});
-						grid[x][y][z] = false;
+						grid[x][y] &= ~(@as(Ucollision, 1) << @intCast(z));
 					}
 				}
 			}
@@ -353,9 +356,9 @@ pub const Model = struct {
 				const y: usize = @intCast(newPos[1]);
 				const z: usize = @intCast(newPos[2]);
 
-				if(!grid[x][y][z]) continue;
+				if(grid[x][y] & (@as(Ucollision, 1) << @intCast(z)) == 0) continue;
 				if(hollowGrid[x][y][z]) continue;
-				grid[x][y][z] = false;
+				grid[x][y] &= ~(@as(Ucollision, 1) << @intCast(z));
 				floodfillQueue.pushBack(newPos);
 			}
 		}
@@ -365,7 +368,7 @@ pub const Model = struct {
 		for(0..collisionGridSize) |x| {
 			for(0..collisionGridSize) |y| {
 				for(0..collisionGridSize) |z| {
-					if(grid[x][y][z]) {
+					if(grid[x][y] & (@as(Ucollision, 1) << @intCast(z)) > 0) {
 						var boxMin = Vec3i{@intCast(x), @intCast(y), @intCast(z)};
 						var boxMax = Vec3i{@intCast(x + 1), @intCast(y + 1), @intCast(z + 1)};
 						for(Neighbor.iterable) |neighbor| {
@@ -392,32 +395,35 @@ pub const Model = struct {
 		self.collision = collision.items;
 	}
 
-	fn allTrue(grid: *const [collisionGridSize][collisionGridSize][collisionGridSize]bool, min: Vec3i, max: Vec3i) bool {
+	fn allTrue(grid: *const [collisionGridSize][collisionGridSize]Ucollision, min: Vec3i, max: Vec3i) bool {
 		if(max[0] > collisionGridSize or max[1] > collisionGridSize or max[2] > collisionGridSize or min[0] < 0 or min[1] < 0 or min[2] < 0) {
 			return false;
 		}
 		for(@intCast(min[0])..@intCast(max[0])) |x| {
 			for(@intCast(min[1])..@intCast(max[1])) |y| {
-				for(@intCast(min[2])..@intCast(max[2])) |z| {
-					if(!grid[x][y][z]) {
-						return false;
-					}
+				const mask = @as(Ucollision, @intCast((@as(UcollisionPlusOne, 1) << @intCast(max[2] - min[2])) - 1)) << @intCast(min[2]);
+				if((grid[x][y] & mask) != mask) {
+					return false;
 				}
 			}
 		}
 		return true;
 	}
 
-	fn setAll(grid: *[collisionGridSize][collisionGridSize][collisionGridSize]bool, min: Vec3i, max: Vec3i, value: bool) void {
+	fn setAll(grid: *[collisionGridSize][collisionGridSize]Ucollision, min: Vec3i, max: Vec3i, value: bool) void {
 		for(@intCast(min[0])..@intCast(max[0])) |x| {
 			for(@intCast(min[1])..@intCast(max[1])) |y| {
-				const row = grid[x][y][@intCast(min[2])..@intCast(max[2])];
-				@memset(row, value);
+				const mask = @as(Ucollision, @intCast((@as(UcollisionPlusOne, 1) << @intCast(max[2] - min[2])) - 1)) << @intCast(min[2]);
+				if(value) {
+					grid[x][y] |= mask;
+				} else {
+					grid[x][y] &= ~mask;
+				}
 			}
 		}
 	}
 
-	fn canExpand(grid: *const [collisionGridSize][collisionGridSize][collisionGridSize]bool, min: Vec3i, max: Vec3i, dir: Neighbor) bool {
+	fn canExpand(grid: *const [collisionGridSize][collisionGridSize]Ucollision, min: Vec3i, max: Vec3i, dir: Neighbor) bool {
 		return switch(dir) {
 			.dirUp => allTrue(grid, Vec3i{min[0], min[1], max[2]}, Vec3i{max[0], max[1], max[2] + 1}),
 			.dirDown => allTrue(grid, Vec3i{min[0], min[1], min[2] - 1}, Vec3i{max[0], max[1], min[2]}),
