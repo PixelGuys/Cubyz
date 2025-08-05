@@ -190,11 +190,8 @@ fn BlockEntityDataStorage(T: type) type {
 
 pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
-		const StorageServer = BlockEntityDataStorage(
-			struct {
-				id: ?u32,
-			},
-		);
+		const inventorySize = 20;
+		const StorageServer = BlockEntityDataStorage(main.items.Inventory.InventoryId);
 
 		pub const id = "chest";
 		pub fn init() void {
@@ -209,11 +206,20 @@ pub const BlockEntityTypes = struct {
 
 		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
-		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+
+			const data = StorageServer.getOrPut(pos, chunk);
+			std.debug.assert(!data.foundExisting);
+			data.valuePtr.* = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader);
+		}
+
+		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+			StorageServer.mutex.lock();
+			const inv = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			StorageServer.mutex.unlock();
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
 		}
 		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
@@ -230,7 +236,12 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
-		pub fn updateServerData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+			if(event == .remove) {
+				const inv = StorageServer.remove(pos, chunk) orelse return;
+				main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+			}
+		}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
