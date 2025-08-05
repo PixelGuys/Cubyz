@@ -364,6 +364,7 @@ pub const Sync = struct { // MARK: Sync
 
 			switch(source) {
 				.sharedTestingInventory => {},
+				.blockInventory => unreachable, // Should be loaded by the block entity
 				.playerInventory, .hand => unreachable, // Should be loaded on player creation
 				.recipe => |recipe| {
 					for(0..recipe.sourceAmounts.len) |i| {
@@ -373,8 +374,6 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
-				// TODO: Load block inventory data from save
-				.blockInventory => {},
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
