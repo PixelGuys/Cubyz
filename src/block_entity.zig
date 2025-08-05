@@ -256,7 +256,7 @@ pub const BlockEntityTypes = struct {
 			switch(event) {
 				.remove => {
 					const chest = StorageServer.remove(pos, chunk) orelse return;
-					main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(chest.invId);
+					main.items.Inventory.Sync.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
 				},
 				.update => |_| {
 					StorageServer.mutex.lock();

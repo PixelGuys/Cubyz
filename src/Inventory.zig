@@ -334,6 +334,23 @@ pub const Sync = struct { // MARK: Sync
 			inventories.items[@intFromEnum(invId)].deinit();
 		}
 
+		pub fn destroyAndDropExternallyManagedInventory(invId: InventoryId, pos: Vec3i) void {
+			main.utils.assertLocked(&mutex);
+			std.debug.assert(inventories.items[@intFromEnum(invId)].managed == .externallyManaged);
+			const inv = &inventories.items[@intFromEnum(invId)];
+			for(inv.inv._items) |*itemStack| {
+				if(itemStack.amount == 0) continue;
+				main.server.world.?.drop(
+					itemStack.*,
+					@as(Vec3d, @floatFromInt(pos)) + main.random.nextDoubleVector(3, &main.seed),
+					main.random.nextFloatVectorSigned(3, &main.seed),
+					0.1,
+				);
+				itemStack.* = .{};
+			}
+			inv.deinit();
+		}
+
 		fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
