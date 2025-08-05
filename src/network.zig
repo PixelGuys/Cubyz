@@ -1301,7 +1301,7 @@ pub const Protocols = struct {
 			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
 			if(block.typ != blockType) return;
 			const blockEntity = block.blockEntity() orelse return;
-			try blockEntity.updateServerData(pos, &ch.super, .{.createOrUpdate = reader});
+			try blockEntity.updateServerData(pos, &ch.super, .{.update = reader});
 			ch.setChanged();
 
 			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);

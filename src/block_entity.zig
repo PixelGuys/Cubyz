@@ -22,7 +22,7 @@ pub const BlockEntityIndex = main.utils.DenseId(u32);
 
 const UpdateEvent = union(enum) {
 	remove: void,
-	createOrUpdate: *BinaryReader,
+	update: *BinaryReader,
 };
 
 pub const BlockEntityType = struct {
@@ -341,10 +341,10 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
-			return updateClientData(pos, chunk, .{.createOrUpdate = reader});
+			return updateClientData(pos, chunk, .{.update = reader});
 		}
 		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
+			if(event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageClient.remove(pos, chunk) orelse return;
 				entry.deinit();
 				return;
@@ -361,15 +361,15 @@ pub const BlockEntityTypes = struct {
 				.blockPos = pos,
 				.block = chunk.data.getValue(chunk.getLocalBlockIndex(pos)),
 				.renderedTexture = null,
-				.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining),
+				.text = main.globalAllocator.dupe(u8, event.update.remaining),
 			};
 		}
 
 		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
-			return updateServerData(pos, chunk, .{.createOrUpdate = reader});
+			return updateServerData(pos, chunk, .{.update = reader});
 		}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
+			if(event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageServer.remove(pos, chunk) orelse return;
 				main.globalAllocator.free(entry.text);
 				return;
@@ -380,7 +380,7 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
-			data.valuePtr.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining);
+			data.valuePtr.text = main.globalAllocator.dupe(u8, event.update.remaining);
 		}
 
 		pub const onStoreServerToClient = onStoreServerToDisk;
