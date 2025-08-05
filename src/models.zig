@@ -45,7 +45,7 @@ const ExtraQuadInfo = struct {
 const gridSize = 4096;
 const collisionGridSize = 16;
 const Ucollision = std.meta.Int(.unsigned, collisionGridSize);
-const UcollisionPlusOne = std.meta.Int(.unsigned, collisionGridSize+1);
+const UcollisionPlusOne = std.meta.Int(.unsigned, collisionGridSize + 1);
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
@@ -327,7 +327,7 @@ pub const Model = struct {
 			rasterize(triangle2, &hollowGrid, quad.normalVec());
 		}
 
-		const allOnes: Ucollision = @intCast((std.math.powi(UcollisionPlusOne, 2, collisionGridSize) catch unreachable)-1);
+		const allOnes: Ucollision = @intCast((std.math.powi(UcollisionPlusOne, 2, collisionGridSize) catch unreachable) - 1);
 		var grid: [collisionGridSize][collisionGridSize]Ucollision = .{.{allOnes} ** collisionGridSize} ** collisionGridSize;
 
 		var floodfillQueue = main.utils.CircularBufferQueue(Vec3i).init(main.stackAllocator, 1024);
