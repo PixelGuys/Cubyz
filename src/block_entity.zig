@@ -191,7 +191,9 @@ fn BlockEntityDataStorage(T: type) type {
 pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
 		const inventorySize = 20;
-		const StorageServer = BlockEntityDataStorage(main.items.Inventory.InventoryId);
+		const StorageServer = BlockEntityDataStorage(struct {
+			invId: main.items.Inventory.InventoryId,
+		});
 
 		pub const id = "chest";
 		pub fn init() void {
@@ -212,19 +214,21 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			std.debug.assert(!data.foundExisting);
-			data.valuePtr.* = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader);
+			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader);
 		}
 
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
-			const inv = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			const data = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 			StorageServer.mutex.unlock();
-			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.invId);
 		}
 		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
+
+			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 
 			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .normal, .{.blockInventory = pos});
 
@@ -237,9 +241,19 @@ pub const BlockEntityTypes = struct {
 
 		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove) {
-				const inv = StorageServer.remove(pos, chunk) orelse return;
-				main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+			switch(event) {
+				.remove => {
+					const chest = StorageServer.remove(pos, chunk) orelse return;
+					main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(chest.invId);
+				},
+				.update => |_| {
+					StorageServer.mutex.lock();
+					defer StorageServer.mutex.unlock();
+					const data = StorageServer.getOrPut(pos, chunk);
+					if(data.foundExisting) return;
+					var reader = BinaryReader.init(&.{});
+					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader);
+				},
 			}
 		}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
