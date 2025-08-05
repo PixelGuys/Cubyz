@@ -223,7 +223,19 @@ pub const BlockEntityTypes = struct {
 			StorageServer.mutex.unlock();
 			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.invId);
 		}
-		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
+		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const data = StorageServer.getByIndex(dataIndex) orelse return;
+
+			const inv = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.invId);
+			var isEmpty: bool = true;
+			for(inv._items) |item| {
+				if(item.amount != 0) isEmpty = false;
+			}
+			if(isEmpty) return;
+			inv.toBytes(writer);
+		}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;

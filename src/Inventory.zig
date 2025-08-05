@@ -402,6 +402,10 @@ pub const Sync = struct { // MARK: Sync
 			return null;
 		}
 
+		pub fn getInventoryFromId(serverId: InventoryId) Inventory {
+			return inventories.items[@intFromEnum(serverId)].inv;
+		}
+
 		pub fn clearPlayerInventory(user: *main.server.User) void {
 			mutex.lock();
 			defer mutex.unlock();
