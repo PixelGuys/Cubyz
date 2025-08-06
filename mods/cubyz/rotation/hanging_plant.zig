@@ -12,6 +12,8 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
+pub const dependsOnNeighbors = true;
+
 fn transform(quad: *main.models.QuadInfo, data: u16) void {
 	quad.textureSlot = data%2;
 }
@@ -33,11 +35,14 @@ pub fn model(block: Block) ModelIndex {
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool {
+    const sameBlock = neighborBlock.typ == currentData.typ;
 	if(blockPlacing) {
         if(neighbor != Neighbor.dirUp) return false;
-	    const neighborModel = neighborBlock.mode().model(neighborBlock).model();
-        const support = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[Neighbor.dirDown.toInt()].len != 0;
-        if(!(currentData.typ == neighborBlock.typ || support)) return false;
+        if(!sameBlock) {
+	        const neighborModel = neighborBlock.mode().model(neighborBlock).model();
+            const support = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[Neighbor.dirDown.toInt()].len != 0;
+            if(!support) return false;
+        }
         currentData.data = 1;
 		return true;
 	}
