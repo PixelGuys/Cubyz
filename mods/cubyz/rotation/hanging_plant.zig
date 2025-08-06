@@ -31,3 +31,25 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 pub fn model(block: Block) ModelIndex {
 	return blocks.meshes.modelIndexStart(block).add(block.data % 2);
 }
+
+pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool {
+	if(blockPlacing) {
+        if(neighbor != Neighbor.dirUp) return false;
+	    const neighborModel = neighborBlock.mode().model(neighborBlock).model();
+        const support = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[Neighbor.dirDown.toInt()].len != 0;
+        if(!(currentData.typ == neighborBlock.typ || support)) return false;
+        currentData.data = 1;
+		return true;
+	}
+	return false;
+}
+
+pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
+    if(neighbor != .dirDown) return false;
+
+    const newData: u16 = if(neighborBlock.typ == block.typ) 0 else 1;
+
+    if(newData == block.data) return false;
+    block.data = newData;
+    return true;
+}
