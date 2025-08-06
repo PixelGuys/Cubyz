@@ -1243,7 +1243,10 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			if(conn.user) |user| {
 				if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-				try items.Inventory.Sync.ServerSide.receiveCommand(user, reader);
+				items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
+					if(err != error.InventoryNotFound) return err;
+					sendFailure(conn);
+				};
 			} else {
 				const typ = try reader.readInt(u8);
 				if(typ == 0xff) { // Confirmation

@@ -412,7 +412,7 @@ pub const Sync = struct { // MARK: Sync
 
 		fn closeInventory(user: *main.server.User, clientId: InventoryId) !void {
 			main.utils.assertLocked(&mutex);
-			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return error.Invalid;
+			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return error.InventoryNotFound;
 			inventories.items[@intFromEnum(serverId)].removeUser(user, clientId);
 		}
 
@@ -562,7 +562,7 @@ pub const Command = struct { // MARK: Command
 		fn read(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !InventoryAndSlot {
 			const id = try reader.readEnum(InventoryId);
 			return .{
-				.inv = Sync.getInventory(id, side, user) orelse return error.Invalid,
+				.inv = Sync.getInventory(id, side, user) orelse return error.InventoryNotFound,
 				.slot = try reader.readInt(u32),
 			};
 		}
@@ -1223,7 +1223,7 @@ pub const Command = struct { // MARK: Command
 			};
 			try Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
-				.inv = Sync.ServerSide.getInventory(user.?, id) orelse return error.Invalid,
+				.inv = Sync.ServerSide.getInventory(user.?, id) orelse return error.InventoryNotFound,
 				.source = source,
 			};
 		}
@@ -1593,8 +1593,8 @@ pub const Command = struct { // MARK: Command
 			const destId = try reader.readEnum(InventoryId);
 			const sourceId = try reader.readEnum(InventoryId);
 			return .{
-				.dest = Sync.getInventory(destId, side, user) orelse return error.Invalid,
-				.source = Sync.getInventory(sourceId, side, user) orelse return error.Invalid,
+				.dest = Sync.getInventory(destId, side, user) orelse return error.InventoryNotFound,
+				.source = Sync.getInventory(sourceId, side, user) orelse return error.InventoryNotFound,
 			};
 		}
 	};
@@ -1624,7 +1624,7 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !Clear {
 			const invId = try reader.readEnum(InventoryId);
 			return .{
-				.inv = Sync.getInventory(invId, side, user) orelse return error.Invalid,
+				.inv = Sync.getInventory(invId, side, user) orelse return error.InventoryNotFound,
 			};
 		}
 	};
