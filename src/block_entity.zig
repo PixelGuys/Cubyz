@@ -206,6 +206,16 @@ pub const BlockEntityTypes = struct {
 			StorageServer.reset();
 		}
 
+		fn onInventoryUpdateCallback(source: main.items.Inventory.Source) void {
+			const pos = source.blockInventory;
+			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			defer simChunk.decreaseRefCount();
+			const ch = simChunk.getChunk() orelse return;
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			ch.setChanged();
+		}
+
 		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
 		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
@@ -214,7 +224,7 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			std.debug.assert(!data.foundExisting);
-			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader);
+			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, &onInventoryUpdateCallback);
 		}
 
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
@@ -242,7 +252,7 @@ pub const BlockEntityTypes = struct {
 
 			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 
-			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos});
+			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, null);
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
@@ -264,7 +274,7 @@ pub const BlockEntityTypes = struct {
 					const data = StorageServer.getOrPut(pos, chunk);
 					if(data.foundExisting) return;
 					var reader = BinaryReader.init(&.{});
-					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader);
+					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, &onInventoryUpdateCallback);
 				},
 			}
 		}

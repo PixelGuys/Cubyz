@@ -179,10 +179,10 @@ pub const Sync = struct { // MARK: Sync
 
 			const Managed = enum {internallyManaged, externallyManaged};
 
-			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed) ServerInventory {
+			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed, onUpdateCallback: ?*const fn(Source) void) ServerInventory {
 				main.utils.assertLocked(&mutex);
 				return .{
-					.inv = Inventory._init(main.globalAllocator, len, typ, .server),
+					.inv = Inventory._init(main.globalAllocator, len, typ, source, .server, onUpdateCallback),
 					.users = .{},
 					.source = source,
 					.managed = managed,
@@ -230,6 +230,11 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn deinit() void {
+			for(inventories.items) |inv| {
+				if(inv.source != .alreadyFreed) {
+					std.log.err("Leaked inventory with source {}", .{inv.source});
+				}
+			}
 			std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
 			freeIdList.deinit();
 			inventories.deinit();
@@ -318,10 +323,10 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
-		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader) InventoryId {
+		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, onUpdateCallback: ?*const fn(Source) void) InventoryId {
 			mutex.lock();
 			defer mutex.unlock();
-			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
+			const inventory = ServerInventory.init(len, typ, source, .externallyManaged, onUpdateCallback);
 			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
 			inventory.inv.fromBytes(data);
 			return inventory.inv.id;
@@ -374,7 +379,7 @@ pub const Sync = struct { // MARK: Sync
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
-			const inventory = ServerInventory.init(len, typ, source, .internallyManaged);
+			const inventory = ServerInventory.init(len, typ, source, .internallyManaged, null);
 
 			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
 			inventories.items[@intFromEnum(inventory.inv.id)].addUser(user, clientId);
@@ -1422,6 +1427,8 @@ pub const Command = struct { // MARK: Command
 					.type = .normal,
 					._items = &_items,
 					.id = undefined,
+					.source = undefined,
+					.onUpdateCallback = null,
 				};
 				cmd.tryCraftingTo(allocator, .{.inv = temp, .slot = 0}, self.source, side, user);
 				std.debug.assert(cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
@@ -1876,14 +1883,16 @@ const Type = union(TypeEnum) {
 type: Type,
 id: InventoryId,
 _items: []ItemStack,
+source: Source,
+onUpdateCallback: ?*const fn(Source) void,
 
-pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source) Inventory {
-	const self = _init(allocator, _size, _type, .client);
+pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, onUpdateCallback: ?*const fn(Source) void) Inventory {
+	const self = _init(allocator, _size, _type, source, .client, onUpdateCallback);
 	Sync.ClientSide.executeCommand(.{.open = .{.inv = self, .source = source}});
 	return self;
 }
 
-fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, side: Side) Inventory {
+fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, side: Side, onUpdateCallback: ?*const fn(Source) void) Inventory {
 	if(_type == .workbench) std.debug.assert(_size == 26);
 	const self = Inventory{
 		.type = _type,
@@ -1892,6 +1901,8 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, side: Side
 			.client => Sync.ClientSide.nextId(),
 			.server => Sync.ServerSide.nextId(),
 		},
+		.source = source,
+		.onUpdateCallback = onUpdateCallback,
 	};
 	for(self._items) |*item| {
 		item.* = ItemStack{};
@@ -1921,6 +1932,7 @@ fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: Side) void {
 }
 
 fn update(self: Inventory) void {
+	defer if(self.onUpdateCallback) |cb| cb(self.source);
 	if(self.type == .workbench) {
 		self._items[self._items.len - 1].deinit();
 		self._items[self._items.len - 1].clear();
