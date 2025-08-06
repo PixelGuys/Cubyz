@@ -173,7 +173,7 @@ pub const Sync = struct { // MARK: Sync
 	pub const ServerSide = struct { // MARK: ServerSide
 		const ServerInventory = struct {
 			inv: Inventory,
-			users: main.ListUnmanaged(*main.server.User),
+			users: main.ListUnmanaged(struct{user: *main.server.User, cliendId: InventoryId}),
 			source: Source,
 			managed: Managed,
 
@@ -191,6 +191,9 @@ pub const Sync = struct { // MARK: Sync
 
 			fn deinit(self: *ServerInventory) void {
 				main.utils.assertLocked(&mutex);
+				while(self.users.items.len != 0) {
+					self.removeUser(self.users.items[0].user, self.users.items[0].cliendId);
+				}
 				std.debug.assert(self.users.items.len == 0);
 				self.users.deinit(main.globalAllocator);
 				self.inv._deinit(main.globalAllocator, .server);
@@ -201,13 +204,20 @@ pub const Sync = struct { // MARK: Sync
 
 			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
 				main.utils.assertLocked(&mutex);
-				self.users.append(main.globalAllocator, user);
+				self.users.append(main.globalAllocator, .{.user = user, .cliendId = clientId});
 				user.inventoryClientToServerIdMap.put(clientId, self.inv.id) catch unreachable;
 			}
 
 			fn removeUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
 				main.utils.assertLocked(&mutex);
-				_ = self.users.swapRemove(std.mem.indexOfScalar(*main.server.User, self.users.items, user).?);
+				var index: usize = undefined;
+				for(self.users.items, 0..) |userData, i| {
+					if(userData.user == user) {
+						index = i;
+						break;
+					}
+				}
+				_ = self.users.swapRemove(index);
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
 				if(self.users.items.len == 0 and self.managed == .internallyManaged) {
 					if(self.inv.type.shouldDepositToUserOnClose()) {
@@ -685,7 +695,12 @@ pub const Command = struct { // MARK: Command
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch(self) {
 				inline .create, .delete, .useDurability => |data| {
-					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[@intFromEnum(data.inv.inv.id)].users.items);
+					const users = Sync.ServerSide.inventories.items[@intFromEnum(data.inv.inv.id)].users.items;
+					const result = allocator.alloc(*main.server.User, users.len);
+					for(0..users.len) |i| {
+						result[i] = users[i].user;
+					}
+					return result;
 				},
 				inline .health, .kill, .energy => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
