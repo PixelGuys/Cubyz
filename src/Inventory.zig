@@ -194,7 +194,6 @@ pub const Sync = struct { // MARK: Sync
 				while(self.users.items.len != 0) {
 					self.removeUser(self.users.items[0].user, self.users.items[0].cliendId);
 				}
-				std.debug.assert(self.users.items.len == 0);
 				self.users.deinit(main.globalAllocator);
 				self.inv._deinit(main.globalAllocator, .server);
 				self.inv._items.len = 0;
