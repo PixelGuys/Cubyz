@@ -1243,7 +1243,10 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			if(conn.user) |user| {
 				if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-				try items.Inventory.Sync.ServerSide.receiveCommand(user, reader);
+				items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
+					if(err != error.InventoryNotFound) return err;
+					sendFailure(conn);
+				};
 			} else {
 				const typ = try reader.readInt(u8);
 				if(typ == 0xff) { // Confirmation
@@ -1301,7 +1304,7 @@ pub const Protocols = struct {
 			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
 			if(block.typ != blockType) return;
 			const blockEntity = block.blockEntity() orelse return;
-			try blockEntity.updateServerData(pos, &ch.super, .{.createOrUpdate = reader});
+			try blockEntity.updateServerData(pos, &ch.super, .{.update = reader});
 			ch.setChanged();
 
 			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);

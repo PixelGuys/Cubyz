@@ -22,7 +22,7 @@ pub const BlockEntityIndex = main.utils.DenseId(u32);
 
 const UpdateEvent = union(enum) {
 	remove: void,
-	createOrUpdate: *BinaryReader,
+	update: *BinaryReader,
 };
 
 pub const BlockEntityType = struct {
@@ -190,11 +190,10 @@ fn BlockEntityDataStorage(T: type) type {
 
 pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
-		const StorageServer = BlockEntityDataStorage(
-			struct {
-				id: ?u32,
-			},
-		);
+		const inventorySize = 20;
+		const StorageServer = BlockEntityDataStorage(struct {
+			invId: main.items.Inventory.InventoryId,
+		});
 
 		pub const id = "chest";
 		pub fn init() void {
@@ -207,20 +206,53 @@ pub const BlockEntityTypes = struct {
 			StorageServer.reset();
 		}
 
+		fn onInventoryUpdateCallback(source: main.items.Inventory.Source) void {
+			const pos = source.blockInventory;
+			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			defer simChunk.decreaseRefCount();
+			const ch = simChunk.getChunk() orelse return;
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			ch.setChanged();
+		}
+
 		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
-		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+
+			const data = StorageServer.getOrPut(pos, chunk);
+			std.debug.assert(!data.foundExisting);
+			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, &onInventoryUpdateCallback);
 		}
-		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
+
+		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+			StorageServer.mutex.lock();
+			const data = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			StorageServer.mutex.unlock();
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.invId);
+		}
+		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const data = StorageServer.getByIndex(dataIndex) orelse return;
+
+			const inv = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.invId);
+			var isEmpty: bool = true;
+			for(inv._items) |item| {
+				if(item.amount != 0) isEmpty = false;
+			}
+			if(isEmpty) return;
+			inv.toBytes(writer);
+		}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
-			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .normal, .{.blockInventory = pos});
+			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+
+			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, null);
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
@@ -230,7 +262,22 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
-		pub fn updateServerData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+			switch(event) {
+				.remove => {
+					const chest = StorageServer.remove(pos, chunk) orelse return;
+					main.items.Inventory.Sync.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
+				},
+				.update => |_| {
+					StorageServer.mutex.lock();
+					defer StorageServer.mutex.unlock();
+					const data = StorageServer.getOrPut(pos, chunk);
+					if(data.foundExisting) return;
+					var reader = BinaryReader.init(&.{});
+					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, &onInventoryUpdateCallback);
+				},
+			}
+		}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
@@ -330,10 +377,10 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
-			return updateClientData(pos, chunk, .{.createOrUpdate = reader});
+			return updateClientData(pos, chunk, .{.update = reader});
 		}
 		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
+			if(event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageClient.remove(pos, chunk) orelse return;
 				entry.deinit();
 				return;
@@ -350,15 +397,15 @@ pub const BlockEntityTypes = struct {
 				.blockPos = pos,
 				.block = chunk.data.getValue(chunk.getLocalBlockIndex(pos)),
 				.renderedTexture = null,
-				.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining),
+				.text = main.globalAllocator.dupe(u8, event.update.remaining),
 			};
 		}
 
 		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
-			return updateServerData(pos, chunk, .{.createOrUpdate = reader});
+			return updateServerData(pos, chunk, .{.update = reader});
 		}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
+			if(event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageServer.remove(pos, chunk) orelse return;
 				main.globalAllocator.free(entry.text);
 				return;
@@ -369,7 +416,7 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
-			data.valuePtr.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining);
+			data.valuePtr.text = main.globalAllocator.dupe(u8, event.update.remaining);
 		}
 
 		pub const onStoreServerToClient = onStoreServerToDisk;
