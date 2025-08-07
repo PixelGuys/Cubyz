@@ -329,7 +329,7 @@ pub const Model = struct {
 		const allOnes = ~@as(CollisionGridInteger, 0);
 		var grid: [collisionGridSize][collisionGridSize]CollisionGridInteger = @splat(@splat(allOnes));
 
-		var floodfillQueue = main.utils.CircularBufferQueue(struct{x: usize, y: usize, val: CollisionGridInteger}).init(main.stackAllocator, 1024);
+		var floodfillQueue = main.utils.CircularBufferQueue(struct {x: usize, y: usize, val: CollisionGridInteger}).init(main.stackAllocator, 1024);
 		defer floodfillQueue.deinit();
 
 		for(0..collisionGridSize) |x| {
