@@ -1937,7 +1937,6 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				self.finalFree(allocation);
 				if(std.time.milliTimestamp() -% startTime > 5) break; // TODO: Remove after #1434
 			}
-			self.fencedFreeLists[self.activeFence].clearRetainingCapacity();
 			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 		}
 
