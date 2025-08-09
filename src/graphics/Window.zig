@@ -10,7 +10,8 @@ const Vec2f = vec.Vec2f;
 const vulkan = @import("vulkan.zig");
 
 pub const c = @cImport({
-	@cInclude("glad/glad.h");
+	@cInclude("glad/gl.h");
+	@cInclude("glad/vulkan.h");
 	@cDefine("GLFW_INCLUDE_VULKAN", "");
 	@cInclude("GLFW/glfw3.h");
 });
@@ -645,9 +646,9 @@ pub fn init() void { // MARK: init()
 
 	if(c.glfwVulkanSupported() == c.GLFW_FALSE) {
 		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
+	} else {
+		vulkan.Instance.init();
 	}
-
-	vulkan.Instance.init();
 
 	c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -677,7 +678,7 @@ pub fn init() void { // MARK: init()
 
 	c.glfwMakeContextCurrent(window);
 
-	if(c.gladLoadGL() == 0) {
+	if(c.gladLoadGL(c.glfwGetProcAddress) == 0) {
 		@panic("Failed to load OpenGL functions from GLAD");
 	}
 	reloadSettings();

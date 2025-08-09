@@ -69,7 +69,7 @@ const Errors = struct { // MARK: Errors
 fn checkResult(result: c.VkResult) void {
 	if(result != c.VK_SUCCESS) {
 		inline for(@typeInfo(Errors).@"struct".decls) |decl| {
-			if(result == @field(c, decl.name)) {
+			if(@hasDecl(c, decl.name) and result == @field(c, decl.name)) {
 				std.log.err("Encountered a vulkan error: {s}", .{decl.name});
 				return;
 			}
@@ -116,13 +116,16 @@ pub const Instance = struct { // MARK: Instance
 	}
 
 	pub fn init() void {
+		if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 		const appInfo = c.VkApplicationInfo {
 			.sType = c.VK_STRUCTURE_TYPE_APPLICATION_INFO,
 			.pApplicationName = "Cubyz",
 			.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
 			.pEngineName = "custom",
 			.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-			.apiVersion = c.VK_API_VERSION_1_3,
+			.apiVersion = c.VK_API_VERSION_1_0,
 		};
 		var glfwExtensionCount: u32 = 0;
 		const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
