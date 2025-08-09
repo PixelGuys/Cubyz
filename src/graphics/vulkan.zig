@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const c = main.Window.c;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const Errors = struct { // MARK: Errors
 	pub const VK_SUCCESS: c_int = 0;
@@ -84,13 +85,21 @@ fn fakeCheckResult(result: anytype) void {
 	}
 }
 
-fn allocEnumeration(function: anytype, allocator: main.heap.NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child {
+fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child {
 	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child;
 	var count: u32 = 0;
 	fakeCheckResult(@call(.auto, function, args ++ .{&count, null}));
 	const list = allocator.alloc(T, count);
 	fakeCheckResult(@call(.auto, function, args ++ .{&count, list.ptr}));
 	return list;
+}
+
+pub fn enumerateInstanceLayerProperties(allocator: NeverFailingAllocator) []c.VkLayerProperties {
+	return allocEnumerationGeneric(c.vkEnumerateInstanceLayerProperties, allocator, .{});
+}
+
+pub fn enumerateInstanceExtensionProperties(allocator: NeverFailingAllocator, layerName: ?[*:0]u8) []c.VkExtensionProperties {
+	return allocEnumerationGeneric(c.vkEnumerateInstanceExtensionProperties, allocator, .{layerName});
 }
 
 pub const Instance = struct { // MARK: Instance
@@ -101,7 +110,7 @@ pub const Instance = struct { // MARK: Instance
 	};
 
 	fn checkValidationLayerSupport() bool {
-		const availableLayers: []c.VkLayerProperties = allocEnumeration(c.vkEnumerateInstanceLayerProperties, main.stackAllocator, .{});
+		const availableLayers = enumerateInstanceLayerProperties(main.stackAllocator);
 		defer main.stackAllocator.free(availableLayers);
 		for(validationLayers) |layerName| continueOuter: {
 			for(availableLayers) |layerProperties| {
@@ -130,7 +139,7 @@ pub const Instance = struct { // MARK: Instance
 		var glfwExtensionCount: u32 = 0;
 		const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-		const availableExtensions: []c.VkExtensionProperties = allocEnumeration(c.vkEnumerateInstanceExtensionProperties, main.stackAllocator, .{null});
+		const availableExtensions = enumerateInstanceExtensionProperties(main.stackAllocator, null);
 		defer main.stackAllocator.free(availableExtensions);
 		std.log.debug("Availabe vulkan instance extensions:", .{});
 		for(availableExtensions) |ext| {
