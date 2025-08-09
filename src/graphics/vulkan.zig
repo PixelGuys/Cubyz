@@ -67,7 +67,7 @@ const Errors = struct { // MARK: Errors
 	pub const VK_RESULT_MAX_ENUM: c_int = 2147483647;
 };
 
-fn checkResult(result: c.VkResult) void {
+pub fn checkResult(result: c.VkResult) void {
 	if(result != c.VK_SUCCESS) {
 		inline for(@typeInfo(Errors).@"struct".decls) |decl| {
 			if(result == @field(Errors, decl.name)) {
@@ -79,7 +79,7 @@ fn checkResult(result: c.VkResult) void {
 	}
 }
 
-fn fakeCheckResult(result: anytype) void {
+fn checkResultIfAvailable(result: anytype) void {
 	if(@TypeOf(result) != void) {
 		checkResult(result);
 	}
@@ -88,9 +88,9 @@ fn fakeCheckResult(result: anytype) void {
 fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child {
 	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child;
 	var count: u32 = 0;
-	fakeCheckResult(@call(.auto, function, args ++ .{&count, null}));
+	checkResultIfAvailable(@call(.auto, function, args ++ .{&count, null}));
 	const list = allocator.alloc(T, count);
-	fakeCheckResult(@call(.auto, function, args ++ .{&count, list.ptr}));
+	checkResultIfAvailable(@call(.auto, function, args ++ .{&count, list.ptr}));
 	return list;
 }
 
