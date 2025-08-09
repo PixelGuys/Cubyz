@@ -118,7 +118,7 @@ pub const Instance = struct { // MARK: Instance
 					break :continueOuter;
 				}
 			}
-			std.log.err("Couldn't find validation layer {s}", .{layerName});
+			std.log.warn("Couldn't find validation layer {s}", .{layerName});
 			return false;
 		}
 		return true;
