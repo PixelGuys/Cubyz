@@ -69,7 +69,7 @@ const Errors = struct { // MARK: Errors
 fn checkResult(result: c.VkResult) void {
 	if(result != c.VK_SUCCESS) {
 		inline for(@typeInfo(Errors).@"struct".decls) |decl| {
-			if(@hasDecl(c, decl.name) and result == @field(c, decl.name)) {
+			if(result == @field(Errors, decl.name)) {
 				std.log.err("Encountered a vulkan error: {s}", .{decl.name});
 				return;
 			}
