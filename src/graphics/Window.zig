@@ -12,7 +12,6 @@ const vulkan = @import("vulkan.zig");
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
 	@cInclude("glad/vulkan.h");
-	@cDefine("GLFW_INCLUDE_VULKAN", "");
 	@cInclude("GLFW/glfw3.h");
 });
 
