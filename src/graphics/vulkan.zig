@@ -154,8 +154,6 @@ pub const Instance = struct { // MARK: Instance
 			.ppEnabledLayerNames = validationLayers.ptr,
 			.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
 		};
-		// TODO: Use the debug callback when validation layers are enabled to write messages into the logger.
-		// https://docs.vulkan.org/tutorial/latest/03_Drawing_a_triangle/00_Setup/02_Validation_layers.html#_message_callback
 		checkResult(c.vkCreateInstance(&createInfo, null, &instance));
 	}
 
