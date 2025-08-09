@@ -119,7 +119,7 @@ pub const Instance = struct { // MARK: Instance
 		if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
 			@panic("GLAD failed to load Vulkan functions");
 		}
-		const appInfo = c.VkApplicationInfo {
+		const appInfo = c.VkApplicationInfo{
 			.sType = c.VK_STRUCTURE_TYPE_APPLICATION_INFO,
 			.pApplicationName = "Cubyz",
 			.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
@@ -137,7 +137,7 @@ pub const Instance = struct { // MARK: Instance
 			std.log.debug("\t{s}", .{ext.extensionName});
 		}
 
-		const createInfo = c.VkInstanceCreateInfo {
+		const createInfo = c.VkInstanceCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 			.pApplicationInfo = &appInfo,
 			.enabledExtensionCount = glfwExtensionCount,
