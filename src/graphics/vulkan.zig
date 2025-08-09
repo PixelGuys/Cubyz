@@ -143,7 +143,7 @@ pub const Instance = struct { // MARK: Instance
 		defer main.stackAllocator.free(availableExtensions);
 		std.log.debug("Availabe vulkan instance extensions:", .{});
 		for(availableExtensions) |ext| {
-			std.log.debug("\t{s}", .{ext.extensionName});
+			std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
 		}
 
 		const createInfo = c.VkInstanceCreateInfo{
