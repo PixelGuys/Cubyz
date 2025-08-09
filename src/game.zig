@@ -69,15 +69,6 @@ pub const collision = struct {
 		}
 	};
 
-	fn test_axis(axis: Vec3d, v0: Vec3d, v1: Vec3d, v2: Vec3d, r: f64) bool {
-		const p0 = vec.dot(v0, axis);
-		const p1 = vec.dot(v1, axis);
-		const p2 = vec.dot(v2, axis);
-		const min_p = @min(p0, @min(p1, p2));
-		const max_p = @max(p0, @max(p1, p2));
-		return @max(-max_p, min_p) <= r;
-	}
-
 	const Direction = enum(u2) {x = 0, y = 1, z = 2};
 
 	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct {box: Aabb, dist: f64} {
