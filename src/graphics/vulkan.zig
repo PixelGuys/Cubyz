@@ -119,7 +119,7 @@ pub const Instance = struct { // MARK: Instance
 			.sType = c.VK_STRUCTURE_TYPE_APPLICATION_INFO,
 			.pApplicationName = "Cubyz",
 			.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
-			.pEngineName = "custom",
+			.pEngineName = "Cubyz",
 			.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
 			.apiVersion = c.VK_API_VERSION_1_0,
 		};
