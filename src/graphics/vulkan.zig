@@ -272,7 +272,7 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	defer main.stackAllocator.free(availableExtension);
 	std.log.debug("Device extensions:", .{});
 	for(availableExtension) |ext| {
-		std.log.debug("\t{s}", .{ext.extensionName});
+		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
 	}
 	if(!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
