@@ -327,7 +327,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		const hitBox = main.game.collision.Aabb{.min = @splat(-radius), .max = @splat(radius)};
+		const hitBox = main.game.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
 		if(main.game.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
