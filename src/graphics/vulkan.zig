@@ -182,7 +182,7 @@ pub fn createInstance() void {
 
 // MARK: Physical Device
 
-const deviceExtensions = [_][*:0]const u8 {
+const deviceExtensions = [_][*:0]const u8{
 	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
