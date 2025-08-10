@@ -30,8 +30,8 @@ const Window = main.Window;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const c = @cImport({
-	@cInclude("glad/glad.h");
-	@cInclude("vulkan/vulkan.h");
+	@cInclude("glad/gl.h");
+	@cInclude("glad/vulkan.h");
 });
 
 pub const stb_image = @cImport({
@@ -1484,7 +1484,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 			fill = c.VK_POLYGON_MODE_FILL,
 			line = c.VK_POLYGON_MODE_LINE,
 			point = c.VK_POLYGON_MODE_POINT,
-			fillRectangleNV = c.VK_POLYGON_MODE_FILL_RECTANGLE_NV,
 		};
 
 		const CullModeFlags = enum(c.VkCullModeFlags) {
@@ -1744,7 +1743,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.fill => c.GL_FILL,
 			.line => c.GL_LINE,
 			.point => c.GL_POINT,
-			else => unreachable,
 		});
 		if(self.rasterState.cullMode != .none) {
 			c.glEnable(c.GL_CULL_FACE);
