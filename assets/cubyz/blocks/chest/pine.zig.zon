@@ -1,0 +1,8 @@
+.{
+	.texture = "cubyz:chest/pine/back",
+	.texture_front = "cubyz:chest/pine/front",
+	.texture_left = "cubyz:chest/pine/side",
+	.texture_right = "cubyz:chest/pine/side",
+	.texture_top = "cubyz:chest/pine/top",
+	.texture_bottom = "cubyz:chest/pine/bottom",
+}

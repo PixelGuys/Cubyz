@@ -11,8 +11,7 @@
 	.radius = 64,
 
 	.ground_structure = .{
-		"3 to 4 cubyz:stone",
-		"1 to 2 cubyz:sandstone",
+		"3 to 4 cubyz:slate",
 	},
 
 	.maxSubBiomeCount = 1,

@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone, .mineable, .baseStone},
+	.tags = .{.stone, .mineable, .slate},
 	.blockHealth = 30,
 	.blockResistance = 1,
 	.drops = .{
@@ -18,7 +18,7 @@
 				.{
 					.id = "good_at",
 					.strength = 0.5,
-					.tag = .baseStone,
+					.tag = .slate,
 					.restriction = .{
 						.id = .encased,
 						.tag = .precious,
@@ -31,5 +31,5 @@
 	.allowOres = true,
 	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
-	.texture = "cubyz:stone",
+	.texture = "cubyz:slate",
 }

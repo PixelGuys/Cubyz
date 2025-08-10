@@ -4,4 +4,8 @@
 	.{.old = "glow_crystal/dark_red", .new = "glow_crystal/crimson"},
 	.{.old = "glow_crystal/gray", .new = "glow_crystal/grey"},
 	.{.old = "glow_crystal/light_blue", .new = "glow_crystal/aqua"},
+	.{.old = "stone", .new = "slate"},
+	.{.old = "stone_bricks", .new = "slate_bricks"},
+	.{.old = "stone_tile", .new = "slate_tile"},
+	.{.old = "stone_wall", .new = "slate_wall"},
 }

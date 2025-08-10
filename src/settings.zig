@@ -23,6 +23,8 @@ pub var fpsCap: ?u32 = null;
 
 pub var fov: f32 = 70;
 
+pub var vulkanTestingWindow: bool = false;
+
 pub var mouseSensitivity: f32 = 1;
 pub var controllerSensitivity: f32 = 1;
 
