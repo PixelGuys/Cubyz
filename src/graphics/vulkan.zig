@@ -91,16 +91,34 @@ pub fn enumerateInstanceExtensionProperties(allocator: NeverFailingAllocator, la
 	return allocEnumerationGeneric(c.vkEnumerateInstanceExtensionProperties, allocator, .{layerName});
 }
 
+pub fn enumeratePhysicalDevices(allocator: NeverFailingAllocator) []c.VkPhysicalDevice {
+	return allocEnumerationGeneric(c.vkEnumeratePhysicalDevices, allocator, .{instance});
+}
+
+pub fn enumerateDeviceExtensionProperties(allocator: NeverFailingAllocator, dev: c.VkPhysicalDevice, layerName: ?[*:0]const u8) []c.VkExtensionProperties {
+	return allocEnumerationGeneric(c.vkEnumerateDeviceExtensionProperties, allocator, .{dev, layerName});
+}
+
+pub fn getPhysicalDeviceQueueFamilyProperties(allocator: NeverFailingAllocator, dev: c.VkPhysicalDevice) []c.VkQueueFamilyProperties {
+	return allocEnumerationGeneric(c.vkGetPhysicalDeviceQueueFamilyProperties, allocator, .{dev});
+}
+
+pub fn getPhysicalDeviceSurfaceFormatsKHR(allocator: NeverFailingAllocator, dev: c.VkPhysicalDevice) []c.VkSurfaceFormatKHR {
+	return allocEnumerationGeneric(c.vkGetPhysicalDeviceSurfaceFormatsKHR, allocator, .{dev, surface});
+}
+
 // MARK: globals
 
 var instance: c.VkInstance = undefined;
 var surface: c.VkSurfaceKHR = undefined;
+var physicalDevice: c.VkPhysicalDevice = undefined;
 
 // MARK: init
 
 pub fn init(window: ?*c.GLFWwindow) !void {
 	createInstance();
 	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
+	try pickPhysicalDevice();
 }
 
 pub fn deinit() void {
@@ -160,4 +178,112 @@ pub fn createInstance() void {
 		.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
 	};
 	checkResult(c.vkCreateInstance(&createInfo, null, &instance));
+}
+
+// MARK: Physical Device
+
+const deviceExtensions = [_][*:0]const u8 {
+	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+};
+
+const QueueFamilyIndidices = struct {
+	graphicsFamily: ?u32 = null,
+	presentFamily: ?u32 = null,
+
+	fn isComplete(self: QueueFamilyIndidices) bool {
+		return self.graphicsFamily != null and self.presentFamily != null;
+	}
+};
+
+fn findQueueFamilies(dev: c.VkPhysicalDevice) QueueFamilyIndidices {
+	var result: QueueFamilyIndidices = .{};
+	const queueFamilies = getPhysicalDeviceQueueFamilyProperties(main.stackAllocator, dev);
+	defer main.stackAllocator.free(queueFamilies);
+	for(queueFamilies, 0..) |family, i| {
+		if(family.queueFlags & c.VK_QUEUE_GRAPHICS_BIT != 0) {
+			result.graphicsFamily = @intCast(i);
+		}
+		var presentSupport: u32 = 0;
+		checkResult(c.vkGetPhysicalDeviceSurfaceSupportKHR(dev, @intCast(i), surface, &presentSupport));
+		if(presentSupport != 0) {
+			result.presentFamily = @intCast(i);
+		}
+	}
+	return result;
+}
+
+fn checkDeviceExtensionSupport(dev: c.VkPhysicalDevice) bool {
+	const availableExtension = enumerateDeviceExtensionProperties(main.stackAllocator, dev, null);
+	defer main.stackAllocator.free(availableExtension);
+	for(deviceExtensions) |requiredName| continueOuter: {
+		for(availableExtension) |available| {
+			if(std.mem.eql(u8, std.mem.span(requiredName), std.mem.span(@as([*:0]const u8, @ptrCast(&available.extensionName))))) {
+				break :continueOuter;
+			}
+		}
+		std.log.warn("Rejecting device because extension {s} was not found", .{requiredName});
+		return false;
+	}
+	return true;
+}
+
+fn deviceScore(dev: c.VkPhysicalDevice) f32 {
+	var properties: c.VkPhysicalDeviceProperties = undefined;
+	c.vkGetPhysicalDeviceProperties(dev, &properties);
+	var features: c.VkPhysicalDeviceFeatures = undefined;
+	c.vkGetPhysicalDeviceFeatures(dev, &features);
+	std.log.debug("Device: {s}", .{@as([*:0]const u8, @ptrCast(&properties.deviceName))});
+	std.log.debug("Properties: {}", .{properties});
+	std.log.debug("Features: {}", .{features});
+
+	const baseScore: f32 = switch(properties.deviceType) {
+		c.VK_PHYSICAL_DEVICE_TYPE_CPU => 1e-9,
+		c.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU => 1e9,
+		c.VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU => 1,
+		else => 0.1,
+	};
+
+	const availableExtension = enumerateDeviceExtensionProperties(main.stackAllocator, dev, null);
+	defer main.stackAllocator.free(availableExtension);
+	std.log.debug("Device extensions:", .{});
+	for(availableExtension) |ext| {
+		std.log.debug("\t{s}", .{ext.extensionName});
+	}
+	if(!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
+
+	if(features.multiDrawIndirect != c.VK_TRUE) {
+		std.log.warn("Rejecting device: multDrawIndirect is not supported", .{});
+		return 0;
+	}
+
+	if(features.dualSrcBlend != c.VK_TRUE) {
+		std.log.warn("Rejecting device: dual source blending is not supported", .{});
+		return 0;
+	}
+
+	return baseScore;
+}
+
+fn pickPhysicalDevice() !void {
+	const devices = enumeratePhysicalDevices(main.stackAllocator);
+	defer main.stackAllocator.free(devices);
+	if(devices.len == 0) {
+		return error.NoDevicesFound;
+	}
+	var bestScore: f32 = 0;
+	for(devices) |dev| {
+		const score = deviceScore(dev);
+		if(score > bestScore) {
+			bestScore = score;
+			physicalDevice = dev;
+		}
+	}
+
+	if(bestScore == 0) {
+		return error.NoCapableDeviceFound;
+	}
+
+	var properties: c.VkPhysicalDeviceProperties = undefined;
+	c.vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+	std.log.info("Selected device {s}", .{@as([*:0]const u8, @ptrCast(&properties.deviceName))});
 }
