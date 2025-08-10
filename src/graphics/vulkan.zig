@@ -331,7 +331,7 @@ fn createLogicalDevice() void {
 		});
 	}
 
-	const createInfo = c.VkDeviceCreateInfo {
+	const createInfo: c.VkDeviceCreateInfo = .{
 		.sType = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 		.pQueueCreateInfos = queueCreateInfos.items.ptr,
 		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
