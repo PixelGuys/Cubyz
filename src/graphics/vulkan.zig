@@ -236,7 +236,7 @@ fn checkDeviceExtensionSupport(dev: c.VkPhysicalDevice) bool {
 	return true;
 }
 
-fn deviceScore(dev: c.VkPhysicalDevice) f32 {
+fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	var properties: c.VkPhysicalDeviceProperties = undefined;
 	c.vkGetPhysicalDeviceProperties(dev, &properties);
 	var features: c.VkPhysicalDeviceFeatures = undefined;
@@ -281,7 +281,7 @@ fn pickPhysicalDevice() !void {
 	}
 	var bestScore: f32 = 0;
 	for(devices) |dev| {
-		const score = deviceScore(dev);
+		const score = getDeviceScore(dev);
 		if(score > bestScore) {
 			bestScore = score;
 			physicalDevice = dev;
