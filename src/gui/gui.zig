@@ -134,7 +134,7 @@ pub fn initWindowList() void {
 }
 
 pub fn deinitWindowList() void {
-	windowList.deinit();
+	windowList.clearAndFree();
 	hudWindows.deinit();
 	openWindows.deinit();
 	GuiCommandQueue.deinit();
