@@ -121,16 +121,30 @@ pub fn getPhysicalDeviceSurfaceFormatsKHR(allocator: NeverFailingAllocator, dev:
 var instance: c.VkInstance = undefined;
 var surface: c.VkSurfaceKHR = undefined;
 var physicalDevice: c.VkPhysicalDevice = undefined;
+var device: c.VkDevice = undefined;
+var graphicsQueue: c.VkQueue = undefined;
+var presentQueue: c.VkQueue = undefined;
 
 // MARK: init
 
 pub fn init(window: ?*c.GLFWwindow) !void {
+	if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
+		@panic("GLAD failed to load Vulkan functions");
+	}
 	createInstance();
 	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
 	try pickPhysicalDevice();
+	if(c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
+		@panic("GLAD failed to load Vulkan functions");
+	}
+	createLogicalDevice();
+	if(c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
+		@panic("GLAD failed to load Vulkan functions");
+	}
 }
 
 pub fn deinit() void {
+	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
 }
@@ -157,9 +171,6 @@ fn checkValidationLayerSupport() bool {
 }
 
 pub fn createInstance() void {
-	if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
-	}
 	const appInfo = c.VkApplicationInfo{
 		.sType = c.VK_STRUCTURE_TYPE_APPLICATION_INFO,
 		.pApplicationName = "Cubyz",
@@ -195,6 +206,11 @@ const deviceExtensions = [_][*:0]const u8{
 	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
+const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
+	.multiDrawIndirect = c.VK_TRUE,
+	.dualSrcBlend = c.VK_TRUE,
+};
+
 const QueueFamilyIndidices = struct {
 	graphicsFamily: ?u32 = null,
 	presentFamily: ?u32 = null,
@@ -209,7 +225,7 @@ fn findQueueFamilies(dev: c.VkPhysicalDevice) QueueFamilyIndidices {
 	const queueFamilies = getPhysicalDeviceQueueFamilyProperties(main.stackAllocator, dev);
 	defer main.stackAllocator.free(queueFamilies);
 	for(queueFamilies, 0..) |family, i| {
-		if(family.queueFlags & c.VK_QUEUE_GRAPHICS_BIT != 0) {
+		if(family.queueFlags & c.VK_QUEUE_GRAPHICS_BIT != 0 and family.queueFlags & c.VK_QUEUE_COMPUTE_BIT != 0) {
 			result.graphicsFamily = @intCast(i);
 		}
 		var presentSupport: u32 = 0;
@@ -260,14 +276,11 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	}
 	if(!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
-	if(features.multiDrawIndirect != c.VK_TRUE) {
-		std.log.warn("Rejecting device: multDrawIndirect is not supported", .{});
-		return 0;
-	}
-
-	if(features.dualSrcBlend != c.VK_TRUE) {
-		std.log.warn("Rejecting device: dual source blending is not supported", .{});
-		return 0;
+	inline for(comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |name| {
+		if(@field(deviceFeatures, name) == c.VK_TRUE and @field(deviceFeatures, name) == c.VK_FALSE) {
+			std.log.warn("Rejecting device: {s} is not supported", .{name});
+			return 0;
+		}
 	}
 
 	return baseScore;
@@ -295,4 +308,40 @@ fn pickPhysicalDevice() !void {
 	var properties: c.VkPhysicalDeviceProperties = undefined;
 	c.vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 	std.log.info("Selected device {s}", .{@as([*:0]const u8, @ptrCast(&properties.deviceName))});
+}
+
+// MARK: Logical Device
+
+fn createLogicalDevice() void {
+	const indices = findQueueFamilies(physicalDevice);
+	var uniqueFamilies: std.AutoHashMapUnmanaged(u32, void) = .{};
+	defer uniqueFamilies.deinit(main.stackAllocator.allocator);
+	_ = uniqueFamilies.getOrPut(main.stackAllocator.allocator, indices.graphicsFamily.?) catch unreachable;
+	_ = uniqueFamilies.getOrPut(main.stackAllocator.allocator, indices.presentFamily.?) catch unreachable;
+
+	var queueCreateInfos = main.List(c.VkDeviceQueueCreateInfo).init(main.stackAllocator);
+	defer queueCreateInfos.deinit();
+	var iterator = uniqueFamilies.keyIterator();
+	while(iterator.next()) |queueFamily| {
+		queueCreateInfos.append(.{
+			.sType = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.queueFamilyIndex = queueFamily.*,
+			.queueCount = 1,
+			.pQueuePriorities = &@as(f32, 1.0),
+		});
+	}
+
+	const createInfo = c.VkDeviceCreateInfo {
+		.sType = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.pQueueCreateInfos = queueCreateInfos.items.ptr,
+		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
+		.pEnabledFeatures = &deviceFeatures,
+		.ppEnabledLayerNames = validationLayers.ptr,
+		.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
+		.ppEnabledExtensionNames = &deviceExtensions,
+		.enabledExtensionCount = @intCast(deviceExtensions.len),
+	};
+	checkResult(c.vkCreateDevice(physicalDevice, &createInfo, null, &device));
+	c.vkGetDeviceQueue(device, indices.graphicsFamily.?, 0, &graphicsQueue);
+	c.vkGetDeviceQueue(device, indices.presentFamily.?, 0, &presentQueue);
 }
