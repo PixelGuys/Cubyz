@@ -81,25 +81,30 @@ fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, 
 	return list;
 }
 
+// MARK: Enumerators
+
 pub fn enumerateInstanceLayerProperties(allocator: NeverFailingAllocator) []c.VkLayerProperties {
 	return allocEnumerationGeneric(c.vkEnumerateInstanceLayerProperties, allocator, .{});
 }
 
-pub fn enumerateInstanceExtensionProperties(allocator: NeverFailingAllocator, layerName: ?[*:0]u8) []c.VkExtensionProperties {
+pub fn enumerateInstanceExtensionProperties(allocator: NeverFailingAllocator, layerName: ?[*:0]const u8) []c.VkExtensionProperties {
 	return allocEnumerationGeneric(c.vkEnumerateInstanceExtensionProperties, allocator, .{layerName});
 }
 
 // MARK: globals
 
 var instance: c.VkInstance = undefined;
+var surface: c.VkSurfaceKHR = undefined;
 
 // MARK: init
 
-pub fn init() void {
+pub fn init(window: ?*c.GLFWwindow) !void {
 	createInstance();
+	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
 }
 
 pub fn deinit() void {
+	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
 }
 
