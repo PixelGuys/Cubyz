@@ -75,10 +75,19 @@ fn checkResultIfAvailable(result: anytype) void {
 fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child {
 	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child;
 	var count: u32 = 0;
-	checkResultIfAvailable(@call(.auto, function, args ++ .{&count, null}));
-	const list = allocator.alloc(T, count);
-	checkResultIfAvailable(@call(.auto, function, args ++ .{&count, list.ptr}));
-	return list;
+	while(true) {
+		checkResultIfAvailable(@call(.auto, function, args ++ .{&count, null}));
+		const list = allocator.alloc(T, count);
+		const result = @call(.auto, function, args ++ .{&count, list.ptr});
+		if(@TypeOf(result) != void and result == c.VK_INCOMPLETE) {
+			allocator.free(list);
+			continue;
+		}
+		checkResultIfAvailable(result);
+
+		if(count < list.len) return allocator.realloc(list, count);
+		return list;
+	}
 }
 
 // MARK: Enumerators
