@@ -310,7 +310,12 @@ pub const Model = struct {
 		const voxelSize: Vec3f = @splat(1.0/@as(f32, collisionGridSize));
 
 		for(modelQuads) |quad| {
-			const shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
+			var shift = Vec3f {0, 0, 0};
+			for(0..3) |i| {
+				if(@abs(quad.normalVec()[i]) == 1.0 and std.math.floor(quad.corners[0][i] * gridSize) == quad.corners[0][i] * gridSize) {
+					shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
+				}
+			}
 			const triangle1: [3]Vec3f = .{
 				quad.cornerVec(0) - shift,
 				quad.cornerVec(1) - shift,
