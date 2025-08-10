@@ -89,62 +89,70 @@ pub fn enumerateInstanceExtensionProperties(allocator: NeverFailingAllocator, la
 	return allocEnumerationGeneric(c.vkEnumerateInstanceExtensionProperties, allocator, .{layerName});
 }
 
-pub const Instance = struct { // MARK: Instance
-	var instance: c.VkInstance = undefined;
+// MARK: globals
 
-	const validationLayers: []const [*:0]const u8 = &.{
-		"VK_LAYER_KHRONOS_validation",
-	};
+var instance: c.VkInstance = undefined;
 
-	fn checkValidationLayerSupport() bool {
-		const availableLayers = enumerateInstanceLayerProperties(main.stackAllocator);
-		defer main.stackAllocator.free(availableLayers);
-		for(validationLayers) |layerName| continueOuter: {
-			for(availableLayers) |layerProperties| {
-				if(std.mem.eql(u8, std.mem.span(layerName), std.mem.span(@as([*:0]const u8, @ptrCast(&layerProperties.layerName))))) {
-					break :continueOuter;
-				}
-			}
-			std.log.warn("Couldn't find validation layer {s}", .{layerName});
-			return false;
-		}
-		return true;
-	}
+// MARK: init
 
-	pub fn init() void {
-		if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
-			@panic("GLAD failed to load Vulkan functions");
-		}
-		const appInfo = c.VkApplicationInfo{
-			.sType = c.VK_STRUCTURE_TYPE_APPLICATION_INFO,
-			.pApplicationName = "Cubyz",
-			.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
-			.pEngineName = "Cubyz",
-			.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-			.apiVersion = c.VK_API_VERSION_1_0,
-		};
-		var glfwExtensionCount: u32 = 0;
-		const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+pub fn init() void {
+	createInstance();
+}
 
-		const availableExtensions = enumerateInstanceExtensionProperties(main.stackAllocator, null);
-		defer main.stackAllocator.free(availableExtensions);
-		std.log.debug("Availabe vulkan instance extensions:", .{});
-		for(availableExtensions) |ext| {
-			std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
-		}
+pub fn deinit() void {
+	c.vkDestroyInstance(instance, null);
+}
 
-		const createInfo = c.VkInstanceCreateInfo{
-			.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-			.pApplicationInfo = &appInfo,
-			.enabledExtensionCount = glfwExtensionCount,
-			.ppEnabledExtensionNames = glfwExtensions,
-			.ppEnabledLayerNames = validationLayers.ptr,
-			.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
-		};
-		checkResult(c.vkCreateInstance(&createInfo, null, &instance));
-	}
+// MARK: Instance
 
-	pub fn deinit() void {
-		c.vkDestroyInstance(instance, null);
-	}
+const validationLayers: []const [*:0]const u8 = &.{
+	"VK_LAYER_KHRONOS_validation",
 };
+
+fn checkValidationLayerSupport() bool {
+	const availableLayers = enumerateInstanceLayerProperties(main.stackAllocator);
+	defer main.stackAllocator.free(availableLayers);
+	for(validationLayers) |layerName| continueOuter: {
+		for(availableLayers) |layerProperties| {
+			if(std.mem.eql(u8, std.mem.span(layerName), std.mem.span(@as([*:0]const u8, @ptrCast(&layerProperties.layerName))))) {
+				break :continueOuter;
+			}
+		}
+		std.log.warn("Couldn't find validation layer {s}", .{layerName});
+		return false;
+	}
+	return true;
+}
+
+pub fn createInstance() void {
+	if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
+		@panic("GLAD failed to load Vulkan functions");
+	}
+	const appInfo = c.VkApplicationInfo{
+		.sType = c.VK_STRUCTURE_TYPE_APPLICATION_INFO,
+		.pApplicationName = "Cubyz",
+		.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
+		.pEngineName = "Cubyz",
+		.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
+		.apiVersion = c.VK_API_VERSION_1_0,
+	};
+	var glfwExtensionCount: u32 = 0;
+	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+	const availableExtensions = enumerateInstanceExtensionProperties(main.stackAllocator, null);
+	defer main.stackAllocator.free(availableExtensions);
+	std.log.debug("Availabe vulkan instance extensions:", .{});
+	for(availableExtensions) |ext| {
+		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
+	}
+
+	const createInfo = c.VkInstanceCreateInfo{
+		.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.pApplicationInfo = &appInfo,
+		.enabledExtensionCount = glfwExtensionCount,
+		.ppEnabledExtensionNames = glfwExtensions,
+		.ppEnabledLayerNames = validationLayers.ptr,
+		.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
+	};
+	checkResult(c.vkCreateInstance(&createInfo, null, &instance));
+}

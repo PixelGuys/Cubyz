@@ -646,7 +646,7 @@ pub fn init() void { // MARK: init()
 	if(c.glfwVulkanSupported() == c.GLFW_FALSE) {
 		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
 	} else {
-		vulkan.Instance.init();
+		vulkan.init();
 	}
 
 	c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
@@ -692,7 +692,7 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
-	vulkan.Instance.deinit();
+	vulkan.deinit();
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;
