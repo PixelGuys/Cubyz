@@ -817,7 +817,7 @@ pub const World = struct { // MARK: World
 
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id});
+		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id}, null);
 		Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
@@ -1105,7 +1105,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
 			if(i == 2 and jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
-				Player.super.vel[i] += @sqrt(Player.jumpHeight*gravity*2);
+				const jumpVelocity = @sqrt(Player.jumpHeight*gravity*2);
+				Player.super.vel[i] = @max(jumpVelocity, Player.super.vel[i] + jumpVelocity);
 				frictionCoefficient = volumeFrictionCoeffecient;
 			}
 			const v_0 = Player.super.vel[i];

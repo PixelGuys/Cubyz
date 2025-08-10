@@ -1,0 +1,8 @@
+.{
+	.texture = "cubyz:chest/mahogany/back",
+	.texture_front = "cubyz:chest/mahogany/front",
+	.texture_left = "cubyz:chest/mahogany/side",
+	.texture_right = "cubyz:chest/mahogany/side",
+	.texture_top = "cubyz:chest/mahogany/top",
+	.texture_bottom = "cubyz:chest/mahogany/bottom",
+}

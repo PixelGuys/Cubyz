@@ -7,8 +7,11 @@ const files = main.files;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
+const vulkan = @import("vulkan.zig");
+
 pub const c = @cImport({
-	@cInclude("glad/glad.h");
+	@cInclude("glad/gl.h");
+	@cInclude("glad/vulkan.h");
 	@cInclude("GLFW/glfw3.h");
 });
 
@@ -17,6 +20,7 @@ pub var lastUsedMouse: bool = true;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
+pub var vulkanWindow: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
 
@@ -640,6 +644,19 @@ pub fn init() void { // MARK: init()
 		@panic("Failed to initialize GLFW");
 	}
 
+	if(c.glfwVulkanSupported() == c.GLFW_FALSE) {
+		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
+	} else {
+		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
+		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.vulkanTestingWindow));
+		vulkanWindow = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
+		vulkan.init(vulkanWindow) catch |err| {
+			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
+		};
+	}
+
+	c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_OPENGL_API);
+	c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_TRUE);
 	c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -668,7 +685,7 @@ pub fn init() void { // MARK: init()
 
 	c.glfwMakeContextCurrent(window);
 
-	if(c.gladLoadGL() == 0) {
+	if(c.gladLoadGL(c.glfwGetProcAddress) == 0) {
 		@panic("Failed to load OpenGL functions from GLAD");
 	}
 	reloadSettings();
@@ -683,6 +700,8 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
+	c.glfwDestroyWindow(vulkanWindow);
+	vulkan.deinit();
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;
