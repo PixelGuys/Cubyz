@@ -407,7 +407,7 @@ const SwapChain = struct { // MARK: SwapChain
 	};
 
 	fn createImageView(image: c.VkImage) c.VkImageView {
-		const createInfo = c.VkImageViewCreateInfo {
+		const createInfo: c.VkImageViewCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 			.image = image,
 			.viewType = c.VK_IMAGE_VIEW_TYPE_2D,
@@ -441,7 +441,7 @@ const SwapChain = struct { // MARK: SwapChain
 		extent = support.chooseSwapExtent();
 		const imageCount = @min(support.capabilities.minImageCount + 1, support.capabilities.maxImageCount -% 1 +| 1);
 
-		var createInfo = c.VkSwapchainCreateInfoKHR {
+		var createInfo: c.VkSwapchainCreateInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
 			.surface = surface,
 			.minImageCount = imageCount,
@@ -458,7 +458,7 @@ const SwapChain = struct { // MARK: SwapChain
 		};
 		const queueFamilies = findQueueFamilies(physicalDevice);
 		if(queueFamilies.graphicsFamily.? != queueFamilies.presentFamily.?) {
-			const queueFamilyIndices = [_]u32 {queueFamilies.graphicsFamily.?, queueFamilies.presentFamily.?};
+			const queueFamilyIndices = [_]u32{queueFamilies.graphicsFamily.?, queueFamilies.presentFamily.?};
 			createInfo.imageSharingMode = c.VK_SHARING_MODE_CONCURRENT;
 			createInfo.queueFamilyIndexCount = @intCast(queueFamilyIndices.len);
 			createInfo.pQueueFamilyIndices = &queueFamilyIndices;
@@ -495,7 +495,7 @@ const SwapChain = struct { // MARK: SwapChain
 	}
 
 	fn present(queue: c.VkQueue, waitSemaphores: []const c.VkSemaphore, imageIndex: u32) void {
-		const presentInfo = c.VkPresentInfoKHR {
+		const presentInfo: c.VkPresentInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 			.waitSemaphoreCount = @intCast(waitSemaphores.len),
 			.pWaitSemaphores = waitSemaphores.ptr,
