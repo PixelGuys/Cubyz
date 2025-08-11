@@ -312,7 +312,7 @@ pub const Model = struct {
 		for(modelQuads) |quad| {
 			var shift = Vec3f{0, 0, 0};
 			for(0..3) |i| {
-				if(@abs(quad.normalVec()[i]) == 1.0 and std.math.floor(quad.corners[0][i]*gridSize) == quad.corners[0][i]*gridSize) {
+				if(@abs(quad.normalVec()[i]) == 1.0 and std.math.floor(quad.corners[0][i]*collisionGridSize) == quad.corners[0][i]*collisionGridSize) {
 					shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
 				}
 			}
