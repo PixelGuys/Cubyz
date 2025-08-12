@@ -5,4 +5,6 @@
 	.texture_right = "cubyz:chest/pine/side",
 	.texture_top = "cubyz:chest/pine/top",
 	.texture_bottom = "cubyz:chest/pine/bottom",
+	.texture6 = "cubyz:void_stone",
+	.texture7 = "cubyz:void_stone",
 }

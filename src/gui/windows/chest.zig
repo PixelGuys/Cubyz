@@ -4,6 +4,7 @@ const main = @import("main");
 const Player = main.game.Player;
 const ItemStack = main.items.ItemStack;
 const Vec2f = main.vec.Vec2f;
+const Vec3i = main.vec.Vec3i;
 const Texture = main.graphics.Texture;
 
 const gui = @import("../gui.zig");
@@ -37,13 +38,22 @@ pub fn deinit() void {
 	itemSlots.deinit();
 }
 
-pub var openInventory: main.items.Inventory = undefined;
+var openPos: Vec3i = undefined;
+var openInventory: main.items.Inventory = undefined;
 
 pub fn setInventory(selectedInventory: main.items.Inventory) void {
+	std.debug.assert(selectedInventory.source == .blockInventory);
+	openPos = selectedInventory.source.blockInventory;
 	openInventory = selectedInventory;
 }
 
 pub fn onOpen() void {
+	blk: {
+		const block = main.server.world.?.getBlock(openPos[0], openPos[1], openPos[2]) orelse break :blk;
+		const newBlock: main.blocks.Block = .{.typ = block.typ, .data = block.data | 4};
+		main.renderer.MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, 0, openPos[0], openPos[1], openPos[2], block, newBlock);
+	}
+
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 
 	for(0..2) |y| {

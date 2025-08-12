@@ -194,16 +194,26 @@ pub const BlockEntityTypes = struct {
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
 		});
+		const StorageClient = BlockEntityDataStorage(struct {
+			pos: Vec3i,
+			angle: f32,
+			shouldBeOpen: bool,
+		});
 
 		pub const id = "chest";
 		pub fn init() void {
 			StorageServer.init();
+			StorageClient.init();
+			lastUpdateTime = std.time.milliTimestamp();
 		}
 		pub fn deinit() void {
 			StorageServer.deinit();
+			StorageClient.deinit();
 		}
 		pub fn reset() void {
 			StorageServer.reset();
+			StorageClient.reset();
+			lastUpdateTime = std.time.milliTimestamp();
 		}
 
 		fn onInventoryUpdateCallback(source: main.items.Inventory.Source) void {
@@ -216,12 +226,25 @@ pub const BlockEntityTypes = struct {
 			ch.setChanged();
 		}
 
-		const inventoryCallbacks = main.items.Inventory.Callbacks{
+		fn onInventoryOpenOrClosedCallback(source: main.items.Inventory.Source) void {
+			main.network.Protocols.blockEntityUpdate.sendServerDataUpdateToClients(source.blockInventory);
+		}
+
+		const inventoryCallbacks: main.items.Inventory.Callbacks = .{
 			.onUpdateCallback = &onInventoryUpdateCallback,
+			.onFirstOpenCallback = &onInventoryOpenOrClosedCallback,
+			.onLastCloseCallback = &onInventoryOpenOrClosedCallback,
 		};
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
-		pub fn onUnloadClient(_: BlockEntityIndex) void {}
+		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+			return updateClientData(pos, chunk, .{.update = reader});
+		}
+		pub fn onUnloadClient(dataIndex: BlockEntityIndex) void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+			_ = StorageClient.removeAtIndex(dataIndex) orelse unreachable;
+		}
+
 		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
@@ -237,20 +260,28 @@ pub const BlockEntityTypes = struct {
 			StorageServer.mutex.unlock();
 			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.invId);
 		}
+		pub fn onStoreServerToClient(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const data = StorageServer.getByIndex(dataIndex) orelse return;
+
+			const hasClients = main.items.Inventory.Sync.ServerSide.getServerInventoryFromId(data.invId).users.items.len != 0;
+			
+			writer.writeInt(u1, @intFromBool(hasClients));
+		}
 		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.getByIndex(dataIndex) orelse return;
 
-			const inv = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.invId);
+			const inv = main.items.Inventory.Sync.ServerSide.getServerInventoryFromId(data.invId);
 			var isEmpty: bool = true;
-			for(inv._items) |item| {
+			for(inv.inv._items) |item| {
 				if(item.amount != 0) isEmpty = false;
 			}
 			if(isEmpty) return;
-			inv.toBytes(writer);
+			inv.inv.toBytes(writer);
 		}
-		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
@@ -265,7 +296,24 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
-		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
+		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+			if(event == .remove or event.update.remaining.len == 0) {
+				_ = StorageClient.remove(pos, chunk) orelse return;
+				return;
+			}
+
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			const data = StorageClient.getOrPut(pos, chunk);
+			if(data.foundExisting) return;
+			data.valuePtr.* = .{
+				.angle = 0,
+				.pos = pos,
+				.shouldBeOpen = try event.update.readInt(u1) != 0,
+			};
+		}
+
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
 			switch(event) {
 				.remove => {
@@ -282,10 +330,46 @@ pub const BlockEntityTypes = struct {
 				},
 			}
 		}
-		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+
+		pub fn getServerToClientData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.get(pos, chunk) orelse return;
+			
+			const hasClients = main.items.Inventory.Sync.ServerSide.getServerInventoryFromId(data.invId).users.items.len != 0;
+			
+			writer.writeInt(u1, @intFromBool(hasClients));
+		}
+
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
-		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
+		var lastUpdateTime: i64 = 0;
+		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {
+			const newTime = std.time.milliTimestamp();
+			const deltaTime = @as(f32, @floatFromInt(newTime - lastUpdateTime))/1000.0;
+			lastUpdateTime = newTime;
+			
+			for(StorageClient.storage.dense.items) |*chest| {
+				const block = main.server.world.?.getBlock(chest.pos[0], chest.pos[1], chest.pos[2]) orelse continue;
+				if(block.data > 4) {
+					if(chest.shouldBeOpen) {
+						chest.angle += deltaTime * 90.0;
+						if (chest.angle > 90.0) {
+							chest.angle = 90.0;
+						}
+					} else {
+						chest.angle -= deltaTime * 90.0;
+						if (chest.angle < 0.0) {
+							chest.angle = 0.0;
+							const newBlock: main.blocks.Block = .{.typ = block.typ, .data = block.data & 3};
+							main.renderer.MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, 0, chest.pos[0], chest.pos[1], chest.pos[2], block, newBlock);
+						}
+					}
+					std.debug.print("{d}\n", .{chest.angle});
+				}
+			}
+		}
 	};
 
 	pub const Sign = struct {
