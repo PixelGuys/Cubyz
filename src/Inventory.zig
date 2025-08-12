@@ -1718,7 +1718,7 @@ pub const Command = struct { // MARK: Command
 			if(!switch(costOfChange) {
 				.no => false,
 				.yes => true,
-				.yes_costsDurability => |durability| stack.item != null and stack.item.? == .tool and stack.item.?.tool.durability >= durability,
+				.yes_costsDurability => |_| stack.item != null and stack.item.? == .tool,
 				.yes_costsItems => |amount| stack.amount >= amount,
 				.yes_dropsItems => true,
 			}) {
