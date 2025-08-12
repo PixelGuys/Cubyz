@@ -1351,6 +1351,16 @@ pub const Protocols = struct {
 
 			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
 		}
+
+		pub fn sendServerDataUpdateToClientsNoLock(pos: Vec3i) void {
+			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			defer simChunk.decreaseRefCount();
+			const ch = simChunk.chunk.load(.unordered) orelse return;
+			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
+			const blockEntity = block.blockEntity() orelse return;
+
+			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
+		}
 	};
 };
 

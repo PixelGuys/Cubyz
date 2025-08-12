@@ -1106,7 +1106,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+	pub fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.items.Inventory.Sync.ClientSide.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source, .slot = slot},
