@@ -102,10 +102,6 @@ pub fn deinit() void {
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered block with id {s} twice!", .{id});
-	}
-
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
