@@ -486,26 +486,4 @@ const SwapChain = struct { // MARK: SwapChain
 		main.globalAllocator.free(images);
 		c.vkDestroySwapchainKHR(device, swapChain, null);
 	}
-
-	fn reset() void {
-		checkResult(c.vkDeviceWaitIdle(device));
-
-		SwapChain.deinit();
-		SwapChain.init();
-	}
-
-	fn present(queue: c.VkQueue, waitSemaphores: []const c.VkSemaphore, imageIndex: u32) void {
-		const presentInfo: c.VkPresentInfoKHR = .{
-			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-			.waitSemaphoreCount = @intCast(waitSemaphores.len),
-			.pWaitSemaphores = waitSemaphores.ptr,
-			.swapchainCount = 1,
-			.pSwapchains = &swapChain,
-			.pImageIndices = &imageIndex,
-		};
-		switch(c.vkQueuePresentKHR(queue, &presentInfo)) {
-			c.VK_SUCCESS, c.VK_SUBOPTIMAL_KHR => {},
-			else => |result| checkResult(result),
-		}
-	}
 };
