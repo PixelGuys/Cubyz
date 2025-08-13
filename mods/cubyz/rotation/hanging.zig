@@ -14,19 +14,21 @@ const ZonElement = main.ZonElement;
 
 pub const dependsOnNeighbors = true;
 
-fn transform(quad: *main.models.QuadInfo, data: u16) void {
-	quad.textureSlot = data%2;
-}
+fn transform(_: *main.models.QuadInfo) void {}
 
 pub fn init() void {}
 pub fn deinit() void {}
 pub fn reset() void {}
 
-pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-    const baseModelIndex = main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
 
-    const modelIndex = baseModelIndex.model().transformModel(transform, .{@as(u16, 0)});
-    _ = baseModelIndex.model().transformModel(transform, .{@as(u16, 1)});
+pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
+	const topModelIndex = main.models.getModelIndex(zon.get([]const u8, "top", "cubyz:cube"));
+	const bottomModelIndex = main.models.getModelIndex(zon.get([]const u8, "bottom", "cubyz:cube"));
+    
+
+
+    const modelIndex = topModelIndex.model().transformModel(transform, .{});
+    _ = bottomModelIndex.model().transformModel(transform, .{});
     return modelIndex;
 }
 
