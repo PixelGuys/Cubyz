@@ -48,12 +48,6 @@ pub fn setInventory(selectedInventory: main.items.Inventory) void {
 }
 
 pub fn onOpen() void {
-	blk: {
-		const block = main.server.world.?.getBlock(openPos[0], openPos[1], openPos[2]) orelse break :blk;
-		const newBlock: main.blocks.Block = .{.typ = block.typ, .data = block.data | 4};
-		main.renderer.MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, 0, openPos[0], openPos[1], openPos[2], block, newBlock);
-	}
-
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 
 	for(0..2) |y| {

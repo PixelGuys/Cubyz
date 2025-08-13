@@ -200,15 +200,39 @@ pub const BlockEntityTypes = struct {
 			shouldBeOpen: bool,
 		});
 
+		var pipeline: graphics.Pipeline = undefined;
+		var uniforms: struct {
+			ambientLight: c_int,
+			projectionMatrix: c_int,
+			viewMatrix: c_int,
+			modelMatrix: c_int,
+			playerPositionInteger: c_int,
+			playerPositionFraction: c_int,
+			quadIndex: c_int,
+			lightData: c_int,
+			chunkPos: c_int,
+			blockPos: c_int,
+		} = undefined;
+
 		pub const id = "chest";
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
 			lastUpdateTime = std.time.milliTimestamp();
+			pipeline = graphics.Pipeline.init(
+				"assets/cubyz/shaders/block_entity/chest.vert",
+				"assets/cubyz/shaders/block_entity/chest.frag",
+				"",
+				&uniforms,
+				.{},
+				.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
+				.{.attachments = &.{.alphaBlending}},
+			);
 		}
 		pub fn deinit() void {
 			StorageServer.deinit();
 			StorageClient.deinit();
+			pipeline.deinit();
 		}
 		pub fn reset() void {
 			StorageServer.reset();
@@ -297,7 +321,7 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove or event.update.remaining.len == 0) {
+			if(event == .remove) {
 				_ = StorageClient.remove(pos, chunk) orelse return;
 				return;
 			}
@@ -306,12 +330,16 @@ pub const BlockEntityTypes = struct {
 			defer StorageClient.mutex.unlock();
 
 			const data = StorageClient.getOrPut(pos, chunk);
-			if(data.foundExisting) return;
-			data.valuePtr.* = .{
-				.angle = 0,
-				.pos = pos,
-				.shouldBeOpen = try event.update.readInt(u1) != 0,
-			};
+			if(!data.foundExisting) {
+				data.valuePtr.* = .{
+					.angle = 0,
+					.pos = pos,
+					.shouldBeOpen = false
+				};
+			}
+			if(event.update.remaining.len != 0) {
+				data.valuePtr.shouldBeOpen = try event.update.readInt(u1) != 0;
+			}
 		}
 
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
@@ -345,29 +373,53 @@ pub const BlockEntityTypes = struct {
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
 		var lastUpdateTime: i64 = 0;
-		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {
+		pub fn renderAll(projMatrix: Mat4f, ambientLight: Vec3f, playerPosition: Vec3d) void {
 			const newTime = std.time.milliTimestamp();
 			const deltaTime = @as(f32, @floatFromInt(newTime - lastUpdateTime))/1000.0;
 			lastUpdateTime = newTime;
-			
+
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
 			for(StorageClient.storage.dense.items) |*chest| {
-				const block = main.server.world.?.getBlock(chest.pos[0], chest.pos[1], chest.pos[2]) orelse continue;
-				if(block.data > 4) {
-					if(chest.shouldBeOpen) {
-						chest.angle += deltaTime * 90.0;
-						if (chest.angle > 90.0) {
-							chest.angle = 90.0;
-						}
-					} else {
-						chest.angle -= deltaTime * 90.0;
-						if (chest.angle < 0.0) {
-							chest.angle = 0.0;
-							const newBlock: main.blocks.Block = .{.typ = block.typ, .data = block.data & 3};
-							main.renderer.MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, 0, chest.pos[0], chest.pos[1], chest.pos[2], block, newBlock);
-						}
+				if(chest.shouldBeOpen) {
+					chest.angle += deltaTime * 180.0;
+					if (chest.angle > 90.0) {
+						chest.angle = 90.0;
 					}
-					std.debug.print("{d}\n", .{chest.angle});
+				} else {
+					chest.angle -= deltaTime * 180.0;
+					if (chest.angle < 0.0) {
+						chest.angle = 0.0;
+					}
 				}
+
+				var block = main.renderer.mesh_storage.getBlockFromRenderThread(chest.pos[0], chest.pos[1], chest.pos[2]) orelse continue;
+				block.data = 4;
+				const height = main.blocks.meshes.model(block).model().max[2];
+
+				const modelMatrix = Mat4f.translation(.{0, height, 0});
+
+				block.data = 8;
+
+				const quad = main.blocks.meshes.model(block).model().internalQuads[0];
+
+				pipeline.bind(null);
+				c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+
+				c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+				c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+				c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.game.camera.viewMatrix));
+				c.glUniformMatrix4fv(uniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
+				c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPosition[0])), @intFromFloat(@floor(playerPosition[1])), @intFromFloat(@floor(playerPosition[2])));
+				c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPosition[0], 1)), @floatCast(@mod(playerPosition[1], 1)), @floatCast(@mod(playerPosition[2], 1)));
+
+				c.glUniform1i(uniforms.quadIndex, @intFromEnum(quad));
+				c.glUniform4ui(uniforms.lightData, 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff);
+				c.glUniform3i(uniforms.chunkPos, chest.pos[0] & ~main.chunk.chunkMask, chest.pos[1] & ~main.chunk.chunkMask, chest.pos[2] & ~main.chunk.chunkMask);
+				c.glUniform3i(uniforms.blockPos, chest.pos[0] & main.chunk.chunkMask, chest.pos[1] & main.chunk.chunkMask, chest.pos[2] & main.chunk.chunkMask);
+
+				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
 			}
 		}
 	};
