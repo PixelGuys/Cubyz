@@ -8,9 +8,15 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:cross",
+	.model = {
+		.top = "cubyz:cross",
+		.bottom = "cubyz:cross_1",
+	}
 	.rotation = "cubyz:hanging",
-	.texture0 = "cubyz:vine_middle",
-	.texture1 = "cubyz:vine_bottom",
+	.texture0 = "cubyz:vine/willow/top",
+	.texture1 = "cubyz:vine/willow/bottom",
+	.item = .{
+		.texture = "vine/willow.png",
+	},
 	.lodReplacement = "cubyz:air",
 }
