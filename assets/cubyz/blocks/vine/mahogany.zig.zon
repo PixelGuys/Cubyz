@@ -1,0 +1,22 @@
+.{
+	.tags = .{.cuttable},
+	.blockHealth = 0.3,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x000000,
+	.collide = false,
+	.model = {
+		.top = "cubyz:cross",
+		.bottom = "cubyz:cross_1",
+	}
+	.rotation = "cubyz:hanging",
+	.texture0 = "cubyz:vine/mahogany/top",
+	.texture1 = "cubyz:vine/mahogany/bottom",
+	.item = .{
+		.texture = "vine/mahogany.png",
+	},
+	.lodReplacement = "cubyz:air",
+}
