@@ -58,7 +58,7 @@ var fakeReflectionUniforms: struct {
 pub var activeFrameBuffer: c_uint = 0;
 
 pub const reflectionCubeMapSize = 64;
-var reflectionCubeMap: graphics.CubeMapTexture = undefined;
+pub var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub fn init() void {
 	deferredRenderPassPipeline = graphics.Pipeline.init(

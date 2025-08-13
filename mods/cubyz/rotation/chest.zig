@@ -55,13 +55,17 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	_ = openModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0)});
 	_ = openModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi)});
 	_ = openModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.identity()});
+	
+	const lidModel = main.models.getModelIndex(lidId).model();
+
+	_ = lidModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.identity()});
 
 	rotatedModels.put(joinedId, modelIndex) catch unreachable;
 	return modelIndex;
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(@min(block.data, 7));
+	return blocks.meshes.modelIndexStart(block).add(@min(block.data, 8));
 }
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
