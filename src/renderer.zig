@@ -1146,10 +1146,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(main.gui.hideGui) return;
 		if(selectedBlockPos) |_selectedBlockPos| {
-			const block = mesh_storage.getBlockFromRenderThread(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
-			for(block.mode().model(block).model().collision) |aabb| {
-				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, @floatCast(aabb.min), @floatCast(aabb.max));
-			}
+			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
 		if(game.Player.selectionPosition1) |pos1| {
 			if(game.Player.selectionPosition2) |pos2| {
