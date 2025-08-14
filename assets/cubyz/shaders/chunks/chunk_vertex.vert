@@ -99,10 +99,10 @@ void main() {
 	normal = quads[quadIndex].normal;
 
 	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
-	position *= voxelSize;
 #ifdef ENTITY
 	position = (modelMatrix*vec4(position - vec3(1), 1)).xyz + vec3(1);
 #endif
+	position *= voxelSize;
 	position += vec3(chunks[chunkID].position.xyz - playerPositionInteger);
 	position -= playerPositionFraction;
 
