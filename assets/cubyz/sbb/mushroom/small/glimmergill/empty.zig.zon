@@ -1,0 +1,8 @@
+.{
+	.blueprint = "cubyz:mushroom/small/glimmergill/empty",
+	.children = .{
+		.white = .{
+			.{.structure = null},
+		},
+	},
+}

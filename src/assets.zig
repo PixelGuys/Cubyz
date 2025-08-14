@@ -531,8 +531,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// Items:
 	// First from the palette to enforce ID values.
 	for(itemPalette.palette.items) |stringId| {
-		std.debug.assert(!items_zig.hasRegistered(stringId));
-
 		// Some items are created automatically from blocks.
 		if(worldAssets.blocks.get(stringId)) |zon| {
 			if(!zon.get(bool, "hasItem", true)) continue;

@@ -1249,7 +1249,12 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 
 pub fn registerRecipes(zon: ZonElement) void {
 	for(zon.toSlice()) |recipeZon| {
-		const recipe = parseRecipe(recipeZon) catch continue;
+		const recipe = parseRecipe(recipeZon) catch |err| {
+			const recipeString = recipeZon.toString(main.stackAllocator);
+			defer main.stackAllocator.free(recipeString);
+			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
+			continue;
+		};
 		recipeList.append(recipe);
 	}
 }
