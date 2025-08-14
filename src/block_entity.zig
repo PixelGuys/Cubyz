@@ -406,7 +406,7 @@ pub const BlockEntityTypes = struct {
 						@as(u32, lightVals[4] >> 3) << 5 |
 						@as(u32, lightVals[5] >> 3) << 0);
 
-					renderBlock(projMatrix, modelMatrix, block, light, ambientLight, playerPosition - @as(Vec3d, @floatFromInt(chest.pos)));
+					main.renderer.renderBlock(projMatrix, modelMatrix, block, light, ambientLight, playerPosition - @as(Vec3d, @floatFromInt(chest.pos)));
 				}
 			}
 		}
@@ -662,111 +662,8 @@ pub const BlockEntityTypes = struct {
 };
 
 var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
-var blockPipeline: graphics.Pipeline = undefined;
-var blockUniforms: struct {
-	projectionMatrix: c_int,
-	viewMatrix: c_int,
-	modelMatrix: c_int,
-	playerPositionInteger: c_int,
-	playerPositionFraction: c_int,
-	screenSize: c_int,
-	ambientLight: c_int,
-	contrast: c_int,
-	@"fog.color": c_int,
-	@"fog.density": c_int,
-	@"fog.fogLower": c_int,
-	@"fog.fogHigher": c_int,
-	reflectionMapSize: c_int,
-	lodDistance: c_int,
-	zNear: c_int,
-	zFar: c_int,
-} = undefined;
-
-pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: Block, lighting: u32, ambientLight: Vec3f, playerPosition: Vec3d) void {
-	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
-	defer faceData.deinit(main.stackAllocator);
-	const model = main.blocks.meshes.model(block).model();
-	if(block.hasBackFace()) {
-		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
-		for(main.chunk.Neighbor.iterable) |neighbor| {
-			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
-		}
-	}
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
-	for(main.chunk.Neighbor.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
-	}
-
-	for(faceData.items) |*face| {
-		face.position.lightIndex = 0;
-	}
-	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData.items, &allocation);
-	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
-	var lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.lightBuffers[0].uploadData(&.{lighting, lighting, lighting, lighting}, &lightAllocation);
-	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
-
-	var chunkAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.chunkBuffer.uploadData(&.{.{
-		.position = .{0, 0, 0},
-		.min = undefined,
-		.max = undefined,
-		.voxelSize = 1,
-		.lightStart = lightAllocation.start,
-		.vertexStartOpaque = undefined,
-		.faceCountsByNormalOpaque = undefined,
-		.vertexStartTransparent = undefined,
-		.vertexCountTransparent = undefined,
-		.visibilityState = 0,
-		.oldVisibilityState = 0,
-	}}, &chunkAllocation);
-	defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
-
-	blockPipeline.bind(null);
-	c.glUniformMatrix4fv(blockUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-
-	c.glUniform1f(blockUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
-
-	c.glUniform1f(blockUniforms.contrast, 0);
-
-	c.glUniform1f(blockUniforms.lodDistance, main.settings.@"lod0.5Distance");
-
-	c.glUniformMatrix4fv(blockUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.game.camera.viewMatrix));
-
-	c.glUniform3f(blockUniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
-
-	c.glUniform1f(blockUniforms.zNear, main.renderer.zNear);
-	c.glUniform1f(blockUniforms.zFar, main.renderer.zFar);
-
-	const playerPos = playerPosition + Vec3d{1, 1, 1};
-	c.glUniform3i(blockUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
-	c.glUniform3f(blockUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
-	c.glUniformMatrix4fv(blockUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-
-	c.glBindVertexArray(main.renderer.chunk_meshing.vao);
-
-	main.renderer.chunk_meshing.faceBuffers[0].ssbo.bind(main.renderer.chunk_meshing.faceBuffers[0].binding);
-	main.renderer.chunk_meshing.lightBuffers[0].ssbo.bind(main.renderer.chunk_meshing.lightBuffers[0].binding);
-	c.glActiveTexture(c.GL_TEXTURE0);
-	main.blocks.meshes.blockTextureArray.bind();
-	c.glActiveTexture(c.GL_TEXTURE1);
-	main.blocks.meshes.emissionTextureArray.bind();
-	c.glActiveTexture(c.GL_TEXTURE2);
-	main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
-	c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
-}
 
 pub fn init() void {
-	blockPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
-		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
-		"#define ENTITY",
-		&blockUniforms,
-		.{},
-		.{.depthTest = true, .depthWrite = true},
-		.{.attachments = &.{.noBlending}},
-	);
 	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name));
 		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
@@ -781,7 +678,6 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
-	blockPipeline.deinit();
 	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		@field(BlockEntityTypes, declaration.name).deinit();
 	}
