@@ -273,7 +273,7 @@ pub const collision = struct {
 					volumeSum += gridVolume;
 
 					if(_block) |block| {
-						const collisionBox: Box = .{ // TODO: Check all Aabbs individually
+						const collisionBox: Box = .{ // TODO: Check all AABBs individually
 							.min = totalBox.min + main.blocks.meshes.model(block).model().min,
 							.max = totalBox.min + main.blocks.meshes.model(block).model().max,
 						};

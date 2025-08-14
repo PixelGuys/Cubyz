@@ -210,40 +210,39 @@ pub const Model = struct {
 		return x0 + (x1 - x0)*(y - y0)/(y1 - y0);
 	}
 
-	fn solveDepth(normal: Vec3f, v0: Vec3f, X: usize, Y: usize, Z: usize, u: f32, v: f32) f32 {
-		const nX = normal[X];
-		const nY = normal[Y];
-		const nZ = normal[Z];
+	fn solveDepth(normal: Vec3f, v0: Vec3f, xIndex: usize, yIndex: usize, zIndex: usize, u: f32, v: f32) f32 {
+		const nX = normal[xIndex];
+		const nY = normal[yIndex];
+		const nZ = normal[zIndex];
 
-		if(@abs(nZ) < 1e-6) return 0.0;
 
-		const D = -vec.dot(v0, normal);
+		const planeOffset = -vec.dot(v0, normal);
 
-		return (-(nX*u + nY*v + D))/nZ;
+		return (-(nX*u + nY*v + planeOffset))/nZ;
 	}
 
 	fn rasterize(triangle: [3]Vec3f, grid: *[collisionGridSize][collisionGridSize]CollisionGridInteger, normal: Vec3f) void {
-		var X: usize = undefined;
-		var Y: usize = undefined;
-		var Z: usize = undefined;
+		var xIndex: usize = undefined;
+		var yIndex: usize = undefined;
+		var zIndex: usize = undefined;
 
 		const v0 = triangle[0]*@as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
 		const v1 = triangle[1]*@as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
 		const v2 = triangle[2]*@as(Vec3f, @splat(@floatFromInt(collisionGridSize)));
 
-		const absNormal = Vec3f{@abs(normal[0]), @abs(normal[1]), @abs(normal[2])};
+		const absNormal = @abs(normal);
 		if(absNormal[0] >= absNormal[1] and absNormal[0] >= absNormal[2]) {
-			X = 1;
-			Y = 2;
-			Z = 0;
+			xIndex = 1;
+			yIndex = 2;
+			zIndex = 0;
 		} else if(absNormal[1] >= absNormal[0] and absNormal[1] >= absNormal[2]) {
-			X = 0;
-			Y = 2;
-			Z = 1;
+			xIndex = 0;
+			yIndex = 2;
+			zIndex = 1;
 		} else {
-			X = 0;
-			Y = 1;
-			Z = 2;
+			xIndex = 0;
+			yIndex = 1;
+			zIndex = 2;
 		}
 
 		const min: Vec3f = @min(v0, v1, v2);
@@ -252,9 +251,9 @@ pub const Model = struct {
 		const voxelMin: Vec3i = @max(@as(Vec3i, @intFromFloat(@floor(min))), @as(Vec3i, @splat(0)));
 		const voxelMax: Vec3i = @max(@as(Vec3i, @intFromFloat(@ceil(max))), @as(Vec3i, @splat(0)));
 
-		var p0 = Vec2f{v0[X], v0[Y]};
-		var p1 = Vec2f{v1[X], v1[Y]};
-		var p2 = Vec2f{v2[X], v2[Y]};
+		var p0 = Vec2f{v0[xIndex], v0[yIndex]};
+		var p1 = Vec2f{v1[xIndex], v1[yIndex]};
+		var p2 = Vec2f{v2[xIndex], v2[yIndex]};
 
 		if(p0[1] > p1[1]) {
 			std.mem.swap(Vec2f, &p0, &p1);
@@ -266,7 +265,7 @@ pub const Model = struct {
 			std.mem.swap(Vec2f, &p1, &p2);
 		}
 
-		for(@intCast(voxelMin[Y])..@intCast(voxelMax[Y])) |y| {
+		for(@intCast(voxelMin[yIndex])..@intCast(voxelMax[yIndex])) |y| {
 			if(y >= collisionGridSize) continue;
 			const yf = @as(f32, @floatFromInt(y)) + 0.5;
 			var xa: f32 = undefined;
@@ -289,7 +288,7 @@ pub const Model = struct {
 				if(x < 0 or x >= collisionGridSize) continue;
 				const xf = @as(f32, @floatFromInt(x)) + 0.5;
 
-				const zf = solveDepth(normal, v0, X, Y, Z, xf, yf);
+				const zf = solveDepth(normal, v0, xIndex, yIndex, zIndex, xf, yf);
 				if(zf < 0.0) continue;
 				const z: usize = @intFromFloat(zf);
 
@@ -297,9 +296,9 @@ pub const Model = struct {
 
 				const pos: [3]usize = .{x, y, z};
 				var realPos: [3]usize = undefined;
-				realPos[X] = pos[0];
-				realPos[Y] = pos[1];
-				realPos[Z] = pos[2];
+				realPos[xIndex] = pos[0];
+				realPos[yIndex] = pos[1];
+				realPos[zIndex] = pos[2];
 				grid[realPos[0]][realPos[1]] |= @as(CollisionGridInteger, 1) << @intCast(realPos[2]);
 			}
 		}
@@ -312,7 +311,7 @@ pub const Model = struct {
 		for(modelQuads) |quad| {
 			var shift = Vec3f{0, 0, 0};
 			for(0..3) |i| {
-				if(@abs(quad.normalVec()[i]) == 1.0 and std.math.floor(quad.corners[0][i]*collisionGridSize) == quad.corners[0][i]*collisionGridSize) {
+				if(@abs(quad.normalVec()[i]) == 1.0 and @floor(quad.corners[0][i]*collisionGridSize) == quad.corners[0][i]*collisionGridSize) {
 					shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
 				}
 			}
@@ -384,7 +383,7 @@ pub const Model = struct {
 		}
 
 		collision.shrinkAndFree(collision.items.len);
-		self.collision = collision.items;
+		self.collision = collision.toOwnedSlice() catch unreachable;
 	}
 
 	fn allTrue(grid: *const [collisionGridSize][collisionGridSize]CollisionGridInteger, min: Vec3i, max: Vec3i, mask: CollisionGridInteger) bool {
