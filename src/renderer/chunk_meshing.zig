@@ -24,7 +24,7 @@ const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
 
 const mesh_storage = @import("mesh_storage.zig");
 
-pub var pipeline: graphics.Pipeline = undefined;
+var pipeline: graphics.Pipeline = undefined;
 var transparentPipeline: graphics.Pipeline = undefined;
 const UniformStruct = struct {
 	projectionMatrix: c_int,
