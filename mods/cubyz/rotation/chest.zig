@@ -40,7 +40,10 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	const openId = zon.get([]const u8, "open", "cubyz:cube");
 	const lidId = zon.get([]const u8, "lid", "cubyz:cube");
 	const joinedId = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}:{s}:{s}", .{closedId, openId, lidId}) catch unreachable;
-	if(rotatedModels.get(joinedId)) |modelIndex| return modelIndex;
+	if(rotatedModels.get(joinedId)) |modelIndex| {
+		main.globalAllocator.free(joinedId);
+		return modelIndex;
+	}
 
 	const closedModel = main.models.getModelIndex(closedId).model();
 	// Rotate the model:
