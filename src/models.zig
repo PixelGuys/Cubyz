@@ -215,7 +215,6 @@ pub const Model = struct {
 		const nY = normal[yIndex];
 		const nZ = normal[zIndex];
 
-
 		const planeOffset = -vec.dot(v0, normal);
 
 		return (-(nX*u + nY*v + planeOffset))/nZ;
