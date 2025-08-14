@@ -25,36 +25,36 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	const topModelIndex = main.models.getModelIndex(zon.get([]const u8, "top", "cubyz:cube"));
 	const bottomModelIndex = main.models.getModelIndex(zon.get([]const u8, "bottom", "cubyz:cube"));
 
-    const modelIndex = topModelIndex.model().transformModel(transform, .{});
-    _ = bottomModelIndex.model().transformModel(transform, .{});
-    return modelIndex;
+	const modelIndex = topModelIndex.model().transformModel(transform, .{});
+	_ = bottomModelIndex.model().transformModel(transform, .{});
+	return modelIndex;
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(block.data % 2);
+	return blocks.meshes.modelIndexStart(block).add(block.data%2);
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool {
-    const sameBlock = neighborBlock.typ == currentData.typ;
+	const sameBlock = neighborBlock.typ == currentData.typ;
 	if(blockPlacing) {
-        if(neighbor != Neighbor.dirUp) return false;
-        if(!sameBlock) {
-	        const neighborModel = neighborBlock.mode().model(neighborBlock).model();
-            const support = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[Neighbor.dirDown.toInt()].len != 0;
-            if(!support) return false;
-        }
-        currentData.data = 1;
+		if(neighbor != Neighbor.dirUp) return false;
+		if(!sameBlock) {
+			const neighborModel = neighborBlock.mode().model(neighborBlock).model();
+			const support = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[Neighbor.dirDown.toInt()].len != 0;
+			if(!support) return false;
+		}
+		currentData.data = 1;
 		return true;
 	}
 	return false;
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-    if(neighbor != .dirDown) return false;
+	if(neighbor != .dirDown) return false;
 
-    const newData: u16 = if(neighborBlock.typ == block.typ) 0 else 1;
+	const newData: u16 = if(neighborBlock.typ == block.typ) 0 else 1;
 
-    if(newData == block.data) return false;
-    block.data = newData;
-    return true;
+	if(newData == block.data) return false;
+	block.data = newData;
+	return true;
 }
