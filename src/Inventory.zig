@@ -229,7 +229,7 @@ pub const Sync = struct { // MARK: Sync
 				}
 				_ = self.users.swapRemove(index);
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
-				if(self.users.items.len == 0 ) {
+				if(self.users.items.len == 0) {
 					if(self.inv.callbacks.onLastCloseCallback) |cb| {
 						cb(self.inv.source);
 					}

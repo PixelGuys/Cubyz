@@ -302,7 +302,7 @@ pub const BlockEntityTypes = struct {
 			const data = StorageServer.getByIndex(dataIndex) orelse return;
 
 			const hasClients = main.items.Inventory.Sync.ServerSide.getServerInventoryFromId(data.invId).users.items.len != 0;
-			
+
 			writer.writeInt(u1, @intFromBool(hasClients));
 		}
 		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
@@ -343,11 +343,7 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageClient.getOrPut(pos, chunk);
 			if(!data.foundExisting) {
-				data.valuePtr.* = .{
-					.angle = 0,
-					.pos = pos,
-					.shouldBeOpen = false
-				};
+				data.valuePtr.* = .{.angle = 0, .pos = pos, .shouldBeOpen = false};
 			}
 			if(event.update.remaining.len != 0) {
 				data.valuePtr.shouldBeOpen = try event.update.readInt(u1) != 0;
@@ -376,9 +372,9 @@ pub const BlockEntityTypes = struct {
 			defer StorageServer.mutex.unlock();
 
 			const data = StorageServer.get(pos, chunk) orelse return;
-			
+
 			const hasClients = main.items.Inventory.Sync.ServerSide.getServerInventoryFromId(data.invId).users.items.len != 0;
-			
+
 			writer.writeInt(u1, @intFromBool(hasClients));
 		}
 
@@ -395,16 +391,16 @@ pub const BlockEntityTypes = struct {
 
 			for(StorageClient.storage.dense.items) |*chest| {
 				var block = main.renderer.mesh_storage.getBlockFromRenderThread(chest.pos[0], chest.pos[1], chest.pos[2]) orelse continue;
-				
+
 				if(block.data >= 4) {
 					if(chest.shouldBeOpen) {
-						chest.angle += deltaTime * 270.0;
-						if (chest.angle > 90.0) {
+						chest.angle += deltaTime*270.0;
+						if(chest.angle > 90.0) {
 							chest.angle = 90.0;
 						}
 					} else {
-						chest.angle -= deltaTime * 270.0;
-						if (chest.angle < 0.0) {
+						chest.angle -= deltaTime*270.0;
+						if(chest.angle < 0.0) {
 							chest.angle = 0.0;
 							const newBlock = main.blocks.Block{.typ = block.typ, .data = block.data & 3};
 							main.renderer.MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, 0, chest.pos[0], chest.pos[1], chest.pos[2], block, newBlock);
@@ -413,8 +409,8 @@ pub const BlockEntityTypes = struct {
 					}
 
 					const rotation: f32 = switch(block.data & 3) {
-						0 => std.math.pi / 2.0,
-						1 => -std.math.pi / 2.0,
+						0 => std.math.pi/2.0,
+						1 => -std.math.pi/2.0,
 						2 => std.math.pi,
 						3 => 0,
 						else => unreachable,
@@ -451,7 +447,7 @@ pub const BlockEntityTypes = struct {
 					var lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 					var lightVals: [6]u8 = main.renderer.mesh_storage.getLight(chest.pos[0], chest.pos[1], chest.pos[2]) orelse @splat(0);
 					inline for(&lightVals) |*val| {
-						val.* = @as(u8, @intFromFloat(@as(f32, @floatFromInt(val.*)) * 0.8));
+						val.* = @as(u8, @intFromFloat(@as(f32, @floatFromInt(val.*))*0.8));
 					}
 					const light = (@as(u32, lightVals[0] >> 3) << 25 |
 						@as(u32, lightVals[1] >> 3) << 20 |
@@ -477,7 +473,7 @@ pub const BlockEntityTypes = struct {
 						.oldVisibilityState = 0,
 					}}, &chunkAllocation);
 					defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
-					
+
 					pipeline.bind(null);
 					c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
@@ -498,7 +494,7 @@ pub const BlockEntityTypes = struct {
 					c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 					c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 					c.glUniformMatrix4fv(uniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-					
+
 					c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 
 					main.renderer.chunk_meshing.faceBuffers[0].ssbo.bind(main.renderer.chunk_meshing.faceBuffers[0].binding);
