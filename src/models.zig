@@ -286,7 +286,7 @@ pub const Model = struct {
 
 			for(voxelXStart..voxelXEnd) |x| {
 				if(x < 0 or x >= collisionGridSize) continue;
-				const xf = std.math.clamp(@as(f32, @floatFromInt(x)) + 0.5, min[xIndex], max[xIndex]);
+				const xf = std.math.clamp(@as(f32, @floatFromInt(x)) + 0.5, xStart, xEnd);
 
 				const zf = solveDepth(normal, v0, xIndex, yIndex, zIndex, xf, yf);
 				if(zf < 0.0) continue;
@@ -358,7 +358,7 @@ pub const Model = struct {
 			floodfillQueue.pushBack(.{.x = elem.x, .y = elem.y, .val = ~newValue << 1 | ~newValue >> 1});
 		}
 
-		var collision: std.ArrayList(Box) = .init(main.globalAllocator.allocator);
+		var collision: main.List(Box) = .init(main.globalAllocator);
 
 		for(0..collisionGridSize) |x| {
 			for(0..collisionGridSize) |y| {
@@ -377,13 +377,13 @@ pub const Model = struct {
 					const min = @as(Vec3f, @floatFromInt(boxMin))/@as(Vec3f, @splat(collisionGridSize));
 					const max = @as(Vec3f, @floatFromInt(boxMax))/@as(Vec3f, @splat(collisionGridSize));
 
-					collision.append(Box{.min = min, .max = max}) catch unreachable;
+					collision.append(Box{.min = min, .max = max});
 				}
 			}
 		}
 
 		collision.shrinkAndFree(collision.items.len);
-		self.collision = collision.toOwnedSlice() catch unreachable;
+		self.collision = collision.items;
 	}
 
 	fn allTrue(grid: *const [collisionGridSize][collisionGridSize]CollisionGridInteger, min: Vec3i, max: Vec3i, mask: CollisionGridInteger) bool {
