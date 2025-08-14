@@ -226,9 +226,9 @@ pub const BlockEntityTypes = struct {
 			StorageClient.init();
 			lastUpdateTime = std.time.milliTimestamp();
 			pipeline = graphics.Pipeline.init(
-				"assets/cubyz/shaders/block_entity/chest.vert",
-				"assets/cubyz/shaders/block_entity/chest.frag",
-				"",
+				"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+				"assets/cubyz/shaders/chunks/chunk_fragment.frag",
+				"#define ENTITY",
 				&uniforms,
 				.{},
 				.{.depthTest = true, .depthWrite = true},
