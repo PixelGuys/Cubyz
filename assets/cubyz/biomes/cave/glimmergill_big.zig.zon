@@ -8,7 +8,6 @@
 	.caves = -0.02,
 
 	.music = "cubyz:la_kubisa_caverna",
-	.stoneBlock = "cubyz:stone",
 	.ground_structure = .{
 		"2 to 3 cubyz:soil",
 	},
