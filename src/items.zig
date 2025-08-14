@@ -1121,9 +1121,6 @@ pub fn globalInit() void {
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered item with id '{s}' twice!", .{id});
-	}
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
@@ -1170,9 +1167,6 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 }
 
 pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	if(toolTypeIdToIndex.contains(id)) {
-		std.log.err("Registered tool type with id {s} twice!", .{id});
-	}
 	var slotInfos: [25]SlotInfo = @splat(.{});
 	for(zon.getChild("disabled").toSlice(), 0..) |zonDisabled, i| {
 		if(i >= 25) {
