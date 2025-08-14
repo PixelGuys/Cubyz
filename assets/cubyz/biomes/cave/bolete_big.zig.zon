@@ -3,7 +3,7 @@
 	.maxHeight = -512,
 	.minHeight = -48250,
 
-	.chance = 0.22,
+	.chance = 0.04,
 
 	.caves = -0.015,
 
