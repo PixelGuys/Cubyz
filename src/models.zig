@@ -267,7 +267,7 @@ pub const Model = struct {
 
 		for(@intCast(voxelMin[yIndex])..@intCast(voxelMax[yIndex])) |y| {
 			if(y >= collisionGridSize) continue;
-			const yf = @as(f32, @floatFromInt(y)) + 0.5;
+			const yf = std.math.clamp(@as(f32, @floatFromInt(y)) + 0.5, min[yIndex], max[yIndex]);
 			var xa: f32 = undefined;
 			var xb: f32 = undefined;
 			if(yf < p1[1]) {
@@ -286,7 +286,7 @@ pub const Model = struct {
 
 			for(voxelXStart..voxelXEnd) |x| {
 				if(x < 0 or x >= collisionGridSize) continue;
-				const xf = @as(f32, @floatFromInt(x)) + 0.5;
+				const xf = std.math.clamp(@as(f32, @floatFromInt(x)) + 0.5, min[xIndex], max[xIndex]);
 
 				const zf = solveDepth(normal, v0, xIndex, yIndex, zIndex, xf, yf);
 				if(zf < 0.0) continue;
