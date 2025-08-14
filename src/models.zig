@@ -381,8 +381,7 @@ pub const Model = struct {
 			}
 		}
 
-		collision.shrinkAndFree(collision.items.len);
-		self.collision = collision.items;
+		self.collision = collision.toOwnedSlice();
 	}
 
 	fn allTrue(grid: *const [collisionGridSize][collisionGridSize]CollisionGridInteger, min: Vec3i, max: Vec3i, mask: CollisionGridInteger) bool {
