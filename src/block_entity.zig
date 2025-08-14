@@ -375,7 +375,6 @@ pub const BlockEntityTypes = struct {
 							chest.angle = 0.0;
 							const newBlock = main.blocks.Block{.typ = block.typ, .data = block.data & 3};
 							main.renderer.MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, 0, chest.pos[0], chest.pos[1], chest.pos[2], block, newBlock);
-							continue;
 						}
 					}
 
