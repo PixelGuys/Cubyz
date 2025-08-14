@@ -24,8 +24,6 @@ pub fn reset() void {}
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	const topModelIndex = main.models.getModelIndex(zon.get([]const u8, "top", "cubyz:cube"));
 	const bottomModelIndex = main.models.getModelIndex(zon.get([]const u8, "bottom", "cubyz:cube"));
-    
-
 
     const modelIndex = topModelIndex.model().transformModel(transform, .{});
     _ = bottomModelIndex.model().transformModel(transform, .{});
