@@ -58,7 +58,7 @@ var fakeReflectionUniforms: struct {
 pub var activeFrameBuffer: c_uint = 0;
 
 pub const reflectionCubeMapSize = 64;
-var reflectionCubeMap: graphics.CubeMapTexture = undefined;
+pub var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub fn init() void {
 	deferredRenderPassPipeline = graphics.Pipeline.init(
@@ -1106,7 +1106,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+	pub fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.items.Inventory.Sync.ClientSide.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source, .slot = slot},

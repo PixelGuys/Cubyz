@@ -24,7 +24,7 @@ const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
 
 const mesh_storage = @import("mesh_storage.zig");
 
-var pipeline: graphics.Pipeline = undefined;
+pub var pipeline: graphics.Pipeline = undefined;
 var transparentPipeline: graphics.Pipeline = undefined;
 const UniformStruct = struct {
 	projectionMatrix: c_int,
@@ -1262,6 +1262,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
+
+		if(newBlock.blockEntity()) |blockEntity| {
+			var reader = main.utils.BinaryReader.init(blockEntityData);
+			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.update = &reader}) catch |err| {
+				std.log.err("Got error {s} while trying to create block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
+			};
+		}
 		self.mutex.unlock();
 
 		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);
