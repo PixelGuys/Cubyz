@@ -216,6 +216,10 @@ pub const BlockEntityTypes = struct {
 			ch.setChanged();
 		}
 
+		const inventoryCallbacks = main.items.Inventory.Callbacks{
+			.onUpdateCallback = &onInventoryUpdateCallback,
+		};
+
 		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
 		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
@@ -224,7 +228,7 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			std.debug.assert(!data.foundExisting);
-			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, &onInventoryUpdateCallback);
+			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, inventoryCallbacks);
 		}
 
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
@@ -252,7 +256,7 @@ pub const BlockEntityTypes = struct {
 
 			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 
-			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, null);
+			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, .{});
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
@@ -274,7 +278,7 @@ pub const BlockEntityTypes = struct {
 					const data = StorageServer.getOrPut(pos, chunk);
 					if(data.foundExisting) return;
 					var reader = BinaryReader.init(&.{});
-					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, &onInventoryUpdateCallback);
+					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
 				},
 			}
 		}

@@ -25,6 +25,12 @@ const Side = enum {client, server};
 
 pub const InventoryId = enum(u32) {_};
 
+pub const Callbacks = struct {
+	onUpdateCallback: ?*const fn(Source) void = null,
+	onFirstOpenCallback: ?*const fn(Source) void = null,
+	onLastCloseCallback: ?*const fn(Source) void = null,
+};
+
 pub const Sync = struct { // MARK: Sync
 
 	pub const ClientSide = struct {
@@ -179,10 +185,10 @@ pub const Sync = struct { // MARK: Sync
 
 			const Managed = enum {internallyManaged, externallyManaged};
 
-			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed, onUpdateCallback: ?*const fn(Source) void) ServerInventory {
+			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed, callbacks: Callbacks) ServerInventory {
 				main.utils.assertLocked(&mutex);
 				return .{
-					.inv = Inventory._init(main.globalAllocator, len, typ, source, .server, onUpdateCallback),
+					.inv = Inventory._init(main.globalAllocator, len, typ, source, .server, callbacks),
 					.users = .{},
 					.source = source,
 					.managed = managed,
@@ -205,6 +211,11 @@ pub const Sync = struct { // MARK: Sync
 				main.utils.assertLocked(&mutex);
 				self.users.append(main.globalAllocator, .{.user = user, .cliendId = clientId});
 				user.inventoryClientToServerIdMap.put(clientId, self.inv.id) catch unreachable;
+				if(self.users.items.len == 1) {
+					if(self.inv.callbacks.onFirstOpenCallback) |cb| {
+						cb(self.inv.source);
+					}
+				}
 			}
 
 			fn removeUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
@@ -218,12 +229,17 @@ pub const Sync = struct { // MARK: Sync
 				}
 				_ = self.users.swapRemove(index);
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
-				if(self.users.items.len == 0 and self.managed == .internallyManaged) {
-					if(self.inv.type.shouldDepositToUserOnClose()) {
-						const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-						Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv}}, null);
+				if(self.users.items.len == 0) {
+					if(self.inv.callbacks.onLastCloseCallback) |cb| {
+						cb(self.inv.source);
 					}
-					self.deinit();
+					if(self.managed == .internallyManaged) {
+						if(self.inv.type.shouldDepositToUserOnClose()) {
+							const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
+							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv}}, null);
+						}
+						self.deinit();
+					}
 				}
 			}
 		};
@@ -332,10 +348,10 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
-		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, onUpdateCallback: ?*const fn(Source) void) InventoryId {
+		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
 			mutex.lock();
 			defer mutex.unlock();
-			const inventory = ServerInventory.init(len, typ, source, .externallyManaged, onUpdateCallback);
+			const inventory = ServerInventory.init(len, typ, source, .externallyManaged, callbacks);
 			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
 			inventory.inv.fromBytes(data);
 			return inventory.inv.id;
@@ -388,7 +404,7 @@ pub const Sync = struct { // MARK: Sync
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
-			const inventory = ServerInventory.init(len, typ, source, .internallyManaged, null);
+			const inventory = ServerInventory.init(len, typ, source, .internallyManaged, .{});
 
 			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
 			inventories.items[@intFromEnum(inventory.inv.id)].addUser(user, clientId);
@@ -1442,7 +1458,7 @@ pub const Command = struct { // MARK: Command
 					._items = &_items,
 					.id = undefined,
 					.source = undefined,
-					.onUpdateCallback = null,
+					.callbacks = .{},
 				};
 				cmd.tryCraftingTo(allocator, .{.inv = temp, .slot = 0}, self.source, side, user);
 				std.debug.assert(cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
@@ -1898,15 +1914,15 @@ type: Type,
 id: InventoryId,
 _items: []ItemStack,
 source: Source,
-onUpdateCallback: ?*const fn(Source) void,
+callbacks: Callbacks,
 
-pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, onUpdateCallback: ?*const fn(Source) void) Inventory {
-	const self = _init(allocator, _size, _type, source, .client, onUpdateCallback);
+pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, callbacks: Callbacks) Inventory {
+	const self = _init(allocator, _size, _type, source, .client, callbacks);
 	Sync.ClientSide.executeCommand(.{.open = .{.inv = self, .source = source}});
 	return self;
 }
 
-fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, side: Side, onUpdateCallback: ?*const fn(Source) void) Inventory {
+fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, side: Side, callbacks: Callbacks) Inventory {
 	if(_type == .workbench) std.debug.assert(_size == 26);
 	const self = Inventory{
 		.type = _type,
@@ -1916,7 +1932,7 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: So
 			.server => Sync.ServerSide.nextId(),
 		},
 		.source = source,
-		.onUpdateCallback = onUpdateCallback,
+		.callbacks = callbacks,
 	};
 	for(self._items) |*item| {
 		item.* = ItemStack{};
@@ -1946,7 +1962,7 @@ fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: Side) void {
 }
 
 fn update(self: Inventory) void {
-	defer if(self.onUpdateCallback) |cb| cb(self.source);
+	defer if(self.callbacks.onUpdateCallback) |cb| cb(self.source);
 	if(self.type == .workbench) {
 		self._items[self._items.len - 1].deinit();
 		self._items[self._items.len - 1].clear();
