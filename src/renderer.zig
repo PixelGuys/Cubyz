@@ -359,7 +359,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 }
 
-pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lighting: u32, ambientLight: Vec3f, playerPosition: Vec3d) void {
+pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lightPos: Vec3i, ambientLight: Vec3f, playerPosition: Vec3d) void {
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
@@ -377,11 +377,31 @@ pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, l
 	for(faceData.items) |*face| {
 		face.position.lightIndex = 0;
 	}
+
 	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData.items, &allocation);
 	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
 	var lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.lightBuffers[0].uploadData(&.{lighting, lighting, lighting, lighting}, &lightAllocation);
+	{
+		const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
+		var quads: main.List(main.models.QuadInfo) = .init(main.stackAllocator);
+		defer quads.deinit();
+		model.getRawFaces(&quads);
+		var data = main.stackAllocator.alloc(u32, quads.items.len*4);
+		defer main.stackAllocator.free(data);
+		for(quads.items, 0..) |quad, index| {
+			var rawData: [4][6]u5 = undefined;
+			for(0..4) |i| {
+				const indexData = main.renderer.chunk_meshing.PrimitiveMesh.getCornerLight(mesh, lightPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, quad.normal);
+				for(0..6) |j| {
+					rawData[i][j] = std.math.lossyCast(u5, indexData[j]);
+				}
+			}
+			const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
+			@memcpy(data[index*4 .. index*4 + 4], &packedLight);
+		}
+		main.renderer.chunk_meshing.lightBuffers[0].uploadData(data, &lightAllocation);
+	}
 	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
 
 	var chunkAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};

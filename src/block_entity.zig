@@ -394,18 +394,7 @@ pub const BlockEntityTypes = struct {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationX(std.math.degreesToRadians(chest.angle)));
 					block.data = 8;
 
-					var lightVals: [6]u8 = main.renderer.mesh_storage.getLight(chest.pos[0], chest.pos[1], chest.pos[2]) orelse @splat(0);
-					inline for(&lightVals) |*val| {
-						val.* = @as(u8, @intFromFloat(@as(f32, @floatFromInt(val.*))*0.8));
-					}
-					const light = (@as(u32, lightVals[0] >> 3) << 25 |
-						@as(u32, lightVals[1] >> 3) << 20 |
-						@as(u32, lightVals[2] >> 3) << 15 |
-						@as(u32, lightVals[3] >> 3) << 10 |
-						@as(u32, lightVals[4] >> 3) << 5 |
-						@as(u32, lightVals[5] >> 3) << 0);
-
-					main.renderer.renderBlock(projMatrix, modelMatrix, block, light, ambientLight, playerPosition - @as(Vec3d, @floatFromInt(chest.pos)));
+					main.renderer.renderBlockLit(projMatrix, modelMatrix, block, chest.pos, ambientLight, playerPosition - @as(Vec3d, @floatFromInt(chest.pos)));
 				}
 			}
 		}
