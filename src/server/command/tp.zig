@@ -27,8 +27,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		var dir: main.chunk.Neighbor = .dirNegX;
 		var stepsRemaining: usize = 1;
 		for(0..spiralLen) |_| {
-			const map = main.server.terrain.ClimateMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy);
-			defer map.decreaseRefCount();
+			const map = main.server.terrain.ClimateMap.getOrGenerateFragment(wx, wy);
 			for(0..map.map.len) |_| {
 				const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
 				const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);

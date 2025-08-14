@@ -381,8 +381,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.max = @splat(-std.math.floatMax(f32));
 
 		self.lock.lockRead();
-		parent.lightingData[0].lock.lockRead();
-		parent.lightingData[1].lock.lockRead();
 		for(self.completeList.getEverything()) |*face| {
 			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex);
 			const result = lightMap.getOrPut(light) catch unreachable;
@@ -401,8 +399,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				self.max = @max(self.max, basePos + cornerPos);
 			}
 		}
-		parent.lightingData[0].lock.unlockRead();
-		parent.lightingData[1].lock.unlockRead();
 		self.lock.unlockRead();
 	}
 
@@ -421,10 +417,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			return getValues(parent, wx, wy, wz);
 		}
 		const neighborMesh = mesh_storage.getMesh(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
-		neighborMesh.lightingData[0].lock.lockRead();
-		neighborMesh.lightingData[1].lock.lockRead();
-		defer neighborMesh.lightingData[0].lock.unlockRead();
-		defer neighborMesh.lightingData[1].lock.unlockRead();
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
@@ -676,7 +668,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
 	lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
-	refCount: std.atomic.Value(u32) = .init(1),
 	needsLightRefresh: std.atomic.Value(bool) = .init(false),
 	needsMeshUpdate: bool = false,
 	finishedMeshing: bool = false, // Must be synced with node.finishedMeshing in mesh_storage.zig
@@ -712,7 +703,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return self;
 	}
 
-	pub fn deinit(self: *ChunkMesh, _: usize) void {
+	fn privateDeinit(self: *ChunkMesh, _: usize) void {
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
@@ -728,6 +719,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		main.globalAllocator.free(self.lightList);
 		lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].free(self.lightAllocation);
 		mesh_storage.meshMemoryPool.destroy(self);
+	}
+
+	pub fn deferredDeinit(self: *ChunkMesh) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn scheduleLightRefresh(pos: chunk.ChunkPosition) void {
@@ -804,7 +799,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.unlock();
 		self.lightingData[0].propagateLights(lightEmittingBlocks.items, true, lightRefreshList);
 		sunLight: {
-			var allSun: bool = self.chunk.data.paletteLength == 1 and self.chunk.data.palette[0].typ == 0;
+			var allSun: bool = self.chunk.data.palette().len == 1 and self.chunk.data.palette()[0].load(.unordered).typ == 0;
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
 			const lightStartMap = mesh_storage.getLightMapPiece(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
@@ -912,10 +907,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			hasInternalQuads: bool = false,
 			alwaysViewThrough: bool = false,
 		};
-		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.paletteLength);
+		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.palette().len);
 		defer main.stackAllocator.free(paletteCache);
-		for(0..self.chunk.data.paletteLength) |i| {
-			const block = self.chunk.data.palette[i];
+		for(0..self.chunk.data.palette().len) |i| {
+			const block = self.chunk.data.palette()[i].load(.unordered);
 			const model = blocks.meshes.model(block).model();
 			var result: OcclusionInfo = .{};
 			if(model.noNeighborsOccluded or block.viewThrough()) {
@@ -943,7 +938,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const y: u5 = @intCast(_y);
 				for(0..chunk.chunkSize) |_z| {
 					const z: u5 = @intCast(_z);
-					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
+					const paletteId = self.chunk.data.impl.raw.data.getValue(chunk.getIndex(x, y, z));
 					const occlusionInfo = paletteCache[paletteId];
 					const setBit = @as(u32, 1) << z;
 					if(occlusionInfo.alwaysViewThrough or (!occlusionInfo.canSeeAllNeighbors and occlusionInfo.canSeeNeighbor == 0)) {
@@ -983,7 +978,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const y: u5 = @intCast(_y);
 				for(0..chunk.chunkSize) |_z| {
 					const z: u5 = @intCast(_z);
-					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
+					const paletteId = self.chunk.data.impl.raw.data.getValue(chunk.getIndex(x, y, z));
 					const occlusionInfo = paletteCache[paletteId];
 					const setBit = @as(u32, 1) << z;
 					if(depthFilteredViewThroughMask[x][y] & setBit != 0) {} else if(occlusionInfo.canSeeAllNeighbors) {
@@ -999,7 +994,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						hasFaces[x][y] |= setBit;
 					}
 					if(occlusionInfo.hasInternalQuads) {
-						const block = self.chunk.data.palette[paletteId];
+						const block = self.chunk.data.palette()[paletteId].load(.unordered);
 						if(block.transparent()) {
 							appendInternalQuads(block, x, y, z, false, &transparentCore, main.stackAllocator);
 						} else {
@@ -1204,7 +1199,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		if(oldBlock == newBlock) {
 			if(newBlock.blockEntity()) |blockEntity| {
 				var reader = main.utils.BinaryReader.init(blockEntityData);
-				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
+				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.update = &reader}) catch |err| {
 					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
 				};
 			}
@@ -1267,13 +1262,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
-
-		if(newBlock.blockEntity()) |blockEntity| {
-			var reader = main.utils.BinaryReader.init(blockEntityData);
-			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
-				std.log.err("Got error {s} while trying to create block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
-			};
-		}
 		self.mutex.unlock();
 
 		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);

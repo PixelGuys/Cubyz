@@ -182,7 +182,7 @@ const MaterialProperty = enum {
 	}
 };
 
-pub const BaseItemIndex = enum(u16) {
+pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	_,
 
 	pub fn fromId(_id: []const u8) ?BaseItemIndex {
@@ -495,13 +495,13 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		outer: for(tool.materialGrid, 0..) |row, x| {
 			for(row, 0..) |entry, y| {
 				if(entry != null) {
-					floodfillQueue.enqueue(.{@intCast(x), @intCast(y)});
+					floodfillQueue.pushBack(.{@intCast(x), @intCast(y)});
 					gridCellsReached[x][y] = true;
 					break :outer;
 				}
 			}
 		}
-		while(floodfillQueue.dequeue()) |pos| {
+		while(floodfillQueue.popFront()) |pos| {
 			for([4]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}}) |delta| {
 				const newPos = pos + delta;
 				if(newPos[0] < 0 or newPos[0] >= gridCellsReached.len) continue;
@@ -511,7 +511,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				if(gridCellsReached[x][y]) continue;
 				if(tool.materialGrid[x][y] == null) continue;
 				gridCellsReached[x][y] = true;
-				floodfillQueue.enqueue(newPos);
+				floodfillQueue.pushBack(newPos);
 			}
 		}
 		for(tool.materialGrid, 0..) |row, x| {
@@ -804,6 +804,10 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
+	fn id(self: *Tool) []const u8 {
+		return self.type.id();
+	}
+
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.writer().print(
@@ -934,6 +938,14 @@ pub const Item = union(ItemType) { // MARK: Item
 			},
 			.tool => |_tool| {
 				return _tool.getTexture();
+			},
+		}
+	}
+
+	pub fn id(self: Item) []const u8 {
+		switch(self) {
+			inline else => |item| {
+				return item.id();
 			},
 		}
 	}
@@ -1109,9 +1121,6 @@ pub fn globalInit() void {
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered item with id '{s}' twice!", .{id});
-	}
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
@@ -1158,9 +1167,6 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 }
 
 pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	if(toolTypeIdToIndex.contains(id)) {
-		std.log.err("Registered tool type with id {s} twice!", .{id});
-	}
 	var slotInfos: [25]SlotInfo = @splat(.{});
 	for(zon.getChild("disabled").toSlice(), 0..) |zonDisabled, i| {
 		if(i >= 25) {
