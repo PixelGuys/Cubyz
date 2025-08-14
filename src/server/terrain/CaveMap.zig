@@ -21,7 +21,6 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	data: [width*width]u64 = undefined,
 	pos: ChunkPosition,
 	voxelShift: u5,
-	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *CaveMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
 		self.* = .{
@@ -36,6 +35,14 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 		@memset(&self.data, std.math.maxInt(u64));
 	}
 
+	fn privateDeinit(self: *CaveMapFragment, _: usize) void {
+		memoryPool.destroy(self);
+	}
+
+	pub fn deferredDeinit(self: *CaveMapFragment) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+	}
+
 	fn getIndex(x: i32, y: i32) usize {
 		std.debug.assert(x >= 0 and x < width and y >= 0 and y < width); // Coordinates out of range.
 		return @intCast(x*width + y);
@@ -48,19 +55,6 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 		const maskLower = if(start <= 0) (0) else if(start >= 64) (std.math.maxInt(u64)) else (@as(u64, std.math.maxInt(u64)) >> @intCast(64 - start));
 		const maskUpper = if(end <= 0) (std.math.maxInt(u64)) else if(end >= 64) (0) else (@as(u64, std.math.maxInt(u64)) << @intCast(end));
 		return maskLower | maskUpper;
-	}
-
-	pub fn increaseRefCount(self: *CaveMapFragment) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-	}
-
-	pub fn decreaseRefCount(self: *CaveMapFragment) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
-			memoryPool.destroy(self);
-		}
 	}
 
 	pub fn addRange(self: *CaveMapFragment, _relX: i32, _relY: i32, _start: i32, _end: i32) void {
@@ -132,28 +126,22 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 	reference: *ServerChunk,
 	fragments: [8]*CaveMapFragment,
 
-	pub fn init(chunk: *ServerChunk) CaveMapView {
+	pub fn findMapsAround(chunk: *ServerChunk) CaveMapView {
 		const pos = chunk.super.pos;
 		const width = chunk.super.width;
 		return CaveMapView{
 			.reference = chunk,
 			.fragments = [_]*CaveMapFragment{
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy +% width, pos.wz +% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy +% width, pos.wz +% width, pos.voxelSize),
+				getOrGenerateFragment(pos.wx -% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
+				getOrGenerateFragment(pos.wx -% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
+				getOrGenerateFragment(pos.wx -% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
+				getOrGenerateFragment(pos.wx -% width, pos.wy +% width, pos.wz +% width, pos.voxelSize),
+				getOrGenerateFragment(pos.wx +% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
+				getOrGenerateFragment(pos.wx +% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
+				getOrGenerateFragment(pos.wx +% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
+				getOrGenerateFragment(pos.wx +% width, pos.wy +% width, pos.wz +% width, pos.voxelSize),
 			},
 		};
-	}
-
-	pub fn deinit(self: CaveMapView) void {
-		for(self.fragments) |mapFragment| {
-			mapFragment.decreaseRefCount();
-		}
 	}
 
 	pub fn isSolid(self: CaveMapView, relX: i32, relY: i32, relZ: i32) bool {
@@ -289,7 +277,7 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 const cacheSize = 1 << 11; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // 512 MiB Cache size
-var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.decreaseRefCount) = .{};
+var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
 var memoryPool: main.heap.MemoryPool(CaveMapFragment) = undefined;
@@ -300,38 +288,37 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	for(profile.caveGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
-pub fn initGenerators() void {
+pub fn globalInit() void {
 	const list = @import("cavegen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
+	memoryPool = .init(main.globalAllocator);
 }
 
-pub fn deinitGenerators() void {
+pub fn globalDeinit() void {
 	CaveGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
+	memoryPool.deinit();
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
-	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
-	memoryPool.deinit();
 }
 
-fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {
+fn getOrGenerateFragment(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {
 	const compare = ChunkPosition{
 		.wx = wx & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize - 1),
 		.wy = wy & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize - 1),
 		.wz = wz & ~@as(i32, CaveMapFragment.heightMask*voxelSize | voxelSize - 1),
 		.voxelSize = voxelSize,
 	};
-	const result = cache.findOrCreate(compare, cacheInit, CaveMapFragment.increaseRefCount);
+	const result = cache.findOrCreate(compare, cacheInit, null);
 	return result;
 }

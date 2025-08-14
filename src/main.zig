@@ -659,8 +659,8 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("main");
 	}
 
-	server.terrain.initGenerators();
-	defer server.terrain.deinitGenerators();
+	server.terrain.globalInit();
+	defer server.terrain.globalDeinit();
 
 	const c = Window.c;
 

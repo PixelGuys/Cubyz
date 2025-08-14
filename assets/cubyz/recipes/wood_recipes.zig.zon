@@ -144,6 +144,30 @@
 		.output = "cubyz:sign/willow",
 	},
 	.{
+		.inputs = .{"4 cubyz:birch_planks"},
+		.output = "cubyz:chest/birch",
+	},
+	.{
+		.inputs = .{"4 cubyz:baobab_planks"},
+		.output = "cubyz:chest/baobab",
+	},
+	.{
+		.inputs = .{"4 cubyz:oak_planks"},
+		.output = "cubyz:chest/oak",
+	},
+	.{
+		.inputs = .{"4 cubyz:mahogany_planks"},
+		.output = "cubyz:chest/mahogany",
+	},
+	.{
+		.inputs = .{"4 cubyz:pine_planks"},
+		.output = "cubyz:chest/pine",
+	},
+	.{
+		.inputs = .{"4 cubyz:willow_planks"},
+		.output = "cubyz:chest/willow",
+	},
+	.{
 		.inputs = .{"cubyz:log/cactus"},
 		.output = "2 cubyz:cactus_arm",
 	},
