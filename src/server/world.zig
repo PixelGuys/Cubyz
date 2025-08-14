@@ -321,16 +321,15 @@ const ChunkManager = struct { // MARK: ChunkManager
 			return ch;
 		}
 		ch.generated = true;
-		const caveMap = terrain.CaveMap.CaveMapView.init(ch);
-		defer caveMap.deinit();
+		const caveMap = terrain.CaveMap.CaveMapView.findMapsAround(ch);
 		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 		defer biomeMap.deinit();
 		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
 			generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
 		}
 		if(pos.voxelSize != 1) { // Generate LOD replacements
-			for(ch.super.data.palette[0..ch.super.data.paletteLength]) |*block| {
-				block.typ = block.lodReplacement();
+			for(ch.super.data.palette()) |*block| {
+				block.store(.{.typ = block.load(.unordered).lodReplacement(), .data = block.load(.unordered).data}, .unordered);
 			}
 		}
 		return ch;
@@ -539,6 +538,85 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arenaAllocator));
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arenaAllocator));
 
+		convert_player_data_to_binary: { // TODO: Remove after #480
+			std.log.debug("Migrating old player inventory format to binary.", .{});
+
+			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
+			defer main.stackAllocator.free(playerDataPath);
+
+			var playerDataDirectory = std.fs.cwd().openDir(playerDataPath, .{.iterate = true}) catch break :convert_player_data_to_binary;
+			defer playerDataDirectory.close();
+
+			{
+				var walker = playerDataDirectory.walk(main.stackAllocator.allocator) catch unreachable;
+				defer walker.deinit();
+
+				while(walker.next() catch |err| {
+					std.log.err("Couldn't fetch next directory entry due to an error: {s}", .{@errorName(err)});
+					break :convert_player_data_to_binary;
+				}) |entry| {
+					if(entry.kind != .file) continue;
+					if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
+
+					const absolutePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{playerDataPath, entry.path}) catch unreachable;
+					defer main.stackAllocator.free(absolutePath);
+
+					const playerData = files.readToZon(main.stackAllocator, absolutePath) catch |err| {
+						std.log.err("Could not read player data file '{s}'': {s}.", .{absolutePath, @errorName(err)});
+						continue;
+					};
+					defer playerData.deinit(main.stackAllocator);
+
+					std.log.debug("Migrating player data file: '{s}'", .{absolutePath});
+
+					const entryKeys: [2][]const u8 = .{
+						"playerInventory",
+						"hand",
+					};
+					for(entryKeys) |key| {
+						const zon = playerData.getChild(key);
+						switch(zon) {
+							.object => {
+								std.log.debug("Migrating inventory '{s}' '{s}'", .{key, absolutePath});
+
+								var temp: main.items.Inventory = undefined;
+								temp._items = main.stackAllocator.alloc(ItemStack, zon.get(u32, "capacity", 0));
+								defer main.stackAllocator.free(temp._items);
+
+								for(temp._items) |*stack| stack.* = ItemStack{};
+								defer for(temp._items) |*stack| stack.deinit();
+
+								temp.loadFromZon(zon);
+
+								for(temp._items, 0..) |*stack, i| {
+									std.log.debug("Item #{}: {} x {s}", .{i, stack.amount, if(stack.item) |item| item.id() else "null"});
+								}
+
+								const base64Data = savePlayerInventory(main.stackAllocator, temp);
+								const old = playerData.object.fetchPut(key, .{.stringOwned = base64Data}) catch unreachable orelse unreachable;
+								old.value.deinit(main.stackAllocator);
+							},
+							.string, .stringOwned => |field| {
+								std.log.debug("Skipping key '{s}', type is 'string', value is '{s}'", .{key, field});
+							},
+							.null => {
+								std.log.debug("Skipping key '{s}', type is 'null'", .{key});
+							},
+							else => |other| {
+								const representation = zon.toString(main.stackAllocator);
+								defer main.stackAllocator.free(representation);
+								std.log.err("Encountered unexpected type ({s}) while migrating '{s}': {s}", .{@tagName(other), absolutePath, representation});
+							},
+						}
+					}
+					files.writeZon(absolutePath, playerData) catch |err| {
+						std.log.err("Could not write player data file {s}: {s}.", .{absolutePath, @errorName(err)});
+						continue;
+					};
+				}
+			}
+		}
+
 		var gamerules = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arenaAllocator);
 
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
@@ -563,12 +641,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.forceSave() catch |err| {
 			std.log.err("Error while saving the world: {s}", .{@errorName(err)});
 		};
-		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+		while(self.chunkUpdateQueue.popFront()) |updateRequest| {
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
 		}
 		self.chunkUpdateQueue.deinit();
-		while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+		while(self.regionUpdateQueue.popFront()) |updateRequest| {
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
 		}
@@ -642,8 +720,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 									for(0..2) |dy| {
 										const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
 										const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
-										const map = main.server.terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(mapX, mapY, ch.super.pos.voxelSize);
-										defer map.decreaseRefCount();
+										const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, ch.super.pos.voxelSize);
 										if(!map.wasStored.swap(true, .monotonic)) {
 											map.save(null, .{});
 										}
@@ -737,13 +814,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		while(true) {
-			while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+			while(self.chunkUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.ch.save(self);
 				updateRequest.ch.decreaseRefCount();
 			}
-			while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+			while(self.regionUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.region.store();
@@ -752,7 +829,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.mutex.unlock();
 			std.Thread.sleep(1_000_000);
 			self.mutex.lock();
-			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peek() == null and self.regionUpdateQueue.peek() == null) break;
+			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
 		}
 		std.log.info("Finished LOD update.", .{});
 
@@ -776,8 +853,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				var dir: main.chunk.Neighbor = .dirNegX;
 				var stepsRemaining: usize = 1;
 				for(0..spiralLen) |_| {
-					const map = main.server.terrain.ClimateMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy);
-					defer map.decreaseRefCount();
+					const map = main.server.terrain.ClimateMap.getOrGenerateFragment(wx, wy);
 					for(0..map.map.len) |_| {
 						const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
 						const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
@@ -816,8 +892,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				}
 				std.log.err("Found no valid spawn location", .{});
 			}
-			const map = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(self.spawn[0], self.spawn[1], 1);
-			defer map.decreaseRefCount();
+			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
 			self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 		}
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.seed));
@@ -862,9 +937,37 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
+		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
+		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
+	}
 
-		user.inventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, playerData.getChild("playerInventory"));
-		user.handInventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(1, .normal, .{.hand = user.id}, playerData.getChild("hand"));
+	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) main.items.Inventory.InventoryId {
+		const decodedSize = std.base64.url_safe.Decoder.calcSizeForSlice(base64EncodedData) catch |err| blk: {
+			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
+			break :blk 0;
+		};
+
+		const bytes: []u8 = main.stackAllocator.alloc(u8, decodedSize);
+		defer main.stackAllocator.free(bytes);
+
+		var readerInput: []const u8 = bytes;
+
+		std.base64.url_safe.Decoder.decode(bytes, base64EncodedData) catch |err| {
+			std.log.err("Encountered incorrectly encoded inventory data ({s}) while loading data from file '{s}': '{s}'", .{@errorName(err), playerDataFilePath, base64EncodedData});
+			readerInput = "";
+		};
+		var reader: main.utils.BinaryReader = .init(readerInput);
+		return main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader, null);
+	}
+
+	fn savePlayerInventory(allocator: NeverFailingAllocator, inv: main.items.Inventory) []const u8 {
+		var writer = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		inv.toBytes(&writer);
+
+		const destination: []u8 = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(writer.data.items.len));
+		return std.base64.url_safe.Encoder.encode(destination, writer.data.items);
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
@@ -892,11 +995,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
-				playerZon.put("playerInventory", inv.save(main.stackAllocator));
+				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
-				playerZon.put("hand", inv.save(main.stackAllocator));
+				playerZon.put("hand", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
 
@@ -931,8 +1034,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {
-		const map = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy, 1);
-		defer map.decreaseRefCount();
+		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wy, 1);
 		return map.getBiome(wx, wy).isValidPlayerSpawn;
 	}
 
@@ -1022,14 +1124,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const insertionTime = newTime -% main.settings.storageTime;
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+		while(self.chunkUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
 			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
 		}
-		while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+		while(self.regionUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.region.store();
@@ -1093,6 +1195,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	/// Returns the actual block on failure
 	pub fn cmpxchgBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
+		main.utils.assertLocked(&main.items.Inventory.Sync.ServerSide.mutex); // Block entities with inventories need this mutex to be locked
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
 		const x: u5 = @intCast(wx & chunk.chunkMask);
@@ -1104,18 +1207,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if(oldBlock.? != currentBlock) {
 				baseChunk.mutex.unlock();
 				return currentBlock;
-			}
-			if(currentBlock != _newBlock) {
-				if(currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
-					std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
-				};
-			}
-			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
-			if(currentBlock != _newBlock) {
-				var reader = utils.BinaryReader.init(&.{});
-				if(_newBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .{.createOrUpdate = &reader}) catch |err| {
-					std.log.err("Got error {s} while trying to create empty entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, _newBlock.id()});
-				};
 			}
 		}
 		baseChunk.mutex.unlock();
@@ -1152,6 +1243,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		baseChunk.mutex.lock();
 		defer baseChunk.mutex.unlock();
 
+		if(currentBlock != _newBlock) {
+			if(currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
+				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
+			};
+		}
 		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
 
 		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -1169,13 +1265,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *ServerChunk) void {
 		self.mutex.lock();
-		self.chunkUpdateQueue.enqueue(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
+		self.chunkUpdateQueue.pushBack(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
 		self.mutex.unlock();
 	}
 
 	pub fn queueRegionFileUpdateAndDecreaseRefCount(self: *ServerWorld, region: *storage.RegionFile) void {
 		self.mutex.lock();
-		self.regionUpdateQueue.enqueue(.{.region = region, .milliTimeStamp = std.time.milliTimestamp()});
+		self.regionUpdateQueue.pushBack(.{.region = region, .milliTimeStamp = std.time.milliTimestamp()});
 		self.mutex.unlock();
 	}
 };

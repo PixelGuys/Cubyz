@@ -286,7 +286,7 @@ pub const Chunk = struct { // MARK: Chunk
 	fn deinitContent(self: *Chunk) void {
 		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
-		self.data.deinit();
+		self.data.deferredDeinit();
 	}
 
 	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
@@ -602,8 +602,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				for(0..2) |dy| {
 					const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
 					const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
-					const map = main.server.terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(mapX, mapY, self.super.pos.voxelSize);
-					defer map.decreaseRefCount();
+					const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, self.super.pos.voxelSize);
 					if(!map.wasStored.swap(true, .monotonic)) {
 						map.save(null, .{});
 					}

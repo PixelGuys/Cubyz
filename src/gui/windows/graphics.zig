@@ -109,6 +109,12 @@ fn resolutionScaleCallback(newValue: u16) void {
 	main.Window.GLFWCallbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
+fn vulkanTestingWindowCallback(newValue: bool) void {
+	settings.vulkanTestingWindow = newValue;
+	settings.save();
+	main.Window.reloadSettings();
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 154), &fpsCapCallback, &fpsCapFormatter));
@@ -130,6 +136,7 @@ pub fn onOpen() void {
 		else => 2,
 	}, &anisotropicFilteringCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @intFromFloat(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
+	list.add(CheckBox.init(.{0, 0}, 128, "Vulkan testing window (requires restart)", settings.vulkanTestingWindow, &vulkanTestingWindowCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

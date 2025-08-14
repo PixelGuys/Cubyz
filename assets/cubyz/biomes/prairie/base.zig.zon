@@ -72,7 +72,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.05,
-			.block = "cubyz:stone",
+			.block = "cubyz:slate",
 			.size = 1,
 			.size_variance = 9,
 		},

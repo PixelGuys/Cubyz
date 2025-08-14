@@ -279,7 +279,12 @@ pub const collision = struct {
 		return resultBox;
 	}
 
-	pub fn calculateFriction(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) f32 {
+	const SurfaceProperties = struct {
+		friction: f32,
+		bounciness: f32,
+	};
+
+	pub fn calculateSurfaceProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -292,6 +297,7 @@ pub const collision = struct {
 		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
 
 		var friction: f64 = 0;
+		var bounciness: f64 = 0;
 		var totalArea: f64 = 0;
 
 		var x = minX;
@@ -320,21 +326,30 @@ pub const collision = struct {
 					if(block.collide()) {
 						totalArea += area;
 						friction += area*@as(f64, @floatCast(block.friction()));
+						bounciness += area*@as(f64, @floatCast(block.bounciness()));
 					}
 				}
 			}
 		}
 
 		if(totalArea == 0) {
-			return defaultFriction;
+			friction = defaultFriction;
+			bounciness = 0.0;
+		} else {
+			friction = friction/totalArea;
+			bounciness = bounciness/totalArea;
 		}
 
-		return @floatCast(friction/totalArea);
+		return .{
+			.friction = @floatCast(friction),
+			.bounciness = @floatCast(bounciness),
+		};
 	}
 
 	const VolumeProperties = struct {
 		terminalVelocity: f64,
 		density: f64,
+		maxDensity: f64,
 		mobility: f64,
 	};
 
@@ -359,6 +374,7 @@ pub const collision = struct {
 
 		var invTerminalVelocitySum: f64 = 0;
 		var densitySum: f64 = 0;
+		var maxDensity: f64 = defaults.maxDensity;
 		var mobilitySum: f64 = 0;
 		var volumeSum: f64 = 0;
 
@@ -388,6 +404,7 @@ pub const collision = struct {
 						mobilitySum += emptyVolume*defaults.mobility;
 						invTerminalVelocitySum += filledVolume/block.terminalVelocity();
 						densitySum += filledVolume*block.density();
+						maxDensity = @max(maxDensity, block.density());
 						mobilitySum += filledVolume*block.mobility();
 					} else {
 						invTerminalVelocitySum += gridVolume/defaults.terminalVelocity;
@@ -401,6 +418,7 @@ pub const collision = struct {
 		return .{
 			.terminalVelocity = volumeSum/invTerminalVelocitySum,
 			.density = densitySum/volumeSum,
+			.maxDensity = maxDensity,
 			.mobility = mobilitySum/volumeSum,
 		};
 	}
@@ -799,7 +817,7 @@ pub const World = struct { // MARK: World
 
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id});
+		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id}, null);
 		Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
@@ -916,11 +934,10 @@ pub fn hyperSpeedToggle() void {
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const airTerminalVelocity = 90.0;
-	const airFrictionCoefficient = gravity/airTerminalVelocity; // λ = a/v in equillibrium
 	const playerDensity = 1.2;
 	var move: Vec3d = .{0, 0, 0};
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
-		const volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .mobility = 1.0});
+		const volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
 		const effectiveGravity = gravity*(playerDensity - volumeProperties.density)/playerDensity;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
 		var acc = Vec3d{0, 0, 0};
@@ -928,9 +945,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc[2] = -effectiveGravity;
 		}
 
-		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
+		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
 		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
 		const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else volumeProperties.mobility;
+		const density = if(Player.isFlying.load(.monotonic)) 0.0 else volumeProperties.density;
+		const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else volumeProperties.maxDensity;
 		const baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
@@ -940,8 +959,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
 		const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
 
-		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
-		const right = Vec3d{-forward[1], forward[0], 0};
+		const horizontalForward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
+		const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
+		const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
 
@@ -997,7 +1017,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						Player.eyeCoyote = 0;
 					}
 					Player.jumpCoyote = 0;
-				} else {
+				} else if(!KeyBoard.key("fall").pressed) {
 					movementSpeed = @max(movementSpeed, walkingSpeed);
 					movementDir[2] += walkingSpeed;
 				}
@@ -1018,13 +1038,18 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] -= 5.5;
 					}
-				} else {
+				} else if(!KeyBoard.key("jump").pressed) {
 					movementSpeed = @max(movementSpeed, walkingSpeed);
 					movementDir[2] -= walkingSpeed;
 				}
 			}
+
 			if(movementSpeed != 0 and vec.lengthSquare(movementDir) != 0) {
-				movementDir = vec.normalize(movementDir);
+				if(vec.lengthSquare(movementDir) > movementSpeed*movementSpeed) {
+					movementDir = vec.normalize(movementDir);
+				} else {
+					movementDir /= @splat(movementSpeed);
+				}
 				acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 			}
 
@@ -1080,8 +1105,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
 			if(i == 2 and jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
-				Player.super.vel[i] = @sqrt(Player.jumpHeight*gravity*2);
-				frictionCoefficient = airFrictionCoefficient;
+				const jumpVelocity = @sqrt(Player.jumpHeight*gravity*2);
+				Player.super.vel[i] = @max(jumpVelocity, Player.super.vel[i] + jumpVelocity);
+				frictionCoefficient = volumeFrictionCoeffecient;
 			}
 			const v_0 = Player.super.vel[i];
 			const a = acc[i];
@@ -1263,13 +1289,25 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
+			var bounciness = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 0.0).bounciness;
+			if(KeyBoard.key("crouch").pressed) {
+				bounciness *= 0.5;
+			}
+			var velocityChange: f64 = undefined;
 
-			const damage: f32 = @floatCast(@round(@max((Player.super.vel[2]*Player.super.vel[2])/(2*gravity) - 7, 0))/2);
+			if(bounciness != 0.0 and Player.super.vel[2] < -3.0) {
+				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
+				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
+				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
+				Player.eyeVel[2] *= 2;
+			} else {
+				velocityChange = Player.super.vel[2];
+				Player.super.vel[2] = 0;
+			}
+			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
 			if(damage > 0.01) {
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 			}
-
-			Player.super.vel[2] = 0;
 
 			// Always unstuck upwards for now
 			while(collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {

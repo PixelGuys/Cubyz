@@ -289,6 +289,8 @@ pub const Biome = struct { // MARK: Biome
 	caves: f32,
 	caveRadiusFactor: f32,
 	crystals: u32,
+	/// How much of the surface structure should be eroded depending on the slope.
+	soilCreep: f32,
 	stoneBlock: main.blocks.Block,
 	fogLower: f32,
 	fogHigher: f32,
@@ -320,7 +322,7 @@ pub const Biome = struct { // MARK: Biome
 			.isCave = zon.get(bool, "isCave", false),
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
-			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
+			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
 			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
 			.fogLower = zon.get(f32, "fogLower", 100.0),
@@ -334,6 +336,7 @@ pub const Biome = struct { // MARK: Biome
 			.caves = zon.get(f32, "caves", -0.375),
 			.caveRadiusFactor = @max(-2, @min(2, zon.get(f32, "caveRadiusFactor", 1))),
 			.crystals = zon.get(u32, "crystals", 0),
+			.soilCreep = zon.get(f32, "soilCreep", 0.5),
 			.minHeight = zon.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = zon.get(i32, "maxHeight", std.math.maxInt(i32)),
 			.supportsRivers = zon.get(bool, "rivers", false),
@@ -462,11 +465,16 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 		allocator.free(self.structure);
 	}
 
-	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, x: i32, y: i32, seed: *u64) i32 {
+	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, slope: i32, soilCreep: f32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
+		var remainingSkippedBlocks = @as(i32, @intFromFloat(@as(f32, @floatFromInt(slope))*soilCreep)) - 1;
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for(0..total) |_| {
+				if(remainingSkippedBlocks > 0) {
+					remainingSkippedBlocks -= 1;
+					continue;
+				}
 				if(chunk.liesInChunk(x, y, depth)) {
 					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
 				}
