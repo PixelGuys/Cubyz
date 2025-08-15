@@ -26,3 +26,12 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const And
 	}
 	return result;
 }
+
+pub fn printTooltip(self: *const And, outString: *main.List(u8)) void {
+	outString.append('(');
+	for(self.children, 0..) |child, i| {
+		if(i != 0) outString.appendSlice(" and ");
+		child.printTooltip(outString);
+	}
+	outString.append(')');
+}

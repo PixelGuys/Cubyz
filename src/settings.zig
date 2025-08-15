@@ -23,8 +23,12 @@ pub var fpsCap: ?u32 = null;
 
 pub var fov: f32 = 70;
 
+pub var vulkanTestingWindow: bool = false;
+
 pub var mouseSensitivity: f32 = 1;
 pub var controllerSensitivity: f32 = 1;
+
+pub var invertMouseY: bool = false;
 
 pub var renderDistance: u16 = 7;
 
@@ -122,7 +126,7 @@ pub fn deinit() void {
 }
 
 pub fn save() void {
-	const zonObject = ZonElement.initObject(main.stackAllocator);
+	var zonObject = ZonElement.initObject(main.stackAllocator);
 	defer zonObject.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
@@ -151,8 +155,24 @@ pub fn save() void {
 	}
 	zonObject.put("keyboard", keyboard);
 
-	// Write to file:
-	main.files.cubyzDir().writeZon(settingsFile, zonObject) catch |err| {
+	// Merge with the old settings file to preserve unknown settings.
+	var oldZonObject: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
+		if(err != error.FileNotFound) {
+			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
+		}
+		break :blk .null;
+	};
+	defer oldZonObject.deinit(main.stackAllocator);
+
+	if(oldZonObject == .object) {
+		oldZonObject.join(zonObject);
+	} else {
+		oldZonObject.deinit(main.stackAllocator);
+		oldZonObject = zonObject;
+		zonObject = .null;
+	}
+
+	main.files.cubyzDir().writeZon(settingsFile, oldZonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }

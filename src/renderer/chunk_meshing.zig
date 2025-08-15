@@ -64,8 +64,8 @@ pub var occlusionTestUniforms: struct {
 } = undefined;
 pub var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
-pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
-pub var lightBuffer: graphics.LargeBuffer(u32) = undefined;
+pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
+pub var lightBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(u32) = undefined;
 pub var chunkBuffer: graphics.LargeBuffer(ChunkData) = undefined;
 pub var commandBuffer: graphics.LargeBuffer(IndirectData) = undefined;
 pub var chunkIDBuffer: graphics.LargeBuffer(u32) = undefined;
@@ -133,8 +133,10 @@ pub fn init() void {
 	c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, rawData.len*@sizeOf(u32), &rawData, c.GL_STATIC_DRAW);
 	c.glBindVertexArray(0);
 
-	faceBuffer.init(main.globalAllocator, 1 << 20, 3);
-	lightBuffer.init(main.globalAllocator, 1 << 20, 10);
+	for(0..settings.highestSupportedLod + 1) |i| {
+		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3);
+		lightBuffers[i].init(main.globalAllocator, 1 << 20, 10);
+	}
 	chunkBuffer.init(main.globalAllocator, 1 << 20, 6);
 	commandBuffer.init(main.globalAllocator, 1 << 20, 8);
 	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9);
@@ -148,24 +150,30 @@ pub fn deinit() void {
 	commandPipeline.deinit();
 	c.glDeleteVertexArrays(1, &vao);
 	c.glDeleteBuffers(1, &vbo);
-	faceBuffer.deinit();
-	lightBuffer.deinit();
+	for(0..settings.highestSupportedLod + 1) |i| {
+		faceBuffers[i].deinit();
+		lightBuffers[i].deinit();
+	}
 	chunkBuffer.deinit();
 	commandBuffer.deinit();
 	chunkIDBuffer.deinit();
 }
 
 pub fn beginRender() void {
-	faceBuffer.beginRender();
-	lightBuffer.beginRender();
+	for(0..settings.highestSupportedLod + 1) |i| {
+		faceBuffers[i].beginRender();
+		lightBuffers[i].beginRender();
+	}
 	chunkBuffer.beginRender();
 	commandBuffer.beginRender();
 	chunkIDBuffer.beginRender();
 }
 
 pub fn endRender() void {
-	faceBuffer.endRender();
-	lightBuffer.endRender();
+	for(0..settings.highestSupportedLod + 1) |i| {
+		faceBuffers[i].endRender();
+		lightBuffers[i].endRender();
+	}
 	chunkBuffer.endRender();
 	commandBuffer.endRender();
 	chunkIDBuffer.endRender();
@@ -212,7 +220,21 @@ pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playe
 	c.glBindVertexArray(vao);
 }
 
-pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+fn bindBuffers(lod: usize) void {
+	faceBuffers[lod].ssbo.bind(faceBuffers[lod].binding);
+	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
+}
+
+pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.List(u32), projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+	for(0..chunkIds.len) |i| {
+		const lod = if(transparent) main.settings.highestSupportedLod - i else i;
+		bindBuffers(lod);
+		drawChunksOfLod(chunkIds[lod].items, projMatrix, ambient, playerPos, transparent);
+	}
+}
+
+fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+	if(chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if(transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
 	chunkIDBuffer.uploadData(chunkIDs, &chunkIDAllocation);
@@ -227,7 +249,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 	c.glUniform3i(commandUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	if(!transparent) {
-		gpu_performance_measuring.startQuery(.chunk_rendering_previous_visible);
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
 		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
@@ -239,11 +260,9 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
-		gpu_performance_measuring.stopQuery();
 	}
 
 	// Occlusion tests:
-	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering_occlusion_test else .chunk_rendering_occlusion_test);
 	occlusionTestPipeline.bind(null);
 	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
@@ -252,10 +271,8 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	c.glBindVertexArray(vao);
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
-	gpu_performance_measuring.stopQuery();
 
 	// Draw again:
-	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering else .chunk_rendering_new_visible);
 	commandPipeline.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
@@ -268,7 +285,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
-	gpu_performance_measuring.stopQuery();
 }
 
 pub const FaceData = extern struct {
@@ -347,9 +363,10 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	wasChanged: bool = false,
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
+	lod: u3,
 
 	fn deinit(self: *PrimitiveMesh) void {
-		faceBuffer.free(self.bufferAllocation);
+		faceBuffers[self.lod].free(self.bufferAllocation);
 		self.completeList.deinit(main.globalAllocator);
 	}
 
@@ -364,8 +381,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.max = @splat(-std.math.floatMax(f32));
 
 		self.lock.lockRead();
-		parent.lightingData[0].lock.lockRead();
-		parent.lightingData[1].lock.lockRead();
 		for(self.completeList.getEverything()) |*face| {
 			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex);
 			const result = lightMap.getOrPut(light) catch unreachable;
@@ -384,8 +399,6 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				self.max = @max(self.max, basePos + cornerPos);
 			}
 		}
-		parent.lightingData[0].lock.unlockRead();
-		parent.lightingData[1].lock.unlockRead();
 		self.lock.unlockRead();
 	}
 
@@ -403,12 +416,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		if(x == x & chunk.chunkMask and y == y & chunk.chunkMask and z == z & chunk.chunkMask) {
 			return getValues(parent, wx, wy, wz);
 		}
-		const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
-		defer neighborMesh.decreaseRefCount();
-		neighborMesh.lightingData[0].lock.lockRead();
-		neighborMesh.lightingData[1].lock.lockRead();
-		defer neighborMesh.lightingData[0].lock.unlockRead();
-		defer neighborMesh.lightingData[1].lock.unlockRead();
+		const neighborMesh = mesh_storage.getMesh(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
@@ -500,7 +508,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		if(extraQuadInfo.hasOnlyCornerVertices) { // Fast path for simple quads.
 			var rawVals: [4][6]u5 = undefined;
 			for(0..4) |i| {
-				const vertexPos = quadInfo.corners[i];
+				const vertexPos: Vec3f = quadInfo.corners[i];
 				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
 				const fullValues = if(extraQuadInfo.alignedNormalDirection) |dir|
 					getCornerLightAligned(parent, fullPos, dir)
@@ -530,7 +538,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 		var rawVals: [4][6]u5 = undefined;
 		for(0..4) |i| {
-			const vertexPos = quadInfo.corners[i];
+			const vertexPos: Vec3f = quadInfo.corners[i];
 			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
 			const interp = lightPos - @as(Vec3f, @floatFromInt(blockPos));
 			var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
@@ -573,8 +581,8 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			len += list[i].len;
 		}
 
-		const fullBuffer = faceBuffer.allocateAndMapRange(len, &self.bufferAllocation);
-		defer faceBuffer.unmapRange(fullBuffer);
+		const fullBuffer = faceBuffers[self.lod].allocateAndMapRange(len, &self.bufferAllocation);
+		defer faceBuffers[self.lod].unmapRange(fullBuffer);
 		// Sort the faces by normal to allow for backface culling on the GPU:
 		var i: u32 = 0;
 		var iStart = i;
@@ -635,7 +643,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const dz = z + chunkDz;
 			self.isBackFace = self.face.position.isBackFace;
 			const quadIndex = self.face.blockAndQuad.quadIndex;
-			const normalVector = quadIndex.quadInfo().normal;
+			const normalVector: Vec3f = quadIndex.quadInfo().normal;
 			self.shouldBeCulled = vec.dot(normalVector, @floatFromInt(Vec3i{dx, dy, dz})) > 0; // TODO: Adjust for arbitrary voxel models.
 			const fullDx = dx - @as(i32, @intFromFloat(normalVector[0])); // TODO: This calculation should only be done for border faces.
 			const fullDy = dy - @as(i32, @intFromFloat(normalVector[1]));
@@ -660,7 +668,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
 	lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
-	refCount: std.atomic.Value(u32) = .init(1),
 	needsLightRefresh: std.atomic.Value(bool) = .init(false),
 	needsMeshUpdate: bool = false,
 	finishedMeshing: bool = false, // Must be synced with node.finishedMeshing in mesh_storage.zig
@@ -675,12 +682,17 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	blockBreakingFacesSortingData: []SortingData = &.{},
 	blockBreakingFacesChanged: bool = false,
 
-	pub fn init(self: *ChunkMesh, pos: chunk.ChunkPosition, ch: *chunk.Chunk) void {
+	pub fn init(pos: chunk.ChunkPosition, ch: *chunk.Chunk) *ChunkMesh {
+		const self = mesh_storage.meshMemoryPool.create();
 		self.* = ChunkMesh{
 			.pos = pos,
 			.size = chunk.chunkSize*pos.voxelSize,
-			.opaqueMesh = .{},
-			.transparentMesh = .{},
+			.opaqueMesh = .{
+				.lod = @intCast(std.math.log2_int(u32, pos.voxelSize)),
+			},
+			.transparentMesh = .{
+				.lod = @intCast(std.math.log2_int(u32, pos.voxelSize)),
+			},
 			.chunk = ch,
 			.lightingData = .{
 				lighting.ChannelChunk.init(ch, false),
@@ -688,10 +700,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			},
 			.blockBreakingFaces = .init(main.globalAllocator),
 		};
+		return self;
 	}
 
-	pub fn deinit(self: *ChunkMesh) void {
-		std.debug.assert(self.refCount.load(.monotonic) == 0);
+	fn privateDeinit(self: *ChunkMesh, _: usize) void {
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
@@ -705,36 +717,19 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.blockBreakingFaces.deinit();
 		main.globalAllocator.free(self.blockBreakingFacesSortingData);
 		main.globalAllocator.free(self.lightList);
-		lightBuffer.free(self.lightAllocation);
+		lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].free(self.lightAllocation);
+		mesh_storage.meshMemoryPool.destroy(self);
 	}
 
-	pub fn increaseRefCount(self: *ChunkMesh) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
+	pub fn deferredDeinit(self: *ChunkMesh) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
-	/// In cases where it's not certain whether the thing was cleared already.
-	pub fn tryIncreaseRefCount(self: *ChunkMesh) bool {
-		var prevVal = self.refCount.load(.monotonic);
-		while(prevVal != 0) {
-			prevVal = self.refCount.cmpxchgWeak(prevVal, prevVal + 1, .monotonic, .monotonic) orelse return true;
-		}
-		return false;
-	}
-
-	pub fn decreaseRefCount(self: *ChunkMesh) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
-			mesh_storage.addMeshToClearListAndDecreaseRefCount(self);
-		}
-	}
-
-	pub fn scheduleLightRefreshAndDecreaseRefCount(self: *ChunkMesh) void {
-		LightRefreshTask.scheduleAndDecreaseRefCount(self);
+	pub fn scheduleLightRefresh(pos: chunk.ChunkPosition) void {
+		LightRefreshTask.schedule(pos);
 	}
 	const LightRefreshTask = struct {
-		mesh: *ChunkMesh,
+		pos: chunk.ChunkPosition,
 
 		pub const vtable = main.utils.ThreadPool.VTable{
 			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
@@ -744,10 +739,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.taskType = .misc,
 		};
 
-		pub fn scheduleAndDecreaseRefCount(mesh: *ChunkMesh) void {
+		pub fn schedule(pos: chunk.ChunkPosition) void {
 			const task = main.globalAllocator.create(LightRefreshTask);
 			task.* = .{
-				.mesh = mesh,
+				.pos = pos,
 			};
 			main.threadPool.addTask(task, &vtable);
 		}
@@ -757,23 +752,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 
 		pub fn isStillNeeded(_: *LightRefreshTask) bool {
-			return true; // TODO: Is it worth checking for this?
+			return true;
 		}
 
 		pub fn run(self: *LightRefreshTask) void {
-			if(self.mesh.needsLightRefresh.swap(false, .acq_rel)) {
-				self.mesh.mutex.lock();
-				self.mesh.finishData();
-				self.mesh.mutex.unlock();
-				mesh_storage.addToUpdateListAndDecreaseRefCount(self.mesh);
-			} else {
-				self.mesh.decreaseRefCount();
+			defer main.globalAllocator.destroy(self);
+			const mesh = mesh_storage.getMesh(self.pos) orelse return;
+			if(mesh.needsLightRefresh.swap(false, .acq_rel)) {
+				mesh.mutex.lock();
+				mesh.finishData();
+				mesh.mutex.unlock();
+				mesh_storage.addToUpdateList(mesh);
 			}
-			main.globalAllocator.destroy(self);
 		}
 
 		pub fn clean(self: *LightRefreshTask) void {
-			self.mesh.decreaseRefCount();
 			main.globalAllocator.destroy(self);
 		}
 	};
@@ -788,7 +781,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return block.typ != 0 and (other.typ == 0 or (block != other and other.viewThrough()) or other.alwaysViewThrough() or !blocks.meshes.model(other).model().isNeighborOccluded[neighbor.reverse().toInt()]);
 	}
 
-	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
+	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		self.mutex.lock();
 		var lightEmittingBlocks = main.List([3]u8).init(main.stackAllocator);
 		defer lightEmittingBlocks.deinit();
@@ -806,11 +799,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.unlock();
 		self.lightingData[0].propagateLights(lightEmittingBlocks.items, true, lightRefreshList);
 		sunLight: {
-			var allSun: bool = self.chunk.data.paletteLength == 1 and self.chunk.data.palette[0].typ == 0;
+			var allSun: bool = self.chunk.data.palette().len == 1 and self.chunk.data.palette()[0].load(.unordered).typ == 0;
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
-			const lightStartMap = mesh_storage.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
-			defer lightStartMap.decreaseRefCount();
+			const lightStartMap = mesh_storage.getLightMapPiece(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
 			x = 0;
 			while(x < chunk.chunkSize) : (x += 1) {
 				var y: u8 = 0;
@@ -833,10 +825,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn generateLightingData(self: *ChunkMesh) error{AlreadyStored}!void {
+	pub fn generateLightingData(self: *ChunkMesh) error{AlreadyStored, NoLongerNeeded}!void {
 		try mesh_storage.addMeshToStorage(self);
 
-		var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
+		var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
 		defer lightRefreshList.deinit();
 		self.initLight(&lightRefreshList);
 
@@ -855,8 +847,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					pos.wx +%= pos.voxelSize*chunk.chunkSize*dx;
 					pos.wy +%= pos.voxelSize*chunk.chunkSize*dy;
 					pos.wz +%= pos.voxelSize*chunk.chunkSize*dz;
-					const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(pos) orelse continue;
-					defer neighborMesh.decreaseRefCount();
+					const neighborMesh = mesh_storage.getMesh(pos) orelse continue;
 
 					const shiftSelf: u5 = @intCast(((dx + 1)*3 + dy + 1)*3 + dz + 1);
 					const shiftOther: u5 = @intCast(((-dx + 1)*3 + -dy + 1)*3 + -dz + 1);
@@ -873,12 +864,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 		}
 
-		for(lightRefreshList.items) |other| {
-			if(other.needsLightRefresh.load(.unordered)) {
-				other.scheduleLightRefreshAndDecreaseRefCount();
-			} else {
-				other.decreaseRefCount();
-			}
+		for(lightRefreshList.items) |pos| {
+			scheduleLightRefresh(pos);
 		}
 	}
 
@@ -892,7 +879,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		model.appendNeighborFacingQuadsToList(list, allocator, block, neighbor, x, y, z, backFace);
 	}
 
-	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
+	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		var alwaysViewThroughMask: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		@memset(std.mem.asBytes(&alwaysViewThroughMask), 0);
 		var alwaysViewThroughMask2: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
@@ -920,10 +907,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			hasInternalQuads: bool = false,
 			alwaysViewThrough: bool = false,
 		};
-		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.paletteLength);
+		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.palette().len);
 		defer main.stackAllocator.free(paletteCache);
-		for(0..self.chunk.data.paletteLength) |i| {
-			const block = self.chunk.data.palette[i];
+		for(0..self.chunk.data.palette().len) |i| {
+			const block = self.chunk.data.palette()[i].load(.unordered);
 			const model = blocks.meshes.model(block).model();
 			var result: OcclusionInfo = .{};
 			if(model.noNeighborsOccluded or block.viewThrough()) {
@@ -951,7 +938,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const y: u5 = @intCast(_y);
 				for(0..chunk.chunkSize) |_z| {
 					const z: u5 = @intCast(_z);
-					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
+					const paletteId = self.chunk.data.impl.raw.data.getValue(chunk.getIndex(x, y, z));
 					const occlusionInfo = paletteCache[paletteId];
 					const setBit = @as(u32, 1) << z;
 					if(occlusionInfo.alwaysViewThrough or (!occlusionInfo.canSeeAllNeighbors and occlusionInfo.canSeeNeighbor == 0)) {
@@ -991,7 +978,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const y: u5 = @intCast(_y);
 				for(0..chunk.chunkSize) |_z| {
 					const z: u5 = @intCast(_z);
-					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
+					const paletteId = self.chunk.data.impl.raw.data.getValue(chunk.getIndex(x, y, z));
 					const occlusionInfo = paletteCache[paletteId];
 					const setBit = @as(u32, 1) << z;
 					if(depthFilteredViewThroughMask[x][y] & setBit != 0) {} else if(occlusionInfo.canSeeAllNeighbors) {
@@ -1007,7 +994,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						hasFaces[x][y] |= setBit;
 					}
 					if(occlusionInfo.hasInternalQuads) {
-						const block = self.chunk.data.palette[paletteId];
+						const block = self.chunk.data.palette()[paletteId].load(.unordered);
 						if(block.transparent()) {
 							appendInternalQuads(block, x, y, z, false, &transparentCore, main.stackAllocator);
 						} else {
@@ -1192,7 +1179,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.finishNeighbors(lightRefreshList);
 	}
 
-	fn updateBlockLight(self: *ChunkMesh, x: u5, y: u5, z: u5, newBlock: Block, lightRefreshList: *main.List(*ChunkMesh)) void {
+	fn updateBlockLight(self: *ChunkMesh, x: u5, y: u5, z: u5, newBlock: Block, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		for(self.lightingData[0..]) |lightingData| {
 			lightingData.propagateLightsDestructive(&.{.{x, y, z}}, lightRefreshList);
 		}
@@ -1201,7 +1188,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, blockEntityData: []const u8, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
+	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, blockEntityData: []const u8, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
 		const x: u5 = @intCast(_x & chunk.chunkMask);
 		const y: u5 = @intCast(_y & chunk.chunkMask);
 		const z: u5 = @intCast(_z & chunk.chunkMask);
@@ -1212,7 +1199,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		if(oldBlock == newBlock) {
 			if(newBlock.blockEntity()) |blockEntity| {
 				var reader = main.utils.BinaryReader.init(blockEntityData);
-				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
+				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.update = &reader}) catch |err| {
 					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
 				};
 			}
@@ -1240,8 +1227,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const nny: u5 = @intCast(ny & chunk.chunkMask);
 				const nnz: u5 = @intCast(nz & chunk.chunkMask);
 
-				const neighborChunkMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor) orelse continue;
-				defer neighborChunkMesh.decreaseRefCount();
+				const neighborChunkMesh = mesh_storage.getNeighbor(self.pos, self.pos.voxelSize, neighbor) orelse continue;
 
 				const index = chunk.getIndex(nnx, nny, nnz);
 
@@ -1276,13 +1262,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
-
-		if(newBlock.blockEntity()) |blockEntity| {
-			var reader = main.utils.BinaryReader.init(blockEntityData);
-			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
-				std.log.err("Got error {s} while trying to create block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
-			};
-		}
 		self.mutex.unlock();
 
 		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);
@@ -1321,7 +1300,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				return;
 			}
 		}
-		mesh.increaseRefCount();
 		list.append(mesh);
 	}
 
@@ -1355,7 +1333,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		if(self.lightListNeedsUpload) {
 			self.lightListNeedsUpload = false;
-			lightBuffer.uploadData(self.lightList, &self.lightAllocation);
+			lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].uploadData(self.lightList, &self.lightAllocation);
 		}
 
 		self.uploadChunkPosition();
@@ -1371,11 +1349,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
+	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		for(chunk.Neighbor.iterable) |neighbor| {
-			const nullNeighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor);
+			const nullNeighborMesh = mesh_storage.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 			if(nullNeighborMesh) |neighborMesh| sameLodBlock: {
-				defer neighborMesh.decreaseRefCount();
 				std.debug.assert(neighborMesh != self);
 				deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 				defer self.mutex.unlock();
@@ -1449,8 +1426,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				neighborMesh.transparentMesh.replaceRange(.neighbor(neighbor.reverse()), transparentNeighbor.items);
 
 				_ = neighborMesh.needsLightRefresh.store(true, .release);
-				neighborMesh.increaseRefCount();
-				lightRefreshList.append(neighborMesh);
+				lightRefreshList.append(neighborMesh.pos);
 			} else {
 				self.mutex.lock();
 				defer self.mutex.unlock();
@@ -1462,7 +1438,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 			// lod border:
 			if(self.pos.voxelSize == @as(u31, 1) << settings.highestLod) continue;
-			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
+			const neighborMesh = mesh_storage.getNeighbor(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
 				self.mutex.lock();
 				defer self.mutex.unlock();
 				if(self.lastNeighborsHigherLod[neighbor.toInt()] != null) {
@@ -1472,7 +1448,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				}
 				continue;
 			};
-			defer neighborMesh.decreaseRefCount();
 			deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 			defer self.mutex.unlock();
 			defer neighborMesh.mutex.unlock();
@@ -1536,7 +1511,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		defer self.mutex.unlock();
 		_ = self.needsLightRefresh.swap(false, .acq_rel);
 		self.finishData();
-		mesh_storage.finishMesh(self);
+		mesh_storage.finishMesh(self.pos);
 	}
 
 	fn uploadChunkPosition(self: *ChunkMesh) void {
@@ -1555,15 +1530,15 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}}, &self.chunkAllocation);
 	}
 
-	pub fn prepareRendering(self: *ChunkMesh, chunkList: *main.List(u32)) void {
+	pub fn prepareRendering(self: *ChunkMesh, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
 		if(self.opaqueMesh.vertexCount == 0) return;
 
-		chunkList.append(self.chunkAllocation.start);
+		chunkLists[std.math.log2_int(u32, self.pos.voxelSize)].append(self.chunkAllocation.start);
 
 		quadsDrawn += self.opaqueMesh.vertexCount/6;
 	}
 
-	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkList: *main.List(u32)) void {
+	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
 		if(self.transparentMesh.vertexCount == 0 and self.blockBreakingFaces.items.len == 0) return;
 
 		var needsUpdate: bool = false;
@@ -1696,11 +1671,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 			self.culledSortingCount += @intCast(self.blockBreakingFaces.items.len);
 			// Upload:
-			faceBuffer.uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
+			faceBuffers[self.transparentMesh.lod].uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
 			self.uploadChunkPosition();
 		}
 
-		chunkList.append(self.chunkAllocation.start);
+		chunkLists[std.math.log2_int(u32, self.pos.voxelSize)].append(self.chunkAllocation.start);
 		transparentQuadsDrawn += self.culledSortingCount;
 	}
 };

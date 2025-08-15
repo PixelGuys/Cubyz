@@ -77,7 +77,12 @@ var _mode: [maxBlockCount]*RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
+
 var _friction: [maxBlockCount]f32 = undefined;
+var _bounciness: [maxBlockCount]f32 = undefined;
+var _density: [maxBlockCount]f32 = undefined;
+var _terminalVelocity: [maxBlockCount]f32 = undefined;
+var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 var _tickEvent: [maxBlockCount]?TickEvent = undefined;
@@ -97,14 +102,10 @@ pub fn deinit() void {
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered block with id {s} twice!", .{id});
-	}
-
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
@@ -128,6 +129,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
+	_bounciness[size] = zon.get(f32, "bounciness", 0.0);
+	_density[size] = zon.get(f32, "density", 0.001);
+	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
+	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 
@@ -143,8 +148,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
-		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
-			std.log.err("Ore must have rotation mode \"ore\"!", .{});
+		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
+			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
 		ores.append(Ore{
@@ -392,6 +397,22 @@ pub const Block = packed struct { // MARK: Block
 		return _friction[self.typ];
 	}
 
+	pub inline fn bounciness(self: Block) f32 {
+		return _bounciness[self.typ];
+	}
+
+	pub inline fn density(self: Block) f32 {
+		return _density[self.typ];
+	}
+
+	pub inline fn terminalVelocity(self: Block) f32 {
+		return _terminalVelocity[self.typ];
+	}
+
+	pub inline fn mobility(self: Block) f32 {
+		return _mobility[self.typ];
+	}
+
 	pub inline fn allowOres(self: Block) bool {
 		return _allowOres[self.typ];
 	}
@@ -512,6 +533,7 @@ pub const meshes = struct { // MARK: meshes
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
 	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
+	pub var ditherTexture: graphics.Texture = undefined;
 
 	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
 	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
@@ -525,6 +547,7 @@ pub const meshes = struct { // MARK: meshes
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
+		ditherTexture = .initFromMipmapFiles("assets/cubyz/blocks/textures/dither/", 64, 0.5);
 		textureIDs = .init(main.globalAllocator);
 		animation = .init(main.globalAllocator);
 		blockTextures = .init(main.globalAllocator);
@@ -551,6 +574,7 @@ pub const meshes = struct { // MARK: meshes
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		reflectivityAndAbsorptionTextureArray.deinit();
+		ditherTexture.deinit();
 		textureIDs.deinit();
 		animation.deinit();
 		blockTextures.deinit();

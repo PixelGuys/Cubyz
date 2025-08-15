@@ -1,5 +1,5 @@
-//! Default test runner for unit tests.
 // Source: https://github.com/ziglang/zig/blob/0.14.0/lib/compiler/test_runner.zig
+//! Default test runner for unit tests.
 const builtin = @import("builtin");
 
 const std = @import("std");
@@ -16,7 +16,9 @@ var fba_buffer: [8192]u8 = undefined;
 var fba = std.heap.FixedBufferAllocator.init(&fba_buffer);
 
 const crippled = switch(builtin.zig_backend) {
-	.stage2_riscv64 => true,
+	.stage2_powerpc,
+	.stage2_riscv64,
+	=> true,
 	else => false,
 };
 
@@ -68,8 +70,8 @@ fn mainServer() !void {
 	@disableInstrumentation();
 	var server = try std.zig.Server.init(.{
 		.gpa = fba.allocator(),
-		.in = std.io.getStdIn(),
-		.out = std.io.getStdOut(),
+		.in = .stdin(),
+		.out = .stdout(),
 		.zig_version = builtin.zig_version_string,
 	});
 	defer server.deinit();
@@ -189,7 +191,7 @@ fn mainTerminal() void {
 		.root_name = "Test",
 		.estimated_total_items = test_fn_list.len,
 	});
-	const doColors = std.io.getStdErr().supportsAnsiEscapeCodes();
+	const doColors = std.fs.File.stderr().supportsAnsiEscapeCodes();
 	const reset = if(doColors) "\x1b[0m" else "";
 	const red = if(doColors) "\x1b[31m" else "";
 	const yellow = if(doColors) "\x1b[33m" else "";
@@ -283,6 +285,7 @@ pub fn mainSimple() anyerror!void {
 	};
 	// is the backend capable of using std.fmt.format to print a summary at the end?
 	const print_summary = switch(builtin.zig_backend) {
+		.stage2_riscv64 => true,
 		else => false,
 	};
 
@@ -291,7 +294,7 @@ pub fn mainSimple() anyerror!void {
 	var failed: u64 = 0;
 
 	// we don't want to bring in File and Writer if the backend doesn't support it
-	const stderr = if(comptime enable_print) std.io.getStdErr() else {};
+	const stderr = if(comptime enable_print) std.fs.File.stderr() else {};
 
 	for(builtin.test_functions) |test_fn| {
 		if(test_fn.func()) |_| {
@@ -300,7 +303,7 @@ pub fn mainSimple() anyerror!void {
 				stderr.writeAll("... ") catch {};
 				stderr.writeAll("PASS\n") catch {};
 			}
-		} else |err| if(enable_print) {
+		} else |err| {
 			if(enable_print) {
 				stderr.writeAll(test_fn.name) catch {};
 				stderr.writeAll("... ") catch {};
@@ -318,7 +321,7 @@ pub fn mainSimple() anyerror!void {
 		passed += 1;
 	}
 	if(enable_print and print_summary) {
-		stderr.writer().print("{} passed, {} skipped, {} failed\n", .{passed, skipped, failed}) catch {};
+		stderr.deprecatedWriter().print("{} passed, {} skipped, {} failed\n", .{passed, skipped, failed}) catch {};
 	}
 	if(failed != 0) std.process.exit(1);
 }
@@ -343,7 +346,7 @@ var is_fuzz_test: bool = undefined;
 extern fn fuzzer_set_name(name_ptr: [*]const u8, name_len: usize) void;
 extern fn fuzzer_init(cache_dir: FuzzerSlice) void;
 extern fn fuzzer_init_corpus_elem(input_ptr: [*]const u8, input_len: usize) void;
-extern fn fuzzer_start(testOne: *const fn([*]const u8, usize) callconv(.C) void) void;
+extern fn fuzzer_start(testOne: *const fn([*]const u8, usize) callconv(.c) void) void;
 extern fn fuzzer_coverage_id() u64;
 
 pub fn fuzz(
@@ -375,7 +378,7 @@ pub fn fuzz(
 	const global = struct {
 		var ctx: @TypeOf(context) = undefined;
 
-		fn fuzzer_one(input_ptr: [*]const u8, input_len: usize) callconv(.C) void {
+		fn fuzzer_one(input_ptr: [*]const u8, input_len: usize) callconv(.c) void {
 			@disableInstrumentation();
 			testing.allocator_instance = .{};
 			defer if(testing.allocator_instance.deinit() == .leak) std.process.exit(1);

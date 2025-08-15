@@ -114,10 +114,78 @@ pub fn isOriginBlock(block: Block) bool {
 	return block.typ == originBlockNumericId;
 }
 
+pub const RotationMode = enum {
+	fixed,
+	random,
+	inherit,
+};
+
+pub const Rotation = union(RotationMode) {
+	fixed: FixedRotation,
+	random: void,
+	inherit: void,
+
+	pub const FixedRotation = enum(u2) {
+		@"0" = 0,
+		@"90" = 1,
+		@"180" = 2,
+		@"270" = 3,
+	};
+
+	pub fn apply(self: Rotation, rotation: FixedRotation) FixedRotation {
+		return switch(self) {
+			.fixed => |fixed| @enumFromInt(@intFromEnum(rotation) +% @intFromEnum(fixed)),
+			.random, .inherit => rotation,
+		};
+	}
+	pub fn getInitialRotation(self: Rotation, seed: *u64) Rotation {
+		return switch(self) {
+			.fixed => self,
+			.random => sampleRandom(seed),
+			.inherit => .{.fixed = .@"0"},
+		};
+	}
+	fn sampleRandom(seed: *u64) Rotation {
+		return .{.fixed = @enumFromInt(main.random.nextInt(u2, seed))};
+	}
+	pub fn getChildRotation(self: Rotation, seed: *u64, child: Rotation, direction: Neighbor) Rotation {
+		return switch(direction) {
+			.dirDown, .dirUp => switch(child) {
+				.random => sampleRandom(seed),
+				.inherit => self,
+				else => |r| r,
+			},
+			else => .{.fixed = .@"0"},
+		};
+	}
+	pub fn fromZon(zon: ZonElement) error{UnknownString, UnknownType}!Rotation {
+		return switch(zon) {
+			.string, .stringOwned => |str| {
+				if(std.meta.stringToEnum(FixedRotation, str)) |r| {
+					return .{.fixed = r};
+				}
+				if(std.meta.stringToEnum(RotationMode, str)) |mode| {
+					return switch(mode) {
+						.fixed => .{.fixed = .@"0"},
+						.random => .{.random = {}},
+						.inherit => .{.inherit = {}},
+					};
+				}
+				return error.UnknownString;
+			},
+			.int => |value| .{.fixed = @enumFromInt(@abs(@divTrunc(value, 90))%4)},
+			.float => |value| .{.fixed = @enumFromInt(@abs(@as(u64, @intFromFloat(value/90.0)))%4)},
+			.null => Rotation.random,
+			else => return error.UnknownType,
+		};
+	}
+};
+
 pub const StructureBuildingBlock = struct {
 	id: []const u8,
 	children: []AliasTable(Child),
 	blueprints: *[4]BlueprintEntry,
+	rotation: Rotation,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
 		const blueprintId = zon.get(?[]const u8, "blueprint", null) orelse {
@@ -128,6 +196,14 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, blueprintId});
 			return error.MissingBlueprint;
 		};
+		const rotationParam = zon.getChild("rotation");
+		const rotation = Rotation.fromZon(rotationParam) catch |err| blk: {
+			switch(err) {
+				error.UnknownString => std.log.err("['{s}'] specified unknown rotation '{s}'", .{stringId, rotationParam.as([]const u8, "")}),
+				error.UnknownType => std.log.err("['{s}'] unsupported type of rotation field '{s}'", .{stringId, @tagName(rotationParam)}),
+			}
+			break :blk .inherit;
+		};
 
 		const blueprints = arenaAllocator.create([4]BlueprintEntry);
 		blueprints.* = blueprintsTemplate.*;
@@ -136,6 +212,7 @@ pub const StructureBuildingBlock = struct {
 			.id = stringId,
 			.children = arenaAllocator.alloc(AliasTable(Child), childBlockStringId.items.len),
 			.blueprints = blueprints,
+			.rotation = rotation,
 		};
 		const childrenZon = zon.getChild("children");
 		for(childBlockStringId.items, 0..) |colorName, colorIndex| {
@@ -186,6 +263,7 @@ pub const StructureBuildingBlock = struct {
 		return .{
 			.id = sbbId,
 			.children = &.{},
+			.rotation = .inherit,
 			.blueprints = blueprints,
 		};
 	}

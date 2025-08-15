@@ -7,6 +7,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
+const CheckBox = @import("../components/CheckBox.zig");
 const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
@@ -56,6 +57,11 @@ fn updateSensitivity(sensitivity: f32) void {
 	main.settings.save();
 }
 
+fn invertMouseYCallback(newValue: bool) void {
+	main.settings.invertMouseY = newValue;
+	main.settings.save();
+}
+
 fn updateDeadzone(deadzone: f32) void {
 	main.settings.controllerAxisDeadzone = deadzone;
 }
@@ -89,6 +95,8 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
 	list.add(Button.initText(.{0, 0}, 128, if(editingKeyboard) "Gamepad" else "Keyboard", .{.callback = &toggleKeyboard}));
 	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if(editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
+	list.add(CheckBox.init(.{0, 0}, 256, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
+
 	if(!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}

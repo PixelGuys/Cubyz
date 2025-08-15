@@ -1,14 +1,14 @@
 .{
-	.tags = .{.stone, .glacite},
+	.tags = .{.stone, .mineable, .glacite},
 	.blockHealth = 22,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation = .fence,
+	.rotation = "cubyz:fence",
 	.model = "cubyz:wall",
 	.texture = "cubyz:glacite_wall",
 	.texture_top = "cubyz:glacite_wall_top",
-	.texture_bottom = "cubyz:stone_wall_top",
+	.texture_bottom = "cubyz:glacite_wall_top",
 	.item = .{
 		.texture = "wall/glacite.png",
 	},

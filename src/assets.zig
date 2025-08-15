@@ -155,14 +155,11 @@ pub const Assets = struct {
 				self.localArena.deinit();
 			}
 
-			fn get(self: *Defaults, dir: std.fs.Dir) ZonElement {
-				const path = dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
-				defer main.stackAllocator.free(path);
-
-				const result = self.defaults.getOrPut(self.localAllocator.allocator, path) catch unreachable;
+			fn get(self: *Defaults, dir: std.fs.Dir, dirPath: []const u8) ZonElement {
+				const result = self.defaults.getOrPut(self.localAllocator.allocator, dirPath) catch unreachable;
 
 				if(!result.found_existing) {
-					result.key_ptr.* = self.localAllocator.dupe(u8, path);
+					result.key_ptr.* = self.localAllocator.dupe(u8, dirPath);
 					const default: ZonElement = self.read(dir) catch |err| blk: {
 						std.log.err("Failed to read default file: {s}", .{@errorName(err)});
 						break :blk .null;
@@ -224,7 +221,7 @@ pub const Assets = struct {
 					continue;
 				};
 				if(hasDefaults) {
-					zon.join(defaultsStorage.get(entry.dir));
+					zon.join(defaultsStorage.get(entry.dir, entry.path[0 .. entry.path.len - entry.basename.len]));
 				}
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}
@@ -365,8 +362,8 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks_zig.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
-	const index = (items_zig.BaseItemIndex.fromId(stringId) orelse unreachable).index;
-	const item = &items_zig.itemList[index];
+	const index = items_zig.BaseItemIndex.fromId(stringId) orelse unreachable;
+	const item = &items_zig.itemList[@intFromEnum(index)];
 	item.block = block;
 }
 
@@ -534,8 +531,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// Items:
 	// First from the palette to enforce ID values.
 	for(itemPalette.palette.items) |stringId| {
-		std.debug.assert(!items_zig.hasRegistered(stringId));
-
 		// Some items are created automatically from blocks.
 		if(worldAssets.blocks.get(stringId)) |zon| {
 			if(!zon.get(bool, "hasItem", true)) continue;
@@ -644,7 +639,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		break :blk null;
 	}) |addon| {
 		if(addon.kind == .directory) {
-			const path = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}) catch unreachable;
+			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			std.fs.cwd().access(path, .{}) catch continue;
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
@@ -680,7 +675,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		break :blk null;
 	}) |addon| {
 		if(addon.kind == .directory) {
-			const path = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}) catch unreachable;
+			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			std.fs.cwd().access(path, .{}) catch continue;
 			main.utils.file_monitor.removePath(path);

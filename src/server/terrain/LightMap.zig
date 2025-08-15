@@ -20,25 +20,18 @@ pub const LightMapFragment = struct {
 	startHeight: [mapSize*mapSize]i16 = undefined,
 	pos: MapFragmentPosition,
 
-	refCount: Atomic(u16) = .init(0),
-
 	pub fn init(self: *LightMapFragment, wx: i32, wy: i32, voxelSize: u31) void {
 		self.* = .{
 			.pos = MapFragmentPosition.init(wx, wy, voxelSize),
 		};
 	}
 
-	pub fn increaseRefCount(self: *LightMapFragment) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
+	fn privateDeinit(self: *const LightMapFragment, _: usize) void {
+		main.globalAllocator.destroy(self);
 	}
 
-	pub fn decreaseRefCount(self: *LightMapFragment) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
-		}
+	pub fn deferredDeinit(self: *LightMapFragment) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn getHeight(self: *LightMapFragment, wx: i32, wy: i32) i32 {
@@ -51,13 +44,12 @@ pub const LightMapFragment = struct {
 const cacheSize = 1 << 6; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // 64MiB MiB Cache size
-var cache: Cache(LightMapFragment, cacheSize, associativity, LightMapFragment.decreaseRefCount) = .{};
+var cache: Cache(LightMapFragment, cacheSize, associativity, LightMapFragment.deferredDeinit) = .{};
 
 fn cacheInit(pos: MapFragmentPosition) *LightMapFragment {
 	const mapFragment = main.globalAllocator.create(LightMapFragment);
 	mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
-	const surfaceMap = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(pos.wx, pos.wy, pos.voxelSize);
-	defer surfaceMap.decreaseRefCount();
+	const surfaceMap = terrain.SurfaceMap.getOrGenerateFragment(pos.wx, pos.wy, pos.voxelSize);
 	comptime std.debug.assert(LightMapFragment.mapSize == terrain.SurfaceMap.MapFragment.mapSize);
 	for(0..LightMapFragment.mapSize) |x| {
 		for(0..LightMapFragment.mapSize) |y| {
@@ -65,7 +57,6 @@ fn cacheInit(pos: MapFragmentPosition) *LightMapFragment {
 			mapFragment.startHeight[x << LightMapFragment.mapShift | y] = @max(0, baseHeight +| 16); // Simple heuristic. TODO: Update this value once chunks get generated in the region.
 		}
 	}
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -73,12 +64,12 @@ pub fn deinit() void {
 	cache.clear();
 }
 
-pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, voxelSize: u31) *LightMapFragment {
+pub fn getOrGenerateFragment(wx: i32, wy: i32, voxelSize: u31) *LightMapFragment {
 	const compare = MapFragmentPosition.init(
 		wx & ~@as(i32, LightMapFragment.mapMask*voxelSize | voxelSize - 1),
 		wy & ~@as(i32, LightMapFragment.mapMask*voxelSize | voxelSize - 1),
 		voxelSize,
 	);
-	const result = cache.findOrCreate(compare, cacheInit, LightMapFragment.increaseRefCount);
+	const result = cache.findOrCreate(compare, cacheInit, null);
 	return result;
 }

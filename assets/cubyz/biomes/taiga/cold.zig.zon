@@ -17,14 +17,31 @@
 	.stoneBlock = "cubyz:glacite",
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:pine_needles",
-			.log = "cubyz:log/pine",
-			.chance = 0.25,
-			.type = .pyramid,
-			.height = 6,
-			.height_variation = 7,
-			.branched = false,
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/short",
+			.placeMode = .degradable,
+			.chance = 0.15,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/sapling",
+			.placeMode = .degradable,
+			.chance = 0.2,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/roots",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:bolete",
+			.chance = 0.01,
+			.width = 8,
+			.variation = 4,
+			.density = 0.08,
+			.priority = 0.5,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -38,7 +55,7 @@
 		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:cold_grass_vegetation",
-			.chance = 0.04,
+			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
 			.density = 0.5,

@@ -1,10 +1,10 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .wood},
 	.blockHealth = 10,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
-	.rotation = .planar,
+	.rotation = "cubyz:planar",
 	.blockEntity = .chest,
 }

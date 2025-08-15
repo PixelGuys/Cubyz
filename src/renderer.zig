@@ -213,6 +213,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.emissionTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE2);
 	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE5);
+	blocks.meshes.ditherTexture.bind();
 	reflectionCubeMap.bindTo(4);
 
 	chunk_meshing.quadsDrawn = 0;
@@ -225,15 +227,15 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.beginRender();
 
-	var chunkList = main.List(u32).init(main.stackAllocator);
-	defer chunkList.deinit();
+	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	defer for(chunkLists) |list| list.deinit();
 	for(meshes) |mesh| {
-		mesh.prepareRendering(&chunkList);
+		mesh.prepareRendering(&chunkLists);
 	}
 	gpu_performance_measuring.stopQuery();
-	if(chunkList.items.len != 0) {
-		chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, false);
-	}
+	gpu_performance_measuring.startQuery(.chunk_rendering);
+	chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, false);
+	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, playerPos);
@@ -264,17 +266,17 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glTextureBarrier();
 
 	{
-		chunkList.clearRetainingCapacity();
+		for(&chunkLists) |*list| list.clearRetainingCapacity();
 		var i: usize = meshes.len;
 		while(true) {
 			if(i == 0) break;
 			i -= 1;
-			meshes[i].prepareTransparentRendering(playerPos, &chunkList);
+			meshes[i].prepareTransparentRendering(playerPos, &chunkLists);
 		}
 		gpu_performance_measuring.stopQuery();
-		if(chunkList.items.len != 0) {
-			chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, true);
-		}
+		gpu_performance_measuring.startQuery(.transparent_rendering);
+		chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, true);
+		gpu_performance_measuring.stopQuery();
 	}
 
 	c.glDepthRange(0, 0.001);
@@ -285,7 +287,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
-	const playerBlock = mesh_storage.getBlockFromAnyLod(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock, playerPos, game.camera.viewMatrix);
@@ -913,10 +915,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		selectedBlockPos = null;
 
 		while(total_tMax < closestDistance) {
-			const block = mesh_storage.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
+			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) blk: {
+				const fluidPlaceable = item != null and item.? == .baseItem and item.?.baseItem.hasTag(.fluidPlaceable);
 				for(block.blockTags()) |tag| {
-					if(tag == .fluid or tag == .air) break :blk; // TODO: Buckets could select fluids
+					if(tag == .fluid and !fluidPlaceable or tag == .air) break :blk; // TODO: Buckets could select fluids
 				}
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
@@ -968,7 +971,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn placeBlock(inventory: main.items.Inventory, slot: u32) void {
 		if(selectedBlockPos) |selectedPos| {
-			var oldBlock = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			var oldBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			var block = oldBlock;
 			if(inventory.getItem(slot)) |item| {
 				switch(item) {
@@ -996,7 +999,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							neighborDir = selectedPos - posBeforeBlock;
 							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 							const neighborBlock = block;
-							oldBlock = mesh_storage.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
+							oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							block = oldBlock;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
@@ -1043,10 +1046,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
-				currentSwingProgress = 0;
-				currentSwingTime = 0;
 			}
-			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			if(block.hasTag(.fluid) or block.hasTag(.air)) {
+				return;
+			}
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
@@ -1057,8 +1061,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					damage = stack.item.?.tool.getBlockDamage(block);
 				}
 				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id(), "cubyz:chisel");
-				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
-					damage = block.blockHealth();
+				if(isChisel and block.mode() == main.rotation.getByID("cubyz:stairs")) { // TODO: Remove once the chisel is a tool.
+					damage = block.blockHealth() + block.blockResistance();
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
@@ -1082,6 +1086,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 						return;
 					} else {
+						currentSwingProgress += (currentBlockProgress - 1)*block.blockHealth()/damage*currentSwingTime;
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 					}

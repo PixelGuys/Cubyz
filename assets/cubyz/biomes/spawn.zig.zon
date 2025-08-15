@@ -57,7 +57,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:stone",
+			.block = "cubyz:slate",
 			.chance = 0.0015,
 			.height = 2,
 			.height_variation = 15,
@@ -105,7 +105,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:stone",
+			.block = "cubyz:slate",
 			.chance = 0.001,
 			.width = 10,
 			.variation = 3,

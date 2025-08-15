@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone, .sandstone},
+	.tags = .{.stone, .mineable, .sandstone},
 	.blockHealth = 20,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -40,7 +40,7 @@
 		},
 	},
 	.allowOres = true,
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
 	.texture = "cubyz:sandstone",
 }

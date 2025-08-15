@@ -1,11 +1,11 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .cuttable, .mushroom},
 	.blockHealth = 2,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.absorbedLight = 0x202830,
-	.rotation = .branch,
+	.rotation = "cubyz:branch",
 	.model = .{
 		.radius = 4,
 	},

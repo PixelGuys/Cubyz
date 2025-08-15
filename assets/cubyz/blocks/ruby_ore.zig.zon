@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.mineable},
 	.blockHealth = 100,
 	.blockResistance = 9,
 	.item = .{
@@ -38,7 +38,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation = .ore,
+	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
 	.texture = "cubyz:ruby_ore",
 }

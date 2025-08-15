@@ -1,11 +1,10 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .wood},
 	.blockHealth = 8,
-	.hasItem = false,
 	.drops = .{
 		.{.items = .{"cubyz:log/birch"}},
 	},
-	.rotation = .direction,
+	.rotation = "cubyz:direction",
 	.model = "cubyz:cube",
 	.texture = "cubyz:birch_log",
 	.texture_top = "cubyz:birch_log",

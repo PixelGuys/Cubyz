@@ -8,6 +8,9 @@
 	.hasBackFace = true,
 	.collide = false,
 	.absorbedLight = 0x090501,
+	.density = 0.998,
+	.terminalVelocity = 5,
+	.mobility = 0.6,
 	.model = "cubyz:cube",
 	.texture = "cubyz:water",
 }

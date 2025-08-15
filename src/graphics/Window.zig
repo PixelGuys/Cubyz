@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const settings = main.settings;
@@ -6,8 +7,11 @@ const files = main.files;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
+const vulkan = @import("vulkan.zig");
+
 pub const c = @cImport({
-	@cInclude("glad/glad.h");
+	@cInclude("glad/gl.h");
+	@cInclude("glad/vulkan.h");
 	@cInclude("GLFW/glfw3.h");
 });
 
@@ -16,6 +20,7 @@ pub var lastUsedMouse: bool = true;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
+pub var vulkanWindow: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
 
@@ -199,6 +204,7 @@ pub const Gamepad = struct {
 		}
 	};
 	pub fn downloadControllerMappings() void {
+		if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
 		const curTimestamp = std.time.nanoTimestamp();
 		const timestamp: i128 = blk: {
@@ -432,10 +438,10 @@ pub const Key = struct { // MARK: Key
 };
 
 pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
-	fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.C) void {
+	fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.c) void {
 		std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 	}
-	fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.C) void {
+	fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.c) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		if(!mods.control and main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null) return; // Don't send events for keys that are used in writing letters.
 		const isGrabbed = grabbed;
@@ -463,13 +469,13 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			}
 		}
 	}
-	fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.C) void {
+	fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.c) void {
 		if(!grabbed) {
 			main.gui.textCallbacks.char(@intCast(codepoint));
 		}
 	}
 
-	pub fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.C) void {
+	pub fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.c) void {
 		std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
 		height = @intCast(newHeight);
@@ -483,13 +489,17 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	var deltaBufferPosition: u2 = 0;
 	var currentPos: Vec2f = Vec2f{0, 0};
 	var ignoreDataAfterRecentGrab: bool = true;
-	fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
+	fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.c) void {
 		const newPos = Vec2f{
 			@floatCast(x),
 			@floatCast(y),
 		};
 		if(grabbed and !ignoreDataAfterRecentGrab) {
-			deltas[deltaBufferPosition] += (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
+			var newDelta = (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
+			if(settings.invertMouseY) {
+				newDelta[1] *= -1;
+			}
+			deltas[deltaBufferPosition] += newDelta;
 			var averagedDelta: Vec2f = Vec2f{0, 0};
 			for(deltas) |delta| {
 				averagedDelta += delta;
@@ -503,7 +513,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		currentPos = newPos;
 		lastUsedMouse = true;
 	}
-	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.C) void {
+	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.c) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		const isGrabbed = grabbed;
 		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
@@ -520,11 +530,11 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			}
 		}
 	}
-	fn scroll(_: ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.C) void {
+	fn scroll(_: ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.c) void {
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
 	}
-	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
+	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.c) void {
 		const sourceString: []const u8 = switch(source) {
 			c.GL_DEBUG_SOURCE_API => "API",
 			c.GL_DEBUG_SOURCE_APPLICATION => "Application",
@@ -634,6 +644,19 @@ pub fn init() void { // MARK: init()
 		@panic("Failed to initialize GLFW");
 	}
 
+	if(c.glfwVulkanSupported() == c.GLFW_FALSE) {
+		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
+	} else {
+		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
+		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.vulkanTestingWindow));
+		vulkanWindow = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
+		vulkan.init(vulkanWindow) catch |err| {
+			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
+		};
+	}
+
+	c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_OPENGL_API);
+	c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_TRUE);
 	c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -662,7 +685,7 @@ pub fn init() void { // MARK: init()
 
 	c.glfwMakeContextCurrent(window);
 
-	if(c.gladLoadGL() == 0) {
+	if(c.gladLoadGL(c.glfwGetProcAddress) == 0) {
 		@panic("Failed to load OpenGL functions from GLAD");
 	}
 	reloadSettings();
@@ -677,6 +700,8 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
+	c.glfwDestroyWindow(vulkanWindow);
+	vulkan.deinit();
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;

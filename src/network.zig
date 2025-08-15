@@ -64,10 +64,19 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-			std.log.info("Got error while sending to {}: {s}", .{destination, @errorName(err)});
-			return;
-		});
+		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
+			const result = posix.system.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			if(result < 0) {
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())});
+			} else {
+				std.debug.assert(@as(usize, @intCast(result)) == data.len);
+			}
+		} else {
+			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
+				return;
+			});
+		}
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
@@ -85,7 +94,7 @@ const Socket = struct {
 					else => |err| return std.os.windows.unexpectedWSAError(err),
 				}
 			} else if(length == 0) {
-				std.time.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
+				std.Thread.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
 			}
 		} else {
@@ -139,7 +148,7 @@ pub const Address = struct {
 
 	pub const localHost = 0x0100007f;
 
-	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+	pub fn format(self: Address, writer: anytype) !void {
 		if(self.isSymmetricNAT) {
 			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
 		} else {
@@ -295,7 +304,7 @@ const STUN = struct { // MARK: STUN
 					continue;
 				};
 				if(oldAddress) |other| {
-					std.log.info("{}", .{result});
+					std.log.info("{f}", .{result});
 					if(other.ip == result.ip and other.port == result.port) {
 						return result;
 					} else {
@@ -556,17 +565,17 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		if(self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
 			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{source}) catch unreachable;
+				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
-					std.log.err("Cannot connect user from external IP {}: {s}", .{source, @errorName(err)});
+					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});
 					return;
 				};
 				user.decreaseRefCount();
 			}
 		} else {
 			// TODO: Reduce the number of false alarms in the short period after a disconnect.
-			std.log.warn("Unknown connection from address: {}", .{source});
+			std.log.warn("Unknown connection from address: {f}", .{source});
 			std.log.debug("Message: {any}", .{data});
 		}
 	}
@@ -578,6 +587,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		var lastTime: i64 = networkTimestamp();
 		while(self.running.load(.monotonic)) {
+			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
 			if(self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
@@ -644,18 +654,13 @@ pub const Protocols = struct {
 	pub const handShake = struct {
 		pub const id: u8 = 1;
 		pub const asynchronous = false;
-		const stepStart: u8 = 0;
-		const stepUserData: u8 = 1;
-		const stepAssets: u8 = 2;
-		const stepServerData: u8 = 3;
-		pub const stepComplete: u8 = 255;
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const newState = try reader.readInt(u8);
-			if(conn.handShakeState.load(.monotonic) < newState) {
+			const newState = try reader.readEnum(Connection.HandShakeState);
+			if(@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 				conn.handShakeState.store(newState, .monotonic);
 				switch(newState) {
-					stepUserData => {
+					.userData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
@@ -673,7 +678,7 @@ pub const Protocols = struct {
 							defer dir.close();
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
-							arrayList.append(stepAssets);
+							arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
 							try utils.Compression.pack(dir, arrayList.writer());
 							conn.send(.fast, id, arrayList.items);
 						}
@@ -689,30 +694,27 @@ pub const Protocols = struct {
 						zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
 
-						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
+						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
 						defer main.stackAllocator.free(outData);
 						conn.send(.fast, id, outData);
-						conn.handShakeState.store(stepServerData, .monotonic);
+						conn.handShakeState.store(.serverData, .monotonic);
 						main.server.connect(conn.user.?);
 					},
-					stepAssets => {
+					.assets => {
 						std.log.info("Received assets.", .{});
 						std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
 						var dir = try std.fs.cwd().makeOpenPath("serverAssets", .{});
 						defer dir.close();
 						try utils.Compression.unpack(dir, reader.remaining);
 					},
-					stepServerData => {
+					.serverData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 						defer zon.deinit(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(zon);
-						conn.handShakeState.store(stepComplete, .monotonic);
+						conn.handShakeState.store(.complete, .monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					},
-					stepComplete => {},
-					else => {
-						std.log.err("Unknown state in HandShakeProtocol {}", .{newState});
-					},
+					.start, .complete => {},
 				}
 			} else {
 				// Ignore packages that refer to an unexpected state. Normally those might be packages that were resent by the other side.
@@ -720,21 +722,22 @@ pub const Protocols = struct {
 		}
 
 		pub fn serverSide(conn: *Connection) void {
-			conn.handShakeState.store(stepStart, .monotonic);
+			conn.handShakeState.store(.start, .monotonic);
 		}
 
-		pub fn clientSide(conn: *Connection, name: []const u8) void {
+		pub fn clientSide(conn: *Connection, name: []const u8) !void {
 			const zonObject = ZonElement.initObject(main.stackAllocator);
 			defer zonObject.deinit(main.stackAllocator);
 			zonObject.putOwnedString("version", settings.version);
 			zonObject.putOwnedString("name", name);
-			const prefix = [1]u8{stepUserData};
+			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 			defer main.stackAllocator.free(data);
 			conn.send(.fast, id, data);
 
 			conn.mutex.lock();
 			conn.handShakeWaiting.wait(&conn.mutex);
+			if(conn.connectionState.load(.monotonic) == .disconnectDesired) return error.DisconnectedByServer;
 			conn.mutex.unlock();
 		}
 	};
@@ -1212,7 +1215,6 @@ pub const Protocols = struct {
 			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
 			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
 			map.init(pos.wx, pos.wy, pos.voxelSize);
-			_ = map.refCount.fetchAdd(1, .monotonic);
 			for(&map.startHeight) |*val| {
 				val.* = try ligthMapReader.readInt(i16);
 			}
@@ -1241,7 +1243,10 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			if(conn.user) |user| {
 				if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-				try items.Inventory.Sync.ServerSide.receiveCommand(user, reader);
+				items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
+					if(err != error.InventoryNotFound) return err;
+					sendFailure(conn);
+				};
 			} else {
 				const typ = try reader.readInt(u8);
 				if(typ == 0xff) { // Confirmation
@@ -1299,15 +1304,14 @@ pub const Protocols = struct {
 			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
 			if(block.typ != blockType) return;
 			const blockEntity = block.blockEntity() orelse return;
-			try blockEntity.updateServerData(pos, &ch.super, .{.createOrUpdate = reader});
+			try blockEntity.updateServerData(pos, &ch.super, .{.update = reader});
 			ch.setChanged();
 
 			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
 		}
 
 		pub fn sendClientDataUpdateToServer(conn: *Connection, pos: Vec3i) void {
-			const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(pos, 1)) orelse return;
-			defer mesh.decreaseRefCount();
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 			mesh.mutex.lock();
 			defer mesh.mutex.unlock();
 			const index = mesh.chunk.getLocalBlockIndex(pos);
@@ -1508,7 +1512,7 @@ pub const Connection = struct { // MARK: Connection
 				if(nextByte & 0x80 == 0) break;
 				if(header.size > std.math.maxInt(@TypeOf(header.size)) >> 7) return error.Invalid;
 			}
-			self.buffer.discardElements(i + 1);
+			self.buffer.discardElementsFront(i + 1);
 			self.currentReadPosition +%= @intCast(i + 1);
 			return header;
 		}
@@ -1523,7 +1527,7 @@ pub const Connection = struct { // MARK: Connection
 				const amount = @min(@as(usize, @intCast(self.availablePosition -% self.currentReadPosition)), self.header.?.size - self.protocolBuffer.items.len);
 				if(self.availablePosition -% self.currentReadPosition == 0) return;
 
-				self.buffer.dequeueSlice(self.protocolBuffer.addManyAssumeCapacity(amount)) catch unreachable;
+				self.buffer.popSliceFront(self.protocolBuffer.addManyAssumeCapacity(amount)) catch unreachable;
 				self.currentReadPosition +%= @intCast(amount);
 				if(self.protocolBuffer.items.len != self.header.?.size) return;
 
@@ -1610,7 +1614,7 @@ pub const Connection = struct { // MARK: Connection
 				self.lastUnsentTime = time;
 			}
 			if(data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
-			self.buffer.enqueue(protocolIndex);
+			self.buffer.pushBack(protocolIndex);
 			self.nextIndex +%= 1;
 			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			const bits = 1 + if(data.len == 0) 0 else std.math.log2_int(usize, data.len);
@@ -1618,11 +1622,11 @@ pub const Connection = struct { // MARK: Connection
 			for(0..bytes) |i| {
 				const shift = 7*(bytes - i - 1);
 				const byte = (data.len >> @intCast(shift) & 0x7f) | if(i == bytes - 1) @as(u8, 0) else 0x80;
-				self.buffer.enqueue(@intCast(byte));
+				self.buffer.pushBack(@intCast(byte));
 				self.nextIndex +%= 1;
 				_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			}
-			self.buffer.enqueueSlice(data);
+			self.buffer.pushBackSlice(data);
 			self.nextIndex +%= @intCast(data.len);
 		}
 
@@ -1657,7 +1661,7 @@ pub const Connection = struct { // MARK: Connection
 					smallestUnconfirmed = range.start;
 				}
 			}
-			self.buffer.discard(@intCast(smallestUnconfirmed -% self.fullyConfirmedIndex)) catch unreachable;
+			self.buffer.discardFront(@intCast(smallestUnconfirmed -% self.fullyConfirmedIndex)) catch unreachable;
 			self.fullyConfirmedIndex = smallestUnconfirmed;
 			return result;
 		}
@@ -1677,7 +1681,7 @@ pub const Connection = struct { // MARK: Connection
 					range.wasResentAsFirstPacket = true;
 				}
 				range.wasResent = true;
-				self.lostRanges.enqueue(range);
+				self.lostRanges.pushBack(range);
 				_ = packetsResent.fetchAdd(1, .monotonic);
 			}
 			if(hadDoubleLoss) return .doubleLoss;
@@ -1688,10 +1692,10 @@ pub const Connection = struct { // MARK: Connection
 		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, allowedDelay: i64) ?usize {
 			self.unconfirmedRanges.ensureUnusedCapacity(1) catch unreachable;
 			// Resend old packet:
-			if(self.lostRanges.dequeue()) |_range| {
+			if(self.lostRanges.popFront()) |_range| {
 				var range = _range;
 				if(range.len > buf.len) { // MTU changed → split the data
-					self.lostRanges.enqueue_back(.{
+					self.lostRanges.pushFront(.{
 						.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
 						.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
 						.timestamp = range.timestamp,
@@ -1819,6 +1823,14 @@ pub const Connection = struct { // MARK: Connection
 		disconnectDesired,
 	};
 
+	const HandShakeState = enum(u8) {
+		start = 0,
+		userData = 1,
+		assets = 2,
+		serverData = 3,
+		complete = 255,
+	};
+
 	// MARK: fields
 
 	manager: *ConnectionManager,
@@ -1847,7 +1859,7 @@ pub const Connection = struct { // MARK: Connection
 	relativeIdleTime: i64 = 0,
 
 	connectionState: Atomic(ConnectionState),
-	handShakeState: Atomic(u8) = .init(Protocols.handShake.stepStart),
+	handShakeState: Atomic(HandShakeState) = .init(.start),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
 
@@ -2009,7 +2021,7 @@ pub const Connection = struct { // MARK: Connection
 
 		writer.writeEnum(ChannelId, .confirmation);
 
-		while(self.queuedConfirmations.dequeue()) |confirmation| {
+		while(self.queuedConfirmations.popFront()) |confirmation| {
 			writer.writeEnum(ChannelId, confirmation.channel);
 			writer.writeInt(u16, std.math.lossyCast(u16, @divTrunc(timestamp -% confirmation.receiveTimeStamp, 2)));
 			writer.writeInt(SequenceIndex, confirmation.start);
@@ -2024,7 +2036,7 @@ pub const Connection = struct { // MARK: Connection
 		self.tryReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
 			if(@errorReturnTrace()) |trace| {
-				std.log.info("{}", .{trace});
+				std.log.info("{f}", .{trace});
 			}
 			self.disconnect();
 		};
@@ -2099,7 +2111,7 @@ pub const Connection = struct { // MARK: Connection
 			.lossy => {
 				const start = try reader.readInt(SequenceIndex);
 				if(try self.lossyChannel.receive(self, start, reader.remaining) == .accepted) {
-					self.queuedConfirmations.enqueue(.{
+					self.queuedConfirmations.pushBack(.{
 						.channel = channel,
 						.start = start,
 						.receiveTimeStamp = networkTimestamp(),
@@ -2109,7 +2121,7 @@ pub const Connection = struct { // MARK: Connection
 			.fast => {
 				const start = try reader.readInt(SequenceIndex);
 				if(try self.fastChannel.receive(self, start, reader.remaining) == .accepted) {
-					self.queuedConfirmations.enqueue(.{
+					self.queuedConfirmations.pushBack(.{
 						.channel = channel,
 						.start = start,
 						.receiveTimeStamp = networkTimestamp(),
@@ -2119,7 +2131,7 @@ pub const Connection = struct { // MARK: Connection
 			.slow => {
 				const start = try reader.readInt(SequenceIndex);
 				if(try self.slowChannel.receive(self, start, reader.remaining) == .accepted) {
-					self.queuedConfirmations.enqueue(.{
+					self.queuedConfirmations.pushBack(.{
 						.channel = channel,
 						.start = start,
 						.receiveTimeStamp = networkTimestamp(),
@@ -2190,7 +2202,7 @@ pub const Connection = struct { // MARK: Connection
 			self.relativeSendTime >>= 1;
 		}
 
-		while(timestamp -% self.nextConfirmationTimestamp > 0 and !self.queuedConfirmations.empty()) {
+		while(timestamp -% self.nextConfirmationTimestamp > 0 and !self.queuedConfirmations.isEmpty()) {
 			self.sendConfirmationPacket(timestamp);
 		}
 
@@ -2217,12 +2229,13 @@ pub const Connection = struct { // MARK: Connection
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
-			std.time.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+			std.Thread.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
 			main.server.disconnect(user);
 		} else {
+			self.handShakeWaiting.broadcast();
 			main.exitToMenu(undefined);
 		}
 		std.log.info("Disconnected", .{});

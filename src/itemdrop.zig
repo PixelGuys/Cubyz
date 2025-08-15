@@ -237,7 +237,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 
 		self.emptyMutex.unlock();
-		self.changeQueue.enqueue(.{.add = .{i, drop}});
+		self.changeQueue.pushBack(.{.add = .{i, drop}});
 	}
 
 	fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
@@ -269,11 +269,11 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 
 		self.emptyMutex.unlock();
-		self.changeQueue.enqueue(.{.add = .{i, drop}});
+		self.changeQueue.pushBack(.{.add = .{i, drop}});
 	}
 
 	fn processChanges(self: *ItemDropManager) void {
-		while(self.changeQueue.dequeue()) |data| {
+		while(self.changeQueue.popFront()) |data| {
 			switch(data) {
 				.add => |addData| {
 					self.internalAdd(addData[0], addData[1]);
@@ -506,7 +506,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.super.emptyMutex.lock();
 		self.super.isEmpty.set(i);
 		self.super.emptyMutex.unlock();
-		self.super.changeQueue.enqueue(.{.remove = i});
+		self.super.changeQueue.pushBack(.{.remove = i});
 	}
 
 	pub fn loadFrom(self: *ClientItemDropManager, zon: ZonElement) void {
@@ -592,13 +592,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				defer data.deinit();
 				for(model.internalQuads) |quad| {
 					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-					data.append(@as(u32, quad.index) << 16 | textureIndex); // modelAndTexture
+					data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
 					data.append(0); // offsetByNormal
 				}
 				for(model.neighborFacingQuads) |list| {
 					for(list) |quad| {
 						const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-						data.append(@as(u32, quad.index) << 16 | textureIndex); // modelAndTexture
+						data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
 						data.append(1); // offsetByNormal
 					}
 				}

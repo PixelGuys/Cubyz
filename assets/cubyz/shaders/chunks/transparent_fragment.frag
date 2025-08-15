@@ -7,9 +7,8 @@ layout(location = 3) in vec2 uv;
 layout(location = 4) flat in vec3 normal;
 layout(location = 5) flat in int textureIndex;
 layout(location = 6) flat in int isBackFace;
-layout(location = 7) flat in int ditherSeed;
-layout(location = 8) flat in float distanceForLodCheck;
-layout(location = 9) flat in int opaqueInLod;
+layout(location = 7) flat in float distanceForLodCheck;
+layout(location = 8) flat in int opaqueInLod;
 
 layout(location = 0, index = 0) out vec4 fragColor;
 layout(location = 0, index = 1) out vec4 blendColor;

@@ -1,5 +1,5 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .wood},
 	.blockHealth = 6,
 	.item = .{
 		.material = .{
@@ -17,6 +17,6 @@
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 	.texture = "cubyz:willow_planks",
 }

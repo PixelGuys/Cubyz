@@ -1,0 +1,12 @@
+.{
+	.tags = .{.mineable, .choppable},
+	.blockHealth = 15,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.transparent = true,
+	.hasBackFace = true,
+	.model = "cubyz:cube",
+	.absorbedLight = 0x117edc,
+	.texture = "cubyz:cut_amber_block",
+}

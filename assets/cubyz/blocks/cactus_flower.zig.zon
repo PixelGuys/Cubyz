@@ -1,5 +1,5 @@
 .{
-	.tags = .{.leaf},
+	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -9,7 +9,7 @@
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
 	.model = "cubyz:cactus_flower",
-	.rotation = .direction,
+	.rotation = "cubyz:direction",
 	.texture = "cubyz:cactus_flower",
 	.texture_top = "cubyz:cactus_flower_top",
 	.texture_bottom = "cubyz:cactus_flower_top",
