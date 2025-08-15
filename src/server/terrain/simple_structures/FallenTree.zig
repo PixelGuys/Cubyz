@@ -12,6 +12,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Neighbor = main.chunk.Neighbor;
 
 pub const id = "cubyz:fallen_tree";
 
@@ -19,25 +20,30 @@ pub const generationMode = .floor;
 
 const FallenTree = @This();
 
-woodBlock: u16,
-topWoodBlock: u16,
+woodBlock: main.blocks.Block,
 height0: u32,
 deltaHeight: u31,
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *FallenTree {
 	const self = arenaAllocator.create(FallenTree);
 	self.* = .{
-		.woodBlock = main.blocks.getTypeById(parameters.get([]const u8, "log", "cubyz:oak_log")),
-		.topWoodBlock = main.blocks.getTypeById(parameters.get([]const u8, "top", "cubyz:oak_top")),
+		.woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log", "cubyz:oak_log")),
 		.height0 = parameters.get(u32, "height", 6),
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
 	};
 	return self;
 }
 
+fn getWoodBlock(self: *FallenTree, data: u16) main.blocks.Block {
+	if(self.woodBlock.mode() == main.rotation.getByID("log") or self.woodBlock.mode() == main.rotation.getByID("branch")) {
+		return .{.typ = self.woodBlock.typ, .data = data};
+	}
+	return self.woodBlock;
+}
+
 pub fn generateStump(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk) void {
 	if(chunk.liesInChunk(x, y, z))
-		chunk.updateBlockIfDegradable(x, y, z, .{.typ = self.woodBlock, .data = 0});
+		chunk.updateBlockIfDegradable(x, y, z, self.getWoodBlock(Neighbor.dirUp.bitMask() | Neighbor.dirDown.bitMask()));
 }
 
 pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, seed: *u64) void {
@@ -81,22 +87,31 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 
 	var dx: i32 = 0;
 	var dy: i32 = 0;
+	var dataLog: u16 = 0;
+	var dataTop: u16 = 0;
 
 	if(d.? == 0) {
 		dx = 1;
+		dataLog = Neighbor.dirPosX.bitMask() | Neighbor.dirNegX.bitMask();
+		dataTop = Neighbor.dirNegX.bitMask();
 	} else if(d.? == 1) {
 		dx = -1;
+		dataLog = Neighbor.dirPosX.bitMask() | Neighbor.dirNegX.bitMask();
+		dataTop = Neighbor.dirPosX.bitMask();
 	} else if(d.? == 2) {
 		dy = 1;
+		dataLog = Neighbor.dirPosY.bitMask() | Neighbor.dirNegY.bitMask();
+		dataTop = Neighbor.dirNegY.bitMask();
 	} else if(d.? == 3) {
 		dy = -1;
+		dataLog = Neighbor.dirPosY.bitMask() | Neighbor.dirNegY.bitMask();
+		dataTop = Neighbor.dirPosY.bitMask();
 	}
 
 	for(0..length) |val| {
 		const v: i32 = @intCast(val);
 		if(chunk.liesInChunk(x + dx*(v + 2), y + dy*(v + 2), z)) {
-			const typ = if(v == (length - 1)) self.topWoodBlock else self.woodBlock;
-			chunk.updateBlockIfDegradable(x + dx*(v + 2), y + dy*(v + 2), z, .{.typ = typ, .data = @intCast(d.? + 2)});
+			chunk.updateBlockIfDegradable(x + dx*(v + 2), y + dy*(v + 2), z, self.getWoodBlock(if(v == length - 1) dataTop else dataLog));
 		}
 	}
 }
