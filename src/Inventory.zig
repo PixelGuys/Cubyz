@@ -448,8 +448,8 @@ pub const Sync = struct { // MARK: Sync
 			return null;
 		}
 
-		pub fn getInventoryFromId(serverId: InventoryId) Inventory {
-			return inventories.items[@intFromEnum(serverId)].inv;
+		pub fn getServerInventoryFromId(serverId: InventoryId) ServerInventory {
+			return inventories.items[@intFromEnum(serverId)];
 		}
 
 		pub fn clearPlayerInventory(user: *main.server.User) void {
