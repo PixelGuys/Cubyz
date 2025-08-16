@@ -1,0 +1,7 @@
+.{
+	.texture0 = "cubyz:vine/willow/top",
+	.texture1 = "cubyz:vine/willow/bottom",
+	.item = .{
+		.texture = "vine/willow.png",
+	},
+}
