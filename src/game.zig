@@ -65,7 +65,7 @@ pub const collision = struct {
 		}
 
 		pub fn intersects(self: Box, other: Box) bool {
-			return @reduce(.And, (self.max >= other.min)) and @reduce(.And, (self.min <= other.max));
+			return @reduce(.And, (self.max > other.min)) and @reduce(.And, (self.min < other.max));
 		}
 	};
 
@@ -117,14 +117,14 @@ pub const collision = struct {
 			},
 		}
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
 		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
 		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] - 0.0001));
+		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
 
 		const boundingBoxCenter = boundingBox.center();
-		const fullBoundingBoxExtent = boundingBox.extent() - @as(Vec3d, @splat(0.00005));
+		const fullBoundingBoxExtent = boundingBox.extent();
 
 		var resultBox: ?Box = null;
 		var minDistance: f64 = std.math.floatMax(f64);
@@ -170,9 +170,9 @@ pub const collision = struct {
 			.max = pos + hitBox.max,
 		};
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
 		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
 
 		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
 
@@ -246,11 +246,11 @@ pub const collision = struct {
 			.max = pos + hitBox.max,
 		};
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
 		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
 		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] - 0.0001));
+		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
 
 		var invTerminalVelocitySum: f64 = 0;
 		var densitySum: f64 = 0;
@@ -317,7 +317,7 @@ pub const collision = struct {
 			const heightDifference = newFloor - checkPos[2];
 			if(heightDifference <= steppingHeight) {
 				// If we collide but might be able to step up
-				checkPos[2] = newFloor + 0.0001;
+				checkPos[2] = newFloor;
 				if(collision.collides(side, dir, -amount, checkPos, hitBox) == null) {
 					// If there's no new collision then we can execute the step-up
 					resultingMovement[2] = heightDifference;
