@@ -944,7 +944,6 @@ pub const Protocols = struct {
 				return error.InvalidPacket;
 			}
 			while(reader.remaining.len != 0) {
-				std.debug.print("HI\n", .{});
 				renderer.mesh_storage.updateBlock(.{
 					.x = try reader.readInt(i32),
 					.y = try reader.readInt(i32),
