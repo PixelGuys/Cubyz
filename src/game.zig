@@ -791,10 +791,12 @@ pub fn hyperSpeedToggle() void {
 }
 
 pub fn update(deltaTime: f64) void {
-	const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
-	Player.selectedSlot = @intCast(@mod(newSlot, 12));
-	main.Window.scrollOffset = 0;
-	
+	if(main.Window.grabbed) {
+		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
+		Player.selectedSlot = @intCast(@mod(newSlot, 12));
+		main.Window.scrollOffset = 0;
+	}
+
 	physics.update(deltaTime);
 
 	const time = std.time.milliTimestamp();
