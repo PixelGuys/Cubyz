@@ -65,7 +65,10 @@ const Socket = struct {
 			.addr = destination.ip,
 		};
 		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
-			const result = posix.system.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			const sendto = struct {
+				extern "c" fn sendto(sockfd: posix.system.fd_t, buf: *const anyopaque, len: usize, flags: u32, dest_addr: ?*const posix.system.sockaddr, addrlen: posix.system.socklen_t) c_int;
+			}.sendto;
+			const result = sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
 			if(result < 0) {
 				std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())});
 			} else {
