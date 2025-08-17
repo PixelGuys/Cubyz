@@ -392,9 +392,11 @@ pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block
 		for(quads.items, 0..) |quad, index| {
 			var rawData: [4][6]u5 = undefined;
 			for(0..4) |i| {
-				const indexData = main.renderer.chunk_meshing.PrimitiveMesh.getCornerLight(mesh, lightPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, quad.normal);
+				const vertexPos = vec.xyz(modelMatrix.mulVec(vec.combine(quad.cornerVec(i), 1)));
+				const fullPos = lightPos +% @as(Vec3i, @intFromFloat(vertexPos));
+				const indexData = main.renderer.chunk_meshing.PrimitiveMesh.getCornerLight(mesh, fullPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, quad.normal);
 				for(0..6) |j| {
-					rawData[i][j] = std.math.lossyCast(u5, indexData[j]);
+					rawData[i][j] = std.math.lossyCast(u5, indexData[j]/8);
 				}
 			}
 			const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
