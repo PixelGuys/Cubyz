@@ -13,6 +13,7 @@ const particles = @import("particles.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
+const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
@@ -24,6 +25,7 @@ const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const Block = main.blocks.Block;
 const physics = main.physics;
+const KeyBoard = main.KeyBoard;
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -407,6 +409,7 @@ pub const Player = struct { // MARK: Player
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var crouching: bool = false;
+	pub var jumping: bool = false;
 	pub var id: u32 = 0;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
@@ -421,6 +424,7 @@ pub const Player = struct { // MARK: Player
 	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var currentFriction: f32 = 0;
+	pub var volumeProperties: collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobility = 0, .terminalVelocity = 0};
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -790,14 +794,126 @@ pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
-pub fn update(deltaTime: f64) void {
+pub fn update(deltaTime: f64) void { // MARK: Update
+	var acc = Vec3d{0, 0, 0};
+	const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
+
+	const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else Player.volumeProperties.mobility;
+	const density = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.density;
+	const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;
+
+	const baseFrictionCoefficient: f32 = Player.currentFriction;
+	Player.jumping = false;
+	Player.jumpCooldown -= deltaTime;
+	// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
+	const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
+
+	const horizontalForward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
+	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
+	const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
+	var movementDir: Vec3d = .{0, 0, 0};
+	var movementSpeed: f64 = 0;
+
 	if(main.Window.grabbed) {
-		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
-		Player.selectedSlot = @intCast(@mod(newSlot, 12));
-		main.Window.scrollOffset = 0;
+		const walkingSpeed: f64 = if(Player.crouching) 2 else 4;
+		if(KeyBoard.key("forward").value > 0.0) {
+			if(KeyBoard.key("sprint").pressed and !Player.crouching) {
+				if(Player.isGhost.load(.monotonic)) {
+					movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
+				} else if(Player.isFlying.load(.monotonic)) {
+					movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
+				} else {
+					movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
+				}
+			} else {
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
+				movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+			}
+		}
+		if(KeyBoard.key("backward").value > 0.0) {
+			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
+			movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
+		}
+		if(KeyBoard.key("left").value > 0.0) {
+			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
+			movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
+		}
+		if(KeyBoard.key("right").value > 0.0) {
+			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
+			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
+		}
+		if(KeyBoard.key("jump").pressed) {
+			if(Player.isFlying.load(.monotonic)) {
+				if(KeyBoard.key("sprint").pressed) {
+					if(Player.isGhost.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 60);
+						movementDir[2] += 60;
+					} else {
+						movementSpeed = @max(movementSpeed, 25);
+						movementDir[2] += 25;
+					}
+				} else {
+					movementSpeed = @max(movementSpeed, 5.5);
+					movementDir[2] += 5.5;
+				}
+			} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
+				Player.jumping = true;
+				Player.jumpCooldown = Player.jumpCooldownConstant;
+				if(!Player.onGround) {
+					Player.eyeCoyote = 0;
+				}
+				Player.jumpCoyote = 0;
+			} else if(!KeyBoard.key("fall").pressed) {
+				movementSpeed = @max(movementSpeed, walkingSpeed);
+				movementDir[2] += walkingSpeed;
+			}
+		} else {
+			Player.jumpCooldown = 0;
+		}
+		if(KeyBoard.key("fall").pressed) {
+			if(Player.isFlying.load(.monotonic)) {
+				if(KeyBoard.key("sprint").pressed) {
+					if(Player.isGhost.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 60);
+						movementDir[2] -= 60;
+					} else {
+						movementSpeed = @max(movementSpeed, 25);
+						movementDir[2] -= 25;
+					}
+				} else {
+					movementSpeed = @max(movementSpeed, 5.5);
+					movementDir[2] -= 5.5;
+				}
+			} else if(!KeyBoard.key("jump").pressed) {
+				movementSpeed = @max(movementSpeed, walkingSpeed);
+				movementDir[2] -= walkingSpeed;
+			}
+		}
+
+		if(movementSpeed != 0 and vec.lengthSquare(movementDir) != 0) {
+			if(vec.lengthSquare(movementDir) > movementSpeed*movementSpeed) {
+				movementDir = vec.normalize(movementDir);
+			} else {
+				movementDir /= @splat(movementSpeed);
+			}
+			acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
+			
+			const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
+			Player.selectedSlot = @intCast(@mod(newSlot, 12));
+			main.Window.scrollOffset = 0;
+		}
+
+		const newPos = Vec2f{
+			@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),
+			@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
+		}*@as(Vec2f, @splat(3.14*settings.controllerSensitivity));
+		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
-	physics.update(deltaTime);
+	physics.update(deltaTime, acc);
 
 	const time = std.time.milliTimestamp();
 	if(nextBlockPlaceTime) |*placeTime| {

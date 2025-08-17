@@ -13,134 +13,25 @@ const Player = main.game.Player;
 const collision = main.game.collision;
 const camera = main.game.camera;
 
-pub fn update(deltaTime: f64) void { // MARK: update()
+pub fn update(deltaTime: f64, inputAcc: Vec3d) void { // MARK: update()
 	const gravity = 30.0;
 	const airTerminalVelocity = 90.0;
 	const playerDensity = 1.2;
 	var move: Vec3d = .{0, 0, 0};
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
-		const volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
-		const effectiveGravity = gravity*(playerDensity - volumeProperties.density)/playerDensity;
-		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
-		var acc = Vec3d{0, 0, 0};
+		Player.volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
+		const effectiveGravity = gravity*(playerDensity - Player.volumeProperties.density)/playerDensity;
+		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
+		var acc = inputAcc;
 		if(!Player.isFlying.load(.monotonic)) {
 			acc[2] = -effectiveGravity;
 		}
 
 		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
 		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
-		const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else volumeProperties.mobility;
-		const density = if(Player.isFlying.load(.monotonic)) 0.0 else volumeProperties.density;
-		const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else volumeProperties.maxDensity;
 		const baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
-		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
-
-		var jumping: bool = false;
-		Player.jumpCooldown -= deltaTime;
-		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
-		const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
-
-		const horizontalForward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
-		const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
-		const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
-		var movementDir: Vec3d = .{0, 0, 0};
-		var movementSpeed: f64 = 0;
-
-		if(main.Window.grabbed) {
-			const walkingSpeed: f64 = if(Player.crouching) 2 else 4;
-			if(KeyBoard.key("forward").value > 0.0) {
-				if(KeyBoard.key("sprint").pressed and !Player.crouching) {
-					if(Player.isGhost.load(.monotonic)) {
-						movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
-						movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
-					} else if(Player.isFlying.load(.monotonic)) {
-						movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
-						movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
-					} else {
-						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
-						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
-					}
-				} else {
-					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
-				}
-			}
-			if(KeyBoard.key("backward").value > 0.0) {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
-				movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
-			}
-			if(KeyBoard.key("left").value > 0.0) {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
-				movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
-			}
-			if(KeyBoard.key("right").value > 0.0) {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
-				movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
-			}
-			if(KeyBoard.key("jump").pressed) {
-				if(Player.isFlying.load(.monotonic)) {
-					if(KeyBoard.key("sprint").pressed) {
-						if(Player.isGhost.load(.monotonic)) {
-							movementSpeed = @max(movementSpeed, 60);
-							movementDir[2] += 60;
-						} else {
-							movementSpeed = @max(movementSpeed, 25);
-							movementDir[2] += 25;
-						}
-					} else {
-						movementSpeed = @max(movementSpeed, 5.5);
-						movementDir[2] += 5.5;
-					}
-				} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
-					jumping = true;
-					Player.jumpCooldown = Player.jumpCooldownConstant;
-					if(!Player.onGround) {
-						Player.eyeCoyote = 0;
-					}
-					Player.jumpCoyote = 0;
-				} else if(!KeyBoard.key("fall").pressed) {
-					movementSpeed = @max(movementSpeed, walkingSpeed);
-					movementDir[2] += walkingSpeed;
-				}
-			} else {
-				Player.jumpCooldown = 0;
-			}
-			if(KeyBoard.key("fall").pressed) {
-				if(Player.isFlying.load(.monotonic)) {
-					if(KeyBoard.key("sprint").pressed) {
-						if(Player.isGhost.load(.monotonic)) {
-							movementSpeed = @max(movementSpeed, 60);
-							movementDir[2] -= 60;
-						} else {
-							movementSpeed = @max(movementSpeed, 25);
-							movementDir[2] -= 25;
-						}
-					} else {
-						movementSpeed = @max(movementSpeed, 5.5);
-						movementDir[2] -= 5.5;
-					}
-				} else if(!KeyBoard.key("jump").pressed) {
-					movementSpeed = @max(movementSpeed, walkingSpeed);
-					movementDir[2] -= walkingSpeed;
-				}
-			}
-
-			if(movementSpeed != 0 and vec.lengthSquare(movementDir) != 0) {
-				if(vec.lengthSquare(movementDir) > movementSpeed*movementSpeed) {
-					movementDir = vec.normalize(movementDir);
-				} else {
-					movementDir /= @splat(movementSpeed);
-				}
-				acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
-			}
-
-			const newPos = Vec2f{
-				@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),
-				@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
-			}*@as(Vec2f, @splat(3.14*settings.controllerSensitivity));
-			main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
-		}
+		
 
 		if(collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 			.min = -Player.standingBoundingBoxExtent,
@@ -182,7 +73,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		// Where a is the acceleration and λ is the friction coefficient
 		inline for(0..3) |i| {
 			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
-			if(i == 2 and jumping) { // No friction while jumping
+			if(i == 2 and Player.jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
 				const jumpVelocity = @sqrt(Player.jumpHeight*gravity*2);
 				Player.super.vel[i] = @max(jumpVelocity, Player.super.vel[i] + jumpVelocity);
