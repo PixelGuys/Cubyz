@@ -913,7 +913,41 @@ pub fn update(deltaTime: f64) void { // MARK: Update
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
-	physics.update(deltaTime, acc);
+	if(collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
+		.min = -Player.standingBoundingBoxExtent,
+		.max = Player.standingBoundingBoxExtent,
+	}) == null) {
+		Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
+
+		if(Player.onGround) {
+			if(Player.crouching) {
+				Player.crouchPerc += @floatCast(deltaTime*10);
+			} else {
+				Player.crouchPerc -= @floatCast(deltaTime*10);
+			}
+			Player.crouchPerc = std.math.clamp(Player.crouchPerc, 0, 1);
+		}
+
+		const smoothPerc = Player.crouchPerc*Player.crouchPerc*(3 - 2*Player.crouchPerc);
+
+		const newOuterBox = (Player.crouchingBoundingBoxExtent - Player.standingBoundingBoxExtent)*@as(Vec3d, @splat(smoothPerc)) + Player.standingBoundingBoxExtent;
+
+		Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent;
+
+		Player.outerBoundingBoxExtent = newOuterBox;
+
+		Player.outerBoundingBox = .{
+			.min = -Player.outerBoundingBoxExtent,
+			.max = Player.outerBoundingBoxExtent,
+		};
+		Player.eyeBox = .{
+			.min = -Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.2},
+			.max = Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.05},
+		};
+		Player.desiredEyePos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
+	}
+
+	physics.update(deltaTime, acc, KeyBoard.key("shift").pressed);
 
 	const time = std.time.milliTimestamp();
 	if(nextBlockPlaceTime) |*placeTime| {
