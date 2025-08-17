@@ -14,12 +14,12 @@
 		},
 		.cubyz_deps_aarch64_macos = .{
 			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/8/cubyz_deps_aarch64-macos-none.tar.gz",
-			.hash = "N-V-__8AAI-aOwAGCfJiF1xWZSQ0yxGSyyuj-VO5P_UqqyJ0",
+			.hash = "N-V-__8AAESlRAJiVpVgSi6YuJieVxeJkkCVVsorbxiSyRyZ",
 			.lazy = true,
 		},
 		.cubyz_deps_aarch64_linux = .{
 			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/8/cubyz_deps_aarch64-linux-musl.tar.gz",
-			.hash = "N-V-__8AAI-aOwAGCfJiF1xWZSQ0yxGSyyuj-VO5P_UqqyJ0",
+			.hash = "N-V-__8AADJklgJD6krSuvgtV1hLIkVBhgIjmFZVB-Yzu9F8",
 			.lazy = true,
 		},
 		.cubyz_deps_aarch64_windows = .{
