@@ -794,7 +794,7 @@ pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
-pub fn update(deltaTime: f64) void { // MARK: Update
+pub fn update(deltaTime: f64) void { // MARK: update()
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
