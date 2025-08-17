@@ -226,21 +226,14 @@ pub const BlockEntityTypes = struct {
 			ch.setChanged();
 		}
 
-		fn onInventoryOpenCallback(source: main.items.Inventory.Source) void {
-			var block = main.server.world.?.getBlock(source.blockInventory[0], source.blockInventory[1], source.blockInventory[2]) orelse return;
-			block.data |= 4;
-			main.server.world.?.updateBlock(source.blockInventory[0], source.blockInventory[1], source.blockInventory[2], block);
-			main.network.Protocols.blockEntityUpdate.sendServerDataUpdateToClients(source.blockInventory);
-		}
-
-		fn onInventoryClosedCallback(source: main.items.Inventory.Source) void {
+		fn onInventoryOpenedOrClosedCallback(source: main.items.Inventory.Source) void {
 			main.network.Protocols.blockEntityUpdate.sendServerDataUpdateToClients(source.blockInventory);
 		}
 
 		const inventoryCallbacks: main.items.Inventory.Callbacks = .{
 			.onUpdateCallback = &onInventoryUpdateCallback,
-			.onFirstOpenCallback = &onInventoryOpenCallback,
-			.onLastCloseCallback = &onInventoryClosedCallback,
+			.onFirstOpenCallback = &onInventoryOpenedOrClosedCallback,
+			.onLastCloseCallback = &onInventoryOpenedOrClosedCallback,
 		};
 
 		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
@@ -291,6 +284,12 @@ pub const BlockEntityTypes = struct {
 		}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
+
+			blk: {
+				var block = main.renderer.mesh_storage.getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse break :blk;
+				block.data |= 4;
+				main.renderer.mesh_storage.updateBlock(.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = &.{}});
+			}
 
 			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 
@@ -363,6 +362,11 @@ pub const BlockEntityTypes = struct {
 			for(StorageClient.storage.dense.items) |*chest| {
 				var block = main.renderer.mesh_storage.getBlockFromRenderThread(chest.pos[0], chest.pos[1], chest.pos[2]) orelse continue;
 
+				if(chest.shouldBeOpen and block.data < 4) {
+					block.data |= 4;
+					main.renderer.mesh_storage.updateBlock(.{.x = chest.pos[0], .y = chest.pos[1], .z = chest.pos[2], .newBlock = block, .blockEntityData = &.{}});
+				}
+
 				if(block.data >= 4) {
 					if(chest.shouldBeOpen) {
 						chest.angle += deltaTime*270.0;
@@ -373,8 +377,8 @@ pub const BlockEntityTypes = struct {
 						chest.angle -= deltaTime*270.0;
 						if(chest.angle < 0.0) {
 							chest.angle = 0.0;
-							const newBlock = main.blocks.Block{.typ = block.typ, .data = block.data & 3};
-							main.renderer.MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, 0, chest.pos[0], chest.pos[1], chest.pos[2], block, newBlock);
+							block.data &= 3;
+							main.renderer.mesh_storage.updateBlock(.{.x = chest.pos[0], .y = chest.pos[1], .z = chest.pos[2], .newBlock = block, .blockEntityData = &.{}});
 						}
 					}
 

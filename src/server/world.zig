@@ -1204,7 +1204,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		baseChunk.mutex.lock();
 		const currentBlock = baseChunk.getBlock(x, y, z);
 		if(oldBlock != null) {
-			if(oldBlock.? != currentBlock) {
+			if(oldBlock.?.typ != currentBlock.typ) {
 				baseChunk.mutex.unlock();
 				return currentBlock;
 			}

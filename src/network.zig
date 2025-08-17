@@ -944,6 +944,7 @@ pub const Protocols = struct {
 				return error.InvalidPacket;
 			}
 			while(reader.remaining.len != 0) {
+				std.debug.print("HI\n", .{});
 				renderer.mesh_storage.updateBlock(.{
 					.x = try reader.readInt(i32),
 					.y = try reader.readInt(i32),
@@ -1348,7 +1349,6 @@ pub const Protocols = struct {
 			defer ch.mutex.unlock();
 			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
 			const blockEntity = block.blockEntity() orelse return;
-
 			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
 		}
 	};

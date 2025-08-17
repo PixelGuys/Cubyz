@@ -1196,7 +1196,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.lock();
 		const oldBlock = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 
-		if(oldBlock == newBlock) {
+		if(oldBlock.typ == newBlock.typ and blockEntityData.len != 0) {
 			if(newBlock.blockEntity()) |blockEntity| {
 				var reader = main.utils.BinaryReader.init(blockEntityData);
 				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.update = &reader}) catch |err| {
@@ -1208,10 +1208,12 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
-		if(oldBlock.blockEntity()) |blockEntity| {
-			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{_x, _y, _z}, oldBlock.id()});
-			};
+		if(oldBlock.typ != newBlock.typ) {
+			if(oldBlock.blockEntity()) |blockEntity| {
+				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .remove) catch |err| {
+					std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{_x, _y, _z}, oldBlock.id()});
+				};
+			}
 		}
 
 		var neighborBlocks: [6]Block = undefined;

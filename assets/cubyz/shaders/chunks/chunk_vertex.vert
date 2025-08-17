@@ -100,6 +100,7 @@ void main() {
 
 	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
 #ifdef ENTITY
+	// Offset by one to account for block position in chunk 
 	position = (modelMatrix*vec4(position - vec3(1), 1)).xyz + vec3(1);
 #endif
 	position *= voxelSize;
