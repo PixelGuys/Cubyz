@@ -274,7 +274,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 // MARK: Callbacks
 fn escape() void {
 	if(gui.selectedTextInput != null) {
-		gui.selectedTextInput = null;
+		gui.setSelectedTextInput(null);
 		return;
 	}
 	if(game.world == null) return;
