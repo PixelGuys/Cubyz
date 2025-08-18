@@ -324,7 +324,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 			rotationTable[a][i] = new.enabledConnections;
 		}
 	};
-	if(data >= 0b111111) return 0;
+	if(data > 0b111111) return 0;
 	const rotationIndex = (data & 0b111100) >> 2;
 	const upDownFlags = data & 0b000011;
 	return rotationTable[@intFromEnum(angle)][rotationIndex] | upDownFlags;

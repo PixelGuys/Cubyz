@@ -775,9 +775,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 
-			const lightPos = @as(Vec3f, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
+			const lightPos = @as(Vec3d, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
 			const blockPos: Vec3i = @intFromFloat(@floor(lightPos));
-			const localBlockPos = lightPos - @as(Vec3f, @floatFromInt(blockPos));
+			const localBlockPos: Vec3f = @floatCast(lightPos - @as(Vec3d, @floatFromInt(blockPos)));
 
 			var samples: [8][6]f32 = @splat(@splat(0));
 			inline for(0..2) |z| {

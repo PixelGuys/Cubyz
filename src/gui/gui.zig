@@ -475,7 +475,7 @@ pub const textCallbacks = struct {
 pub fn mainButtonPressed() void {
 	inventory.update();
 	selectedWindow = null;
-	selectedTextInput = null;
+	setSelectedTextInput(null);
 	var selectedI: usize = 0;
 	for(openWindows.items, 0..) |window, i| {
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));

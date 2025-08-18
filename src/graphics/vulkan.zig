@@ -277,7 +277,7 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	if(!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
 	inline for(comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |name| {
-		if(@field(deviceFeatures, name) == c.VK_TRUE and @field(deviceFeatures, name) == c.VK_FALSE) {
+		if(@field(deviceFeatures, name) == c.VK_TRUE and @field(features, name) == c.VK_FALSE) {
 			std.log.warn("Rejecting device: {s} is not supported", .{name});
 			return 0;
 		}
