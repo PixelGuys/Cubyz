@@ -409,7 +409,6 @@ pub const Player = struct { // MARK: Player
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var crouching: bool = false;
-	pub var jumping: bool = false;
 	pub var id: u32 = 0;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
@@ -803,7 +802,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;
 
 	const baseFrictionCoefficient: f32 = Player.currentFriction;
-	Player.jumping = false;
+	var jumping = false;
 	Player.jumpCooldown -= deltaTime;
 	// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
 	const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
@@ -860,7 +859,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					movementDir[2] += 5.5;
 				}
 			} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
-				Player.jumping = true;
+				jumping = true;
 				Player.jumpCooldown = Player.jumpCooldownConstant;
 				if(!Player.onGround) {
 					Player.eyeCoyote = 0;
@@ -947,7 +946,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.desiredEyePos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 	}
 
-	physics.update(deltaTime, acc, KeyBoard.key("shift").pressed);
+	physics.update(deltaTime, acc, jumping);
 
 	const time = std.time.milliTimestamp();
 	if(nextBlockPlaceTime) |*placeTime| {

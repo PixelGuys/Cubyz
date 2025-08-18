@@ -12,7 +12,7 @@ const Player = main.game.Player;
 const collision = main.game.collision;
 const camera = main.game.camera;
 
-pub fn update(deltaTime: f64, inputAcc: Vec3d, stayAtBlockEdge: bool) void { // MARK: update()
+pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: update()
 	const gravity = 30.0;
 	const airTerminalVelocity = 90.0;
 	const playerDensity = 1.2;
@@ -37,7 +37,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, stayAtBlockEdge: bool) void { // 
 		// Where a is the acceleration and λ is the friction coefficient
 		inline for(0..3) |i| {
 			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
-			if(i == 2 and Player.jumping) { // No friction while jumping
+			if(i == 2 and jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
 				const jumpVelocity = @sqrt(Player.jumpHeight*gravity*2);
 				Player.super.vel[i] = @max(jumpVelocity, Player.super.vel[i] + jumpVelocity);
@@ -154,7 +154,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, stayAtBlockEdge: bool) void { // 
 
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
-		if(stayAtBlockEdge and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {
+		if(Player.crouching and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {
 			if(collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= xMovement;
 				Player.super.vel[0] = 0;
@@ -163,7 +163,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, stayAtBlockEdge: bool) void { // 
 
 		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += yMovement;
-		if(stayAtBlockEdge and Player.onGround and @abs(Player.super.vel[1]) < slipLimit) {
+		if(Player.crouching and Player.onGround and @abs(Player.super.vel[1]) < slipLimit) {
 			if(collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= yMovement;
 				Player.super.vel[1] = 0;
