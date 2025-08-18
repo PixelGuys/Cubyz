@@ -10,7 +10,7 @@ layout(binding = 1) uniform sampler2DArray emissionTextureSampler;
 
 void main() {
 	const vec4 texColor = texture(textureSampler, textureCoords);
-	if(texColor.a != 1) discard;
+	if(texColor.a < 0.5) discard;
 
 	const vec3 pixelLight = max(light, texture(emissionTextureSampler, textureCoords).r*4);
 	fragColor = texColor*vec4(pixelLight, 1);
