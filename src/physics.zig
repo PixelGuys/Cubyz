@@ -12,13 +12,23 @@ const Player = main.game.Player;
 const collision = main.game.collision;
 const camera = main.game.camera;
 
-pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: update()
-	const gravity = 30.0;
-	const airTerminalVelocity = 90.0;
-	const playerDensity = 1.2;
-	var move: Vec3d = .{0, 0, 0};
+const gravity = 30.0;
+const airTerminalVelocity = 90.0;
+const playerDensity = 1.2;
+
+pub fn calculateProperties() void {
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		Player.volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
+
+		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
+		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
+		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
+	}
+}
+
+pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: update()
+	var move: Vec3d = .{0, 0, 0};
+	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		const effectiveGravity = gravity*(playerDensity - Player.volumeProperties.density)/playerDensity;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
 		var acc = inputAcc;
@@ -26,8 +36,6 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			acc[2] = -effectiveGravity;
 		}
 
-		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
-		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
 		const baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 

@@ -794,6 +794,7 @@ pub fn hyperSpeedToggle() void {
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
+	physics.calculateProperties();
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
