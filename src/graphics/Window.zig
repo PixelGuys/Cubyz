@@ -85,7 +85,7 @@ pub const Gamepad = struct {
 						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
 						const newPressed = newState.buttons[@intCast(key.gamepadButton)] != 0;
 						if(oldPressed != newPressed) {
-							key.setPressed(newPressed, isGrabbed, .{});
+							key.setPressed(newPressed, isGrabbed, .{}, false);
 						}
 					}
 				} else {
@@ -102,7 +102,7 @@ pub const Gamepad = struct {
 					const oldPressed = oldAxis > 0.5;
 					const newPressed = newAxis > 0.5;
 					if(oldPressed != newPressed) {
-						key.setPressed(newPressed, isGrabbed, .{});
+						key.setPressed(newPressed, isGrabbed, .{}, false);
 					}
 					if(newAxis != oldAxis) {
 						key.value = newAxis;
@@ -282,6 +282,7 @@ pub const Key = struct { // MARK: Key
 	repeatAction: ?*const fn(Modifiers) void = null,
 	notifyRequirement: Requirement = .always,
 	grabbedOnPress: bool = false,
+	requiredModifiers: Modifiers = .{},
 
 	pub const Modifiers = packed struct(u6) {
 		shift: bool = false,
@@ -290,6 +291,18 @@ pub const Key = struct { // MARK: Key
 		super: bool = false,
 		capsLock: bool = false,
 		numLock: bool = false,
+
+		fn toInt(self: Modifiers) u6 {
+			return @bitCast(self);
+		}
+
+		fn satisfiedBy(required: Modifiers, actual: Modifiers) bool {
+			return (required.toInt() ^ actual.toInt()) & required.toInt() == 0;
+		}
+
+		fn isEmpty(self: Modifiers) bool {
+			return self.toInt() == 0;
+		}
 	};
 	const Requirement = enum {
 		always,
@@ -413,22 +426,24 @@ pub const Key = struct { // MARK: Key
 		}
 	}
 
-	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers) void {
+	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
 		if(newPressed != self.pressed) {
 			self.pressed = newPressed;
 			self.value = @floatFromInt(@intFromBool(newPressed));
 			if(newPressed) {
-				self.action(.press, isGrabbed, mods);
-				self.action(.repeat, isGrabbed, mods);
+				self.action(.press, isGrabbed, mods, textKeyPressedInTextField);
+				self.action(.repeat, isGrabbed, mods, textKeyPressedInTextField);
 			} else {
-				self.action(.release, isGrabbed, mods);
+				self.action(.release, isGrabbed, mods, textKeyPressedInTextField);
 			}
 		}
 	}
 
-	fn action(self: *Key, typ: enum {press, release, repeat}, isGrabbed: bool, mods: Modifiers) void {
+	fn action(self: *Key, typ: enum {press, release, repeat}, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
 		if(typ == .press) self.grabbedOnPress = isGrabbed;
 		if(!self.notifyRequirement.met(self.grabbedOnPress)) return;
+		if(!self.requiredModifiers.satisfiedBy(mods)) return;
+		if(textKeyPressedInTextField and self.requiredModifiers.isEmpty()) return; // Don't send events for keys that are used in writing letters.
 		switch(typ) {
 			.press => if(self.pressAction) |a| a(),
 			.release => if(self.releaseAction) |a| a(),
@@ -443,13 +458,13 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	}
 	fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.c) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
-		if(!mods.control and main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null) return; // Don't send events for keys that are used in writing letters.
+		const textKeyPressedInTextField = main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null;
 		const isGrabbed = grabbed;
 		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods);
+						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
 					}
 				}
 			}
@@ -463,7 +478,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.action(.repeat, isGrabbed, mods);
+						key.action(.repeat, isGrabbed, mods, textKeyPressedInTextField);
 					}
 				}
 			}
@@ -519,7 +534,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(button == key.mouseButton) {
-					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods);
+					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
 				}
 			}
 			if(action == c.GLFW_PRESS) {
