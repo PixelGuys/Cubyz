@@ -12,6 +12,7 @@
 	.roughness = 10,
 	.mountains = 20,
 	.hills = 50,
+	.heightmapOp = "cubyz:stepped",
 	.validPlayerSpawn = false,
 	.rivers = true,
 	.stripes = .{

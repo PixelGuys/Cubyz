@@ -138,10 +138,12 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	exe.step.dependOn(step);
 
 	try addModFeatureModule(b, exe, "rotation");
+	try addModFeatureModule(b, exe, "heightmapOps");
 }
 
 pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
 	try makeModFeature(step, "rotation");
+	try makeModFeature(step, "heightmapOps");
 }
 
 pub fn build(b: *std.Build) !void {

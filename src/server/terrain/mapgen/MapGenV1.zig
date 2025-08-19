@@ -144,9 +144,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 					mountains += biomeSample.mountains*weight;
 				}
 			}
-			height += (roughMap.get(x, y) - 0.5)*2*roughness;
-			height += (hillMap.get(x, y) - 0.5)*2*hills;
-			height += (mountainMap.get(x, y) - 0.5)*2*mountains;
+
+			height += closestBiome.heightmapOp.run((roughMap.get(x, y) - 0.5)*2, (hillMap.get(x, y) - 0.5)*2, (mountainMap.get(x, y) - 0.5)*2, roughness, hills, mountains);
 			map.heightMap[x][y] = @intFromFloat(height);
 			map.minHeight = @min(map.minHeight, @as(i32, @intFromFloat(height)));
 			map.minHeight = @max(map.minHeight, 0);

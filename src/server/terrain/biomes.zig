@@ -9,6 +9,8 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
+pub const heightmapOps = @import("heightmapOps.zig");
+const HeightmapOp = heightmapOps.HeightmapOp;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -311,6 +313,7 @@ pub const Biome = struct { // MARK: Biome
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
 	isValidPlayerSpawn: bool,
 	chance: f32,
+	heightmapOp: *HeightmapOp,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
@@ -344,6 +347,7 @@ pub const Biome = struct { // MARK: Biome
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
+			.heightmapOp = heightmapOps.getByID(zon.get([]const u8, "heightmapOp", "cubyz:default")),
 		};
 		if(self.minHeight > self.maxHeight) {
 			std.log.err("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});

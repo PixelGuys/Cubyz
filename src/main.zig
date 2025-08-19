@@ -653,6 +653,9 @@ pub fn main() void { // MARK: main()
 	particles.ParticleManager.init();
 	defer particles.ParticleManager.deinit();
 
+	server.terrain.biomes.heightmapOps.init();
+	defer server.terrain.biomes.heightmapOps.deinit();
+
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
