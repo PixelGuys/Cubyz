@@ -265,6 +265,9 @@ pub const BlockEntityTypes = struct {
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.getByIndex(dataIndex) orelse return;
 
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+
 			const hasClients = main.items.Inventory.Sync.ServerSide.getServerInventoryFromId(data.invId).users.items.len != 0;
 
 			writer.writeInt(u1, @intFromBool(hasClients));
@@ -273,6 +276,9 @@ pub const BlockEntityTypes = struct {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.getByIndex(dataIndex) orelse return;
+
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 
 			const inv = main.items.Inventory.Sync.ServerSide.getServerInventoryFromId(data.invId);
 			var isEmpty: bool = true;
@@ -342,6 +348,9 @@ pub const BlockEntityTypes = struct {
 			defer StorageServer.mutex.unlock();
 
 			const data = StorageServer.get(pos, chunk) orelse return;
+
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 
 			const hasClients = main.items.Inventory.Sync.ServerSide.getServerInventoryFromId(data.invId).users.items.len != 0;
 

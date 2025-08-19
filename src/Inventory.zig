@@ -213,6 +213,8 @@ pub const Sync = struct { // MARK: Sync
 				user.inventoryClientToServerIdMap.put(clientId, self.inv.id) catch unreachable;
 				if(self.users.items.len == 1) {
 					if(self.inv.callbacks.onFirstOpenCallback) |cb| {
+						mutex.unlock();
+						defer mutex.lock();
 						cb(self.inv.source);
 					}
 				}
@@ -231,6 +233,8 @@ pub const Sync = struct { // MARK: Sync
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
 				if(self.users.items.len == 0) {
 					if(self.inv.callbacks.onLastCloseCallback) |cb| {
+						mutex.unlock();
+						defer mutex.lock();
 						cb(self.inv.source);
 					}
 					if(self.managed == .internallyManaged) {
@@ -449,6 +453,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn getServerInventoryFromId(serverId: InventoryId) ServerInventory {
+			main.utils.assertLocked(&mutex);
 			return inventories.items[@intFromEnum(serverId)];
 		}
 
