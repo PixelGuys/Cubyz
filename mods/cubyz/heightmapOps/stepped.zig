@@ -1,6 +1,6 @@
 pub fn run(roughnessValue: f32, hillsValue: f32, mountainsValue: f32, roughness: f32, hills: f32, mountains: f32) f32 {
     const variation = roughness * roughnessValue + mountainsValue * mountains;
-    const steps = stepFunction(hillsValue*8)/8*hills;
+    const steps = stepFunction(hillsValue*hills/16)*16;
     return variation + steps;
 }
 

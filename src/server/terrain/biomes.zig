@@ -313,7 +313,7 @@ pub const Biome = struct { // MARK: Biome
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
 	isValidPlayerSpawn: bool,
 	chance: f32,
-	heightmapOp: *HeightmapOp,
+	heightmapOp: *const HeightmapOp,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));

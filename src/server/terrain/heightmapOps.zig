@@ -9,6 +9,7 @@ pub const HeightmapOp = struct {
 };
 
 var heightmapOps: std.StringHashMap(HeightmapOp) = undefined;
+var default: *const HeightmapOp = undefined;
 
 // MARK: init/register
 
@@ -17,16 +18,21 @@ pub fn init() void {
 	inline for(@typeInfo(list).@"struct".decls) |declaration| {
 		register(declaration.name, @field(list, declaration.name));
 	}
+	default = heightmapOps.getPtr("cubyz:default").?;
+}
+
+pub fn getDefault() *const HeightmapOp {
+	return default;
 }
 
 pub fn deinit() void {
 	heightmapOps.deinit();
 }
 
-pub fn getByID(id: []const u8) *HeightmapOp {
+pub fn getByID(id: []const u8) *const HeightmapOp {
 	if(heightmapOps.getPtr(id)) |mode| return mode;
 	std.log.err("Could not find heightmapOp {s}. Using cubyz:default instead.", .{id});
-	return heightmapOps.getPtr("cubyz:default").?;
+	return default;
 }
 
 pub fn register(comptime id: []const u8, comptime Op: type) void {

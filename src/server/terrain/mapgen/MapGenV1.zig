@@ -12,6 +12,7 @@ const RandomlyWeightedFractalNoise = noise.RandomlyWeightedFractalNoise;
 const PerlinNoise = noise.PerlinNoise;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
+const heightmapOps = main.server.terrain.biomes.heightmapOps;
 
 pub const id = "cubyz:mapgen_v1";
 
@@ -132,6 +133,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			}
 			coefficientsX /= @splat(totalWeight);
 			coefficientsY /= @splat(totalWeight);
+
+			var operationWeight: f32 = 0.0;
 			for(0..2) |dx| {
 				for(0..2) |dy| {
 					const biomeMapX = @as(usize, @intCast(xBiome)) + dx;
@@ -142,10 +145,18 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 					roughness += biomeSample.roughness*weight;
 					hills += biomeSample.hills*weight;
 					mountains += biomeSample.mountains*weight;
+					if(biomeSample.biome.heightmapOp == closestBiome.heightmapOp) {
+						operationWeight += weight;
+					}
 				}
 			}
 
-			height += closestBiome.heightmapOp.run((roughMap.get(x, y) - 0.5)*2, (hillMap.get(x, y) - 0.5)*2, (mountainMap.get(x, y) - 0.5)*2, roughness, hills, mountains);
+			const roughnessValue = (roughMap.get(x, y) - 0.5)*2;
+			const hillsValue = (hillMap.get(x, y) - 0.5)*2;
+			const mountainsValue = (mountainMap.get(x, y) - 0.5)*2;
+
+			height += operationWeight*closestBiome.heightmapOp.run(roughnessValue, hillsValue, mountainsValue, roughness, hills, mountains);
+			height += (1 - operationWeight)*heightmapOps.getDefault().run(roughnessValue, hillsValue, mountainsValue, roughness, hills, mountains);
 			map.heightMap[x][y] = @intFromFloat(height);
 			map.minHeight = @min(map.minHeight, @as(i32, @intFromFloat(height)));
 			map.minHeight = @max(map.minHeight, 0);
