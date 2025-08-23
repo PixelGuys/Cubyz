@@ -294,7 +294,7 @@ pub const BlockEntityTypes = struct {
 			blk: {
 				var block = main.renderer.mesh_storage.getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse break :blk;
 				block.data |= 4;
-				main.renderer.mesh_storage.updateBlock(.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = &.{}});
+				main.renderer.mesh_storage.updateBlock(.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = null});
 			}
 
 			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
@@ -373,7 +373,7 @@ pub const BlockEntityTypes = struct {
 
 				if(chest.shouldBeOpen and block.data < 4) {
 					block.data |= 4;
-					main.renderer.mesh_storage.updateBlock(.{.x = chest.pos[0], .y = chest.pos[1], .z = chest.pos[2], .newBlock = block, .blockEntityData = &.{}});
+					main.renderer.mesh_storage.updateBlock(.{.x = chest.pos[0], .y = chest.pos[1], .z = chest.pos[2], .newBlock = block, .blockEntityData = null});
 				}
 
 				if(block.data >= 4) {
@@ -387,7 +387,7 @@ pub const BlockEntityTypes = struct {
 						if(chest.angle < 0.0) {
 							chest.angle = 0.0;
 							block.data &= 3;
-							main.renderer.mesh_storage.updateBlock(.{.x = chest.pos[0], .y = chest.pos[1], .z = chest.pos[2], .newBlock = block, .blockEntityData = &.{}});
+							main.renderer.mesh_storage.updateBlock(.{.x = chest.pos[0], .y = chest.pos[1], .z = chest.pos[2], .newBlock = block, .blockEntityData = null});
 						}
 					}
 

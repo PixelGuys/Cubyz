@@ -949,7 +949,7 @@ pub const Protocols = struct {
 					.y = try reader.readInt(i32),
 					.z = try reader.readInt(i32),
 					.newBlock = Block.fromInt(try reader.readInt(u32)),
-					.blockEntityData = try reader.readSlice(try reader.readInt(usize)),
+					.blockEntityData = if(try reader.readInt(u1) != 0) try reader.readSlice(try reader.readInt(usize)) else null,
 				});
 			}
 		}
@@ -962,8 +962,11 @@ pub const Protocols = struct {
 				writer.writeInt(i32, update.y);
 				writer.writeInt(i32, update.z);
 				writer.writeInt(u32, update.newBlock.toInt());
-				writer.writeInt(usize, update.blockEntityData.len);
-				writer.writeSlice(update.blockEntityData);
+				writer.writeInt(u1, @intFromBool(update.blockEntityData != null));
+				if(update.blockEntityData) |blockEntityData| {
+					writer.writeInt(usize, blockEntityData.len);
+					writer.writeSlice(blockEntityData);
+				}
 			}
 			conn.send(.fast, id, writer.data.items);
 		}
