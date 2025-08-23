@@ -1,0 +1,9 @@
+.{
+	.blueprint = "cubyz:tree/curl/base",
+	.children = .{
+		.white = .{
+			.{.structure = "cubyz:tree/curl/base/0"},
+			.{.structure = "cubyz:tree/curl/base/1"},
+		},
+	},
+}
