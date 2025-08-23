@@ -77,7 +77,7 @@ var blockUniforms: struct {
 pub var activeFrameBuffer: c_uint = 0;
 
 pub const reflectionCubeMapSize = 64;
-pub var reflectionCubeMap: graphics.CubeMapTexture = undefined;
+var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub fn init() void {
 	deferredRenderPassPipeline = graphics.Pipeline.init(
