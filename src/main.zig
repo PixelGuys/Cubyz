@@ -31,8 +31,6 @@ pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
 
-const moveSaves = @import("moveSaves.zig").moveSaves;
-
 pub const Window = @import("graphics/Window.zig");
 
 pub const heap = @import("utils/heap.zig");
@@ -662,13 +660,19 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("main");
 	}
 
-	if(moveSaves()) {
+	if(std.fs.cwd().openDir("saves", .{})) |dir| moveSaves: {
+		var mut_dir = dir;
+		mut_dir.close();
+		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
+			std.log.err("Encountered error while moving saves: {s}", .{@errorName(err)});
+			break :moveSaves;
+		};
 		const newPathText = files.cubyzDir().dir.realpathAlloc(stackAllocator.allocator, "saves") catch unreachable;
 		defer stackAllocator.free(newPathText);
 		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}", .{newPathText}) catch unreachable;
 		defer stackAllocator.free(notification);
 		gui.windowlist.notification.raiseNotification(notification);
-	}
+	} else |_| {}
 
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
