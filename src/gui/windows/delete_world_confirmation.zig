@@ -32,7 +32,9 @@ pub fn setDeleteWorldName(name: []const u8) void {
 }
 
 fn flawedDeleteWorld(name: []const u8) !void {
-	try main.files.deleteDir("saves", name);
+	const path = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{name});
+	defer main.stackAllocator.free(path);
+	try main.files.cubyzDir().dir.deleteTree(path);
 	gui.windowlist.save_selection.needsUpdate = true;
 }
 
