@@ -65,7 +65,7 @@ pub fn openDirInWindow(path: []const u8) void {
 
 pub fn openDir(path: []const u8) !Dir {
 	return Dir{
-		.dir = try std.fs.cwd().makeOpenPath(path, .{}),
+		.dir = try main.files.cubyzDir().dir.makeOpenPath(path, .{}),
 	};
 }
 
