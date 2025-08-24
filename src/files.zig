@@ -70,7 +70,7 @@ pub fn openDir(path: []const u8) !Dir {
 }
 
 pub fn makeDir(path: []const u8) !void {
-	try main.files.cubyzDir().makePath(path);
+	try main.files.cubyzDir().dir.makePath(path);
 }
 
 pub fn deleteDir(path: []const u8, dirName: []const u8) !void {
