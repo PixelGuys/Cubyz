@@ -1004,7 +1004,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(playerPath);
 
-		try files.cubyzDir().dir.makeDir(playerPath);
+		try files.cubyzDir().dir.makePath(playerPath);
 
 		try files.cubyzDir().writeZon(path, playerZon);
 	}
