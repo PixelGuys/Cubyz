@@ -656,14 +656,13 @@ pub fn main() void { // MARK: main()
 	particles.ParticleManager.init();
 	defer particles.ParticleManager.deinit();
 
-
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
 	}
 
-	if (moveSaves()) {
+	if(moveSaves()) {
 		const newPathText = files.cubyzDir().dir.realpathAlloc(stackAllocator.allocator, "saves") catch unreachable;
 		defer stackAllocator.free(newPathText);
 		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}", .{newPathText}) catch unreachable;
