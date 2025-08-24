@@ -5,8 +5,8 @@ pub fn moveFolder(src: std.fs.Dir, dst: std.fs.Dir) !void {
 	var walker = try src.walk(main.stackAllocator.allocator);
 	defer walker.deinit();
 
-	while (try walker.next()) |entry| {
-		switch (entry.kind) {
+	while(try walker.next()) |entry| {
+		switch(entry.kind) {
 			.file => {
 				try entry.dir.copyFile(entry.basename, dst, entry.path, .{});
 			},
