@@ -127,7 +127,7 @@ pub fn onOpen() void {
 			if(entry.kind == .directory) {
 				const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{entry.name}) catch unreachable;
 				defer main.stackAllocator.free(worldInfoPath);
-				const worldInfo = main.files.readToZonGlobal(main.stackAllocator, worldInfoPath) catch |err| {
+				const worldInfo = main.files.cubyzDir().readToZon(main.stackAllocator, worldInfoPath) catch |err| {
 					std.log.err("Couldn't open save {s}: {s}", .{worldInfoPath, @errorName(err)});
 					continue;
 				};

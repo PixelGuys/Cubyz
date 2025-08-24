@@ -5,7 +5,6 @@ const User = main.server.User;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-const openDir = main.files.openDir;
 const Dir = main.files.Dir;
 const List = main.List;
 const Block = main.blocks.Block;
@@ -103,10 +102,10 @@ fn sendInfoAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
 }
 
 fn openBlueprintsDir(source: *User) ?Dir {
-	return openDir("blueprints") catch |err| blk: {
+	return main.files.Dir.init(main.files.cubyzDir().dir.openDir("blueprints", .{}) catch |err| {
 		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
-		break :blk null;
-	};
+		return null;
+	});
 }
 
 fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {

@@ -5,38 +5,6 @@ const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 
-pub fn read(allocator: NeverFailingAllocator, path: []const u8) ![]u8 {
-	return cwd().read(allocator, path);
-}
-
-pub fn readToZon(allocator: NeverFailingAllocator, path: []const u8) !ZonElement {
-	return cwd().readToZon(allocator, path);
-}
-
-pub fn write(path: []const u8, data: []const u8) !void {
-	try cwd().write(path, data);
-}
-
-pub fn writeZon(path: []const u8, zon: ZonElement) !void {
-	try cwd().writeZon(path, zon);
-}
-
-pub fn readGlobal(allocator: NeverFailingAllocator, path: []const u8) ![]u8 {
-	return cubyzDir().read(allocator, path);
-}
-
-pub fn readToZonGlobal(allocator: NeverFailingAllocator, path: []const u8) !ZonElement {
-	return cubyzDir().readToZon(allocator, path);
-}
-
-pub fn writeGlobal(path: []const u8, data: []const u8) !void {
-	try cubyzDir().write(path, data);
-}
-
-pub fn writeZonGlobal(path: []const u8, zon: ZonElement) !void {
-	try cubyzDir().writeZon(path, zon);
-}
-
 pub fn openDirInWindow(path: []const u8) void {
 	const newPath = main.stackAllocator.dupe(u8, path);
 	defer main.stackAllocator.free(newPath);
@@ -63,27 +31,7 @@ pub fn openDirInWindow(path: []const u8) void {
 	}
 }
 
-pub fn openDir(path: []const u8) !Dir {
-	return Dir{
-		.dir = try cubyzDir().dir.makeOpenPath(path, .{}),
-	};
-}
-
-pub fn makeDir(path: []const u8) !void {
-	try cubyzDir().dir.makePath(path);
-}
-
-pub fn deleteDir(path: []const u8, dirName: []const u8) !void {
-	var saveDir = try cubyzDir().dir.openDir(path, .{});
-	defer saveDir.close();
-	try saveDir.deleteTree(dirName);
-}
-
-pub fn hasFile(path: []const u8) bool {
-	return cwd().hasFile(path);
-}
-
-fn cwd() Dir {
+pub fn cwd() Dir {
 	return Dir{
 		.dir = std.fs.cwd(),
 	};

@@ -124,7 +124,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
-		const fullData = try main.files.readGlobal(main.stackAllocator, path);
+		const fullData = try main.files.cubyzDir().read(main.stackAllocator, path);
 		defer main.stackAllocator.free(fullData);
 
 		var fullReader = BinaryReader.init(fullData);
@@ -209,11 +209,11 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}", .{saveFolder, self.pos.voxelSize, self.pos.wx}) catch unreachable;
 		defer main.stackAllocator.free(folder);
 
-		main.files.makeDir(folder) catch |err| {
+		main.files.cubyzDir().dir.makePath(folder) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.writeGlobal(path, outputWriter.data.items) catch |err| {
+		main.files.cubyzDir().write(path, outputWriter.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}
@@ -279,13 +279,11 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	// Delete old LODs:
 	for(1..main.settings.highestSupportedLod + 1) |i| {
 		const lod = @as(u32, 1) << @intCast(i);
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{worldName}) catch unreachable;
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/{}", .{worldName, lod}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{lod}) catch unreachable;
-		defer main.stackAllocator.free(dir);
-		main.files.deleteDir(path, dir) catch |err| {
+		main.files.cubyzDir().dir.deleteTree(path) catch |err| {
 			if(err != error.FileNotFound) {
-				std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+				std.log.err("Error while deleting directory {s}: {s}", .{path, @errorName(err)});
 			}
 		};
 	}

@@ -184,13 +184,13 @@ pub const Gamepad = struct {
 				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
 				return;
 			}
-			files.write("./gamecontrollerdb.txt", list.items) catch |err| {
+			files.cwd().write("./gamecontrollerdb.txt", list.items) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
 			const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{x}", .{self.*.curTimestamp}) catch unreachable;
 			defer main.stackAllocator.free(timeStampStr);
-			files.write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
+			files.cwd().write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
@@ -208,7 +208,7 @@ pub const Gamepad = struct {
 		var needsDownload: bool = false;
 		const curTimestamp = std.time.nanoTimestamp();
 		const timestamp: i128 = blk: {
-			const stamp = files.read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
+			const stamp = files.cwd().read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
 			defer main.stackAllocator.free(stamp);
 			break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
 		};
@@ -239,7 +239,7 @@ pub const Gamepad = struct {
 				return;
 			}
 		}
-		const data = main.files.read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
+		const data = main.files.cwd().read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
 			if(@TypeOf(err) == std.fs.File.OpenError and err == std.fs.File.OpenError.FileNotFound) {
 				return; // Ignore not finding mappings.
 			}

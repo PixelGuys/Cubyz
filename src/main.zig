@@ -492,7 +492,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 		return;
 	}
 	std.log.info("Converting {s}:", .{jsonPath});
-	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
+	const jsonString = files.cubyzDir().read(stackAllocator, jsonPath) catch |err| {
 		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
 		return;
 	};
@@ -537,12 +537,12 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	defer stackAllocator.free(zonPath);
 	std.log.info("Outputting to {s}:", .{zonPath});
 	std.log.debug("{s}", .{zonString.items});
-	files.write(zonPath, zonString.items) catch |err| {
+	files.cubyzDir().write(zonPath, zonString.items) catch |err| {
 		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
 		return;
 	};
 	std.log.info("Deleting file {s}", .{jsonPath});
-	std.fs.cwd().deleteFile(jsonPath) catch |err| {
+	files.cubyzDir().dir.deleteFile(jsonPath) catch |err| {
 		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
 		return;
 	};
