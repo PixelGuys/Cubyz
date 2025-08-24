@@ -31,8 +31,7 @@
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_log",
+			.log = "cubyz:log/birch",
 			.chance = 0.005,
 			.height = 6,
 			.height_variation = 3,
