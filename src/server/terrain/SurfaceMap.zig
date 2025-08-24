@@ -213,7 +213,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, outputWriter.data.items) catch |err| {
+		main.files.writeGlobal(path, outputWriter.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}
