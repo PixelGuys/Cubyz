@@ -677,7 +677,7 @@ pub const Protocols = struct {
 						{
 							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 							defer main.stackAllocator.free(path);
-							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
+							var dir = try main.files.cubyzDir().dir.openDir(path, .{.iterate = true});
 							defer dir.close();
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();

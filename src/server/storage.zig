@@ -42,7 +42,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		const data = main.files.read(main.stackAllocator, path) catch {
+		const data = main.files.readGlobal(main.stackAllocator, path) catch {
 			return self;
 		};
 		defer main.stackAllocator.free(data);
@@ -152,7 +152,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, writer.data.items) catch |err| {
+		main.files.writeGlobal(path, writer.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}

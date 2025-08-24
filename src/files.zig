@@ -21,6 +21,22 @@ pub fn writeZon(path: []const u8, zon: ZonElement) !void {
 	try cwd().writeZon(path, zon);
 }
 
+pub fn readGlobal(allocator: NeverFailingAllocator, path: []const u8) ![]u8 {
+	return main.files.cubyzDir().read(allocator, path);
+}
+
+pub fn readToZonGlobal(allocator: NeverFailingAllocator, path: []const u8) !ZonElement {
+	return main.files.cubyzDir().readToZon(allocator, path);
+}
+
+pub fn writeGlobal(path: []const u8, data: []const u8) !void {
+	try main.files.cubyzDir().write(path, data);
+}
+
+pub fn writeZonGlobal(path: []const u8, zon: ZonElement) !void {
+	try main.files.cubyzDir().writeZon(path, zon);
+}
+
 pub fn openDirInWindow(path: []const u8) void {
 	const newPath = main.stackAllocator.dupe(u8, path);
 	defer main.stackAllocator.free(newPath);
@@ -54,11 +70,11 @@ pub fn openDir(path: []const u8) !Dir {
 }
 
 pub fn makeDir(path: []const u8) !void {
-	try std.fs.cwd().makePath(path);
+	try main.files.cubyzDir().makePath(path);
 }
 
 pub fn deleteDir(path: []const u8, dirName: []const u8) !void {
-	var saveDir = try std.fs.cwd().openDir(path, .{});
+	var saveDir = try main.files.cubyzDir().dir.openDir(path, .{});
 	defer saveDir.close();
 	try saveDir.deleteTree(dirName);
 }

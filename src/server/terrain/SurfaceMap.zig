@@ -124,7 +124,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
-		const fullData = try main.files.read(main.stackAllocator, path);
+		const fullData = try main.files.readGlobal(main.stackAllocator, path);
 		defer main.stackAllocator.free(fullData);
 
 		var fullReader = BinaryReader.init(fullData);
@@ -295,7 +295,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	{
-		var dirX = try std.fs.cwd().openDir(path, .{.iterate = true});
+		var dirX = try main.files.cubyzDir().dir.openDir(path, .{.iterate = true});
 		defer dirX.close();
 		var iterX = dirX.iterate();
 		while(try iterX.next()) |entryX| {

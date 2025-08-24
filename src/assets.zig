@@ -83,8 +83,8 @@ pub const Assets = struct {
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 		};
 	}
-	fn read(self: *Assets, allocator: NeverFailingAllocator, assetPath: []const u8) void {
-		const addons = Addon.discoverAll(main.stackAllocator, assetPath);
+	fn read(self: *Assets, allocator: NeverFailingAllocator, assetPath: []const u8, globalPath: bool) void {
+		const addons = Addon.discoverAll(main.stackAllocator, assetPath, globalPath);
 		defer addons.deinit(main.stackAllocator);
 		defer for(addons.items) |*addon| addon.deinit(main.stackAllocator);
 
@@ -111,10 +111,12 @@ pub const Assets = struct {
 		name: []const u8,
 		dir: std.fs.Dir,
 
-		fn discoverAll(allocator: NeverFailingAllocator, path: []const u8) main.ListUnmanaged(Addon) {
+		fn discoverAll(allocator: NeverFailingAllocator, path: []const u8, globalPath: bool) main.ListUnmanaged(Addon) {
 			var addons: main.ListUnmanaged(Addon) = .{};
 
-			var dir = std.fs.cwd().openDir(path, .{.iterate = true}) catch |err| {
+			const rootDir = if(globalPath) main.files.cubyzDir().dir else std.fs.cwd();
+
+			var dir = rootDir.openDir(path, .{.iterate = true}) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});
 				return addons;
 			};
@@ -330,7 +332,7 @@ pub fn init() void {
 	commonAssetAllocator = commonAssetArena.allocator();
 
 	common = .init();
-	common.read(commonAssetAllocator, "assets/");
+	common.read(commonAssetAllocator, "assets/", false);
 	common.log(.common);
 }
 
@@ -489,7 +491,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	const worldAllocator = worldArena.allocator();
 
 	var worldAssets = common.clone(worldAllocator);
-	worldAssets.read(worldAllocator, assetFolder);
+	worldAssets.read(worldAllocator, assetFolder, true);
 
 	errdefer unloadAssets();
 
