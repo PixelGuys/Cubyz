@@ -30,7 +30,7 @@ pub fn moveSaves() bool {
 			return false;
 		};
 		defer newDir.close();
-		
+
 		moveFolder(oldDir, newDir) catch |err| {
 			std.log.err("Encountered error while moving saves: {s}", .{@errorName(err)});
 			return false;
