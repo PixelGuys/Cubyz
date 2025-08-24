@@ -31,6 +31,8 @@ pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
 
+const moveSaves = @import("moveSaves.zig").moveSaves;
+
 pub const Window = @import("graphics/Window.zig");
 
 pub const heap = @import("utils/heap.zig");
@@ -654,10 +656,19 @@ pub fn main() void { // MARK: main()
 	particles.ParticleManager.init();
 	defer particles.ParticleManager.deinit();
 
+
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
+	}
+
+	if (moveSaves()) {
+		const newPathText = files.cubyzDir().dir.realpathAlloc(stackAllocator.allocator, "saves") catch unreachable;
+		defer stackAllocator.free(newPathText);
+		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}", .{newPathText}) catch unreachable;
+		defer stackAllocator.free(notification);
+		gui.windowlist.notification.raiseNotification(notification);
 	}
 
 	server.terrain.globalInit();
