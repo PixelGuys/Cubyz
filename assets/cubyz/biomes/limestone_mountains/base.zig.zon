@@ -4,6 +4,7 @@
 		.dry,
 		.hot,
 	},
+	.minHeightLimit = 6,
 	.minHeight = 64,
 	.maxHeight = 256,
 	.roughness = 10,

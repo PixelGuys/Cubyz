@@ -6,6 +6,7 @@
 	.radius = 500,
 	.minHeight = -100,
 	.maxHeight = -22,
+	.maxHeightLimit = 6,
 
 	.roughness = 10,
 	.hills = 20,

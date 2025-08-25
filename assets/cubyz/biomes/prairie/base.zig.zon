@@ -1,7 +1,9 @@
 .{
 	.properties = .{.dry},
+	.minHeightLimit = 6,
 	.minHeight = 40,
 	.maxHeight = 44,
+	.maxHeightLimit = 60,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.roughness = 1,

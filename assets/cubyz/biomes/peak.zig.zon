@@ -5,6 +5,7 @@
 		.barren,
 		.wet,
 	},
+	.minHeightLimit = 6,
 	.minHeight = 120,
 	.maxHeight = 256,
 

@@ -288,11 +288,11 @@ const GenerationStructure = struct {
 		}
 		for(candidateList.items) |candidate| {
 			var dist = candidate.point.voronoiDistanceFunction(.{x, y});
-			if(candidate.point.biome.maxHeight < 6 and 6 < height/totalWeight) {
-				dist += 10.5;
+			if(@as(f32, @floatFromInt(candidate.point.biome.maxHeightLimit)) < height/totalWeight) {
+				dist += 10.0;
 			}
-			if(candidate.point.biome.minHeight > 6 and 6 > height/totalWeight) {
-				dist += 10.5;
+			if(@as(f32, @floatFromInt(candidate.point.biome.minHeightLimit)) > height/totalWeight) {
+				dist += 10.0;
 			}
 			if(dist < closestDist) {
 				secondClosestDist = closestDist;

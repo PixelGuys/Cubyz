@@ -1,8 +1,10 @@
 .{
 	.properties = .{},
 	.chance = 0.01,
+	.minHeightLimit = 6,
 	.minHeight = 22,
 	.maxHeight = 40,
+	.maxHeightLimit = 60,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.roughness = 10,

@@ -6,6 +6,7 @@
 	.type = .arctic_ocean,
 	.minHeight = -100,
 	.maxHeight = -22,
+	.maxHeightLimit = 6,
 	.radius = 500,
 
 	.roughness = 20,

@@ -2,8 +2,10 @@
 	.properties = .{
 		.hot,
 	},
+	.minHeightLimit = 6,
 	.minHeight = 24,
 	.maxHeight = 60,
+	.maxHeightLimit = 100,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.roughness = 20,

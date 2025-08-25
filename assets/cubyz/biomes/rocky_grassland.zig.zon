@@ -1,8 +1,10 @@
 .{
 	.properties = .{},
 	.chance = 0.04,
+	.minHeightLimit = 6,
 	.minHeight = 20,
 	.maxHeight = 40,
+	.maxHeightLimit = 50,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.mountains = 30,

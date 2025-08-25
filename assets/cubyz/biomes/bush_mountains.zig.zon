@@ -2,6 +2,7 @@
 	.properties = .{
 		.mountain,
 	},
+	.minHeightLimit = 6,
 	.minHeight = 80,
 	.maxHeight = 256,
 
