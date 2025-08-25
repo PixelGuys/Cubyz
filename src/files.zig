@@ -38,7 +38,7 @@ pub fn cwd() Dir {
 }
 
 var cubyzDir_: ?std.fs.Dir = null;
-var cubyzDirStr_: ?[]const u8 = null; 
+var cubyzDirStr_: ?[]const u8 = null;
 
 pub fn cubyzDir() Dir {
 	return .{
