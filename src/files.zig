@@ -107,4 +107,10 @@ pub const Dir = struct {
 		file.close();
 		return true;
 	}
+
+	pub fn openDir(self: Dir, path: []const u8) !Dir {
+		return .{
+			.dir = self.dir.openDir(path, .{})
+		};
+	}
 };
