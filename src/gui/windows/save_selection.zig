@@ -88,13 +88,10 @@ fn deleteWorld(index: usize) void {
 }
 
 fn openFolder(index: usize) void {
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldList.items[index].fileName}) catch unreachable;
+	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/saves/{s}", .{main.files.cubyzDirStr(), worldList.items[index].fileName}) catch unreachable;
 	defer main.stackAllocator.free(path);
 
-	const globalPath = main.files.cubyzDir().dir.realpathAlloc(main.stackAllocator.allocator, path) catch unreachable;
-	defer main.stackAllocator.free(globalPath);
-
-	main.files.openDirInWindow(globalPath);
+	main.files.openDirInWindow(path);
 }
 
 pub fn update() void {

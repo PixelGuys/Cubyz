@@ -667,9 +667,7 @@ pub fn main() void { // MARK: main()
 			std.log.err("Encountered error while moving saves: {s}", .{@errorName(err)});
 			break :moveSaves;
 		};
-		const newPathText = files.cubyzDir().dir.realpathAlloc(stackAllocator.allocator, "saves") catch unreachable;
-		defer stackAllocator.free(newPathText);
-		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}", .{newPathText}) catch unreachable;
+		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
 		defer stackAllocator.free(notification);
 		gui.windowlist.notification.raiseNotification(notification);
 	} else |_| {}
