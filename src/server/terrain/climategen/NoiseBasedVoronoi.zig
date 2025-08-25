@@ -251,18 +251,9 @@ const GenerationStructure = struct {
 				const dist2 = candidateList.items[j].point.voronoiDistanceFunction(.{x, y});
 				const totalDist = dist + dist2;
 				const interpolationStrength = 0.5;
-				// The important bit is the ocean height, that's the only point where we actually need the transition point to be exact for beaches to occur.
-				var bias: f32 = 0.5;
 				const centerPos = totalDist*0.5;
-				const height1 = candidateList.items[i].point.height;
-				const height2 = candidateList.items[j].point.height;
-				if(height1*height2 < 0 and false) {
-					const weightedHeight1 = height1*candidateList.items[i].point.weight;
-					const weightedHeight2 = height2*candidateList.items[j].point.weight;
-					bias = @abs(weightedHeight1)/(@abs(weightedHeight1) + @abs(weightedHeight2));
-				}
-				const interpolationStart = centerPos - interpolationStrength*bias;
-				const interpolationEnd = centerPos + interpolationStrength*(1 - bias);
+				const interpolationStart = centerPos - interpolationStrength*0.5;
+				const interpolationEnd = centerPos + interpolationStrength*0.5;
 				if(dist < interpolationStart) {
 					_ = candidateList.swapRemove(j);
 					continue;
