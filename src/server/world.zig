@@ -531,7 +531,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		errdefer main.assets.unloadAssets();
 
 		self.seed = try self.wio.loadWorldSeed();
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/palette.zig.zon", .{path}), self.blockPalette.storeToZon(arenaAllocator));
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arenaAllocator));
