@@ -209,7 +209,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}", .{saveFolder, self.pos.voxelSize, self.pos.wx}) catch unreachable;
 		defer main.stackAllocator.free(folder);
 
-		main.files.cubyzDir().dir.makePath(folder) catch |err| {
+		main.files.cubyzDir().makePath(folder) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
@@ -281,7 +281,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		const lod = @as(u32, 1) << @intCast(i);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/{}", .{worldName, lod}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		main.files.cubyzDir().dir.deleteTree(path) catch |err| {
+		main.files.cubyzDir().deleteTree(path) catch |err| {
 			if(err != error.FileNotFound) {
 				std.log.err("Error while deleting directory {s}: {s}", .{path, @errorName(err)});
 			}
@@ -293,13 +293,13 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	{
-		var dirX = try main.files.cubyzDir().dir.openDir(path, .{.iterate = true});
+		var dirX = try main.files.cubyzDir().openDirIterate(path);
 		defer dirX.close();
 		var iterX = dirX.iterate();
 		while(try iterX.next()) |entryX| {
 			if(entryX.kind != .directory) continue;
 			const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
-			var dirY = try dirX.openDir(entryX.name, .{.iterate = true});
+			var dirY = try dirX.openDirIterate(entryX.name);
 			defer dirY.close();
 			var iterY = dirY.iterate();
 			while(try iterY.next()) |entryY| {

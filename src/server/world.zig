@@ -544,11 +544,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
 			defer main.stackAllocator.free(playerDataPath);
 
-			var playerDataDirectory = main.files.cubyzDir().dir.openDir(playerDataPath, .{.iterate = true}) catch break :convert_player_data_to_binary;
+			var playerDataDirectory = main.files.cubyzDir().openDirIterate(playerDataPath) catch break :convert_player_data_to_binary;
 			defer playerDataDirectory.close();
 
 			{
-				var walker = playerDataDirectory.walk(main.stackAllocator.allocator) catch unreachable;
+				var walker = playerDataDirectory.walk(main.stackAllocator);
 				defer walker.deinit();
 
 				while(walker.next() catch |err| {
@@ -765,7 +765,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const lod = @as(u32, 1) << @intCast(i);
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/{}", .{self.path, lod}) catch unreachable;
 			defer main.stackAllocator.free(path);
-			main.files.cubyzDir().dir.deleteTree(path) catch |err| {
+			main.files.cubyzDir().deleteTree(path) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Error while deleting directory {s}: {s}", .{path, @errorName(err)});
 				}
@@ -777,7 +777,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		blk: {
-			var dirX = main.files.cubyzDir().dir.openDir(path, .{.iterate = true}) catch |err| {
+			var dirX = main.files.cubyzDir().openDirIterate(path) catch |err| {
 				if(err == error.FileNotFound) break :blk;
 				return err;
 			};
@@ -1004,7 +1004,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(playerPath);
 
-		try files.cubyzDir().dir.makePath(playerPath);
+		try files.cubyzDir().makePath(playerPath);
 
 		try files.cubyzDir().writeZon(path, playerZon);
 	}

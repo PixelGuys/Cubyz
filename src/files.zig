@@ -139,4 +139,8 @@ pub const Dir = struct {
 	pub fn walk(self: Dir, allocator: NeverFailingAllocator) std.fs.Dir.Walker {
 		return self.dir.walk(allocator.allocator) catch unreachable;
 	}
+
+	pub fn iterate(self: Dir) std.fs.Dir.Iterator {
+		return self.dir.iterate();
+	}
 };
