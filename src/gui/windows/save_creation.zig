@@ -70,7 +70,7 @@ fn findValidFolderName(allocator: NeverFailingAllocator, name: []const u8) []con
 		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
 		defer main.stackAllocator.free(resultPath);
 
-		var dir = main.files.cubyzDir().dir.openDir(resultPath, .{}) catch break;
+		var dir = main.files.cubyzDir().openDir(resultPath) catch break;
 		dir.close();
 
 		main.stackAllocator.free(resultName);
@@ -86,7 +86,7 @@ fn flawedCreateWorld() !void {
 	defer main.stackAllocator.free(worldPath);
 	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
 	defer main.stackAllocator.free(saveFolder);
-	try main.files.cubyzDir().dir.makePath(saveFolder);
+	try main.files.cubyzDir().makePath(saveFolder);
 	{
 		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(generatorSettingsPath);

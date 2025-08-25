@@ -462,7 +462,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		covert_old_worlds: { // TODO: Remove after #480
 			const worldDatPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.dat", .{path});
 			defer main.stackAllocator.free(worldDatPath);
-			if(main.files.cubyzDir().dir.openFile(worldDatPath, .{})) |file| {
+			if(main.files.cubyzDir().openFile(worldDatPath)) |file| {
 				file.close();
 				std.log.warn("Detected old world in saves/{s}. Converting all .json files to .zig.zon", .{path});
 				const dirPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{path});
@@ -513,7 +513,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else { // Read the generator settings:
 			generatorSettings = try files.cubyzDir().readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{path}));
 		}
-		self.wio = WorldIO.init(files.Dir.init(try files.cubyzDir().dir.openDir(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}", .{path}), .{})), self);
+		self.wio = WorldIO.init(try files.cubyzDir().openDir(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}", .{path})), self);
 		errdefer self.wio.deinit();
 
 		self.blockPalette = try loadPalette(arenaAllocator, path, "palette", "cubyz:air");

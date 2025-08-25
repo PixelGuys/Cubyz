@@ -114,7 +114,19 @@ pub const Dir = struct {
 		};
 	}
 
+	pub fn openFile(self: Dir, path: []const u8) !std.fs.File {
+		return self.dir.openFile(path, .{});
+	}
+
 	pub fn deleteTree(self: Dir, path: []const u8) !void {
 		try self.dir.deleteTree(path);
+	}
+
+	pub fn deleteFile(self: Dir, path: []const u8) !void {
+		try self.dir.deleteFile(path);
+	}
+
+	pub fn makePath(self: Dir, path: []const u8) !void {
+		try self.dir.makePath(path);
 	}
 };

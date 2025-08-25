@@ -542,7 +542,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 		return;
 	};
 	std.log.info("Deleting file {s}", .{jsonPath});
-	files.cubyzDir().dir.deleteFile(jsonPath) catch |err| {
+	files.cubyzDir().deleteFile(jsonPath) catch |err| {
 		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
 		return;
 	};

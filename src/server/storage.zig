@@ -148,7 +148,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
 		defer main.stackAllocator.free(folder);
 
-		main.files.cubyzDir().dir.makePath(folder) catch |err| {
+		main.files.cubyzDir().makePath(folder) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
