@@ -109,15 +109,11 @@ pub const Dir = struct {
 	}
 
 	pub fn openDir(self: Dir, path: []const u8) !Dir {
-		return .{
-			.dir = try self.dir.openDir(path, .{})
-		};
+		return .{.dir = try self.dir.openDir(path, .{})};
 	}
 
 	pub fn openDirIterate(self: Dir, path: []const u8) !Dir {
-		return .{
-			.dir = try self.dir.openDir(path, .{.iterate = true})
-		};
+		return .{.dir = try self.dir.openDir(path, .{.iterate = true})};
 	}
 
 	pub fn openFile(self: Dir, path: []const u8) !std.fs.File {

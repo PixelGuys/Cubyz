@@ -114,7 +114,6 @@ pub const Assets = struct {
 		fn discoverAll(allocator: NeverFailingAllocator, rootDir: main.files.Dir, path: []const u8) main.ListUnmanaged(Addon) {
 			var addons: main.ListUnmanaged(Addon) = .{};
 
-
 			var dir = rootDir.dir.openDir(path, .{.iterate = true}) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});
 				return addons;
