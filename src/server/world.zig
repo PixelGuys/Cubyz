@@ -786,13 +786,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			while(try iterX.next()) |entryX| {
 				if(entryX.kind != .directory) continue;
 				const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
-				var dirY = try dirX.openDir(entryX.name, .{.iterate = true});
+				var dirY = try dirX.openDirIterate(entryX.name);
 				defer dirY.close();
 				var iterY = dirY.iterate();
 				while(try iterY.next()) |entryY| {
 					if(entryY.kind != .directory) continue;
 					const wy = std.fmt.parseInt(i32, entryY.name, 0) catch continue;
-					var dirZ = try dirY.openDir(entryY.name, .{.iterate = true});
+					var dirZ = try dirY.openDirIterate(entryY.name);
 					defer dirZ.close();
 					var iterZ = dirZ.iterate();
 					while(try iterZ.next()) |entryZ| {
