@@ -677,12 +677,12 @@ pub const Protocols = struct {
 						{
 							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 							defer main.stackAllocator.free(path);
-							var dir = try main.files.cubyzDir().dir.openDir(path, .{.iterate = true});
+							var dir = try main.files.cubyzDir().openDirIterate(path);
 							defer dir.close();
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
 							arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
-							try utils.Compression.pack(dir, arrayList.writer());
+							try utils.Compression.pack(dir.dir, arrayList.writer());
 							conn.send(.fast, id, arrayList.items);
 						}
 

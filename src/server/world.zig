@@ -467,13 +467,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				std.log.warn("Detected old world in saves/{s}. Converting all .json files to .zig.zon", .{path});
 				const dirPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{path});
 				defer main.stackAllocator.free(dirPath);
-				var dir = main.files.cubyzDir().dir.openDir(dirPath, .{.iterate = true}) catch |err| {
+				var dir = main.files.cubyzDir().openDirIterate(dirPath) catch |err| {
 					std.log.err("Could not open world directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
 					break :covert_old_worlds;
 				};
 				defer dir.close();
 
-				var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
+				var walker = dir.walk(main.stackAllocator);
 				defer walker.deinit();
 				while(walker.next() catch |err| {
 					std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
@@ -753,7 +753,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const hasSurfaceMaps = blk: {
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 			defer main.stackAllocator.free(path);
-			var dir = main.files.cubyzDir().dir.openDir(path, .{}) catch break :blk false;
+			var dir = main.files.cubyzDir().openDir(path) catch break :blk false;
 			defer dir.close();
 			break :blk true;
 		};
@@ -898,7 +898,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if(self.testingMode) {
 				const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 				defer main.stackAllocator.free(dir);
-				main.files.cubyzDir().dir.deleteTree("maps") catch |err| {
+				main.files.cubyzDir().deleteTree("maps") catch |err| {
 					std.log.err("Error while trying to remove maps folder of testingMode world: {s}", .{@errorName(err)});
 				};
 			} else {

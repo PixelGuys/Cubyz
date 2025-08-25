@@ -134,7 +134,7 @@ fn flawedCreateWorld() !void {
 	{ // Make assets subfolder
 		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(assetsPath);
-		try main.files.cubyzDir().dir.makePath(assetsPath);
+		try main.files.cubyzDir().makePath(assetsPath);
 	}
 	// TODO: Make the seed configurable
 	gui.closeWindowFromRef(&window);

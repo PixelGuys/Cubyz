@@ -114,6 +114,12 @@ pub const Dir = struct {
 		};
 	}
 
+	pub fn openDirIterate(self: Dir, path: []const u8) !Dir {
+		return .{
+			.dir = try self.dir.openDir(path, .{.iterate = true})
+		};
+	}
+
 	pub fn openFile(self: Dir, path: []const u8) !std.fs.File {
 		return self.dir.openFile(path, .{});
 	}
@@ -128,5 +134,9 @@ pub const Dir = struct {
 
 	pub fn makePath(self: Dir, path: []const u8) !void {
 		try self.dir.makePath(path);
+	}
+
+	pub fn walk(self: Dir, allocator: NeverFailingAllocator) std.fs.Dir.Walker {
+		return self.dir.walk(allocator.allocator) catch unreachable;
 	}
 };
