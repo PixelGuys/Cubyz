@@ -2,7 +2,7 @@
 	.properties = .{
 		.hot,
 	},
-	.minHeightLimit = 6,
+	.minHeightLimit = 7,
 	.minHeight = 24,
 	.maxHeight = 60,
 	.maxHeightLimit = 100,

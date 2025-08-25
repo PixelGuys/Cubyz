@@ -3,7 +3,7 @@
 		.cold,
 	},
 	.chance = 0.33,
-	.minHeightLimit = 6,
+	.minHeightLimit = 7,
 	.minHeight = 30,
 	.maxHeight = 50,
 	.maxHeightLimit = 60,

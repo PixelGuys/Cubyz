@@ -5,7 +5,7 @@
 		.dry,
 		.barren,
 	},
-	.minHeightLimit = 6,
+	.minHeightLimit = 7,
 	.minHeight = 80,
 	.maxHeight = 256,
 	.minRadius = 240,

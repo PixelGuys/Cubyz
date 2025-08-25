@@ -1,6 +1,6 @@
 .{
 	.properties = .{.dry},
-	.minHeightLimit = 6,
+	.minHeightLimit = 7,
 	.minHeight = 40,
 	.maxHeight = 44,
 	.maxHeightLimit = 60,

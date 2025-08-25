@@ -3,7 +3,7 @@
 		.mountain,
 	},
 	.radius = 400,
-	.minHeightLimit = 6,
+	.minHeightLimit = 7,
 	.minHeight = 60,
 	.maxHeight = 256,
 

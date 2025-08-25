@@ -3,7 +3,7 @@
 		.hot,
 		.dry,
 	},
-	.minHeightLimit = 6,
+	.minHeightLimit = 7,
 	.minHeight = 30,
 	.maxHeight = 40,
 	.maxHeightLimit = 60,

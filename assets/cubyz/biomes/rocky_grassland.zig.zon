@@ -1,7 +1,7 @@
 .{
 	.properties = .{},
 	.chance = 0.04,
-	.minHeightLimit = 6,
+	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 40,
 	.maxHeightLimit = 50,
