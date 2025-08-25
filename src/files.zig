@@ -113,4 +113,8 @@ pub const Dir = struct {
 			.dir = try self.dir.openDir(path, .{})
 		};
 	}
+
+	pub fn deleteTree(self: Dir, path: []const u8) !void {
+		try self.dir.deleteTree(path);
+	}
 };
