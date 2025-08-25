@@ -116,6 +116,14 @@ pub const Dir = struct {
 		return .{.dir = try self.dir.openDir(path, .{.iterate = true})};
 	}
 
+	pub fn makeOpenPath(self: Dir, path: []const u8) !Dir {
+		return .{.dir = try self.dir.makeOpenPath(path, .{})};
+	}
+
+	pub fn makeOpenPathIterate(self: Dir, path: []const u8) !Dir {
+		return .{.dir = try self.dir.makeOpenPath(path, .{.iterate = true})};
+	}
+
 	pub fn openFile(self: Dir, path: []const u8) !std.fs.File {
 		return self.dir.openFile(path, .{});
 	}
