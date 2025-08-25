@@ -110,7 +110,7 @@ pub const Dir = struct {
 
 	pub fn openDir(self: Dir, path: []const u8) !Dir {
 		return .{
-			.dir = self.dir.openDir(path, .{})
+			.dir = try self.dir.openDir(path, .{})
 		};
 	}
 };
