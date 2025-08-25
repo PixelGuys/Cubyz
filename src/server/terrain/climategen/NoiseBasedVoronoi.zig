@@ -222,7 +222,7 @@ const GenerationStructure = struct {
 		const cellX: i32 = @divFloor(relX, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
 		const cellY: i32 = @divFloor(relY, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
 		// Note that at a small loss of details we can assume that all BiomePoints are withing ±1 chunks of the current one.
-		var candidateList: main.List(struct{point: *BiomePoint, weight: f32}) = .init(main.stackAllocator);
+		var candidateList: main.List(struct {point: *BiomePoint, weight: f32}) = .init(main.stackAllocator);
 		defer candidateList.deinit();
 		var dx: i32 = 1;
 		while(dx <= 3) : (dx += 1) {
