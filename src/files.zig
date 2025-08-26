@@ -57,10 +57,10 @@ fn flawedInit() !void {
 	defer homeDir.close();
 	if(builtin.os.tag == .windows) {
 		cubyzDir_ = try homeDir.makeOpenPath("Saved Games/Cubyz", .{});
-		cubyzDirStr_ = std.mem.concat(main.stackAllocator.allocator, u8, homePath, "/Saved Games/Cubyz") catch unreachable;
+		cubyzDirStr_ = std.mem.concat(main.stackAllocator.allocator, u8, &.{homePath, "/Saved Games/Cubyz"}) catch unreachable;
 	} else {
 		cubyzDir_ = try homeDir.makeOpenPath(".cubyz", .{});
-		cubyzDirStr_ = std.mem.concat(main.stackAllocator.allocator, u8, homePath, "/.cubyz") catch unreachable;
+		cubyzDirStr_ = std.mem.concat(main.stackAllocator.allocator, u8, &.{homePath, "/.cubyz"}) catch unreachable;
 	}
 }
 
