@@ -38,7 +38,7 @@ pub fn cwd() Dir {
 }
 
 var cubyzDir_: ?std.fs.Dir = null;
-var cubyzDirStr_: ?[]const u8 = null;
+var cubyzDirStr_: []const u8 = ".";
 
 pub fn cubyzDir() Dir {
 	return .{
@@ -47,7 +47,7 @@ pub fn cubyzDir() Dir {
 }
 
 pub fn cubyzDirStr() []const u8 {
-	return cubyzDirStr_ orelse "";
+	return cubyzDirStr_;
 }
 
 fn flawedInit() !void {
@@ -57,10 +57,10 @@ fn flawedInit() !void {
 	defer homeDir.close();
 	if(builtin.os.tag == .windows) {
 		cubyzDir_ = try homeDir.makeOpenPath("Saved Games/Cubyz", .{});
-		cubyzDirStr_ = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/Saved Games/Cubyz", .{homePath}) catch unreachable;
+		cubyzDirStr_ = std.mem.concat(main.stackAllocator.allocator, u8, homePath, "/Saved Games/Cubyz") catch unreachable;
 	} else {
 		cubyzDir_ = try homeDir.makeOpenPath(".cubyz", .{});
-		cubyzDirStr_ = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/.cubyz", .{homePath}) catch unreachable;
+		cubyzDirStr_ = std.mem.concat(main.stackAllocator.allocator, u8, homePath, "/.cubyz") catch unreachable;
 	}
 }
 
@@ -74,9 +74,7 @@ pub fn deinit() void {
 	if(cubyzDir_ != null) {
 		cubyzDir_.?.close();
 	}
-	if(cubyzDirStr_ != null) {
-		main.stackAllocator.free(cubyzDirStr_.?);
-	}
+	main.stackAllocator.free(cubyzDirStr_);
 }
 
 pub const Dir = struct {
