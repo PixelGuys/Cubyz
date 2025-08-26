@@ -108,7 +108,7 @@ pub fn onOpen() void {
 	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
 	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("save_creation")));
 	readingSaves: {
-		var dir = main.files.cubyzDir().makeOpenPathIterate("saves") catch |err| {
+		var dir = main.files.cubyzDir().makeOpenIterablePath("saves") catch |err| {
 			list.add(Label.init(.{0, 0}, 128, "Encountered error while trying to open saves folder:", .center));
 			list.add(Label.init(.{0, 0}, 128, @errorName(err), .center));
 			break :readingSaves;

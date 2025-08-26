@@ -114,7 +114,7 @@ pub const Assets = struct {
 		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) main.ListUnmanaged(Addon) {
 			var addons: main.ListUnmanaged(Addon) = .{};
 
-			var dir = assetDir.openDirIterate(path) catch |err| {
+			var dir = assetDir.openIterableDir(path) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});
 				return addons;
 			};
@@ -189,7 +189,7 @@ pub const Assets = struct {
 		};
 
 		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: []const u8, hasDefaults: bool, output: *ZonHashMap, migrations: ?*AddonNameToZonMap) void {
-			var assetsDirectory = addon.dir.openDirIterate(assetType) catch |err| {
+			var assetsDirectory = addon.dir.openIterableDir(assetType) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{assetType, @errorName(err)});
 				}
@@ -235,7 +235,7 @@ pub const Assets = struct {
 		}
 
 		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
-			var assetsDirectory = addon.dir.openDirIterate(subPath) catch |err| {
+			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
 				}
@@ -267,7 +267,7 @@ pub const Assets = struct {
 
 		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
 			const subPath = "models";
-			var assetsDirectory = addon.dir.openDirIterate(subPath) catch |err| {
+			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
 				}

@@ -128,7 +128,7 @@ pub const Dir = struct {
 		return .{.dir = try self.dir.openDir(path, .{})};
 	}
 
-	pub fn openDirIterate(self: Dir, path: []const u8) !Dir {
+	pub fn openIterableDir(self: Dir, path: []const u8) !Dir {
 		return .{.dir = try self.dir.openDir(path, .{.iterate = true})};
 	}
 
@@ -136,7 +136,7 @@ pub const Dir = struct {
 		return .{.dir = try self.dir.makeOpenPath(path, .{})};
 	}
 
-	pub fn makeOpenPathIterate(self: Dir, path: []const u8) !Dir {
+	pub fn makeOpenIterablePath(self: Dir, path: []const u8) !Dir {
 		return .{.dir = try self.dir.makeOpenPath(path, .{.iterate = true})};
 	}
 

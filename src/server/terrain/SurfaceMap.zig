@@ -293,13 +293,13 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	{
-		var dirX = try main.files.cubyzDir().openDirIterate(path);
+		var dirX = try main.files.cubyzDir().openIterableDir(path);
 		defer dirX.close();
 		var iterX = dirX.iterate();
 		while(try iterX.next()) |entryX| {
 			if(entryX.kind != .directory) continue;
 			const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
-			var dirY = try dirX.openDirIterate(entryX.name);
+			var dirY = try dirX.openIterableDir(entryX.name);
 			defer dirY.close();
 			var iterY = dirY.iterate();
 			while(try iterY.next()) |entryY| {

@@ -467,7 +467,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				std.log.warn("Detected old world in saves/{s}. Converting all .json files to .zig.zon", .{path});
 				const dirPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{path});
 				defer main.stackAllocator.free(dirPath);
-				var dir = main.files.cubyzDir().openDirIterate(dirPath) catch |err| {
+				var dir = main.files.cubyzDir().openIterableDir(dirPath) catch |err| {
 					std.log.err("Could not open world directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
 					break :covert_old_worlds;
 				};
@@ -544,7 +544,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
 			defer main.stackAllocator.free(playerDataPath);
 
-			var playerDataDirectory = main.files.cubyzDir().openDirIterate(playerDataPath) catch break :convert_player_data_to_binary;
+			var playerDataDirectory = main.files.cubyzDir().openIterableDir(playerDataPath) catch break :convert_player_data_to_binary;
 			defer playerDataDirectory.close();
 
 			{
@@ -777,7 +777,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		blk: {
-			var dirX = main.files.cubyzDir().openDirIterate(path) catch |err| {
+			var dirX = main.files.cubyzDir().openIterableDir(path) catch |err| {
 				if(err == error.FileNotFound) break :blk;
 				return err;
 			};
@@ -786,13 +786,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			while(try iterX.next()) |entryX| {
 				if(entryX.kind != .directory) continue;
 				const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
-				var dirY = try dirX.openDirIterate(entryX.name);
+				var dirY = try dirX.openIterableDir(entryX.name);
 				defer dirY.close();
 				var iterY = dirY.iterate();
 				while(try iterY.next()) |entryY| {
 					if(entryY.kind != .directory) continue;
 					const wy = std.fmt.parseInt(i32, entryY.name, 0) catch continue;
-					var dirZ = try dirY.openDirIterate(entryY.name);
+					var dirZ = try dirY.openIterableDir(entryY.name);
 					defer dirZ.close();
 					var iterZ = dirZ.iterate();
 					while(try iterZ.next()) |entryZ| {
