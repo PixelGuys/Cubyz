@@ -660,9 +660,7 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("main");
 	}
 
-	if(std.fs.cwd().openDir("saves", .{})) |dir| moveSaves: {
-		var mut_dir = dir;
-		mut_dir.close();
+	if(files.cwd().hasDir("saves")) moveSaves: {
 		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
 			std.log.err("Encountered error while moving saves: {s}", .{@errorName(err)});
 			break :moveSaves;
