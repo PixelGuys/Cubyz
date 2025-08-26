@@ -130,7 +130,7 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 	var blueprintsDir = openBlueprintsDir(source) orelse return;
 	defer blueprintsDir.close();
 
-	blueprintsDir.dir.deleteFile(fileName) catch |err| {
+	blueprintsDir.deleteFile(fileName) catch |err| {
 		return sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 	};
 

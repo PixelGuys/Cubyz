@@ -286,7 +286,7 @@ pub const Assets = struct {
 
 				const id = createAssetStringID(allocator, addon.name, entry.path);
 
-				const string = assetsDirectory.dir.readFileAlloc(allocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
+				const string = assetsDirectory.readFileAlloc(allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};

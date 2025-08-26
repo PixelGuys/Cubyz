@@ -163,4 +163,8 @@ pub const Dir = struct {
 	pub fn iterate(self: Dir) std.fs.Dir.Iterator {
 		return self.dir.iterate();
 	}
+
+	pub fn readFileAlloc(self: Dir, allocator: NeverFailingAllocator, file_path: []const u8, max_bytes: usize) ![]u8 {
+		return self.dir.readFileAlloc(allocator.allocator, file_path, max_bytes);
+	}
 };
