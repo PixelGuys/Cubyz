@@ -119,7 +119,7 @@ pub const Dir = struct {
 	}
 
 	pub fn hasDir(self: Dir, path: []const u8) bool {
-		const dir = self.dir.openDir(path, .{.iterate = false}) catch return false;
+		var dir = self.dir.openDir(path, .{.iterate = false}) catch return false;
 		dir.close();
 		return true;
 	}

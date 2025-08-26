@@ -669,7 +669,7 @@ pub fn main() void { // MARK: main()
 		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
 		defer stackAllocator.free(notification);
 		gui.windowlist.notification.raiseNotification(notification);
-	} else |_| {}
+	}
 
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
