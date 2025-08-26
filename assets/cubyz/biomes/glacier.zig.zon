@@ -7,6 +7,8 @@
 	.minHeightLimit = 7,
 	.minHeight = 80,
 	.maxHeight = 256,
+	.smoothBeaches = true,
+
 	.minRadius = 150,
 	.maxRadius = 300,
 	.roughness = 50,

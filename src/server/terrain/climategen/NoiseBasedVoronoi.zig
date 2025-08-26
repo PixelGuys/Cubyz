@@ -272,10 +272,18 @@ const GenerationStructure = struct {
 		for(candidateList.items) |candidate| {
 			const weight = candidate.weight;
 			height += candidate.point.height*weight;
+			totalWeight += weight;
+		}
+		for(candidateList.items) |candidate| {
+			const weight = blk: {
+				if(!candidate.point.biome.smoothBeaches) break :blk candidate.weight;
+				const maxHeight = @abs(height);
+				const noiseHeightInfluence = candidate.point.biome.roughness + candidate.point.biome.hills + candidate.point.biome.mountains;
+				break :blk candidate.weight*@min(maxHeight, noiseHeightInfluence)/noiseHeightInfluence;
+			};
 			roughness += candidate.point.biome.roughness*weight;
 			hills += candidate.point.biome.hills*weight;
 			mountains += candidate.point.biome.mountains*weight;
-			totalWeight += weight;
 		}
 		for(candidateList.items) |candidate| {
 			var dist = candidate.point.voronoiDistanceFunction(.{x, y});

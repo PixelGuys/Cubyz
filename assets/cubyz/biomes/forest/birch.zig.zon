@@ -4,6 +4,7 @@
 	.minHeight = 20,
 	.maxHeight = 48,
 	.maxHeightLimit = 60,
+	.smoothBeaches = true,
 	.minRadius = 200,
 	.maxRadius = 256,
 	.roughness = 10,

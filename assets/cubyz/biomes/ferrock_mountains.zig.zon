@@ -12,6 +12,7 @@
 	.maxRadius = 256,
 	.roughness = 10,
 	.mountains = 20,
+	.smoothBeaches = true,
 	.hills = 50,
 	.validPlayerSpawn = false,
 	.rivers = true,

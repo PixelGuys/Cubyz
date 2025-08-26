@@ -6,6 +6,7 @@
 	.minHeight = -100,
 	.maxHeight = -22,
 	.maxHeightLimit = 7,
+	.smoothBeaches = true,
 
 	.roughness = 15,
 	.hills = 15,
