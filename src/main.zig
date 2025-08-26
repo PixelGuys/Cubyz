@@ -660,6 +660,7 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("main");
 	}
 
+	// Save migration, should be removed after version 0 (#480)
 	if(files.cwd().hasDir("saves")) moveSaves: {
 		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
 			std.log.err("Encountered error while moving saves: {s}", .{@errorName(err)});
