@@ -74,7 +74,9 @@ pub fn deinit() void {
 	if(cubyzDir_ != null) {
 		cubyzDir_.?.close();
 	}
-	main.stackAllocator.free(cubyzDirStr_);
+	if(!std.mem.eql(u8, cubyzDirStr_, ".")) {
+		main.stackAllocator.free(cubyzDirStr_);
+	}
 }
 
 pub const Dir = struct {
