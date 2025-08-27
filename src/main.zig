@@ -663,7 +663,9 @@ pub fn main() void { // MARK: main()
 	// Save migration, should be removed after version 0 (#480)
 	if(files.cwd().hasDir("saves")) moveSaves: {
 		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
-			std.log.err("Encountered error while moving saves: {s}", .{@errorName(err)});
+			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving saves: {s}\nYou may have to move your saves manually to {s}/saves", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
+			defer stackAllocator.free(notification);
+			gui.windowlist.notification.raiseNotification(notification);
 			break :moveSaves;
 		};
 		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
