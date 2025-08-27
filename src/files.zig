@@ -74,7 +74,7 @@ pub fn deinit() void {
 	if(cubyzDir_ != null) {
 		cubyzDir_.?.close();
 	}
-	if(cubyzDirStr_.ptr != ".") {
+	if(cubyzDirStr_.ptr != ".".ptr) {
 		main.stackAllocator.free(cubyzDirStr_);
 	}
 }
