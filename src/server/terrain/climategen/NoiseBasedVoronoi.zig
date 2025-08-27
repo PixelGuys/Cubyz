@@ -56,11 +56,8 @@ const BiomePoint = struct {
 	radius: f32,
 
 	fn voronoiDistanceFunction(self: @This(), pos: Vec2i) f32 {
-		const len: f32 = @floatFromInt(vec.lengthSquare(self.pos -% pos));
+		const len: f32 = @sqrt(@as(f32, @floatFromInt(vec.lengthSquare(self.pos -% pos))));
 		const result = len*self.weight;
-		if(result > 1.0) {
-			return result + (result - 1.0)/8192.0*len;
-		}
 		return result;
 	}
 
@@ -130,6 +127,10 @@ const Chunk = struct {
 		} else if(wy & chunkSize != 0) {
 			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy +% chunkSize));
 			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy -% chunkSize));
+			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy +% chunkSize));
+			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy +% chunkSize));
+			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy -% chunkSize));
+			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy -% chunkSize));
 		}
 
 		var chunkLocalMaxBiomeRadius: i32 = 0;
@@ -158,7 +159,7 @@ const Chunk = struct {
 				.biome = drawnBiome,
 				.pos = .{x, y},
 				.height = random.nextFloat(&seed)*@as(f32, @floatFromInt(drawnBiome.maxHeight - drawnBiome.minHeight)) + @as(f32, @floatFromInt(drawnBiome.minHeight)),
-				.weight = 1.0/(std.math.pi*radius*radius),
+				.weight = 1.0/@sqrt(std.math.pi*radius*radius),
 				.radius = radius,
 			});
 		}
@@ -203,6 +204,10 @@ const GenerationStructure = struct {
 		self.chunks.deinit(allocator);
 	}
 
+	fn smoothInterpolation(x: f32) f32 {
+		return x*x*(3 - 2*x);
+	}
+
 	fn findClosestBiomeTo(self: GenerationStructure, wx: i32, wy: i32, relX: i32, relY: i32, worldSeed: u64) BiomeSample {
 		const x = wx +% relX*terrain.SurfaceMap.MapFragment.biomeSize;
 		const y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
@@ -217,6 +222,8 @@ const GenerationStructure = struct {
 		const cellX: i32 = @divFloor(relX, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
 		const cellY: i32 = @divFloor(relY, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
 		// Note that at a small loss of details we can assume that all BiomePoints are withing ±1 chunks of the current one.
+		var candidateList: main.List(struct {point: *BiomePoint, weight: f32}) = .init(main.stackAllocator);
+		defer candidateList.deinit();
 		var dx: i32 = 1;
 		while(dx <= 3) : (dx += 1) {
 			const totalX = cellX + dx;
@@ -229,28 +236,67 @@ const GenerationStructure = struct {
 				const minX = x -% 3*chunk.maxBiomeRadius;
 				const maxX = x +% 3*chunk.maxBiomeRadius;
 				const list = chunk.biomesSortedByX[Chunk.getStartCoordinate(minX, chunk.biomesSortedByX)..];
-				for(list) |biomePoint| {
+				for(list) |*biomePoint| {
 					if(biomePoint.pos[0] -% maxX >= 0) break;
-					const dist = biomePoint.voronoiDistanceFunction(.{x, y});
-					var weight: f32 = 1.0 - @sqrt(dist);
-					if(weight < 0.01) {
-						weight = @exp((weight - 0.01))*0.01; // Make sure the weight doesn't really become zero.
-					}
-					weight *= weight;
-					// The important bit is the ocean height, that's the only point where we actually need the transition point to be exact for beaches to occur.
-					weight /= @abs(biomePoint.height - 12);
-					height += biomePoint.height*weight;
-					roughness += biomePoint.biome.roughness*weight;
-					hills += biomePoint.biome.hills*weight;
-					mountains += biomePoint.biome.mountains*weight;
-					totalWeight += weight;
-
-					if(dist < closestDist) {
-						secondClosestDist = closestDist;
-						closestDist = dist;
-						closestBiomePoint = biomePoint;
-					}
+					candidateList.append(.{.point = biomePoint, .weight = 1});
 				}
+			}
+		}
+		// Interpolate between all pairs of biomes.
+		var i: usize = 0;
+		outer: while(i < candidateList.items.len) {
+			const dist = candidateList.items[i].point.voronoiDistanceFunction(.{x, y});
+			var j = i + 1;
+			while(j < candidateList.items.len) {
+				const dist2 = candidateList.items[j].point.voronoiDistanceFunction(.{x, y});
+				const totalDist = dist + dist2;
+				const interpolationStrength = 0.5;
+				const centerPos = totalDist*0.5;
+				const interpolationStart = centerPos - interpolationStrength*0.5;
+				const interpolationEnd = centerPos + interpolationStrength*0.5;
+				if(dist < interpolationStart) {
+					_ = candidateList.swapRemove(j);
+					continue;
+				}
+				if(dist > interpolationEnd) {
+					_ = candidateList.swapRemove(i);
+					continue :outer;
+				}
+				const interp = smoothInterpolation((dist - interpolationStart)/(interpolationEnd - interpolationStart));
+				candidateList.items[i].weight *= 1 - interp;
+				candidateList.items[j].weight *= interp;
+				j += 1;
+			}
+			i += 1;
+		}
+		for(candidateList.items) |candidate| {
+			const weight = candidate.weight;
+			height += candidate.point.height*weight;
+			totalWeight += weight;
+		}
+		for(candidateList.items) |candidate| {
+			const weight = blk: {
+				if(!candidate.point.biome.smoothBeaches) break :blk candidate.weight;
+				const maxHeight = @abs(height);
+				const noiseHeightInfluence = candidate.point.biome.roughness + candidate.point.biome.hills + candidate.point.biome.mountains;
+				break :blk candidate.weight*@min(maxHeight, noiseHeightInfluence)/noiseHeightInfluence;
+			};
+			roughness += candidate.point.biome.roughness*weight;
+			hills += candidate.point.biome.hills*weight;
+			mountains += candidate.point.biome.mountains*weight;
+		}
+		for(candidateList.items) |candidate| {
+			var dist = candidate.point.voronoiDistanceFunction(.{x, y});
+			if(@as(f32, @floatFromInt(candidate.point.biome.maxHeightLimit)) < height/totalWeight) {
+				dist += 10.0;
+			}
+			if(@as(f32, @floatFromInt(candidate.point.biome.minHeightLimit)) > height/totalWeight) {
+				dist += 10.0;
+			}
+			if(dist < closestDist) {
+				secondClosestDist = closestDist;
+				closestDist = dist;
+				closestBiomePoint = candidate.point.*;
 			}
 		}
 		std.debug.assert(totalWeight > 0);

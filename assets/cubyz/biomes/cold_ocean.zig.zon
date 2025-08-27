@@ -6,6 +6,9 @@
 	.type = .arctic_ocean,
 	.minHeight = -100,
 	.maxHeight = -22,
+	.maxHeightLimit = 7,
+	.smoothBeaches = true,
+
 	.radius = 500,
 
 	.roughness = 20,
