@@ -2,8 +2,11 @@
 	.properties = .{
 		.cold,
 	},
+	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,
+	.maxHeightLimit = 60,
+	.smoothBeaches = true,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.roughness = 10,
