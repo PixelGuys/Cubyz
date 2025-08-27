@@ -74,7 +74,7 @@ pub fn deinit() void {
 	if(cubyzDir_ != null) {
 		cubyzDir_.?.close();
 	}
-	if(!std.mem.eql(u8, cubyzDirStr_, ".")) {
+	if(cubyzDirStr_.ptr != ".") {
 		main.stackAllocator.free(cubyzDirStr_);
 	}
 }
