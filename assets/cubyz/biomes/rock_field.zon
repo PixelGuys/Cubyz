@@ -1,7 +1,7 @@
 .{
 	.properties = .{},
-	.minHeight = 12,
-	.maxHeight = 96,
+	.minHeight = 8,
+	.maxHeight = 24,
 	.hills = 5,
 	.minRadius = 12,
 	.maxRadius = 60,
