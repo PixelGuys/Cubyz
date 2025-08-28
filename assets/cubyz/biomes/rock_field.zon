@@ -1,0 +1,44 @@
+.{
+	.properties = .{},
+	.minHeight = 12,
+	.maxHeight = 96,
+	.hills = 5,
+	.minRadius = 12,
+	.maxRadius = 60,
+	.music = "cubyz:sunrise",
+
+	.validPlayerSpawn = false,
+
+	.ground_structure = .{
+		"0 to 2 cubyz:slate",
+		"0 to 1 cubyz:mossy_cobblestone",
+		"0 to 1 cubyz:cobblestone",
+		"0 to 1 cubyz:gravel",
+	},
+
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.032,
+			.block = "cubyz:slate",
+			.size = 5,
+			.size_variance = 5,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.032,
+			.block = "cubyz:mossy_cobblestone",
+			.size = 5,
+			.size_variance = 5,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:gravel",
+			.chance = 0.048,
+			.width = 6,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
+		},
+	},
+}
