@@ -168,7 +168,7 @@ const GenerationStructure = struct {
 			.{1, 0},
 			.{1, 1},
 		};
-		const neighborOffsets: [4][]const [2] i32 = .{
+		const neighborOffsets: [4][]const [2]i32 = .{
 			&.{},
 			&.{.{0, -1}, .{0, 1}},
 			&.{.{-1, 0}, .{1, 0}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}},
