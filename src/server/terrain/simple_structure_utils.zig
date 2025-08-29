@@ -24,7 +24,7 @@ pub const BlockSelector = struct {
 			},
 			.array => {
 				items = allocator.alloc(Entry, zon.array.items.len);
-				for (0.., items) |i, *item| {
+				for(0.., items) |i, *item| {
 					const element = zon.array.items[i];
 					if(element == .string or element == .stringOwned) {
 						item.* = .{
@@ -45,7 +45,7 @@ pub const BlockSelector = struct {
 					.block = main.blocks.parseBlock(defaultBlock),
 					.chance = 1.0,
 				};
-			}
+			},
 		}
 		return .{
 			.blocks = .init(allocator, items),
