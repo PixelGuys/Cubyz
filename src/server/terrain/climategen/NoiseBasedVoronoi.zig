@@ -106,33 +106,7 @@ const Chunk = struct {
 		return true;
 	}
 
-	pub fn init(allocator: NeverFailingAllocator, tree: *TreeNode, worldSeed: u64, wx: i32, wy: i32) *Chunk {
-		var neighborBuffer: [8]*Chunk = undefined;
-		var neighbors: main.ListUnmanaged(*Chunk) = .{.items = neighborBuffer[0..0], .capacity = neighborBuffer.len};
-		defer for(neighbors.items) |ch| {
-			ch.deinit(allocator);
-		};
-		// Generate the chunks in an interleaved pattern, to allow seamless infinite generation.
-		if(wx & chunkSize != 0) {
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy));
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy));
-			if(wy & chunkSize != 0) {
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy +% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy +% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy -% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy -% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy +% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy -% chunkSize));
-			}
-		} else if(wy & chunkSize != 0) {
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy +% chunkSize));
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy -% chunkSize));
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy +% chunkSize));
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy +% chunkSize));
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy -% chunkSize));
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy -% chunkSize));
-		}
-
+	pub fn init(allocator: NeverFailingAllocator, tree: *TreeNode, worldSeed: u64, wx: i32, wy: i32, neighbors: []const *const Chunk) *Chunk {
 		var chunkLocalMaxBiomeRadius: i32 = 0;
 		var seed = random.initSeed2D(worldSeed, .{wx, wy});
 		var selectedBiomes: main.utils.SortedList(BiomePoint) = .{};
@@ -147,7 +121,7 @@ const Chunk = struct {
 				rejections += 1;
 				continue :outer;
 			}
-			for(neighbors.items) |otherChunk| {
+			for(neighbors) |otherChunk| {
 				if(!checkIfBiomeIsValid(x, y, radius, otherChunk.biomesSortedByX, otherChunk.maxBiomeRadius)) {
 					rejections += 1;
 					continue :outer;
@@ -185,13 +159,38 @@ const GenerationStructure = struct {
 
 	pub fn init(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) GenerationStructure {
 		const self: GenerationStructure = .{
-			.chunks = Array2D(*Chunk).init(allocator, 4 + @divExact(width, chunkSize), 4 + @divExact(height, chunkSize)),
+			.chunks = Array2D(*Chunk).init(allocator, 8 + @divExact(width, chunkSize), 8 + @divExact(height, chunkSize)),
 		};
-		var x: u31 = 0;
-		while(x < self.chunks.width) : (x += 1) {
-			var y: u31 = 0;
-			while(y < self.chunks.height) : (y += 1) {
-				self.chunks.ptr(x, y).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% 2*chunkSize, wy +% y*chunkSize -% 2*chunkSize);
+		// Generate chunks in an interleaved pattern:
+		const offset: [4][2]u31 = .{
+			.{0, 0},
+			.{0, 1},
+			.{1, 0},
+			.{1, 1},
+		};
+		const neighborOffsets: [4][]const [2] i32 = .{
+			&.{},
+			&.{.{0, -1}, .{0, 1}},
+			&.{.{-1, 0}, .{1, 0}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}},
+			&.{.{0, -1}, .{0, 1}, .{-1, 0}, .{1, 0}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}},
+		};
+		for(0..4) |i| {
+			var x: u31 = offset[i][0];
+			while(x < self.chunks.width) : (x += 2) {
+				var y: u31 = offset[i][1];
+				while(y < self.chunks.height) : (y += 2) {
+					var neighbors: [8]*const Chunk = undefined;
+					var j: usize = 0;
+					for(neighborOffsets[i]) |neighborOffset| {
+						const nx = x + neighborOffset[0];
+						if(nx < 0 or @as(usize, @intCast(nx)) >= self.chunks.width) continue;
+						const ny = y + neighborOffset[1];
+						if(ny < 0 or @as(usize, @intCast(ny)) >= self.chunks.height) continue;
+						neighbors[j] = self.chunks.get(@intCast(nx), @intCast(ny));
+						j += 1;
+					}
+					self.chunks.ptr(x, y).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% 4*chunkSize, wy +% y*chunkSize -% 4*chunkSize, neighbors[0..j]);
+				}
 			}
 		}
 		return self;
@@ -221,15 +220,15 @@ const GenerationStructure = struct {
 		var totalWeight: f32 = 0;
 		const cellX: i32 = @divFloor(relX, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
 		const cellY: i32 = @divFloor(relY, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
-		// Note that at a small loss of details we can assume that all BiomePoints are withing ±1 chunks of the current one.
+		// Note that at a small loss of details we can assume that all BiomePoints are within ±1 chunks of the current one.
 		var candidateList: main.List(struct {point: *BiomePoint, weight: f32}) = .init(main.stackAllocator);
 		defer candidateList.deinit();
-		var dx: i32 = 1;
-		while(dx <= 3) : (dx += 1) {
+		var dx: i32 = 3;
+		while(dx <= 5) : (dx += 1) {
 			const totalX = cellX + dx;
 			if(totalX < 0 or totalX >= self.chunks.width) continue;
-			var dy: i32 = 1;
-			while(dy <= 3) : (dy += 1) {
+			var dy: i32 = 3;
+			while(dy <= 5) : (dy += 1) {
 				const totalY = cellY + dy;
 				if(totalY < 0 or totalY >= self.chunks.height) continue;
 				const chunk = self.chunks.get(@intCast(totalX), @intCast(totalY));
