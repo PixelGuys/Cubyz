@@ -12,6 +12,8 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const simple_structure_utils = terrain.biomes.simle_structure_utils;
+const BlockSelector = simple_structure_utils.BlockSelector;
 
 pub const id = "cubyz:ground_patch";
 
@@ -19,7 +21,7 @@ pub const generationMode = .floor;
 
 const GroundPatch = @This();
 
-block: main.blocks.Block,
+block: BlockSelector,
 width: f32,
 variation: f32,
 depth: i32,
@@ -28,7 +30,7 @@ smoothness: f32,
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *GroundPatch {
 	const self = arenaAllocator.create(GroundPatch);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
+		.block = BlockSelector.parse(arenaAllocator, parameters.getChild("block"), ""),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.depth = parameters.get(i32, "depth", 2),
@@ -92,7 +94,7 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				while(pz <= startHeight) : (pz += chunk.super.pos.voxelSize) {
 					if(dist <= self.smoothness or (dist - self.smoothness)/(1 - self.smoothness) < random.nextFloat(seed)) {
 						if(chunk.liesInChunk(px, py, pz)) {
-							chunk.updateBlockInGeneration(px, py, pz, self.block);
+							chunk.updateBlockInGeneration(px, py, pz, self.block.getBlock(seed));
 						}
 					}
 				}

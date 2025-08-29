@@ -12,6 +12,8 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const simple_structure_utils = terrain.biomes.simle_structure_utils;
+const BlockSelector = simple_structure_utils.BlockSelector;
 
 pub const id = "cubyz:stalagmite";
 
@@ -19,14 +21,14 @@ pub const generationMode = .floor_and_ceiling;
 
 const Stalagmite = @This();
 
-block: main.blocks.Block,
+block: BlockSelector,
 size: f32,
 sizeVariation: f32,
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *Stalagmite {
 	const self = arenaAllocator.create(Stalagmite);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite")),
+		.block = BlockSelector.parse(arenaAllocator, parameters.getChild("block"), "cubyz:stalagmite"),
 		.size = parameters.get(f32, "size", 12),
 		.sizeVariation = parameters.get(f32, "size_variation", 8),
 	};
@@ -66,7 +68,7 @@ pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, ch
 						if(x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width and z3 >= 0 and z3 < chunk.super.width) {
 							const block: main.blocks.Block = chunk.getBlock(x3, y3, z3);
 							if(block.typ == 0 or block.degradable()) {
-								chunk.updateBlockInGeneration(x3, y3, z3, self.block);
+								chunk.updateBlockInGeneration(x3, y3, z3, self.block.getBlock(seed));
 							}
 						}
 					}
