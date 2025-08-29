@@ -1,6 +1,5 @@
 compiler/
 logs/
-saves/
 zig-out/
 zig-cache/
 .zig-cache/

@@ -83,8 +83,8 @@ pub const Assets = struct {
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 		};
 	}
-	fn read(self: *Assets, allocator: NeverFailingAllocator, assetPath: []const u8) void {
-		const addons = Addon.discoverAll(main.stackAllocator, assetPath);
+	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
+		const addons = Addon.discoverAll(main.stackAllocator, assetDir, assetPath);
 		defer addons.deinit(main.stackAllocator);
 		defer for(addons.items) |*addon| addon.deinit(main.stackAllocator);
 
@@ -109,12 +109,12 @@ pub const Assets = struct {
 
 	const Addon = struct {
 		name: []const u8,
-		dir: std.fs.Dir,
+		dir: files.Dir,
 
-		fn discoverAll(allocator: NeverFailingAllocator, path: []const u8) main.ListUnmanaged(Addon) {
+		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) main.ListUnmanaged(Addon) {
 			var addons: main.ListUnmanaged(Addon) = .{};
 
-			var dir = std.fs.cwd().openDir(path, .{.iterate = true}) catch |err| {
+			var dir = assetDir.openIterableDir(path) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});
 				return addons;
 			};
@@ -127,7 +127,7 @@ pub const Assets = struct {
 			}) |addon| {
 				if(addon.kind != .directory) continue;
 
-				const directory = dir.openDir(addon.name, .{}) catch |err| {
+				const directory = dir.openDir(addon.name) catch |err| {
 					std.log.err("Got error while reading addon {s} from {s}: {s}", .{addon.name, path, @errorName(err)});
 					continue;
 				};
@@ -189,7 +189,7 @@ pub const Assets = struct {
 		};
 
 		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: []const u8, hasDefaults: bool, output: *ZonHashMap, migrations: ?*AddonNameToZonMap) void {
-			var assetsDirectory = addon.dir.openDir(assetType, .{.iterate = true}) catch |err| {
+			var assetsDirectory = addon.dir.openIterableDir(assetType) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{assetType, @errorName(err)});
 				}
@@ -201,7 +201,7 @@ pub const Assets = struct {
 			defaultsStorage.init(main.stackAllocator);
 			defer defaultsStorage.deinit();
 
-			var walker = assetsDirectory.walk(main.stackAllocator.allocator) catch unreachable;
+			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
 			while(walker.next() catch |err| blk: {
@@ -216,7 +216,7 @@ pub const Assets = struct {
 
 				const id = createAssetStringID(allocator, addon.name, entry.path);
 
-				const zon = files.Dir.init(assetsDirectory).readToZon(allocator, entry.path) catch |err| {
+				const zon = assetsDirectory.readToZon(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{assetType, entry.path, @errorName(err)});
 					continue;
 				};
@@ -226,7 +226,7 @@ pub const Assets = struct {
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}
 			if(migrations != null) blk: {
-				const zon = files.Dir.init(assetsDirectory).readToZon(allocator, "_migrations.zig.zon") catch |err| {
+				const zon = assetsDirectory.readToZon(allocator, "_migrations.zig.zon") catch |err| {
 					if(err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{assetType, addon.name});
 					break :blk;
 				};
@@ -235,7 +235,7 @@ pub const Assets = struct {
 		}
 
 		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
-			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
+			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
 				}
@@ -243,7 +243,7 @@ pub const Assets = struct {
 			};
 			defer assetsDirectory.close();
 
-			var walker = assetsDirectory.walk(main.stackAllocator.allocator) catch unreachable;
+			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
 			while(walker.next() catch |err| blk: {
@@ -257,7 +257,7 @@ pub const Assets = struct {
 
 				const id = createAssetStringID(allocator, addon.name, entry.path);
 
-				const data = files.Dir.init(assetsDirectory).read(allocator, entry.path) catch |err| {
+				const data = assetsDirectory.read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
@@ -267,14 +267,14 @@ pub const Assets = struct {
 
 		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
 			const subPath = "models";
-			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
+			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
 				}
 				return;
 			};
 			defer assetsDirectory.close();
-			var walker = assetsDirectory.walk(main.stackAllocator.allocator) catch unreachable;
+			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
 			while(walker.next() catch |err| blk: {
@@ -286,7 +286,7 @@ pub const Assets = struct {
 
 				const id = createAssetStringID(allocator, addon.name, entry.path);
 
-				const string = assetsDirectory.readFileAlloc(allocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
+				const string = assetsDirectory.read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
@@ -330,7 +330,7 @@ pub fn init() void {
 	commonAssetAllocator = commonAssetArena.allocator();
 
 	common = .init();
-	common.read(commonAssetAllocator, "assets/");
+	common.read(commonAssetAllocator, main.files.cwd(), "assets/");
 	common.log(.common);
 }
 
@@ -489,7 +489,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	const worldAllocator = worldArena.allocator();
 
 	var worldAssets = common.clone(worldAllocator);
-	worldAssets.read(worldAllocator, assetFolder);
+	worldAssets.read(worldAllocator, main.files.cubyzDir(), assetFolder);
 
 	errdefer unloadAssets();
 

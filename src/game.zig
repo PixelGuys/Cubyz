@@ -932,7 +932,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const newOuterBox = (Player.crouchingBoundingBoxExtent - Player.standingBoundingBoxExtent)*@as(Vec3d, @splat(smoothPerc)) + Player.standingBoundingBoxExtent;
 
-		Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent;
+		Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - Player.outerBoundingBoxExtent[2])};
 
 		Player.outerBoundingBoxExtent = newOuterBox;
 

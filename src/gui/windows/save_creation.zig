@@ -70,7 +70,7 @@ fn findValidFolderName(allocator: NeverFailingAllocator, name: []const u8) []con
 		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
 		defer main.stackAllocator.free(resultPath);
 
-		var dir = std.fs.cwd().openDir(resultPath, .{}) catch break;
+		var dir = main.files.cubyzDir().openDir(resultPath) catch break;
 		dir.close();
 
 		main.stackAllocator.free(resultName);
@@ -86,7 +86,7 @@ fn flawedCreateWorld() !void {
 	defer main.stackAllocator.free(worldPath);
 	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
 	defer main.stackAllocator.free(saveFolder);
-	try main.files.makeDir(saveFolder);
+	try main.files.cubyzDir().makePath(saveFolder);
 	{
 		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(generatorSettingsPath);
@@ -105,7 +105,7 @@ fn flawedCreateWorld() !void {
 		climateWavelengths.put("vegetation", 1600);
 		climateWavelengths.put("mountain", 512);
 		generatorSettings.put("climateWavelengths", climateWavelengths);
-		try main.files.writeZon(generatorSettingsPath, generatorSettings);
+		try main.files.cubyzDir().writeZon(generatorSettingsPath, generatorSettings);
 	}
 	{
 		const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{worldPath}) catch unreachable;
@@ -117,7 +117,7 @@ fn flawedCreateWorld() !void {
 		worldInfo.put("version", main.server.world_zig.worldDataVersion);
 		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
 
-		try main.files.writeZon(worldInfoPath, worldInfo);
+		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
 	}
 	{
 		const gamerulePath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{worldPath}) catch unreachable;
@@ -129,12 +129,12 @@ fn flawedCreateWorld() !void {
 		gamerules.put("cheats", allowCheats);
 		gamerules.put("testingMode", testingMode);
 
-		try main.files.writeZon(gamerulePath, gamerules);
+		try main.files.cubyzDir().writeZon(gamerulePath, gamerules);
 	}
 	{ // Make assets subfolder
 		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(assetsPath);
-		try main.files.makeDir(assetsPath);
+		try main.files.cubyzDir().makePath(assetsPath);
 	}
 	// TODO: Make the seed configurable
 	gui.closeWindowFromRef(&window);
