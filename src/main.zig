@@ -492,7 +492,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 		return;
 	}
 	std.log.info("Converting {s}:", .{jsonPath});
-	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
+	const jsonString = files.cubyzDir().read(stackAllocator, jsonPath) catch |err| {
 		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
 		return;
 	};
@@ -537,12 +537,12 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	defer stackAllocator.free(zonPath);
 	std.log.info("Outputting to {s}:", .{zonPath});
 	std.log.debug("{s}", .{zonString.items});
-	files.write(zonPath, zonString.items) catch |err| {
+	files.cubyzDir().write(zonPath, zonString.items) catch |err| {
 		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
 		return;
 	};
 	std.log.info("Deleting file {s}", .{jsonPath});
-	std.fs.cwd().deleteFile(jsonPath) catch |err| {
+	files.cubyzDir().deleteFile(jsonPath) catch |err| {
 		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
 		return;
 	};
@@ -658,6 +658,19 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
+	}
+
+	// Save migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("saves")) moveSaves: {
+		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
+			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving saves: {s}\nYou may have to move your saves manually to {s}/saves", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
+			defer stackAllocator.free(notification);
+			gui.windowlist.notification.raiseNotification(notification);
+			break :moveSaves;
+		};
+		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
+		defer stackAllocator.free(notification);
+		gui.windowlist.notification.raiseNotification(notification);
 	}
 
 	server.terrain.globalInit();
