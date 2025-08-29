@@ -12,7 +12,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const simple_structure_utils = terrain.biomes.simle_structure_utils;
+const simple_structure_utils = terrain.biomes.simple_structure_utils;
 const BlockSelector = simple_structure_utils.BlockSelector;
 
 pub const id = "cubyz:simple_tree";
