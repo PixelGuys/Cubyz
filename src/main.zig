@@ -741,6 +741,7 @@ pub fn main() void { // MARK: main()
 
 		if(shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
+			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
 				world.deinit();
 				game.world = null;
