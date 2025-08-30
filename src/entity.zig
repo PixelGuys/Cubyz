@@ -132,6 +132,9 @@ pub const ClientEntityManager = struct {
 	}
 
 	pub fn clear() void {
+		for(entities.items()) |ent| {
+			ent.deinit(main.globalAllocator);
+		}
 		entities.clearRetainingCapacity();
 		timeDifference = utils.TimeDifference{};
 	}
