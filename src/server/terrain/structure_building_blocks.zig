@@ -183,19 +183,41 @@ pub const Rotation = union(RotationMode) {
 
 pub const StructureBuildingBlock = struct {
 	id: []const u8,
-	children: []AliasTable(Child),
-	blueprints: *[4]BlueprintEntry,
+	children: []?*StructureBuildingBlock,
+	blueprints: AliasTable([4]BlueprintEntry),
 	rotation: Rotation,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
-		const blueprintId = zon.get(?[]const u8, "blueprint", null) orelse {
-			std.log.err("['{s}'] Missing blueprint field.", .{stringId});
-			return error.MissingBlueprintIdField;
-		};
-		const blueprintsTemplate = blueprintCache.get(blueprintId) orelse {
-			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, blueprintId});
-			return error.MissingBlueprint;
-		};
+		const zonBlueprintsList = zon.getChild("blueprints");
+		if(zonBlueprintsList == .null) {
+			std.log.err("['{s}'] Missing 'blueprints' field.", .{stringId});
+			return error.MissingBlueprintsField;
+		}
+		if(zonBlueprintsList != .array) {
+			std.log.err("['{s}'] 'blueprints' field must contain a list.", .{stringId});
+			return error.InvalidType;
+		}
+		if(zonBlueprintsList.array.items.len == 0) {
+			std.log.err("['{s}'] Empty 'blueprints' list not allowed.", .{stringId});
+			return error.EmptyBlueprintsList;
+		}
+		const blueprintArray = arenaAllocator.alloc([4]BlueprintEntry, zon.array.items.len);
+		for(zonBlueprintsList.array.items, 0..) |zonBlueprintConfig, index| {
+			if(zonBlueprintConfig != .object) {
+				std.log.err("['{s}'->'{}'] Invalid blueprint configuration (object expected, got {s}).", .{stringId, index, @tagName(zonBlueprintConfig)});
+				return error.InvalidBlueprintConfig;
+			}
+			const zonBlueprintId = zonBlueprintConfig.get(?[]const u8, "id", null) orelse {
+				std.log.err("['{s}'] Blueprint configuration ({}): Missing 'id' field.", .{stringId, index});
+				return error.MissingBlueprintId;
+			};
+			const blueprintsTemplate = blueprintCache.get(zonBlueprintId) orelse {
+				std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, zonBlueprintId});
+				return error.MissingBlueprint;
+			};
+			blueprintArray[index].* = blueprintsTemplate.*;
+		}
+
 		const rotationParam = zon.getChild("rotation");
 		const rotation = Rotation.fromZon(rotationParam) catch |err| blk: {
 			switch(err) {
@@ -205,18 +227,24 @@ pub const StructureBuildingBlock = struct {
 			break :blk .inherit;
 		};
 
-		const blueprints = arenaAllocator.create([4]BlueprintEntry);
-		blueprints.* = blueprintsTemplate.*;
-
 		const self = StructureBuildingBlock{
 			.id = stringId,
-			.children = arenaAllocator.alloc(AliasTable(Child), childBlockStringId.items.len),
-			.blueprints = blueprints,
+			.children = arenaAllocator.alloc(?*StructureBuildingBlock, childBlockStringId.items.len),
+			.blueprints = .init(arenaAllocator, blueprintArray),
 			.rotation = rotation,
 		};
-		const childrenZon = zon.getChild("children");
+
+		const zonChildrenDict = zon.getChild("children");
 		for(childBlockStringId.items, 0..) |colorName, colorIndex| {
-			self.children[colorIndex] = try initChildTableFromZon(stringId, colorName, colorIndex, childrenZon.getChild(colorName));
+			const childId = zonChildrenDict.get(?[]const u8, colorName, null);
+			if(childId == null) {
+				std.log.err("['{s}'->'{s}'] Child ID can not be null. To leave child undefined use empty string instead.", .{stringId, colorName});
+				return error.MissingChildId;
+			}
+			self.children[colorIndex] = null;
+			if(childId.?.len == 0) continue;
+			// Schedule child structure for resolution.
+			childrenToResolve.append(.{.parentId = stringId, .colorName = colorName, .colorIndex = colorIndex, .structureId = childId.?});
 		}
 		self.updateBlueprintChildLists();
 		return self;
@@ -272,39 +300,6 @@ pub const StructureBuildingBlock = struct {
 	}
 	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
 		return self.children[block.index].sample(seed).structure;
-	}
-};
-
-fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, zon: ZonElement) !AliasTable(Child) {
-	if(zon == .null) return .init(arenaAllocator, &.{});
-	if(zon != .array) {
-		std.log.err("['{s}'->'{s}'] Incorrect child data structure, array expected.", .{parentId, colorName});
-		return .init(arenaAllocator, &.{});
-	}
-	if(zon.array.items.len == 0) {
-		std.log.err("['{s}'->'{s}'] Empty children list not allowed. Remove 'children' field or add child structure configurations.", .{parentId, colorName});
-		return .init(arenaAllocator, &.{});
-	}
-	const list = arenaAllocator.alloc(Child, zon.array.items.len);
-	for(zon.array.items, 0..) |entry, childIndex| {
-		list[childIndex] = try Child.initFromZon(parentId, colorName, colorIndex, childIndex, entry);
-	}
-	return .init(arenaAllocator, list);
-}
-
-const Child = struct {
-	structure: ?*StructureBuildingBlock,
-	chance: f32,
-
-	fn initFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, childIndex: usize, zon: ZonElement) !Child {
-		const structureId = zon.get(?[]const u8, "structure", null);
-		if(structureId != null and structureId.?.len != 0) {
-			childrenToResolve.append(.{.parentId = parentId, .colorName = colorName, .colorIndex = colorIndex, .childIndex = childIndex, .structureId = structureId.?});
-		}
-		return .{
-			.structure = null,
-			.chance = zon.get(f32, "chance", 1.0),
-		};
 	}
 };
 
