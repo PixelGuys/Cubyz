@@ -1863,12 +1863,14 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(main.game.DamageType, self.cause);
 		}
 
-		fn deserialize(reader: *utils.BinaryReader, _: Side, _: ?*main.server.User) !AddHealth {
-			return .{
+		fn deserialize(reader: *utils.BinaryReader, _: Side, user: ?*main.server.User) !AddHealth {
+			const result: AddHealth = .{
 				.target = try reader.readInt(u32),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
 			};
+			if(user.?.id != result.target) return error.Invalid;
+			return result;
 		}
 	};
 };

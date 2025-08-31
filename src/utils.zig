@@ -1848,6 +1848,16 @@ const ReadWriteTest = struct {
 
 		try std.testing.expectEqual(expected, actual);
 	}
+	fn testInvalidFloat(comptime FloatT: type, input: FloatT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeFloat(FloatT, input);
+
+		var reader = getReader(writer.data.items);
+		const actual = reader.readFloat(FloatT);
+
+		try std.testing.expectError(error.InvalidFloat, actual);
+	}
 	fn testEnum(comptime EnumT: type, expected: EnumT) !void {
 		var writer = getWriter();
 		defer writer.deinit();
@@ -1921,8 +1931,9 @@ test "read/write float" {
 		try ReadWriteTest.testFloat(floatT, 0.0012443);
 		try ReadWriteTest.testFloat(floatT, 0.0);
 		try ReadWriteTest.testFloat(floatT, 6457.0);
-		try ReadWriteTest.testFloat(floatT, std.math.inf(floatT));
-		try ReadWriteTest.testFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, std.math.nan(floatT));
 		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
 	}
 }
