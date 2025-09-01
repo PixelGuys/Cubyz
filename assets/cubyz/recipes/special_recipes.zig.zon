@@ -24,27 +24,27 @@
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:coal", "cubyz:copper_ore"},
+		.inputs = .{"cubyz:coal_ore", "cubyz:copper_ore"},
 		.output = "cubyz:copper_ingot",
 	},
 	.{
-		.inputs = .{"cubyz:coal", "cubyz:iron_ore"},
+		.inputs = .{"cubyz:coal_ore", "cubyz:iron_ore"},
 		.output = "cubyz:iron_ingot",
 	},
 	.{
-		.inputs = .{"cubyz:coal", "cubyz:silver_ore"},
+		.inputs = .{"cubyz:coal_ore", "cubyz:silver_ore"},
 		.output = "cubyz:silver_ingot",
 	},
 	.{
-		.inputs = .{"cubyz:coal", "cubyz:gold_ore"},
+		.inputs = .{"cubyz:coal_ore", "cubyz:gold_ore"},
 		.output = "cubyz:gold_ingot",
 	},
 	.{
-		.inputs = .{"cubyz:coal", "cubyz:uranium_ore"},
+		.inputs = .{"cubyz:coal_ore", "cubyz:uranium_ore"},
 		.output = "cubyz:uranium_ingot",
 	},
 	.{
-		.inputs = .{"cubyz:coal", "cubyz:clay"},
+		.inputs = .{"cubyz:coal_ore", "cubyz:clay"},
 		.output = "cubyz:terracotta",
 	},
 	.{
@@ -56,7 +56,7 @@
 		.output = "cubyz:resin_block",
 	},
 	.{
-		.inputs = .{"4 cubyz:coal"},
+		.inputs = .{"4 cubyz:coal_ore"},
 		.output = "cubyz:coal_block",
 	},
 	.{
@@ -88,7 +88,7 @@
 		.output = "8 cubyz:glass/uranium",
 	},
 	.{
-		.inputs = .{"4 cubyz:diamond"},
+		.inputs = .{"4 cubyz:diamond_ore"},
 		.output = "cubyz:diamond_block",
 	},
 	.{
@@ -117,7 +117,7 @@
 	},
 	.{
 		.inputs = .{"cubyz:coal_block"},
-		.output = "4 cubyz:coal",
+		.output = "4 cubyz:coal_ore",
 	},
 	.{
 		.inputs = .{"cubyz:sulfur_block"},
@@ -145,11 +145,11 @@
 	},
 	.{
 		.inputs = .{"cubyz:diamond_block"},
-		.output = "4 cubyz:diamond",
+		.output = "4 cubyz:diamond_ore",
 	},
 	.{
 		.inputs = .{"cubyz:cut_diamond_block"},
-		.output = "4 cubyz:diamond",
+		.output = "4 cubyz:diamond_ore",
 	},
 	.{
 		.inputs = .{"cubyz:amber_block"},

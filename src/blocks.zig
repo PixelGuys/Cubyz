@@ -102,10 +102,6 @@ pub fn deinit() void {
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered block with id {s} twice!", .{id});
-	}
-
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
@@ -660,7 +656,7 @@ pub const meshes = struct { // MARK: meshes
 		const path = _path[0 .. _path.len - ".png".len];
 		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
 		defer main.stackAllocator.free(textureInfoPath);
-		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
+		const textureInfoZon = main.files.cwd().readToZon(main.stackAllocator, textureInfoPath) catch .null;
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
@@ -748,7 +744,7 @@ pub const meshes = struct { // MARK: meshes
 			defer main.stackAllocator.free(path1);
 			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
 			defer main.stackAllocator.free(path2);
-			if(!main.files.hasFile(path1) and !main.files.hasFile(path2)) break;
+			if(!main.files.cwd().hasFile(path1) and !main.files.cwd().hasFile(path2)) break;
 
 			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
 			defer main.stackAllocator.free(id);

@@ -5,8 +5,10 @@
 		.barren,
 		.wet,
 	},
+	.minHeightLimit = 7,
 	.minHeight = 120,
 	.maxHeight = 256,
+	.smoothBeaches = true,
 
 	.mountains = 125,
 

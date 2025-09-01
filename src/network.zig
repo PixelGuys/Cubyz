@@ -65,7 +65,10 @@ const Socket = struct {
 			.addr = destination.ip,
 		};
 		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
-			const result = posix.system.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			const sendto = struct {
+				extern "c" fn sendto(sockfd: posix.system.fd_t, buf: *const anyopaque, len: usize, flags: u32, dest_addr: ?*const posix.system.sockaddr, addrlen: posix.system.socklen_t) c_int;
+			}.sendto;
+			const result = sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
 			if(result < 0) {
 				std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())});
 			} else {
@@ -674,12 +677,12 @@ pub const Protocols = struct {
 						{
 							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 							defer main.stackAllocator.free(path);
-							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
+							var dir = try main.files.cubyzDir().openIterableDir(path);
 							defer dir.close();
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
 							arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
-							try utils.Compression.pack(dir, arrayList.writer());
+							try utils.Compression.pack(dir.dir, arrayList.writer());
 							conn.send(.fast, id, arrayList.items);
 						}
 

@@ -1022,12 +1022,6 @@ pub const ItemStack = struct { // MARK: ItemStack
 		}
 	}
 
-	pub fn store(self: *const ItemStack, allocator: NeverFailingAllocator) ZonElement {
-		const result = ZonElement.initObject(allocator);
-		self.storeToZon(allocator, result);
-		return result;
-	}
-
 	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
 		const amount = try reader.readVarInt(u16);
 		if(amount == 0) {
@@ -1121,9 +1115,6 @@ pub fn globalInit() void {
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered item with id '{s}' twice!", .{id});
-	}
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
@@ -1170,9 +1161,6 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 }
 
 pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	if(toolTypeIdToIndex.contains(id)) {
-		std.log.err("Registered tool type with id {s} twice!", .{id});
-	}
 	var slotInfos: [25]SlotInfo = @splat(.{});
 	for(zon.getChild("disabled").toSlice(), 0..) |zonDisabled, i| {
 		if(i >= 25) {
@@ -1255,7 +1243,12 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 
 pub fn registerRecipes(zon: ZonElement) void {
 	for(zon.toSlice()) |recipeZon| {
-		const recipe = parseRecipe(recipeZon) catch continue;
+		const recipe = parseRecipe(recipeZon) catch |err| {
+			const recipeString = recipeZon.toString(main.stackAllocator);
+			defer main.stackAllocator.free(recipeString);
+			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
+			continue;
+		};
 		recipeList.append(recipe);
 	}
 }

@@ -56,11 +56,8 @@ const BiomePoint = struct {
 	radius: f32,
 
 	fn voronoiDistanceFunction(self: @This(), pos: Vec2i) f32 {
-		const len: f32 = @floatFromInt(vec.lengthSquare(self.pos -% pos));
+		const len: f32 = @sqrt(@as(f32, @floatFromInt(vec.lengthSquare(self.pos -% pos))));
 		const result = len*self.weight;
-		if(result > 1.0) {
-			return result + (result - 1.0)/8192.0*len;
-		}
 		return result;
 	}
 
@@ -109,29 +106,7 @@ const Chunk = struct {
 		return true;
 	}
 
-	pub fn init(allocator: NeverFailingAllocator, tree: *TreeNode, worldSeed: u64, wx: i32, wy: i32) *Chunk {
-		var neighborBuffer: [8]*Chunk = undefined;
-		var neighbors: main.ListUnmanaged(*Chunk) = .{.items = neighborBuffer[0..0], .capacity = neighborBuffer.len};
-		defer for(neighbors.items) |ch| {
-			ch.deinit(allocator);
-		};
-		// Generate the chunks in an interleaved pattern, to allow seamless infinite generation.
-		if(wx & chunkSize != 0) {
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy));
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy));
-			if(wy & chunkSize != 0) {
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy +% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy +% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wy -% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wy -% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy +% chunkSize));
-				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy -% chunkSize));
-			}
-		} else if(wy & chunkSize != 0) {
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy +% chunkSize));
-			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy -% chunkSize));
-		}
-
+	pub fn init(allocator: NeverFailingAllocator, tree: *TreeNode, worldSeed: u64, wx: i32, wy: i32, neighbors: []const *const Chunk) *Chunk {
 		var chunkLocalMaxBiomeRadius: i32 = 0;
 		var seed = random.initSeed2D(worldSeed, .{wx, wy});
 		var selectedBiomes: main.utils.SortedList(BiomePoint) = .{};
@@ -146,7 +121,7 @@ const Chunk = struct {
 				rejections += 1;
 				continue :outer;
 			}
-			for(neighbors.items) |otherChunk| {
+			for(neighbors) |otherChunk| {
 				if(!checkIfBiomeIsValid(x, y, radius, otherChunk.biomesSortedByX, otherChunk.maxBiomeRadius)) {
 					rejections += 1;
 					continue :outer;
@@ -158,7 +133,7 @@ const Chunk = struct {
 				.biome = drawnBiome,
 				.pos = .{x, y},
 				.height = random.nextFloat(&seed)*@as(f32, @floatFromInt(drawnBiome.maxHeight - drawnBiome.minHeight)) + @as(f32, @floatFromInt(drawnBiome.minHeight)),
-				.weight = 1.0/(std.math.pi*radius*radius),
+				.weight = 1.0/@sqrt(std.math.pi*radius*radius),
 				.radius = radius,
 			});
 		}
@@ -184,13 +159,38 @@ const GenerationStructure = struct {
 
 	pub fn init(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) GenerationStructure {
 		const self: GenerationStructure = .{
-			.chunks = Array2D(*Chunk).init(allocator, 4 + @divExact(width, chunkSize), 4 + @divExact(height, chunkSize)),
+			.chunks = Array2D(*Chunk).init(allocator, 8 + @divExact(width, chunkSize), 8 + @divExact(height, chunkSize)),
 		};
-		var x: u31 = 0;
-		while(x < self.chunks.width) : (x += 1) {
-			var y: u31 = 0;
-			while(y < self.chunks.height) : (y += 1) {
-				self.chunks.ptr(x, y).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% 2*chunkSize, wy +% y*chunkSize -% 2*chunkSize);
+		// Generate chunks in an interleaved pattern:
+		const offset: [4][2]u31 = .{
+			.{0, 0},
+			.{0, 1},
+			.{1, 0},
+			.{1, 1},
+		};
+		const neighborOffsets: [4][]const [2]i32 = .{
+			&.{},
+			&.{.{0, -1}, .{0, 1}},
+			&.{.{-1, 0}, .{1, 0}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}},
+			&.{.{0, -1}, .{0, 1}, .{-1, 0}, .{1, 0}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}},
+		};
+		for(0..4) |i| {
+			var x: u31 = offset[i][0];
+			while(x < self.chunks.width) : (x += 2) {
+				var y: u31 = offset[i][1];
+				while(y < self.chunks.height) : (y += 2) {
+					var neighbors: [8]*const Chunk = undefined;
+					var j: usize = 0;
+					for(neighborOffsets[i]) |neighborOffset| {
+						const nx = x + neighborOffset[0];
+						if(nx < 0 or @as(usize, @intCast(nx)) >= self.chunks.width) continue;
+						const ny = y + neighborOffset[1];
+						if(ny < 0 or @as(usize, @intCast(ny)) >= self.chunks.height) continue;
+						neighbors[j] = self.chunks.get(@intCast(nx), @intCast(ny));
+						j += 1;
+					}
+					self.chunks.ptr(x, y).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% 4*chunkSize, wy +% y*chunkSize -% 4*chunkSize, neighbors[0..j]);
+				}
 			}
 		}
 		return self;
@@ -201,6 +201,10 @@ const GenerationStructure = struct {
 			chunk.deinit(allocator);
 		}
 		self.chunks.deinit(allocator);
+	}
+
+	fn smoothInterpolation(x: f32) f32 {
+		return x*x*(3 - 2*x);
 	}
 
 	fn findClosestBiomeTo(self: GenerationStructure, wx: i32, wy: i32, relX: i32, relY: i32, worldSeed: u64) BiomeSample {
@@ -216,41 +220,82 @@ const GenerationStructure = struct {
 		var totalWeight: f32 = 0;
 		const cellX: i32 = @divFloor(relX, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
 		const cellY: i32 = @divFloor(relY, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
-		// Note that at a small loss of details we can assume that all BiomePoints are withing ±1 chunks of the current one.
-		var dx: i32 = 1;
-		while(dx <= 3) : (dx += 1) {
+		// Note that at a small loss of details we can assume that all BiomePoints are within ±1 chunks of the current one.
+		var candidateList: main.List(struct {point: *BiomePoint, weight: f32}) = .init(main.stackAllocator);
+		defer candidateList.deinit();
+		var dx: i32 = 3;
+		while(dx <= 5) : (dx += 1) {
 			const totalX = cellX + dx;
 			if(totalX < 0 or totalX >= self.chunks.width) continue;
-			var dy: i32 = 1;
-			while(dy <= 3) : (dy += 1) {
+			var dy: i32 = 3;
+			while(dy <= 5) : (dy += 1) {
 				const totalY = cellY + dy;
 				if(totalY < 0 or totalY >= self.chunks.height) continue;
 				const chunk = self.chunks.get(@intCast(totalX), @intCast(totalY));
 				const minX = x -% 3*chunk.maxBiomeRadius;
 				const maxX = x +% 3*chunk.maxBiomeRadius;
 				const list = chunk.biomesSortedByX[Chunk.getStartCoordinate(minX, chunk.biomesSortedByX)..];
-				for(list) |biomePoint| {
+				for(list) |*biomePoint| {
 					if(biomePoint.pos[0] -% maxX >= 0) break;
-					const dist = biomePoint.voronoiDistanceFunction(.{x, y});
-					var weight: f32 = 1.0 - @sqrt(dist);
-					if(weight < 0.01) {
-						weight = @exp((weight - 0.01))*0.01; // Make sure the weight doesn't really become zero.
-					}
-					weight *= weight;
-					// The important bit is the ocean height, that's the only point where we actually need the transition point to be exact for beaches to occur.
-					weight /= @abs(biomePoint.height - 12);
-					height += biomePoint.height*weight;
-					roughness += biomePoint.biome.roughness*weight;
-					hills += biomePoint.biome.hills*weight;
-					mountains += biomePoint.biome.mountains*weight;
-					totalWeight += weight;
-
-					if(dist < closestDist) {
-						secondClosestDist = closestDist;
-						closestDist = dist;
-						closestBiomePoint = biomePoint;
-					}
+					candidateList.append(.{.point = biomePoint, .weight = 1});
 				}
+			}
+		}
+		// Interpolate between all pairs of biomes.
+		var i: usize = 0;
+		outer: while(i < candidateList.items.len) {
+			const dist = candidateList.items[i].point.voronoiDistanceFunction(.{x, y});
+			var j = i + 1;
+			while(j < candidateList.items.len) {
+				const dist2 = candidateList.items[j].point.voronoiDistanceFunction(.{x, y});
+				const totalDist = dist + dist2;
+				const interpolationStrength = 0.5;
+				const centerPos = totalDist*0.5;
+				const interpolationStart = centerPos - interpolationStrength*0.5;
+				const interpolationEnd = centerPos + interpolationStrength*0.5;
+				if(dist < interpolationStart) {
+					_ = candidateList.swapRemove(j);
+					continue;
+				}
+				if(dist > interpolationEnd) {
+					_ = candidateList.swapRemove(i);
+					continue :outer;
+				}
+				const interp = smoothInterpolation((dist - interpolationStart)/(interpolationEnd - interpolationStart));
+				candidateList.items[i].weight *= 1 - interp;
+				candidateList.items[j].weight *= interp;
+				j += 1;
+			}
+			i += 1;
+		}
+		for(candidateList.items) |candidate| {
+			const weight = candidate.weight;
+			height += candidate.point.height*weight;
+			totalWeight += weight;
+		}
+		for(candidateList.items) |candidate| {
+			const weight = blk: {
+				if(!candidate.point.biome.smoothBeaches) break :blk candidate.weight;
+				const maxHeight = @abs(height);
+				const noiseHeightInfluence = candidate.point.biome.roughness + candidate.point.biome.hills + candidate.point.biome.mountains;
+				break :blk candidate.weight*@min(maxHeight, noiseHeightInfluence)/noiseHeightInfluence;
+			};
+			roughness += candidate.point.biome.roughness*weight;
+			hills += candidate.point.biome.hills*weight;
+			mountains += candidate.point.biome.mountains*weight;
+		}
+		for(candidateList.items) |candidate| {
+			var dist = candidate.point.voronoiDistanceFunction(.{x, y});
+			if(@as(f32, @floatFromInt(candidate.point.biome.maxHeightLimit)) < height/totalWeight) {
+				dist += 10.0;
+			}
+			if(@as(f32, @floatFromInt(candidate.point.biome.minHeightLimit)) > height/totalWeight) {
+				dist += 10.0;
+			}
+			if(dist < closestDist) {
+				secondClosestDist = closestDist;
+				closestDist = dist;
+				closestBiomePoint = candidate.point.*;
 			}
 		}
 		std.debug.assert(totalWeight > 0);
@@ -277,7 +322,7 @@ const GenerationStructure = struct {
 				while(y < max[1]) : (y += 1) {
 					const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 					if(distSquare < relRadius*relRadius) {
-						if(map.map[@intFromFloat(x)][@intFromFloat(y)].biome != parentBiome) {
+						if((&map.map)[@intFromFloat(x)][@intFromFloat(y)].biome != parentBiome) {
 							return error.biomeMismatch;
 						}
 					}

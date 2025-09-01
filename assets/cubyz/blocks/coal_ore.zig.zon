@@ -9,9 +9,12 @@
 		.density = 0.5,
 	},
 	.drops = .{
-		.{.items = .{"cubyz:coal"}},
+		.{.items = .{.auto}},
 	},
 	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
 	.texture = "cubyz:coal_ore",
+	.item = .{
+		.texture = "coal.png",
+	},
 }

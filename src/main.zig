@@ -19,6 +19,7 @@ pub const JsonElement = @import("json.zig").JsonElement;
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
+pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
@@ -274,7 +275,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 // MARK: Callbacks
 fn escape() void {
 	if(gui.selectedTextInput != null) {
-		gui.selectedTextInput = null;
+		gui.setSelectedTextInput(null);
 		return;
 	}
 	if(game.world == null) return;
@@ -295,11 +296,6 @@ fn openCreativeInventory() void {
 	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
-}
-fn openSharedInventoryTesting() void {
-	if(game.world == null) return;
-	ungrabMouse();
-	gui.openWindow("shared_inventory_testing");
 }
 fn openChat() void {
 	if(game.world == null) return;
@@ -403,10 +399,10 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
 		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
 		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll},
-		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
-		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
-		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
+		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = .{.control = true}},
+		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = .{.control = true}},
+		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = .{.control = true}},
+		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = .{.control = true}},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
 		// Hotbar shortcuts:
@@ -436,8 +432,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
-
-		.{.name = "shared_inventory_testing", .key = c.GLFW_KEY_O, .pressAction = &openSharedInventoryTesting},
 	};
 
 	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
@@ -491,7 +485,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 		return;
 	}
 	std.log.info("Converting {s}:", .{jsonPath});
-	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
+	const jsonString = files.cubyzDir().read(stackAllocator, jsonPath) catch |err| {
 		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
 		return;
 	};
@@ -536,12 +530,12 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	defer stackAllocator.free(zonPath);
 	std.log.info("Outputting to {s}:", .{zonPath});
 	std.log.debug("{s}", .{zonString.items});
-	files.write(zonPath, zonString.items) catch |err| {
+	files.cubyzDir().write(zonPath, zonString.items) catch |err| {
 		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
 		return;
 	};
 	std.log.info("Deleting file {s}", .{jsonPath});
-	std.fs.cwd().deleteFile(jsonPath) catch |err| {
+	files.cubyzDir().deleteFile(jsonPath) catch |err| {
 		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
 		return;
 	};
@@ -659,6 +653,19 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("main");
 	}
 
+	// Save migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("saves")) moveSaves: {
+		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
+			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving saves: {s}\nYou may have to move your saves manually to {s}/saves", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
+			defer stackAllocator.free(notification);
+			gui.windowlist.notification.raiseNotification(notification);
+			break :moveSaves;
+		};
+		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
+		defer stackAllocator.free(notification);
+		gui.windowlist.notification.raiseNotification(notification);
+	}
+
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 
@@ -727,6 +734,7 @@ pub fn main() void { // MARK: main()
 
 		if(shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
+			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
 				world.deinit();
 				game.world = null;

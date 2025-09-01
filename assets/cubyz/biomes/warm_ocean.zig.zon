@@ -6,6 +6,8 @@
 	.radius = 500,
 	.minHeight = -100,
 	.maxHeight = -22,
+	.maxHeightLimit = 7,
+	.smoothBeaches = true,
 
 	.roughness = 10,
 	.hills = 20,

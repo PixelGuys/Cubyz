@@ -111,7 +111,7 @@ pub const ClientEntityManager = struct {
 		);
 
 		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snale.png");
-		const modelFile = main.files.read(main.stackAllocator, "assets/cubyz/entity/models/snale.obj") catch |err| blk: {
+		const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/snale.obj") catch |err| blk: {
 			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
 			break :blk &.{};
 		};
@@ -132,6 +132,9 @@ pub const ClientEntityManager = struct {
 	}
 
 	pub fn clear() void {
+		for(entities.items()) |ent| {
+			ent.deinit(main.globalAllocator);
+		}
 		entities.clearRetainingCapacity();
 		timeDifference = utils.TimeDifference{};
 	}

@@ -185,27 +185,27 @@
 	},
 
 	.{
-		.inputs = .{"cubyz:birch_planks", "cubyz:coal"},
+		.inputs = .{"cubyz:birch_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{"cubyz:baobab_planks", "cubyz:coal"},
+		.inputs = .{"cubyz:baobab_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{"cubyz:oak_planks", "cubyz:coal"},
+		.inputs = .{"cubyz:oak_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{"cubyz:mahogany_planks", "cubyz:coal"},
+		.inputs = .{"cubyz:mahogany_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{"cubyz:pine_planks", "cubyz:coal"},
+		.inputs = .{"cubyz:pine_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{"cubyz:willow_planks", "cubyz:coal"},
+		.inputs = .{"cubyz:willow_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
