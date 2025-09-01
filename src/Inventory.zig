@@ -384,7 +384,7 @@ pub const Sync = struct { // MARK: Sync
 		fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
-				.sharedTestingInventory, .recipe, .blockInventory, .playerInventory, .hand => {
+				.recipe, .blockInventory, .playerInventory, .hand => {
 					switch(source) {
 						.playerInventory, .hand => |id| {
 							if(id != user.id) {
@@ -410,7 +410,6 @@ pub const Sync = struct { // MARK: Sync
 			inventories.items[@intFromEnum(inventory.inv.id)].addUser(user, clientId);
 
 			switch(source) {
-				.sharedTestingInventory => {},
 				.blockInventory => unreachable, // Should be loaded by the block entity
 				.playerInventory, .hand => unreachable, // Should be loaded on player creation
 				.recipe => |recipe| {
@@ -1186,7 +1185,7 @@ pub const Command = struct { // MARK: Command
 				.blockInventory => |val| {
 					writer.writeVec(Vec3i, val);
 				},
-				.sharedTestingInventory, .other => {},
+				.other => {},
 				.alreadyFreed => unreachable,
 			}
 			switch(self.inv.type) {
@@ -1205,7 +1204,6 @@ pub const Command = struct { // MARK: Command
 			const sourceType = try reader.readEnum(SourceType);
 			const source: Source = switch(sourceType) {
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
-				.sharedTestingInventory => .{.sharedTestingInventory = {}},
 				.hand => .{.hand = try reader.readInt(u32)},
 				.recipe => .{
 					.recipe = blk: {
@@ -1878,7 +1876,6 @@ pub const Command = struct { // MARK: Command
 const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
-	sharedTestingInventory = 2,
 	hand = 3,
 	recipe = 4,
 	blockInventory = 5,
@@ -1887,7 +1884,6 @@ const SourceType = enum(u8) {
 pub const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: u32,
-	sharedTestingInventory: void,
 	hand: u32,
 	recipe: *const main.items.Recipe,
 	blockInventory: Vec3i,
