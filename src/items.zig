@@ -454,7 +454,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			tool.getProperty(property.destination orelse continue).* += sum;
 		}
 		if(tool.damage < 1) tool.damage = 1/(2 - tool.damage);
-		if(tool.swingTime < 1) tool.swingTime = 1/(2 - tool.swingTime);
+		if(tool.swingSpeed < 1) tool.swingSpeed = 1/(2 - tool.swingSpeed);
 		for(0..25) |i| {
 			const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for(material.modifiers) |newMod| {
@@ -601,7 +601,7 @@ pub const ToolType = struct { // MARK: ToolType
 const ToolProperty = enum {
 	damage,
 	maxDurability,
-	swingTime,
+	swingSpeed,
 
 	fn fromString(string: []const u8) ?ToolProperty {
 		return std.meta.stringToEnum(ToolProperty, string) orelse {
@@ -629,8 +629,8 @@ pub const Tool = struct { // MARK: Tool
 	durability: u32,
 	maxDurability: f32,
 
-	/// How long it takes to swing the tool in seconds.
-	swingTime: f32,
+	/// swings per second
+	swingSpeed: f32,
 
 	mass: f32,
 
@@ -677,7 +677,7 @@ pub const Tool = struct { // MARK: Tool
 			.damage = self.damage,
 			.durability = self.durability,
 			.maxDurability = self.maxDurability,
-			.swingTime = self.swingTime,
+			.swingSpeed = self.swingSpeed,
 			.mass = self.mass,
 			.handlePosition = self.handlePosition,
 			.inertiaHandle = self.inertiaHandle,
@@ -812,12 +812,12 @@ pub const Tool = struct { // MARK: Tool
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.writer().print(
 			\\{s}
-			\\Time to swing: {d:.2} s
+			\\{d:.2} swings/s
 			\\Damage: {d:.2}
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
-			self.swingTime,
+			self.swingSpeed,
 			self.damage,
 			self.durability,
 			std.math.lossyCast(u32, self.maxDurability),
