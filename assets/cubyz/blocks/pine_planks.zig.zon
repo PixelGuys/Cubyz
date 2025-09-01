@@ -10,6 +10,12 @@
 			.colors = .{
 				0xff533f27, 0xff664c2e, 0xff795a37, 0xff8c6b41, 0xffa37b46,
 			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 0.4,
+				},
+			},
 		},
 	},
 
