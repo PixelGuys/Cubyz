@@ -138,7 +138,7 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 }
 
 fn blueprintList(source: *User) void {
-	var blueprintsDir = main.files.cubyzDir().makeOpenIterablePath("blueprints") catch |err| {
+	var blueprintsDir = main.files.cubyzDir().openIterableDir("blueprints") catch |err| {
 		return sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
 	};
 	defer blueprintsDir.close();
