@@ -1874,9 +1874,9 @@ pub const Command = struct { // MARK: Command
 const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
-	hand = 2,
-	recipe = 3,
-	blockInventory = 4,
+	hand = 3,
+	recipe = 4,
+	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
 pub const Source = union(SourceType) {
