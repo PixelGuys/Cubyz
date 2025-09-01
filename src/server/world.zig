@@ -742,7 +742,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	};
 
 	fn regenerateLOD(self: *ServerWorld, newBiomeCheckSum: i64) !void {
-	std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
+		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
 		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
 		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath);
