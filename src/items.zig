@@ -1022,12 +1022,6 @@ pub const ItemStack = struct { // MARK: ItemStack
 		}
 	}
 
-	pub fn store(self: *const ItemStack, allocator: NeverFailingAllocator) ZonElement {
-		const result = ZonElement.initObject(allocator);
-		self.storeToZon(allocator, result);
-		return result;
-	}
-
 	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
 		const amount = try reader.readVarInt(u16);
 		if(amount == 0) {

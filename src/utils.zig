@@ -1656,13 +1656,13 @@ const endian: std.builtin.Endian = .big;
 pub const BinaryReader = struct {
 	remaining: []const u8,
 
-	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag};
+	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat};
 
 	pub fn init(data: []const u8) BinaryReader {
 		return .{.remaining = data};
 	}
 
-	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
 		const typeInfo = @typeInfo(T).vector;
 		var result: T = undefined;
 		inline for(0..typeInfo.len) |i| {
@@ -1707,9 +1707,11 @@ pub const BinaryReader = struct {
 		return result;
 	}
 
-	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
-		return @as(T, @bitCast(try self.readInt(IntT)));
+		const result: T = @bitCast(try self.readInt(IntT));
+		if(!std.math.isFinite(result)) return error.InvalidFloat;
+		return result;
 	}
 
 	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
@@ -1846,6 +1848,16 @@ const ReadWriteTest = struct {
 
 		try std.testing.expectEqual(expected, actual);
 	}
+	fn testInvalidFloat(comptime FloatT: type, input: FloatT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeFloat(FloatT, input);
+
+		var reader = getReader(writer.data.items);
+		const actual = reader.readFloat(FloatT);
+
+		try std.testing.expectError(error.InvalidFloat, actual);
+	}
 	fn testEnum(comptime EnumT: type, expected: EnumT) !void {
 		var writer = getWriter();
 		defer writer.deinit();
@@ -1919,8 +1931,9 @@ test "read/write float" {
 		try ReadWriteTest.testFloat(floatT, 0.0012443);
 		try ReadWriteTest.testFloat(floatT, 0.0);
 		try ReadWriteTest.testFloat(floatT, 6457.0);
-		try ReadWriteTest.testFloat(floatT, std.math.inf(floatT));
-		try ReadWriteTest.testFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, std.math.nan(floatT));
 		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
 	}
 }

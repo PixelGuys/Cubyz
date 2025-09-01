@@ -201,12 +201,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.emptyMutex.lock();
 		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
 			self.emptyMutex.unlock();
-			const zon = itemStack.store(main.stackAllocator);
-			defer zon.deinit(main.stackAllocator);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
 			if(itemStack.item) |item| {
+				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {}×{s}", .{itemStack.amount, item.id()});
 				item.deinit();
 			}
 			return;

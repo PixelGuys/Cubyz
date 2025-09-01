@@ -567,8 +567,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					};
 					defer playerData.deinit(main.stackAllocator);
 
-					std.log.debug("Migrating player data file: '{s}'", .{absolutePath});
-
 					const entryKeys: [2][]const u8 = .{
 						"playerInventory",
 						"hand",
@@ -596,12 +594,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 								const old = playerData.object.fetchPut(key, .{.stringOwned = base64Data}) catch unreachable orelse unreachable;
 								old.value.deinit(main.stackAllocator);
 							},
-							.string, .stringOwned => |field| {
-								std.log.debug("Skipping key '{s}', type is 'string', value is '{s}'", .{key, field});
-							},
-							.null => {
-								std.log.debug("Skipping key '{s}', type is 'null'", .{key});
-							},
+							.string, .stringOwned, .null => {}, // Key is skipped
 							else => |other| {
 								const representation = zon.toString(main.stackAllocator);
 								defer main.stackAllocator.free(representation);
