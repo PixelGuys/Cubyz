@@ -3,9 +3,9 @@
 	.blockHealth = 6,
 	.item = .{
 		.material = .{
-			.density = 0.8,
-			.elasticity = 2.67,
-			.hardness = 2.125,
+			.durability = 26,
+			.damage = 1.95,
+			.swingSpeed = 4.6,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff734c2f, 0xff8e5d38, 0xffa26a3f, 0xffbd7e48, 0xffcf9459,
