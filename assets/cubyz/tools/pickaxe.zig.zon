@@ -17,7 +17,7 @@
 	.parameters = .{
 		.{
 			.source = .density,
-			.destination = .swingTime,
+			.destination = .swingSpeed,
 			.matrix = .{
 				2.5, 2.0, 1.5, 1.0, 0x0,
 				2.0, 2.0, 1.5, 0x0, 0x0,
@@ -25,7 +25,7 @@
 				1.0, 0x0, 0x0, 1.0, 0x0,
 				0x0, 0x0, 0x0, 0x0, 1.0,
 			},
-			.factor = 0.25,
+			.factor = -0.25,
 			.method = .average,
 		},
 		.{
@@ -82,7 +82,7 @@
 		},
 		.{
 			.source = .elasticity,
-			.destination = .swingTime,
+			.destination = .swingSpeed,
 			.matrix = .{
 				0.0, 0.5, 2.0, 2.5, 0x0,
 				0.5, 1.5, 0.5, 0x0, 0x0,
@@ -90,7 +90,7 @@
 				2.5, 0x0, 0x0, 0.0, 0x0,
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
-			.factor = -1.0,
+			.factor = 1.0,
 			.method = .average,
 		},
 	},
