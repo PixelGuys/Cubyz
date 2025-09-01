@@ -102,7 +102,7 @@ fn sendInfoAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
 }
 
 fn openBlueprintsDir(source: *User) ?Dir {
-	return main.files.cwd().openDir("blueprints") catch |err| {
+	return main.files.cubyzDir().openDir("blueprints") catch |err| {
 		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
 		return null;
 	};
@@ -138,7 +138,7 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 }
 
 fn blueprintList(source: *User) void {
-	var blueprintsDir = std.fs.cwd().makeOpenPath("blueprints", .{.iterate = true}) catch |err| {
+	var blueprintsDir = main.files.cubyzDir().makeOpenIterablePath("blueprints") catch |err| {
 		return sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
 	};
 	defer blueprintsDir.close();
