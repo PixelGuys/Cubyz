@@ -26,18 +26,27 @@ const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig")
 pub const Inventory = @import("Inventory.zig");
 
 const Material = struct { // MARK: Material
-	density: f32 = undefined,
-	elasticity: f32 = undefined,
-	hardness: f32 = undefined,
+	damage: f32 = undefined,
+	durability: f32 = undefined,
+	swingSpeed: f32 = undefined,
 
 	textureRoughness: f32 = undefined,
 	colorPalette: []Color = undefined,
 	modifiers: []Modifier = undefined,
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
-		self.density = zon.get(f32, "density", 1.0);
-		self.elasticity = zon.get(f32, "elasticity", 1.0);
-		self.hardness = zon.get(f32, "hardness", 1.0);
+		self.damage = zon.get(?f32, "damage", null) orelse blk: {
+			std.log.err("Couldn't find material attribute 'damage'", .{});
+			break :blk 0;
+		};
+		self.durability = zon.get(?f32, "durability", null) orelse blk: {
+			std.log.err("Couldn't find material attribute 'durability'", .{});
+			break :blk 0;
+		};
+		self.swingSpeed = zon.get(?f32, "swingSpeed", null) orelse blk: {
+			std.log.err("Couldn't find material attribute 'swingSpeed'", .{});
+			break :blk 0;
+		};
 		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness", 1.0));
 		const colors = zon.getChild("colors");
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
@@ -67,10 +76,10 @@ const Material = struct { // MARK: Material
 	}
 
 	pub fn hashCode(self: Material) u32 {
-		var hash: u32 = @bitCast(self.density);
-		hash = 101*%hash +% @as(u32, @bitCast(self.density));
-		hash = 101*%hash +% @as(u32, @bitCast(self.elasticity));
-		hash = 101*%hash +% @as(u32, @bitCast(self.hardness));
+		var hash: u32 = 0;
+		hash = 101*%hash +% @as(u32, @bitCast(self.damage));
+		hash = 101*%hash +% @as(u32, @bitCast(self.durability));
+		hash = 101*%hash +% @as(u32, @bitCast(self.swingSpeed));
 		hash = 101*%hash +% @as(u32, @bitCast(self.textureRoughness));
 		hash ^= hash >> 24;
 		return hash;
@@ -170,9 +179,9 @@ const Modifier = struct {
 };
 
 const MaterialProperty = enum {
-	density,
-	elasticity,
-	hardness,
+	damage,
+	durability,
+	swingSpeed,
 
 	fn fromString(string: []const u8) ?MaterialProperty {
 		return std.meta.stringToEnum(MaterialProperty, string) orelse {
