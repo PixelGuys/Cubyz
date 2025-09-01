@@ -17,9 +17,9 @@
 	.item = .{
 		.texture = "diamond.png",
 		.material = .{
-			.density = 3.0,
-			.elasticity = 0.25,
-			.hardness = 10.0,
+			.durability = 250,
+			.damage = 9.4,
+			.swingSpeed = 1.5,
 			.textureRoughness = 0.1,
 			.colors = .{
 				0xff5d7ae4, 0xff8d85ff, 0xff78c1f9, 0xffa8f0ff, 0xffffffff,
