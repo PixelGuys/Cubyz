@@ -745,7 +745,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
 		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
-		if(main.files.cubyzDir().hasDir(mapsPath)) {
+		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath);
+		if(hasSurfaceMaps) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}
 		// Delete old LODs:
@@ -765,7 +766,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
 		blk: {
-			var dirX = main.files.cubyzDir().openIterableDir(mapsPath) catch |err| {
+			var dirX = main.files.cubyzDir().openIterableDir(path) catch |err| {
 				if(err == error.FileNotFound) break :blk;
 				return err;
 			};
