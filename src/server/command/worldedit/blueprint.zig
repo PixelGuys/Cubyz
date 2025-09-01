@@ -102,7 +102,7 @@ fn sendInfoAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
 }
 
 fn openBlueprintsDir(source: *User) ?Dir {
-	return main.files.cubyzDir().openDir("blueprints") catch |err| {
+	return main.files.cubyzDir().makeOpenPath("blueprints") catch |err| {
 		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
 		return null;
 	};
