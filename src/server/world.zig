@@ -742,15 +742,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	};
 
 	fn regenerateLOD(self: *ServerWorld, newBiomeCheckSum: i64) !void {
-		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
-		const hasSurfaceMaps = blk: {
-			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
-			defer main.stackAllocator.free(path);
-			var dir = main.files.cubyzDir().openDir(path) catch break :blk false;
-			defer dir.close();
-			break :blk true;
-		};
-		if(hasSurfaceMaps) {
+	std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
+		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
+		defer main.stackAllocator.free(mapsPath);
+		if(main.files.cubyzDir().hasDir(mapsPath)) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}
 		// Delete old LODs:
@@ -768,9 +763,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var chunkPositions = main.List(ChunkPosition).init(main.stackAllocator);
 		defer chunkPositions.deinit();
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
-		defer main.stackAllocator.free(path);
+		defer main.stackAllocator.free(mapsPath);
 		blk: {
-			var dirX = main.files.cubyzDir().openIterableDir(path) catch |err| {
+			var dirX = main.files.cubyzDir().openIterableDir(mapsPath) catch |err| {
 				if(err == error.FileNotFound) break :blk;
 				return err;
 			};
