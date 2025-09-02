@@ -6,6 +6,8 @@
 	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,
+	.fogDensity = 1.5,
+	.fogColor = 0xe2f2ff,
 	.maxHeightLimit = 60,
 	.smoothBeaches = true,
 	.minRadius = 256,
