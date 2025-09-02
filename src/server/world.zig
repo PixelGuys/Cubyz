@@ -764,7 +764,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var chunkPositions = main.List(ChunkPosition).init(main.stackAllocator);
 		defer chunkPositions.deinit();
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
-		defer main.stackAllocator.free(mapsPath);
+		defer main.stackAllocator.free(path);
 		blk: {
 			var dirX = main.files.cubyzDir().openIterableDir(path) catch |err| {
 				if(err == error.FileNotFound) break :blk;
