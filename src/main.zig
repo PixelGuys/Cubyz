@@ -297,11 +297,6 @@ fn openCreativeInventory() void {
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
-fn openSharedInventoryTesting() void {
-	if(game.world == null) return;
-	ungrabMouse();
-	gui.openWindow("shared_inventory_testing");
-}
 fn openChat() void {
 	if(game.world == null) return;
 	ungrabMouse();
@@ -437,8 +432,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
-
-		.{.name = "shared_inventory_testing", .key = c.GLFW_KEY_O, .pressAction = &openSharedInventoryTesting},
 	};
 
 	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
@@ -671,6 +664,15 @@ pub fn main() void { // MARK: main()
 		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
 		defer stackAllocator.free(notification);
 		gui.windowlist.notification.raiseNotification(notification);
+	}
+
+	// Blueprint migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("blueprints")) moveBlueprints: {
+		std.fs.rename(std.fs.cwd(), "blueprints", files.cubyzDir().dir, "blueprints") catch |err| {
+			std.log.err("Encountered error while moving blueprints: {s}\nYou may have to move your blueprints manually to {s}/blueprints", .{@errorName(err), files.cubyzDirStr()});
+			break :moveBlueprints;
+		};
+		std.log.info("Moved blueprints to {s}/blueprints", .{files.cubyzDirStr()});
 	}
 
 	server.terrain.globalInit();
