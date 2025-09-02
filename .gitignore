@@ -12,8 +12,6 @@ test.png
 /mods/*
 !/mods/cubyz
 
-blueprints/
-
 /assets/*
 !/assets/cubyz
 !/assets/backgrounds/default_background.png
