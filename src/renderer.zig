@@ -784,7 +784,7 @@ pub const Skybox = struct {
 	}
 
 	pub fn getSkyColor() Vec3f {
-		return game.fog.skyColor*@as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor)/3.0));
+		return .{0.46, 0.7, 1.0};
 	}
 
 	pub fn render() void {
