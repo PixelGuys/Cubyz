@@ -12,7 +12,7 @@
 	.maxRadius = 320,
 	.roughness = 3,
 	.hills = 1,
-	.chance = 0.5,
+	.chance = 1.0,
 	.music = "cubyz:leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
