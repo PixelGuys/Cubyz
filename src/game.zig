@@ -685,7 +685,7 @@ pub const World = struct { // MARK: World
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
-	fn dayNightLightFactor(gameTime: i64) struct{f32, Vec3f} {
+	fn dayNightLightFactor(gameTime: i64) struct {f32, Vec3f} {
 		const dayTime = @abs(@mod(gameTime, dayCycle) - dayCycle/2);
 		if(dayTime < dayCycle/4 - dayCycle/16) {
 			return .{0.1, @splat(0)};
