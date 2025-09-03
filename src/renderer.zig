@@ -535,7 +535,7 @@ pub const MenuBackGround = struct {
 		var dir = try main.files.cwd().openIterableDir("assets/backgrounds");
 		defer dir.close();
 
-		var walker = try dir.walk(main.stackAllocator.allocator);
+		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
 		var fileList = main.List([]const u8).init(main.stackAllocator);
 		defer {

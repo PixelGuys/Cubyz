@@ -221,7 +221,7 @@ pub const Assets = struct {
 					continue;
 				};
 				if(hasDefaults) {
-					zon.join(defaultsStorage.get(entry.dir, entry.path[0 .. entry.path.len - entry.basename.len]));
+					zon.join(defaultsStorage.get(main.files.Dir.init(entry.dir), entry.path[0 .. entry.path.len - entry.basename.len]));
 				}
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}

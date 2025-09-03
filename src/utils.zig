@@ -28,7 +28,7 @@ pub const Compression = struct { // MARK: Compression
 
 	pub fn pack(sourceDir: main.files.Dir, writer: anytype) !void {
 		var comp = try std.compress.flate.compressor(writer, .{});
-		var walker = try sourceDir.walk(main.stackAllocator.allocator);
+		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
@@ -47,7 +47,7 @@ pub const Compression = struct { // MARK: Compression
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
-				const fileData = try sourceDir.readFileAlloc(main.stackAllocator.allocator, relPath, std.math.maxInt(usize));
+				const fileData = try sourceDir.read(main.stackAllocator.allocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);

@@ -682,7 +682,7 @@ pub const Protocols = struct {
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
 							arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
-							try utils.Compression.pack(dir.dir, arrayList.writer());
+							try utils.Compression.pack(dir, arrayList.writer());
 							conn.send(.fast, id, arrayList.items);
 						}
 
