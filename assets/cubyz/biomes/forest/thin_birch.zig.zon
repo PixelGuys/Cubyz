@@ -27,7 +27,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mossy_cobblestone",
+			.block = "cubyz:cobblestone",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 9,
