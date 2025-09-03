@@ -215,11 +215,11 @@ pub const std_options: std.Options = .{ // MARK: std_options
 
 fn initLogging() void {
 	logFile = null;
-	std.fs.cwd().makePath("logs") catch |err| {
+	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
-	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch |err| {
+	logFile = files.cwd().createFile("logs/latest.log") catch |err| {
 		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
 		return;
 	};
@@ -229,7 +229,7 @@ fn initLogging() void {
 	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp}) catch unreachable;
 	defer stackAllocator.free(_path_str);
 
-	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
+	logFileTs = files.cwd().createFile(_path_str) catch |err| {
 		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
 		return;
 	};
@@ -552,16 +552,16 @@ pub fn main() void { // MARK: main()
 	initLogging();
 	defer deinitLogging();
 
-	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
+	if(files.cwd().openFile("settings.json")) |file| blk: { // TODO: Remove after #480
 		file.close();
 		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
-		var dir = std.fs.cwd().openDir(".", .{.iterate = true}) catch |err| {
+		var dir = files.cwd().openIterableDir(".") catch |err| {
 			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
 			break :blk;
 		};
 		defer dir.close();
 
-		var walker = dir.walk(stackAllocator.allocator) catch unreachable;
+		var walker = dir.walk(stackAllocator);
 		defer walker.deinit();
 		while(walker.next() catch |err| {
 			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});

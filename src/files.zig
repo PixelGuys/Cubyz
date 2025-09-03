@@ -155,4 +155,8 @@ pub const Dir = struct {
 	pub fn iterate(self: Dir) std.fs.Dir.Iterator {
 		return self.dir.iterate();
 	}
+
+	pub fn createFile(self: Dir, path: []const u8) !std.fs.File {
+		return self.dir.createFile(path, .{});
+	}
 };

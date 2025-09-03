@@ -705,8 +705,8 @@ pub const Protocols = struct {
 					},
 					.assets => {
 						std.log.info("Received assets.", .{});
-						std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
-						var dir = try std.fs.cwd().makeOpenPath("serverAssets", .{});
+						main.files.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
+						var dir = try main.files.cwd().openDir("serverAssets");
 						defer dir.close();
 						try utils.Compression.unpack(dir, reader.remaining);
 					},
