@@ -70,8 +70,7 @@ fn findValidFolderName(allocator: NeverFailingAllocator, name: []const u8) []con
 		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
 		defer main.stackAllocator.free(resultPath);
 
-		var dir = main.files.cubyzDir().openDir(resultPath) catch break;
-		dir.close();
+		if(!main.files.cubyzDir().hasDir(resultPath)) break;
 
 		main.stackAllocator.free(resultName);
 		resultName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_{}", .{escapedName, i}) catch unreachable;
