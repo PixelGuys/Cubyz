@@ -1207,49 +1207,101 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	std.log.debug("Registered tool: '{s}'", .{id});
 }
 
-fn parseRecipeItem(zon: ZonElement) !ItemStack {
+fn parseRecipeItem(zon: ZonElement) ![]ItemStack {
 	var id = zon.as([]const u8, "");
 	id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	var result: ItemStack = .{.amount = 1};
+	var amount: u16 = 1;
 	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
-		result.amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
+		amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
 		id = id[index + 1 ..];
 		id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	}
-	result.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound};
-	return result;
+	var items: main.List(ItemStack) = .initCapacity(arena.allocator(), 1);
+	if(id.len > 0 and id[0] == '.') {
+		const tag = Tag.get(id) orelse return error.TagNotFound;
+		var itemIterator = iterator();
+		while(itemIterator.next()) |item| {
+			if(item.hasTag(tag)) {
+				items.append(.{
+					.item = .{.baseItem = item.*},
+					.amount = amount,
+				});
+			}
+		}
+	} else {
+		items.append(.{
+			.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound},
+			.amount = amount,
+		});
+	}
+	std.debug.assert(items.items.len > 0);
+	return items.items;
 }
 
-fn parseRecipe(zon: ZonElement) !Recipe {
-	const inputs = zon.getChild("inputs").toSlice();
-	const output = try parseRecipeItem(zon.getChild("output"));
-	const recipe = Recipe{
-		.sourceItems = arena.allocator().alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = arena.allocator().alloc(u16, inputs.len),
-		.resultItem = output.item.?.baseItem,
-		.resultAmount = output.amount,
-	};
+fn generateItemCombos(items: []ZonElement) !main.List([]ItemStack) {
+	var remainingItems = items;
+	const startingParsedItems = try parseRecipeItem(remainingItems[0]);
+	var inputCombos: main.List([]ItemStack) = .initCapacity(arena.allocator(), startingParsedItems.len);
 	errdefer {
-		arena.allocator().free(recipe.sourceAmounts);
-		arena.allocator().free(recipe.sourceItems);
+		for(inputCombos.items) |combo| {
+			arena.allocator().free(combo);
+		}
+		inputCombos.deinit();
 	}
-	for(inputs, 0..) |inputZon, i| {
-		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.?.baseItem;
-		recipe.sourceAmounts[i] = input.amount;
+	for(startingParsedItems) |item| {
+		const inputs = arena.allocator().alloc(ItemStack, items.len);
+		inputs[0] = item;
+		inputCombos.appendAssumeCapacity(inputs);
 	}
-	return recipe;
+	while(remainingItems.len > 1) {
+		remainingItems = remainingItems[1..];
+		const parsedItems = try parseRecipeItem(remainingItems[0]);
+		const startIndex = inputCombos.items[0].len - remainingItems.len;
+		for(inputCombos.items) |inputs| {
+			for(parsedItems[1..]) |item| {
+				const newInputs = arena.allocator().dupe(ItemStack, inputs);
+				newInputs[startIndex] = item;
+				inputCombos.append(newInputs);
+			}
+			inputs[startIndex] = parsedItems[0];
+		}
+	}
+	return inputCombos;
+}
+
+fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
+	const inputs = zon.getChild("inputs").toSlice();
+	const items = arena.allocator().alloc(ZonElement, inputs.len + 1);
+	@memmove(items[0..inputs.len], inputs);
+	items[inputs.len] = zon.getChild("outputs");
+	errdefer arena.allocator().free(items);
+
+	const itemCombos = try generateItemCombos(items);
+	for(itemCombos.items) |itemCombo| {
+		const parsedInputs = itemCombo[0..itemCombo.len - 1];
+		const output = itemCombo[itemCombo.len - 1];
+		const recipe = Recipe{
+			.sourceItems = arena.allocator().alloc(BaseItemIndex, parsedInputs.len),
+			.sourceAmounts = arena.allocator().alloc(u16, parsedInputs.len),
+			.resultItem = output.item.?.baseItem,
+			.resultAmount = output.amount,
+		};
+		for(parsedInputs, 0..) |input, i| {
+			recipe.sourceItems[i] = input.item.?.baseItem;
+			recipe.sourceAmounts[i] = input.amount;
+		}
+		list.append(recipe);
+	}
 }
 
 pub fn registerRecipes(zon: ZonElement) void {
 	for(zon.toSlice()) |recipeZon| {
-		const recipe = parseRecipe(recipeZon) catch |err| {
+		parseRecipe(recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
-		recipeList.append(recipe);
 	}
 }
 
