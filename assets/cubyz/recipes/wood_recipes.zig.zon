@@ -1,26 +1,6 @@
 .{
 	.{
-		.inputs = .{"4 cubyz:birch_planks"},
-		.output = "cubyz:workbench",
-	},
-	.{
-		.inputs = .{"4 cubyz:baobab_planks"},
-		.output = "cubyz:workbench",
-	},
-	.{
-		.inputs = .{"4 cubyz:oak_planks"},
-		.output = "cubyz:workbench",
-	},
-	.{
-		.inputs = .{"4 cubyz:mahogany_planks"},
-		.output = "cubyz:workbench",
-	},
-	.{
-		.inputs = .{"4 cubyz:pine_planks"},
-		.output = "cubyz:workbench",
-	},
-	.{
-		.inputs = .{"4 cubyz:willow_planks"},
+		.inputs = .{"4 .planks"},
 		.output = "cubyz:workbench",
 	},
 	.{

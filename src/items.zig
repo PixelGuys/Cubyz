@@ -1218,23 +1218,23 @@ fn parseRecipeItem(zon: ZonElement) ![]ItemStack {
 	}
 	var items: main.List(ItemStack) = .initCapacity(arena.allocator(), 1);
 	if(id.len > 0 and id[0] == '.') {
-		const tag = Tag.get(id) orelse return error.TagNotFound;
+		const tag = Tag.get(id[1..]) orelse return error.TagNotFound;
 		var itemIterator = iterator();
 		while(itemIterator.next()) |item| {
-			if(item.hasTag(tag)) {
+			if(item.hasTag(tag) or (item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
 				items.append(.{
 					.item = .{.baseItem = item.*},
 					.amount = amount,
 				});
 			}
 		}
+		if(items.items.len == 0) return error.TagNotFound;
 	} else {
 		items.append(.{
 			.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound},
 			.amount = amount,
 		});
 	}
-	std.debug.assert(items.items.len > 0);
 	return items.items;
 }
 
