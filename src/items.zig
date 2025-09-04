@@ -1273,7 +1273,7 @@ fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	const inputs = zon.getChild("inputs").toSlice();
 	const items = arena.allocator().alloc(ZonElement, inputs.len + 1);
 	@memmove(items[0..inputs.len], inputs);
-	items[inputs.len] = zon.getChild("outputs");
+	items[inputs.len] = zon.getChild("output");
 	errdefer arena.allocator().free(items);
 
 	const itemCombos = try generateItemCombos(items);
