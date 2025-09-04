@@ -18,7 +18,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:gravel",
+			.block = "cubyz:moss:cubyz:gravel",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 5,
@@ -27,7 +27,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:cobblestone",
+			.block = "cubyz:moss:cubyz:cobblestone",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 9,
