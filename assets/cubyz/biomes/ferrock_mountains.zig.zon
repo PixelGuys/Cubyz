@@ -10,6 +10,8 @@
 	.maxHeight = 256,
 	.minRadius = 240,
 	.maxRadius = 256,
+	.fogDensity = 1.5,
+	.fogColor = 0xe9f2e2,
 	.roughness = 10,
 	.mountains = 20,
 	.smoothBeaches = true,
