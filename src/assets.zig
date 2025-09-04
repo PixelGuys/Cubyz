@@ -678,6 +678,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		if(addon.kind == .directory) {
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
+			// Check for access rights
 			if(!main.files.cwd().hasDir(path)) continue;
 			main.utils.file_monitor.removePath(path);
 		}
