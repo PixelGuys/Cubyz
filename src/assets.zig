@@ -641,7 +641,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		if(addon.kind == .directory) {
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
-			if(!main.files.cwd().hasDir(path)) continue;
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
 		}
 	}
