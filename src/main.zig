@@ -219,7 +219,7 @@ fn initLogging() void {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
-	logFile = files.cwd().createFile("logs/latest.log") catch |err| {
+	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch |err| {
 		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
 		return;
 	};
@@ -229,7 +229,7 @@ fn initLogging() void {
 	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp}) catch unreachable;
 	defer stackAllocator.free(_path_str);
 
-	logFileTs = files.cwd().createFile(_path_str) catch |err| {
+	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
 		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
 		return;
 	};
