@@ -203,6 +203,8 @@ pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *mai
 				reversedRecipe.sourceItems[0] = recipe.resultItem;
 				reversedRecipe.sourceAmounts[0] = recipe.resultAmount;
 				list.append(reversedRecipe);
+			} else {
+				return error.InvalidReversibleRecipe;
 			}
 		}
 	}
