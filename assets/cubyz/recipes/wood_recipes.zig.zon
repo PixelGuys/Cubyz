@@ -4,28 +4,28 @@
 		.output = "cubyz:workbench",
 	},
 	.{
-		.inputs = .{"{id}:log/{typ}"},
-		.output = "4 {id}:{typ}_planks",
+		.inputs = .{"{mod}:log/{typ}"},
+		.output = "4 {mod}:{typ}_planks",
 	},
 	.{
-		.inputs = .{"{id}:log/{typ}"},
-		.output = "2 {id}:{typ}_branch",
+		.inputs = .{"{mod}:log/{typ}"},
+		.output = "2 {mod}:{typ}_branch",
 	},
 	.{
-		.inputs = .{"{id}:{typ}_branch"},
-		.output = "2 {id}:{typ}_planks",
+		.inputs = .{"{mod}:{typ}_branch"},
+		.output = "2 {mod}:{typ}_planks",
 	},
 	.{
-		.inputs = .{"{id}:{typ}_planks"},
-		.output = "2 {id}:{typ}_fence",
+		.inputs = .{"{mod}:{typ}_planks"},
+		.output = "2 {mod}:{typ}_fence",
 	},
 	.{
-		.inputs = .{"{id}:{typ}_planks"},
-		.output = "{id}:sign/{typ}",
+		.inputs = .{"{mod}:{typ}_planks"},
+		.output = "{mod}:sign/{typ}",
 	},
 	.{
-		.inputs = .{"4 {id}:{typ}_planks"},
-		.output = "{id}:chest/{typ}",
+		.inputs = .{"4 {mod}:{typ}_planks"},
+		.output = "{mod}:chest/{typ}",
 	},
 	.{
 		.inputs = .{"cubyz:log/cactus"},
