@@ -1390,6 +1390,19 @@ fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 			recipe.sourceAmounts[i] = input.amount;
 		}
 		list.append(recipe);
+		if(zon.get(bool, "reversible", false)) {
+			if(recipe.sourceItems.len == 0) {
+				var reversedRecipe = Recipe{
+					.sourceItems = arena.allocator().alloc(BaseItemIndex, 1),
+					.sourceAmounts = arena.allocator().alloc(u16, 1),
+					.resultItem = recipe.sourceItems[0],
+					.resultAmount = recipe.sourceAmounts[0],
+				};
+				reversedRecipe.sourceItems[0] = recipe.resultItem;
+				reversedRecipe.sourceAmounts = recipe.resultAmount;
+				list.append(reversedRecipe);
+			}
+		}
 	}
 }
 
