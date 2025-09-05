@@ -1079,10 +1079,6 @@ pub fn iterator() std.StringHashMap(BaseItemIndex).ValueIterator {
 	return reverseIndices.valueIterator();
 }
 
-pub fn idIterator() std.StringHashMap(BaseItemIndex).Iterator {
-	return reverseIndices.iterator();
-}
-
 pub fn recipes() []Recipe {
 	return recipeList.items;
 }

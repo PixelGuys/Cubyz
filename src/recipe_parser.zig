@@ -79,37 +79,33 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 		id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	}
 	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
-	if(id.len > 0 and id[0] == '.') {
-		const tag = Tag.get(id[1..]) orelse return error.TagNotFound;
-		var itemIterator = items.iterator();
-		while(itemIterator.next()) |item| {
-			if(item.hasTag(tag) or (item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
-				itemPairs.append(.{
-					.item = .{
-						.item = .{.baseItem = item.*},
-						.amount = amount,
-					},
-					.keys = keys.clone() catch unreachable,
-				});
+	var iterator = std.mem.splitScalar(u8, id, '.');
+	id = iterator.next().?;
+	var tags: main.List(Tag) = .init(allocator);
+	defer tags.deinit();
+	while(iterator.next()) |tagString| {
+		tags.append(Tag.get(tagString) orelse return error.TagNotFound);
+	}
+
+	var newKeys = keys.clone() catch unreachable;
+	defer newKeys.deinit();
+	var iter = items.iterator();
+	loop: while(iter.next()) |item| {
+		if(id.len > 0 and !matchWithKeys(allocator, item.id(), id, &newKeys)) continue;
+		
+		for(tags.items) |tag| {
+			if(!item.hasTag(tag) and !(item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
+				continue :loop;
 			}
 		}
-		if(itemPairs.items.len == 0) return error.TagNotFound;
-	} else {
-		var newKeys = keys.clone() catch unreachable;
-		defer newKeys.deinit();
-		var iter = items.idIterator();
-		while(iter.next()) |kv| {
-			if(matchWithKeys(allocator, kv.key_ptr.*, id, &newKeys)) {
-				itemPairs.append(.{
-					.item = .{
-						.item = .{.baseItem = kv.value_ptr.*},
-						.amount = amount,
-					},
-					.keys = newKeys,
-				});
-				newKeys = keys.clone() catch unreachable;
-			}
-		}
+		itemPairs.append(.{
+			.item = .{
+				.item = .{.baseItem = item.*},
+				.amount = amount,
+			},
+			.keys = newKeys,
+		});
+		newKeys = keys.clone() catch unreachable;
 	}
 	return itemPairs.items;
 }
@@ -137,8 +133,8 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	for(startingParsedItems) |item| {
 		const inputs = allocator.alloc(ItemStack, recipe.len);
 		inputs[0] = item.item;
-		inputCombos.appendAssumeCapacity(inputs);
-		keyList.appendAssumeCapacity(item.keys);
+		inputCombos.append(inputs);
+		keyList.append(item.keys);
 	}
 	while(remainingItems.len > 1) {
 		remainingItems = remainingItems[1..];
