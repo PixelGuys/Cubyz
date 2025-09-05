@@ -1308,7 +1308,6 @@ fn parseRecipeItem(zon: ZonElement, keys: *const std.StringHashMap([]const u8)) 
 				newKeys = keys.clone() catch unreachable;
 			}
 		}
-		if(items.items.len == 0) return error.ItemNotFound;
 	}
 	return items.items;
 }
@@ -1342,8 +1341,18 @@ fn generateItemCombos(items: []ZonElement) !main.List([]ItemStack) {
 	while(remainingItems.len > 1) {
 		remainingItems = remainingItems[1..];
 		const startIndex = inputCombos.items[0].len - remainingItems.len;
-		for(keyList.items, inputCombos.items) |*keys, inputs| {
+		var i: usize = 0;
+		while(i < keyList.items.len) {
+			var keys = &keyList.items[i];
+			const inputs = inputCombos.items[i];
 			const parsedItems = try parseRecipeItem(remainingItems[0], keys);
+			defer arena.allocator().free(parsedItems);
+			if(parsedItems.len == 0) {
+				keys.deinit();
+				_ = keyList.swapRemove(i);
+				arena.allocator().free(inputCombos.swapRemove(i));
+				continue;
+			}
 			for(parsedItems[1..]) |item| {
 				const newInputs = arena.allocator().dupe(ItemStack, inputs);
 				newInputs[startIndex] = item.item;
@@ -1353,6 +1362,7 @@ fn generateItemCombos(items: []ZonElement) !main.List([]ItemStack) {
 			inputs[startIndex] = parsedItems[0].item;
 			keys.deinit();
 			keys.* = parsedItems[0].keys;
+			i += 1;
 		}
 	}
 	return inputCombos;
