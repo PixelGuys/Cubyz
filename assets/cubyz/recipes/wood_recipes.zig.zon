@@ -4,8 +4,8 @@
 		.output = "cubyz:workbench",
 	},
 	.{
-		.inputs = .{"cubyz:log/birch"},
-		.output = "4 cubyz:birch_planks",
+		.inputs = .{"{id}:log/{typ}"},
+		.output = "4 {id}:{typ}_planks",
 	},
 	.{
 		.inputs = .{"cubyz:log/birch"},
@@ -17,19 +17,11 @@
 	},
 	.{
 		.inputs = .{"cubyz:log/baobab"},
-		.output = "4 cubyz:baobab_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/baobab"},
 		.output = "2 cubyz:baobab_branch",
 	},
 	.{
 		.inputs = .{"cubyz:baobab_branch"},
 		.output = "2 cubyz:baobab_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/oak"},
-		.output = "4 cubyz:oak_planks",
 	},
 	.{
 		.inputs = .{"cubyz:log/oak"},
@@ -41,10 +33,6 @@
 	},
 	.{
 		.inputs = .{"cubyz:log/mahogany"},
-		.output = "4 cubyz:mahogany_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/mahogany"},
 		.output = "2 cubyz:mahogany_branch",
 	},
 	.{
@@ -53,19 +41,11 @@
 	},
 	.{
 		.inputs = .{"cubyz:log/pine"},
-		.output = "4 cubyz:pine_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/pine"},
 		.output = "2 cubyz:pine_branch",
 	},
 	.{
 		.inputs = .{"cubyz:pine_branch"},
 		.output = "2 cubyz:pine_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/willow"},
-		.output = "4 cubyz:willow_planks",
 	},
 	.{
 		.inputs = .{"cubyz:log/willow"},

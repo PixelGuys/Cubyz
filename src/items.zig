@@ -1207,7 +1207,67 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	std.log.debug("Registered tool: '{s}'", .{id});
 }
 
-fn parseRecipeItem(zon: ZonElement) ![]ItemStack {
+fn matchWithKeys(target: []const u8, pattern: []const u8, keys: *std.StringHashMap([]const u8)) bool {
+	if(!std.mem.containsAtLeastScalar(u8, pattern, 1, '{')) {
+		return std.mem.eql(u8, target, pattern);
+	}
+	const Segment = union(enum) {literal: []const u8, symbol: []const u8};
+	var segments: main.List(Segment) = .init(arena.allocator());
+	defer segments.deinit();
+	var idx: usize = 0;
+	while(idx < pattern.len) {
+		if(pattern[idx] == '{') {
+			idx += 1;
+			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return false;
+			if(idx == endIndex) return false;
+			const symbol = pattern[idx..endIndex];
+			if(keys.get(symbol)) |literal| {
+				segments.append(.{.literal = literal});
+			} else {
+				segments.append(.{.symbol = symbol});
+			}
+			idx = endIndex + 1;
+		} else {
+			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '{') orelse pattern.len;
+			segments.append(.{.literal = pattern[idx..endIndex]});
+			idx = endIndex;
+		}
+	}
+	idx = 0;
+	var newKeys: std.StringHashMap([]const u8) = .init(arena.allocator().allocator);
+	defer newKeys.deinit();
+	for(0.., segments.items) |i, segment| {
+		switch (segment) {
+			.literal => |literal| {
+				if(literal.len + idx > segments.items.len) return false;
+				if(!std.mem.eql(u8, target[idx..idx + literal.len], literal)) return false;
+				idx += literal.len;
+			},
+			.symbol => |symbol| {
+				const endIndex: usize = if(i + 1 < segments.items.len) blk: {
+					const nextSegment = segments.items[i + 1];
+					if(nextSegment == .symbol) return false;
+					break :blk std.mem.indexOfPos(u8, target, idx, nextSegment.literal) orelse return false;
+				} else target.len;
+				newKeys.put(symbol, target[idx..endIndex]) catch unreachable;
+				idx = endIndex;
+			}
+		}
+	}
+	if(idx == target.len) {
+		var iter = newKeys.iterator();
+		while(iter.next()) |entry| {
+			keys.put(entry.key_ptr.*, entry.value_ptr.*) catch unreachable;
+		}
+		return true;
+	} else {
+		return false;
+	}
+}
+
+const ItemKeyPair = struct{item: ItemStack, keys: std.StringHashMap([]const u8)};
+
+fn parseRecipeItem(zon: ZonElement, keys: *const std.StringHashMap([]const u8)) ![]ItemKeyPair {
 	var id = zon.as([]const u8, "");
 	id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	var amount: u16 = 1;
@@ -1216,31 +1276,49 @@ fn parseRecipeItem(zon: ZonElement) ![]ItemStack {
 		id = id[index + 1 ..];
 		id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	}
-	var items: main.List(ItemStack) = .initCapacity(arena.allocator(), 1);
+	var items: main.List(ItemKeyPair) = .initCapacity(arena.allocator(), 1);
 	if(id.len > 0 and id[0] == '.') {
 		const tag = Tag.get(id[1..]) orelse return error.TagNotFound;
 		var itemIterator = iterator();
 		while(itemIterator.next()) |item| {
 			if(item.hasTag(tag) or (item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
 				items.append(.{
-					.item = .{.baseItem = item.*},
-					.amount = amount,
+					.item = .{
+						.item = .{.baseItem = item.*},
+						.amount = amount,
+					},
+					.keys = keys.clone() catch unreachable,
 				});
 			}
 		}
 		if(items.items.len == 0) return error.TagNotFound;
 	} else {
-		items.append(.{
-			.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound},
-			.amount = amount,
-		});
+		var newKeys = keys.clone() catch unreachable;
+		defer newKeys.deinit();
+		var iter = reverseIndices.iterator();
+		while(iter.next()) |kv| {
+			if(matchWithKeys(kv.key_ptr.*, id, &newKeys)) {
+				items.append(.{
+					.item = .{
+						.item = .{.baseItem = kv.value_ptr.*},
+						.amount = amount,
+					},
+					.keys = newKeys,
+				});
+				newKeys = keys.clone() catch unreachable;
+			}
+		}
+		if(items.items.len == 0) return error.ItemNotFound;
 	}
 	return items.items;
 }
 
 fn generateItemCombos(items: []ZonElement) !main.List([]ItemStack) {
 	var remainingItems = items;
-	const startingParsedItems = try parseRecipeItem(remainingItems[0]);
+	var emptyKeys: std.StringHashMap([]const u8) = .init(arena.allocator().allocator);
+	defer emptyKeys.deinit();
+	const startingParsedItems = try parseRecipeItem(remainingItems[0], &emptyKeys);
+	defer arena.allocator().free(startingParsedItems);
 	var inputCombos: main.List([]ItemStack) = .initCapacity(arena.allocator(), startingParsedItems.len);
 	errdefer {
 		for(inputCombos.items) |combo| {
@@ -1248,22 +1326,33 @@ fn generateItemCombos(items: []ZonElement) !main.List([]ItemStack) {
 		}
 		inputCombos.deinit();
 	}
+	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena.allocator(), startingParsedItems.len);
+	defer {
+		for(keyList.items) |*keys| {
+			keys.deinit();
+		}
+		keyList.deinit();
+	}
 	for(startingParsedItems) |item| {
 		const inputs = arena.allocator().alloc(ItemStack, items.len);
-		inputs[0] = item;
+		inputs[0] = item.item;
 		inputCombos.appendAssumeCapacity(inputs);
+		keyList.appendAssumeCapacity(item.keys);
 	}
 	while(remainingItems.len > 1) {
 		remainingItems = remainingItems[1..];
-		const parsedItems = try parseRecipeItem(remainingItems[0]);
 		const startIndex = inputCombos.items[0].len - remainingItems.len;
-		for(inputCombos.items) |inputs| {
+		for(keyList.items, inputCombos.items) |*keys, inputs| {
+			const parsedItems = try parseRecipeItem(remainingItems[0], keys);
 			for(parsedItems[1..]) |item| {
 				const newInputs = arena.allocator().dupe(ItemStack, inputs);
-				newInputs[startIndex] = item;
+				newInputs[startIndex] = item.item;
 				inputCombos.append(newInputs);
+				keyList.append(item.keys);
 			}
-			inputs[startIndex] = parsedItems[0];
+			inputs[startIndex] = parsedItems[0].item;
+			keys.deinit();
+			keys.* = parsedItems[0].keys;
 		}
 	}
 	return inputCombos;
@@ -1274,7 +1363,7 @@ fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	const items = arena.allocator().alloc(ZonElement, inputs.len + 1);
 	@memmove(items[0..inputs.len], inputs);
 	items[inputs.len] = zon.getChild("output");
-	errdefer arena.allocator().free(items);
+	defer arena.allocator().free(items);
 
 	const itemCombos = try generateItemCombos(items);
 	for(itemCombos.items) |itemCombo| {
