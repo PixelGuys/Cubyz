@@ -1239,7 +1239,7 @@ fn matchWithKeys(target: []const u8, pattern: []const u8, keys: *std.StringHashM
 	for(0.., segments.items) |i, segment| {
 		switch (segment) {
 			.literal => |literal| {
-				if(literal.len + idx > segments.items.len) return false;
+				if(literal.len + idx > target.len) return false;
 				if(!std.mem.eql(u8, target[idx..idx + literal.len], literal)) return false;
 				idx += literal.len;
 			},
