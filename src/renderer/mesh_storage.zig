@@ -49,9 +49,9 @@ pub const BlockUpdate = struct {
 	y: i32,
 	z: i32,
 	newBlock: blocks.Block,
-	blockEntityData: []const u8,
+	blockEntityData: ?[]const u8,
 
-	pub fn init(pos: Vec3i, block: blocks.Block, blockEntityData: []const u8) BlockUpdate {
+	pub fn init(pos: Vec3i, block: blocks.Block, blockEntityData: ?[]const u8) BlockUpdate {
 		return .{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = blockEntityData};
 	}
 
@@ -61,12 +61,14 @@ pub const BlockUpdate = struct {
 			.y = template.y,
 			.z = template.z,
 			.newBlock = template.newBlock,
-			.blockEntityData = allocator.dupe(u8, template.blockEntityData),
+			.blockEntityData = if(template.blockEntityData) |blockEntityData| allocator.dupe(u8, blockEntityData) else null,
 		};
 	}
 
 	pub fn deinitManaged(self: BlockUpdate, allocator: main.heap.NeverFailingAllocator) void {
-		allocator.free(self.blockEntityData);
+		if(self.blockEntityData) |blockEntityData| {
+			allocator.free(blockEntityData);
+		}
 	}
 };
 
