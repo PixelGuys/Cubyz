@@ -201,7 +201,7 @@ pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *mai
 					.resultAmount = recipe.sourceAmounts[0],
 				};
 				reversedRecipe.sourceItems[0] = recipe.resultItem;
-				reversedRecipe.sourceAmounts = recipe.resultAmount;
+				reversedRecipe.sourceAmounts[0] = recipe.resultAmount;
 				list.append(reversedRecipe);
 			}
 		}
