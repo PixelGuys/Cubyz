@@ -682,7 +682,7 @@ pub const Protocols = struct {
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
 							arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
-							try utils.Compression.pack(dir.dir, arrayList.writer());
+							try utils.Compression.pack(dir, arrayList.writer());
 							conn.send(.fast, id, arrayList.items);
 						}
 
@@ -705,8 +705,8 @@ pub const Protocols = struct {
 					},
 					.assets => {
 						std.log.info("Received assets.", .{});
-						std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
-						var dir = try std.fs.cwd().makeOpenPath("serverAssets", .{});
+						main.files.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
+						var dir = try main.files.cwd().openDir("serverAssets");
 						defer dir.close();
 						try utils.Compression.unpack(dir, reader.remaining);
 					},

@@ -704,13 +704,13 @@ pub const meshes = struct { // MARK: meshes
 				return result;
 			}
 		}
-		const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
+		const file = main.files.cwd().openFile(path) catch |err| blk: {
 			if(err != error.FileNotFound) {
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
 			main.stackAllocator.free(path);
 			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
+			break :blk main.files.cwd().openFile(path) catch |err2| {
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
 			};

@@ -532,10 +532,10 @@ pub const MenuBackGround = struct {
 
 		// Load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
 		texture = .{.textureID = 0};
-		var dir = try std.fs.cwd().makeOpenPath("assets/backgrounds", .{.iterate = true});
+		var dir = try main.files.cwd().openIterableDir("assets/backgrounds");
 		defer dir.close();
 
-		var walker = try dir.walk(main.stackAllocator.allocator);
+		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
 		var fileList = main.List([]const u8).init(main.stackAllocator);
 		defer {
