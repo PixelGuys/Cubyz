@@ -87,16 +87,18 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 		tags.append(Tag.get(tagString) orelse return error.TagNotFound);
 	}
 
-	var newKeys = keys.clone() catch unreachable;
-	defer newKeys.deinit();
 	var iter = items.iterator();
 	loop: while(iter.next()) |item| {
-		if(id.len > 0 and !matchWithKeys(allocator, item.id(), id, &newKeys)) continue;
-		
 		for(tags.items) |tag| {
 			if(!item.hasTag(tag) and !(item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
 				continue :loop;
 			}
+		}
+
+		var newKeys = keys.clone() catch unreachable;
+		if(id.len > 0 and !matchWithKeys(allocator, item.id(), id, &newKeys)) {
+			newKeys.deinit();
+			continue;
 		}
 		itemPairs.append(.{
 			.item = .{
@@ -105,7 +107,6 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 			},
 			.keys = newKeys,
 		});
-		newKeys = keys.clone() catch unreachable;
 	}
 	return itemPairs.items;
 }
@@ -141,12 +142,11 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 		const startIndex = inputCombos.items[0].len - remainingItems.len;
 		var i: usize = 0;
 		while(i < keyList.items.len) {
-			var keys = &keyList.items[i];
+			const keys = &keyList.items[i];
 			const inputs = inputCombos.items[i];
 			const parsedItems = try parseRecipeItem(allocator, remainingItems[0], keys);
 			defer allocator.free(parsedItems);
 			if(parsedItems.len == 0) {
-				keys.deinit();
 				_ = keyList.swapRemove(i);
 				allocator.free(inputCombos.swapRemove(i));
 				continue;
@@ -158,7 +158,6 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 				keyList.append(item.keys);
 			}
 			inputs[startIndex] = parsedItems[0].item;
-			keys.deinit();
 			keys.* = parsedItems[0].keys;
 			i += 1;
 		}
