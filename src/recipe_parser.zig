@@ -39,10 +39,10 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 	var newKeys: std.StringHashMap([]const u8) = .init(allocator.allocator);
 	defer newKeys.deinit();
 	for(0.., segments.items) |i, segment| {
-		switch (segment) {
+		switch(segment) {
 			.literal => |literal| {
 				if(literal.len + idx > target.len) return false;
-				if(!std.mem.eql(u8, target[idx..idx + literal.len], literal)) return false;
+				if(!std.mem.eql(u8, target[idx .. idx + literal.len], literal)) return false;
 				idx += literal.len;
 			},
 			.symbol => |symbol| {
@@ -53,7 +53,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 				} else target.len;
 				newKeys.put(symbol, target[idx..endIndex]) catch unreachable;
 				idx = endIndex;
-			}
+			},
 		}
 	}
 	if(idx == target.len) {
@@ -67,7 +67,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 	}
 }
 
-const ItemKeyPair = struct{item: ItemStack, keys: std.StringHashMap([]const u8)};
+const ItemKeyPair = struct {item: ItemStack, keys: std.StringHashMap([]const u8)};
 
 fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *const std.StringHashMap([]const u8)) ![]ItemKeyPair {
 	var id = zon.as([]const u8, "");
@@ -174,7 +174,7 @@ pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *mai
 
 	const itemCombos = try generateItemCombos(allocator, recipeItems);
 	for(itemCombos.items) |itemCombo| {
-		const parsedInputs = itemCombo[0..itemCombo.len - 1];
+		const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
 		const output = itemCombo[itemCombo.len - 1];
 		const recipe = Recipe{
 			.sourceItems = allocator.alloc(BaseItemIndex, parsedInputs.len),
