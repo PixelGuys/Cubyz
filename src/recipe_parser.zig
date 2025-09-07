@@ -13,7 +13,6 @@ const Segment = union(enum) {literal: []const u8, symbol: []const u8};
 
 fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *const std.StringHashMap([]const u8)) !main.List(Segment) {
 	var segments: main.List(Segment) = .init(allocator);
-	defer segments.deinit();
 	var idx: usize = 0;
 	while(idx < pattern.len) {
 		if(pattern[idx] == '{') {
@@ -98,6 +97,9 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 	defer pattern.deinit();
 	if(pattern.items.len == 1 and pattern.items[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return itemPairs;
+		for(tags.items) |tag| {
+			if(!item.hasTag(tag) and !(item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) return itemPairs;
+		}
 		itemPairs.append(.{
 			.item = .{
 				.item = .{.baseItem = item},
