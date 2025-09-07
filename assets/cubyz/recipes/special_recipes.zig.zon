@@ -134,5 +134,6 @@
 	.{
 		.inputs = .{"cubyz:gravel"},
 		.output = "4 cubyz:pebbles",
+		.reversible = true,
 	},
 }

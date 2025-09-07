@@ -206,7 +206,7 @@ pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *mai
 		}
 		list.append(recipe);
 		if(zon.get(bool, "reversible", false)) {
-			if(recipe.sourceItems.len == 0) {
+			if(recipe.sourceItems.len == 1) {
 				var reversedRecipe = Recipe{
 					.sourceItems = list.allocator.alloc(BaseItemIndex, 1),
 					.sourceAmounts = list.allocator.alloc(u16, 1),
