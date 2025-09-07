@@ -9,9 +9,13 @@ const Recipe = items.Recipe;
 const BaseItemIndex = items.BaseItemIndex;
 const Block = main.blocks.Block;
 
-fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const u8, keys: *std.StringHashMap([]const u8)) bool {
+fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const u8, keys: *const std.StringHashMap([]const u8)) ?std.StringHashMap([]const u8) {
 	if(!std.mem.containsAtLeastScalar(u8, pattern, 1, '{')) {
-		return std.mem.eql(u8, target, pattern);
+		if(std.mem.eql(u8, target, pattern)) {
+			return keys.clone() catch unreachable;
+		} else {
+			return null;
+		}
 	}
 	const Segment = union(enum) {literal: []const u8, symbol: []const u8};
 	var segments: main.List(Segment) = .init(allocator);
@@ -20,8 +24,8 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 	while(idx < pattern.len) {
 		if(pattern[idx] == '{') {
 			idx += 1;
-			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return false;
-			if(idx == endIndex) return false;
+			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return null;
+			if(idx == endIndex) return null;
 			const symbol = pattern[idx..endIndex];
 			if(keys.get(symbol)) |literal| {
 				segments.append(.{.literal = literal});
@@ -36,20 +40,27 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 		}
 	}
 	idx = 0;
-	var newKeys: std.StringHashMap([]const u8) = .init(allocator.allocator);
-	defer newKeys.deinit();
+	var newKeys = keys.clone() catch unreachable;
 	for(0.., segments.items) |i, segment| {
 		switch(segment) {
 			.literal => |literal| {
-				if(literal.len + idx > target.len) return false;
-				if(!std.mem.eql(u8, target[idx .. idx + literal.len], literal)) return false;
+				if(literal.len + idx > target.len or !std.mem.eql(u8, target[idx .. idx + literal.len], literal)) {
+					newKeys.deinit();
+					return null;
+				}
 				idx += literal.len;
 			},
 			.symbol => |symbol| {
 				const endIndex: usize = if(i + 1 < segments.items.len) blk: {
 					const nextSegment = segments.items[i + 1];
-					if(nextSegment == .symbol) return false;
-					break :blk std.mem.indexOfPos(u8, target, idx, nextSegment.literal) orelse return false;
+					if(nextSegment == .symbol) {
+						newKeys.deinit();
+						return null;
+					}
+					break :blk std.mem.indexOfPos(u8, target, idx, nextSegment.literal) orelse {
+						newKeys.deinit();
+						return null;
+					};
 				} else target.len;
 				newKeys.put(symbol, target[idx..endIndex]) catch unreachable;
 				idx = endIndex;
@@ -57,13 +68,10 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 		}
 	}
 	if(idx == target.len) {
-		var iter = newKeys.iterator();
-		while(iter.next()) |entry| {
-			keys.put(entry.key_ptr.*, entry.value_ptr.*) catch unreachable;
-		}
-		return true;
+		return newKeys;
 	} else {
-		return false;
+		newKeys.deinit();
+		return null;
 	}
 }
 
@@ -95,18 +103,24 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 			}
 		}
 
-		var newKeys = keys.clone() catch unreachable;
-		if(id.len > 0 and !matchWithKeys(allocator, item.id(), id, &newKeys)) {
-			newKeys.deinit();
-			continue;
+		if(matchWithKeys(allocator, item.id(), id, keys)) |newKeys| {
+			itemPairs.append(.{
+				.item = .{
+					.item = .{.baseItem = item.*},
+					.amount = amount,
+				},
+				.keys = newKeys,
+			});
+			
+		} else if(id.len == 0) {
+			itemPairs.append(.{
+				.item = .{
+					.item = .{.baseItem = item.*},
+					.amount = amount,
+				},
+				.keys = keys.clone() catch unreachable,
+			});
 		}
-		itemPairs.append(.{
-			.item = .{
-				.item = .{.baseItem = item.*},
-				.amount = amount,
-			},
-			.keys = newKeys,
-		});
 	}
 	return itemPairs.items;
 }
@@ -140,27 +154,30 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	while(remainingItems.len > 1) {
 		remainingItems = remainingItems[1..];
 		const startIndex = inputCombos.items[0].len - remainingItems.len;
-		var i: usize = 0;
-		while(i < keyList.items.len) {
-			const keys = &keyList.items[i];
-			const inputs = inputCombos.items[i];
+		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(allocator);
+		var newInputCombos: main.List([]ItemStack) = .init(allocator);
+	
+		for(keyList.items, inputCombos.items) |*keys, inputs| {
 			const parsedItems = try parseRecipeItem(allocator, remainingItems[0], keys);
 			defer allocator.free(parsedItems);
-			if(parsedItems.len == 0) {
-				_ = keyList.swapRemove(i);
-				allocator.free(inputCombos.swapRemove(i));
-				continue;
-			}
-			for(parsedItems[1..]) |item| {
+			for(parsedItems) |item| {
 				const newInputs = allocator.dupe(ItemStack, inputs);
 				newInputs[startIndex] = item.item;
-				inputCombos.append(newInputs);
-				keyList.append(item.keys);
+				newInputCombos.append(newInputs);
+				newKeyList.append(item.keys);
 			}
-			inputs[startIndex] = parsedItems[0].item;
-			keys.* = parsedItems[0].keys;
-			i += 1;
 		}
+
+		for(keyList.items) |*keys| {
+			keys.deinit();
+		}
+		keyList.deinit();
+		keyList = newKeyList;
+		for(inputCombos.items) |combo| {
+			allocator.free(combo);
+		}
+		inputCombos.deinit();
+		inputCombos = newInputCombos;
 	}
 	return inputCombos;
 }
