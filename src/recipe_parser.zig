@@ -9,23 +9,17 @@ const Recipe = items.Recipe;
 const BaseItemIndex = items.BaseItemIndex;
 const Block = main.blocks.Block;
 
-fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const u8, keys: *const std.StringHashMap([]const u8)) ?std.StringHashMap([]const u8) {
-	if(!std.mem.containsAtLeastScalar(u8, pattern, 1, '{')) {
-		if(std.mem.eql(u8, target, pattern)) {
-			return keys.clone() catch unreachable;
-		} else {
-			return null;
-		}
-	}
-	const Segment = union(enum) {literal: []const u8, symbol: []const u8};
+const Segment = union(enum) {literal: []const u8, symbol: []const u8};
+
+fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *const std.StringHashMap([]const u8)) !main.List(Segment) {
 	var segments: main.List(Segment) = .init(allocator);
 	defer segments.deinit();
 	var idx: usize = 0;
 	while(idx < pattern.len) {
 		if(pattern[idx] == '{') {
 			idx += 1;
-			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return null;
-			if(idx == endIndex) return null;
+			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return error.UnclosedBrackets;
+			if(idx == endIndex) return error.EmptyBrackets;
 			const symbol = pattern[idx..endIndex];
 			if(keys.get(symbol)) |literal| {
 				segments.append(.{.literal = literal});
@@ -39,9 +33,14 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 			idx = endIndex;
 		}
 	}
+	return segments;
+}
+
+fn matchWithKeys(target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) ?std.StringHashMap([]const u8) {
+	var idx: usize = 0;
 	idx = 0;
 	var newKeys = keys.clone() catch unreachable;
-	for(0.., segments.items) |i, segment| {
+	for(0.., pattern) |i, segment| {
 		switch(segment) {
 			.literal => |literal| {
 				if(literal.len + idx > target.len or !std.mem.eql(u8, target[idx .. idx + literal.len], literal)) {
@@ -51,8 +50,8 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 				idx += literal.len;
 			},
 			.symbol => |symbol| {
-				const endIndex: usize = if(i + 1 < segments.items.len) blk: {
-					const nextSegment = segments.items[i + 1];
+				const endIndex: usize = if(i + 1 < pattern.len) blk: {
+					const nextSegment = pattern[i + 1];
 					if(nextSegment == .symbol) {
 						newKeys.deinit();
 						return null;
@@ -95,30 +94,42 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 		tags.append(Tag.get(tagString) orelse return error.TagNotFound);
 	}
 
-	var iter = items.iterator();
-	loop: while(iter.next()) |item| {
-		for(tags.items) |tag| {
-			if(!item.hasTag(tag) and !(item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
-				continue :loop;
+	var pattern = try parsePattern(allocator, id, keys);
+	defer pattern.deinit();
+	if(pattern.items.len == 1 and pattern.items[0] == .literal) {
+		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return itemPairs;
+		itemPairs.append(.{
+			.item = .{
+				.item = .{.baseItem = item},
+				.amount = amount,
+			},
+			.keys = keys.clone() catch unreachable,
+		});
+	} else {
+		var iter = items.iterator();
+		loop: while(iter.next()) |item| {
+			for(tags.items) |tag| {
+				if(!item.hasTag(tag) and !(item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
+					continue :loop;
+				}
 			}
-		}
-
-		if(matchWithKeys(allocator, item.id(), id, keys)) |newKeys| {
-			itemPairs.append(.{
-				.item = .{
-					.item = .{.baseItem = item.*},
-					.amount = amount,
-				},
-				.keys = newKeys,
-			});
-		} else if(id.len == 0) {
-			itemPairs.append(.{
-				.item = .{
-					.item = .{.baseItem = item.*},
-					.amount = amount,
-				},
-				.keys = keys.clone() catch unreachable,
-			});
+			if(matchWithKeys(item.id(), pattern.items, keys)) |newKeys| {
+				itemPairs.append(.{
+					.item = .{
+						.item = .{.baseItem = item.*},
+						.amount = amount,
+					},
+					.keys = newKeys,
+				});
+			} else if(id.len == 0) {
+				itemPairs.append(.{
+					.item = .{
+						.item = .{.baseItem = item.*},
+						.amount = amount,
+					},
+					.keys = keys.clone() catch unreachable,
+				});
+			}
 		}
 	}
 	return itemPairs;
