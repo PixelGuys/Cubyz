@@ -77,7 +77,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 
 const ItemKeyPair = struct {item: ItemStack, keys: std.StringHashMap([]const u8)};
 
-fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *const std.StringHashMap([]const u8)) ![]ItemKeyPair {
+fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *const std.StringHashMap([]const u8)) !main.List(ItemKeyPair) {
 	var id = zon.as([]const u8, "");
 	id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	var amount: u16 = 1;
@@ -122,7 +122,7 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 			});
 		}
 	}
-	return itemPairs.items;
+	return itemPairs;
 }
 
 fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !main.List([]ItemStack) {
@@ -130,22 +130,22 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	var emptyKeys: std.StringHashMap([]const u8) = .init(allocator.allocator);
 	defer emptyKeys.deinit();
 	const startingParsedItems = try parseRecipeItem(allocator, remainingItems[0], &emptyKeys);
-	defer allocator.free(startingParsedItems);
-	var inputCombos: main.List([]ItemStack) = .initCapacity(allocator, startingParsedItems.len);
+	defer startingParsedItems.deinit();
+	var inputCombos: main.List([]ItemStack) = .initCapacity(allocator, startingParsedItems.items.len);
 	errdefer {
 		for(inputCombos.items) |combo| {
 			allocator.free(combo);
 		}
 		inputCombos.deinit();
 	}
-	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(allocator, startingParsedItems.len);
+	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(allocator, startingParsedItems.items.len);
 	defer {
 		for(keyList.items) |*keys| {
 			keys.deinit();
 		}
 		keyList.deinit();
 	}
-	for(startingParsedItems) |item| {
+	for(startingParsedItems.items) |item| {
 		const inputs = allocator.alloc(ItemStack, recipe.len);
 		inputs[0] = item.item;
 		inputCombos.append(inputs);
@@ -159,8 +159,8 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
 			const parsedItems = try parseRecipeItem(allocator, remainingItems[0], keys);
-			defer allocator.free(parsedItems);
-			for(parsedItems) |item| {
+			defer parsedItems.deinit();
+			for(parsedItems.items) |item| {
 				const newInputs = allocator.dupe(ItemStack, inputs);
 				newInputs[startIndex] = item.item;
 				newInputCombos.append(newInputs);
@@ -190,12 +190,14 @@ pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *mai
 	defer allocator.free(recipeItems);
 
 	const itemCombos = try generateItemCombos(allocator, recipeItems);
+	defer itemCombos.deinit();
 	for(itemCombos.items) |itemCombo| {
+		defer allocator.free(itemCombo);
 		const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
 		const output = itemCombo[itemCombo.len - 1];
 		const recipe = Recipe{
-			.sourceItems = allocator.alloc(BaseItemIndex, parsedInputs.len),
-			.sourceAmounts = allocator.alloc(u16, parsedInputs.len),
+			.sourceItems = list.allocator.alloc(BaseItemIndex, parsedInputs.len),
+			.sourceAmounts = list.allocator.alloc(u16, parsedInputs.len),
 			.resultItem = output.item.?.baseItem,
 			.resultAmount = output.amount,
 		};
@@ -207,8 +209,8 @@ pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *mai
 		if(zon.get(bool, "reversible", false)) {
 			if(recipe.sourceItems.len == 0) {
 				var reversedRecipe = Recipe{
-					.sourceItems = allocator.alloc(BaseItemIndex, 1),
-					.sourceAmounts = allocator.alloc(u16, 1),
+					.sourceItems = list.allocator.alloc(BaseItemIndex, 1),
+					.sourceAmounts = list.allocator.alloc(u16, 1),
 					.resultItem = recipe.sourceItems[0],
 					.resultAmount = recipe.sourceAmounts[0],
 				};

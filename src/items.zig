@@ -1210,16 +1210,14 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 }
 
 pub fn registerRecipes(zon: ZonElement) void {
-	var temporaryArena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 	for(zon.toSlice()) |recipeZon| {
-		recipe_parser.parseRecipe(temporaryArena.allocator(), recipeZon, &recipeList) catch |err| {
+		recipe_parser.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
 	}
-	_ = temporaryArena.reset(.free_all);
 }
 
 pub fn reset() void {
