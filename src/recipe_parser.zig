@@ -111,7 +111,6 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 				},
 				.keys = newKeys,
 			});
-			
 		} else if(id.len == 0) {
 			itemPairs.append(.{
 				.item = .{
@@ -156,7 +155,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 		const startIndex = inputCombos.items[0].len - remainingItems.len;
 		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(allocator);
 		var newInputCombos: main.List([]ItemStack) = .init(allocator);
-	
+
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
 			const parsedItems = try parseRecipeItem(allocator, remainingItems[0], keys);
 			defer parsedItems.deinit();
