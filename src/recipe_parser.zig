@@ -21,14 +21,24 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 			if(idx == endIndex) return error.EmptyBrackets;
 			const symbol = pattern[idx..endIndex];
 			if(keys.get(symbol)) |literal| {
-				segments.append(.{.literal = literal});
+				if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
+					const value = segments.pop();
+					segments.append(.{.literal = std.mem.concat(allocator, u8, .{value.literal, literal})});
+				} else {
+					segments.append(.{.literal = allocator.dupe(u8, literal)});
+				}
 			} else {
-				segments.append(.{.symbol = symbol});
+				segments.append(.{.symbol = allocator.dupe(u8, symbol)});
 			}
 			idx = endIndex + 1;
 		} else {
 			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '{') orelse pattern.len;
-			segments.append(.{.literal = pattern[idx..endIndex]});
+			if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
+				const value = segments.pop();
+				segments.append(.{.literal = std.mem.concat(allocator, u8, .{value.literal, pattern[idx..endIndex]})});
+			} else {
+				segments.append(.{.literal = allocator.dupe(u8, pattern[idx..endIndex])});
+			}
 			idx = endIndex;
 		}
 	}
@@ -94,7 +104,15 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 	}
 
 	var pattern = try parsePattern(allocator, id, keys);
-	defer pattern.deinit();
+	defer {
+		for(pattern.items) |segment| {
+			switch (segment) {
+				.literal => |literal| allocator.free(literal),
+				.symbol => |symbol| allocator.free(symbol),
+			}
+		}
+		pattern.deinit();
+	}
 	if(id.len > 0 and pattern.items.len == 1 and pattern.items[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return itemPairs;
 		for(tags.items) |tag| {
