@@ -95,7 +95,7 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 
 	var pattern = try parsePattern(allocator, id, keys);
 	defer pattern.deinit();
-	if(pattern.items.len == 1 and pattern.items[0] == .literal) {
+	if(id.len > 0 and pattern.items.len == 1 and pattern.items[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return itemPairs;
 		for(tags.items) |tag| {
 			if(!item.hasTag(tag) and !(item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) return itemPairs;
