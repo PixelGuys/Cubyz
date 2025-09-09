@@ -23,6 +23,7 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 			if(keys.get(symbol)) |literal| {
 				if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
 					const value = segments.pop();
+				defer allocator.free(value.literal);
 					segments.append(.{.literal = std.mem.concat(allocator.allocator, u8, &.{value.literal, literal}) catch unreachable});
 				} else {
 					segments.append(.{.literal = allocator.dupe(u8, literal)});
@@ -35,6 +36,7 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '{') orelse pattern.len;
 			if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
 				const value = segments.pop();
+				defer allocator.free(value.literal);
 				segments.append(.{.literal = std.mem.concat(allocator.allocator, u8, &.{value.literal, pattern[idx..endIndex]}) catch unreachable});
 			} else {
 				segments.append(.{.literal = allocator.dupe(u8, pattern[idx..endIndex])});
@@ -45,7 +47,7 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 	return segments;
 }
 
-fn matchWithKeys(target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) ?std.StringHashMap([]const u8) {
+fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) ?std.StringHashMap([]const u8) {
 	var idx: usize = 0;
 	idx = 0;
 	var newKeys = keys.clone() catch unreachable;
@@ -70,7 +72,7 @@ fn matchWithKeys(target: []const u8, pattern: []const Segment, keys: *const std.
 						return null;
 					};
 				} else target.len;
-				newKeys.put(symbol, target[idx..endIndex]) catch unreachable;
+				newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
 				idx = endIndex;
 			},
 		}
@@ -126,6 +128,13 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 			.keys = keys.clone() catch unreachable,
 		});
 	} else {
+		if(std.mem.eql(u8, "{mod}:branch/leafy/{type}", id)) {
+			var iter = keys.iterator();
+			while(iter.next()) |item| {
+				std.log.info("{s}: {s}", .{item.key_ptr.*, item.value_ptr.*});
+			}
+		}
+
 		var iter = items.iterator();
 		loop: while(iter.next()) |item| {
 			for(tags.items) |tag| {
@@ -133,7 +142,7 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 					continue :loop;
 				}
 			}
-			if(matchWithKeys(item.id(), pattern.items, keys)) |newKeys| {
+			if(matchWithKeys(allocator, item.id(), pattern.items, keys)) |newKeys| {
 				itemPairs.append(.{
 					.item = .{
 						.item = .{.baseItem = item.*},

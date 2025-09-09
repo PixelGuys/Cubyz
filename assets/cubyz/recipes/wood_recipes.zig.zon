@@ -16,10 +16,6 @@
 		.output = "2 {mod}:{type}_planks",
 	},
 	.{
-		.inputs = .{"{mod}:{type}_branch", "{mod}:{type}_leaves"},
-		.output = "2 {mod}:branch/leafy/{type}",
-	},
-	.{
 		.inputs = .{"{mod}:{type}_planks"},
 		.output = "2 {mod}:{type}_fence",
 	},
