@@ -108,7 +108,7 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 	var pattern = try parsePattern(allocator, id, keys);
 	defer {
 		for(pattern.items) |segment| {
-			switch (segment) {
+			switch(segment) {
 				.literal => |literal| allocator.free(literal),
 				.symbol => |symbol| allocator.free(symbol),
 			}
