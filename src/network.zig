@@ -672,7 +672,12 @@ pub const Protocols = struct {
 							return error.Invalid;
 						}
 						const version = zon.get([]const u8, "version", "unknown");
-						std.log.info("User {s} joined using version {s}.", .{name, version});
+						std.log.info("User {s} joined using version {s}", .{name, version});
+
+						if(!try main.settings.version.isCompatibleClientVersion(version)) {
+							std.log.warn("Version incompatible with server version {s}", .{main.settings.version.version});
+							return error.IncompatibleVersion;
+						}
 
 						{
 							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
@@ -731,7 +736,7 @@ pub const Protocols = struct {
 		pub fn clientSide(conn: *Connection, name: []const u8) !void {
 			const zonObject = ZonElement.initObject(main.stackAllocator);
 			defer zonObject.deinit(main.stackAllocator);
-			zonObject.putOwnedString("version", settings.version);
+			zonObject.putOwnedString("version", settings.version.version);
 			zonObject.putOwnedString("name", name);
 			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);

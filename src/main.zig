@@ -573,6 +573,8 @@ pub fn main() void { // MARK: main()
 		}
 	} else |_| {}
 
+	std.log.info("Starting game client with version {s}", .{settings.version.version});
+
 	gui.initWindowList();
 	defer gui.deinitWindowList();
 
