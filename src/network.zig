@@ -731,7 +731,7 @@ pub const Protocols = struct {
 		pub fn clientSide(conn: *Connection, name: []const u8) !void {
 			const zonObject = ZonElement.initObject(main.stackAllocator);
 			defer zonObject.deinit(main.stackAllocator);
-			zonObject.putOwnedString("version", settings.version);
+			zonObject.putOwnedString("version", settings.version.version);
 			zonObject.putOwnedString("name", name);
 			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);

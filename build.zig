@@ -155,6 +155,10 @@ pub fn build(b: *std.Build) !void {
 	// between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
 	const optimize = b.standardOptimizeOption(.{});
 
+	const options = b.addOptions();
+	const version = b.fmt("0.0.0{s}", .{if(b.option(bool, "release", "Removes the -dev flag from the version") orelse false) "" else "-dev"});
+	options.addOption([]const u8, "version", version);
+
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
 
 	const largeAssets = b.dependency("cubyz_large_assets", .{});
@@ -181,6 +185,7 @@ pub fn build(b: *std.Build) !void {
 		//.sanitize_thread = true,
 		.use_llvm = true,
 	});
+	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
 
@@ -202,6 +207,7 @@ pub fn build(b: *std.Build) !void {
 		.test_runner = .{.path = b.path("test/runner.zig"), .mode = .simple},
 	});
 	linkLibraries(b, exe_tests, useLocalDeps);
+	exe_tests.root_module.addOptions("build_options", options);
 	exe_tests.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe_tests);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
@@ -220,6 +226,7 @@ pub fn build(b: *std.Build) !void {
 		}),
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
+	formatter.root_module.addOptions("build_options", options);
 	formatter.root_module.addImport("main", mainModule);
 
 	const formatter_install = b.addInstallArtifact(formatter, .{});
@@ -242,6 +249,7 @@ pub fn build(b: *std.Build) !void {
 		}),
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
+	zig_fmt.root_module.addOptions("build_options", options);
 	zig_fmt.root_module.addImport("main", mainModule);
 
 	const zig_fmt_install = b.addInstallArtifact(zig_fmt, .{});
