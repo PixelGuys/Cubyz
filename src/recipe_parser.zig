@@ -23,7 +23,7 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 			if(keys.get(symbol)) |literal| {
 				if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
 					const value = segments.pop();
-				defer allocator.free(value.literal);
+					defer allocator.free(value.literal);
 					segments.append(.{.literal = std.mem.concat(allocator.allocator, u8, &.{value.literal, literal}) catch unreachable});
 				} else {
 					segments.append(.{.literal = allocator.dupe(u8, literal)});
