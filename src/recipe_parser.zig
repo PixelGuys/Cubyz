@@ -3,6 +3,7 @@ const main = @import("main");
 const items = main.items;
 const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ItemStack = items.ItemStack;
 const Tag = main.Tag;
 const Recipe = items.Recipe;
@@ -221,22 +222,26 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	return inputCombos;
 }
 
-pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *main.List(Recipe)) !void {
+pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
+    var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
+    defer std.debug.assert(localArena.reset(.free_all));
+    const allocator = localArena.allocator();
 	const inputs = zon.getChild("inputs").toSlice();
 	const recipeItems = allocator.alloc(ZonElement, inputs.len + 1);
-	@memmove(recipeItems[0..inputs.len], inputs);
+	@memcpy(recipeItems[0..inputs.len], inputs);
 	recipeItems[inputs.len] = zon.getChild("output");
-	defer allocator.free(recipeItems);
 
 	const itemCombos = try generateItemCombos(allocator, recipeItems);
-	defer itemCombos.deinit();
+	const reversible = zon.get(bool, "reversible", false);
 	for(itemCombos.items) |itemCombo| {
-		defer allocator.free(itemCombo);
+    	if(itemCombo.len != 2) {
+    	    return error.InvalidReversibleRecipe;
+    	}
 		const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
 		const output = itemCombo[itemCombo.len - 1];
 		const recipe = Recipe{
-			.sourceItems = list.allocator.alloc(BaseItemIndex, parsedInputs.len),
-			.sourceAmounts = list.allocator.alloc(u16, parsedInputs.len),
+			.sourceItems = main.stackAllocator.alloc(BaseItemIndex, parsedInputs.len),
+			.sourceAmounts = main.stackAllocator.alloc(u16, parsedInputs.len),
 			.resultItem = output.item.?.baseItem,
 			.resultAmount = output.amount,
 		};
@@ -245,20 +250,19 @@ pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *mai
 			recipe.sourceAmounts[i] = input.amount;
 		}
 		list.append(recipe);
-		if(zon.get(bool, "reversible", false)) {
-			if(recipe.sourceItems.len == 1) {
-				var reversedRecipe = Recipe{
-					.sourceItems = list.allocator.alloc(BaseItemIndex, 1),
-					.sourceAmounts = list.allocator.alloc(u16, 1),
-					.resultItem = recipe.sourceItems[0],
-					.resultAmount = recipe.sourceAmounts[0],
-				};
-				reversedRecipe.sourceItems[0] = recipe.resultItem;
-				reversedRecipe.sourceAmounts[0] = recipe.resultAmount;
-				list.append(reversedRecipe);
-			} else {
-				return error.InvalidReversibleRecipe;
+		if(reversible) {
+			if(recipe.sourceItems.len != 1) {
+			    return error.InvalidReversibleRecipe;
 			}
+			var reversedRecipe = Recipe{
+				.sourceItems = main.stackAllocator.alloc(BaseItemIndex, 1),
+				.sourceAmounts = main.stackAllocator.alloc(u16, 1),
+				.resultItem = recipe.sourceItems[0],
+				.resultAmount = recipe.sourceAmounts[0],
+			};
+			reversedRecipe.sourceItems[0] = recipe.resultItem;
+			reversedRecipe.sourceAmounts[0] = recipe.resultAmount;
+			list.append(reversedRecipe);
 		}
 	}
 }
