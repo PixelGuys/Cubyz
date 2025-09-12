@@ -18,7 +18,8 @@
 		.texture = "diamond.png",
 		.material = .{
 			.durability = 250,
-			.damage = 9.4,
+			.massDamage = 0.7,
+			.hardnessDamage = 8.7,
 			.swingSpeed = 1.5,
 			.textureRoughness = 0.1,
 			.colors = .{

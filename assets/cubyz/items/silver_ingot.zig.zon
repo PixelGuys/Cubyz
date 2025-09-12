@@ -3,7 +3,8 @@
 	.texture = "silver_ingot.png",
 	.material = .{
 		.durability = 500,
-		.damage = 11.0,
+		.massDamage = 8.0,
+		.hardnessDamage = 2.0,
 		.swingSpeed = 1.0,
 		.textureRoughness = 0.05,
 		.colors = .{

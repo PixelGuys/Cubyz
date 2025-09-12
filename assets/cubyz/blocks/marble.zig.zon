@@ -7,7 +7,8 @@
 	.item = .{
 		.material = .{
 			.durability = 55,
-			.damage = 4.7,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.7,
 			.swingSpeed = 3.0,
 			.textureRoughness = 1.0,
 			.colors = .{

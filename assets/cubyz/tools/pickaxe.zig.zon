@@ -16,13 +16,26 @@
 	},
 	.parameters = .{
 		.{
-			.source = .damage,
+			.source = .massDamage,
 			.destination = .damage,
 			.matrix = .{
-				2.5,  2.0, 1.5, 1.0, 0x0,
-				2.0,  1.5, 1.0, 0x0, 0x0,
-				1.5,  1.0, 0.5, 0x0, 0x0,
-				15.0, 0x0, 0x0, 0.0, 0x0,
+				2.5, 2.0, 1.5, 1.0, 0x0,
+				2.0, 1.5, 1.0, 0x0, 0x0,
+				1.5, 1.0, 0.5, 0x0, 0x0,
+				1.0, 0x0, 0x0, 0.0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0.0,
+			},
+			.factor = 1.0,
+			.method = .average,
+		},
+		.{
+			.source = .hardnessDamage,
+			.destination = .damage,
+			.matrix = .{
+				0.0,  0.0, 0.1, 0.1, 0x0,
+				0.0,  0.1, 0.0, 0x0, 0x0,
+				0.1,  0.0, 0.0, 0x0, 0x0,
+				1.0, 0x0, 0x0, 0.0, 0x0,
 				0x0,  0x0, 0x0, 0x0, 0.0,
 			},
 			.factor = 1.0,

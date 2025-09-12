@@ -3,7 +3,8 @@
 	.texture = "uranium_ingot.png",
 	.material = .{
 		.durability = 1500,
-		.damage = 25.0,
+		.massDamage = 10.0,
+		.hardnessDamage = 15.0,
 		.swingSpeed = 0.5,
 		.textureRoughness = 0.3,
 		.colors = .{

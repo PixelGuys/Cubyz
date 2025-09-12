@@ -3,7 +3,8 @@
 	.texture = "iron_ingot.png",
 	.material = .{
 		.durability = 1000,
-		.damage = 9.0,
+		.massDamage = 3.0,
+		.hardnessDamage = 6.0,
 		.swingSpeed = 8.3,
 		.textureRoughness = 0.1,
 		.colors = .{

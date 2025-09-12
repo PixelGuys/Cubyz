@@ -3,7 +3,8 @@
 	.texture = "copper_ingot.png",
 	.material = .{
 		.durability = 300,
-		.damage = 6.1,
+		.massDamage = 1.0,
+		.hardnessDamage = 5.1,
 		.swingSpeed = 7.1,
 		.textureRoughness = 0.1,
 		.colors = .{

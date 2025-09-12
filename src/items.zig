@@ -26,7 +26,8 @@ const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig")
 pub const Inventory = @import("Inventory.zig");
 
 const Material = struct { // MARK: Material
-	damage: f32 = undefined,
+	massDamage: f32 = undefined,
+	hardnessDamage: f32 = undefined,
 	durability: f32 = undefined,
 	swingSpeed: f32 = undefined,
 
@@ -35,8 +36,12 @@ const Material = struct { // MARK: Material
 	modifiers: []Modifier = undefined,
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
-		self.damage = zon.get(?f32, "damage", null) orelse blk: {
-			std.log.err("Couldn't find material attribute 'damage'", .{});
+		self.massDamage = zon.get(?f32, "massDamage", null) orelse blk: {
+			std.log.err("Couldn't find material attribute 'massDamage'", .{});
+			break :blk 0;
+		};
+		self.hardnessDamage = zon.get(?f32, "hardnessDamage", null) orelse blk: {
+			std.log.err("Couldn't find material attribute 'hardnessDamage'", .{});
 			break :blk 0;
 		};
 		self.durability = zon.get(?f32, "durability", null) orelse blk: {
@@ -77,7 +82,8 @@ const Material = struct { // MARK: Material
 
 	pub fn hashCode(self: Material) u32 {
 		var hash: u32 = 0;
-		hash = 101*%hash +% @as(u32, @bitCast(self.damage));
+		hash = 101*%hash +% @as(u32, @bitCast(self.massDamage));
+		hash = 101*%hash +% @as(u32, @bitCast(self.hardnessDamage));
 		hash = 101*%hash +% @as(u32, @bitCast(self.durability));
 		hash = 101*%hash +% @as(u32, @bitCast(self.swingSpeed));
 		hash = 101*%hash +% @as(u32, @bitCast(self.textureRoughness));
@@ -179,7 +185,8 @@ const Modifier = struct {
 };
 
 const MaterialProperty = enum {
-	damage,
+	massDamage,
+	hardnessDamage,
 	durability,
 	swingSpeed,
 
