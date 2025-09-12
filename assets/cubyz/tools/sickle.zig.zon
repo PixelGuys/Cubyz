@@ -42,7 +42,7 @@
 			.method = .average,
 		},
 		.{
-			.source = .hardness,
+			.source = .durability,
 			.destination = .maxDurability,
 			.matrix = .{
 				0x0, 0.5, 1.0, 1.5, 0x0,
