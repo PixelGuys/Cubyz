@@ -107,7 +107,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 				damage -= oldBlock.blockResistance();
 				if(damage > 0) {
 					if(isTool) {
-						return .{.yes_costsDurability = @intFromFloat(@ceil(oldBlock.blockHealth()/damage))};
+						return .{.yes_costsDurability = 1};
 					} else return .yes;
 				}
 			} else {
