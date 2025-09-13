@@ -168,12 +168,12 @@ fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		if(self.cursor.? == 0) return;
 		self.cursor.? -= 1;
 		// Find end of previous "word":
-		while(!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isASCII(text[self.cursor.?])) {
+		while(!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
 			if(self.cursor.? == 0) return;
 			self.cursor.? -= 1;
 		}
 		// Find the start of the previous "word":
-		while(std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isASCII(text[self.cursor.?])) {
+		while(std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
 			if(self.cursor.? == 0) return;
 			self.cursor.? -= 1;
 		}
@@ -213,12 +213,12 @@ fn moveCursorRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		if(mods.control) {
 			const text = self.currentString.items;
 			// Find start of next "word":
-			while(!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isASCII(text[self.cursor.?])) {
+			while(!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
 				self.cursor.? += 1;
 				if(self.cursor.? >= self.currentString.items.len) return;
 			}
 			// Find the end of the next "word":
-			while(std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isASCII(text[self.cursor.?])) {
+			while(std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
 				self.cursor.? += 1;
 				if(self.cursor.? >= self.currentString.items.len) return;
 			}

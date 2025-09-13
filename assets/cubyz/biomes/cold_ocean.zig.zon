@@ -6,6 +6,9 @@
 	.type = .arctic_ocean,
 	.minHeight = -100,
 	.maxHeight = -22,
+	.maxHeightLimit = 7,
+	.smoothBeaches = true,
+
 	.radius = 500,
 
 	.roughness = 20,
@@ -19,7 +22,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mossy_cobblestone",
+			.block = "cubyz:moss:cubyz:cobblestone",
 			.chance = 0.064,
 			.width = 6,
 			.variation = 2,

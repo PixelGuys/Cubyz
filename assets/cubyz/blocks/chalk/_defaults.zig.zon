@@ -1,9 +1,9 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.stone, .mineable},
 	.blockHealth = 12,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 }

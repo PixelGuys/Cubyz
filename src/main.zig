@@ -19,6 +19,7 @@ pub const JsonElement = @import("json.zig").JsonElement;
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
+pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
@@ -55,10 +56,12 @@ pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
+	heap.GarbageCollection.addThread();
 }
 
 pub fn deinitThreadLocals() void {
 	stackAllocatorBase.deinit();
+	heap.GarbageCollection.removeThread();
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -212,7 +215,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 
 fn initLogging() void {
 	logFile = null;
-	std.fs.cwd().makePath("logs") catch |err| {
+	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
@@ -231,7 +234,7 @@ fn initLogging() void {
 		return;
 	};
 
-	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
+	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
@@ -264,13 +267,15 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	defer allocator.free(string);
-	nosuspend std.io.getStdErr().writeAll(string) catch {};
+	const writer = std.debug.lockStderrWriter(&.{});
+	defer std.debug.unlockStderrWriter();
+	nosuspend writer.writeAll(string) catch {};
 }
 
 // MARK: Callbacks
 fn escape() void {
 	if(gui.selectedTextInput != null) {
-		gui.selectedTextInput = null;
+		gui.setSelectedTextInput(null);
 		return;
 	}
 	if(game.world == null) return;
@@ -291,11 +296,6 @@ fn openCreativeInventory() void {
 	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
-}
-fn openSharedInventoryTesting() void {
-	if(game.world == null) return;
-	ungrabMouse();
-	gui.openWindow("shared_inventory_testing");
 }
 fn openChat() void {
 	if(game.world == null) return;
@@ -399,10 +399,10 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
 		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
 		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll},
-		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
-		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
-		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
+		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = .{.control = true}},
+		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = .{.control = true}},
+		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = .{.control = true}},
+		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = .{.control = true}},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
 		// Hotbar shortcuts:
@@ -432,8 +432,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
-
-		.{.name = "shared_inventory_testing", .key = c.GLFW_KEY_O, .pressAction = &openSharedInventoryTesting},
 	};
 
 	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
@@ -487,7 +485,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 		return;
 	}
 	std.log.info("Converting {s}:", .{jsonPath});
-	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
+	const jsonString = files.cubyzDir().read(stackAllocator, jsonPath) catch |err| {
 		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
 		return;
 	};
@@ -532,12 +530,12 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	defer stackAllocator.free(zonPath);
 	std.log.info("Outputting to {s}:", .{zonPath});
 	std.log.debug("{s}", .{zonString.items});
-	files.write(zonPath, zonString.items) catch |err| {
+	files.cubyzDir().write(zonPath, zonString.items) catch |err| {
 		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
 		return;
 	};
 	std.log.info("Deleting file {s}", .{jsonPath});
-	std.fs.cwd().deleteFile(jsonPath) catch |err| {
+	files.cubyzDir().deleteFile(jsonPath) catch |err| {
 		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
 		return;
 	};
@@ -547,22 +545,23 @@ pub fn main() void { // MARK: main()
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
+	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
 
 	initLogging();
 	defer deinitLogging();
 
-	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
+	if(files.cwd().openFile("settings.json")) |file| blk: { // TODO: Remove after #480
 		file.close();
 		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
-		var dir = std.fs.cwd().openDir(".", .{.iterate = true}) catch |err| {
+		var dir = files.cwd().openIterableDir(".") catch |err| {
 			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
 			break :blk;
 		};
 		defer dir.close();
 
-		var walker = dir.walk(stackAllocator.allocator) catch unreachable;
+		var walker = dir.walk(stackAllocator);
 		defer walker.deinit();
 		while(walker.next() catch |err| {
 			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
@@ -573,6 +572,8 @@ pub fn main() void { // MARK: main()
 			}
 		}
 	} else |_| {}
+
+	std.log.info("Starting game client with version {s}", .{settings.version.version});
 
 	gui.initWindowList();
 	defer gui.deinitWindowList();
@@ -654,8 +655,30 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("main");
 	}
 
-	server.terrain.initGenerators();
-	defer server.terrain.deinitGenerators();
+	// Save migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("saves")) moveSaves: {
+		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
+			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving saves: {s}\nYou may have to move your saves manually to {s}/saves", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
+			defer stackAllocator.free(notification);
+			gui.windowlist.notification.raiseNotification(notification);
+			break :moveSaves;
+		};
+		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
+		defer stackAllocator.free(notification);
+		gui.windowlist.notification.raiseNotification(notification);
+	}
+
+	// Blueprint migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("blueprints")) moveBlueprints: {
+		std.fs.rename(std.fs.cwd(), "blueprints", files.cubyzDir().dir, "blueprints") catch |err| {
+			std.log.err("Encountered error while moving blueprints: {s}\nYou may have to move your blueprints manually to {s}/blueprints", .{@errorName(err), files.cubyzDirStr()});
+			break :moveBlueprints;
+		};
+		std.log.info("Moved blueprints to {s}/blueprints", .{files.cubyzDirStr()});
+	}
+
+	server.terrain.globalInit();
+	defer server.terrain.globalDeinit();
 
 	const c = Window.c;
 
@@ -670,6 +693,7 @@ pub fn main() void { // MARK: main()
 	audio.setMusic("cubyz:cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		heap.GarbageCollection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);
@@ -682,7 +706,7 @@ pub fn main() void { // MARK: main()
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		} else {
-			std.time.sleep(16_000_000);
+			std.Thread.sleep(16_000_000);
 		}
 
 		const endRendering = std.time.nanoTimestamp();
@@ -696,7 +720,7 @@ pub fn main() void { // MARK: main()
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-			std.time.sleep(sleep);
+			std.Thread.sleep(sleep);
 		}
 		const begin = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
@@ -721,6 +745,7 @@ pub fn main() void { // MARK: main()
 
 		if(shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
+			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
 				world.deinit();
 				game.world = null;

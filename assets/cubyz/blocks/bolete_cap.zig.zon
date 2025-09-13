@@ -1,6 +1,7 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .cuttable, .mushroom},
 	.blockHealth = 3,
+	.bounciness = 0.75,
 	.drops = .{
 		.{.items = .{.auto}},
 	},

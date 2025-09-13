@@ -1,11 +1,10 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .cuttable, .mushroom},
 	.blockHealth = 4,
-	.hasItem = false,
 	.drops = .{
 		.{.items = .{"cubyz:log/glimmergill"}},
 	},
-	.rotation = .direction,
+	.rotation = "cubyz:direction",
 	.model = "cubyz:cube",
 	.texture = "cubyz:glimmergill_stem",
 }

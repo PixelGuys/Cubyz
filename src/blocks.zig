@@ -77,7 +77,12 @@ var _mode: [maxBlockCount]*RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
+
 var _friction: [maxBlockCount]f32 = undefined;
+var _bounciness: [maxBlockCount]f32 = undefined;
+var _density: [maxBlockCount]f32 = undefined;
+var _terminalVelocity: [maxBlockCount]f32 = undefined;
+var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 var _tickEvent: [maxBlockCount]?TickEvent = undefined;
@@ -97,14 +102,10 @@ pub fn deinit() void {
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered block with id {s} twice!", .{id});
-	}
-
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
@@ -128,6 +129,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
+	_bounciness[size] = zon.get(f32, "bounciness", 0.0);
+	_density[size] = zon.get(f32, "density", 0.001);
+	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
+	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 
@@ -143,8 +148,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
-		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
-			std.log.err("Ore must have rotation mode \"ore\"!", .{});
+		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
+			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
 		ores.append(Ore{
@@ -243,15 +248,26 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
+fn parseBlockData(fullBlockId: []const u8, data: []const u8) ?u16 {
+	if(std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
+		const oreChild = parseBlock(data);
+		if(oreChild.data != 0) {
+			std.log.warn("Error while parsing ore block data of '{s}': Parent block data must be 0.", .{fullBlockId});
+		}
+		return oreChild.typ;
+	}
+	return std.fmt.parseInt(u16, data, 0) catch |err| {
+		std.log.err("Error while parsing block data of '{s}': {s}", .{fullBlockId, @errorName(err)});
+		return null;
+	};
+}
+
 pub fn parseBlock(data: []const u8) Block {
 	var id: []const u8 = data;
 	var blockData: ?u16 = null;
 	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
-		blockData = std.fmt.parseInt(u16, data[pos + 1 ..], 0) catch |err| blk: {
-			std.log.err("Error while parsing block data of '{s}': {s}", .{data, @errorName(err)});
-			break :blk null;
-		};
+		blockData = parseBlockData(data, data[pos + 1 ..]);
 	}
 	if(reverseIndices.get(id)) |resultType| {
 		var result: Block = .{.typ = resultType, .data = 0};
@@ -392,6 +408,22 @@ pub const Block = packed struct { // MARK: Block
 		return _friction[self.typ];
 	}
 
+	pub inline fn bounciness(self: Block) f32 {
+		return _bounciness[self.typ];
+	}
+
+	pub inline fn density(self: Block) f32 {
+		return _density[self.typ];
+	}
+
+	pub inline fn terminalVelocity(self: Block) f32 {
+		return _terminalVelocity[self.typ];
+	}
+
+	pub inline fn mobility(self: Block) f32 {
+		return _mobility[self.typ];
+	}
+
 	pub inline fn allowOres(self: Block) bool {
 		return _allowOres[self.typ];
 	}
@@ -512,6 +544,7 @@ pub const meshes = struct { // MARK: meshes
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
 	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
+	pub var ditherTexture: graphics.Texture = undefined;
 
 	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
 	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
@@ -525,6 +558,7 @@ pub const meshes = struct { // MARK: meshes
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
+		ditherTexture = .initFromMipmapFiles("assets/cubyz/blocks/textures/dither/", 64, 0.5);
 		textureIDs = .init(main.globalAllocator);
 		animation = .init(main.globalAllocator);
 		blockTextures = .init(main.globalAllocator);
@@ -551,6 +585,7 @@ pub const meshes = struct { // MARK: meshes
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		reflectivityAndAbsorptionTextureArray.deinit();
+		ditherTexture.deinit();
 		textureIDs.deinit();
 		animation.deinit();
 		blockTextures.deinit();
@@ -632,7 +667,7 @@ pub const meshes = struct { // MARK: meshes
 		const path = _path[0 .. _path.len - ".png".len];
 		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
 		defer main.stackAllocator.free(textureInfoPath);
-		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
+		const textureInfoZon = main.files.cwd().readToZon(main.stackAllocator, textureInfoPath) catch .null;
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
@@ -669,13 +704,13 @@ pub const meshes = struct { // MARK: meshes
 				return result;
 			}
 		}
-		const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
+		const file = main.files.cwd().openFile(path) catch |err| blk: {
 			if(err != error.FileNotFound) {
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
 			main.stackAllocator.free(path);
 			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
+			break :blk main.files.cwd().openFile(path) catch |err2| {
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
 			};
@@ -720,7 +755,7 @@ pub const meshes = struct { // MARK: meshes
 			defer main.stackAllocator.free(path1);
 			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
 			defer main.stackAllocator.free(path2);
-			if(!main.files.hasFile(path1) and !main.files.hasFile(path2)) break;
+			if(!main.files.cwd().hasFile(path1) and !main.files.cwd().hasFile(path2)) break;
 
 			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
 			defer main.stackAllocator.free(id);

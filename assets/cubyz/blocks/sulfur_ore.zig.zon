@@ -1,13 +1,14 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.mineable},
 	.blockHealth = 40,
 	.blockResistance = 1,
 	.item = .{
 		.texture = "sulfur.png",
 		.material = .{
-			.density = 2.0,
-			.elasticity = 0.25,
-			.hardness = 2.0,
+			.durability = 20,
+			.massDamage = 3.5,
+			.hardnessDamage = 1.0,
+			.swingSpeed = 3.7,
 			.textureRoughness = 0.1,
 			.colors = .{
 				0xffa99942, 0xffbeb349, 0xffe5c64c, 0xfffae764, 0xfffeffc9,
@@ -23,7 +24,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation = .ore,
+	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
 	.texture = "cubyz:sulfur_ore",
 }

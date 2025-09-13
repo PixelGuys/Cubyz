@@ -33,7 +33,7 @@ then
 	esac
 fi
 
-VERSION=zig-$OS-$ARCH-$BASE_VERSION
+VERSION=zig-$ARCH-$OS-$BASE_VERSION
 
 mkdir -p compiler/zig
 touch compiler/version.txt

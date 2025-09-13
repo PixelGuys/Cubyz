@@ -1,0 +1,15 @@
+.{
+	.tags = .{.stone, .mineable, .slate},
+	.blockHealth = 25,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:fence",
+	.model = "cubyz:wall",
+	.texture = "cubyz:slate_wall",
+	.texture_top = "cubyz:slate_wall_top",
+	.texture_bottom = "cubyz:slate_wall_top",
+	.item = .{
+		.texture = "wall/slate.png",
+	},
+}

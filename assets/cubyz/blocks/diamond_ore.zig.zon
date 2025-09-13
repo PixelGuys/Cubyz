@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.mineable},
 	.blockHealth = 80,
 	.blockResistance = 10,
 	.ore = .{
@@ -9,9 +9,45 @@
 		.density = 0.1,
 	},
 	.drops = .{
-		.{.items = .{"cubyz:diamond"}},
+		.{.items = .{.auto}},
 	},
-	.rotation = .ore,
+	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
 	.texture = "cubyz:diamond_ore",
+	.item = .{
+		.texture = "diamond.png",
+		.material = .{
+			.durability = 250,
+			.massDamage = 0.7,
+			.hardnessDamage = 8.7,
+			.swingSpeed = 4.7,
+			.textureRoughness = 0.1,
+			.colors = .{
+				0xff5d7ae4, 0xff8d85ff, 0xff78c1f9, 0xffa8f0ff, 0xffffffff,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.5,
+					.restriction = .{
+						.id = .not,
+						.child = .{
+							.id = .encased,
+							.tag = .precious,
+							.amount = 4,
+						},
+					},
+				},
+				.{
+					.id = "powerful",
+					.strength = 0.5,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 4,
+					},
+				},
+			},
+		},
+	},
 }

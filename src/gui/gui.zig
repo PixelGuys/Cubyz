@@ -58,11 +58,11 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn scheduleCommand(command: Command) void {
-		commands.enqueue(command);
+		commands.pushBack(command);
 	}
 
 	fn executeCommands() void {
-		while(commands.dequeue()) |command| {
+		while(commands.popFront()) |command| {
 			switch(command.action) {
 				.open => {
 					executeOpenWindowCommand(command.window);
@@ -134,7 +134,7 @@ pub fn initWindowList() void {
 }
 
 pub fn deinitWindowList() void {
-	windowList.deinit();
+	windowList.clearAndFree();
 	hudWindows.deinit();
 	openWindows.deinit();
 	GuiCommandQueue.deinit();
@@ -183,7 +183,7 @@ pub fn deinit() void {
 }
 
 pub fn save() void { // MARK: save()
-	const guiZon = ZonElement.initObject(main.stackAllocator);
+	var guiZon = ZonElement.initObject(main.stackAllocator);
 	defer guiZon.deinit(main.stackAllocator);
 	for(windowList.items) |window| {
 		const windowZon = ZonElement.initObject(main.stackAllocator);
@@ -217,7 +217,24 @@ pub fn save() void { // MARK: save()
 		guiZon.put(window.id, windowZon);
 	}
 
-	main.files.cubyzDir().writeZon("gui_layout.zig.zon", guiZon) catch |err| {
+	// Merge with the old settings file to preserve unknown settings.
+	var oldZon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
+		if(err != error.FileNotFound) {
+			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
+		}
+		break :blk .null;
+	};
+	defer oldZon.deinit(main.stackAllocator);
+
+	if(oldZon == .object) {
+		oldZon.join(guiZon);
+	} else {
+		oldZon.deinit(main.stackAllocator);
+		oldZon = guiZon;
+		guiZon = .null;
+	}
+
+	main.files.cubyzDir().writeZon("gui_layout.zig.zon", oldZon) catch |err| {
 		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
 	};
 }
@@ -458,7 +475,7 @@ pub const textCallbacks = struct {
 pub fn mainButtonPressed() void {
 	inventory.update();
 	selectedWindow = null;
-	selectedTextInput = null;
+	setSelectedTextInput(null);
 	var selectedI: usize = 0;
 	for(openWindows.items, 0..) |window, i| {
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
@@ -580,6 +597,7 @@ pub fn toggleGameMenu() void {
 			}
 		}
 		reorderWindows = false;
+		selectedWindow = null;
 	}
 }
 
@@ -598,7 +616,7 @@ pub const inventory = struct { // MARK: inventory
 	var startedCrafting: bool = false;
 
 	pub fn init() void {
-		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id});
+		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
 		leftClickSlots = .init(main.globalAllocator);
 		rightClickSlots = .init(main.globalAllocator);
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);

@@ -1,5 +1,5 @@
 .{
-	.tags = .{.leaf},
+	.tags = .{.cuttable, .leaf},
 	.blockHealth = 0.1,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -12,7 +12,7 @@
 		.model = "cubyz:plane",
 		.states = 4,
 	},
-	.rotation = .texture_pile,
+	.rotation = "cubyz:texture_pile",
 	.texture0 = "cubyz:dead_leaf_pile/0",
 	.texture1 = "cubyz:dead_leaf_pile/1",
 	.texture2 = "cubyz:dead_leaf_pile/2",

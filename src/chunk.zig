@@ -190,6 +190,8 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 				return self.equals(notNull);
 			}
 			return false;
+		} else if(@TypeOf(other) == ChunkPosition) {
+			return self.wx == other.wx and self.wy == other.wy and self.wz == other.wz and self.voxelSize == other.voxelSize;
 		} else if(@TypeOf(other.*) == ServerChunk) {
 			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
 		} else if(@typeInfo(@TypeOf(other)) == .pointer) {
@@ -284,7 +286,7 @@ pub const Chunk = struct { // MARK: Chunk
 	fn deinitContent(self: *Chunk) void {
 		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
-		self.data.deinit();
+		self.data.deferredDeinit();
 	}
 
 	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
@@ -600,8 +602,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				for(0..2) |dy| {
 					const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
 					const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
-					const map = main.server.terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(mapX, mapY, self.super.pos.voxelSize);
-					defer map.decreaseRefCount();
+					const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, self.super.pos.voxelSize);
 					if(!map.wasStored.swap(true, .monotonic)) {
 						map.save(null, .{});
 					}

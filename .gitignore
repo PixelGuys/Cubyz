@@ -1,6 +1,5 @@
 compiler/
 logs/
-saves/
 zig-out/
 zig-cache/
 .zig-cache/
@@ -10,6 +9,11 @@ gamecontrollerdb.stamp
 
 test.png
 
+/mods/*
+!/mods/cubyz
+
 /assets/*
 !/assets/cubyz
 !/assets/backgrounds/default_background.png
+/assets/cubyz/music
+/assets/cubyz/fonts

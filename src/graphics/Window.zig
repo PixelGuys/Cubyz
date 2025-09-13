@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const settings = main.settings;
@@ -6,8 +7,11 @@ const files = main.files;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
+const vulkan = @import("vulkan.zig");
+
 pub const c = @cImport({
-	@cInclude("glad/glad.h");
+	@cInclude("glad/gl.h");
+	@cInclude("glad/vulkan.h");
 	@cInclude("GLFW/glfw3.h");
 });
 
@@ -16,6 +20,7 @@ pub var lastUsedMouse: bool = true;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
+pub var vulkanWindow: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
 
@@ -80,7 +85,7 @@ pub const Gamepad = struct {
 						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
 						const newPressed = newState.buttons[@intCast(key.gamepadButton)] != 0;
 						if(oldPressed != newPressed) {
-							key.setPressed(newPressed, isGrabbed, .{});
+							key.setPressed(newPressed, isGrabbed, .{}, false);
 						}
 					}
 				} else {
@@ -97,7 +102,7 @@ pub const Gamepad = struct {
 					const oldPressed = oldAxis > 0.5;
 					const newPressed = newAxis > 0.5;
 					if(oldPressed != newPressed) {
-						key.setPressed(newPressed, isGrabbed, .{});
+						key.setPressed(newPressed, isGrabbed, .{}, false);
 					}
 					if(newAxis != oldAxis) {
 						key.value = newAxis;
@@ -179,13 +184,13 @@ pub const Gamepad = struct {
 				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
 				return;
 			}
-			files.write("./gamecontrollerdb.txt", list.items) catch |err| {
+			files.cwd().write("./gamecontrollerdb.txt", list.items) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
 			const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{x}", .{self.*.curTimestamp}) catch unreachable;
 			defer main.stackAllocator.free(timeStampStr);
-			files.write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
+			files.cwd().write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
@@ -199,10 +204,11 @@ pub const Gamepad = struct {
 		}
 	};
 	pub fn downloadControllerMappings() void {
+		if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
 		const curTimestamp = std.time.nanoTimestamp();
 		const timestamp: i128 = blk: {
-			const stamp = files.read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
+			const stamp = files.cwd().read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
 			defer main.stackAllocator.free(stamp);
 			break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
 		};
@@ -233,7 +239,7 @@ pub const Gamepad = struct {
 				return;
 			}
 		}
-		const data = main.files.read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
+		const data = main.files.cwd().read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
 			if(@TypeOf(err) == std.fs.File.OpenError and err == std.fs.File.OpenError.FileNotFound) {
 				return; // Ignore not finding mappings.
 			}
@@ -276,6 +282,7 @@ pub const Key = struct { // MARK: Key
 	repeatAction: ?*const fn(Modifiers) void = null,
 	notifyRequirement: Requirement = .always,
 	grabbedOnPress: bool = false,
+	requiredModifiers: Modifiers = .{},
 
 	pub const Modifiers = packed struct(u6) {
 		shift: bool = false,
@@ -284,6 +291,18 @@ pub const Key = struct { // MARK: Key
 		super: bool = false,
 		capsLock: bool = false,
 		numLock: bool = false,
+
+		fn toInt(self: Modifiers) u6 {
+			return @bitCast(self);
+		}
+
+		fn satisfiedBy(required: Modifiers, actual: Modifiers) bool {
+			return (required.toInt() ^ actual.toInt()) & required.toInt() == 0;
+		}
+
+		fn isEmpty(self: Modifiers) bool {
+			return self.toInt() == 0;
+		}
 	};
 	const Requirement = enum {
 		always,
@@ -407,22 +426,24 @@ pub const Key = struct { // MARK: Key
 		}
 	}
 
-	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers) void {
+	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
 		if(newPressed != self.pressed) {
 			self.pressed = newPressed;
 			self.value = @floatFromInt(@intFromBool(newPressed));
 			if(newPressed) {
-				self.action(.press, isGrabbed, mods);
-				self.action(.repeat, isGrabbed, mods);
+				self.action(.press, isGrabbed, mods, textKeyPressedInTextField);
+				self.action(.repeat, isGrabbed, mods, textKeyPressedInTextField);
 			} else {
-				self.action(.release, isGrabbed, mods);
+				self.action(.release, isGrabbed, mods, textKeyPressedInTextField);
 			}
 		}
 	}
 
-	fn action(self: *Key, typ: enum {press, release, repeat}, isGrabbed: bool, mods: Modifiers) void {
+	fn action(self: *Key, typ: enum {press, release, repeat}, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
 		if(typ == .press) self.grabbedOnPress = isGrabbed;
 		if(!self.notifyRequirement.met(self.grabbedOnPress)) return;
+		if(!self.requiredModifiers.satisfiedBy(mods)) return;
+		if(textKeyPressedInTextField and self.requiredModifiers.isEmpty()) return; // Don't send events for keys that are used in writing letters.
 		switch(typ) {
 			.press => if(self.pressAction) |a| a(),
 			.release => if(self.releaseAction) |a| a(),
@@ -432,18 +453,18 @@ pub const Key = struct { // MARK: Key
 };
 
 pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
-	fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.C) void {
+	fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.c) void {
 		std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 	}
-	fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.C) void {
+	fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.c) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
-		if(!mods.control and main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null) return; // Don't send events for keys that are used in writing letters.
+		const textKeyPressedInTextField = main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null;
 		const isGrabbed = grabbed;
 		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods);
+						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
 					}
 				}
 			}
@@ -457,19 +478,19 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.action(.repeat, isGrabbed, mods);
+						key.action(.repeat, isGrabbed, mods, textKeyPressedInTextField);
 					}
 				}
 			}
 		}
 	}
-	fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.C) void {
+	fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.c) void {
 		if(!grabbed) {
 			main.gui.textCallbacks.char(@intCast(codepoint));
 		}
 	}
 
-	pub fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.C) void {
+	pub fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.c) void {
 		std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
 		height = @intCast(newHeight);
@@ -483,13 +504,17 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	var deltaBufferPosition: u2 = 0;
 	var currentPos: Vec2f = Vec2f{0, 0};
 	var ignoreDataAfterRecentGrab: bool = true;
-	fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
+	fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.c) void {
 		const newPos = Vec2f{
 			@floatCast(x),
 			@floatCast(y),
 		};
 		if(grabbed and !ignoreDataAfterRecentGrab) {
-			deltas[deltaBufferPosition] += (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
+			var newDelta = (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
+			if(settings.invertMouseY) {
+				newDelta[1] *= -1;
+			}
+			deltas[deltaBufferPosition] += newDelta;
 			var averagedDelta: Vec2f = Vec2f{0, 0};
 			for(deltas) |delta| {
 				averagedDelta += delta;
@@ -503,13 +528,13 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		currentPos = newPos;
 		lastUsedMouse = true;
 	}
-	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.C) void {
+	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.c) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		const isGrabbed = grabbed;
 		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(button == key.mouseButton) {
-					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods);
+					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
 				}
 			}
 			if(action == c.GLFW_PRESS) {
@@ -520,11 +545,11 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			}
 		}
 	}
-	fn scroll(_: ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.C) void {
+	fn scroll(_: ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.c) void {
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
 	}
-	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
+	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.c) void {
 		const sourceString: []const u8 = switch(source) {
 			c.GL_DEBUG_SOURCE_API => "API",
 			c.GL_DEBUG_SOURCE_APPLICATION => "Application",
@@ -634,6 +659,19 @@ pub fn init() void { // MARK: init()
 		@panic("Failed to initialize GLFW");
 	}
 
+	if(c.glfwVulkanSupported() == c.GLFW_FALSE) {
+		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
+	} else {
+		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
+		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.vulkanTestingWindow));
+		vulkanWindow = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
+		vulkan.init(vulkanWindow) catch |err| {
+			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
+		};
+	}
+
+	c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_OPENGL_API);
+	c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_TRUE);
 	c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -662,7 +700,7 @@ pub fn init() void { // MARK: init()
 
 	c.glfwMakeContextCurrent(window);
 
-	if(c.gladLoadGL() == 0) {
+	if(c.gladLoadGL(c.glfwGetProcAddress) == 0) {
 		@panic("Failed to load OpenGL functions from GLAD");
 	}
 	reloadSettings();
@@ -677,6 +715,8 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
+	c.glfwDestroyWindow(vulkanWindow);
+	vulkan.deinit();
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;

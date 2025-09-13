@@ -1,0 +1,15 @@
+name: Feature Request
+description: Propose a new gameplay feature
+labels: ["gameplay", "undecided"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check if the feature aligns with the [Game Design Principles](https://github.com/PixelGuys/Cubyz/blob/master/docs/GAME_DESIGN_PRINCIPLES.md) before making an issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Please describe the proposed feature.
+    validations:
+      required: true

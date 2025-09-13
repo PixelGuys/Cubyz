@@ -12,7 +12,7 @@ layout(location = 3) uniform uint light;
 
 struct QuadInfo {
 	vec3 normal;
-	vec3 corners[4];
+	float corners[4][3];
 	vec2 cornerUV[4];
 	uint textureSlot;
 	int opaqueInLod;
@@ -43,7 +43,7 @@ void main() {
 
 	normal = quads[faceID].normal;
 
-	vec3 position = quads[faceID].corners[vertexID];
+	vec3 position = vec3(quads[faceID].corners[vertexID][0], quads[faceID].corners[vertexID][1], quads[faceID].corners[vertexID][2]);
 
 	vec4 mvPos = viewMatrix*vec4(position, 1);
 	gl_Position = projectionMatrix*mvPos;

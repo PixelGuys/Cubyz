@@ -1,11 +1,15 @@
 .{
 	.properties = .{},
+	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,
+	.maxHeightLimit = 50,
+	.smoothBeaches = true,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.roughness = 1,
 	.hills = 5,
+	.chance = 2,
 	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
@@ -16,7 +20,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.00016,
-			.block = "cubyz:stone",
+			.block = "cubyz:slate",
 			.size = 5,
 			.size_variance = 1,
 		},

@@ -74,25 +74,18 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 	wasStored: Atomic(bool) = .init(false),
 
-	refCount: Atomic(u16) = .init(0),
-
 	pub fn init(self: *MapFragment, wx: i32, wy: i32, voxelSize: u31) void {
 		self.* = .{
 			.pos = MapFragmentPosition.init(wx, wy, voxelSize),
 		};
 	}
 
-	pub fn increaseRefCount(self: *MapFragment) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
+	fn privateDeinit(self: *MapFragment, _: usize) void {
+		memoryPool.destroy(self);
 	}
 
-	pub fn decreaseRefCount(self: *MapFragment) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
-			memoryPool.destroy(self);
-		}
+	pub fn deferredDeinit(self: *MapFragment) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn getBiome(self: *MapFragment, wx: i32, wy: i32) *const Biome {
@@ -131,7 +124,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
-		const fullData = try main.files.read(main.stackAllocator, path);
+		const fullData = try main.files.cubyzDir().read(main.stackAllocator, path);
 		defer main.stackAllocator.free(fullData);
 
 		var fullReader = BinaryReader.init(fullData);
@@ -216,11 +209,11 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}", .{saveFolder, self.pos.voxelSize, self.pos.wx}) catch unreachable;
 		defer main.stackAllocator.free(folder);
 
-		main.files.makeDir(folder) catch |err| {
+		main.files.cubyzDir().makePath(folder) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, outputWriter.data.items) catch |err| {
+		main.files.cubyzDir().write(path, outputWriter.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}
@@ -254,20 +247,22 @@ pub const MapGenerator = struct {
 const cacheSize = 1 << 6; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400MiB MiB Cache size
-var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.decreaseRefCount) = .{};
+var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
 var memoryPool: main.heap.MemoryPool(MapFragment) = undefined;
 
-pub fn initGenerators() void {
+pub fn globalInit() void {
 	const list = @import("mapgen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		MapGenerator.registerGenerator(@field(list, decl.name));
 	}
+	memoryPool = .init(main.globalAllocator);
 }
 
-pub fn deinitGenerators() void {
+pub fn globalDeinit() void {
 	MapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
+	memoryPool.deinit();
 }
 
 fn cacheInit(pos: MapFragmentPosition) *MapFragment {
@@ -276,7 +271,6 @@ fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 	_ = mapFragment.load(main.server.world.?.biomePalette, null) catch {
 		profile.mapFragmentGenerator.generateMapFragment(mapFragment, profile.seed);
 	};
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -285,13 +279,11 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	// Delete old LODs:
 	for(1..main.settings.highestSupportedLod + 1) |i| {
 		const lod = @as(u32, 1) << @intCast(i);
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{worldName}) catch unreachable;
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/{}", .{worldName, lod}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{lod}) catch unreachable;
-		defer main.stackAllocator.free(dir);
-		main.files.deleteDir(path, dir) catch |err| {
+		main.files.cubyzDir().deleteTree(path) catch |err| {
 			if(err != error.FileNotFound) {
-				std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+				std.log.err("Error while deleting directory {s}: {s}", .{path, @errorName(err)});
 			}
 		};
 	}
@@ -301,13 +293,13 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	{
-		var dirX = try std.fs.cwd().openDir(path, .{.iterate = true});
+		var dirX = try main.files.cubyzDir().openIterableDir(path);
 		defer dirX.close();
 		var iterX = dirX.iterate();
 		while(try iterX.next()) |entryX| {
 			if(entryX.kind != .directory) continue;
 			const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
-			var dirY = try dirX.openDir(entryX.name, .{.iterate = true});
+			var dirY = try dirX.openIterableDir(entryX.name);
 			defer dirY.close();
 			var iterY = dirY.iterate();
 			while(try iterY.next()) |entryY| {
@@ -575,7 +567,6 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		mapFragment.save(&originalHeightMap, neighborInfo); // Store the interpolated map
 		// Generate LODs
 		var cur = mapFragment;
-		defer if(cur.pos.voxelSize != 1) cur.decreaseRefCount();
 		while(cur.pos.voxelSizeShift < main.settings.highestSupportedLod) {
 			var nextPos = cur.pos;
 			nextPos.voxelSize *= 2;
@@ -583,7 +574,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			const nextMask = ~@as(i32, nextPos.voxelSize*MapFragment.mapSize - 1);
 			nextPos.wx &= nextMask;
 			nextPos.wy &= nextMask;
-			const next = getOrGenerateFragmentAndIncreaseRefCount(nextPos.wx, nextPos.wy, nextPos.voxelSize);
+			const next = getOrGenerateFragment(nextPos.wx, nextPos.wy, nextPos.voxelSize);
 			const offSetX: usize = @intCast((cur.pos.wx -% nextPos.wx) >> nextPos.voxelSizeShift);
 			const offSetY: usize = @intCast((cur.pos.wy -% nextPos.wy) >> nextPos.voxelSizeShift);
 			for(0..MapFragment.mapSize/2) |x| {
@@ -625,7 +616,6 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			}
 			next.save(null, .{});
 			next.wasStored.store(true, .monotonic);
-			if(cur.pos.voxelSize != 1) cur.decreaseRefCount();
 			cur = next;
 		}
 	}
@@ -634,21 +624,19 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
-	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
-	memoryPool.deinit();
 }
 
 /// Call deinit on the result.
-pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, voxelSize: u31) *MapFragment {
+pub fn getOrGenerateFragment(wx: i32, wy: i32, voxelSize: u31) *MapFragment {
 	const compare = MapFragmentPosition.init(
 		wx & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize - 1),
 		wy & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize - 1),
 		voxelSize,
 	);
-	const result = cache.findOrCreate(compare, cacheInit, MapFragment.increaseRefCount);
+	const result = cache.findOrCreate(compare, cacheInit, null);
 	return result;
 }

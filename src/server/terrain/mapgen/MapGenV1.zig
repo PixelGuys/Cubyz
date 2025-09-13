@@ -100,20 +100,6 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			const yBiome: i32 = @as(i32, @intFromFloat(@floor(rawYBiome))) + offset;
 			const relXBiome = rawXBiome - @floor(rawXBiome);
 			const relYBiome = rawYBiome - @floor(rawYBiome);
-			var closestBiome: *const terrain.biomes.Biome = undefined;
-			if(relXBiome < 0.5) {
-				if(relYBiome < 0.5) {
-					closestBiome = biomePositions.get(@intCast(xBiome), @intCast(yBiome)).biome;
-				} else {
-					closestBiome = biomePositions.get(@intCast(xBiome), @intCast(yBiome + 1)).biome;
-				}
-			} else {
-				if(relYBiome < 0.5) {
-					closestBiome = biomePositions.get(@intCast(xBiome + 1), @intCast(yBiome)).biome;
-				} else {
-					closestBiome = biomePositions.get(@intCast(xBiome + 1), @intCast(yBiome + 1)).biome;
-				}
-			}
 			const interpolationCoefficientsX = interpolationWeights(relXBiome, .square);
 			const interpolationCoefficientsY = interpolationWeights(relYBiome, .square);
 			var coefficientsX: vec.Vec2f = .{0, 0};

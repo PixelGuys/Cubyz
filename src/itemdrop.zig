@@ -201,12 +201,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.emptyMutex.lock();
 		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
 			self.emptyMutex.unlock();
-			const zon = itemStack.store(main.stackAllocator);
-			defer zon.deinit(main.stackAllocator);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
 			if(itemStack.item) |item| {
+				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {}×{s}", .{itemStack.amount, item.id()});
 				item.deinit();
 			}
 			return;
@@ -237,7 +233,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 
 		self.emptyMutex.unlock();
-		self.changeQueue.enqueue(.{.add = .{i, drop}});
+		self.changeQueue.pushBack(.{.add = .{i, drop}});
 	}
 
 	fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
@@ -269,11 +265,11 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 
 		self.emptyMutex.unlock();
-		self.changeQueue.enqueue(.{.add = .{i, drop}});
+		self.changeQueue.pushBack(.{.add = .{i, drop}});
 	}
 
 	fn processChanges(self: *ItemDropManager) void {
-		while(self.changeQueue.dequeue()) |data| {
+		while(self.changeQueue.popFront()) |data| {
 			switch(data) {
 				.add => |addData| {
 					self.internalAdd(addData[0], addData[1]);
@@ -506,7 +502,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.super.emptyMutex.lock();
 		self.super.isEmpty.set(i);
 		self.super.emptyMutex.unlock();
-		self.super.changeQueue.enqueue(.{.remove = i});
+		self.super.changeQueue.pushBack(.{.remove = i});
 	}
 
 	pub fn loadFrom(self: *ClientItemDropManager, zon: ZonElement) void {
@@ -592,13 +588,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				defer data.deinit();
 				for(model.internalQuads) |quad| {
 					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-					data.append(@as(u32, quad.index) << 16 | textureIndex); // modelAndTexture
+					data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
 					data.append(0); // offsetByNormal
 				}
 				for(model.neighborFacingQuads) |list| {
 					for(list) |quad| {
 						const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-						data.append(@as(u32, quad.index) << 16 | textureIndex); // modelAndTexture
+						data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
 						data.append(1); // offsetByNormal
 					}
 				}
@@ -775,9 +771,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 
-			const lightPos = @as(Vec3f, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
+			const lightPos = @as(Vec3d, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
 			const blockPos: Vec3i = @intFromFloat(@floor(lightPos));
-			const localBlockPos = lightPos - @as(Vec3f, @floatFromInt(blockPos));
+			const localBlockPos: Vec3f = @floatCast(lightPos - @as(Vec3d, @floatFromInt(blockPos)));
 
 			var samples: [8][6]f32 = @splat(@splat(0));
 			inline for(0..2) |z| {

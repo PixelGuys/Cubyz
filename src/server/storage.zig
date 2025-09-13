@@ -42,13 +42,13 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		const data = main.files.read(main.stackAllocator, path) catch {
+		const data = main.files.cubyzDir().read(main.stackAllocator, path) catch {
 			return self;
 		};
 		defer main.stackAllocator.free(data);
 		self.load(path, data) catch {
 			std.log.err("Corrupted region file: {s}", .{path});
-			if(@errorReturnTrace()) |trace| std.log.info("{}", .{trace});
+			if(@errorReturnTrace()) |trace| std.log.info("{f}", .{trace});
 		};
 		return self;
 	}
@@ -148,11 +148,11 @@ pub const RegionFile = struct { // MARK: RegionFile
 		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
 		defer main.stackAllocator.free(folder);
 
-		main.files.makeDir(folder) catch |err| {
+		main.files.cubyzDir().makePath(folder) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, writer.data.items) catch |err| {
+		main.files.cubyzDir().write(path, writer.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}
@@ -282,18 +282,18 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	}
 
 	fn compressBlockData(ch: *chunk.Chunk, allowLossy: bool, writer: *BinaryWriter) void {
-		if(ch.data.paletteLength == 1) {
+		if(ch.data.palette().len == 1) {
 			writer.writeEnum(ChunkCompressionAlgo, .uniform);
-			writer.writeInt(u32, ch.data.palette[0].toInt());
+			writer.writeInt(u32, ch.data.palette()[0].load(.unordered).toInt());
 			return;
 		}
-		if(ch.data.paletteLength < 256) {
+		if(ch.data.palette().len < 256) {
 			var uncompressedData: [chunk.chunkVolume]u8 = undefined;
 			var solidMask: [chunk.chunkSize*chunk.chunkSize]u32 = undefined;
 			for(0..chunk.chunkVolume) |i| {
-				uncompressedData[i] = @intCast(ch.data.data.getValue(i));
+				uncompressedData[i] = @intCast(ch.data.impl.raw.data.getValue(i));
 				if(allowLossy) {
-					const block = ch.data.palette[uncompressedData[i]];
+					const block = ch.data.palette()[uncompressedData[i]].load(.unordered);
 					const model = main.blocks.meshes.model(block).model();
 					const occluder = model.allNeighborsOccluded and !block.viewThrough();
 					if(occluder) {
@@ -323,10 +323,10 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			defer main.stackAllocator.free(compressedData);
 
 			writer.writeEnum(ChunkCompressionAlgo, .deflate_with_8bit_palette);
-			writer.writeInt(u8, @intCast(ch.data.paletteLength));
+			writer.writeInt(u8, @intCast(ch.data.palette().len));
 
-			for(0..ch.data.paletteLength) |i| {
-				writer.writeInt(u32, ch.data.palette[i].toInt());
+			for(0..ch.data.palette().len) |i| {
+				writer.writeInt(u32, ch.data.palette()[i].load(.unordered).toInt());
 			}
 			writer.writeVarInt(usize, compressedData.len);
 			writer.writeSlice(compressedData);
@@ -347,7 +347,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	}
 
 	fn decompressBlockData(ch: *chunk.Chunk, reader: *BinaryReader) !void {
-		std.debug.assert(ch.data.paletteLength == 1);
+		std.debug.assert(ch.data.palette().len == 1);
 
 		const compressionAlgorithm = try reader.readEnum(ChunkCompressionAlgo);
 
@@ -371,11 +371,11 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			.deflate_with_8bit_palette, .deflate_with_8bit_palette_no_block_entities => {
 				const paletteLength = try reader.readInt(u8);
 
-				ch.data.deinit();
+				ch.data.deferredDeinit();
 				ch.data.initCapacity(paletteLength);
 
 				for(0..paletteLength) |i| {
-					ch.data.palette[i] = main.blocks.Block.fromInt(try reader.readInt(u32));
+					ch.data.palette()[i] = .init(main.blocks.Block.fromInt(try reader.readInt(u32)));
 				}
 
 				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
@@ -392,7 +392,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				}
 			},
 			.uniform => {
-				ch.data.palette[0] = main.blocks.Block.fromInt(try reader.readInt(u32));
+				ch.data.palette()[0] = .init(main.blocks.Block.fromInt(try reader.readInt(u32)));
 			},
 		}
 	}

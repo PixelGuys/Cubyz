@@ -14,11 +14,12 @@ jobs:
     name: Compilation Check
     steps:
       - uses: actions/checkout@v3
-      - uses: mlugg/setup-zig@v1
+      - uses: mlugg/setup-zig@v2
         with:
-          version: 0.14.0
+          version: 0.15.0-dev.1034+bd97b6618
       - run: sudo apt install libgl-dev libasound2-dev libx11-dev glslang-tools
-      - run: wget -O /opt/hostedtoolcache/zig/0.14.0/x64/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.14.0/render.zig
+      - run: echo "zigPath=$(command -v zig | sed 's/.\{3\}$//')" >> $GITHUB_ENV
+      - run: wget -O $zigPath/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.15.0-dev.1034+bd97b6618/render.zig
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build test
@@ -26,6 +27,11 @@ jobs:
       - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
       - run: |
           if zig build fmt -- *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
+            git diff --color=always;
+            exit 1;
+          fi
+      - run: |
+          if zig build fmt -- mods/*.zig mods/*/*.zig mods/*/*/*.zig mods/*/*/*/*.zig mods/*/*/*/*/*.zig mods/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi

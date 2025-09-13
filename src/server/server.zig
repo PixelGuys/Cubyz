@@ -6,6 +6,7 @@ const chunk = main.chunk;
 const network = main.network;
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
+const InventoryId = main.items.Inventory.InventoryId;
 const utils = main.utils;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
@@ -60,17 +61,17 @@ pub const WorldEditData = struct {
 			self.changes.deinit();
 		}
 		pub fn clear(self: *History) void {
-			while(self.changes.dequeue()) |item| item.deinit();
+			while(self.changes.popFront()) |item| item.deinit();
 		}
 		pub fn push(self: *History, value: Value) void {
 			if(self.changes.reachedCapacity()) {
-				if(self.changes.dequeue()) |oldValue| oldValue.deinit();
+				if(self.changes.popFront()) |oldValue| oldValue.deinit();
 			}
 
-			self.changes.enqueue(value);
+			self.changes.pushBack(value);
 		}
 		pub fn pop(self: *History) ?Value {
-			return self.changes.dequeue_front();
+			return self.changes.popBack();
 		}
 	};
 	pub fn init() WorldEditData {
@@ -113,7 +114,9 @@ pub const User = struct { // MARK: User
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
-	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
+	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
+	inventory: ?InventoryId = null,
+	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
 
@@ -137,16 +140,20 @@ pub const User = struct { // MARK: User
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 
+		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
+		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
+		self.inventoryClientToServerIdMap.deinit();
+
 		world.?.savePlayer(self) catch |err| {
 			std.log.err("Failed to save player: {s}", .{@errorName(err)});
 			return;
 		};
 
+		if(self.inventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+		if(self.handInventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+
 		self.worldEditData.deinit();
 
-		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
-		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
-		self.inventoryClientToServerIdMap.deinit();
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
@@ -330,7 +337,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 fn deinit() void {
 	users.clearAndFree();
-	while(userDeinitList.dequeue()) |user| {
+	while(userDeinitList.popFront()) |user| {
 		user.deinit();
 	}
 	userDeinitList.deinit();
@@ -341,12 +348,13 @@ fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
 
-	main.items.Inventory.Sync.ServerSide.deinit();
-
 	if(world) |_world| {
 		_world.deinit();
 	}
 	world = null;
+
+	main.items.Inventory.Sync.ServerSide.deinit();
+
 	command.deinit();
 }
 
@@ -384,7 +392,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 fn update() void { // MARK: update()
 	world.?.update();
 
-	while(userConnectList.dequeue()) |user| {
+	while(userConnectList.popFront()) |user| {
 		connectInternal(user);
 	}
 
@@ -423,7 +431,7 @@ fn update() void { // MARK: update()
 		}
 	}
 
-	while(userDeinitList.dequeue()) |user| {
+	while(userDeinitList.popFront()) |user| {
 		user.decreaseRefCount();
 	}
 }
@@ -436,9 +444,10 @@ pub fn start(name: []const u8, port: ?u16) void {
 	defer deinit();
 	running.store(true, .release);
 	while(running.load(.monotonic)) {
+		main.heap.GarbageCollection.syncPoint();
 		const newTime = std.time.nanoTimestamp();
 		if(newTime -% lastTime < updateNanoTime) {
-			std.time.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
+			std.Thread.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
 			lastTime +%= updateNanoTime;
 		} else {
 			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime -% lastTime -% updateNanoTime))/1000000.0});
@@ -455,7 +464,7 @@ pub fn stop() void {
 pub fn disconnect(user: *User) void { // MARK: disconnect()
 	if(!user.connected.load(.unordered)) return;
 	removePlayer(user);
-	userDeinitList.enqueue(user);
+	userDeinitList.pushBack(user);
 	user.connected.store(false, .unordered);
 }
 
@@ -490,13 +499,22 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 }
 
 pub fn connect(user: *User) void {
-	userConnectList.enqueue(user);
+	userConnectList.pushBack(user);
 }
 
 pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	// Check if a user with that name is already present
+	if(!world.?.testingMode) {
+		for(userList) |other| {
+			if(std.mem.eql(u8, other.name, user.name)) {
+				user.conn.disconnect();
+				return;
+			}
+		}
+	}
 	// Let the other clients know about this new one.
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
@@ -532,7 +550,7 @@ pub fn connectInternal(user: *User) void {
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
-	user.conn.handShakeState.store(main.network.Protocols.handShake.stepComplete, .monotonic);
+	user.conn.handShakeState.store(.complete, .monotonic);
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message

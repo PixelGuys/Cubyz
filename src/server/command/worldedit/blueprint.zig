@@ -5,7 +5,6 @@ const User = main.server.User;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-const openDir = main.files.openDir;
 const Dir = main.files.Dir;
 const List = main.List;
 const Block = main.blocks.Block;
@@ -103,9 +102,9 @@ fn sendInfoAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
 }
 
 fn openBlueprintsDir(source: *User) ?Dir {
-	return openDir("blueprints") catch |err| blk: {
+	return main.files.cubyzDir().openDir("blueprints") catch |err| {
 		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
-		break :blk null;
+		return null;
 	};
 }
 
@@ -131,7 +130,7 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 	var blueprintsDir = openBlueprintsDir(source) orelse return;
 	defer blueprintsDir.close();
 
-	blueprintsDir.dir.deleteFile(fileName) catch |err| {
+	blueprintsDir.deleteFile(fileName) catch |err| {
 		return sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 	};
 
@@ -139,7 +138,7 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 }
 
 fn blueprintList(source: *User) void {
-	var blueprintsDir = std.fs.cwd().makeOpenPath("blueprints", .{.iterate = true}) catch |err| {
+	var blueprintsDir = main.files.cubyzDir().openIterableDir("blueprints") catch |err| {
 		return sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
 	};
 	defer blueprintsDir.close();
