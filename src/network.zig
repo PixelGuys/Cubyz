@@ -1104,7 +1104,7 @@ pub const Protocols = struct {
 					if(conn.manager.world) |_| {
 						const particleId = particles.ParticleManager.getIdByTypeIndex(try reader.readInt(u16));
 						const pos = try reader.readVec(Vec3d);
-						const collides = try reader.readInt(u8) == 1;
+						const collides = try reader.readBool();
 						const count = try reader.readInt(u32);
 
 						const emitter: particles.Emitter = .init(particleId, collides);
@@ -1161,7 +1161,7 @@ pub const Protocols = struct {
 			writer.writeEnum(UpdateType, .particle);
 			writer.writeInt(u16, particleId);
 			writer.writeVec(Vec3d, pos);
-			writer.writeInt(u8, if(collides) 1 else 0);
+			writer.writeBool(collides);
 			writer.writeInt(u32, count);
 
 			conn.send(.fast, id, writer.data.items);
