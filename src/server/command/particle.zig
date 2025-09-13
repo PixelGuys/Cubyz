@@ -80,7 +80,10 @@ fn parseBool(arg: []const u8) CommandError!bool {
 fn parseNumber(arg: []const u8, source: *User) CommandError!u32 {
 	return std.fmt.parseUnsigned(u32, arg, 0) catch |err| {
 		switch(err) {
-			error.Overflow => return std.math.maxInt(u32),
+			error.Overflow, => {
+				source.sendMessage("#ff0000Too big of a number \"{s}\"", .{arg});
+				return particles.ParticleSystem.maxCapacity;
+			},
 			error.InvalidCharacter => {
 				source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
 				return error.InvalidNumber;
