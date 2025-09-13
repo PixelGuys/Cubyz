@@ -171,6 +171,8 @@ pub const ParticleSystem = struct {
 	var properties: EmitterProperties = undefined;
 	var previousPlayerPos: Vec3d = undefined;
 
+    pub var networkCreationQueue: main.List(struct{ Emitter, Vec3d, u32 }) = undefined;
+
 	var particlesSSBO: SSBO = undefined;
 
 	var pipeline: graphics.Pipeline = undefined;
@@ -208,14 +210,28 @@ pub const ParticleSystem = struct {
 		particlesSSBO.bind(13);
 
 		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+
+        networkCreationQueue = .init(arenaAllocator);
 	}
 
 	pub fn deinit() void {
 		pipeline.deinit();
 		particlesSSBO.deinit();
+        networkCreationQueue.deinit();
 	}
 
 	pub fn update(deltaTime: f32) void {
+        if (networkCreationQueue.items.len != 0) {
+            for (networkCreationQueue.items) |creation| {
+                const emitter, const pos, const count = creation;
+                emitter.spawnParticles(count, Emitter.SpawnPoint, .{
+                    .mode = .spread,
+                    .position = pos,
+                });
+            }
+            networkCreationQueue.clearAndFree();
+        }
+
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
 		const playerPos = game.Player.getEyePosBlocking();
 		const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);

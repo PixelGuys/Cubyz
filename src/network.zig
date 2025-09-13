@@ -1108,10 +1108,7 @@ pub const Protocols = struct {
 						const count = try reader.readInt(u32);
 
 						const emitter: particles.Emitter = .init(particleId, collides);
-						emitter.spawnParticles(count, particles.Emitter.SpawnPoint, .{
-							.mode = .spread,
-							.position = pos,
-						});
+						particles.ParticleSystem.networkCreationQueue.append(.{ emitter, pos, count });
 					}
 				},
 			}
