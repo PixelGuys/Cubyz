@@ -100,8 +100,8 @@ layout(std430, binding = 2) buffer _modelInfo
 	uint modelInfo[];
 };
 
-uint getVoxel(uvec3 pos) {
-	uint index = (pos.x | pos.y*upper.x)*upper.z | pos.z;
+uint getVoxel(ivec3 pos) {
+	int index = (pos.x | pos.y*int(upper.x))*int(upper.z) | pos.z;
 	return modelInfo[voxelModel + index];
 }
 
@@ -121,7 +121,7 @@ void mainItemDrop() {
 	if(direction.y == 0) tMax.y = 1.0/0.0;
 	if(direction.z == 0) tMax.z = 1.0/0.0;
 
-	uvec3 voxelPosition = uvec3(floor(startPosition));
+	ivec3 voxelPosition = ivec3(floor(startPosition));
 	int lastNormal = faceNormalIndex;
 	uint block = getVoxel(voxelPosition);
 	float total_tMax = 0;
