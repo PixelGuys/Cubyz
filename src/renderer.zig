@@ -373,9 +373,8 @@ pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block
 	for(main.chunk.Neighbor.iterable) |neighbor| {
 		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
 	}
-
-	for(faceData.items) |*face| {
-		face.position.lightIndex = 0;
+	for(faceData.items, 0..) |*face, i| {
+		face.position.lightIndex = @intCast(i);
 	}
 
 	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
@@ -384,12 +383,10 @@ pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block
 	var lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 	{
 		const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
-		var quads: main.List(main.models.QuadInfo) = .init(main.stackAllocator);
-		defer quads.deinit();
-		model.getRawFaces(&quads);
-		var data = main.stackAllocator.alloc(u32, quads.items.len*4);
+		var data = main.stackAllocator.alloc(u32, faceData.items.len*4);
 		defer main.stackAllocator.free(data);
-		for(quads.items, 0..) |quad, index| {
+		for(faceData.items) |face| {
+			const quad = face.blockAndQuad.quadIndex.quadInfo();
 			var rawData: [4][6]u5 = undefined;
 			for(0..4) |i| {
 				const vertexPos = vec.xyz(modelMatrix.mulVec(vec.combine(quad.cornerVec(i), 1)));
@@ -400,7 +397,7 @@ pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block
 				}
 			}
 			const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
-			@memcpy(data[index*4 .. index*4 + 4], &packedLight);
+			@memcpy(data[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
 		}
 		main.renderer.chunk_meshing.lightBuffers[0].uploadData(data, &lightAllocation);
 	}
