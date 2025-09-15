@@ -360,7 +360,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 }
 
 pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lightPos: Vec3i, ambientLight: Vec3f, playerPosition: Vec3d) void {
-	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
+	var faceData: main.ListUnmanaged(chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
 	if(block.hasBackFace()) {
@@ -377,30 +377,33 @@ pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block
 		face.position.lightIndex = @intCast(i);
 	}
 
+	const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
+	var lightData = main.stackAllocator.alloc(u32, faceData.items.len*4);
+	defer main.stackAllocator.free(lightData);
+	for(faceData.items) |face| {
+		const quad = face.blockAndQuad.quadIndex.quadInfo();
+		var rawData: [4][6]u5 = undefined;
+		for(0..4) |i| {
+			const vertexPos = vec.xyz(modelMatrix.mulVec(vec.combine(quad.cornerVec(i), 1)));
+			const fullPos = lightPos +% @as(Vec3i, @intFromFloat(vertexPos));
+			const indexData = main.renderer.chunk_meshing.PrimitiveMesh.getCornerLight(mesh, fullPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, quad.normal);
+			for(0..6) |j| {
+				rawData[i][j] = std.math.lossyCast(u5, indexData[j]/8);
+			}
+		}
+		const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
+		@memcpy(lightData[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
+	}
+
+	renderBlockImpl(projMatrix, modelMatrix, faceData.items, lightData.items, ambientLight, playerPosition);
+}
+
+fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d) void {
 	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData.items, &allocation);
 	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
 	var lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
-	{
-		const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
-		var data = main.stackAllocator.alloc(u32, faceData.items.len*4);
-		defer main.stackAllocator.free(data);
-		for(faceData.items) |face| {
-			const quad = face.blockAndQuad.quadIndex.quadInfo();
-			var rawData: [4][6]u5 = undefined;
-			for(0..4) |i| {
-				const vertexPos = vec.xyz(modelMatrix.mulVec(vec.combine(quad.cornerVec(i), 1)));
-				const fullPos = lightPos +% @as(Vec3i, @intFromFloat(vertexPos));
-				const indexData = main.renderer.chunk_meshing.PrimitiveMesh.getCornerLight(mesh, fullPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, quad.normal);
-				for(0..6) |j| {
-					rawData[i][j] = std.math.lossyCast(u5, indexData[j]/8);
-				}
-			}
-			const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
-			@memcpy(data[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
-		}
-		main.renderer.chunk_meshing.lightBuffers[0].uploadData(data, &lightAllocation);
-	}
+	main.renderer.chunk_meshing.lightBuffers[0].uploadData(lightData, &lightAllocation);
 	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
 
 	var chunkAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
