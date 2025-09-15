@@ -373,26 +373,7 @@ pub const BlockEntityTypes = struct {
 
 				if(chest.shouldBeOpen and block.data < 4) {
 					block.data |= 4;
-
-					var lightRefreshList = main.List(main.chunk.ChunkPosition).init(main.stackAllocator);
-					defer lightRefreshList.deinit();
-
-					var regenerateMeshList = main.List(*main.renderer.chunk_meshing.ChunkMesh).init(main.stackAllocator);
-					defer regenerateMeshList.deinit();
-
-					const pos = main.chunk.ChunkPosition{.wx = chest.pos[0], .wy = chest.pos[1], .wz = chest.pos[2], .voxelSize = 1};
-					if(main.renderer.mesh_storage.getMesh(pos)) |mesh| {
-						mesh.updateBlock(chest.pos[0], chest.pos[1], chest.pos[2], block, null, &lightRefreshList, &regenerateMeshList);
-					}
-					for(regenerateMeshList.items) |mesh| {
-						mesh.generateMesh(&lightRefreshList);
-					}
-					for(lightRefreshList.items) |lightPos| {
-						main.renderer.chunk_meshing.ChunkMesh.scheduleLightRefresh(lightPos);
-					}
-					for(regenerateMeshList.items) |mesh| {
-						mesh.uploadData();
-					}
+					mesh_storage.updateBlockInstant(chest.pos[0], chest.pos[1], chest.pos[2], block, null);
 				}
 
 				if(block.data >= 4) {
@@ -406,26 +387,7 @@ pub const BlockEntityTypes = struct {
 						if(chest.angle < 0.0) {
 							chest.angle = 0.0;
 							block.data &= 3;
-
-							var lightRefreshList = main.List(main.chunk.ChunkPosition).init(main.stackAllocator);
-							defer lightRefreshList.deinit();
-
-							var regenerateMeshList = main.List(*main.renderer.chunk_meshing.ChunkMesh).init(main.stackAllocator);
-							defer regenerateMeshList.deinit();
-
-							const pos = main.chunk.ChunkPosition{.wx = chest.pos[0], .wy = chest.pos[1], .wz = chest.pos[2], .voxelSize = 1};
-							if(main.renderer.mesh_storage.getMesh(pos)) |mesh| {
-								mesh.updateBlock(chest.pos[0], chest.pos[1], chest.pos[2], block, null, &lightRefreshList, &regenerateMeshList);
-							}
-							for(regenerateMeshList.items) |mesh| {
-								mesh.generateMesh(&lightRefreshList);
-							}
-							for(lightRefreshList.items) |lightPos| {
-								main.renderer.chunk_meshing.ChunkMesh.scheduleLightRefresh(lightPos);
-							}
-							for(regenerateMeshList.items) |mesh| {
-								mesh.uploadData();
-							}
+							mesh_storage.updateBlockInstant(chest.pos[0], chest.pos[1], chest.pos[2], block, null);
 						}
 					}
 

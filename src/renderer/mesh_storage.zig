@@ -907,6 +907,28 @@ pub fn updateBlock(update: BlockUpdate) void {
 	blockUpdateList.pushBack(BlockUpdate.initManaged(main.globalAllocator, update));
 }
 
+pub fn updateBlockInstant(x: i32, y: i32, z: i32, block: blocks.Block, blockEntityData: ?[]const u8) void {
+	var lightRefreshList = main.List(main.chunk.ChunkPosition).init(main.stackAllocator);
+	defer lightRefreshList.deinit();
+
+	var regenerateMeshList = main.List(*main.renderer.chunk_meshing.ChunkMesh).init(main.stackAllocator);
+	defer regenerateMeshList.deinit();
+
+	const pos = main.chunk.ChunkPosition{.wx = x, .wy = y, .wz = z, .voxelSize = 1};
+	if(main.renderer.mesh_storage.getMesh(pos)) |mesh| {
+		mesh.updateBlock(x, y, z, block, blockEntityData, &lightRefreshList, &regenerateMeshList);
+	}
+	for(regenerateMeshList.items) |mesh| {
+		mesh.generateMesh(&lightRefreshList);
+	}
+	for(lightRefreshList.items) |lightPos| {
+		main.renderer.chunk_meshing.ChunkMesh.scheduleLightRefresh(lightPos);
+	}
+	for(regenerateMeshList.items) |mesh| {
+		mesh.uploadData();
+	}
+}
+
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
 	MeshGenerationTask.schedule(mesh);
 }
