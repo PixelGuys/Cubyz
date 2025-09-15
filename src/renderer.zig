@@ -395,12 +395,12 @@ pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block
 		@memcpy(lightData[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
 	}
 
-	renderBlockImpl(projMatrix, modelMatrix, faceData.items, lightData.items, ambientLight, playerPosition);
+	renderBlockImpl(projMatrix, modelMatrix, faceData.items, lightData, ambientLight, playerPosition);
 }
 
 fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d) void {
 	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData.items, &allocation);
+	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData, &allocation);
 	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
 	var lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.lightBuffers[0].uploadData(lightData, &lightAllocation);
@@ -453,7 +453,7 @@ fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_mesh
 	main.blocks.meshes.emissionTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE2);
 	main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
-	c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
+	c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 }
 
 const Bloom = struct { // MARK: Bloom
