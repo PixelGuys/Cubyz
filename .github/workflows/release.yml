@@ -10,9 +10,21 @@ permissions:
 
 jobs:
   release:
-    name: Release pushed tag
-    runs-on: ubuntu-24.04
+    name: Create release
+    runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+      - run: echo "VERSION=$(cat .zig-version)" >> $GITHUB_ENV
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.VERSION }}
+
+      - run: zig build -Dtarget=x86_64-windows-gnu -Doptimize=ReleaseFast -Drelease=true
+      - run: tar -czf Windows-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz.exe
+
+      - run: zig build -Dtarget=x86_64-linux-musl -Doptimize=ReleaseFast -Drelease=true
+      - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz
+
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -21,4 +33,7 @@ jobs:
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
-              --generate-notes
+              --generate-notes \
+              Linux-x86_64.tar.gz \
+              Windows-x86_64.tar.gz
+          gh release
