@@ -8,7 +8,7 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = {
+	.model = .{
 		.top = "cubyz:cross",
 		.bottom = "cubyz:cross_with_texture_1",
 	}
