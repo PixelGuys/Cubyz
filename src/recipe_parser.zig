@@ -48,16 +48,16 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 	return segments;
 }
 
-fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) ?std.StringHashMap([]const u8) {
+fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) !std.StringHashMap([]const u8) {
 	var idx: usize = 0;
 	idx = 0;
 	var newKeys = keys.clone() catch unreachable;
+	errdefer newKeys.deinit();
 	for(0.., pattern) |i, segment| {
 		switch(segment) {
 			.literal => |literal| {
 				if(literal.len + idx > target.len or !std.mem.eql(u8, target[idx .. idx + literal.len], literal)) {
-					newKeys.deinit();
-					return null;
+					return error.NoMatch;
 				}
 				idx += literal.len;
 			},
@@ -65,12 +65,10 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 				const endIndex: usize = if(i + 1 < pattern.len) blk: {
 					const nextSegment = pattern[i + 1];
 					if(nextSegment == .symbol) {
-						newKeys.deinit();
-						return null;
+						return error.NoMatch;
 					}
 					break :blk std.mem.indexOfPos(u8, target, idx, nextSegment.literal) orelse {
-						newKeys.deinit();
-						return null;
+						return error.NoMatch;
 					};
 				} else target.len;
 				newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
@@ -81,8 +79,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 	if(idx == target.len) {
 		return newKeys;
 	} else {
-		newKeys.deinit();
-		return null;
+		return error.NoMatch;
 	}
 }
 
