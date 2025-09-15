@@ -18,13 +18,12 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.VERSION }}
-      - run: sudo apt install libgl-dev libasound2-dev libx11-dev glslang-tools
+
+      - run: zig build -Dtarget=x86_64-linux-musl -Doptimize=ReleaseFast -Drelease=true
+      - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz
 
       - run: zig build -Dtarget=x86_64-windows-gnu -Doptimize=ReleaseFast -Drelease=true
       - run: tar -czf Windows-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz.exe
-
-      - run: zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Drelease=true
-      - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz
 
       - name: Create release
         env:
