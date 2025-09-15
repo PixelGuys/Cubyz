@@ -17,6 +17,7 @@
 	.smoothBeaches = true,
 	.hills = 50,
 	.validPlayerSpawn = false,
+	.music = "cubyz:Gray_Vibes/Mornings",
 	.rivers = true,
 	.stripes = .{
 		.{

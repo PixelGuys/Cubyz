@@ -13,7 +13,7 @@
 	.fogColor = 0xe2f2ff,
 	.mountains = 125,
 
-	.music = "cubyz:DarkTimes",
+	.music = "cubyz:ikabodBTW/Gust",
 
 	.soilCreep = 1.0,
 

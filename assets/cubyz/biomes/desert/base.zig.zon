@@ -13,7 +13,7 @@
 	.maxRadius = 640,
 	.hills = 20,
 	.validPlayerSpawn = false,
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:TotalDemented/Cublajz",
 	.ground_structure = .{
 		"3 to 4 cubyz:sand",
 	},

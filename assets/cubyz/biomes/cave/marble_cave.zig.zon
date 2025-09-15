@@ -3,7 +3,7 @@
 	.maxHeight = -64,
 	.minHeight = -512,
 	.chance = 0.2,
-
+	.music = "cubyz:TotalDemented/In_the_Depths",
 	.fogDensity = 10,
 
 	.stoneBlock = "cubyz:marble",

@@ -10,7 +10,7 @@
 	.hills = 3.5,
 	.minRadius = 64,
 	.maxRadius = 128,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:Bytepop/Pixel_Wires",
 	.ground_structure = .{
 		"6 to 8 cubyz:mud",
 	},

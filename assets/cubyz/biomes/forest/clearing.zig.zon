@@ -6,7 +6,7 @@
 	.maxHeight = 40,
 	.roughness = 1,
 	.hills = 5,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:TotalDemented/Leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",

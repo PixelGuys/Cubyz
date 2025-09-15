@@ -8,8 +8,7 @@
 	.mountains = 150,
 
 	.chance = 0,
-
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:Mrmayman/Out_of_Breath",
 
 	.parentBiomes = .{
 		.{
