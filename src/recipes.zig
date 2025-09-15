@@ -189,9 +189,9 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 		keyList = newKeyList;
 		inputCombos = newInputCombos;
 	}
-	var newInputCombos: main.List([]ItemStack) = .initCapacity(localAllocator, inputCombos.items.len);
+	const newInputCombos: main.List([]ItemStack) = .initCapacity(allocator, inputCombos.items.len);
 
-	return inputCombos;
+	return newInputCombos;
 }
 
 pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
