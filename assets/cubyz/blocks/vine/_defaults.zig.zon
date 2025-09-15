@@ -11,7 +11,7 @@
 	.model = .{
 		.top = "cubyz:cross",
 		.bottom = "cubyz:cross_with_texture_1",
-	}
+	},
 	.rotation = "cubyz:hanging",
 	.lodReplacement = "cubyz:air",
 }
