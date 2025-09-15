@@ -56,7 +56,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
-	} else if(t.os.tag == .linux) {
 	} else if(t.os.tag == .macos) {
 		exe.linkFramework("AudioUnit");
 		exe.linkFramework("AudioToolbox");
@@ -69,7 +68,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
 		exe.root_module.addRPathSpecial("@executable_path/../Library");
 		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
-	} else {
+	} else if(t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
 }
