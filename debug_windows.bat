@@ -19,4 +19,4 @@ if errorlevel 1 (
 echo Cubyz successfully built!
 echo Launching Cubyz.
 
-zig-out\bin\Cubyzig
+zig-out\bin\Cubyz

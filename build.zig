@@ -56,9 +56,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
-	} else if(t.os.tag == .linux) {
-		exe.linkSystemLibrary("X11");
-		exe.linkSystemLibrary("GL");
 	} else if(t.os.tag == .macos) {
 		exe.linkFramework("AudioUnit");
 		exe.linkFramework("AudioToolbox");
@@ -71,7 +68,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
 		exe.root_module.addRPathSpecial("@executable_path/../Library");
 		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
-	} else {
+	} else if(t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
 }
@@ -180,7 +177,7 @@ pub fn build(b: *std.Build) !void {
 	});
 
 	const exe = b.addExecutable(.{
-		.name = "Cubyzig",
+		.name = "Cubyz",
 		.root_module = mainModule,
 		//.sanitize_thread = true,
 		.use_llvm = true,
@@ -218,7 +215,7 @@ pub fn build(b: *std.Build) !void {
 	// MARK: Formatter
 
 	const formatter = b.addExecutable(.{
-		.name = "CubyzigFormatter",
+		.name = "CubyzFormatter",
 		.root_module = b.addModule("format", .{
 			.root_source_file = b.path("src/formatter/format.zig"),
 			.target = target,
