@@ -189,7 +189,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 		keyList = newKeyList;
 		inputCombos = newInputCombos;
 	}
-	const newInputCombos: main.List([]ItemStack) = .initCapacity(allocator, inputCombos.items.len);
+	var newInputCombos: main.List([]ItemStack) = .initCapacity(allocator, inputCombos.items.len);
 	for(inputCombos.items) |inputCombo| {
 	    newInputCombos.append(allocator.dupe(ItemStack, inputCombo));
 	}
