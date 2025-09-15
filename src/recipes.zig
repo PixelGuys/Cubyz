@@ -160,9 +160,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
     var localAllocator = localArena.allocator();
 	var remainingItems = recipe;
 	var emptyKeys: std.StringHashMap([]const u8) = .init(localAllocator.allocator);
-	defer emptyKeys.deinit();
 	const startingParsedItems = try parseRecipeItem(localAllocator, remainingItems[0], &emptyKeys);
-	defer startingParsedItems.deinit();
 	var inputCombos: main.List([]ItemStack) = .initCapacity(localAllocator, startingParsedItems.items.len);
 	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(localAllocator, startingParsedItems.items.len);
 	for(startingParsedItems.items) |item| {
