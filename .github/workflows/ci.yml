@@ -36,7 +36,7 @@ jobs:
             exit 1;
           fi
       - run: |
-          for file in *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon do
+          for file in *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon ; do
             zig ast-check file
           done
       - run: |
