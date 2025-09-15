@@ -36,6 +36,10 @@ jobs:
             exit 1;
           fi
       - run: |
+          for file in *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon do
+            zig ast-check file
+          done
+      - run: |
           if zig build fmt -- --zon *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon | grep -q . ; then
             git diff --color=always;
             exit 1;
