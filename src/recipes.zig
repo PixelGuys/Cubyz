@@ -208,7 +208,7 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	const itemCombos = try generateItemCombos(allocator, recipeItems);
 	const reversible = zon.get(bool, "reversible", false);
 	for(itemCombos.items) |itemCombo| {
-    	if(itemCombo.len != 2) {
+    	if(reversible and itemCombo.len != 2) {
     	    return error.InvalidReversibleRecipe;
     	}
 		const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
@@ -225,9 +225,6 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 		}
 		list.append(recipe);
 		if(reversible) {
-			if(recipe.sourceItems.len != 1) {
-			    return error.InvalidReversibleRecipe;
-			}
 			var reversedRecipe = Recipe{
 				.sourceItems = main.stackAllocator.alloc(BaseItemIndex, 1),
 				.sourceAmounts = main.stackAllocator.alloc(u16, 1),
