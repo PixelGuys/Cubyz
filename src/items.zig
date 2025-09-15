@@ -23,7 +23,7 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("tool/modifiers/_list.zig");
 const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
-const recipes = @import("recipes.zig");
+const recipes_zig = @import("recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
 
@@ -1227,7 +1227,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 
 pub fn registerRecipes(zon: ZonElement) void {
 	for(zon.toSlice()) |recipeZon| {
-		recipes.parseRecipe(recipeZon, &recipeList) catch |err| {
+		recipes_zig.parseRecipe(recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
