@@ -32,11 +32,11 @@
 		.output = "2 cubyz:cactus_arm",
 	},
 	.{
-		.inputs = .{".planks", "cubyz:coal_ore"},
+		.inputs = .{"{mod}:{type}_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{".planks", "cubyz:sulfur_ore"},
+		.inputs = .{"{mod}:{type}_planks", "cubyz:sulfur_ore"},
 		.output = "8 cubyz:sulfur_torch",
 	},
 }
