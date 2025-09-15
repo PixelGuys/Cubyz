@@ -140,7 +140,7 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 					continue :loop;
 				}
 			}
-			if(matchWithKeys(allocator, item.id(), pattern.items, keys)) |newKeys| {
+			if(matchWithKeys(allocator, item.id(), pattern.items, keys) catch null) |newKeys| {
 				itemPairs.append(.{
 					.item = .{
 						.item = .{.baseItem = item.*},
