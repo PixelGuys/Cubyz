@@ -1,6 +1,6 @@
 .{
 	.{
-		.inputs = .{"4 .planks"},
+		.inputs = .{"4 {mod}:{type}_planks"},
 		.output = "cubyz:workbench",
 	},
 	.{
