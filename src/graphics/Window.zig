@@ -678,7 +678,7 @@ pub fn init() void { // MARK: init()
 
 	window = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
 	iconBlock: {
-		const image = main.graphics.Image.readUnflippedFromFile(main.stackAllocator, "logo.png") catch |err| {
+		const image = main.graphics.Image.readUnflippedFromFile(main.stackAllocator, "assets/cubyz/logo.png") catch |err| {
 			std.log.err("Error loading logo: {s}", .{@errorName(err)});
 			break :iconBlock;
 		};
