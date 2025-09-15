@@ -18,7 +18,6 @@ jobs:
         with:
           version: 0.15.0-dev.1034+bd97b6618
       - run: sudo apt install libgl-dev libasound2-dev libx11-dev glslang-tools
-      - run: shopt -s nullglob
       - run: echo "zigPath=$(command -v zig | sed 's/.\{3\}$//')" >> $GITHUB_ENV
       - run: wget -O $zigPath/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.15.0-dev.1034+bd97b6618/render.zig
       - run: zig build
@@ -37,6 +36,7 @@ jobs:
             exit 1;
           fi
       - run: |
+          shopt -s nullglob
           for file in *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon ; do
             zig ast-check $file
           done
