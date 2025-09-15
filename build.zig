@@ -180,7 +180,7 @@ pub fn build(b: *std.Build) !void {
 	});
 
 	const exe = b.addExecutable(.{
-		.name = "Cubyzig",
+		.name = "Cubyz",
 		.root_module = mainModule,
 		//.sanitize_thread = true,
 		.use_llvm = true,
@@ -218,7 +218,7 @@ pub fn build(b: *std.Build) !void {
 	// MARK: Formatter
 
 	const formatter = b.addExecutable(.{
-		.name = "CubyzigFormatter",
+		.name = "CubyzFormatter",
 		.root_module = b.addModule("format", .{
 			.root_source_file = b.path("src/formatter/format.zig"),
 			.target = target,
