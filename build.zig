@@ -57,8 +57,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
 	} else if(t.os.tag == .linux) {
-		exe.linkSystemLibrary("X11");
-		exe.linkSystemLibrary("GL");
 	} else if(t.os.tag == .macos) {
 		exe.linkFramework("AudioUnit");
 		exe.linkFramework("AudioToolbox");

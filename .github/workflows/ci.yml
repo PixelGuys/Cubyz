@@ -18,7 +18,7 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.VERSION }}
-      - run: sudo apt install libgl-dev libasound2-dev libx11-dev glslang-tools
+      - run: sudo apt install libasound2-dev glslang-tools
       - run: echo "zigPath=$(command -v zig | sed 's/.\{3\}$//')" >> $GITHUB_ENV
       - run: wget -O $zigPath/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.15.0-dev.1034+bd97b6618/render.zig
       - run: zig build
