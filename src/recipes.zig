@@ -126,13 +126,6 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 			.keys = keys.clone() catch unreachable,
 		});
 	} else {
-		if(std.mem.eql(u8, "{mod}:branch/leafy/{type}", id)) {
-			var iter = keys.iterator();
-			while(iter.next()) |item| {
-				std.log.info("{s}: {s}", .{item.key_ptr.*, item.value_ptr.*});
-			}
-		}
-
 		var iter = items.iterator();
 		loop: while(iter.next()) |item| {
 			for(tags.items) |tag| {
