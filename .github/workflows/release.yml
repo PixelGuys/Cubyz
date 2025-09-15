@@ -3,7 +3,7 @@ name: Create release
 on:
   push:
     tags:
-      - .*
+      - '*'
 
 permissions:
   contents: write
