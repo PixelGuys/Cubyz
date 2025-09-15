@@ -148,8 +148,7 @@ pub fn onOpen() void {
 	while(true) {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		var dir = std.fs.cwd().openDir(path, .{}) catch break;
-		dir.close();
+		if(!main.files.cwd().hasDir(path)) break;
 		num += 1;
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;

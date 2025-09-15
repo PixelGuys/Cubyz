@@ -2,9 +2,10 @@
 	.tags = .{.metal, .precious},
 	.texture = "gold_ingot.png",
 	.material = .{
-		.density = 19.5,
-		.elasticity = 1.0,
-		.hardness = 2.5,
+		.durability = 400,
+		.massDamage = 14.0,
+		.hardnessDamage = 1.0,
+		.swingSpeed = 0.25,
 		.textureRoughness = 0.05,
 		.colors = .{
 			0xffbc7132, 0xffda972b, 0xfff2cd53, 0xfff2cd53, 0xfffae39e,

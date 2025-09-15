@@ -155,7 +155,7 @@ pub const Assets = struct {
 				self.localArena.deinit();
 			}
 
-			fn get(self: *Defaults, dir: std.fs.Dir, dirPath: []const u8) ZonElement {
+			fn get(self: *Defaults, dir: main.files.Dir, dirPath: []const u8) ZonElement {
 				const result = self.defaults.getOrPut(self.localAllocator.allocator, dirPath) catch unreachable;
 
 				if(!result.found_existing) {
@@ -171,14 +171,14 @@ pub const Assets = struct {
 				return result.value_ptr.*;
 			}
 
-			fn read(self: *Defaults, dir: std.fs.Dir) !ZonElement {
-				if(main.files.Dir.init(dir).readToZon(self.localAllocator, "_defaults.zig.zon")) |zon| {
+			fn read(self: *Defaults, dir: main.files.Dir) !ZonElement {
+				if(dir.readToZon(self.localAllocator, "_defaults.zig.zon")) |zon| {
 					return zon;
 				} else |err| {
 					if(err != error.FileNotFound) return err;
 				}
 
-				if(main.files.Dir.init(dir).readToZon(self.localAllocator, "_defaults.zon")) |zon| {
+				if(dir.readToZon(self.localAllocator, "_defaults.zon")) |zon| {
 					return zon;
 				} else |err| {
 					if(err != error.FileNotFound) return err;
@@ -221,7 +221,7 @@ pub const Assets = struct {
 					continue;
 				};
 				if(hasDefaults) {
-					zon.join(defaultsStorage.get(entry.dir, entry.path[0 .. entry.path.len - entry.basename.len]));
+					zon.join(defaultsStorage.get(main.files.Dir.init(entry.dir), entry.path[0 .. entry.path.len - entry.basename.len]));
 				}
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}
@@ -628,7 +628,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	biomes_zig.finishLoading();
 
 	// Register paths for asset hot reloading:
-	var dir = std.fs.cwd().openDir("assets", .{.iterate = true}) catch |err| {
+	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
 		std.log.err("Can't open asset path {s}: {s}", .{"assets", @errorName(err)});
 		return;
 	};
@@ -641,7 +641,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		if(addon.kind == .directory) {
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
-			std.fs.cwd().access(path, .{}) catch continue;
+			// Check for access rights
+			if(!main.files.cwd().hasDir(path)) continue;
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
 		}
 	}
@@ -664,7 +665,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.Tag.resetTags();
 
 	// Remove paths from asset hot reloading:
-	var dir = std.fs.cwd().openDir("assets", .{.iterate = true}) catch |err| {
+	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
 		std.log.err("Can't open asset path {s}: {s}", .{"assets", @errorName(err)});
 		return;
 	};
@@ -677,7 +678,8 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		if(addon.kind == .directory) {
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
-			std.fs.cwd().access(path, .{}) catch continue;
+			// Check for access rights
+			if(!main.files.cwd().hasDir(path)) continue;
 			main.utils.file_monitor.removePath(path);
 		}
 	}

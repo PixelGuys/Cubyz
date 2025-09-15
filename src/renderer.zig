@@ -532,10 +532,10 @@ pub const MenuBackGround = struct {
 
 		// Load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
 		texture = .{.textureID = 0};
-		var dir = try std.fs.cwd().makeOpenPath("assets/backgrounds", .{.iterate = true});
+		var dir = try main.files.cwd().openIterableDir("assets/backgrounds");
 		defer dir.close();
 
-		var walker = try dir.walk(main.stackAllocator.allocator);
+		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
 		var fileList = main.List([]const u8).init(main.stackAllocator);
 		defer {
@@ -1061,7 +1061,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
-					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.5;
+					const swingTime = if(isTool) 1.0/stack.item.?.tool.swingSpeed else 0.5;
 					if(currentSwingTime != swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
