@@ -168,7 +168,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 		inputCombos.append(inputs);
 		keyList.append(item.keys);
 	}
-	for(0.., recipe[1..]) |i, itemZon| {
+	for(1.., recipe[1..]) |i, itemZon| {
 		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(localAllocator);
 		var newInputCombos: main.List([]ItemStack) = .init(localAllocator);
 
