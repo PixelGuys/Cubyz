@@ -1,5 +1,0 @@
-.{
-	.default_gamemode = .creative,
-	.cheats = true,
-	.testingMode = false,
-}
