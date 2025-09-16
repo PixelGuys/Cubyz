@@ -158,9 +158,8 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !main.List([]ItemStack) {
 	var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	var localAllocator = localArena.allocator();
-	var remainingItems = recipe;
 	var emptyKeys: std.StringHashMap([]const u8) = .init(localAllocator.allocator);
-	const startingParsedItems = try parseRecipeItem(localAllocator, remainingItems[0], &emptyKeys);
+	const startingParsedItems = try parseRecipeItem(localAllocator, recipe[0], &emptyKeys);
 	var inputCombos: main.List([]ItemStack) = .initCapacity(localAllocator, startingParsedItems.items.len);
 	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(localAllocator, startingParsedItems.items.len);
 	for(startingParsedItems.items) |item| {
@@ -169,17 +168,15 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 		inputCombos.append(inputs);
 		keyList.append(item.keys);
 	}
-	while(remainingItems.len > 1) {
-		remainingItems = remainingItems[1..];
-		const startIndex = inputCombos.items[0].len - remainingItems.len;
+	for(0.., recipe[1..]) |i, itemZon| {
 		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(localAllocator);
 		var newInputCombos: main.List([]ItemStack) = .init(localAllocator);
 
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
-			const parsedItems = try parseRecipeItem(localAllocator, remainingItems[0], keys);
+			const parsedItems = try parseRecipeItem(localAllocator, itemZon, keys);
 			for(parsedItems.items) |item| {
 				const newInputs = localAllocator.dupe(ItemStack, inputs);
-				newInputs[startIndex] = item.item;
+				newInputs[i] = item.item;
 				newInputCombos.append(newInputs);
 				newKeyList.append(item.keys);
 			}
