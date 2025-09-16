@@ -1,0 +1,15 @@
+.{
+	.tickSpeed = 12,
+	.version = 2,
+	.seed = 31666849788,
+	.spawn = .{
+		994,
+		1575,
+		41,
+	},
+	.lastUsedTime = 1757909924887,
+	.doGameTimeCycle = true,
+	.gameTime = 1019,
+	.name = .Save1,
+	.biomeChecksum = 3432146211809287611,
+}

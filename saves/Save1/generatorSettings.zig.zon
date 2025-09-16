@@ -1,0 +1,15 @@
+.{
+	.climateWavelengths = .{
+		.land_ocean = 3200,
+		.vegetation = 1600,
+		.wet_dry = 1800,
+		.mountain = 512,
+		.hot_cold = 2400,
+	},
+	.climateGenerator = .{
+		.id = "cubyz:noise_based_voronoi",
+	},
+	.mapGenerator = .{
+		.id = "cubyz:mapgen_v1",
+	},
+}
