@@ -420,7 +420,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
-	pub fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) [6]u8 {
+	fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) [6]u8 {
 		const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
 		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
 		const interp = lightPos - @floor(lightPos);
