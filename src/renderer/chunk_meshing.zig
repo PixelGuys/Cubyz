@@ -480,7 +480,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return result;
 	}
 
-	fn packLightValues(rawVals: [4][6]u5) [4]u32 {
+	pub fn packLightValues(rawVals: [4][6]u5) [4]u32 {
 		var result: [4]u32 = undefined;
 		for(0..4) |i| {
 			result[i] = (@as(u32, rawVals[i][0]) << 25 |
