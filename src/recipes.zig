@@ -156,8 +156,8 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 }
 
 fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !main.List([]ItemStack) {
-    var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
-    var localAllocator = localArena.allocator();
+	var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
+	var localAllocator = localArena.allocator();
 	var remainingItems = recipe;
 	var emptyKeys: std.StringHashMap([]const u8) = .init(localAllocator.allocator);
 	const startingParsedItems = try parseRecipeItem(localAllocator, remainingItems[0], &emptyKeys);
@@ -189,15 +189,15 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	}
 	var newInputCombos: main.List([]ItemStack) = .initCapacity(allocator, inputCombos.items.len);
 	for(inputCombos.items) |inputCombo| {
-	    newInputCombos.append(allocator.dupe(ItemStack, inputCombo));
+		newInputCombos.append(allocator.dupe(ItemStack, inputCombo));
 	}
 	return newInputCombos;
 }
 
 pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
-    var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
-    defer std.debug.assert(localArena.reset(.free_all));
-    const allocator = localArena.allocator();
+	var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
+	defer std.debug.assert(localArena.reset(.free_all));
+	const allocator = localArena.allocator();
 	const inputs = zon.getChild("inputs").toSlice();
 	const recipeItems = allocator.alloc(ZonElement, inputs.len + 1);
 	@memcpy(recipeItems[0..inputs.len], inputs);
@@ -206,9 +206,9 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	const itemCombos = try generateItemCombos(allocator, recipeItems);
 	const reversible = zon.get(bool, "reversible", false);
 	for(itemCombos.items) |itemCombo| {
-    	if(reversible and itemCombo.len != 2) {
-    	    return error.InvalidReversibleRecipe;
-    	}
+		if(reversible and itemCombo.len != 2) {
+			return error.InvalidReversibleRecipe;
+		}
 		const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
 		const output = itemCombo[itemCombo.len - 1];
 		const recipe = Recipe{
