@@ -54,26 +54,6 @@ var fakeReflectionUniforms: struct {
 	frequency: c_int,
 	reflectionMapSize: c_int,
 } = undefined;
-var blockPipeline: graphics.Pipeline = undefined;
-var blockUniforms: struct {
-	projectionMatrix: c_int,
-	viewMatrix: c_int,
-	modelMatrix: c_int,
-	playerPositionInteger: c_int,
-	playerPositionFraction: c_int,
-	screenSize: c_int,
-	ambientLight: c_int,
-	contrast: c_int,
-	@"fog.color": c_int,
-	@"fog.density": c_int,
-	@"fog.fogLower": c_int,
-	@"fog.fogHigher": c_int,
-	reflectionMapSize: c_int,
-	lodDistance: c_int,
-	zNear: c_int,
-	zFar: c_int,
-} = undefined;
-
 pub var activeFrameBuffer: c_uint = 0;
 
 pub const reflectionCubeMapSize = 64;
@@ -98,15 +78,6 @@ pub fn init() void {
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
 	);
-	blockPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
-		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
-		"#define ENTITY",
-		&blockUniforms,
-		.{},
-		.{.depthTest = true, .depthWrite = true},
-		.{.attachments = &.{.noBlending}},
-	);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
@@ -126,7 +97,6 @@ pub fn deinit() void {
 	deferredRenderPassPipeline.deinit();
 	fakeReflectionPipeline.deinit();
 	worldFrameBuffer.deinit();
-	blockPipeline.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
