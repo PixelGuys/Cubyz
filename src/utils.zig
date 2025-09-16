@@ -26,9 +26,9 @@ pub const Compression = struct { // MARK: Compression
 		return streamOut.getWritten().len;
 	}
 
-	pub fn pack(sourceDir: std.fs.Dir, writer: anytype) !void {
+	pub fn pack(sourceDir: main.files.Dir, writer: anytype) !void {
 		var comp = try std.compress.flate.compressor(writer, .{});
-		var walker = try sourceDir.walk(main.stackAllocator.allocator);
+		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
@@ -47,7 +47,7 @@ pub const Compression = struct { // MARK: Compression
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
-				const fileData = try sourceDir.readFileAlloc(main.stackAllocator.allocator, relPath, std.math.maxInt(usize));
+				const fileData = try sourceDir.read(main.stackAllocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
@@ -58,7 +58,7 @@ pub const Compression = struct { // MARK: Compression
 		try comp.finish();
 	}
 
-	pub fn unpack(outDir: std.fs.Dir, input: []const u8) !void {
+	pub fn unpack(outDir: main.files.Dir, input: []const u8) !void {
 		var stream = std.io.fixedBufferStream(input);
 		var decomp = std.compress.flate.decompressor(stream.reader());
 		const reader = decomp.reader();
@@ -78,7 +78,7 @@ pub const Compression = struct { // MARK: Compression
 			var splitter = std.mem.splitBackwardsScalar(u8, path, '/');
 			_ = splitter.first();
 			try outDir.makePath(splitter.rest());
-			try outDir.writeFile(.{.data = fileData, .sub_path = path});
+			try outDir.write(path, fileData);
 		}
 	}
 };
@@ -1656,13 +1656,13 @@ const endian: std.builtin.Endian = .big;
 pub const BinaryReader = struct {
 	remaining: []const u8,
 
-	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag};
+	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat};
 
 	pub fn init(data: []const u8) BinaryReader {
 		return .{.remaining = data};
 	}
 
-	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
 		const typeInfo = @typeInfo(T).vector;
 		var result: T = undefined;
 		inline for(0..typeInfo.len) |i| {
@@ -1707,9 +1707,11 @@ pub const BinaryReader = struct {
 		return result;
 	}
 
-	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
-		return @as(T, @bitCast(try self.readInt(IntT)));
+		const result: T = @bitCast(try self.readInt(IntT));
+		if(!std.math.isFinite(result)) return error.InvalidFloat;
+		return result;
 	}
 
 	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
@@ -1846,6 +1848,16 @@ const ReadWriteTest = struct {
 
 		try std.testing.expectEqual(expected, actual);
 	}
+	fn testInvalidFloat(comptime FloatT: type, input: FloatT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeFloat(FloatT, input);
+
+		var reader = getReader(writer.data.items);
+		const actual = reader.readFloat(FloatT);
+
+		try std.testing.expectError(error.InvalidFloat, actual);
+	}
 	fn testEnum(comptime EnumT: type, expected: EnumT) !void {
 		var writer = getWriter();
 		defer writer.deinit();
@@ -1919,8 +1931,9 @@ test "read/write float" {
 		try ReadWriteTest.testFloat(floatT, 0.0012443);
 		try ReadWriteTest.testFloat(floatT, 0.0);
 		try ReadWriteTest.testFloat(floatT, 6457.0);
-		try ReadWriteTest.testFloat(floatT, std.math.inf(floatT));
-		try ReadWriteTest.testFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, std.math.nan(floatT));
 		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
 	}
 }

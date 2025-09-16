@@ -5,9 +5,12 @@
 		.barren,
 		.wet,
 	},
+	.minHeightLimit = 7,
 	.minHeight = 120,
 	.maxHeight = 256,
-
+	.smoothBeaches = true,
+	.fogDensity = 1.5,
+	.fogColor = 0xe2f2ff,
 	.mountains = 125,
 
 	.music = "cubyz:DarkTimes",

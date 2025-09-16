@@ -280,6 +280,9 @@ pub const Biome = struct { // MARK: Biome
 	radiusVariation: f32,
 	minHeight: i32,
 	maxHeight: i32,
+	minHeightLimit: i32,
+	maxHeightLimit: i32,
+	smoothBeaches: bool,
 	interpolation: Interpolation,
 	interpolationWeight: f32,
 	roughness: f32,
@@ -296,6 +299,7 @@ pub const Biome = struct { // MARK: Biome
 	fogHigher: f32,
 	fogDensity: f32,
 	fogColor: Vec3f,
+	skyColor: Vec3f,
 	id: []const u8,
 	paletteId: u32,
 	structure: BlockStructure = undefined,
@@ -323,7 +327,10 @@ pub const Biome = struct { // MARK: Biome
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
 			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate")),
-			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
+			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
+			.skyColor = blk: {
+				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
+			},
 			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
 			.fogLower = zon.get(f32, "fogLower", 100.0),
 			.fogHigher = zon.get(f32, "fogHigher", 1000.0),
@@ -339,6 +346,9 @@ pub const Biome = struct { // MARK: Biome
 			.soilCreep = zon.get(f32, "soilCreep", 0.5),
 			.minHeight = zon.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = zon.get(i32, "maxHeight", std.math.maxInt(i32)),
+			.minHeightLimit = zon.get(i32, "minHeightLimit", std.math.minInt(i32)),
+			.maxHeightLimit = zon.get(i32, "maxHeightLimit", std.math.maxInt(i32)),
+			.smoothBeaches = zon.get(bool, "smoothBeaches", false),
 			.supportsRivers = zon.get(bool, "rivers", false),
 			.preferredMusic = main.globalAllocator.dupe(u8, zon.get([]const u8, "music", "cubyz:cubyz")),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
@@ -467,7 +477,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 
 	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, slope: i32, soilCreep: f32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
-		var remainingSkippedBlocks = @as(i32, @intFromFloat(@as(f32, @floatFromInt(slope))*soilCreep)) - 1;
+		var remainingSkippedBlocks = @as(i32, @intFromFloat(@as(f32, @floatFromInt(slope))*soilCreep)) - chunk.super.pos.voxelSize;
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for(0..total) |_| {

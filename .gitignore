@@ -1,6 +1,5 @@
 compiler/
 logs/
-saves/
 zig-out/
 zig-cache/
 .zig-cache/
@@ -12,8 +11,6 @@ test.png
 
 /mods/*
 !/mods/cubyz
-
-blueprints/
 
 /assets/*
 !/assets/cubyz

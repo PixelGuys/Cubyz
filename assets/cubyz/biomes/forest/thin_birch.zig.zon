@@ -1,7 +1,9 @@
 .{
 	.properties = .{},
+	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 24,
+	.maxHeightLimit = 30,
 	.minRadius = 200,
 	.maxRadius = 256,
 	.roughness = 2,
@@ -16,7 +18,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:gravel",
+			.block = "cubyz:moss:cubyz:gravel",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 5,
@@ -25,7 +27,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mossy_cobblestone",
+			.block = "cubyz:moss:cubyz:cobblestone",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 9,

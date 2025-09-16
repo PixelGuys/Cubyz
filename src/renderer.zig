@@ -177,10 +177,9 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
 		ambient[2] = @max(0.1, world.ambientLight);
-		game.fog.skyColor = vec.xyz(world.clearColor);
 
 		itemdrop.ItemDisplayManager.update(deltaTime);
-		renderWorld(world, ambient, Skybox.getSkyColor(), playerPosition);
+		renderWorld(world, ambient, game.fog.skyColor, playerPosition);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
@@ -330,7 +329,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
 	if(!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
 		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
@@ -429,7 +428,7 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		if(!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
@@ -562,10 +561,10 @@ pub const MenuBackGround = struct {
 
 		// Load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
 		texture = .{.textureID = 0};
-		var dir = try std.fs.cwd().makeOpenPath("assets/backgrounds", .{.iterate = true});
+		var dir = try main.files.cwd().openIterableDir("assets/backgrounds");
 		defer dir.close();
 
-		var walker = try dir.walk(main.stackAllocator.allocator);
+		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
 		var fileList = main.List([]const u8).init(main.stackAllocator);
 		defer {
@@ -810,10 +809,6 @@ pub const Skybox = struct {
 		starPipeline.deinit();
 		starSsbo.deinit();
 		c.glDeleteVertexArrays(1, &starVao);
-	}
-
-	pub fn getSkyColor() Vec3f {
-		return game.fog.skyColor*@as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor)/3.0));
 	}
 
 	pub fn render() void {
@@ -1095,7 +1090,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
-					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.5;
+					const swingTime = if(isTool) 1.0/stack.item.?.tool.swingSpeed else 0.5;
 					if(currentSwingTime != swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;

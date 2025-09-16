@@ -248,15 +248,26 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
+fn parseBlockData(fullBlockId: []const u8, data: []const u8) ?u16 {
+	if(std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
+		const oreChild = parseBlock(data);
+		if(oreChild.data != 0) {
+			std.log.warn("Error while parsing ore block data of '{s}': Parent block data must be 0.", .{fullBlockId});
+		}
+		return oreChild.typ;
+	}
+	return std.fmt.parseInt(u16, data, 0) catch |err| {
+		std.log.err("Error while parsing block data of '{s}': {s}", .{fullBlockId, @errorName(err)});
+		return null;
+	};
+}
+
 pub fn parseBlock(data: []const u8) Block {
 	var id: []const u8 = data;
 	var blockData: ?u16 = null;
 	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
-		blockData = std.fmt.parseInt(u16, data[pos + 1 ..], 0) catch |err| blk: {
-			std.log.err("Error while parsing block data of '{s}': {s}", .{data, @errorName(err)});
-			break :blk null;
-		};
+		blockData = parseBlockData(data, data[pos + 1 ..]);
 	}
 	if(reverseIndices.get(id)) |resultType| {
 		var result: Block = .{.typ = resultType, .data = 0};
@@ -656,7 +667,7 @@ pub const meshes = struct { // MARK: meshes
 		const path = _path[0 .. _path.len - ".png".len];
 		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
 		defer main.stackAllocator.free(textureInfoPath);
-		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
+		const textureInfoZon = main.files.cwd().readToZon(main.stackAllocator, textureInfoPath) catch .null;
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
@@ -693,13 +704,13 @@ pub const meshes = struct { // MARK: meshes
 				return result;
 			}
 		}
-		const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
+		const file = main.files.cwd().openFile(path) catch |err| blk: {
 			if(err != error.FileNotFound) {
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
 			main.stackAllocator.free(path);
 			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
+			break :blk main.files.cwd().openFile(path) catch |err2| {
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
 			};
@@ -744,7 +755,7 @@ pub const meshes = struct { // MARK: meshes
 			defer main.stackAllocator.free(path1);
 			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
 			defer main.stackAllocator.free(path2);
-			if(!main.files.hasFile(path1) and !main.files.hasFile(path2)) break;
+			if(!main.files.cwd().hasFile(path1) and !main.files.cwd().hasFile(path2)) break;
 
 			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
 			defer main.stackAllocator.free(id);

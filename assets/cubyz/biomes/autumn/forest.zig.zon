@@ -2,9 +2,12 @@
 	.properties = .{
 		.cold,
 	},
-	.chance = 0.33,
+	.chance = 0.5,
+	.minHeightLimit = 7,
 	.minHeight = 25,
 	.maxHeight = 45,
+	.maxHeightLimit = 60,
+	.smoothBeaches = true,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.roughness = 10,

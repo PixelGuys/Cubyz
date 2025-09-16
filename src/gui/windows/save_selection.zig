@@ -88,7 +88,7 @@ fn deleteWorld(index: usize) void {
 }
 
 fn openFolder(index: usize) void {
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldList.items[index].fileName}) catch unreachable;
+	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/saves/{s}", .{main.files.cubyzDirStr(), worldList.items[index].fileName}) catch unreachable;
 	defer main.stackAllocator.free(path);
 
 	main.files.openDirInWindow(path);
@@ -108,7 +108,7 @@ pub fn onOpen() void {
 	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
 	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("save_creation")));
 	readingSaves: {
-		var dir = std.fs.cwd().makeOpenPath("saves", .{.iterate = true}) catch |err| {
+		var dir = main.files.cubyzDir().openIterableDir("saves") catch |err| {
 			list.add(Label.init(.{0, 0}, 128, "Encountered error while trying to open saves folder:", .center));
 			list.add(Label.init(.{0, 0}, 128, @errorName(err), .center));
 			break :readingSaves;
@@ -124,7 +124,7 @@ pub fn onOpen() void {
 			if(entry.kind == .directory) {
 				const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{entry.name}) catch unreachable;
 				defer main.stackAllocator.free(worldInfoPath);
-				const worldInfo = main.files.readToZon(main.stackAllocator, worldInfoPath) catch |err| {
+				const worldInfo = main.files.cubyzDir().readToZon(main.stackAllocator, worldInfoPath) catch |err| {
 					std.log.err("Couldn't open save {s}: {s}", .{worldInfoPath, @errorName(err)});
 					continue;
 				};
