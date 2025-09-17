@@ -156,27 +156,27 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 }
 
 fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !main.List([]ItemStack) {
-	var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
-	defer localArena.deinit();
-	var localAllocator = localArena.allocator();
-	var emptyKeys: std.StringHashMap([]const u8) = .init(localAllocator.allocator);
-	const startingParsedItems = try parseRecipeItem(localAllocator, recipe[0], &emptyKeys);
-	var inputCombos: main.List([]ItemStack) = .initCapacity(localAllocator, startingParsedItems.items.len);
-	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(localAllocator, startingParsedItems.items.len);
+	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
+	defer arenaAllocator.deinit();
+	var arena = arenaAllocator.allocator();
+	var emptyKeys: std.StringHashMap([]const u8) = .init(arena.allocator);
+	const startingParsedItems = try parseRecipeItem(arena, recipe[0], &emptyKeys);
+	var inputCombos: main.List([]ItemStack) = .initCapacity(arena, startingParsedItems.items.len);
+	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, startingParsedItems.items.len);
 	for(startingParsedItems.items) |item| {
-		const inputs = localAllocator.alloc(ItemStack, recipe.len);
+		const inputs = arena.alloc(ItemStack, recipe.len);
 		inputs[0] = item.item;
 		inputCombos.append(inputs);
 		keyList.append(item.keys);
 	}
 	for(1.., recipe[1..]) |i, itemZon| {
-		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(localAllocator);
-		var newInputCombos: main.List([]ItemStack) = .init(localAllocator);
+		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(arena);
+		var newInputCombos: main.List([]ItemStack) = .init(arena);
 
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
-			const parsedItems = try parseRecipeItem(localAllocator, itemZon, keys);
+			const parsedItems = try parseRecipeItem(arena, itemZon, keys);
 			for(parsedItems.items) |item| {
-				const newInputs = localAllocator.dupe(ItemStack, inputs);
+				const newInputs = arena.dupe(ItemStack, inputs);
 				newInputs[i] = item.item;
 				newInputCombos.append(newInputs);
 				newKeyList.append(item.keys);
@@ -193,15 +193,15 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 }
 
 pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
-	var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
-	defer localArena.deinit();
-	const allocator = localArena.allocator();
+	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
+	defer arenaAllocator.deinit();
+	const arena = arenaAllocator.allocator();
 	const inputs = zon.getChild("inputs").toSlice();
-	const recipeItems = allocator.alloc(ZonElement, inputs.len + 1);
+	const recipeItems = arena.alloc(ZonElement, inputs.len + 1);
 	@memcpy(recipeItems[0..inputs.len], inputs);
 	recipeItems[inputs.len] = zon.getChild("output");
 
-	const itemCombos = try generateItemCombos(allocator, recipeItems);
+	const itemCombos = try generateItemCombos(arena, recipeItems);
 	const reversible = zon.get(bool, "reversible", false);
 	for(itemCombos.items) |itemCombo| {
 		if(reversible and itemCombo.len != 2) {
