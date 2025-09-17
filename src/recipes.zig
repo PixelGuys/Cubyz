@@ -98,19 +98,9 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 		id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	}
 	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
-	var iterator = std.mem.splitScalar(u8, id, '.');
-	id = iterator.next().?;
-	var tags: main.List(Tag) = .init(arena);
-	while(iterator.next()) |tagString| {
-		tags.append(Tag.get(tagString) orelse return error.TagNotFound);
-	}
-
 	const pattern = try parsePattern(arena, id, keys);
 	if(id.len > 0 and pattern.items.len == 1 and pattern.items[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return itemPairs;
-		for(tags.items) |tag| {
-			if(!item.hasTag(tag) and !(item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) return itemPairs;
-		}
 		itemPairs.append(.{
 			.item = .{
 				.item = .{.baseItem = item},
@@ -120,12 +110,7 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 		});
 	} else {
 		var iter = items.iterator();
-		loop: while(iter.next()) |item| {
-			for(tags.items) |tag| {
-				if(!item.hasTag(tag) and !(item.block() != null and (Block{.typ = item.block().?, .data = 0}).hasTag(tag))) {
-					continue :loop;
-				}
-			}
+		while(iter.next()) |item| {
 			if(matchWithKeys(allocator, item.id(), pattern.items, keys) catch null) |newKeys| {
 				itemPairs.append(.{
 					.item = .{
@@ -133,14 +118,6 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 						.amount = amount,
 					},
 					.keys = newKeys,
-				});
-			} else if(id.len == 0) {
-				itemPairs.append(.{
-					.item = .{
-						.item = .{.baseItem = item.*},
-						.amount = amount,
-					},
-					.keys = keys.clone() catch unreachable,
 				});
 			}
 		}
