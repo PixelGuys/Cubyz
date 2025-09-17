@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const build_options = @import("build_options");
+
 const main = @import("main");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
@@ -161,7 +163,9 @@ pub fn onOpen() void {
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
 
-	list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
+	if(!build_options.isTaggedRelease) {
+		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
+	}
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 

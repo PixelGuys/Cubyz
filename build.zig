@@ -153,8 +153,10 @@ pub fn build(b: *std.Build) !void {
 	const optimize = b.standardOptimizeOption(.{});
 
 	const options = b.addOptions();
-	const version = b.fmt("0.0.0{s}", .{if(b.option(bool, "release", "Removes the -dev flag from the version") orelse false) "" else "-dev"});
+	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
+	const version = b.fmt("0.0.0{s}", .{if(isRelease) "" else "-dev"});
 	options.addOption([]const u8, "version", version);
+	options.addOption(bool, "isTaggedRelease", isRelease);
 
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
 
@@ -185,6 +187,10 @@ pub fn build(b: *std.Build) !void {
 	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
+
+	if(isRelease and target.result.os.tag == .windows) {
+		exe.subsystem = .Windows;
+	}
 
 	linkLibraries(b, exe, useLocalDeps);
 

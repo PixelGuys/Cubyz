@@ -19,11 +19,17 @@ jobs:
         with:
           version: ${{ env.VERSION }}
 
-      - run: zig build -Dtarget=x86_64-linux-musl -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+      - run: zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
       - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz
+
+      - run: zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+      - run: tar -czf Linux-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz
 
       - run: zig build -Dtarget=x86_64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
       - run: tar -czf Windows-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz.exe
+
+      - run: zig build -Dtarget=aarch64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+      - run: tar -czf Windows-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz.exe
 
       - name: Create release
         env:
@@ -33,7 +39,8 @@ jobs:
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
-              --generate-notes \
               Linux-x86_64.tar.gz \
-              Windows-x86_64.tar.gz
+              Linux-aarch64.tar.gz \
+              Windows-x86_64.tar.gz \
+              Windows-aarch64.tar.gz
           gh release

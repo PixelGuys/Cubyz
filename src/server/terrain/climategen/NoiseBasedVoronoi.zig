@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const build_options = @import("build_options");
+
 const main = @import("main");
 const Array2D = main.utils.Array2D;
 const random = main.random;
@@ -34,18 +36,20 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
 
 	// TODO: Remove debug image:
-	const image = main.graphics.Image.init(main.stackAllocator, @intCast(map.map.len), @intCast(map.map[0].len));
-	defer image.deinit(main.stackAllocator);
-	var x: u31 = 0;
-	while(x < map.map.len) : (x += 1) {
-		var y: u31 = 0;
-		while(y < map.map[0].len) : (y += 1) {
-			const bp = map.map[x][y];
-			seed = std.hash.Adler32.hash(bp.biome.id) ^ 4371741;
-			image.setRGB(x, y, @bitCast(0xff000000 | main.random.nextInt(u32, &seed)));
+	if(!build_options.isTaggedRelease) {
+		const image = main.graphics.Image.init(main.stackAllocator, @intCast(map.map.len), @intCast(map.map[0].len));
+		defer image.deinit(main.stackAllocator);
+		var x: u31 = 0;
+		while(x < map.map.len) : (x += 1) {
+			var y: u31 = 0;
+			while(y < map.map[0].len) : (y += 1) {
+				const bp = map.map[x][y];
+				seed = std.hash.Adler32.hash(bp.biome.id) ^ 4371741;
+				image.setRGB(x, y, @bitCast(0xff000000 | main.random.nextInt(u32, &seed)));
+			}
 		}
+		image.exportToFile("test.png") catch {};
 	}
-	image.exportToFile("test.png") catch {};
 }
 
 const BiomePoint = struct {
