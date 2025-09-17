@@ -19,7 +19,7 @@ jobs:
         with:
           version: ${{ env.VERSION }}
 
-      - run: zig build -Dtarget=x86_64-linux-musl -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+      - run: zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
       - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz
 
       - run: zig build -Dtarget=x86_64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
