@@ -33,7 +33,6 @@ jobs:
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
-              --generate-notes \
               Linux-x86_64.tar.gz \
               Windows-x86_64.tar.gz
           gh release
