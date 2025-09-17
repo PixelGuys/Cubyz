@@ -13,7 +13,10 @@ const Block = main.blocks.Block;
 const Segment = union(enum) {literal: []const u8, symbol: []const u8};
 
 fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *const std.StringHashMap([]const u8)) !main.List(Segment) {
-	var segments: main.List(Segment) = .init(allocator);
+	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
+	defer arenaAllocator.deinit();
+	const arena = arenaAllocator.allocator();
+	var segments: main.List(Segment) = .init(arena);
 	var idx: usize = 0;
 	while(idx < pattern.len) {
 		if(pattern[idx] == '{') {
@@ -24,28 +27,37 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 			if(keys.get(symbol)) |literal| {
 				if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
 					const value = segments.pop();
-					defer allocator.free(value.literal);
-					segments.append(.{.literal = std.mem.concat(allocator.allocator, u8, &.{value.literal, literal}) catch unreachable});
+					segments.append(.{.literal = std.mem.concat(arena.allocator, u8, &.{value.literal, literal}) catch unreachable});
 				} else {
-					segments.append(.{.literal = allocator.dupe(u8, literal)});
+					segments.append(.{.literal = literal});
 				}
 			} else {
-				segments.append(.{.symbol = allocator.dupe(u8, symbol)});
+				segments.append(.{.symbol = symbol});
 			}
 			idx = endIndex + 1;
 		} else {
 			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '{') orelse pattern.len;
 			if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
 				const value = segments.pop();
-				defer allocator.free(value.literal);
-				segments.append(.{.literal = std.mem.concat(allocator.allocator, u8, &.{value.literal, pattern[idx..endIndex]}) catch unreachable});
+				segments.append(.{.literal = std.mem.concat(arena.allocator, u8, &.{value.literal, pattern[idx..endIndex]}) catch unreachable});
 			} else {
-				segments.append(.{.literal = allocator.dupe(u8, pattern[idx..endIndex])});
+				segments.append(.{.literal = pattern[idx..endIndex]});
 			}
 			idx = endIndex;
 		}
 	}
-	return segments;
+	var newSegments: main.List(Segment) = .init(allocator);
+	for(segments.items) |segment| {
+		switch(segment) {
+			.literal => |literal| {
+				newSegments.append(.{.literal = allocator.dupe(u8, literal)});
+			},
+			.symbol => |symbol| {
+				newSegments.append(.{.symbol = allocator.dupe(u8, symbol)});
+			},
+		}
+	}
+	return newSegments;
 }
 
 fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) !std.StringHashMap([]const u8) {
