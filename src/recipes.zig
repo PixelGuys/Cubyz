@@ -86,6 +86,9 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 const ItemKeyPair = struct {item: ItemStack, keys: std.StringHashMap([]const u8)};
 
 fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *const std.StringHashMap([]const u8)) !main.List(ItemKeyPair) {
+	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
+	defer arenaAllocator.deinit();
+	const arena = arenaAllocator.allocator();
 	var id = zon.as([]const u8, "");
 	id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	var amount: u16 = 1;
@@ -97,22 +100,12 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
 	var iterator = std.mem.splitScalar(u8, id, '.');
 	id = iterator.next().?;
-	var tags: main.List(Tag) = .init(allocator);
-	defer tags.deinit();
+	var tags: main.List(Tag) = .init(arena);
 	while(iterator.next()) |tagString| {
 		tags.append(Tag.get(tagString) orelse return error.TagNotFound);
 	}
 
-	var pattern = try parsePattern(allocator, id, keys);
-	defer {
-		for(pattern.items) |segment| {
-			switch(segment) {
-				.literal => |literal| allocator.free(literal),
-				.symbol => |symbol| allocator.free(symbol),
-			}
-		}
-		pattern.deinit();
-	}
+	const pattern = try parsePattern(arena, id, keys);
 	if(id.len > 0 and pattern.items.len == 1 and pattern.items[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return itemPairs;
 		for(tags.items) |tag| {
