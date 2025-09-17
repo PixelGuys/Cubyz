@@ -4,6 +4,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
+	.absorbedLight = 0x555544,
 	.model = "cubyz:cube",
 	.texture = "cubyz:snow",
 }
