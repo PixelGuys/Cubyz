@@ -23,6 +23,8 @@ jobs:
       - run: wget -O $zigPath/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.15.0-dev.1034+bd97b6618/render.zig
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
+      - run: zig build -Dtarget=aarch64-linux-gnu
+      - run: zig build -Dtarget=aarch64-windows-gnu
       - run: zig build test
       - run: zig build format --summary none
       - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
