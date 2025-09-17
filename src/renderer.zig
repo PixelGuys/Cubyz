@@ -54,6 +54,7 @@ var fakeReflectionUniforms: struct {
 	frequency: c_int,
 	reflectionMapSize: c_int,
 } = undefined;
+
 pub var activeFrameBuffer: c_uint = 0;
 
 pub const reflectionCubeMapSize = 64;
