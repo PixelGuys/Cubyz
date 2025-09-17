@@ -157,6 +157,7 @@ fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *con
 
 fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !main.List([]ItemStack) {
 	var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
+	defer localArena.deinit();
 	var localAllocator = localArena.allocator();
 	var emptyKeys: std.StringHashMap([]const u8) = .init(localAllocator.allocator);
 	const startingParsedItems = try parseRecipeItem(localAllocator, recipe[0], &emptyKeys);
@@ -193,7 +194,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 
 pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	var localArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
-	defer std.debug.assert(localArena.reset(.free_all));
+	defer localArena.deinit();
 	const allocator = localArena.allocator();
 	const inputs = zon.getChild("inputs").toSlice();
 	const recipeItems = allocator.alloc(ZonElement, inputs.len + 1);
