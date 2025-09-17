@@ -1,14 +1,14 @@
 .{
 	.{
-		.inputs = .{"{item}.stone"},
+		.inputs = .{"{item}"},
 		.output = "{item}_tile",
 	},
 	.{
-		.inputs = .{"{item}.stone"},
+		.inputs = .{"{item}"},
 		.output = "{item}_bricks",
 	},
 	.{
-		.inputs = .{"{item}.stone"},
+		.inputs = .{"{item}"},
 		.output = "2 {item}_wall",
 	},
 	.{
