@@ -9,7 +9,7 @@
 
 	.roughness = 10,
 	.mountains = 100,
-
+	.music = "cubyz:Gray_Vibes/Amb",
 	.rivers = true,
 
 	.ground_structure = .{

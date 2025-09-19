@@ -8,7 +8,7 @@
 	.minHeight = 64,
 	.maxHeight = 256,
 	.smoothBeaches = true,
-
+	.music = "cubyz:Sinanimea/Sunrise",
 	.roughness = 10,
 	.mountains = 100,
 	.stoneBlock = "cubyz:limestone",

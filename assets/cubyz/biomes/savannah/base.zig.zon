@@ -12,7 +12,7 @@
 	.maxRadius = 320,
 	.hills = 6,
 	.validPlayerSpawn = true,
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:Sinanimea/Sunrise",
 	.ground_structure = .{
 		"7 to 8 cubyz:limestone",
 	},

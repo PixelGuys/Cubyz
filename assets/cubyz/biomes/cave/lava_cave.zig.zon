@@ -7,6 +7,7 @@
 	.fogColor = 0x51240c,
 	.caves = -0.03,
 	.stoneBlock = "cubyz:obsidian",
+	.music = "cubyz:TotalDemented/Scoria",
 	.stripes = .{
 		.{
 			.direction = .{4, 1, 3},

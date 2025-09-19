@@ -5,7 +5,7 @@
 
 	.fogDensity = 2,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:TotalDemented/In_the_Depths",
 
 	.structures = .{
 		.{

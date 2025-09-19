@@ -15,6 +15,7 @@
 	.roughness = 10,
 	.hills = 13,
 	.validPlayerSpawn = true,
+	.music = "cubyz:TotalDemented/Midnight_Melody",
 	.ground_structure = .{
 		"1 cubyz:cold_grass",
 		"1 to 3 cubyz:permafrost",

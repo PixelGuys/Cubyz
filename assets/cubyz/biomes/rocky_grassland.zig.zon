@@ -10,7 +10,7 @@
 	.maxRadius = 320,
 	.mountains = 30,
 
-	.music = "cubyz:sunrise",
+	.music = "cubyz:Sinanimea/Sunrise",
 
 	.ground_structure = .{
 		"cubyz:grass",

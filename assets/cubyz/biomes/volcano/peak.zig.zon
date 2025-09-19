@@ -6,8 +6,7 @@
 
 	.interpolation = .smooth,
 	.chance = 0,
-
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:Chrythm/Cubyz_More",
 
 	.parentBiomes = .{
 		.{

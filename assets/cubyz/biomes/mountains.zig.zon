@@ -12,7 +12,7 @@
 	.mountains = 100,
 
 	.rivers = true,
-
+	.music = "cubyz:Gray_Vibes/Mornings",
 	.ground_structure = .{
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",
