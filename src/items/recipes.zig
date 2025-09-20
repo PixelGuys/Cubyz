@@ -183,12 +183,13 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	@memcpy(recipeItems[0..inputs.len], inputs);
 	recipeItems[inputs.len] = zon.getChild("output");
 
-	const itemCombos = try generateItemCombos(arena, recipeItems);
 	const reversible = zon.get(bool, "reversible", false);
+	if(reversible and recipeItems.len != 2) {
+		return error.InvalidReversibleRecipe;
+	}
+
+	const itemCombos = try generateItemCombos(arena, recipeItems);
 	for(itemCombos.items) |itemCombo| {
-		if(reversible and itemCombo.len != 2) {
-			return error.InvalidReversibleRecipe;
-		}
 		const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
 		const output = itemCombo[itemCombo.len - 1];
 		const recipe = Recipe{
