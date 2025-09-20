@@ -23,6 +23,8 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("tool/modifiers/_list.zig");
 const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
+pub const recipes_zig = @import("items/recipes.zig");
+
 pub const Inventory = @import("Inventory.zig");
 
 const Material = struct { // MARK: Material
@@ -1223,49 +1225,14 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	std.log.debug("Registered tool: '{s}'", .{id});
 }
 
-fn parseRecipeItem(zon: ZonElement) !ItemStack {
-	var id = zon.as([]const u8, "");
-	id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	var result: ItemStack = .{.amount = 1};
-	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
-		result.amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
-		id = id[index + 1 ..];
-		id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	}
-	result.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound};
-	return result;
-}
-
-fn parseRecipe(zon: ZonElement) !Recipe {
-	const inputs = zon.getChild("inputs").toSlice();
-	const output = try parseRecipeItem(zon.getChild("output"));
-	const recipe = Recipe{
-		.sourceItems = arena.allocator().alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = arena.allocator().alloc(u16, inputs.len),
-		.resultItem = output.item.?.baseItem,
-		.resultAmount = output.amount,
-	};
-	errdefer {
-		arena.allocator().free(recipe.sourceAmounts);
-		arena.allocator().free(recipe.sourceItems);
-	}
-	for(inputs, 0..) |inputZon, i| {
-		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.?.baseItem;
-		recipe.sourceAmounts[i] = input.amount;
-	}
-	return recipe;
-}
-
 pub fn registerRecipes(zon: ZonElement) void {
 	for(zon.toSlice()) |recipeZon| {
-		const recipe = parseRecipe(recipeZon) catch |err| {
+		recipes_zig.parseRecipe(recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
-		recipeList.append(recipe);
 	}
 }
 
