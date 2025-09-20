@@ -193,8 +193,8 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 		const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
 		const output = itemCombo[itemCombo.len - 1];
 		const recipe = Recipe{
-			.sourceItems = main.stackAllocator.alloc(BaseItemIndex, parsedInputs.len),
-			.sourceAmounts = main.stackAllocator.alloc(u16, parsedInputs.len),
+			.sourceItems = main.globalAllocator.alloc(BaseItemIndex, parsedInputs.len),
+			.sourceAmounts = main.globalAllocator.alloc(u16, parsedInputs.len),
 			.resultItem = output.item.?.baseItem,
 			.resultAmount = output.amount,
 		};
@@ -205,8 +205,8 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 		list.append(recipe);
 		if(reversible) {
 			var reversedRecipe = Recipe{
-				.sourceItems = main.stackAllocator.alloc(BaseItemIndex, 1),
-				.sourceAmounts = main.stackAllocator.alloc(u16, 1),
+				.sourceItems = main.globalAllocator.alloc(BaseItemIndex, 1),
+				.sourceAmounts = main.globalAllocator.alloc(u16, 1),
 				.resultItem = recipe.sourceItems[0],
 				.resultAmount = recipe.sourceAmounts[0],
 			};
