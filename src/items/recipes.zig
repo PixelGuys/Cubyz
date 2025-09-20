@@ -97,7 +97,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 
 const ItemKeyPair = struct {item: ItemStack, keys: std.StringHashMap([]const u8)};
 
-fn parseRecipeItem(allocator: NeverFailingAllocator, zon: ZonElement, keys: *const std.StringHashMap([]const u8)) !main.List(ItemKeyPair) {
+fn parseRecipeItemOptions(allocator: NeverFailingAllocator, zon: ZonElement, keys: *const std.StringHashMap([]const u8)) !main.List(ItemKeyPair) {
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
 	const arena = arenaAllocator.allocator();
@@ -142,7 +142,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	defer arenaAllocator.deinit();
 	var arena = arenaAllocator.allocator();
 	var emptyKeys: std.StringHashMap([]const u8) = .init(arena.allocator);
-	const startingParsedItems = try parseRecipeItem(arena, recipe[0], &emptyKeys);
+	const startingParsedItems = try parseRecipeItemOptions(arena, recipe[0], &emptyKeys);
 	var inputCombos: main.List([]ItemStack) = .initCapacity(arena, startingParsedItems.items.len);
 	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, startingParsedItems.items.len);
 	for(startingParsedItems.items) |item| {
@@ -156,7 +156,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 		var newInputCombos: main.List([]ItemStack) = .init(arena);
 
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
-			const parsedItems = try parseRecipeItem(arena, itemZon, keys);
+			const parsedItems = try parseRecipeItemOptions(arena, itemZon, keys);
 			for(parsedItems.items) |item| {
 				const newInputs = arena.dupe(ItemStack, inputs);
 				newInputs[i] = item.item;
