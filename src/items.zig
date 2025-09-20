@@ -23,7 +23,7 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("tool/modifiers/_list.zig");
 const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
-const recipes_zig = @import("recipes.zig");
+pub const recipes_zig = @import("items/recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
 
