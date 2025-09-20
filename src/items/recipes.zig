@@ -174,6 +174,22 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	return newInputCombos;
 }
 
+pub fn addRecipe(itemCombo: []const ItemStack, list: *main.List(Recipe)) void {
+	const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
+	const output = itemCombo[itemCombo.len - 1];
+	const recipe = Recipe{
+		.sourceItems = main.globalAllocator.alloc(BaseItemIndex, parsedInputs.len),
+		.sourceAmounts = main.globalAllocator.alloc(u16, parsedInputs.len),
+		.resultItem = output.item.?.baseItem,
+		.resultAmount = output.amount,
+	};
+	for(parsedInputs, 0..) |input, i| {
+		recipe.sourceItems[i] = input.item.?.baseItem;
+		recipe.sourceAmounts[i] = input.amount;
+	}
+	list.append(recipe);
+}
+
 pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
@@ -190,29 +206,9 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 
 	const itemCombos = try generateItemCombos(arena, recipeItems);
 	for(itemCombos.items) |itemCombo| {
-		const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
-		const output = itemCombo[itemCombo.len - 1];
-		const recipe = Recipe{
-			.sourceItems = main.globalAllocator.alloc(BaseItemIndex, parsedInputs.len),
-			.sourceAmounts = main.globalAllocator.alloc(u16, parsedInputs.len),
-			.resultItem = output.item.?.baseItem,
-			.resultAmount = output.amount,
-		};
-		for(parsedInputs, 0..) |input, i| {
-			recipe.sourceItems[i] = input.item.?.baseItem;
-			recipe.sourceAmounts[i] = input.amount;
-		}
-		list.append(recipe);
+		addRecipe(itemCombo, list);
 		if(reversible) {
-			var reversedRecipe = Recipe{
-				.sourceItems = main.globalAllocator.alloc(BaseItemIndex, 1),
-				.sourceAmounts = main.globalAllocator.alloc(u16, 1),
-				.resultItem = recipe.sourceItems[0],
-				.resultAmount = recipe.sourceAmounts[0],
-			};
-			reversedRecipe.sourceItems[0] = recipe.resultItem;
-			reversedRecipe.sourceAmounts[0] = recipe.resultAmount;
-			list.append(reversedRecipe);
+			addRecipe(&.{itemCombo[1], itemCombo[0]}, list);
 		}
 	}
 }
