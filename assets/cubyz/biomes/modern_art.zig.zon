@@ -200,7 +200,7 @@
 
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/aqua",
+			.leaves = "cubyz:cloth/block/aqua",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -214,7 +214,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/black",
+			.leaves = "cubyz:cloth/block/black",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -228,7 +228,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/blue",
+			.leaves = "cubyz:cloth/block/blue",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -242,7 +242,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/brown",
+			.leaves = "cubyz:cloth/block/brown",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -256,7 +256,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/crimson",
+			.leaves = "cubyz:cloth/block/crimson",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -270,7 +270,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/cyan",
+			.leaves = "cubyz:cloth/block/cyan",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -284,7 +284,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/dark_grey",
+			.leaves = "cubyz:cloth/block/dark_grey",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -298,7 +298,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/green",
+			.leaves = "cubyz:cloth/block/green",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -312,7 +312,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/grey",
+			.leaves = "cubyz:cloth/block/grey",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -326,7 +326,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/indigo",
+			.leaves = "cubyz:cloth/block/indigo",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -340,7 +340,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/lime",
+			.leaves = "cubyz:cloth/block/lime",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -354,7 +354,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/magenta",
+			.leaves = "cubyz:cloth/block/magenta",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -368,7 +368,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/orange",
+			.leaves = "cubyz:cloth/block/orange",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -382,7 +382,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/pink",
+			.leaves = "cubyz:cloth/block/pink",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -396,7 +396,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/purple",
+			.leaves = "cubyz:cloth/block/purple",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -410,7 +410,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/red",
+			.leaves = "cubyz:cloth/block/red",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -424,7 +424,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/violet",
+			.leaves = "cubyz:cloth/block/violet",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -438,7 +438,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/viridian",
+			.leaves = "cubyz:cloth/block/viridian",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -452,7 +452,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/white",
+			.leaves = "cubyz:cloth/block/white",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
@@ -466,7 +466,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth_block/yellow",
+			.leaves = "cubyz:cloth/block/yellow",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
 			.chance = 0.02,
