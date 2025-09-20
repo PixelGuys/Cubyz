@@ -83,9 +83,7 @@ pub fn init() void {
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
 	MeshSelection.init();
-	MenuBackGround.init() catch |err| {
-		std.log.err("Failed to initialize the Menu Background: {s}", .{@errorName(err)});
-	};
+	MenuBackGround.init();
 	Skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
@@ -482,7 +480,7 @@ pub const MenuBackGround = struct {
 	var angle: f32 = 0;
 	var lastTime: i128 = undefined;
 
-	fn init() !void {
+	fn init() void {
 		lastTime = std.time.nanoTimestamp();
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/background/vertex.vert",
@@ -530,9 +528,27 @@ pub const MenuBackGround = struct {
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, vbos[1]);
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
 
-		// Load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
-		texture = .{.textureID = 0};
-		var dir = try main.files.cwd().openIterableDir("assets/backgrounds");
+		const backgroundPath = chooseBackgroundImagePath(main.stackAllocator) catch |err| {
+			std.log.err("Couldn't open background path: {s}", .{@errorName(err)});
+			texture = .{.textureID = 0};
+			return;
+		};
+		defer main.stackAllocator.free(backgroundPath);
+		texture = graphics.Texture.initFromFile(backgroundPath);
+	}
+
+	fn chooseBackgroundImagePath(allocator: main.heap.NeverFailingAllocator) ![]const u8 {
+		// Whenever the version changes copy over the new background image and display it.
+		if(!std.mem.eql(u8, settings.lastVersionString, settings.version.version)) {
+			const defaultImageData = try main.files.cwd().read(main.stackAllocator, "assets/cubyz/default_background.png");
+			defer main.stackAllocator.free(defaultImageData);
+			try main.files.cubyzDir().write("backgrounds/default_background.png", defaultImageData);
+
+			return std.fmt.allocPrint(allocator.allocator, "{s}/backgrounds/default_background.png", .{main.files.cubyzDirStr()}) catch unreachable;
+		}
+
+		// Otherwise load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
+		var dir = try main.files.cubyzDir().openIterableDir("backgrounds");
 		defer dir.close();
 
 		var walker = dir.walk(main.stackAllocator);
@@ -551,13 +567,10 @@ pub const MenuBackGround = struct {
 			}
 		}
 		if(fileList.items.len == 0) {
-			std.log.warn("Couldn't find any background scene images in \"assets/backgrounds\".", .{});
-			return;
+			return error.NoBackgroundImagesFound;
 		}
 		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));
-		const theChosenPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/backgrounds/{s}", .{fileList.items[theChosenOne]}) catch unreachable;
-		defer main.stackAllocator.free(theChosenPath);
-		texture = graphics.Texture.initFromFile(theChosenPath);
+		return std.fmt.allocPrint(allocator.allocator, "{s}/backgrounds/{s}", .{main.files.cubyzDirStr(), fileList.items[theChosenOne]}) catch unreachable;
 	}
 
 	pub fn deinit() void {
@@ -643,7 +656,7 @@ pub const MenuBackGround = struct {
 		}
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.monotonic)}) catch unreachable;
+		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/backgrounds/{s}_{}.png", .{main.files.cubyzDirStr(), game.world.?.name, game.world.?.gameTime.load(.monotonic)}) catch unreachable;
 		defer main.stackAllocator.free(fileName);
 		image.exportToFile(fileName) catch |err| {
 			std.log.err("Cannot write file {s} due to {s}", .{fileName, @errorName(err)});

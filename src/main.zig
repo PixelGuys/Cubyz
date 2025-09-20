@@ -581,6 +581,17 @@ pub fn main() void { // MARK: main()
 	files.init();
 	defer files.deinit();
 
+	// Background image migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("assets/backgrounds")) moveBlueprints: {
+		std.fs.rename(std.fs.cwd(), "assets/backgrounds", files.cubyzDir().dir, "backgrounds") catch |err| {
+			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving backgrounds: {s}\nYou may have to move your assets/backgrounds manually to {s}/backgrounds", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
+			defer stackAllocator.free(notification);
+			gui.windowlist.notification.raiseNotification(notification);
+			break :moveBlueprints;
+		};
+		std.log.info("Moved backgrounds to {s}/backgrounds", .{files.cubyzDirStr()});
+	}
+
 	settings.init();
 	defer settings.deinit();
 

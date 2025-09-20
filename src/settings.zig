@@ -13,6 +13,8 @@ pub const entityLookback: i16 = 100;
 
 pub const highestSupportedLod: u3 = 5;
 
+pub var lastVersionString: []const u8 = "";
+
 pub var simulationDistance: u16 = 4;
 
 pub var cpuThreads: ?u64 = null;
@@ -130,6 +132,10 @@ pub fn save() void {
 	defer zonObject.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		if(comptime std.mem.eql(u8, decl.name, "lastVersionString")) {
+			zonObject.put(decl.name, version.version);
+			continue;
+		}
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
