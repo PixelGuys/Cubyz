@@ -299,6 +299,7 @@ pub const Biome = struct { // MARK: Biome
 	fogHigher: f32,
 	fogDensity: f32,
 	fogColor: Vec3f,
+	skyColor: Vec3f,
 	id: []const u8,
 	paletteId: u32,
 	structure: BlockStructure = undefined,
@@ -326,7 +327,10 @@ pub const Biome = struct { // MARK: Biome
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
 			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate")),
-			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
+			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
+			.skyColor = blk: {
+				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
+			},
 			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
 			.fogLower = zon.get(f32, "fogLower", 100.0),
 			.fogHigher = zon.get(f32, "fogHigher", 1000.0),

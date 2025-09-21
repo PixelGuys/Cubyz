@@ -666,6 +666,15 @@ pub fn main() void { // MARK: main()
 		gui.windowlist.notification.raiseNotification(notification);
 	}
 
+	// Blueprint migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("blueprints")) moveBlueprints: {
+		std.fs.rename(std.fs.cwd(), "blueprints", files.cubyzDir().dir, "blueprints") catch |err| {
+			std.log.err("Encountered error while moving blueprints: {s}\nYou may have to move your blueprints manually to {s}/blueprints", .{@errorName(err), files.cubyzDirStr()});
+			break :moveBlueprints;
+		};
+		std.log.info("Moved blueprints to {s}/blueprints", .{files.cubyzDirStr()});
+	}
+
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 

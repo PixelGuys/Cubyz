@@ -148,10 +148,9 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
 		ambient[2] = @max(0.1, world.ambientLight);
-		game.fog.skyColor = vec.xyz(world.clearColor);
 
 		itemdrop.ItemDisplayManager.update(deltaTime);
-		renderWorld(world, ambient, Skybox.getSkyColor(), playerPosition);
+		renderWorld(world, ambient, game.fog.skyColor, playerPosition);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
@@ -301,7 +300,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
 	if(!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
 		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
@@ -400,7 +399,7 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		if(!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
@@ -781,10 +780,6 @@ pub const Skybox = struct {
 		starPipeline.deinit();
 		starSsbo.deinit();
 		c.glDeleteVertexArrays(1, &starVao);
-	}
-
-	pub fn getSkyColor() Vec3f {
-		return game.fog.skyColor*@as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor)/3.0));
 	}
 
 	pub fn render() void {
