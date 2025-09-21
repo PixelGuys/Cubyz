@@ -177,15 +177,15 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 }
 
 pub fn addRecipe(itemCombo: []const ItemStack, list: *main.List(Recipe)) void {
-	const parsedInputs = itemCombo[0 .. itemCombo.len - 1];
+	const inputs = itemCombo[0 .. itemCombo.len - 1];
 	const output = itemCombo[itemCombo.len - 1];
 	const recipe = Recipe{
-		.sourceItems = main.globalAllocator.alloc(BaseItemIndex, parsedInputs.len),
-		.sourceAmounts = main.globalAllocator.alloc(u16, parsedInputs.len),
+		.sourceItems = main.globalAllocator.alloc(BaseItemIndex, inputs.len),
+		.sourceAmounts = main.globalAllocator.alloc(u16, inputs.len),
 		.resultItem = output.item.?.baseItem,
 		.resultAmount = output.amount,
 	};
-	for(parsedInputs, 0..) |input, i| {
+	for(inputs, 0..) |input, i| {
 		recipe.sourceItems[i] = input.item.?.baseItem;
 		recipe.sourceAmounts[i] = input.amount;
 	}
