@@ -129,15 +129,14 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	} else {
 		var iter = items.iterator();
 		while(iter.next()) |item| {
-			if(matchWithKeys(allocator, item.id(), pattern.items, keys) catch null) |newKeys| {
-				itemPairs.append(.{
-					.item = .{
-						.item = .{.baseItem = item.*},
-						.amount = amount,
-					},
-					.keys = newKeys,
-				});
-			}
+			const newKeys = matchWithKeys(allocator, item.id(), pattern.items, keys) catch continue;
+			itemPairs.append(.{
+				.item = .{
+					.item = .{.baseItem = item.*},
+					.amount = amount,
+				},
+				.keys = newKeys,
+			});
 		}
 	}
 	return itemPairs;
