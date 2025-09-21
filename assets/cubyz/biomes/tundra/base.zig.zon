@@ -12,6 +12,7 @@
 	.roughness = 2,
 	.hills = 15,
 	.mountains = 20,
+	.chance = 0.5,
 	.ground_structure = .{
 		"0 to 1 cubyz:cold_grass",
 	},

@@ -26,9 +26,9 @@ pub const Compression = struct { // MARK: Compression
 		return streamOut.getWritten().len;
 	}
 
-	pub fn pack(sourceDir: std.fs.Dir, writer: anytype) !void {
+	pub fn pack(sourceDir: main.files.Dir, writer: anytype) !void {
 		var comp = try std.compress.flate.compressor(writer, .{});
-		var walker = try sourceDir.walk(main.stackAllocator.allocator);
+		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
@@ -47,7 +47,7 @@ pub const Compression = struct { // MARK: Compression
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
-				const fileData = try sourceDir.readFileAlloc(main.stackAllocator.allocator, relPath, std.math.maxInt(usize));
+				const fileData = try sourceDir.read(main.stackAllocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
@@ -58,7 +58,7 @@ pub const Compression = struct { // MARK: Compression
 		try comp.finish();
 	}
 
-	pub fn unpack(outDir: std.fs.Dir, input: []const u8) !void {
+	pub fn unpack(outDir: main.files.Dir, input: []const u8) !void {
 		var stream = std.io.fixedBufferStream(input);
 		var decomp = std.compress.flate.decompressor(stream.reader());
 		const reader = decomp.reader();
@@ -78,7 +78,7 @@ pub const Compression = struct { // MARK: Compression
 			var splitter = std.mem.splitBackwardsScalar(u8, path, '/');
 			_ = splitter.first();
 			try outDir.makePath(splitter.rest());
-			try outDir.writeFile(.{.data = fileData, .sub_path = path});
+			try outDir.write(path, fileData);
 		}
 	}
 };

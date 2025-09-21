@@ -215,7 +215,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 
 fn initLogging() void {
 	logFile = null;
-	std.fs.cwd().makePath("logs") catch |err| {
+	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
@@ -552,16 +552,16 @@ pub fn main() void { // MARK: main()
 	initLogging();
 	defer deinitLogging();
 
-	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
+	if(files.cwd().openFile("settings.json")) |file| blk: { // TODO: Remove after #480
 		file.close();
 		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
-		var dir = std.fs.cwd().openDir(".", .{.iterate = true}) catch |err| {
+		var dir = files.cwd().openIterableDir(".") catch |err| {
 			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
 			break :blk;
 		};
 		defer dir.close();
 
-		var walker = dir.walk(stackAllocator.allocator) catch unreachable;
+		var walker = dir.walk(stackAllocator);
 		defer walker.deinit();
 		while(walker.next() catch |err| {
 			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
@@ -573,11 +573,27 @@ pub fn main() void { // MARK: main()
 		}
 	} else |_| {}
 
+	std.log.info("Starting game client with version {s}", .{settings.version.version});
+
 	gui.initWindowList();
 	defer gui.deinitWindowList();
 
+	settings.launchConfig.init();
+	defer settings.launchConfig.deinit();
+
 	files.init();
 	defer files.deinit();
+
+	// Background image migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("assets/backgrounds")) moveBlueprints: {
+		std.fs.rename(std.fs.cwd(), "assets/backgrounds", files.cubyzDir().dir, "backgrounds") catch |err| {
+			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving backgrounds: {s}\nYou may have to move your assets/backgrounds manually to {s}/backgrounds", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
+			defer stackAllocator.free(notification);
+			gui.windowlist.notification.raiseNotification(notification);
+			break :moveBlueprints;
+		};
+		std.log.info("Moved backgrounds to {s}/backgrounds", .{files.cubyzDirStr()});
+	}
 
 	settings.init();
 	defer settings.deinit();

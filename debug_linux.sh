@@ -24,4 +24,4 @@ fi
 echo "Cubyz successfully built!"
 echo "Launching Cubyz."
 
-./zig-out/bin/Cubyzig
+./zig-out/bin/Cubyz

@@ -16,6 +16,7 @@
 		"cubyz:lush_grass",
 		"5 to 7 cubyz:mud",
 	},
+	.chance = 0.5,
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
