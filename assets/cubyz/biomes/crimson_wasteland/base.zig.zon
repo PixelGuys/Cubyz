@@ -24,14 +24,14 @@
 		.{
 			.id = "cubyz:stalagmite",
 			.chance = 0.016,
-			.block = "cubyz:chalk/black",
+			.block = "cubyz:basalt",
 			.size = 12,
 			.size_variation = 10,
 		},
 		.{
 			.id = "cubyz:stalagmite",
 			.chance = 0.2,
-			.block = "cubyz:chalk/black",
+			.block = "cubyz:basalt",
 			.size = 3,
 			.size_variation = 5,
 		},
