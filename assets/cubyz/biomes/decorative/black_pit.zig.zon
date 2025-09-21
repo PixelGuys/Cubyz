@@ -14,7 +14,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:red_plains",
-			.chance = 24,
+			.chance = 48,
 		},
 	},
 }
