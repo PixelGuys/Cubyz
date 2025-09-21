@@ -37,10 +37,10 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) !main.Lis
 	for(segments.items) |segment| {
 		switch(segment) {
 			.literal => |literal| {
-				newSegments.append(.{.literal = allocator.dupe(u8, literal)});
+				newSegments.append(.{.literal = literal});
 			},
 			.symbol => |symbol| {
-				newSegments.append(.{.symbol = allocator.dupe(u8, symbol)});
+				newSegments.append(.{.symbol = symbol});
 			},
 		}
 	}
