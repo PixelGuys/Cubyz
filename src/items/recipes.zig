@@ -141,17 +141,12 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
 	var arena = arenaAllocator.allocator();
-	var emptyKeys: std.StringHashMap([]const u8) = .init(arena.allocator);
-	const startingParsedItems = try parseRecipeItemOptions(arena, recipe[0], &emptyKeys);
-	var inputCombos: main.List([]ItemStack) = .initCapacity(arena, startingParsedItems.items.len);
-	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, startingParsedItems.items.len);
-	for(startingParsedItems.items) |item| {
-		const inputs = arena.alloc(ItemStack, recipe.len);
-		inputs[0] = item.item;
-		inputCombos.append(inputs);
-		keyList.append(item.keys);
-	}
-	for(1.., recipe[1..]) |i, itemZon| {
+
+	var inputCombos: main.List([]ItemStack) = .initCapacity(arena, 1);
+	inputCombos.append(arena.alloc(ItemStack, recipe.len));
+	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, 1);
+	keyList.append(.init(arena.allocator));
+	for(0.., recipe[0..]) |i, itemZon| {
 		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(arena);
 		var newInputCombos: main.List([]ItemStack) = .init(arena);
 
