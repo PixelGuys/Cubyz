@@ -118,7 +118,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 
 	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
 	if(pattern.items.len == 1 and pattern.items[0] == .literal) {
-		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return itemPairs;
+		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return error.ItemNotFound;
 		itemPairs.append(.{
 			.item = .{
 				.item = .{.baseItem = item},
