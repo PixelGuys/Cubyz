@@ -86,7 +86,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 				const endIndex: usize = if(i + 1 < pattern.len) blk: {
 					const nextSegment = pattern[i + 1];
 					if(nextSegment == .symbol) {
-						return error.NoMatch;
+						return error.AmbiguousSymbols;
 					}
 					break :blk std.mem.indexOfPos(u8, target, idx, nextSegment.literal) orelse {
 						return error.NoMatch;
@@ -129,7 +129,13 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	} else {
 		var iter = items.iterator();
 		while(iter.next()) |item| {
-			const newKeys = matchWithKeys(allocator, item.id(), pattern.items, keys) catch continue;
+			const newKeys = matchWithKeys(allocator, item.id(), pattern.items, keys) catch |err| {
+				if(err != error.NoMatch) {
+					return err;
+				} else {
+					continue;
+				}
+			};
 			itemPairs.append(.{
 				.item = .{
 					.item = .{.baseItem = item.*},
