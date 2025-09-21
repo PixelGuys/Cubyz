@@ -19,10 +19,7 @@
 	.skyColor = 0xd48e92,
 	.music = "cubyz:in_the_depths",
 	.validPlayerSpawn = false,
-	.ground_structure = .{
-		"4 to 5 cubyz:chalk/crimson",
-	},
-	.stoneBlock = "cubyz:chalk/black",
+	.stoneBlock = "cubyz:obsidian",
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
@@ -37,6 +34,33 @@
 			.block = "cubyz:chalk/black",
 			.size = 3,
 			.size_variation = 5,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:chalk/crimson",
+			.chance = 0.1,
+			.width = 8,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:chalk/red",
+			.chance = 0.5,
+			.width = 8,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:chalk/black",
+			.chance = 0.5,
+			.width = 8,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
 		},
 	},
 }
