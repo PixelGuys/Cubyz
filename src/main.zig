@@ -578,6 +578,9 @@ pub fn main() void { // MARK: main()
 	gui.initWindowList();
 	defer gui.deinitWindowList();
 
+	settings.launchConfig.init();
+	defer settings.launchConfig.deinit();
+
 	files.init();
 	defer files.deinit();
 

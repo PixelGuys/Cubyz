@@ -51,16 +51,21 @@ pub fn cubyzDirStr() []const u8 {
 }
 
 fn flawedInit() !void {
+	if(main.settings.launchConfig.cubyzDir.len != 0) {
+		cubyzDir_ = try std.fs.cwd().makeOpenPath(main.settings.launchConfig.cubyzDir, .{});
+		cubyzDirStr_ = main.globalAllocator.dupe(u8, main.settings.launchConfig.cubyzDir);
+		return;
+	}
 	const homePath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, if(builtin.os.tag == .windows) "USERPROFILE" else "HOME");
 	defer main.stackAllocator.free(homePath);
 	var homeDir = try std.fs.openDirAbsolute(homePath, .{});
 	defer homeDir.close();
 	if(builtin.os.tag == .windows) {
 		cubyzDir_ = try homeDir.makeOpenPath("Saved Games/Cubyz", .{});
-		cubyzDirStr_ = std.mem.concat(main.stackAllocator.allocator, u8, &.{homePath, "/Saved Games/Cubyz"}) catch unreachable;
+		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{homePath, "/Saved Games/Cubyz"}) catch unreachable;
 	} else {
 		cubyzDir_ = try homeDir.makeOpenPath(".cubyz", .{});
-		cubyzDirStr_ = std.mem.concat(main.stackAllocator.allocator, u8, &.{homePath, "/.cubyz"}) catch unreachable;
+		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{homePath, "/.cubyz"}) catch unreachable;
 	}
 }
 
@@ -75,7 +80,7 @@ pub fn deinit() void {
 		cubyzDir_.?.close();
 	}
 	if(cubyzDirStr_.ptr != ".".ptr) {
-		main.stackAllocator.free(cubyzDirStr_);
+		main.globalAllocator.free(cubyzDirStr_);
 	}
 }
 

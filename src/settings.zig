@@ -182,3 +182,21 @@ pub fn save() void {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }
+
+pub const launchConfig = struct {
+	pub var cubyzDir: []const u8 = "";
+
+	pub fn init() void {
+		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
+			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
+			break :blk .null;
+		};
+		defer zon.deinit(main.stackAllocator);
+
+		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+	}
+
+	pub fn deinit() void {
+		main.globalAllocator.free(cubyzDir);
+	}
+};
