@@ -538,19 +538,19 @@ pub const MenuBackGround = struct {
 	}
 
 	fn chooseBackgroundImagePath(allocator: main.heap.NeverFailingAllocator) ![]const u8 {
+		var dir = try main.files.cubyzDir().openIterableDir("backgrounds");
+		defer dir.close();
+
 		// Whenever the version changes copy over the new background image and display it.
 		if(!std.mem.eql(u8, settings.lastVersionString, settings.version.version)) {
 			const defaultImageData = try main.files.cwd().read(main.stackAllocator, "assets/cubyz/default_background.png");
 			defer main.stackAllocator.free(defaultImageData);
-			try main.files.cubyzDir().write("backgrounds/default_background.png", defaultImageData);
+			try dir.write("default_background.png", defaultImageData);
 
 			return std.fmt.allocPrint(allocator.allocator, "{s}/backgrounds/default_background.png", .{main.files.cubyzDirStr()}) catch unreachable;
 		}
 
 		// Otherwise load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
-		var dir = try main.files.cubyzDir().openIterableDir("backgrounds");
-		defer dir.close();
-
 		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
 		var fileList = main.List([]const u8).init(main.stackAllocator);

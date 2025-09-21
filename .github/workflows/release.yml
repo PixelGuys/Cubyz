@@ -20,16 +20,16 @@ jobs:
           version: ${{ env.VERSION }}
 
       - run: zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
-      - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz
+      - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz
 
       - run: zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
-      - run: tar -czf Linux-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz
+      - run: tar -czf Linux-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz
 
       - run: zig build -Dtarget=x86_64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
-      - run: tar -czf Windows-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz.exe
+      - run: tar -czf Windows-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz.exe
 
       - run: zig build -Dtarget=aarch64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
-      - run: tar -czf Windows-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz -C zig-out/bin Cubyz.exe
+      - run: tar -czf Windows-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz.exe
 
       - name: Create release
         env:
