@@ -16,6 +16,7 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) !main.Lis
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
 	const arena = arenaAllocator.allocator();
+
 	var segments: main.List(Segment) = .init(arena);
 	var idx: usize = 0;
 	while(idx < pattern.len) {
@@ -72,6 +73,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 	idx = 0;
 	var newKeys = keys.clone() catch unreachable;
 	errdefer newKeys.deinit();
+
 	for(0.., pattern) |i, segment| {
 		switch(segment) {
 			.literal => |literal| {
@@ -194,6 +196,7 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
 	const arena = arenaAllocator.allocator();
+
 	const inputs = zon.getChild("inputs").toSlice();
 	const recipeItems = arena.alloc(ZonElement, inputs.len + 1);
 	@memcpy(recipeItems[0..inputs.len], inputs);
