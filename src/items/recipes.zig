@@ -198,9 +198,7 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	const arena = arenaAllocator.allocator();
 
 	const inputs = zon.getChild("inputs").toSlice();
-	const recipeItems = arena.alloc(ZonElement, inputs.len + 1);
-	@memcpy(recipeItems[0..inputs.len], inputs);
-	recipeItems[inputs.len] = zon.getChild("output");
+	const recipeItems = std.mem.concat(arena.allocator, ZonElement, &.{inputs, &.{zon.getChild("output")}}) catch unreachable;
 
 	const reversible = zon.get(bool, "reversible", false);
 	if(reversible and recipeItems.len != 2) {
