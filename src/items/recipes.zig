@@ -12,7 +12,7 @@ const Block = main.blocks.Block;
 
 const Segment = union(enum) {literal: []const u8, symbol: []const u8};
 
-fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *const std.StringHashMap([]const u8)) !main.List(Segment) {
+fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) !main.List(Segment) {
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
 	const arena = arenaAllocator.allocator();
@@ -24,25 +24,11 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return error.UnclosedBrackets;
 			if(idx == endIndex) return error.EmptyBrackets;
 			const symbol = pattern[idx..endIndex];
-			if(keys.get(symbol)) |literal| {
-				if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
-					const value = segments.pop();
-					segments.append(.{.literal = std.mem.concat(arena.allocator, u8, &.{value.literal, literal}) catch unreachable});
-				} else {
-					segments.append(.{.literal = literal});
-				}
-			} else {
-				segments.append(.{.symbol = symbol});
-			}
+			segments.append(.{.symbol = symbol});
 			idx = endIndex + 1;
 		} else {
 			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '{') orelse pattern.len;
-			if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .literal) {
-				const value = segments.pop();
-				segments.append(.{.literal = std.mem.concat(arena.allocator, u8, &.{value.literal, pattern[idx..endIndex]}) catch unreachable});
-			} else {
-				segments.append(.{.literal = pattern[idx..endIndex]});
-			}
+			segments.append(.{.literal = pattern[idx..endIndex]});
 			idx = endIndex;
 		}
 	}
@@ -58,6 +44,27 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8, keys: *co
 		}
 	}
 	return newSegments;
+}
+
+const ItemStackPattern = struct {
+	amount: u16,
+	pattern: main.List(Segment),
+};
+
+fn parseItemZon(allocator: NeverFailingAllocator, zon: ZonElement) !ItemStackPattern {
+	var id = zon.as([]const u8, "");
+	id = std.mem.trim(u8, id, &std.ascii.whitespace);
+	var amount: u16 = 1;
+	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
+		amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
+		id = id[index + 1 ..];
+		id = std.mem.trim(u8, id, &std.ascii.whitespace);
+	}
+	const pattern = try parsePattern(allocator, id);
+	return .{
+		.amount = amount,
+		.pattern = pattern,
+	};
 }
 
 fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) !std.StringHashMap([]const u8) {
@@ -83,7 +90,13 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 						return error.NoMatch;
 					};
 				} else target.len;
-				newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
+				if(newKeys.get(symbol)) |value| {
+					if(!std.mem.eql(u8, target[idx..endIndex], value)) {
+						return error.NoMatch;
+					}
+				} else {
+					newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
+				}
 				idx = endIndex;
 			},
 		}
@@ -97,21 +110,12 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 
 const ItemKeyPair = struct {item: ItemStack, keys: std.StringHashMap([]const u8)};
 
-fn parseRecipeItemOptions(allocator: NeverFailingAllocator, zon: ZonElement, keys: *const std.StringHashMap([]const u8)) !main.List(ItemKeyPair) {
-	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
-	defer arenaAllocator.deinit();
-	const arena = arenaAllocator.allocator();
-	var id = zon.as([]const u8, "");
-	id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	var amount: u16 = 1;
-	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
-		amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
-		id = id[index + 1 ..];
-		id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	}
+fn parseRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: ItemStackPattern, keys: *const std.StringHashMap([]const u8)) !main.List(ItemKeyPair) {
+	const pattern = itemStackPattern.pattern;
+	const amount = itemStackPattern.amount;
+
 	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
-	const pattern = try parsePattern(arena, id, keys);
-	if(id.len > 0 and pattern.items.len == 1 and pattern.items[0] == .literal) {
+	if(pattern.items.len == 1 and pattern.items[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return itemPairs;
 		itemPairs.append(.{
 			.item = .{
@@ -147,11 +151,12 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, 1);
 	keyList.append(.init(arena.allocator));
 	for(0.., recipe[0..]) |i, itemZon| {
+		const pattern = try parseItemZon(arena, itemZon);
 		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(arena);
 		var newInputCombos: main.List([]ItemStack) = .init(arena);
 
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
-			const parsedItems = try parseRecipeItemOptions(arena, itemZon, keys);
+			const parsedItems = try parseRecipeItemOptions(arena, pattern, keys);
 			for(parsedItems.items) |item| {
 				const newInputs = arena.dupe(ItemStack, inputs);
 				newInputs[i] = item.item;
