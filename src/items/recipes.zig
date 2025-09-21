@@ -143,7 +143,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	return itemPairs;
 }
 
-fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !main.List([]ItemStack) {
+fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![][]ItemStack {
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
 	var arena = arenaAllocator.allocator();
@@ -170,10 +170,11 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) !m
 		inputCombos = newInputCombos;
 	}
 	var newInputCombos: main.List([]ItemStack) = .initCapacity(allocator, inputCombos.items.len);
+	defer newInputCombos.deinit();
 	for(inputCombos.items) |inputCombo| {
 		newInputCombos.append(allocator.dupe(ItemStack, inputCombo));
 	}
-	return newInputCombos;
+	return newInputCombos.toOwnedSlice();
 }
 
 pub fn addRecipe(itemCombo: []const ItemStack, list: *main.List(Recipe)) void {
@@ -206,7 +207,7 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 	}
 
 	const itemCombos = try generateItemCombos(arena, recipeItems);
-	for(itemCombos.items) |itemCombo| {
+	for(itemCombos) |itemCombo| {
 		addRecipe(itemCombo, list);
 		if(reversible) {
 			addRecipe(&.{itemCombo[1], itemCombo[0]}, list);
