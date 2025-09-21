@@ -13,7 +13,7 @@
 	.stoneBlock = "cubyz:chalk/black",
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:red_plains",
+			.id = "cubyz:crimson_wasteland",
 			.chance = 48,
 		},
 	},
