@@ -26,10 +26,17 @@
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.016,
+			.chance = 0.008,
 			.block = "cubyz:chalk/black",
 			.size = 5,
 			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.chance = 0.016,
+			.block = "cubyz:chalk/black",
+			.size = 10,
+			.size_variation = 10,
 		},
 	},
 }
