@@ -1,13 +1,12 @@
 .{
 	.properties = .{},
-	.radius = 16,
+	.minHeight = 64,
+	.maxHeight = 65,
+	.minRadius = 16,
+	.maxRadius = 32,
+	.roughness = 24,
 	.chance = 0,
-	.minHeight = 1500,
-	.maxHeight = 3000,
-	.keepOriginalTerrain = 0.99,
-	.roughness = 1,
-	.mountains = 50,
-	.hills = 20,
+	.hills = 2,
 	.fogDensity = 3.0,
 	.fogColor = 0xd4b2b2,
 	.skyColor = 0xd48e92,
@@ -26,7 +25,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:crimson_wasteland",
+			.id = "cubyz:crimson_wasteland/base",
 			.chance = 18,
 		},
 	},

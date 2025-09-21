@@ -13,7 +13,7 @@
 	.maxRadius = 320,
 	.roughness = 1,
 	.hills = 15,
-	.chance = 0.01,
+	.chance = 0.02,
 	.fogDensity = 4.0,
 	.fogColor = 0xd4b2b2,
 	.skyColor = 0xd48e92,
