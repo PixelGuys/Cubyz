@@ -54,12 +54,10 @@ const ItemStackPattern = struct {
 
 fn parseItemZon(allocator: NeverFailingAllocator, zon: ZonElement) !ItemStackPattern {
 	var id = zon.as([]const u8, "");
-	id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	var amount: u16 = 1;
 	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
 		amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
 		id = id[index + 1 ..];
-		id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	}
 	const pattern = try parsePattern(allocator, id);
 	return .{
