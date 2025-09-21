@@ -1,0 +1,35 @@
+.{
+	.properties = .{
+		.hot,
+		.dry,
+		.barren,
+	},
+	.minHeightLimit = 7,
+	.minHeight = 22,
+	.maxHeight = 40,
+	.maxHeightLimit = 50,
+	.smoothBeaches = true,
+	.minRadius = 256,
+	.maxRadius = 320,
+	.roughness = 1,
+	.hills = 15,
+	.chance = 0.2,
+	.fogDensity = 4.0,
+	.fogColor = 0xd4b2b2,
+	.skyColor = 0xd48e92,
+	.music = "cubyz:in_the_depths",
+	.validPlayerSpawn = false,
+	.ground_structure = .{
+		"4 to 5 cubyz:chalk/crimson",
+	},
+	.stoneBlock = "cubyz:chalk/black",
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:chalk/black",
+			.size = 5,
+			.size_variance = 1,
+		},
+	},
+}

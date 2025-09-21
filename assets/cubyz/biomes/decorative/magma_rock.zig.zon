@@ -1,0 +1,33 @@
+.{
+	.properties = .{},
+	.radius = 16,
+	.chance = 0,
+	.minHeight = 1500,
+	.maxHeight = 3000,
+	.keepOriginalTerrain = 0.99,
+	.roughness = 1,
+	.mountains = 50,
+	.hills = 20,
+	.fogDensity = 3.0,
+	.fogColor = 0xd4b2b2,
+	.skyColor = 0xd48e92,
+	.music = "cubyz:in_the_depths",
+	.stoneBlock = "cubyz:obsidian",
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:magma",
+			.chance = 0.4,
+			.width = 3,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:red_plains",
+			.chance = 12,
+		},
+	},
+}
