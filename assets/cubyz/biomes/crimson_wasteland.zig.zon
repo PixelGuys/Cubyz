@@ -38,5 +38,12 @@
 			.size = 10,
 			.size_variation = 10,
 		},
+		.{
+			.id = "cubyz:stalagmite",
+			.chance = 0.15,
+			.block = "cubyz:chalk/black",
+			.size = 3,
+			.size_variation = 5,
+		},
 	},
 }
