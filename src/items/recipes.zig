@@ -103,7 +103,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	defer itemPairs.deinit();
 	if(pattern.len == 1 and pattern[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern[0].literal) orelse return error.ItemNotFound;
-		itemPairs.append(.{
+		return allocator.dupe(ItemKeyPair, &.{
 			.item = .{
 				.item = .{.baseItem = item},
 				.amount = amount,
