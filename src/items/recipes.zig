@@ -121,11 +121,8 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	var iter = items.iterator();
 	while(iter.next()) |item| {
 		const newKeys = matchWithKeys(allocator, item.id(), pattern, keys) catch |err| {
-			if(err != error.NoMatch) {
-				return err;
-			} else {
-				continue;
-			}
+			if(err == error.NoMatch) continue;
+			return err;
 		};
 		itemPairs.append(.{
 			.item = .{
