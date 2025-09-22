@@ -103,13 +103,13 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	defer itemPairs.deinit();
 	if(pattern.len == 1 and pattern[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern[0].literal) orelse return error.ItemNotFound;
-		return allocator.dupe(ItemKeyPair, &.{
+		return allocator.dupe(ItemKeyPair, &.{.{
 			.item = .{
 				.item = .{.baseItem = item},
 				.amount = amount,
 			},
 			.keys = keys.clone() catch unreachable,
-		});
+		}});
 	} else {
 		var iter = items.iterator();
 		while(iter.next()) |item| {
