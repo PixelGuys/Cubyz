@@ -158,12 +158,11 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![
 		keyList = newKeyList;
 		inputCombos = newInputCombos;
 	}
-	var newInputCombos: main.List([]ItemStack) = .initCapacity(allocator, inputCombos.items.len);
-	defer newInputCombos.deinit();
-	for(inputCombos.items) |inputCombo| {
-		newInputCombos.append(allocator.dupe(ItemStack, inputCombo));
+	const newInputCombos = allocator.alloc([]ItemStack, inputCombos.items.len);
+	for(inputCombos.items, 0..) |inputCombo, i| {
+		newInputCombos[i] = allocator.dupe(ItemStack, inputCombo);
 	}
-	return newInputCombos.toOwnedSlice();
+	return newInputCombos;
 }
 
 pub fn addRecipe(itemCombo: []const ItemStack, list: *main.List(Recipe)) void {
