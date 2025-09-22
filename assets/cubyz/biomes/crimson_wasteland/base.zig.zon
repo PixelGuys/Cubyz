@@ -32,6 +32,13 @@
 			.size_variation = 5,
 		},
 		.{
+			.id = "cubyz:stalagmite",
+			.chance = 0.005,
+			.block = "cubyz:obsidian",
+			.size = 5,
+			.size_variation = 7,
+		},
+		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:chalk/red",
 			.chance = 0.5,
