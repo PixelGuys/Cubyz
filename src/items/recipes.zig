@@ -134,7 +134,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![][]ItemStack {
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
-	var arena = arenaAllocator.allocator();
+	const arena = arenaAllocator.allocator();
 
 	var inputCombos: main.List([]ItemStack) = .initCapacity(arena, 1);
 	inputCombos.append(arena.alloc(ItemStack, recipe.len));
