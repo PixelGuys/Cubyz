@@ -12,12 +12,9 @@ const Block = main.blocks.Block;
 
 const Segment = union(enum) {literal: []const u8, symbol: []const u8};
 
-fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) !main.List(Segment) {
-	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
-	defer arenaAllocator.deinit();
-	const arena = arenaAllocator.allocator();
-
-	var segments: main.List(Segment) = .init(arena);
+fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]Segment {
+	var segments: main.List(Segment) = .init(allocator);
+	defer segments.deinit();
 	var idx: usize = 0;
 	while(idx < pattern.len) {
 		if(pattern[idx] == '{') {
@@ -33,23 +30,12 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) !main.Lis
 			idx = endIndex;
 		}
 	}
-	var newSegments: main.List(Segment) = .init(allocator);
-	for(segments.items) |segment| {
-		switch(segment) {
-			.literal => |literal| {
-				newSegments.append(.{.literal = literal});
-			},
-			.symbol => |symbol| {
-				newSegments.append(.{.symbol = symbol});
-			},
-		}
-	}
-	return newSegments;
+	return segments.toOwnedSlice();
 }
 
 const ItemStackPattern = struct {
 	amount: u16,
-	pattern: main.List(Segment),
+	pattern: []Segment,
 };
 
 fn parseItemZon(allocator: NeverFailingAllocator, zon: ZonElement) !ItemStackPattern {
@@ -114,8 +100,8 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	const amount = itemStackPattern.amount;
 
 	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
-	if(pattern.items.len == 1 and pattern.items[0] == .literal) {
-		const item = BaseItemIndex.fromId(pattern.items[0].literal) orelse return error.ItemNotFound;
+	if(pattern.len == 1 and pattern[0] == .literal) {
+		const item = BaseItemIndex.fromId(pattern[0].literal) orelse return error.ItemNotFound;
 		itemPairs.append(.{
 			.item = .{
 				.item = .{.baseItem = item},
@@ -126,7 +112,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	} else {
 		var iter = items.iterator();
 		while(iter.next()) |item| {
-			const newKeys = matchWithKeys(allocator, item.id(), pattern.items, keys) catch |err| {
+			const newKeys = matchWithKeys(allocator, item.id(), pattern, keys) catch |err| {
 				if(err != error.NoMatch) {
 					return err;
 				} else {
