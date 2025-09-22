@@ -99,8 +99,6 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	const pattern = itemStackPattern.pattern;
 	const amount = itemStackPattern.amount;
 
-	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
-	defer itemPairs.deinit();
 	if(pattern.len == 1 and pattern[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern[0].literal) orelse return error.ItemNotFound;
 		return allocator.dupe(ItemKeyPair, &.{.{
@@ -110,24 +108,25 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 			},
 			.keys = keys.clone() catch unreachable,
 		}});
-	} else {
-		var iter = items.iterator();
-		while(iter.next()) |item| {
-			const newKeys = matchWithKeys(allocator, item.id(), pattern, keys) catch |err| {
-				if(err != error.NoMatch) {
-					return err;
-				} else {
-					continue;
-				}
-			};
-			itemPairs.append(.{
-				.item = .{
-					.item = .{.baseItem = item.*},
-					.amount = amount,
-				},
-				.keys = newKeys,
-			});
-		}
+	}
+	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
+	defer itemPairs.deinit();
+	var iter = items.iterator();
+	while(iter.next()) |item| {
+		const newKeys = matchWithKeys(allocator, item.id(), pattern, keys) catch |err| {
+			if(err != error.NoMatch) {
+				return err;
+			} else {
+				continue;
+			}
+		};
+		itemPairs.append(.{
+			.item = .{
+				.item = .{.baseItem = item.*},
+				.amount = amount,
+			},
+			.keys = newKeys,
+		});
 	}
 	return itemPairs.toOwnedSlice();
 }
