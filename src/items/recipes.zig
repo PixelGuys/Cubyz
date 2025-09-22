@@ -19,7 +19,7 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]Segmen
 	while(idx < pattern.len) {
 		if(pattern[idx] == '{') {
 			idx += 1;
-			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return error.UnclosedBrackets;
+			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return error.UnclosedBraces;
 			if(idx == endIndex) return error.EmptyBrackets;
 			const symbol = pattern[idx..endIndex];
 			segments.append(.{.symbol = symbol});
