@@ -97,10 +97,7 @@ const ItemWithAmount = struct {
 	amount: u16,
 };
 
-const ItemKeyPair = struct {
-	item: ItemWithAmount,
-	keys: std.StringHashMap([]const u8)
-};
+const ItemKeyPair = struct {item: ItemWithAmount, keys: std.StringHashMap([]const u8)};
 
 fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: ItemStackPattern, keys: *const std.StringHashMap([]const u8)) ![]ItemKeyPair {
 	const pattern = itemStackPattern.pattern;
