@@ -4,7 +4,6 @@ const items = main.items;
 const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
-const ItemStack = items.ItemStack;
 const Tag = main.Tag;
 const Recipe = items.Recipe;
 const BaseItemIndex = items.BaseItemIndex;
@@ -93,7 +92,15 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 	}
 }
 
-const ItemKeyPair = struct {item: ItemStack, keys: std.StringHashMap([]const u8)};
+const ItemWithAmount = struct {
+	item: BaseItemIndex,
+	amount: u16,
+};
+
+const ItemKeyPair = struct {
+	item: ItemWithAmount,
+	keys: std.StringHashMap([]const u8)
+};
 
 fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: ItemStackPattern, keys: *const std.StringHashMap([]const u8)) ![]ItemKeyPair {
 	const pattern = itemStackPattern.pattern;
@@ -103,7 +110,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 		const item = BaseItemIndex.fromId(pattern[0].literal) orelse return error.ItemNotFound;
 		return allocator.dupe(ItemKeyPair, &.{.{
 			.item = .{
-				.item = .{.baseItem = item},
+				.item = item,
 				.amount = amount,
 			},
 			.keys = keys.clone() catch unreachable,
@@ -122,7 +129,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 		};
 		itemPairs.append(.{
 			.item = .{
-				.item = .{.baseItem = item.*},
+				.item = item.*,
 				.amount = amount,
 			},
 			.keys = newKeys,
@@ -131,24 +138,24 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	return itemPairs.toOwnedSlice();
 }
 
-fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![][]ItemStack {
+fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![][]ItemWithAmount {
 	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
 	defer arenaAllocator.deinit();
 	const arena = arenaAllocator.allocator();
 
-	var inputCombos: main.List([]ItemStack) = .initCapacity(arena, 1);
-	inputCombos.append(arena.alloc(ItemStack, recipe.len));
+	var inputCombos: main.List([]ItemWithAmount) = .initCapacity(arena, 1);
+	inputCombos.append(arena.alloc(ItemWithAmount, recipe.len));
 	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, 1);
 	keyList.append(.init(arena.allocator));
 	for(0.., recipe[0..]) |i, itemZon| {
 		const pattern = try parseItemZon(arena, itemZon);
 		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(arena);
-		var newInputCombos: main.List([]ItemStack) = .init(arena);
+		var newInputCombos: main.List([]ItemWithAmount) = .init(arena);
 
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
 			const parsedItems = try findRecipeItemOptions(arena, pattern, keys);
 			for(parsedItems) |item| {
-				const newInputs = arena.dupe(ItemStack, inputs);
+				const newInputs = arena.dupe(ItemWithAmount, inputs);
 				newInputs[i] = item.item;
 				newInputCombos.append(newInputs);
 				newKeyList.append(item.keys);
@@ -157,24 +164,24 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![
 		keyList = newKeyList;
 		inputCombos = newInputCombos;
 	}
-	const newInputCombos = allocator.alloc([]ItemStack, inputCombos.items.len);
+	const newInputCombos = allocator.alloc([]ItemWithAmount, inputCombos.items.len);
 	for(inputCombos.items, 0..) |inputCombo, i| {
-		newInputCombos[i] = allocator.dupe(ItemStack, inputCombo);
+		newInputCombos[i] = allocator.dupe(ItemWithAmount, inputCombo);
 	}
 	return newInputCombos;
 }
 
-pub fn addRecipe(itemCombo: []const ItemStack, list: *main.List(Recipe)) void {
+pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.List(Recipe)) void {
 	const inputs = itemCombo[0 .. itemCombo.len - 1];
 	const output = itemCombo[itemCombo.len - 1];
 	const recipe = Recipe{
 		.sourceItems = main.globalAllocator.alloc(BaseItemIndex, inputs.len),
 		.sourceAmounts = main.globalAllocator.alloc(u16, inputs.len),
-		.resultItem = output.item.?.baseItem,
+		.resultItem = output.item,
 		.resultAmount = output.amount,
 	};
 	for(inputs, 0..) |input, i| {
-		recipe.sourceItems[i] = input.item.?.baseItem;
+		recipe.sourceItems[i] = input.item;
 		recipe.sourceAmounts[i] = input.amount;
 	}
 	list.append(recipe);
