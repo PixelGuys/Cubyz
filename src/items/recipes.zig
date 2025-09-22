@@ -95,11 +95,12 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 
 const ItemKeyPair = struct {item: ItemStack, keys: std.StringHashMap([]const u8)};
 
-fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: ItemStackPattern, keys: *const std.StringHashMap([]const u8)) !main.List(ItemKeyPair) {
+fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: ItemStackPattern, keys: *const std.StringHashMap([]const u8)) ![]ItemKeyPair {
 	const pattern = itemStackPattern.pattern;
 	const amount = itemStackPattern.amount;
 
 	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
+	defer itemPairs.deinit();
 	if(pattern.len == 1 and pattern[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern[0].literal) orelse return error.ItemNotFound;
 		itemPairs.append(.{
@@ -128,7 +129,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 			});
 		}
 	}
-	return itemPairs;
+	return itemPairs.toOwnedSlice();
 }
 
 fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![][]ItemStack {
@@ -147,7 +148,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![
 
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
 			const parsedItems = try findRecipeItemOptions(arena, pattern, keys);
-			for(parsedItems.items) |item| {
+			for(parsedItems) |item| {
 				const newInputs = arena.dupe(ItemStack, inputs);
 				newInputs[i] = item.item;
 				newInputCombos.append(newInputs);
