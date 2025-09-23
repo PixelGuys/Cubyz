@@ -128,6 +128,18 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 			self.backingAllocator.rawFree(memory, alignment, ret_addr);
 		}
 	}
+
+	pub fn createArena(self: *StackAllocator) NeverFailingAllocator {
+		const arenaPtr = self.allocator().create(NeverFailingArenaAllocator);
+		arenaPtr.* = NeverFailingArenaAllocator.init(self.allocator());
+		return arenaPtr.allocator();
+	}
+
+	pub fn destroyArena(self: *StackAllocator, arena: NeverFailingAllocator) void {
+		const arenaAllocatorPtr: *NeverFailingArenaAllocator = @ptrCast(@alignCast(arena.allocator.ptr));
+		arenaAllocatorPtr.deinit();
+		self.allocator().destroy(arenaAllocatorPtr);
+	}
 };
 
 /// An allocator that handles OutOfMemory situations by panicing or freeing memory(TODO), making it safe to ignore errors.
@@ -443,6 +455,24 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	/// Copies `m` to newly allocated memory, with a null-terminated element. Caller owns the memory.
 	pub fn dupeZ(self: NeverFailingAllocator, comptime T: type, m: []const T) [:0]T {
 		return self.allocator.dupeZ(T, m) catch unreachable;
+	}
+
+	pub fn createArena(self: NeverFailingAllocator) NeverFailingAllocator {
+		if(@typeInfo(@TypeOf(self.allocator.ptr)) == .pointer) {
+			const stackAllocator: *StackAllocator = @ptrCast(@alignCast(self.allocator.ptr));
+			return stackAllocator.createArena();
+		} else {
+			@panic("createArena can only be called on NeverFailingAllocator wrapping a StackAllocator");
+		}
+	}
+
+	pub fn destroyArena(self: NeverFailingAllocator, arena: NeverFailingAllocator) void {
+		if(@typeInfo(@TypeOf(self.allocator.ptr)) == .pointer) {
+			const stackAllocator: *StackAllocator = @ptrCast(@alignCast(self.allocator.ptr));
+			stackAllocator.destroyArena(arena);
+		} else {
+			@panic("destroyArena can only be called on NeverFailingAllocator wrapping a StackAllocator");
+		}
 	}
 };
 

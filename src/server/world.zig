@@ -501,9 +501,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
 
-		var loadArena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
-		defer loadArena.deinit();
-		const arenaAllocator = loadArena.allocator();
+		const arenaAllocator = main.stackAllocator.createArena();
+		defer main.stackAllocator.destroyArena(arenaAllocator);
 		var generatorSettings: ZonElement = undefined;
 
 		if(nullGeneratorSettings) |_generatorSettings| {
