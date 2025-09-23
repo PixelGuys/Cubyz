@@ -1068,7 +1068,7 @@ pub const Recipe = struct { // MARK: Recipe
 	cachedInventory: ?Inventory = null,
 };
 
-var arena: main.heap.NeverFailingArenaAllocator = undefined;
+var arenaAllocator: main.heap.NeverFailingArenaAllocator = undefined;
 
 var toolTypeList: ListUnmanaged(ToolType) = undefined;
 var toolTypeIdToIndex: std.StringHashMapUnmanaged(ToolTypeIndex) = undefined;
@@ -1098,13 +1098,13 @@ pub fn recipes() []Recipe {
 }
 
 pub fn globalInit() void {
-	arena = .init(main.globalAllocator);
+	arenaAllocator = .init(main.globalAllocator);
 
 	toolTypeList = .{};
 	toolTypeIdToIndex = .{};
 
-	reverseIndices = .init(arena.allocator().allocator);
-	recipeList = .init(arena.allocator());
+	reverseIndices = .init(arenaAllocator.allocator().allocator);
+	recipeList = .init(arenaAllocator.allocator());
 	itemListSize = 0;
 	modifiers = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(modifierList).@"struct".decls) |decl| {
@@ -1134,7 +1134,7 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
-	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
+	newItem.init(arenaAllocator.allocator(), texturePath, replacementTexturePath, id, zon);
 	reverseIndices.put(newItem.id, @enumFromInt(itemListSize)) catch unreachable;
 
 	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
@@ -1192,7 +1192,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		}
 		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
 	}
-	var parameterMatrices: main.List(PropertyMatrix) = .init(arena.allocator());
+	var parameterMatrices: main.List(PropertyMatrix) = .init(arenaAllocator.allocator());
 	for(zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne();
 		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
@@ -1209,16 +1209,16 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	var pixelSourcesOverlay: [16][16]u8 = undefined;
 	loadPixelSources(assetFolder, id, "_overlay", &pixelSourcesOverlay);
 
-	const idDupe = arena.allocator().dupe(u8, id);
-	toolTypeList.append(arena.allocator(), .{
+	const idDupe = arenaAllocator.allocator().dupe(u8, id);
+	toolTypeList.append(arenaAllocator.allocator(), .{
 		.id = idDupe,
-		.blockTags = Tag.loadTagsFromZon(arena.allocator(), zon.getChild("blockTags")),
+		.blockTags = Tag.loadTagsFromZon(arenaAllocator.allocator(), zon.getChild("blockTags")),
 		.slotInfos = slotInfos,
 		.properties = parameterMatrices.toOwnedSlice(),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
-	toolTypeIdToIndex.put(arena.allocator().allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
+	toolTypeIdToIndex.put(arenaAllocator.allocator().allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
 
 	std.log.debug("Registered tool: '{s}'", .{id});
 }
@@ -1240,14 +1240,14 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 	const inputs = zon.getChild("inputs").toSlice();
 	const output = try parseRecipeItem(zon.getChild("output"));
 	const recipe = Recipe{
-		.sourceItems = arena.allocator().alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = arena.allocator().alloc(u16, inputs.len),
+		.sourceItems = arenaAllocator.allocator().alloc(BaseItemIndex, inputs.len),
+		.sourceAmounts = arenaAllocator.allocator().alloc(u16, inputs.len),
 		.resultItem = output.item.?.baseItem,
 		.resultAmount = output.amount,
 	};
 	errdefer {
-		arena.allocator().free(recipe.sourceAmounts);
-		arena.allocator().free(recipe.sourceItems);
+		arenaAllocator.allocator().free(recipe.sourceAmounts);
+		arenaAllocator.allocator().free(recipe.sourceItems);
 	}
 	for(inputs, 0..) |inputZon, i| {
 		const input = try parseRecipeItem(inputZon);
@@ -1270,8 +1270,8 @@ pub fn registerRecipes(zon: ZonElement) void {
 }
 
 pub fn reset() void {
-	toolTypeList.clearAndFree(arena.allocator());
-	toolTypeIdToIndex.clearAndFree(arena.allocator().allocator);
+	toolTypeList.clearAndFree(arenaAllocator.allocator());
+	toolTypeIdToIndex.clearAndFree(arenaAllocator.allocator().allocator);
 	reverseIndices.clearAndFree();
 	for(recipeList.items) |recipe| {
 		if(recipe.cachedInventory) |inv| {
@@ -1280,12 +1280,12 @@ pub fn reset() void {
 	}
 	recipeList.clearAndFree();
 	itemListSize = 0;
-	_ = arena.reset(.free_all);
+	_ = arenaAllocator.reset(.free_all);
 }
 
 pub fn deinit() void {
-	toolTypeList.deinit(arena.allocator());
-	toolTypeIdToIndex.deinit(arena.allocator().allocator);
+	toolTypeList.deinit(arenaAllocator.allocator());
+	toolTypeIdToIndex.deinit(arenaAllocator.allocator().allocator);
 	reverseIndices.clearAndFree();
 	for(recipeList.items) |recipe| {
 		if(recipe.cachedInventory) |inv| {
@@ -1295,6 +1295,6 @@ pub fn deinit() void {
 	recipeList.clearAndFree();
 	modifiers.deinit();
 	modifierRestrictions.deinit();
-	arena.deinit();
+	arenaAllocator.deinit();
 	Inventory.Sync.ClientSide.deinit();
 }

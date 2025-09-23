@@ -25,8 +25,8 @@ const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 
-var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
-const allocator = arena.allocator();
+var arenaAllocator = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
+const arena = arenaAllocator.allocator();
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
@@ -89,27 +89,27 @@ var _tickEvent: [maxBlockCount]?TickEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
-var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
+var reverseIndices = std.StringHashMap(u16).init(arena.allocator);
 
 var size: u32 = 0;
 
-pub var ores: main.List(Ore) = .init(allocator);
+pub var ores: main.List(Ore) = .init(arena);
 
 pub fn init() void {}
 
 pub fn deinit() void {
-	arena.deinit();
+	arenaAllocator.deinit();
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-	_id[size] = allocator.dupe(u8, id);
+	_id[size] = arena.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
-	_blockTags[size] = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
+	_blockTags[size] = Tag.loadTagsFromZon(arena, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	for(_blockTags[size]) |tag| {
 		if(tag == Tag.sbbChild) {
@@ -122,7 +122,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
-	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
+	_gui[size] = arena.dupe(u8, zon.get([]const u8, "gui", ""));
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -169,7 +169,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 	const drops = zon.getChild("drops").toSlice();
-	_blockDrops[typ] = allocator.alloc(BlockDrop, drops.len);
+	_blockDrops[typ] = arena.alloc(BlockDrop, drops.len);
 
 	for(drops, 0..) |blockDrop, i| {
 		_blockDrops[typ][i].chance = blockDrop.get(f32, "chance", 1);
@@ -198,7 +198,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
-		_blockDrops[typ][i].items = allocator.dupe(items.ItemStack, resultItems.items);
+		_blockDrops[typ][i].items = arena.dupe(items.ItemStack, resultItems.items);
 	}
 }
 
@@ -235,8 +235,8 @@ pub fn reset() void {
 	size = 0;
 	ores.clearAndFree();
 	meshes.reset();
-	_ = arena.reset(.free_all);
-	reverseIndices = .init(arena.allocator().allocator);
+	_ = arenaAllocator.reset(.free_all);
+	reverseIndices = .init(arena.allocator);
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -516,7 +516,7 @@ pub const meshes = struct { // MARK: meshes
 	var textureFogData: main.List(FogData) = undefined;
 	pub var textureOcclusionData: main.List(bool) = undefined;
 
-	var arenaForWorld: main.heap.NeverFailingArenaAllocator = undefined;
+	var arenaAllocatorForWorld: main.heap.NeverFailingArenaAllocator = undefined;
 
 	pub var blockBreakingTextures: main.List(u16) = undefined;
 
@@ -567,7 +567,7 @@ pub const meshes = struct { // MARK: meshes
 		absorptionTextures = .init(main.globalAllocator);
 		textureFogData = .init(main.globalAllocator);
 		textureOcclusionData = .init(main.globalAllocator);
-		arenaForWorld = .init(main.globalAllocator);
+		arenaAllocatorForWorld = .init(main.globalAllocator);
 		blockBreakingTextures = .init(main.globalAllocator);
 	}
 
@@ -594,7 +594,7 @@ pub const meshes = struct { // MARK: meshes
 		absorptionTextures.deinit();
 		textureFogData.deinit();
 		textureOcclusionData.deinit();
-		arenaForWorld.deinit();
+		arenaAllocatorForWorld.deinit();
 		blockBreakingTextures.deinit();
 	}
 
@@ -610,7 +610,7 @@ pub const meshes = struct { // MARK: meshes
 		textureFogData.clearRetainingCapacity();
 		textureOcclusionData.clearRetainingCapacity();
 		blockBreakingTextures.clearRetainingCapacity();
-		_ = arenaForWorld.reset(.free_all);
+		_ = arenaAllocatorForWorld.reset(.free_all);
 	}
 
 	pub inline fn model(block: Block) ModelIndex {
@@ -648,7 +648,7 @@ pub const meshes = struct { // MARK: meshes
 	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
 		const path = extendedPath(main.stackAllocator, _path, ending);
 		defer main.stackAllocator.free(path);
-		return Image.readFromFile(arenaForWorld.allocator(), path) catch default;
+		return Image.readFromFile(arenaAllocatorForWorld.allocator(), path) catch default;
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
@@ -719,7 +719,7 @@ pub const meshes = struct { // MARK: meshes
 		// Otherwise read it into the list:
 		result = @intCast(textureIDs.items.len);
 
-		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
+		textureIDs.append(arenaAllocatorForWorld.allocator().dupe(u8, path));
 		readTextureData(path);
 		return result;
 	}
