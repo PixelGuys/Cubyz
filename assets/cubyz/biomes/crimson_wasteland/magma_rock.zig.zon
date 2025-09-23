@@ -3,10 +3,11 @@
 	.minHeight = 84,
 	.maxHeight = 85,
 	.minRadius = 16,
-	.maxRadius = 32,
+	.maxRadius = 36,
 	.roughness = 24,
 	.chance = 0,
 	.hills = 2,
+	.interpolation = .linear,
 	.stoneBlock = "cubyz:obsidian",
 	.structures = .{
 		.{
@@ -22,7 +23,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:crimson_wasteland/base",
-			.chance = 18,
+			.chance = 9,
 		},
 	},
 }
