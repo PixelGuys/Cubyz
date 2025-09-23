@@ -59,7 +59,7 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:chalk/crimson",
-			.chance = 0.1,
+			.chance = 1.0,
 			.width = 8,
 			.variation = 2,
 			.depth = 3,
