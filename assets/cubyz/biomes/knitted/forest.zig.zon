@@ -78,7 +78,7 @@
 			.top = "cubyz:air",
 			.chance = 0.05,
 			.type = .round,
-			.height = 20,
+			.height = 25,
 			.height_variation = 10,
 			.leafRadius = 5,
 			.leafRadius_variation = 2,
