@@ -7,5 +7,5 @@
 	.collide = false,
 	.model = "cubyz:carpet",
 	.rotation = "cubyz:carpet",
-	.degradable = true
+	.degradable = true,
 }

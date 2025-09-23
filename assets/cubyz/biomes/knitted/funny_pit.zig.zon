@@ -30,7 +30,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:knitted/forest",
-			.chance = 4,
+			.chance = 1,
 		},
 	},
 }
