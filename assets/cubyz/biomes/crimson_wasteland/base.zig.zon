@@ -13,7 +13,7 @@
 	.maxRadius = 320,
 	.roughness = 1,
 	.hills = 15,
-	.chance = 0.02,
+	.chance = 0.01,
 	.validPlayerSpawn = false,
 	.stoneBlock = "cubyz:obsidian",
 	.structures = .{
