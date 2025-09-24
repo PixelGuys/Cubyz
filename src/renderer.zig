@@ -73,6 +73,25 @@ var blockUniforms: struct {
 	zNear: c_int,
 	zFar: c_int,
 } = undefined;
+var blockTransparentPipeline: graphics.Pipeline = undefined;
+var blockTransparentUniforms: struct {
+	projectionMatrix: c_int,
+	viewMatrix: c_int,
+	modelMatrix: c_int,
+	playerPositionInteger: c_int,
+	playerPositionFraction: c_int,
+	screenSize: c_int,
+	ambientLight: c_int,
+	contrast: c_int,
+	@"fog.color": c_int,
+	@"fog.density": c_int,
+	@"fog.fogLower": c_int,
+	@"fog.fogHigher": c_int,
+	reflectionMapSize: c_int,
+	lodDistance: c_int,
+	zNear: c_int,
+	zFar: c_int,
+} = undefined;
 
 pub var activeFrameBuffer: c_uint = 0;
 
@@ -107,6 +126,22 @@ pub fn init() void {
 		.{.depthTest = true, .depthWrite = true},
 		.{.attachments = &.{.noBlending}},
 	);
+	blockTransparentPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/transparent_fragment.frag",
+		"#define ENTITY\n#define transparent\n",
+		&blockTransparentUniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
+		.{.attachments = &.{.{
+			.srcColorBlendFactor = .one,
+			.dstColorBlendFactor = .src1Color,
+			.colorBlendOp = .add,
+			.srcAlphaBlendFactor = .one,
+			.dstAlphaBlendFactor = .src1Alpha,
+			.alphaBlendOp = .add,
+		}}},
+	);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
@@ -127,6 +162,7 @@ pub fn deinit() void {
 	fakeReflectionPipeline.deinit();
 	worldFrameBuffer.deinit();
 	blockPipeline.deinit();
+	blockTransparentPipeline.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
@@ -358,7 +394,12 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 }
 
-pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lightPos: Vec3i, ambientLight: Vec3f, playerPosition: Vec3d) void {
+pub const TransparencyMode = enum {
+	noTransparency,
+	transparency,
+};
+
+pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lightPos: Vec3i, ambientLight: Vec3f, playerPosition: Vec3d, transparencyMode: TransparencyMode) void {
 	var faceData: main.ListUnmanaged(chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
@@ -394,10 +435,12 @@ pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block
 		@memcpy(lightData[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
 	}
 
-	renderBlockImpl(projMatrix, modelMatrix, faceData.items, lightData, ambientLight, playerPosition);
+	const transparent = block.transparent() and transparencyMode == .transparency;
+
+	renderBlockImpl(projMatrix, modelMatrix, faceData.items, lightData, ambientLight, playerPosition, transparent);
 }
 
-fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d) void {
+fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d, transparent: bool) void {
 	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData, &allocation);
 	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
@@ -421,26 +464,37 @@ fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_mesh
 	}}, &chunkAllocation);
 	defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
 
-	blockPipeline.bind(null);
-	c.glUniformMatrix4fv(blockUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+	const uniforms = if(transparent) blockTransparentUniforms else blockUniforms;
+	if(transparent) {
+		blockTransparentPipeline.bind(null);
 
-	c.glUniform1f(blockUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
+		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
+		c.glUniform1f(uniforms.@"fog.density", game.fog.density);
+		c.glUniform1f(uniforms.@"fog.fogLower", game.fog.fogLower);
+		c.glUniform1f(uniforms.@"fog.fogHigher", game.fog.fogHigher);
+	} else {
+		blockPipeline.bind(null);
+	}
 
-	c.glUniform1f(blockUniforms.contrast, 0);
+	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
-	c.glUniform1f(blockUniforms.lodDistance, main.settings.@"lod0.5Distance");
+	c.glUniform1f(uniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 
-	c.glUniformMatrix4fv(blockUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.game.camera.viewMatrix));
+	c.glUniform1f(uniforms.contrast, 0);
 
-	c.glUniform3f(blockUniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+	c.glUniform1f(uniforms.lodDistance, main.settings.@"lod0.5Distance");
 
-	c.glUniform1f(blockUniforms.zNear, main.renderer.zNear);
-	c.glUniform1f(blockUniforms.zFar, main.renderer.zFar);
+	c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.game.camera.viewMatrix));
+
+	c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+
+	c.glUniform1f(uniforms.zNear, main.renderer.zNear);
+	c.glUniform1f(uniforms.zFar, main.renderer.zFar);
 
 	const playerPos = playerPosition + Vec3d{1, 1, 1};
-	c.glUniform3i(blockUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
-	c.glUniform3f(blockUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
-	c.glUniformMatrix4fv(blockUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
+	c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
+	c.glUniformMatrix4fv(uniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
 
 	c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 
