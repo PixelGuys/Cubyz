@@ -11,7 +11,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:rare/crimson_wasteland/base",
-			.chance = 48,
+			.chance = 24,
 		},
 	},
 }
