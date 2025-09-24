@@ -141,7 +141,18 @@ pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions)
 	try makeModFeature(step, "rotation");
 }
 
+fn createLaunchConfig() !void {
+	std.fs.cwd().access("launchConfig.zon", .{}) catch {
+		try std.fs.cwd().writeFile(.{
+			.data = ".{\n\t.cubyzDir = \"\",\n}\n",
+			.sub_path = "launchConfig.zon",
+		});
+	};
+}
+
 pub fn build(b: *std.Build) !void {
+	try createLaunchConfig();
+
 	// Standard target options allows the person running `zig build` to choose
 	// what target to build for. Here we do not override the defaults, which
 	// means any target is allowed, and the default is native. Other options
