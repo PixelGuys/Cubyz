@@ -517,6 +517,7 @@ pub const meshes = struct { // MARK: meshes
 	pub var textureOcclusionData: main.List(bool) = undefined;
 
 	var arenaAllocatorForWorld: main.heap.NeverFailingArenaAllocator = undefined;
+	var arenaForWorld: main.heap.NeverFailingAllocator = undefined;
 
 	pub var blockBreakingTextures: main.List(u16) = undefined;
 
@@ -568,6 +569,7 @@ pub const meshes = struct { // MARK: meshes
 		textureFogData = .init(main.globalAllocator);
 		textureOcclusionData = .init(main.globalAllocator);
 		arenaAllocatorForWorld = .init(main.globalAllocator);
+		arenaForWorld = arenaAllocatorForWorld.allocator();
 		blockBreakingTextures = .init(main.globalAllocator);
 	}
 
@@ -648,7 +650,7 @@ pub const meshes = struct { // MARK: meshes
 	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
 		const path = extendedPath(main.stackAllocator, _path, ending);
 		defer main.stackAllocator.free(path);
-		return Image.readFromFile(arenaAllocatorForWorld.allocator(), path) catch default;
+		return Image.readFromFile(arenaForWorld, path) catch default;
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
@@ -719,7 +721,7 @@ pub const meshes = struct { // MARK: meshes
 		// Otherwise read it into the list:
 		result = @intCast(textureIDs.items.len);
 
-		textureIDs.append(arenaAllocatorForWorld.allocator().dupe(u8, path));
+		textureIDs.append(arenaForWorld.dupe(u8, path));
 		readTextureData(path);
 		return result;
 	}

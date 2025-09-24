@@ -482,11 +482,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
-	const worldAllocator = main.stackAllocator.createArena();
-	defer main.stackAllocator.destroyArena(worldAllocator);
+	const worldArena = main.stackAllocator.createArena();
+	defer main.stackAllocator.destroyArena(worldArena);
 
-	var worldAssets = common.clone(worldAllocator);
-	worldAssets.read(worldAllocator, main.files.cubyzDir(), assetFolder);
+	var worldAssets = common.clone(worldArena);
+	worldAssets.read(worldArena, main.files.cubyzDir(), assetFolder);
 
 	errdefer unloadAssets();
 
