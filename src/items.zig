@@ -1236,10 +1236,7 @@ pub fn registerRecipes(zon: ZonElement) void {
 	}
 }
 
-pub fn reset() void {
-	toolTypeList.clearAndFree(arena.allocator());
-	toolTypeIdToIndex.clearAndFree(arena.allocator().allocator);
-	reverseIndices.clearAndFree();
+pub fn clearRecipeCachedInventories() void {
 	for(recipeList.items) |recipe| {
 		main.globalAllocator.free(recipe.sourceItems);
 		main.globalAllocator.free(recipe.sourceAmounts);
@@ -1247,6 +1244,12 @@ pub fn reset() void {
 			inv.deinit(main.globalAllocator);
 		}
 	}
+}
+
+pub fn reset() void {
+	toolTypeList.clearAndFree(arena.allocator());
+	toolTypeIdToIndex.clearAndFree(arena.allocator().allocator);
+	reverseIndices.clearAndFree();
 	recipeList.clearAndFree();
 	itemListSize = 0;
 	_ = arena.reset(.free_all);
