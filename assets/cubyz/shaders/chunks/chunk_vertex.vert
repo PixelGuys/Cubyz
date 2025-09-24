@@ -16,7 +16,7 @@ layout(location = 2) uniform mat4 viewMatrix;
 layout(location = 3) uniform ivec3 playerPositionInteger;
 layout(location = 4) uniform vec3 playerPositionFraction;
 #ifdef ENTITY
-layout(location = 11) uniform mat4 modelMatrix;
+layout(location = 14) uniform mat4 modelMatrix;
 #endif
 
 struct FaceData {
