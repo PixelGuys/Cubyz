@@ -26,7 +26,7 @@ const mesh_storage = @import("mesh_storage.zig");
 
 var pipeline: graphics.Pipeline = undefined;
 var transparentPipeline: graphics.Pipeline = undefined;
-const UniformStruct = struct {
+pub const UniformStruct = struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
 	playerPositionInteger: c_int,

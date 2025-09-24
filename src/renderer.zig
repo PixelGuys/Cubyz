@@ -55,43 +55,9 @@ var fakeReflectionUniforms: struct {
 	reflectionMapSize: c_int,
 } = undefined;
 var blockPipeline: graphics.Pipeline = undefined;
-var blockUniforms: struct {
-	projectionMatrix: c_int,
-	viewMatrix: c_int,
-	modelMatrix: c_int,
-	playerPositionInteger: c_int,
-	playerPositionFraction: c_int,
-	screenSize: c_int,
-	ambientLight: c_int,
-	contrast: c_int,
-	@"fog.color": c_int,
-	@"fog.density": c_int,
-	@"fog.fogLower": c_int,
-	@"fog.fogHigher": c_int,
-	reflectionMapSize: c_int,
-	lodDistance: c_int,
-	zNear: c_int,
-	zFar: c_int,
-} = undefined;
+var blockUniforms: chunk_meshing.UniformStruct = undefined;
 var blockTransparentPipeline: graphics.Pipeline = undefined;
-var blockTransparentUniforms: struct {
-	projectionMatrix: c_int,
-	viewMatrix: c_int,
-	modelMatrix: c_int,
-	playerPositionInteger: c_int,
-	playerPositionFraction: c_int,
-	screenSize: c_int,
-	ambientLight: c_int,
-	contrast: c_int,
-	@"fog.color": c_int,
-	@"fog.density": c_int,
-	@"fog.fogLower": c_int,
-	@"fog.fogHigher": c_int,
-	reflectionMapSize: c_int,
-	lodDistance: c_int,
-	zNear: c_int,
-	zFar: c_int,
-} = undefined;
+var blockTransparentUniforms: chunk_meshing.UniformStruct = undefined;
 
 pub var activeFrameBuffer: c_uint = 0;
 
