@@ -1,0 +1,21 @@
+.{
+	.properties = .{},
+	.radius = 20,
+	.chance = 0,
+	.minHeight = 3000,
+	.maxHeight = 4500,
+	.keepOriginalTerrain = 0.99,
+	.roughness = 1,
+	.mountains = 70,
+	.hills = 20,
+	.ground_structure = .{
+		"2 to 4 cubyz:snow",
+	},
+	.stoneBlock = "cubyz:glacite",
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:snowcapped_hill/base",
+			.chance = 20,
+		},
+	},
+}
