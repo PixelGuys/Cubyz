@@ -1269,15 +1269,19 @@ pub fn registerRecipes(zon: ZonElement) void {
 	}
 }
 
-pub fn reset() void {
-	toolTypeList.clearAndFree(arenaAllocator.allocator());
-	toolTypeIdToIndex.clearAndFree(arenaAllocator.allocator().allocator);
-	reverseIndices.clearAndFree();
+pub fn clearRecipeCachedInventories() void {
 	for(recipeList.items) |recipe| {
 		if(recipe.cachedInventory) |inv| {
 			inv.deinit(main.globalAllocator);
 		}
 	}
+}
+
+pub fn reset() void {
+	toolTypeList.clearAndFree(arenaAllocator.allocator());
+	toolTypeIdToIndex.clearAndFree(arenaAllocator.allocator().allocator);
+	reverseIndices.clearAndFree();
+	reverseIndices.clearAndFree();
 	recipeList.clearAndFree();
 	itemListSize = 0;
 	_ = arenaAllocator.reset(.free_all);
@@ -1287,11 +1291,6 @@ pub fn deinit() void {
 	toolTypeList.deinit(arenaAllocator.allocator());
 	toolTypeIdToIndex.deinit(arenaAllocator.allocator().allocator);
 	reverseIndices.clearAndFree();
-	for(recipeList.items) |recipe| {
-		if(recipe.cachedInventory) |inv| {
-			inv.deinit(main.globalAllocator);
-		}
-	}
 	recipeList.clearAndFree();
 	modifiers.deinit();
 	modifierRestrictions.deinit();
