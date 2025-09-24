@@ -1,114 +1,18 @@
 .{
 	.{
-		.inputs = .{"cubyz:marble"},
-		.output = "cubyz:marble_tile",
+		.inputs = .{"cubyz:{item}"},
+		.output = "cubyz:{item}_tile",
 	},
 	.{
-		.inputs = .{"cubyz:marble"},
-		.output = "cubyz:marble_bricks",
+		.inputs = .{"cubyz:{item}"},
+		.output = "cubyz:{item}_bricks",
 	},
 	.{
-		.inputs = .{"cubyz:marble"},
-		.output = "2 cubyz:marble_wall",
-	},
-	.{
-		.inputs = .{"cubyz:glacite"},
-		.output = "cubyz:glacite_tile",
-	},
-	.{
-		.inputs = .{"cubyz:glacite"},
-		.output = "cubyz:glacite_bricks",
-	},
-	.{
-		.inputs = .{"cubyz:glacite"},
-		.output = "2 cubyz:glacite_wall",
+		.inputs = .{"cubyz:{item}"},
+		.output = "2 cubyz:{item}_wall",
 	},
 	.{
 		.inputs = .{"cubyz:slate"},
 		.output = "cubyz:cobblestone",
-	},
-	.{
-		.inputs = .{"cubyz:slate"},
-		.output = "cubyz:slate_tile",
-	},
-	.{
-		.inputs = .{"cubyz:slate"},
-		.output = "cubyz:slate_bricks",
-	},
-	.{
-		.inputs = .{"cubyz:slate"},
-		.output = "2 cubyz:slate_wall",
-	},
-	.{
-		.inputs = .{"cubyz:sandstone"},
-		.output = "cubyz:sandstone_tile",
-	},
-	.{
-		.inputs = .{"cubyz:sandstone"},
-		.output = "cubyz:sandstone_bricks",
-	},
-	.{
-		.inputs = .{"cubyz:sandstone"},
-		.output = "2 cubyz:sandstone_wall",
-	},
-	.{
-		.inputs = .{"cubyz:limestone"},
-		.output = "cubyz:limestone_tiles",
-	},
-	.{
-		.inputs = .{"cubyz:limestone"},
-		.output = "cubyz:limestone_bricks",
-	},
-	.{
-		.inputs = .{"cubyz:limestone"},
-		.output = "2 cubyz:limestone_wall",
-	},
-	.{
-		.inputs = .{"cubyz:basalt"},
-		.output = "cubyz:basalt_tile",
-	},
-	.{
-		.inputs = .{"cubyz:basalt"},
-		.output = "cubyz:basalt_bricks",
-	},
-	.{
-		.inputs = .{"cubyz:basalt"},
-		.output = "2 cubyz:basalt_wall",
-	},
-	.{
-		.inputs = .{"cubyz:ferrock"},
-		.output = "cubyz:ferrock_tiles",
-	},
-	.{
-		.inputs = .{"cubyz:ferrock"},
-		.output = "cubyz:ferrock_bricks",
-	},
-	.{
-		.inputs = .{"cubyz:ferrock"},
-		.output = "2 cubyz:ferrock_wall",
-	},
-	.{
-		.inputs = .{"cubyz:terracotta"},
-		.output = "cubyz:terracotta_tiles",
-	},
-	.{
-		.inputs = .{"cubyz:terracotta"},
-		.output = "cubyz:terracotta_bricks",
-	},
-	.{
-		.inputs = .{"cubyz:terracotta"},
-		.output = "2 cubyz:terracotta_wall",
-	},
-	.{
-		.inputs = .{"cubyz:void_stone"},
-		.output = "cubyz:void_stone_tile",
-	},
-	.{
-		.inputs = .{"cubyz:void_stone"},
-		.output = "cubyz:void_stone_bricks",
-	},
-	.{
-		.inputs = .{"cubyz:void_stone"},
-		.output = "2 cubyz:void_stone_wall",
 	},
 }
