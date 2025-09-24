@@ -33,7 +33,11 @@
 			.chance = 6,
 		},
 		.{
-			.id = "cubyz:forest/base",
+			.id = "cubyz:forest/mixed/oak_birch",
+			.chance = 6,
+		},
+		.{
+			.id = "cubyz:forest/mixed/oak_pine",
 			.chance = 6,
 		},
 		.{
