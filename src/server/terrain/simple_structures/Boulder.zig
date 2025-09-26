@@ -12,6 +12,8 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const simple_structure_utils = terrain.biomes.simple_structure_utils;
+const BlockSelector = simple_structure_utils.BlockSelector;
 
 pub const id = "cubyz:boulder";
 
@@ -19,14 +21,14 @@ pub const generationMode = .floor;
 
 const Boulder = @This();
 
-block: main.blocks.Block,
+block: BlockSelector,
 size: f32,
 sizeVariation: f32,
 
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *Boulder {
 	const self = arena.create(Boulder);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:slate")),
+		.block = BlockSelector.parse(arenaAllocator, parameters.getChild("block"), "cubyz:slate"),
 		.size = parameters.get(f32, "size", 4),
 		.sizeVariation = parameters.get(f32, "size_variation", 1),
 	};
@@ -64,7 +66,7 @@ pub fn generate(self: *Boulder, _: GenerationMode, x: i32, y: i32, z: i32, chunk
 				}
 				potential *= radius*radius/4/numberOfPoints;
 				if(potential >= 1) {
-					chunk.updateBlockInGeneration(px, py, pz, self.block);
+					chunk.updateBlockInGeneration(px, py, pz, self.block.getBlock(seed));
 				}
 			}
 		}
