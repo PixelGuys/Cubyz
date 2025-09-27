@@ -271,6 +271,7 @@ pub const GamepadAxis = struct {
 pub const Key = struct { // MARK: Key
 	name: []const u8,
 	pressed: bool = false,
+	modsOnPress: Modifiers = .{},
 	value: f32 = 0.0,
 	key: c_int = c.GLFW_KEY_UNKNOWN,
 	gamepadAxis: ?GamepadAxis = null,
@@ -429,6 +430,7 @@ pub const Key = struct { // MARK: Key
 	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
 		if(newPressed != self.pressed) {
 			self.pressed = newPressed;
+			self.modsOnPress = mods;
 			self.value = @floatFromInt(@intFromBool(newPressed));
 			if(newPressed) {
 				self.action(.press, isGrabbed, mods, textKeyPressedInTextField);
@@ -617,6 +619,7 @@ fn releaseButtonsOnGrabChange(grab: bool) void {
 	for(&main.KeyBoard.keys) |*key| {
 		if(key.notifyRequirement == state and key.pressed) {
 			key.pressed = false;
+			key.modsOnPress = .{};
 			if(key.releaseAction) |rel| rel();
 		}
 	}
