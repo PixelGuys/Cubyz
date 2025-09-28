@@ -181,7 +181,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 		keyList = newKeyList;
 		inputCombos = newInputCombos;
 	}
-	const newInputCombos = allocator.alloc([]ItemWithAmount, inputCombos.items.len);
+	const newInputCombos = allocator.alloc([]const ItemWithAmount, inputCombos.items.len);
 	for(inputCombos.items, 0..) |inputCombo, i| {
 		newInputCombos[i] = allocator.dupe(ItemWithAmount, inputCombo);
 	}
