@@ -15,13 +15,13 @@
 			.{.structure = "cubyz:mushroom/big/toadstool/small_cap"},
 		},
 		.crimson = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/red/sbb"},
+			.{.structure = "cubyz:mushroom/big/toadstool/branch/red"},
 		},
 		.green = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/green/sbb"},
+			.{.structure = "cubyz:mushroom/big/toadstool/branch/green"},
 		},
 		.blue = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/blue/sbb"},
+			.{.structure = "cubyz:mushroom/big/toadstool/branch/blue"},
 		},
 	},
 }
