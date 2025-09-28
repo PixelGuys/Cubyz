@@ -54,7 +54,7 @@ fn parseItemZon(allocator: NeverFailingAllocator, zon: ZonElement) !ItemStackPat
 	};
 }
 
-fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) ![]std.StringHashMap([]const u8) {
+fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) ![]const std.StringHashMap([]const u8) {
 	var idx: usize = 0;
 	var newKeys = keys.clone() catch unreachable;
 	errdefer newKeys.deinit();
