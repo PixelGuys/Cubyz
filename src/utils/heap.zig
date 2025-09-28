@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const build_options = @import("build_options");
+
 const main = @import("main");
 
 var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allocator);
@@ -630,8 +632,10 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		if(old.cycle != threadCycle) removeThreadFromWaiting();
 		const newTime = std.time.milliTimestamp();
 		if(newTime -% lastSyncPointTime > 20_000) {
-			std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
-			std.debug.dumpCurrentStackTrace(null);
+			if(!build_options.isTaggedRelease) {
+				std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
+				std.debug.dumpCurrentStackTrace(null);
+			}
 		}
 		for(&lists) |*list| {
 			freeItemsFromList(list);

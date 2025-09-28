@@ -606,8 +606,8 @@ pub const inventory = struct { // MARK: inventory
 	const Inventory = main.items.Inventory;
 	pub var carried: Inventory = undefined;
 	var carriedItemSlot: *ItemSlot = undefined;
-	var leftClickSlots: List(*ItemSlot) = undefined;
-	var rightClickSlots: List(*ItemSlot) = undefined;
+	var leftClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
+	var rightClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
 	var recipeItem: ?main.items.Item = null;
 	var initialized: bool = false;
 	const minCraftingCooldown = 20;
@@ -618,8 +618,6 @@ pub const inventory = struct { // MARK: inventory
 
 	pub fn init() void {
 		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
-		leftClickSlots = .init(main.globalAllocator);
-		rightClickSlots = .init(main.globalAllocator);
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
@@ -630,8 +628,8 @@ pub const inventory = struct { // MARK: inventory
 		initialized = false;
 		carried.deinit(main.globalAllocator);
 		carriedItemSlot.deinit();
-		leftClickSlots.deinit();
-		rightClickSlots.deinit();
+		leftClickSlots.clearAndFree();
+		rightClickSlots.clearAndFree();
 	}
 
 	pub fn deleteItemSlotReferences(slot: *const ItemSlot) void {
@@ -712,6 +710,7 @@ pub const inventory = struct { // MARK: inventory
 					}
 				}
 			} else if(secondaryGuiButton.pressed) {
+				if(carried.getAmount(0) == 0) return;
 				for(rightClickSlots.items) |deliveredSlot| {
 					if(itemSlot == deliveredSlot) {
 						return;
