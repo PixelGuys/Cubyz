@@ -188,12 +188,12 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![
 	return newInputCombos;
 }
 
-pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.List(Recipe)) void {
+pub fn addRecipe(allocator: NeverFailingAllocator, itemCombo: []const ItemWithAmount, list: *main.List(Recipe)) void {
 	const inputs = itemCombo[0 .. itemCombo.len - 1];
 	const output = itemCombo[itemCombo.len - 1];
 	const recipe = Recipe{
-		.sourceItems = main.globalAllocator.alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = main.globalAllocator.alloc(u16, inputs.len),
+		.sourceItems = allocator.alloc(BaseItemIndex, inputs.len),
+		.sourceAmounts = allocator.alloc(u16, inputs.len),
 		.resultItem = output.item,
 		.resultAmount = output.amount,
 	};
@@ -204,7 +204,7 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.List(Recipe)) vo
 	list.append(recipe);
 }
 
-pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
+pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *main.List(Recipe)) !void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 
@@ -218,9 +218,9 @@ pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
 
 	const itemCombos = try generateItemCombos(arena, recipeItems);
 	for(itemCombos) |itemCombo| {
-		addRecipe(itemCombo, list);
+		addRecipe(allocator, itemCombo, list);
 		if(reversible) {
-			addRecipe(&.{itemCombo[1], itemCombo[0]}, list);
+			addRecipe(allocator, &.{itemCombo[1], itemCombo[0]}, list);
 		}
 	}
 }
