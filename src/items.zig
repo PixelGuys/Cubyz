@@ -1295,13 +1295,6 @@ pub fn deinit() void {
 	toolTypeList.deinit(arena);
 	toolTypeIdToIndex.deinit(arena.allocator);
 	reverseIndices.clearAndFree();
-	for(recipeList.items) |recipe| {
-		main.globalAllocator.free(recipe.sourceItems);
-		main.globalAllocator.free(recipe.sourceAmounts);
-		if(recipe.cachedInventory) |inv| {
-			inv.deinit(main.globalAllocator);
-		}
-	}
 	recipeList.clearAndFree();
 	modifiers.deinit();
 	modifierRestrictions.deinit();
