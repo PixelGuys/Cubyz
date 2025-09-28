@@ -74,6 +74,9 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 					const nextSegment = pattern[i + 1];
 					var nextIndex = idx;
 					while(std.mem.indexOfPos(u8, target, nextIndex, nextSegment.literal)) |endIndex| {
+						if(newKeys.get(symbol)) |value| {
+							if(!std.mem.eql(u8, target[idx..endIndex], value)) continue;
+						}
 						endIndices.append(endIndex);
 						nextIndex = endIndex + 1;
 					}
@@ -84,13 +87,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 					return error.NoMatch;
 				}
 				if(endIndices.items.len == 1) {
-					if(newKeys.get(symbol)) |value| {
-						if(!std.mem.eql(u8, target[idx..endIndices.items[0]], value)) {
-							return error.NoMatch;
-						}
-					} else {
-						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndices.items[0]])) catch unreachable;
-					}
+					newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndices.items[0]])) catch unreachable;
 					idx = endIndices.items[0];
 				} else {
 					defer newKeys.deinit();
