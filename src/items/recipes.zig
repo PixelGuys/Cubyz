@@ -17,6 +17,9 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]Segmen
 	var idx: usize = 0;
 	while(idx < pattern.len) {
 		if(pattern[idx] == '{') {
+			if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .symbol) {
+				return error.AmbiguousSymbols;
+			}
 			idx += 1;
 			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return error.UnclosedBraces;
 			if(idx == endIndex) return error.EmptyBrackets;
@@ -51,7 +54,7 @@ fn parseItemZon(allocator: NeverFailingAllocator, zon: ZonElement) !ItemStackPat
 	};
 }
 
-fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) !std.StringHashMap([]const u8) {
+fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: []const Segment, keys: *const std.StringHashMap([]const u8)) ![]std.StringHashMap([]const u8) {
 	var idx: usize = 0;
 	var newKeys = keys.clone() catch unreachable;
 	errdefer newKeys.deinit();
@@ -65,28 +68,50 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 				idx += literal.len;
 			},
 			.symbol => |symbol| {
-				const endIndex: usize = if(i + 1 < pattern.len) blk: {
+				var indexes: main.List(usize) = .init(allocator);
+				defer indexes.deinit();
+				if(i + 1 < pattern.len) {
 					const nextSegment = pattern[i + 1];
-					if(nextSegment == .symbol) {
-						return error.AmbiguousSymbols;
-					}
-					break :blk std.mem.indexOfPos(u8, target, idx, nextSegment.literal) orelse {
-						return error.NoMatch;
-					};
-				} else target.len;
-				if(newKeys.get(symbol)) |value| {
-					if(!std.mem.eql(u8, target[idx..endIndex], value)) {
-						return error.NoMatch;
+					var nextIndex = idx;
+					while(std.mem.indexOfPos(u8, target, nextIndex, nextSegment.literal)) |endIndex| {
+						indexes.append(endIndex);
+						nextIndex = endIndex + 1;
 					}
 				} else {
-					newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
+					indexes.append(target.len);
 				}
-				idx = endIndex;
+				if(indexes.items.len == 0) {
+					return error.NoMatch;
+				}
+				if(indexes.items.len == 1) {
+					if(newKeys.get(symbol)) |value| {
+						if(!std.mem.eql(u8, target[idx..indexes.items[0]], value)) {
+							return error.NoMatch;
+						}
+					} else {
+						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..indexes.items[0]])) catch unreachable;
+					}
+					idx = indexes.items[0];
+				} else {
+					defer newKeys.deinit();
+					var newKeyPairs: main.List(std.StringHashMap([]const u8)) = .init(allocator);
+					defer newKeyPairs.deinit();
+					for(indexes.items) |endIndex| {
+						if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys)) |newKeyMatches| {
+							newKeyPairs.appendSlice(newKeyMatches);
+							allocator.free(newKeyMatches);
+						} else |_| {}
+					}
+					if(newKeyPairs.items.len == 0) return error.NoMatch;
+					return newKeyPairs.toOwnedSlice();
+				}
 			},
 		}
 	}
 	if(idx == target.len) {
-		return newKeys;
+		var newKeyPairs = allocator.alloc(std.StringHashMap([]const u8), 1);
+		newKeyPairs[0] = newKeys;
+		return newKeyPairs;
 	} else {
 		return error.NoMatch;
 	}
@@ -117,17 +142,16 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	defer itemPairs.deinit();
 	var iter = items.iterator();
 	while(iter.next()) |item| {
-		const newKeys = matchWithKeys(allocator, item.id(), pattern, keys) catch |err| {
-			if(err == error.NoMatch) continue;
-			return err;
-		};
-		itemPairs.append(.{
-			.item = .{
-				.item = item.*,
-				.amount = amount,
-			},
-			.keys = newKeys,
-		});
+		const newKeyMatches = matchWithKeys(allocator, item.id(), pattern, keys) catch continue;
+		for(newKeyMatches) |match| {
+			itemPairs.append(.{
+				.item = .{
+					.item = item.*,
+					.amount = amount,
+				},
+				.keys = match,
+			});
+		}
 	}
 	return itemPairs.toOwnedSlice();
 }
