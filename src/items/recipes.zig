@@ -68,35 +68,35 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 				idx += literal.len;
 			},
 			.symbol => |symbol| {
-				var indexes: main.List(usize) = .init(allocator);
-				defer indexes.deinit();
+				var endIndexes: main.List(usize) = .init(allocator);
+				defer endIndexes.deinit();
 				if(i + 1 < pattern.len) {
 					const nextSegment = pattern[i + 1];
 					var nextIndex = idx;
 					while(std.mem.indexOfPos(u8, target, nextIndex, nextSegment.literal)) |endIndex| {
-						indexes.append(endIndex);
+						endIndexes.append(endIndex);
 						nextIndex = endIndex + 1;
 					}
 				} else {
-					indexes.append(target.len);
+					endIndexes.append(target.len);
 				}
-				if(indexes.items.len == 0) {
+				if(endIndexes.items.len == 0) {
 					return error.NoMatch;
 				}
-				if(indexes.items.len == 1) {
+				if(endIndexes.items.len == 1) {
 					if(newKeys.get(symbol)) |value| {
-						if(!std.mem.eql(u8, target[idx..indexes.items[0]], value)) {
+						if(!std.mem.eql(u8, target[idx..endIndexes.items[0]], value)) {
 							return error.NoMatch;
 						}
 					} else {
-						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..indexes.items[0]])) catch unreachable;
+						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndexes.items[0]])) catch unreachable;
 					}
-					idx = indexes.items[0];
+					idx = endIndexes.items[0];
 				} else {
 					defer newKeys.deinit();
 					var newKeyPairs: main.List(std.StringHashMap([]const u8)) = .init(allocator);
 					defer newKeyPairs.deinit();
-					for(indexes.items) |endIndex| {
+					for(endIndexes.items) |endIndex| {
 						if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys)) |newKeyMatches| {
 							newKeyPairs.appendSlice(newKeyMatches);
 							allocator.free(newKeyMatches);
