@@ -1,4 +1,5 @@
 .{
-	.blueprint = "cubyz:deco/birch_leaf",
-	.children = .{},
+	.blueprints = .{
+		.{.id = "cubyz:deco/birch_leaf"},
+	},
 }

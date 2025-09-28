@@ -1,0 +1,25 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/birch/trunk/4"},
+	},
+	.children = .{
+		.crimson = .{
+			.{.structure = "cubyz:tree/birch/silver/mixed_branch"},
+		},
+		.blue = .{
+			.{.structure = "cubyz:tree/birch/silver/top"},
+		},
+		.yellow = .{
+			.{.structure = "cubyz:tree/birch/silver/root"},
+		},
+		.magenta = .{
+			.{.structure = "cubyz:tree/birch/silver/small_branch"},
+		},
+		.lime = .{
+			.{.structure = "cubyz:tree/birch/silver/top"},
+		},
+		.pink = .{
+			.{.structure = "cubyz:deco/side"},
+		},
+	},
+}
