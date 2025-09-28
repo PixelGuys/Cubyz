@@ -57,6 +57,7 @@ pub fn onOpen() void {
 		list.add(row);
 	}
 	list.finish(.center);
+	window.shiftClickableInventory = openInventory;
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();

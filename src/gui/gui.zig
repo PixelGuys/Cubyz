@@ -608,6 +608,7 @@ pub const inventory = struct { // MARK: inventory
 	var carriedItemSlot: *ItemSlot = undefined;
 	var leftClickSlots: List(*ItemSlot) = undefined;
 	var rightClickSlots: List(*ItemSlot) = undefined;
+	var recipeItem: ?main.items.Item = null;
 	var initialized: bool = false;
 	const minCraftingCooldown = 20;
 	const maxCraftingCooldown = 400;
@@ -658,8 +659,14 @@ pub const inventory = struct { // MARK: inventory
 	fn update() void {
 		if(!initialized) return;
 		if(hoveredItemSlot) |itemSlot| {
+			const mainGuiButton = main.KeyBoard.key("mainGuiButton");
+			const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 			if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
-				if(main.KeyBoard.key("mainGuiButton").pressed) {
+				if(mainGuiButton.pressed) {
+					if(recipeItem == null and itemSlot.inventory._items[itemSlot.itemSlot].item != null) {
+						recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
+					}
+					if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
 					const time = std.time.milliTimestamp();
 					if(!startedCrafting) {
 						startedCrafting = true;
@@ -669,24 +676,42 @@ pub const inventory = struct { // MARK: inventory
 					while(time -% nextCraftingAction >= 0) {
 						nextCraftingAction +%= craftingCooldown;
 						craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
-						itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
+						if(mainGuiButton.modsOnPress.shift) {
+							itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+						} else {
+							itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
+						}
 					}
 					return;
 				}
 			}
 			if(itemSlot.mode != .normal) return;
 
-			if(carried.getAmount(0) == 0) return;
-			if(main.KeyBoard.key("mainGuiButton").pressed) {
-				for(leftClickSlots.items) |deliveredSlot| {
-					if(itemSlot == deliveredSlot) {
-						return;
+			if(mainGuiButton.pressed) {
+				if(mainGuiButton.modsOnPress.shift) {
+					if(itemSlot.inventory.id == main.game.Player.inventory.id) {
+						var iterator = std.mem.reverseIterator(openWindows.items);
+						while(iterator.next()) |window| {
+							if(window.shiftClickableInventory) |inv| {
+								itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+								break;
+							}
+						}
+					} else {
+						itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+					}
+				} else {
+					if(carried.getAmount(0) == 0) return;
+					for(leftClickSlots.items) |deliveredSlot| {
+						if(itemSlot == deliveredSlot) {
+							return;
+						}
+					}
+					if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null) {
+						leftClickSlots.append(itemSlot);
 					}
 				}
-				if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null) {
-					leftClickSlots.append(itemSlot);
-				}
-			} else if(main.KeyBoard.key("secondaryGuiButton").pressed) {
+			} else if(secondaryGuiButton.pressed) {
 				for(rightClickSlots.items) |deliveredSlot| {
 					if(itemSlot == deliveredSlot) {
 						return;
@@ -731,6 +756,8 @@ pub const inventory = struct { // MARK: inventory
 				carried.dropOne(0);
 			}
 		}
+		if(recipeItem) |item| item.deinit();
+		recipeItem = null;
 	}
 
 	fn render(mousePos: Vec2f) void {

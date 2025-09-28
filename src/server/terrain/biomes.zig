@@ -20,7 +20,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		water_surface,
 	};
 	const VTable = struct {
-		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
+		loadModel: *const fn(arena: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
 		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
@@ -40,7 +40,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		};
 		return SimpleStructureModel{
 			.vtable = vtable,
-			.data = vtable.loadModel(arena.allocator(), parameters),
+			.data = vtable.loadModel(arenaAllocator.allocator(), parameters),
 			.chance = parameters.get(f32, "chance", 0.1),
 			.priority = parameters.get(f32, "priority", 1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
@@ -52,10 +52,10 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	}
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
+	var arenaAllocator: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 
 	pub fn reset() void {
-		std.debug.assert(arena.reset(.free_all));
+		std.debug.assert(arenaAllocator.reset(.free_all));
 	}
 
 	pub fn registerGenerator(comptime Generator: type) void {

@@ -15,8 +15,7 @@ const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 const files = main.files;
 
-var commonAssetArena: NeverFailingArenaAllocator = undefined;
-var commonAssetAllocator: NeverFailingAllocator = undefined;
+var commonAssetArena: NeverFailingAllocator = undefined;
 var common: Assets = undefined;
 
 pub const Assets = struct {
@@ -326,11 +325,10 @@ pub fn init() void {
 	blocks_zig.init();
 	migrations_zig.init();
 
-	commonAssetArena = .init(main.globalAllocator);
-	commonAssetAllocator = commonAssetArena.allocator();
+	commonAssetArena = main.globalAllocator.createArena();
 
 	common = .init();
-	common.read(commonAssetAllocator, main.files.cwd(), "assets/");
+	common.read(commonAssetArena, main.files.cwd(), "assets/");
 	common.log(.common);
 }
 
@@ -484,12 +482,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
-	var worldArena: NeverFailingArenaAllocator = .init(main.stackAllocator);
-	defer worldArena.deinit();
-	const worldAllocator = worldArena.allocator();
+	const worldArena = main.stackAllocator.createArena();
+	defer main.stackAllocator.destroyArena(worldArena);
 
-	var worldAssets = common.clone(worldAllocator);
-	worldAssets.read(worldAllocator, main.files.cubyzDir(), assetFolder);
+	var worldAssets = common.clone(worldArena);
+	worldAssets.read(worldArena, main.files.cubyzDir(), assetFolder);
 
 	errdefer unloadAssets();
 
@@ -686,7 +683,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 }
 
 pub fn deinit() void {
-	commonAssetArena.deinit();
+	main.globalAllocator.destroyArena(commonAssetArena);
 	biomes_zig.deinit();
 	blocks_zig.deinit();
 	migrations_zig.deinit();

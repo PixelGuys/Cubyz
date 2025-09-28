@@ -1,0 +1,6 @@
+.{
+	.fogDensity = 5.0,
+	.fogColor = 0xd4b2b2,
+	.skyColor = 0xd48e92,
+	.music = "cubyz:in_the_depths",
+}

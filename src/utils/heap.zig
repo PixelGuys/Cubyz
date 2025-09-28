@@ -444,6 +444,18 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	pub fn dupeZ(self: NeverFailingAllocator, comptime T: type, m: []const T) [:0]T {
 		return self.allocator.dupeZ(T, m) catch unreachable;
 	}
+
+	pub fn createArena(self: NeverFailingAllocator) NeverFailingAllocator {
+		const arenaPtr = self.create(NeverFailingArenaAllocator);
+		arenaPtr.* = NeverFailingArenaAllocator.init(self);
+		return arenaPtr.allocator();
+	}
+
+	pub fn destroyArena(self: NeverFailingAllocator, arena: NeverFailingAllocator) void {
+		const arenaAllocatorPtr: *NeverFailingArenaAllocator = @ptrCast(@alignCast(arena.allocator.ptr));
+		arenaAllocatorPtr.deinit();
+		self.destroy(arenaAllocatorPtr);
+	}
 };
 
 pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena

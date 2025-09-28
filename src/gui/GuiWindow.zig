@@ -62,6 +62,8 @@ closeIfMouseIsGrabbed: bool = false,
 closeable: bool = true,
 isHud: bool = false,
 
+shiftClickableInventory: ?main.items.Inventory = null,
+
 /// Called every frame.
 renderFn: *const fn() void = &defaultFunction,
 /// Called every frame before rendering.

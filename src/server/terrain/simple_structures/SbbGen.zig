@@ -26,7 +26,7 @@ pub fn getHash(self: SbbGen) u64 {
 	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), self.structureRef.id);
 }
 
-pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SbbGen {
+pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SbbGen {
 	const structureId = parameters.get(?[]const u8, "structure", null) orelse {
 		main.utils.panicWithMessage("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
 	};
@@ -41,7 +41,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 		}
 		break :blk .random;
 	};
-	const self = arenaAllocator.create(SbbGen);
+	const self = arena.create(SbbGen);
 	self.* = .{
 		.structureRef = structureRef,
 		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode", "degradable")) orelse Blueprint.PasteMode.degradable,
