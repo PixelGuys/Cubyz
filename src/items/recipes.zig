@@ -222,3 +222,30 @@ pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *mai
 		}
 	}
 }
+
+test "pattern parsing" {
+	try std.testing.expectError(error.AmbiguousSymbols, parsePattern(main.heap.testingAllocator, "cubyz:{a}{b}"));
+	try std.testing.expectError(error.EmptyBraces, parsePattern(main.heap.testingAllocator, "{}"));
+	try std.testing.expectError(error.UnclosedBraces, parsePattern(main.heap.testingAllocator, "cubyz:{foo"));
+
+	const pattern = try parsePattern(main.heap.testingAllocator, "foo:{bar}/{baz}");
+	defer main.heap.testingAllocator.free(pattern);
+	try std.testing.expectEqual(4, pattern.len);
+}
+
+test "pattern matching" {
+	const pattern = try parsePattern(main.heap.testingAllocator, "foo:{bar}/{baz}");
+	defer main.heap.testingAllocator.free(pattern);
+
+	var keys: std.StringHashMap([]const u8) = .init(main.heap.testingAllocator.allocator);
+	defer keys.deinit();
+
+	const newKeys = try matchWithKeys(main.heap.testingAllocator, "foo:1/2/3", pattern, &keys);
+	defer {
+		for(@constCast(newKeys)) |*keySet| {
+			keySet.deinit();
+		}
+		main.heap.testingAllocator.free(newKeys);
+	}
+	try std.testing.expectEqual(2, newKeys.len);
+}
