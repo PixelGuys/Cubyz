@@ -160,7 +160,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 
-	var inputCombos: main.List([]ItemWithAmount) = .initCapacity(arena, 1);
+	var inputCombos: main.List([]const ItemWithAmount) = .initCapacity(arena, 1);
 	inputCombos.append(arena.alloc(ItemWithAmount, recipe.len));
 	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, 1);
 	keyList.append(.init(arena.allocator));
