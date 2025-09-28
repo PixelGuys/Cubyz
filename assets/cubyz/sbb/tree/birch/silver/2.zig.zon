@@ -4,7 +4,8 @@
 	},
 	.children = .{
 		.crimson = .{
-			.{.structure = "cubyz:tree/birch/silver/mixed_branch"},
+			.{.structure = "cubyz:tree/birch/silver/branch"},
+			.{.structure = "cubyz:tree/birch/silver/small_branch"},
 		},
 		.blue = .{
 			.{.structure = "cubyz:tree/birch/silver/top"},

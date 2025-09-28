@@ -16,16 +16,56 @@ const Assets = main.assets.Assets;
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
 
-var structureCache: std.StringHashMapUnmanaged(StructureBuildingBlock) = .{};
-var blueprintCache: std.StringHashMapUnmanaged(*[4]BlueprintEntry) = .{};
-var childrenToResolve: List(struct {parentId: []const u8, colorName: []const u8, colorIndex: usize, childIndex: usize, structureId: []const u8}) = undefined;
+var structureList: ListUnmanaged(StructureBuildingBlock) = .{};
+var structureMap: std.StringHashMapUnmanaged(StructureIndex) = .{};
+
+var blueprintList: ListUnmanaged([4]BlueprintEntry) = .{};
+var blueprintMap: std.StringHashMapUnmanaged(BlueprintIndex) = .{};
+
+var childrenToResolve: List(struct {structureId: []const u8, structure: **StructureBuildingBlock}) = undefined;
 
 const originBlockStringId = "cubyz:sbb/origin";
 var originBlockNumericId: u16 = 0;
 
-// Maps global child block numeric ID to index used to locally represent that child block.
-var childBlockNumericIdMap: std.AutoHashMapUnmanaged(u16, u16) = .{};
+var childBlockNumericIdMap: std.AutoHashMapUnmanaged(GlobalBlockIndex, LocalBlockIndex) = .{};
 var childBlockStringId: ListUnmanaged([]const u8) = .{};
+
+pub const BlueprintIndex = enum(u32) {
+	_,
+
+	pub fn fromId(_id: []const u8) ?BlueprintIndex {
+		return blueprintMap.get(_id);
+	}
+	pub fn get(self: BlueprintIndex) [4]BlueprintEntry {
+		return blueprintList.items[@intFromEnum(self)];
+	}
+};
+
+pub const StructureIndex = enum(u32) {
+	_,
+
+	pub fn fromId(_id: []const u8) ?StructureIndex {
+		return structureMap.get(_id);
+	}
+	pub fn get(self: StructureIndex) *StructureBuildingBlock {
+		return &structureList.items[@intFromEnum(self)];
+	}
+};
+
+pub const LocalBlockIndex = enum(u16) {
+	origin = std.math.maxInt(u16),
+	_,
+
+	pub fn id(self: LocalBlockIndex) []const u8 {
+		return childBlockStringId.items[@intFromEnum(self)];
+	}
+};
+pub const GlobalBlockIndex = u16;
+
+const Blueprints = struct {
+	items: [4]BlueprintEntry,
+	chance: f32,
+};
 
 const BlueprintEntry = struct {
 	blueprint: Blueprint,
@@ -36,7 +76,7 @@ const BlueprintEntry = struct {
 		x: u16,
 		y: u16,
 		z: u16,
-		index: u16,
+		index: LocalBlockIndex,
 		data: u16,
 
 		pub inline fn direction(self: StructureBlock) Neighbor {
@@ -48,7 +88,7 @@ const BlueprintEntry = struct {
 		}
 
 		pub fn id(self: StructureBlock) []const u8 {
-			return childBlockStringId.items[self.index];
+			return self.index.id();
 		}
 	};
 
@@ -76,7 +116,7 @@ const BlueprintEntry = struct {
 								.x = @intCast(x),
 								.y = @intCast(y),
 								.z = @intCast(z),
-								.index = std.math.maxInt(u16),
+								.index = LocalBlockIndex.origin,
 								.data = block.data,
 							};
 							hasOrigin = true;
@@ -184,7 +224,7 @@ pub const Rotation = union(RotationMode) {
 pub const StructureBuildingBlock = struct {
 	id: []const u8,
 	children: []?*StructureBuildingBlock,
-	blueprints: AliasTable([4]BlueprintEntry),
+	blueprints: AliasTable(Blueprints),
 	rotation: Rotation,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
@@ -201,7 +241,7 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] Empty 'blueprints' list not allowed.", .{stringId});
 			return error.EmptyBlueprintsList;
 		}
-		const blueprintArray = arenaAllocator.alloc([4]BlueprintEntry, zon.array.items.len);
+		const blueprintArray = arenaAllocator.alloc(Blueprints, zon.array.items.len);
 		for(zonBlueprintsList.array.items, 0..) |zonBlueprintConfig, index| {
 			if(zonBlueprintConfig != .object) {
 				std.log.err("['{s}'->'{}'] Invalid blueprint configuration (object expected, got {s}).", .{stringId, index, @tagName(zonBlueprintConfig)});
@@ -211,11 +251,13 @@ pub const StructureBuildingBlock = struct {
 				std.log.err("['{s}'] Blueprint configuration ({}): Missing 'id' field.", .{stringId, index});
 				return error.MissingBlueprintId;
 			};
-			const blueprintsTemplate = blueprintCache.get(zonBlueprintId) orelse {
+			const blueprints = BlueprintIndex.fromId(zonBlueprintId) orelse {
 				std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, zonBlueprintId});
 				return error.MissingBlueprint;
 			};
-			blueprintArray[index].* = blueprintsTemplate.*;
+			const chance = zonBlueprintConfig.get(f32, "chance", 1.0);
+
+			blueprintArray[index] = Blueprints{.items = blueprints.get(), .chance = chance};
 		}
 
 		const rotationParam = zon.getChild("rotation");
@@ -244,114 +286,73 @@ pub const StructureBuildingBlock = struct {
 			self.children[colorIndex] = null;
 			if(childId.?.len == 0) continue;
 			// Schedule child structure for resolution.
-			childrenToResolve.append(.{.parentId = stringId, .colorName = colorName, .colorIndex = colorIndex, .structureId = childId.?});
+			childrenToResolve.append(.{.structureId = childId.?, .structure = &self.children[colorIndex].?});
 		}
-		self.updateBlueprintChildLists();
+		self.checkConfiguration();
 		return self;
 	}
-	pub fn updateBlueprintChildLists(self: StructureBuildingBlock) void {
-		for(self.children, 0..) |child, index| found: {
-			if(child.items.len == 0) continue;
+	pub fn checkConfiguration(self: StructureBuildingBlock) void {
+		// Collect all unique child blocks used in blueprints.
+		var childBlocksInBlueprints: ListUnmanaged(LocalBlockIndex) = .{};
+		defer childBlocksInBlueprints.deinit(main.stackAllocator);
 
-			for(self.blueprints[0].childBlocks) |blueprintChild| {
-				if(blueprintChild.index != index) continue;
-				break :found;
+		for(self.blueprints.items, 0..) |blueprints, blueprintIndex| {
+			for(blueprints.items[0].childBlocks) |child| {
+				if(std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, 1, child.index)) continue;
+				childBlocksInBlueprints.append(main.stackAllocator, child.index);
+				// Check that all child blocks present in any of the blueprints have corresponding configurations.
+				if(self.children[@intFromEnum(child.index)] != null) continue;
+				std.log.err("['{s}'] Blueprint ({}) requires child block {s} but no configuration was specified for it.", .{self.id, blueprintIndex, child.id()});
 			}
-			std.log.err("['{s}'] Blueprint doesn't contain child '{s}' but configuration for it was specified.", .{self.id, childBlockStringId.items[index]});
 		}
-		for(self.blueprints, 0..) |*blueprint, index| {
-			var childBlocks: ListUnmanaged(BlueprintEntry.StructureBlock) = .{};
-			defer childBlocks.deinit(main.stackAllocator);
-
-			for(blueprint.childBlocks) |child| {
-				if(self.children[child.index].items.len == 0) {
-					if(index == 0) std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{self.id, child.id()});
-					continue;
-				}
-				childBlocks.append(main.stackAllocator, child);
-			}
-			blueprint.childBlocks = arenaAllocator.dupe(BlueprintEntry.StructureBlock, childBlocks.items);
+		// Check that all configured child blocks are used somewhere in one of the blueprints.
+		for(self.children, 0..) |child, childBlockIndex| {
+			if(child == null) continue;
+			if(std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, 1, @enumFromInt(childBlockIndex))) continue;
+			std.log.err("['{s}'] None of the blueprints contains a child '{s}' but configuration for it was specified.", .{self.id, @as(LocalBlockIndex, @enumFromInt(childBlockIndex)).id()});
 		}
 	}
-	pub fn initInline(sbbId: []const u8) !StructureBuildingBlock {
-		const blueprintsTemplate = blueprintCache.get(sbbId) orelse {
-			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{sbbId, sbbId});
-			return error.MissingBlueprint;
-		};
-
-		const blueprints = arenaAllocator.create([4]BlueprintEntry);
-		blueprints.* = blueprintsTemplate.*;
-		for(blueprints, 0..) |*blueprint, index| {
-			if(index == 0) {
-				for(blueprint.childBlocks) |child| std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{sbbId, child.id()});
-			}
-			blueprint.childBlocks = &.{};
-		}
-
-		return .{
-			.id = sbbId,
-			.children = &.{},
-			.rotation = .inherit,
-			.blueprints = blueprints,
-		};
+	pub fn getBlueprint(self: StructureBuildingBlock, seed: *u64) *[4]BlueprintEntry {
+		return &self.blueprints.sample(seed).items;
 	}
-	pub fn getBlueprint(self: StructureBuildingBlock, rotation: Degrees) *BlueprintEntry {
-		return &self.blueprints[@intFromEnum(rotation)];
-	}
-	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
-		return self.children[block.index].sample(seed).structure;
+	pub fn getChildStructure(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock) ?*const StructureBuildingBlock {
+		return self.children[@intFromEnum(block.index)];
 	}
 };
 
 pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
-	std.debug.assert(structureCache.capacity() == 0);
-	structureCache.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
+	std.debug.assert(structureList.items.len == 0);
+	std.debug.assert(structureMap.capacity() == 0);
+
+	structureList.ensureCapacity(arenaAllocator, structures.count());
+	structureMap.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
+
 	childrenToResolve = .init(main.stackAllocator);
 	defer childrenToResolve.deinit();
 	{
 		var iterator = structures.iterator();
+		var index: u32 = 0;
 		while(iterator.next()) |entry| {
-			const value = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
+			defer index += 1;
+
+			structureList.items[index] = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
 				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.*, @errorName(err)});
 				continue;
 			};
+
 			const key = arenaAllocator.dupe(u8, entry.key_ptr.*);
-			structureCache.put(arenaAllocator.allocator, key, value) catch unreachable;
+			structureMap.put(arenaAllocator.allocator, key, @enumFromInt(index)) catch unreachable;
+
 			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
 		}
 	}
 	{
-		var keyIterator = blueprintCache.keyIterator();
-		while(keyIterator.next()) |key_ptr| {
-			const blueprintId = key_ptr.*;
-
-			if(structureCache.contains(blueprintId)) continue;
-
-			const value = StructureBuildingBlock.initInline(blueprintId) catch |err| {
-				std.log.err("Could not register inline structure building block '{s}' ({s})", .{blueprintId, @errorName(err)});
-				continue;
-			};
-			const key = arenaAllocator.dupe(u8, blueprintId);
-			structureCache.put(arenaAllocator.allocator, key, value) catch unreachable;
-			std.log.debug("Registered inline structure building block: '{s}'", .{blueprintId});
-		}
-	}
-	{
 		for(childrenToResolve.items) |entry| {
-			const parent = structureCache.getPtr(entry.parentId).?;
-			const child = getByStringId(entry.structureId) orelse {
+			const childStructure = StructureIndex.fromId(entry.structureId) orelse {
 				std.log.err("Could not find child structure nor blueprint '{s}' for child resolution.", .{entry.structureId});
 				continue;
 			};
-
-			if(parent.children.len <= entry.colorIndex) {
-				main.utils.panicWithMessage("Error resolving child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
-			}
-
-			const childColor = parent.children[entry.colorIndex];
-
-			std.log.debug("Resolved child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
-			childColor.items[entry.childIndex].structure = child;
+			entry.structure.* = childStructure.get();
 		}
 	}
 }
@@ -360,7 +361,7 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	std.debug.assert(numericId != 0);
 
 	const index: u16 = @intCast(childBlockNumericIdMap.count());
-	childBlockNumericIdMap.put(arenaAllocator.allocator, numericId, index) catch unreachable;
+	childBlockNumericIdMap.put(arenaAllocator.allocator, numericId, @enumFromInt(index)) catch unreachable;
 	// Take only color name from the ID.
 	var iterator = std.mem.splitBackwardsScalar(u8, stringId, '/');
 	const colorName = iterator.first();
@@ -368,17 +369,23 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 }
 
 pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
-	std.debug.assert(blueprintCache.capacity() == 0);
+	std.debug.assert(blueprintList.items.len == 0);
+	std.debug.assert(blueprintMap.capacity() == 0);
+
+	blueprintList.ensureCapacity(arenaAllocator, blueprints.count());
+	blueprintMap.ensureTotalCapacity(arenaAllocator.allocator, blueprints.count()) catch unreachable;
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
 	std.debug.assert(originBlockNumericId != 0);
 
-	blueprintCache.ensureTotalCapacity(arenaAllocator.allocator, blueprints.count()) catch unreachable;
-
 	var iterator = blueprints.iterator();
+	var index: u32 = 0;
 	while(iterator.next()) |entry| {
+		defer index += 1;
+
 		const stringId = entry.key_ptr.*;
-		// Rotated copies need to be made before initializing BlueprintEntry as it removes origin and child blocks.
+
+		// Rotated copies need to be made before initializing BlueprintEntry as to removes origin and child blocks.
 		const blueprint0 = Blueprint.load(arenaAllocator, entry.value_ptr.*) catch |err| {
 			std.log.err("Could not load blueprint '{s}' ({s})", .{stringId, @errorName(err)});
 			continue;
@@ -387,29 +394,30 @@ pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 		const blueprint180 = blueprint0.rotateZ(arenaAllocator, .@"180");
 		const blueprint270 = blueprint0.rotateZ(arenaAllocator, .@"270");
 
-		const rotatedBlueprints = arenaAllocator.create([4]BlueprintEntry);
+		blueprintList.items[index][0] = BlueprintEntry.init(blueprint0, stringId) catch continue;
+		blueprintList.items[index][1] = BlueprintEntry.init(blueprint90, stringId) catch continue;
+		blueprintList.items[index][2] = BlueprintEntry.init(blueprint180, stringId) catch continue;
+		blueprintList.items[index][3] = BlueprintEntry.init(blueprint270, stringId) catch continue;
 
-		rotatedBlueprints.* = .{
-			BlueprintEntry.init(blueprint0, stringId) catch continue,
-			BlueprintEntry.init(blueprint90, stringId) catch continue,
-			BlueprintEntry.init(blueprint180, stringId) catch continue,
-			BlueprintEntry.init(blueprint270, stringId) catch continue,
-		};
-
-		blueprintCache.put(arenaAllocator.allocator, arenaAllocator.dupe(u8, stringId), rotatedBlueprints) catch unreachable;
+		blueprintMap.put(arenaAllocator.allocator, arenaAllocator.dupe(u8, stringId), @enumFromInt(index)) catch unreachable;
 		std.log.debug("Registered blueprint: '{s}'", .{stringId});
 	}
 }
 
 pub fn getByStringId(stringId: []const u8) ?*StructureBuildingBlock {
-	return structureCache.getPtr(stringId);
+	if(structureMap.get(stringId)) |index| return index.get();
+	return null;
 }
 
 pub fn reset() void {
 	childBlockNumericIdMap = .{};
 	childBlockStringId = .{};
-	structureCache = .{};
-	blueprintCache = .{};
+
+	structureList = .{};
+	structureMap = .{};
+
+	blueprintList = .{};
+	blueprintMap = .{};
 
 	_ = arena.reset(.free_all);
 }

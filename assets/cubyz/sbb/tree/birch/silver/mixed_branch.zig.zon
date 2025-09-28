@@ -9,7 +9,7 @@
 	},
 	.children = .{
 		.crimson = .{
-			.{.structure = "cubyz:tree/birch/leaf/1"},
+			.{.structure = "cubyz:tree/birch/leaf"},
 		},
 	},
 }
