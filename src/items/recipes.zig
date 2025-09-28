@@ -156,7 +156,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 	return itemPairs.toOwnedSlice();
 }
 
-fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![][]ItemWithAmount {
+fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonElement) ![]const []const ItemWithAmount {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 
