@@ -133,9 +133,8 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 }
 
 fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []ZonElement) ![][]ItemWithAmount {
-	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
-	defer arenaAllocator.deinit();
-	const arena = arenaAllocator.allocator();
+	const arena = main.stackAllocator.createArena();
+	defer main.stackAllocator.destroyArena(arena);
 
 	var inputCombos: main.List([]ItemWithAmount) = .initCapacity(arena, 1);
 	inputCombos.append(arena.alloc(ItemWithAmount, recipe.len));
@@ -182,9 +181,8 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.List(Recipe)) vo
 }
 
 pub fn parseRecipe(zon: ZonElement, list: *main.List(Recipe)) !void {
-	var arenaAllocator: NeverFailingArenaAllocator = .init(main.stackAllocator);
-	defer arenaAllocator.deinit();
-	const arena = arenaAllocator.allocator();
+	const arena = main.stackAllocator.createArena();
+	defer main.stackAllocator.destroyArena(arena);
 
 	const inputs = zon.getChild("inputs").toSlice();
 	const recipeItems = std.mem.concat(arena.allocator, ZonElement, &.{inputs, &.{zon.getChild("output")}}) catch unreachable;
