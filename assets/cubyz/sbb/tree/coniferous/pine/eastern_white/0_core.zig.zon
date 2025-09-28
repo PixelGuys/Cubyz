@@ -1,0 +1,13 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/coniferous/core"},
+	},
+	.children = .{
+		.white = .{
+			.{.structure = "cubyz:tree/coniferous/pine/eastern_white/segment_0"},
+		},
+		.black = .{
+			.{.structure = "cubyz:tree/coniferous/tree_roots"},
+		},
+	},
+}

@@ -1,0 +1,16 @@
+.{
+	.blueprint = .{
+		.{.id = "cubyz:tree/coniferous/stem/extender/3"},
+		.{.id = "cubyz:tree/coniferous/stem/extender/4"},
+		.{.id = "cubyz:tree/coniferous/stem/extender/5"},
+	},
+	.children = .{
+		.white = .{
+			.{.structure = "cubyz:tree/coniferous/pine/loblolly/segment_1"},
+		},
+		.red = .{
+			.{.structure = "cubyz:mushroom/side/bolete", .chance = 0.1},
+			.{.structure = null, .chance = 1.0},
+		},
+	},
+}
