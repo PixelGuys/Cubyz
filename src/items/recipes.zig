@@ -234,18 +234,13 @@ test "pattern parsing" {
 }
 
 test "pattern matching" {
-	const pattern = try parsePattern(main.heap.testingAllocator, "foo:{bar}/{baz}");
-	defer main.heap.testingAllocator.free(pattern);
+	const arena = main.heap.testingAllocator.createArena();
+	defer main.heap.testingAllocator.destroyArena(arena);
+	const pattern = try parsePattern(arena, "foo:{bar}/{baz}");
 
-	var keys: std.StringHashMap([]const u8) = .init(main.heap.testingAllocator.allocator);
+	var keys: std.StringHashMap([]const u8) = .init(arena.allocator);
 	defer keys.deinit();
 
-	const newKeys = try matchWithKeys(main.heap.testingAllocator, "foo:1/2/3", pattern, &keys);
-	defer {
-		for(@constCast(newKeys)) |*keySet| {
-			keySet.deinit();
-		}
-		main.heap.testingAllocator.free(newKeys);
-	}
+	const newKeys = try matchWithKeys(arena, "foo:1/2/3", pattern, &keys);
 	try std.testing.expectEqual(2, newKeys.len);
 }
