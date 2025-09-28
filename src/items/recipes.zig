@@ -37,7 +37,7 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]const 
 
 const ItemStackPattern = struct {
 	amount: u16,
-	pattern: []Segment,
+	pattern: []const Segment,
 };
 
 fn parseItemZon(allocator: NeverFailingAllocator, zon: ZonElement) !ItemStackPattern {
