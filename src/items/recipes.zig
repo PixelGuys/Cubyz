@@ -94,6 +94,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 					var newKeyPairs: main.List(std.StringHashMap([]const u8)) = .init(allocator);
 					defer newKeyPairs.deinit();
 					for(endIndices.items) |endIndex| {
+						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
 						if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys)) |newKeyMatches| {
 							newKeyPairs.appendSlice(newKeyMatches);
 							allocator.free(newKeyMatches);
