@@ -22,7 +22,7 @@ fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]const 
 			}
 			idx += 1;
 			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return error.UnclosedBraces;
-			if(idx == endIndex) return error.EmptyBrackets;
+			if(idx == endIndex) return error.EmptyBraces;
 			const symbol = pattern[idx..endIndex];
 			segments.append(.{.symbol = symbol});
 			idx = endIndex + 1;
