@@ -11,7 +11,7 @@ const Block = main.blocks.Block;
 
 const Segment = union(enum) {literal: []const u8, symbol: []const u8};
 
-fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]Segment {
+fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]const Segment {
 	var segments: main.List(Segment) = .init(allocator);
 	defer segments.deinit();
 	var idx: usize = 0;
