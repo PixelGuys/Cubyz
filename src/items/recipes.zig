@@ -165,7 +165,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 	for(0.., recipe[0..]) |i, itemZon| {
 		const pattern = try parseItemZon(arena, itemZon);
 		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(arena);
-		var newInputCombos: main.List([]ItemWithAmount) = .init(arena);
+		var newInputCombos: main.List([]const ItemWithAmount) = .init(arena);
 
 		for(keyList.items, inputCombos.items) |*keys, inputs| {
 			const parsedItems = try findRecipeItemOptions(arena, pattern, keys);
