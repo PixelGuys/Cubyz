@@ -1165,7 +1165,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn send(conn: *Connection, msg: []const u8) void {
-			conn.send(.fast, id, msg);
+			conn.send(.lossy, id, msg);
 		}
 	};
 	pub const lightMapRequest = struct {
