@@ -95,10 +95,10 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 					defer newKeyPairs.deinit();
 					for(endIndices.items) |endIndex| {
 						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
-						if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys)) |newKeyMatches| {
+						if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys) catch null) |newKeyMatches| {
 							newKeyPairs.appendSlice(newKeyMatches);
 							allocator.free(newKeyMatches);
-						} else |_| {}
+						}
 					}
 					if(newKeyPairs.items.len == 0) return error.NoMatch;
 					return newKeyPairs.toOwnedSlice();
@@ -244,4 +244,12 @@ test "pattern matching" {
 
 	const newKeys = try matchWithKeys(arena, "foo:1/2/3", pattern, &keys);
 	try std.testing.expectEqual(2, newKeys.len);
+
+	var matched = false;
+	for(newKeys) |keyPairs| {
+		if(matchWithKeys(arena, "foo:3/1/2", try parsePattern(arena, "foo:{baz}/{bar}"), &keyPairs) catch null) |_| {
+			matched = true;
+		}
+	}
+	try std.testing.expect(matched);
 }
