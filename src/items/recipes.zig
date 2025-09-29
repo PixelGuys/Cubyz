@@ -70,38 +70,42 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 			.symbol => |symbol| {
 				var endIndices: main.List(usize) = .init(allocator);
 				defer endIndices.deinit();
-				if(i + 1 < pattern.len) {
-					const nextSegment = pattern[i + 1];
-					var nextIndex = idx;
-					while(std.mem.indexOfPos(u8, target, nextIndex, nextSegment.literal)) |endIndex| {
-						if(newKeys.get(symbol)) |value| {
-							if(!std.mem.eql(u8, target[idx..endIndex], value)) continue;
-						}
-						endIndices.append(endIndex);
-						nextIndex = endIndex + 1;
+				if(newKeys.get(symbol)) |value| {
+					if(idx + value.len >= target.len or !std.mem.eql(u8, target[idx .. idx + value.len], value)) {
+						return error.NoMatch;
 					}
+					idx += value.len;
 				} else {
-					endIndices.append(target.len);
-				}
-				if(endIndices.items.len == 0) {
-					return error.NoMatch;
-				}
-				if(endIndices.items.len == 1) {
-					newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndices.items[0]])) catch unreachable;
-					idx = endIndices.items[0];
-				} else {
-					defer newKeys.deinit();
-					var newKeyPairs: main.List(std.StringHashMap([]const u8)) = .init(allocator);
-					defer newKeyPairs.deinit();
-					for(endIndices.items) |endIndex| {
-						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
-						if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys) catch null) |newKeyMatches| {
-							newKeyPairs.appendSlice(newKeyMatches);
-							allocator.free(newKeyMatches);
+					if(i + 1 < pattern.len) {
+						const nextSegment = pattern[i + 1];
+						var nextIndex = idx;
+						while(std.mem.indexOfPos(u8, target, nextIndex, nextSegment.literal)) |endIndex| {
+							endIndices.append(endIndex);
+							nextIndex = endIndex + 1;
 						}
+					} else {
+						endIndices.append(target.len);
 					}
-					if(newKeyPairs.items.len == 0) return error.NoMatch;
-					return newKeyPairs.toOwnedSlice();
+					if(endIndices.items.len == 0) {
+						return error.NoMatch;
+					}
+					if(endIndices.items.len == 1) {
+						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndices.items[0]])) catch unreachable;
+						idx = endIndices.items[0];
+					} else {
+						defer newKeys.deinit();
+						var newKeyPairs: main.List(std.StringHashMap([]const u8)) = .init(allocator);
+						defer newKeyPairs.deinit();
+						for(endIndices.items) |endIndex| {
+							newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
+							if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys) catch null) |newKeyMatches| {
+								newKeyPairs.appendSlice(newKeyMatches);
+								allocator.free(newKeyMatches);
+							}
+						}
+						if(newKeyPairs.items.len == 0) return error.NoMatch;
+						return newKeyPairs.toOwnedSlice();
+					}
 				}
 			},
 		}
@@ -243,12 +247,8 @@ test "pattern matching" {
 
 	const newKeys = try matchWithKeys(arena, "foo:1/2/3", pattern, &keys);
 	try std.testing.expectEqual(2, newKeys.len);
-
-	var matched = false;
-	for(newKeys) |keyPairs| {
-		if(matchWithKeys(arena, "foo:3/1/2", try parsePattern(arena, "foo:{baz}/{bar}"), &keyPairs) catch null) |_| {
-			matched = true;
-		}
-	}
-	try std.testing.expect(matched);
+	try std.testing.expectEqualStrings("1", newKeys[0].get("bar").?);
+	try std.testing.expectEqualStrings("2/3", newKeys[0].get("baz").?);
+	try std.testing.expectEqualStrings("1/2", newKeys[1].get("bar").?);
+	try std.testing.expectEqualStrings("3", newKeys[1].get("baz").?);
 }
