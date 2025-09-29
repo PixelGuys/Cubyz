@@ -240,7 +240,6 @@ test "pattern matching" {
 	const pattern = try parsePattern(arena, "foo:{bar}/{baz}");
 
 	var keys: std.StringHashMap([]const u8) = .init(arena.allocator);
-	defer keys.deinit();
 
 	const newKeys = try matchWithKeys(arena, "foo:1/2/3", pattern, &keys);
 	try std.testing.expectEqual(2, newKeys.len);
