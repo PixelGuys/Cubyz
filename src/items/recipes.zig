@@ -236,6 +236,7 @@ test "pattern parsing" {
 test "pattern matching" {
 	const arena = main.heap.testingAllocator.createArena();
 	defer main.heap.testingAllocator.destroyArena(arena);
+
 	const pattern = try parsePattern(arena, "foo:{bar}/{baz}");
 
 	var keys: std.StringHashMap([]const u8) = .init(arena.allocator);
