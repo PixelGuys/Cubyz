@@ -388,7 +388,7 @@ pub const LightingMode = union(enum) {
 	solid: u32,
 };
 
-pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lighting: LightingMode, ambientLight: Vec3f, playerPosition: Vec3d, transparencyMode: TransparencyMode) void {
+pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lighting: LightingMode, ambientLight: Vec3f, playerPosition: Vec3d, transparencyMode: TransparencyMode, contrast: f32) void {
 	var faceData: main.ListUnmanaged(chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
@@ -434,10 +434,10 @@ pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, l
 
 	const transparent = block.transparent() and transparencyMode == .transparency;
 
-	renderBlockImpl(projMatrix, modelMatrix, faceData.items, lightData, ambientLight, playerPosition, transparent);
+	renderBlockImpl(projMatrix, modelMatrix, faceData.items, lightData, ambientLight, playerPosition, transparent, contrast);
 }
 
-fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d, transparent: bool) void {
+fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d, transparent: bool, contrast: f32) void {
 	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData, &allocation);
 	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
@@ -477,7 +477,7 @@ fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_mesh
 
 	c.glUniform1f(uniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 
-	c.glUniform1f(uniforms.contrast, 0);
+	c.glUniform1f(uniforms.contrast, contrast);
 
 	c.glUniform1f(uniforms.lodDistance, main.settings.@"lod0.5Distance");
 
