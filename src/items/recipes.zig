@@ -234,7 +234,10 @@ test "pattern parsing" {
 
 	const pattern = try parsePattern(main.heap.testingAllocator, "foo:{bar}/{baz}");
 	defer main.heap.testingAllocator.free(pattern);
-	try std.testing.expectEqual(4, pattern.len);
+	const expected: []const Segment = &.{.{.literal = "foo:"}, .{.symbol = "bar"}, .{.literal = "/"}, .{.symbol = "baz"}};
+
+	// Can't use expectEqualSlices because segments contain strings.
+	try std.testing.expectEqualDeep(expected, pattern);
 }
 
 test "pattern matching" {
