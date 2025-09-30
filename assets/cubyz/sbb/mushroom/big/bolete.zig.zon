@@ -7,8 +7,6 @@
 		.{.id = "cubyz:mushroom/big/bolete/base/4", .chance = 0.05},
 	},
 	.children = .{
-		.white = .{
-			.{.structure = "cubyz:mushroom/big/bolete/cap"},
-		},
+		.white = "cubyz:mushroom/big/bolete/cap",
 	},
 }

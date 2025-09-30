@@ -67,7 +67,7 @@ pub const LocalBlockIndex = enum(u16) {
 pub const GlobalBlockIndex = u16;
 
 const Blueprints = struct {
-	items: [4]BlueprintEntry,
+	items: ?[4]BlueprintEntry,
 	chance: f32,
 };
 
@@ -251,17 +251,24 @@ pub const StructureBuildingBlock = struct {
 				std.log.err("['{s}'->'{}'] Invalid blueprint configuration (object expected, got {s}).", .{stringId, index, @tagName(zonBlueprintConfig)});
 				return error.InvalidBlueprintConfig;
 			}
-			const zonBlueprintId = zonBlueprintConfig.get(?[]const u8, "id", null) orelse {
-				std.log.err("['{s}'] Blueprint configuration ({}): Missing 'id' field.", .{stringId, index});
-				return error.MissingBlueprintId;
-			};
-			const blueprints = BlueprintIndex.fromId(zonBlueprintId) orelse {
-				std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, zonBlueprintId});
-				return error.MissingBlueprint;
-			};
 			const chance = zonBlueprintConfig.get(f32, "chance", 1.0);
 
-			blueprintArray[index] = Blueprints{.items = blueprints.get(), .chance = chance};
+			if(!zonBlueprintConfig.object.contains("id")) {
+				std.log.err("['{s}'] Blueprint configuration ({}): Missing 'id' field. Use null for empty entry.", .{stringId, index});
+				blueprintArray[index] = Blueprints{.items = null, .chance = chance};
+				continue;
+			}
+			switch(zonBlueprintConfig.getChild("id")) {
+				.string, .stringOwned => |_id| {
+					const blueprints = BlueprintIndex.fromId(_id) orelse {
+						std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, _id});
+						return error.MissingBlueprint;
+					};
+					blueprintArray[index] = Blueprints{.items = blueprints.get(), .chance = chance};
+				},
+				.null => blueprintArray[index] = Blueprints{.items = null, .chance = chance},
+				else => |e| std.log.err("['{s}'] Blueprint entry must be an object, found {s}.", .{stringId, @tagName(e)}),
+			}
 		}
 
 		const rotationParam = zon.getChild("rotation");
@@ -291,7 +298,7 @@ pub const StructureBuildingBlock = struct {
 						switch(entry.value_ptr.*) {
 							.string, .stringOwned => |_id| childrenToResolve.append(.{.structureId = _id, .structure = &self.children[@intFromEnum(localIndex)]}),
 							.null => std.log.err("['{s}'] Child '{s}' ID can not be null. Leave child key undefined if it is not used by blueprints.", .{stringId, localIndex.name()}),
-							else => |e| std.log.err("['{s}'->'{s}'] Value has to be a string ID of one of the structures. Found {s}.", .{stringId, localIndex.name(), @tagName(e)}),
+							else => |e| std.log.err("['{s}'->'{s}'] Value has to be a string ID of one of the structures, found {s}.", .{stringId, localIndex.name(), @tagName(e)}),
 						}
 					} else {
 						std.log.err("['{s}'] Unexpected configuration key '{s}'", .{stringId, entry.key_ptr.*});
@@ -299,7 +306,7 @@ pub const StructureBuildingBlock = struct {
 					}
 				}
 			},
-			else => |e| std.log.err("['{s}'] Children configuration must be a dictionary. Found {s}.", .{stringId, @tagName(e)}),
+			else => |e| std.log.err("['{s}'] Children configuration must be an object, found {s}.", .{stringId, @tagName(e)}),
 		}
 		return self;
 	}
@@ -309,7 +316,9 @@ pub const StructureBuildingBlock = struct {
 		defer childBlocksInBlueprints.deinit(main.stackAllocator);
 
 		for(self.blueprints.items, 0..) |blueprints, blueprintIndex| {
-			for(blueprints.items[0].childBlocks) |child| {
+			if(blueprints.items == null) continue;
+
+			for(blueprints.items.?[0].childBlocks) |child| {
 				if(std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, 1, child.index)) continue;
 				childBlocksInBlueprints.append(main.stackAllocator, child.index);
 				// Check that all child blocks present in any of the blueprints have corresponding configurations.
@@ -324,7 +333,7 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] None of the blueprints contains a child '{s}' but configuration for it was specified.", .{self.id, @as(LocalBlockIndex, @enumFromInt(childBlockIndex)).name()});
 		}
 	}
-	pub fn getBlueprint(self: StructureBuildingBlock, seed: *u64) *[4]BlueprintEntry {
+	pub fn getBlueprint(self: StructureBuildingBlock, seed: *u64) *?[4]BlueprintEntry {
 		return &self.blueprints.sample(seed).items;
 	}
 	pub fn getChildStructure(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock) ?*const StructureBuildingBlock {

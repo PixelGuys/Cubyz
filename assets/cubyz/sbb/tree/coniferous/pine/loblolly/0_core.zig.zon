@@ -3,11 +3,7 @@
 		.{.id = "cubyz:tree/coniferous/core"},
 	},
 	.children = .{
-		.white = .{
-			.{.structure = "cubyz:tree/coniferous/pine/loblolly/segment_0"},
-		},
-		.black = .{
-			.{.structure = "cubyz:tree/coniferous/tree_roots"},
-		},
+		.white = "cubyz:tree/coniferous/pine/loblolly/segment_0",
+		.black = "cubyz:tree/coniferous/tree_roots",
 	},
 }

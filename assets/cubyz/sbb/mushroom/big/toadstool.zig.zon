@@ -8,20 +8,10 @@
 		.{.id = "cubyz:mushroom/big/toadstool/base/5"},
 	},
 	.children = .{
-		.white = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/large_cap"},
-		},
-		.grey = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/small_cap"},
-		},
-		.crimson = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/red"},
-		},
-		.green = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/green"},
-		},
-		.blue = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/branch/blue"},
-		},
+		.white = "cubyz:mushroom/big/toadstool/large_cap",
+		.grey = "cubyz:mushroom/big/toadstool/small_cap",
+		.crimson = "cubyz:mushroom/big/toadstool/branch/red",
+		.green = "cubyz:mushroom/big/toadstool/branch/green",
+		.blue = "cubyz:mushroom/big/toadstool/branch/blue",
 	},
 }

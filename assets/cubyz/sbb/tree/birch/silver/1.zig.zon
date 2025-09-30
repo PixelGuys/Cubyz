@@ -5,20 +5,10 @@
 		.{.id = "cubyz:tree/birch/trunk/3"},
 	},
 	.children = .{
-		.crimson = .{
-			.{.structure = "cubyz:tree/birch/silver/branch"},
-		},
-		.blue = .{
-			.{.structure = "cubyz:tree/birch/silver/leaf"},
-		},
-		.yellow = .{
-			.{.structure = "cubyz:tree/birch/silver/root"},
-		},
-		.lime = .{
-			.{.structure = "cubyz:tree/birch/silver/stub"},
-		},
-		.pink = .{
-			.{.structure = "cubyz:deco/side"},
-		},
+		.crimson = "cubyz:tree/birch/silver/branch",
+		.blue = "cubyz:tree/birch/silver/leaf",
+		.yellow = "cubyz:tree/birch/silver/root",
+		.lime = "cubyz:tree/birch/silver/stub",
+		.pink = "cubyz:deco/side",
 	},
 }

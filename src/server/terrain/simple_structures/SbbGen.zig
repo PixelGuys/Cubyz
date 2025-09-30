@@ -55,7 +55,10 @@ pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk:
 }
 
 fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
-	const blueprints = structure.getBlueprint(seed);
+	const maybeBlueprints = structure.getBlueprint(seed);
+	if(maybeBlueprints.* == null) return;
+
+	const blueprints = &maybeBlueprints.*.?;
 
 	const origin = blueprints[0].originBlock;
 	const blueprintRotation = rotation.apply(alignDirections(origin.direction(), placementDirection) catch |err| {

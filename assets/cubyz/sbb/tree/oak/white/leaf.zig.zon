@@ -1,0 +1,5 @@
+.{.blueprints = .{
+	.{.structure = "cubyz:tree/oak/white/leaf/1"},
+	.{.structure = "cubyz:tree/oak/white/leaf/2"},
+	.{.structure = "cubyz:tree/oak/white/leaf/3"},
+}}
