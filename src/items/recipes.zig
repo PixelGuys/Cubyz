@@ -252,3 +252,18 @@ test "pattern matching" {
 	try std.testing.expectEqualStrings("1/2", newKeys[1].get("bar").?);
 	try std.testing.expectEqualStrings("3", newKeys[1].get("baz").?);
 }
+
+test "pattern matching with keys" {
+	const arena = main.heap.testingAllocator.createArena();
+	defer main.heap.testingAllocator.destroyArena(arena);
+
+	const pattern = try parsePattern(arena, "foo:{bar}/{baz}");
+
+	var keys: std.StringHashMap([]const u8) = .init(arena.allocator);
+	keys.put("bar", "1/2") catch unreachable;
+
+	const newKeys = try matchWithKeys(arena, "foo:1/2/3", pattern, &keys);
+	try std.testing.expectEqual(1, newKeys.len);
+	try std.testing.expectEqualStrings("1/2", newKeys[0].get("bar").?);
+	try std.testing.expectEqualStrings("3", newKeys[0].get("baz").?);
+}
