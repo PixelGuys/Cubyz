@@ -22,7 +22,7 @@ var structureMap: std.StringHashMapUnmanaged(StructureIndex) = .{};
 var blueprintList: ListUnmanaged([4]BlueprintEntry) = .{};
 var blueprintMap: std.StringHashMapUnmanaged(BlueprintIndex) = .{};
 
-var childrenToResolve: List(struct {structureId: []const u8, structure: **StructureBuildingBlock}) = undefined;
+var childrenToResolve: List(struct {structureId: []const u8, structure: *?*StructureBuildingBlock}) = undefined;
 
 const originBlockStringId = "cubyz:sbb/origin";
 var originBlockNumericId: u16 = 0;
@@ -289,7 +289,7 @@ pub const StructureBuildingBlock = struct {
 				while(childrenDictIterator.next()) |entry| {
 					if(LocalBlockIndex.fromName(entry.key_ptr.*)) |localIndex| {
 						switch(entry.value_ptr.*) {
-							.string, .stringOwned => |_id| childrenToResolve.append(.{.structureId = _id, .structure = &self.children[@intFromEnum(localIndex)].?}),
+							.string, .stringOwned => |_id| childrenToResolve.append(.{.structureId = _id, .structure = &self.children[@intFromEnum(localIndex)]}),
 							.null => std.log.err("['{s}'] Child '{s}' ID can not be null. Leave child key undefined if it is not used by blueprints.", .{stringId, localIndex.name()}),
 							else => |e| std.log.err("['{s}'->'{s}'] Value has to be a string ID of one of the structures. Found {s}.", .{stringId, localIndex.name(), @tagName(e)}),
 						}

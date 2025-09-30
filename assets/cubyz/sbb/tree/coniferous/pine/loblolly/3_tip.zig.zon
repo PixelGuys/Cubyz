@@ -1,5 +1,5 @@
 .{
-	.blueprint = .{
+	.blueprints = .{
 		.{.id = "cubyz:tree/coniferous/tip/4/0"},
 		.{.id = "cubyz:tree/coniferous/tip/4/1"},
 		.{.id = "cubyz:tree/coniferous/tip/4/2"},
