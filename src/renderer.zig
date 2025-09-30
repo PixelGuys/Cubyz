@@ -426,9 +426,10 @@ pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, l
 				const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
 				@memcpy(lightData[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
 			}
-		}, .solid => |light| {
+		},
+		.solid => |light| {
 			@memset(lightData, light);
-		}
+		},
 	}
 
 	const transparent = block.transparent() and transparencyMode == .transparency;
