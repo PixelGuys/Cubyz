@@ -383,7 +383,12 @@ pub const TransparencyMode = enum {
 	transparency,
 };
 
-pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lightPos: Vec3i, ambientLight: Vec3f, playerPosition: Vec3d, transparencyMode: TransparencyMode) void {
+pub const LightingMode = union(enum) {
+	world: Vec3i,
+	solid: u32,
+};
+
+pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lighting: LightingMode, ambientLight: Vec3f, playerPosition: Vec3d, transparencyMode: TransparencyMode) void {
 	var faceData: main.ListUnmanaged(chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
@@ -401,22 +406,29 @@ pub fn renderBlockLit(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block
 		face.position.lightIndex = @intCast(i);
 	}
 
-	const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
 	var lightData = main.stackAllocator.alloc(u32, faceData.items.len*4);
-	defer main.stackAllocator.free(lightData);
-	for(faceData.items) |face| {
-		const quad = face.blockAndQuad.quadIndex.quadInfo();
-		var rawData: [4][6]u5 = undefined;
-		for(0..4) |i| {
-			const vertexPos = vec.xyz(modelMatrix.mulVec(vec.combine(quad.cornerVec(i), 1)));
-			const fullPos = lightPos +% @as(Vec3i, @intFromFloat(vertexPos));
-			const indexData = main.renderer.chunk_meshing.PrimitiveMesh.getCornerLight(mesh, fullPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, quad.normal);
-			for(0..6) |j| {
-				rawData[i][j] = std.math.lossyCast(u5, indexData[j]/8);
+
+	switch(lighting) {
+		.world => |lightPos| {
+			const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
+			defer main.stackAllocator.free(lightData);
+			for(faceData.items) |face| {
+				const quad = face.blockAndQuad.quadIndex.quadInfo();
+				var rawData: [4][6]u5 = undefined;
+				for(0..4) |i| {
+					const vertexPos = vec.xyz(modelMatrix.mulVec(vec.combine(quad.cornerVec(i), 1)));
+					const fullPos = lightPos +% @as(Vec3i, @intFromFloat(vertexPos));
+					const indexData = main.renderer.chunk_meshing.PrimitiveMesh.getCornerLight(mesh, fullPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, quad.normal);
+					for(0..6) |j| {
+						rawData[i][j] = std.math.lossyCast(u5, indexData[j]/8);
+					}
+				}
+				const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
+				@memcpy(lightData[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
 			}
+		}, .solid => |light| {
+			@memset(lightData, light);
 		}
-		const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
-		@memcpy(lightData[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
 	}
 
 	const transparent = block.transparent() and transparencyMode == .transparency;
