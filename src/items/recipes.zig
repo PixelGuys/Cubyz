@@ -241,14 +241,20 @@ test "pattern parsing" {
 }
 
 test "pattern matching" {
-	const arena = main.heap.testingAllocator.createArena();
-	defer main.heap.testingAllocator.destroyArena(arena);
+	const pattern = try parsePattern(main.heap.testingAllocator, "foo:{bar}/{baz}");
+	defer main.heap.testingAllocator.free(pattern);
 
-	const pattern = try parsePattern(arena, "foo:{bar}/{baz}");
+	var keys: std.StringHashMap([]const u8) = .init(main.heap.testingAllocator.allocator);
+	defer keys.deinit();
 
-	var keys: std.StringHashMap([]const u8) = .init(arena.allocator);
+	const newKeys = try matchWithKeys(main.heap.testingAllocator, "foo:1/2/3", pattern, &keys);
+	defer {
+		for(newKeys) |*keySet| {
+			@constCast(keySet).deinit();
+		}
+		main.heap.testingAllocator.free(newKeys);
+	}
 
-	const newKeys = try matchWithKeys(arena, "foo:1/2/3", pattern, &keys);
 	try std.testing.expectEqual(2, newKeys.len);
 	try std.testing.expectEqualStrings("1", newKeys[0].get("bar").?);
 	try std.testing.expectEqualStrings("2/3", newKeys[0].get("baz").?);
@@ -257,15 +263,21 @@ test "pattern matching" {
 }
 
 test "pattern matching with keys" {
-	const arena = main.heap.testingAllocator.createArena();
-	defer main.heap.testingAllocator.destroyArena(arena);
+	const pattern = try parsePattern(main.heap.testingAllocator, "foo:{bar}/{baz}");
+	defer main.heap.testingAllocator.free(pattern);
 
-	const pattern = try parsePattern(arena, "foo:{bar}/{baz}");
-
-	var keys: std.StringHashMap([]const u8) = .init(arena.allocator);
+	var keys: std.StringHashMap([]const u8) = .init(main.heap.testingAllocator.allocator);
+	defer keys.deinit();
 	keys.put("bar", "1/2") catch unreachable;
 
-	const newKeys = try matchWithKeys(arena, "foo:1/2/3", pattern, &keys);
+	const newKeys = try matchWithKeys(main.heap.testingAllocator, "foo:1/2/3", pattern, &keys);
+	defer {
+		for(newKeys) |*keySet| {
+			@constCast(keySet).deinit();
+		}
+		main.heap.testingAllocator.free(newKeys);
+	}
+
 	try std.testing.expectEqual(1, newKeys.len);
 	try std.testing.expectEqualStrings("1/2", newKeys[0].get("bar").?);
 	try std.testing.expectEqualStrings("3", newKeys[0].get("baz").?);
