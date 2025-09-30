@@ -90,14 +90,14 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 						return error.NoMatch;
 					}
 					if(endIndices.items.len == 1) {
-						newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndices.items[0]])) catch unreachable;
+						newKeys.put(symbol, target[idx..endIndices.items[0]]) catch unreachable;
 						idx = endIndices.items[0];
 					} else {
 						defer newKeys.deinit();
 						var newKeyPairs: main.List(std.StringHashMap([]const u8)) = .init(allocator);
 						defer newKeyPairs.deinit();
 						for(endIndices.items) |endIndex| {
-							newKeys.put(allocator.dupe(u8, symbol), allocator.dupe(u8, target[idx..endIndex])) catch unreachable;
+							newKeys.put(symbol, target[idx..endIndex]) catch unreachable;
 							if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys) catch null) |newKeyMatches| {
 								newKeyPairs.appendSlice(newKeyMatches);
 								allocator.free(newKeyMatches);
