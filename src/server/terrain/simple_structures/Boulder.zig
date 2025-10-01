@@ -23,8 +23,8 @@ block: main.blocks.Block,
 size: f32,
 sizeVariation: f32,
 
-pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *Boulder {
-	const self = arenaAllocator.create(Boulder);
+pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *Boulder {
+	const self = arena.create(Boulder);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:slate")),
 		.size = parameters.get(f32, "size", 4),
