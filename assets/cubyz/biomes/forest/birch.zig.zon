@@ -28,9 +28,15 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/birch/forest_generator",
+			.structure = "cubyz:tree/birch/silver/1",
 			.placeMode = .degradable,
-			.chance = 0.2,
+			.chance = 0.1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/2",
+			.placeMode = .degradable,
+			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:fallen_tree",

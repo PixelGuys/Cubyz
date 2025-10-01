@@ -18,15 +18,21 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/oak/forest_generator",
+			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
 			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/birch/mixed_forest_generator",
+			.structure = "cubyz:tree/birch/silver/1",
 			.placeMode = .degradable,
-			.chance = 0.1,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/2",
+			.placeMode = .degradable,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
