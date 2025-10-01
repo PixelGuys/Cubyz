@@ -21,13 +21,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/loblolly",
 			.placeMode = .degradable,
-			.chance = 0.1,
+			.chance = 0.12,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
-			.chance = 0.2,
+			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:sbb",
