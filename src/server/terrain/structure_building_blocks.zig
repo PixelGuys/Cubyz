@@ -370,7 +370,7 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	{
 		for(childrenToResolve.items) |entry| {
 			const childStructure = StructureIndex.fromId(entry.structureId) orelse {
-				std.log.err("Could not find child structure nor blueprint '{s}' for child resolution.", .{entry.structureId});
+				std.log.err("Could not find child structure '{s}' for child resolution.", .{entry.structureId});
 				continue;
 			};
 			entry.structure.* = childStructure.get();

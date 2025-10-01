@@ -3,9 +3,6 @@
 		.{.id = "cubyz:tree/birch/leaf/1"},
 	},
 	.children = .{
-		.lime = .{
-			.{.structure = "cubyz:deco/birch_leaf", .chance = 0.25},
-			.{.structure = null, .chance = 0.75},
-		},
+		.lime = "cubyz:deco/birch_leaf",
 	},
 }

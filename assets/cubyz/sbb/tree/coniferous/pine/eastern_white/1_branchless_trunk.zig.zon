@@ -5,12 +5,7 @@
 		.{.id = "cubyz:tree/coniferous/stem/extender/2"},
 	},
 	.children = .{
-		.white = .{
-			.{.structure = "cubyz:tree/coniferous/pine/eastern_white/segment_1"},
-		},
-		.red = .{
-			.{.structure = "cubyz:mushroom/side/bolete", .chance = 0.1},
-			.{.structure = null, .chance = 1.0},
-		},
+		.white = "cubyz:tree/coniferous/pine/eastern_white/2_branched_trunk",
+		.red = "cubyz:mushroom/side/bolete",
 	},
 }

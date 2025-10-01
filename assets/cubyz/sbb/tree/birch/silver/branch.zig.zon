@@ -5,6 +5,6 @@
 		.{.id = "cubyz:tree/birch/branch/3"},
 	},
 	.children = .{
-		.crimson = "cubyz:tree/birch/leaf",
+		.crimson = "cubyz:tree/birch/silver/leaf",
 	},
 }

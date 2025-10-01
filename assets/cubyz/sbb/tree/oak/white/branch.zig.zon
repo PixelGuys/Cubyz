@@ -1,8 +1,8 @@
 .{
 	.blueprints = .{
-		.{.id = "cubyz:tree/oak/white/branch/1"},
-		.{.id = "cubyz:tree/oak/white/branch/2"},
-		.{.id = "cubyz:tree/oak/white/branch/3"},
+		.{.id = "cubyz:tree/oak/branch/1"},
+		.{.id = "cubyz:tree/oak/branch/2"},
+		.{.id = "cubyz:tree/oak/branch/3"},
 	},
 	.children = .{
 		.crimson = "cubyz:tree/oak/white/leaf",

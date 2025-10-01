@@ -1,12 +1,9 @@
 .{
-	.blueprint = "cubyz:tree/coniferous/stem/extender/0",
-	.children = .{
-		.white = .{
-			.{.structure = "cubyz:tree/coniferous/sapling/0"},
-			.{.structure = "cubyz:tree/coniferous/sapling/1"},
-			.{.structure = "cubyz:tree/coniferous/sapling/2"},
-			.{.structure = "cubyz:tree/coniferous/sapling/3"},
-			.{.structure = "cubyz:tree/coniferous/sapling/4"},
-		},
+	.blueprints = .{
+		.{.id = "cubyz:tree/coniferous/sapling/0"},
+		.{.id = "cubyz:tree/coniferous/sapling/1"},
+		.{.id = "cubyz:tree/coniferous/sapling/2"},
+		.{.id = "cubyz:tree/coniferous/sapling/3"},
+		.{.id = "cubyz:tree/coniferous/sapling/4"},
 	},
 }

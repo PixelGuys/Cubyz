@@ -1,4 +1,6 @@
-.{.blueprints = .{
-	.{.id = "cubyz:tree/birch/top/1"},
-	.{.id = "cubyz:tree/birch/top/2"},
-}}
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/birch/top/1"},
+		.{.id = "cubyz:tree/birch/top/2"},
+	},
+}
