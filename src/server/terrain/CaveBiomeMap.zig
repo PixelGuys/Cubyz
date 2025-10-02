@@ -8,6 +8,7 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const terrain = @import("terrain.zig");
@@ -255,6 +256,28 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 						.addToMap => {
 							// TODO: Do a tetrahedron voxelization here, so parts of the tetrahedral barycentric coordinates can be precomputed.
 							map.ptr(x, y, z).* += scale*interpolateValue(self, wx +% x*voxelSize, wy +% y*voxelSize, wz +% z*voxelSize, field);
+						},
+					}
+				}
+			}
+		}
+	}
+
+	pub fn bulkInterpolateValueVec3f(self: InterpolatableCaveBiomeMapView, comptime field: []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, map: Array3D(f32), map2: Array3D(Vec3f), comptime mode: enum {addToMap}, comptime scale: f32) void {
+		var x: u31 = 0;
+		while(x < map.width) : (x += 1) {
+			var y: u31 = 0;
+			while(y < map.height) : (y += 1) {
+				var z: u31 = 0;
+				while(z < map.depth) : (z += 1) {
+					switch(mode) {
+						.addToMap => {
+							// TODO: Do a tetrahedron voxelization here, so parts of the tetrahedral barycentric coordinates can be precomputed.
+							const interpolated = scale*interpolateValue(self, wx +% x*voxelSize, wy +% y*voxelSize, wz +% z*voxelSize, field);
+							map.ptr(x, y, z).* += interpolated;
+							map2.ptr(x, y, z).*[0] += interpolated;
+							map2.ptr(x, y, z).*[1] += interpolated;
+							map2.ptr(x, y, z).*[2] += interpolated;
 						},
 					}
 				}
