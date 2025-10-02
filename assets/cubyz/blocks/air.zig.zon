@@ -9,6 +9,7 @@
 	.degradable = true,
 	.hasItem = false,
 	.collide = false,
+	.emittedLight = 0x808080,
 
 	.drops = .{},
 	.model = .none,
