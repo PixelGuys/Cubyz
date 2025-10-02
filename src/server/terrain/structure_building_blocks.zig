@@ -286,7 +286,7 @@ pub const StructureBuildingBlock = struct {
 			.blueprints = .init(arenaAllocator, blueprintArray),
 			.rotation = rotation,
 		};
-		for(self.children) |*c| c.* = null;
+		@memset(self.children, null);
 
 		const zonChildrenDict = zon.getChild("children");
 		switch(zonChildrenDict) {
