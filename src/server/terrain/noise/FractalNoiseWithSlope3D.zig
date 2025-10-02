@@ -114,10 +114,10 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 						(bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2,
 						(bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2,
 					};
-					bigSlopeMap.ptr(x, y + res, z).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
-					bigSlopeMap.ptr(x, y - res, z).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
-					bigSlopeMap.ptr(x, y, z + res).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x, y, z - res).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+					bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+					bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+					bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
 				}
 			}
 		}
@@ -136,10 +136,10 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 						0.0,
 						(bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2,
 					};
-					bigSlopeMap.ptr(x + res, y, z).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
-					bigSlopeMap.ptr(x - res, y, z).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
-					bigSlopeMap.ptr(x, y, z + res).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x, y, z - res).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+					bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+					bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+					bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
 				}
 			}
 		}
@@ -158,10 +158,10 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 						(bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2,
 						0.0,
 					};
-					bigSlopeMap.ptr(x + res, y, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x - res, y, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x, y + res, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x, y - res, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+					bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+					bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+					bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+					bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
 				}
 			}
 		}
