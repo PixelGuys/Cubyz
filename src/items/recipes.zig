@@ -247,6 +247,8 @@ test "pattern matching" {
 	var keys: std.StringHashMap([]const u8) = .init(main.heap.testingAllocator.allocator);
 	defer keys.deinit();
 
+	try std.testing.expectError(error.NoMatch, matchWithKeys(main.heap.testingAllocator, "foo:1", pattern, &keys));
+
 	const newKeys = try matchWithKeys(main.heap.testingAllocator, "foo:1/2/3", pattern, &keys);
 	defer {
 		for(newKeys) |*keySet| {
