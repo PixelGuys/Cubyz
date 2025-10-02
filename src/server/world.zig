@@ -896,11 +896,22 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 		try self.wio.saveWorldData();
-		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/items.zig.zon", .{self.path}) catch unreachable;
-		defer main.stackAllocator.free(itemsPath);
-		const zon = files.cubyzDir().readToZon(main.stackAllocator, itemsPath) catch .null;
-		defer zon.deinit(main.stackAllocator);
-		self.itemDropManager.loadFrom(zon);
+		loadItemDrops: {
+			const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
+			defer main.stackAllocator.free(itemsPath);
+			const itemDropData: []const u8 = files.cubyzDir().read(main.stackAllocator, itemsPath) catch |err| {
+				if(err != error.FileNotFound) {
+					std.log.err("Got error while loading {s}: {s}", .{itemsPath, @errorName(err)});
+				}
+				break :loadItemDrops;
+			};
+			defer main.stackAllocator.free(itemDropData);
+			var reader = main.utils.BinaryReader.init(itemDropData);
+			self.itemDropManager.loadFromBytes(&reader) catch |err| {
+				std.log.err("Failed to load item drop data: {s}", .{@errorName(err)});
+				std.log.debug("Data: {any}", .{itemDropData});
+			};
+		}
 	}
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
@@ -1012,11 +1023,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		try self.saveAllPlayers();
 
-		const itemDropZon = self.itemDropManager.store(main.stackAllocator);
-		defer itemDropZon.deinit(main.stackAllocator);
-		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/items.zig.zon", .{self.path}) catch unreachable;
+		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer itemDropData.deinit();
+		self.itemDropManager.storeToBytes(&itemDropData);
+		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(itemsPath);
-		try files.cubyzDir().writeZon(itemsPath, itemDropZon);
+		try files.cubyzDir().write(itemsPath, itemDropData.data.items);
 	}
 
 	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {
