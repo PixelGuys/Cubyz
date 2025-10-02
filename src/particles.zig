@@ -35,6 +35,7 @@ pub const ParticleManager = struct {
 
 	const ParticleIndex = u16;
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
+	var typeIds: main.List([]const u8) = undefined;
 
 	pub fn init() void {
 		types = .init(arenaAllocator);
@@ -42,6 +43,7 @@ pub const ParticleManager = struct {
 		emissionTextures = .init(arenaAllocator);
 		textureArray = .init();
 		emissionTextureArray = .init();
+		typeIds = .init(arenaAllocator);
 		particleTypesSSBO = SSBO.init();
 		ParticleSystem.init();
 	}
@@ -52,6 +54,7 @@ pub const ParticleManager = struct {
 		emissionTextures.deinit();
 		textureArray.deinit();
 		emissionTextureArray.deinit();
+		typeIds.deinit();
 		particleTypeHashmap.deinit(arenaAllocator.allocator);
 		ParticleSystem.deinit();
 		particleTypesSSBO.deinit();
@@ -67,6 +70,7 @@ pub const ParticleManager = struct {
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
 
 		particleTypeHashmap.put(arenaAllocator.allocator, id, @intCast(types.items.len)) catch unreachable;
+		typeIds.append(id);
 		types.append(particleType);
 
 		std.log.debug("Registered particle type: {s}", .{id});
@@ -147,6 +151,16 @@ pub const ParticleManager = struct {
 		particleTypesSSBO.bufferData(ParticleType, ParticleManager.types.items);
 		particleTypesSSBO.bind(14);
 	}
+
+	pub fn getTypeIndexById(id: []const u8) ?ParticleIndex {
+		return particleTypeHashmap.get(id);
+	}
+
+	pub fn getIdByTypeIndex(index: ParticleIndex) []const u8 {
+		std.debug.assert(index < typeIds.items.len);
+
+		return typeIds.items[index];
+	}
 };
 
 pub const ParticleSystem = struct {
@@ -156,6 +170,8 @@ pub const ParticleSystem = struct {
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
 	var properties: EmitterProperties = undefined;
 	var previousPlayerPos: Vec3d = undefined;
+
+    pub var networkCreationQueue: main.List(struct{ Emitter, Vec3d, u32 }) = undefined;
 
 	var particlesSSBO: SSBO = undefined;
 
@@ -194,14 +210,28 @@ pub const ParticleSystem = struct {
 		particlesSSBO.bind(13);
 
 		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+
+        networkCreationQueue = .init(arenaAllocator);
 	}
 
 	pub fn deinit() void {
 		pipeline.deinit();
 		particlesSSBO.deinit();
+        networkCreationQueue.deinit();
 	}
 
 	pub fn update(deltaTime: f32) void {
+        if (networkCreationQueue.items.len != 0) {
+            for (networkCreationQueue.items) |creation| {
+                const emitter, const pos, const count = creation;
+                emitter.spawnParticles(count, Emitter.SpawnPoint, .{
+                    .mode = .spread,
+                    .position = pos,
+                });
+            }
+            networkCreationQueue.clearAndFree();
+        }
+
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
 		const playerPos = game.Player.getEyePosBlocking();
 		const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);
