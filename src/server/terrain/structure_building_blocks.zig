@@ -333,7 +333,7 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] None of the blueprints contains a child '{s}' but configuration for it was specified.", .{self.id, @as(LocalBlockIndex, @enumFromInt(childBlockIndex)).name()});
 		}
 	}
-	pub fn getBlueprint(self: StructureBuildingBlock, seed: *u64) *?[4]BlueprintEntry {
+	pub fn getBlueprints(self: StructureBuildingBlock, seed: *u64) *?[4]BlueprintEntry {
 		return &self.blueprints.sample(seed).items;
 	}
 	pub fn getChildStructure(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock) ?*const StructureBuildingBlock {

@@ -25,15 +25,21 @@
 		},
 		.{
 			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.12,
+		},
+		.{
+			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
-			.chance = 0.1,
+			.chance = 0.03,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/standalone_roots",
 			.placeMode = .degradable,
-			.chance = 0.05,
+			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:flower_patch",
