@@ -32,7 +32,7 @@ const interpolatedPart = 4;
 fn getValue(noise: Array3D(f32), noiseSlope: Array3D(Vec3f), outerSizeShift: u5, relX: u31, relY: u31, relZ: u31) f32 {
 	const noiseVal = noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
 	const noiseSlopeVal = noiseSlope.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
-	return noiseVal + @min(noiseSlopeVal[2], 0.0) + @max(noiseSlopeVal[2], 0.0)*@sqrt(noiseSlopeVal[0]*noiseSlopeVal[0]+noiseSlopeVal[1]*noiseSlopeVal[1]);
+	return noiseVal + 2.0*@min(noiseSlopeVal[2], 0.0) + 2.0*@max(noiseSlopeVal[2], 0.0)*@sqrt(noiseSlopeVal[0]*noiseSlopeVal[0]+noiseSlopeVal[1]*noiseSlopeVal[1]);
 }
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {

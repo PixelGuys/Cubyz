@@ -61,9 +61,11 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/2;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
-					bigSlopeMap.ptr(x, y, z).* = .{0.0, 0.0, (bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2};
-					bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
-					bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					if(res == 1) {
+						bigSlopeMap.ptr(x, y, z).* = .{0.0, 0.0, (bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2};
+						bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+						bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					}
 				}
 			}
 		}
@@ -77,9 +79,11 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z))/2;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
-					bigSlopeMap.ptr(x, y, z).* = .{0.0, (bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2, 0.0};
-					bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+					if(res == 1) {
+						bigSlopeMap.ptr(x, y, z).* = .{0.0, (bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2, 0.0};
+						bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+						bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+					}
 				}
 			}
 		}
@@ -93,9 +97,11 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z))/2;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
-					bigSlopeMap.ptr(x, y, z).* = .{(bigMap.get(x + res, y, z) - bigMap.get(x - res, y, z))/fRes/2, 0.0, 0.0};
-					bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+					if(res == 1) {
+						bigSlopeMap.ptr(x, y, z).* = .{(bigMap.get(x + res, y, z) - bigMap.get(x - res, y, z))/fRes/2, 0.0, 0.0};
+						bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+						bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+					}
 				}
 			}
 		}
@@ -109,15 +115,17 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z) + bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/4;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
-					bigSlopeMap.ptr(x, y, z).* = .{
-						0.0,
-						(bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2,
-						(bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2,
-					};
-					bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
-					bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					if(res == 1) {
+						bigSlopeMap.ptr(x, y, z).* = .{
+							0.0,
+							(bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2,
+							(bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2,
+						};
+						bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+						bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+						bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+						bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					}
 				}
 			}
 		}
@@ -131,15 +139,17 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z) + bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/4;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
-					bigSlopeMap.ptr(x, y, z).* = .{
-						(bigMap.get(x + res, y, z) - bigMap.get(x - res, y, z))/fRes/2,
-						0.0,
-						(bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2,
-					};
-					bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
-					bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					if(res == 1) {
+						bigSlopeMap.ptr(x, y, z).* = .{
+							(bigMap.get(x + res, y, z) - bigMap.get(x - res, y, z))/fRes/2,
+							0.0,
+							(bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2,
+						};
+						bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+						bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+						bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+						bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					}
 				}
 			}
 		}
@@ -153,15 +163,17 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z) + bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z))/4;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
-					bigSlopeMap.ptr(x, y, z).* = .{
-						(bigMap.get(x + res, y, z) - bigMap.get(x - res, y, z))/fRes/2,
-						(bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2,
-						0.0,
-					};
-					bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+					if(res == 1) {
+						bigSlopeMap.ptr(x, y, z).* = .{
+							(bigMap.get(x + res, y, z) - bigMap.get(x - res, y, z))/fRes/2,
+							(bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2,
+							0.0,
+						};
+						bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+						bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+						bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+						bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+					}
 				}
 			}
 		}
@@ -175,17 +187,19 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z) + bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z) + bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/6;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
-					bigSlopeMap.ptr(x, y, z).* = .{
-						(bigMap.get(x + res, y, z) - bigMap.get(x - res, y, z))/fRes/2,
-						(bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2,
-						(bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2,
-					};
-					bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
-					bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
-					bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
-					bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					if(res == 1) {
+						bigSlopeMap.ptr(x, y, z).* = .{
+							(bigMap.get(x + res, y, z) - bigMap.get(x - res, y, z))/fRes/2,
+							(bigMap.get(x, y + res, z) - bigMap.get(x, y - res, z))/fRes/2,
+							(bigMap.get(x, y, z + res) - bigMap.get(x, y, z - res))/fRes/2,
+						};
+						bigSlopeMap.ptr(x + res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+						bigSlopeMap.ptr(x - res, y, z).*[0] += bigSlopeMap.get(x, y, z)[0]/2;
+						bigSlopeMap.ptr(x, y + res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+						bigSlopeMap.ptr(x, y - res, z).*[1] += bigSlopeMap.get(x, y, z)[1]/2;
+						bigSlopeMap.ptr(x, y, z + res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+						bigSlopeMap.ptr(x, y, z - res).*[2] += bigSlopeMap.get(x, y, z)[2]/2;
+					}
 				}
 			}
 		}
