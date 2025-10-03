@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const Tool = main.items.Tool;
+const Item = main.items.Item;
 
 pub const Data = packed struct(u128) {strength: f32, tag: main.Tag, pad: u64 = undefined};
 
@@ -25,6 +26,9 @@ pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 
 	return damage;
 }
 
-pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.writer().print("#80ff40**Good at**#808080 *Increases damage by **{d:.0}%** on \n***#80ff40{s}#808080*** blocks", .{data.strength*100, data.tag.getName()}) catch unreachable;
+pub fn printTooltip(outString: *main.List(u8), data: Data, item: Item) void {
+	switch(item) {
+		.tool => |tool| outString.writer().print("#80ff40**Good at**#808080 *Increases damage by **{d:.0}%** ({d:.2}) on ***#80ff40{s}#808080*** blocks", .{data.strength*100, tool.damage*data.strength, data.tag.getName()}) catch unreachable,
+		else => outString.writer().print("#80ff40**Good at**#808080 *Increases damage by **{d:.0}%** on ***#80ff40{s}#808080*** blocks", .{data.strength*100, data.tag.getName()}) catch unreachable,
+	}
 }

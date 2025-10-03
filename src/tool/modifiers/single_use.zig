@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const Tool = main.items.Tool;
+const Item = main.items.Item;
 
 pub const Data = packed struct(u128) {strength: f32, pad: u96 = undefined};
 
@@ -23,6 +24,6 @@ pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 	return damage;
 }
 
-pub fn printTooltip(outString: *main.List(u8), data: Data) void {
+pub fn printTooltip(outString: *main.List(u8), data: Data, _: Item) void {
 	outString.writer().print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{data.strength}) catch unreachable;
 }
