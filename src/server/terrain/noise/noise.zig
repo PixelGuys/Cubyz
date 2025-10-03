@@ -7,8 +7,8 @@ pub const FractalNoise1D = @import("FractalNoise1D.zig");
 /// Like FractalNoise, except in 3D.
 pub const FractalNoise3D = @import("FractalNoise3D.zig");
 
-/// Like FractalNoise but it computes the derivative.
-pub const FractalNoiseWithSlope3D = @import("FractalNoiseWithSlope3D.zig");
+/// Like FractalNoise3D, but it produces flat floors.
+pub const FractalNoiseZWeighted3D = @import("FractalNoiseZWeighted3D.zig");
 
 /// Uses a recursive subdivision algorithm to generate a noise map.
 pub const FractalNoise = @import("FractalNoise.zig");

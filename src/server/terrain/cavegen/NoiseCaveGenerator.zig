@@ -8,7 +8,7 @@ const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
 const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView;
-const FractalNoiseWithSlope3D = terrain.noise.FractalNoiseWithSlope3D;
+const FractalNoiseZWeighted3D = terrain.noise.FractalNoiseZWeighted3D;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -28,11 +28,10 @@ pub fn deinit() void {}
 
 const scale = 64;
 const interpolatedPart = 4;
+const zWeight = -1.5;
 
-fn getValue(noise: Array3D(f32), noiseSlope: Array3D(Vec3f), outerSizeShift: u5, relX: u31, relY: u31, relZ: u31) f32 {
-	const noiseVal = noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
-	const noiseSlopeVal = noiseSlope.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
-	return noiseVal + 2.0*@min(noiseSlopeVal[2], 0.0) + @max(noiseSlopeVal[2], 0.0)*@sqrt(noiseSlopeVal[0]*noiseSlopeVal[0]+noiseSlopeVal[1]*noiseSlopeVal[1]);
+fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ: u31) f32 {
+	return noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
 }
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
@@ -42,24 +41,23 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
-	const noise, const noiseSlope = FractalNoiseWithSlope3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale);
+	const noise = FractalNoiseZWeighted3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale, zWeight);
 	defer noise.deinit(main.stackAllocator);
-	defer noiseSlope.deinit(main.stackAllocator);
-	biomeMap.bulkInterpolateValueVec3f("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, noiseSlope, .addToMap, scale);
+	biomeMap.bulkInterpolateValue("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, scale);
 	var x: u31 = 0;
 	while(x < map.pos.voxelSize*CaveMapFragment.width) : (x += outerSize) {
 		var y: u31 = 0;
 		while(y < map.pos.voxelSize*CaveMapFragment.width) : (y += outerSize) {
 			var z: u31 = 0;
 			while(z < map.pos.voxelSize*CaveMapFragment.height) : (z += outerSize) {
-				const val000 = getValue(noise, noiseSlope, outerSizeShift, x, y, z);
-				const val001 = getValue(noise, noiseSlope, outerSizeShift, x, y, z + outerSize);
-				const val010 = getValue(noise, noiseSlope, outerSizeShift, x, y + outerSize, z);
-				const val011 = getValue(noise, noiseSlope, outerSizeShift, x, y + outerSize, z + outerSize);
-				const val100 = getValue(noise, noiseSlope, outerSizeShift, x + outerSize, y, z);
-				const val101 = getValue(noise, noiseSlope, outerSizeShift, x + outerSize, y, z + outerSize);
-				const val110 = getValue(noise, noiseSlope, outerSizeShift, x + outerSize, y + outerSize, z);
-				const val111 = getValue(noise, noiseSlope, outerSizeShift, x + outerSize, y + outerSize, z + outerSize);
+				const val000 = getValue(noise, outerSizeShift, x, y, z);
+				const val001 = getValue(noise, outerSizeShift, x, y, z + outerSize);
+				const val010 = getValue(noise, outerSizeShift, x, y + outerSize, z);
+				const val011 = getValue(noise, outerSizeShift, x, y + outerSize, z + outerSize);
+				const val100 = getValue(noise, outerSizeShift, x + outerSize, y, z);
+				const val101 = getValue(noise, outerSizeShift, x + outerSize, y, z + outerSize);
+				const val110 = getValue(noise, outerSizeShift, x + outerSize, y + outerSize, z);
+				const val111 = getValue(noise, outerSizeShift, x + outerSize, y + outerSize, z + outerSize);
 				// Test if they are all inside or all outside the cave to skip these cases:
 				const measureForEquality = sign(val000) + sign(val001) + sign(val010) + sign(val011) + sign(val100) + sign(val101) + sign(val110) + sign(val111);
 				if(measureForEquality == -8) {
