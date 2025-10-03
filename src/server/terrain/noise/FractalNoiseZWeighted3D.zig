@@ -22,6 +22,7 @@ pub fn generateAligned(allocator: NeverFailingAllocator, wx: i32, wy: i32, wz: i
 	std.debug.assert(width > 1 and height > 1 and depth > 1); // dimensions need to be of the form n*scale + 1 with n ∈ ℕ \ {0}
 	const map = Array3D(f32).init(allocator, width, depth, height);
 
+	const offset = @as(f32, @floatFromInt(scale))*@sqrt(@abs(zWeight*0.25))*std.math.sign(zWeight)*0.5;
 	// Generate the corners:
 	const scaledScale = scale/voxelSize;
 	var x0: u31 = 0;
@@ -31,7 +32,7 @@ pub fn generateAligned(allocator: NeverFailingAllocator, wx: i32, wy: i32, wz: i
 			var z0: u31 = 0;
 			while(z0 < height) : (z0 += scaledScale) {
 				var seed = random.initSeed3D(worldSeed, .{wx +% x0*voxelSize, wy +% y0*voxelSize, wz +% z0*voxelSize});
-				map.ptr(x0, y0, z0).* = (random.nextFloat(&seed) - 0.5)*@as(f32, @floatFromInt(scale));
+				map.ptr(x0, y0, z0).* = (random.nextFloat(&seed) - 0.5)*@as(f32, @floatFromInt(scale)) + offset;
 			}
 		}
 	}
@@ -44,7 +45,7 @@ pub fn generateAligned(allocator: NeverFailingAllocator, wx: i32, wy: i32, wz: i
 fn averageWithWeight(a: f32, b: f32, startingScale: u31, maxResolution: u31, res: u31, weight: f32) f32 {
 	const maxValue: f32 = @floatFromInt(startingScale*maxResolution);
 	const fRes = @as(f32, @floatFromInt(res))/@as(f32, @floatFromInt(startingScale));
-	const localWeight = -weight*(0.5 - a/maxValue*0.5)*fRes*2.0 + 0.5;
+	const localWeight = -weight*(0.5 - a/maxValue*0.5)*fRes*4.0 + 0.5;
 	return a*(1.0 - localWeight) + b*localWeight;
 }
 

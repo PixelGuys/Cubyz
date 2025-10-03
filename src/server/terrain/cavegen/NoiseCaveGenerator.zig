@@ -28,7 +28,7 @@ pub fn deinit() void {}
 
 const scale = 64;
 const interpolatedPart = 4;
-const zWeight = -1.5;
+const zWeight = -0.75;
 
 fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ: u31) f32 {
 	return noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
