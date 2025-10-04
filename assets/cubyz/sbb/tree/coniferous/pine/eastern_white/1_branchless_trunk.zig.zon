@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/coniferous/stem/extender/0"},
+		.{.id = "cubyz:tree/coniferous/stem/extender/1"},
+		.{.id = "cubyz:tree/coniferous/stem/extender/2"},
+	},
+	.children = .{
+		.white = "cubyz:tree/coniferous/pine/eastern_white/2_branched_trunk",
+		.red = "cubyz:mushroom/side/bolete",
+	},
+}

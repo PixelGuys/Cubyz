@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:mushroom/big/glimmergill/base/0"},
+		.{.id = "cubyz:mushroom/big/glimmergill/base/1"},
+		.{.id = "cubyz:mushroom/big/glimmergill/base/2"},
+		.{.id = "cubyz:mushroom/big/glimmergill/base/3"},
+	},
+	.children = .{
+		.white = "cubyz:mushroom/big/glimmergill/cap",
+	},
+}
