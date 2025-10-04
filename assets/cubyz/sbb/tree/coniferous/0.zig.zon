@@ -1,7 +1,0 @@
-.{
-	.blueprint = "cubyz:tree/coniferous/0",
-	.children = .{
-		.white = .{.{.structure = null}},
-		.black = .{.{.structure = null}},
-	},
-}
