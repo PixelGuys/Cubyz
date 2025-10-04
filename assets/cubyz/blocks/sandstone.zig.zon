@@ -6,9 +6,10 @@
 	},
 	.item = .{
 		.material = .{
-			.density = 2.0,
-			.elasticity = 0.25,
-			.hardness = 6.5,
+			.durability = 10,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.0,
+			.swingSpeed = 3.0,
 			.textureRoughness = 3.0,
 			.colors = .{
 				0xffAF8354, 0xffC89965, 0xffE6B776, 0xffEEC589, 0xffEDD0AD,

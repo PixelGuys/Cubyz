@@ -1,0 +1,13 @@
+.{
+	.tags = .{.leaf, .cuttable},
+	.blockHealth = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:ore",
+	.model = "cubyz:cube",
+	.texture = "cubyz:moss",
+	.item = .{
+		.texture = "moss.png",
+	},
+}

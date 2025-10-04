@@ -42,7 +42,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		const data = main.files.read(main.stackAllocator, path) catch {
+		const data = main.files.cubyzDir().read(main.stackAllocator, path) catch {
 			return self;
 		};
 		defer main.stackAllocator.free(data);
@@ -148,11 +148,11 @@ pub const RegionFile = struct { // MARK: RegionFile
 		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
 		defer main.stackAllocator.free(folder);
 
-		main.files.makeDir(folder) catch |err| {
+		main.files.cubyzDir().makePath(folder) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, writer.data.items) catch |err| {
+		main.files.cubyzDir().write(path, writer.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}

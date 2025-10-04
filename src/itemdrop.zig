@@ -100,6 +100,38 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 	}
 
+	pub fn loadFromBytes(self: *ItemDropManager, reader: *main.utils.BinaryReader) !void {
+		const version = try reader.readInt(u8);
+		if(version != 0) return error.UnsupportedVersion;
+		var i: u16 = 0;
+		while(reader.remaining.len != 0) : (i += 1) {
+			try self.addFromBytes(reader, i);
+		}
+	}
+
+	pub fn storeToBytes(self: *ItemDropManager, writer: *main.utils.BinaryWriter) void {
+		const version = 0;
+		writer.writeInt(u8, version);
+		for(self.indices[0..self.size]) |i| {
+			storeSingleToBytes(writer, self.list.get(i));
+		}
+	}
+
+	fn addFromBytes(self: *ItemDropManager, reader: *main.utils.BinaryReader, i: u16) !void {
+		const despawnTime = try reader.readInt(i32);
+		const pos = try reader.readVec(Vec3d);
+		const vel = try reader.readVec(Vec3d);
+		const itemStack = try items.ItemStack.fromBytes(reader);
+		self.addWithIndex(i, pos, vel, random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)), itemStack, despawnTime, 0);
+	}
+
+	fn storeSingleToBytes(writer: *main.utils.BinaryWriter, itemdrop: ItemDrop) void {
+		writer.writeInt(i32, itemdrop.despawnTime);
+		writer.writeVec(Vec3d, itemdrop.pos);
+		writer.writeVec(Vec3d, itemdrop.vel);
+		itemdrop.itemStack.toBytes(writer);
+	}
+
 	fn addFromZon(self: *ItemDropManager, zon: ZonElement) void {
 		const item = items.Item.init(zon) catch |err| {
 			const msg = zon.toStringEfficient(main.stackAllocator, "");
@@ -201,12 +233,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.emptyMutex.lock();
 		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
 			self.emptyMutex.unlock();
-			const zon = itemStack.store(main.stackAllocator);
-			defer zon.deinit(main.stackAllocator);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
 			if(itemStack.item) |item| {
+				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {}×{s}", .{itemStack.amount, item.id()});
 				item.deinit();
 			}
 			return;

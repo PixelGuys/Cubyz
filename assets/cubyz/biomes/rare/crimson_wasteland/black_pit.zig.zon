@@ -1,0 +1,17 @@
+.{
+	.properties = .{},
+	.minRadius = 16,
+	.maxRadius = 24,
+	.chance = 0,
+	.minHeight = 5,
+	.maxHeight = 10,
+	.roughness = 3,
+	.hills = 3,
+	.stoneBlock = "cubyz:chalk/black",
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/crimson_wasteland/base",
+			.chance = 24,
+		},
+	},
+}

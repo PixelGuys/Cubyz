@@ -1,0 +1,29 @@
+.{
+	.properties = .{},
+	.minHeight = 84,
+	.maxHeight = 85,
+	.minRadius = 16,
+	.maxRadius = 36,
+	.roughness = 24,
+	.chance = 0,
+	.hills = 2,
+	.interpolation = .linear,
+	.stoneBlock = "cubyz:obsidian",
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:magma",
+			.chance = 0.4,
+			.width = 3,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/crimson_wasteland/base",
+			.chance = 6,
+		},
+	},
+}

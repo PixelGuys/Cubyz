@@ -1373,7 +1373,7 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const source = main.files.read(main.stackAllocator, filename) catch |err| {
+		const source = main.files.cwd().read(main.stackAllocator, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
@@ -2216,11 +2216,11 @@ pub const TextureArray = struct { // MARK: TextureArray
 		for(0..maxLOD) |i| {
 			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
-		var arena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
-		defer arena.deinit();
-		const lodBuffer: [][]Color = arena.allocator().alloc([]Color, maxLOD);
+		const arena = main.stackAllocator.createArena();
+		defer main.stackAllocator.destroyArena(arena);
+		const lodBuffer: [][]Color = arena.alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {
-			buffer.* = arena.allocator().alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
+			buffer.* = arena.alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
 		}
 
 		for(images, 0..) |image, i| {

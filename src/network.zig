@@ -672,12 +672,17 @@ pub const Protocols = struct {
 							return error.Invalid;
 						}
 						const version = zon.get([]const u8, "version", "unknown");
-						std.log.info("User {s} joined using version {s}.", .{name, version});
+						std.log.info("User {s} joined using version {s}", .{name, version});
+
+						if(!try main.settings.version.isCompatibleClientVersion(version)) {
+							std.log.warn("Version incompatible with server version {s}", .{main.settings.version.version});
+							return error.IncompatibleVersion;
+						}
 
 						{
 							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 							defer main.stackAllocator.free(path);
-							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
+							var dir = try main.files.cubyzDir().openIterableDir(path);
 							defer dir.close();
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
@@ -705,8 +710,8 @@ pub const Protocols = struct {
 					},
 					.assets => {
 						std.log.info("Received assets.", .{});
-						std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
-						var dir = try std.fs.cwd().makeOpenPath("serverAssets", .{});
+						main.files.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
+						var dir = try main.files.cwd().openDir("serverAssets");
 						defer dir.close();
 						try utils.Compression.unpack(dir, reader.remaining);
 					},
@@ -731,7 +736,7 @@ pub const Protocols = struct {
 		pub fn clientSide(conn: *Connection, name: []const u8) !void {
 			const zonObject = ZonElement.initObject(main.stackAllocator);
 			defer zonObject.deinit(main.stackAllocator);
-			zonObject.putOwnedString("version", settings.version);
+			zonObject.putOwnedString("version", settings.version.version);
 			zonObject.putOwnedString("name", name);
 			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
@@ -1160,7 +1165,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn send(conn: *Connection, msg: []const u8) void {
-			conn.send(.fast, id, msg);
+			conn.send(.lossy, id, msg);
 		}
 	};
 	pub const lightMapRequest = struct {

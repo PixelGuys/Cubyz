@@ -215,7 +215,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 
 fn initLogging() void {
 	logFile = null;
-	std.fs.cwd().makePath("logs") catch |err| {
+	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
@@ -296,11 +296,6 @@ fn openCreativeInventory() void {
 	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
-}
-fn openSharedInventoryTesting() void {
-	if(game.world == null) return;
-	ungrabMouse();
-	gui.openWindow("shared_inventory_testing");
 }
 fn openChat() void {
 	if(game.world == null) return;
@@ -437,8 +432,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
-
-		.{.name = "shared_inventory_testing", .key = c.GLFW_KEY_O, .pressAction = &openSharedInventoryTesting},
 	};
 
 	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
@@ -492,7 +485,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 		return;
 	}
 	std.log.info("Converting {s}:", .{jsonPath});
-	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
+	const jsonString = files.cubyzDir().read(stackAllocator, jsonPath) catch |err| {
 		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
 		return;
 	};
@@ -537,12 +530,12 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	defer stackAllocator.free(zonPath);
 	std.log.info("Outputting to {s}:", .{zonPath});
 	std.log.debug("{s}", .{zonString.items});
-	files.write(zonPath, zonString.items) catch |err| {
+	files.cubyzDir().write(zonPath, zonString.items) catch |err| {
 		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
 		return;
 	};
 	std.log.info("Deleting file {s}", .{jsonPath});
-	std.fs.cwd().deleteFile(jsonPath) catch |err| {
+	files.cubyzDir().deleteFile(jsonPath) catch |err| {
 		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
 		return;
 	};
@@ -559,16 +552,16 @@ pub fn main() void { // MARK: main()
 	initLogging();
 	defer deinitLogging();
 
-	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
+	if(files.cwd().openFile("settings.json")) |file| blk: { // TODO: Remove after #480
 		file.close();
 		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
-		var dir = std.fs.cwd().openDir(".", .{.iterate = true}) catch |err| {
+		var dir = files.cwd().openIterableDir(".") catch |err| {
 			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
 			break :blk;
 		};
 		defer dir.close();
 
-		var walker = dir.walk(stackAllocator.allocator) catch unreachable;
+		var walker = dir.walk(stackAllocator);
 		defer walker.deinit();
 		while(walker.next() catch |err| {
 			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
@@ -580,11 +573,27 @@ pub fn main() void { // MARK: main()
 		}
 	} else |_| {}
 
+	std.log.info("Starting game client with version {s}", .{settings.version.version});
+
 	gui.initWindowList();
 	defer gui.deinitWindowList();
 
+	settings.launchConfig.init();
+	defer settings.launchConfig.deinit();
+
 	files.init();
 	defer files.deinit();
+
+	// Background image migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("assets/backgrounds")) moveBlueprints: {
+		std.fs.rename(std.fs.cwd(), "assets/backgrounds", files.cubyzDir().dir, "backgrounds") catch |err| {
+			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving backgrounds: {s}\nYou may have to move your assets/backgrounds manually to {s}/backgrounds", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
+			defer stackAllocator.free(notification);
+			gui.windowlist.notification.raiseNotification(notification);
+			break :moveBlueprints;
+		};
+		std.log.info("Moved backgrounds to {s}/backgrounds", .{files.cubyzDirStr()});
+	}
 
 	settings.init();
 	defer settings.deinit();
@@ -660,6 +669,28 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("main");
 	}
 
+	// Save migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("saves")) moveSaves: {
+		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
+			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving saves: {s}\nYou may have to move your saves manually to {s}/saves", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
+			defer stackAllocator.free(notification);
+			gui.windowlist.notification.raiseNotification(notification);
+			break :moveSaves;
+		};
+		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
+		defer stackAllocator.free(notification);
+		gui.windowlist.notification.raiseNotification(notification);
+	}
+
+	// Blueprint migration, should be removed after version 0 (#480)
+	if(files.cwd().hasDir("blueprints")) moveBlueprints: {
+		std.fs.rename(std.fs.cwd(), "blueprints", files.cubyzDir().dir, "blueprints") catch |err| {
+			std.log.err("Encountered error while moving blueprints: {s}\nYou may have to move your blueprints manually to {s}/blueprints", .{@errorName(err), files.cubyzDirStr()});
+			break :moveBlueprints;
+		};
+		std.log.info("Moved blueprints to {s}/blueprints", .{files.cubyzDirStr()});
+	}
+
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 
@@ -728,6 +759,7 @@ pub fn main() void { // MARK: main()
 
 		if(shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
+			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
 				world.deinit();
 				game.world = null;

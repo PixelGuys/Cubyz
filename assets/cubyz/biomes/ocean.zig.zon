@@ -5,6 +5,8 @@
 	.radius = 500,
 	.minHeight = -100,
 	.maxHeight = -22,
+	.maxHeightLimit = 7,
+	.smoothBeaches = true,
 
 	.roughness = 15,
 	.hills = 15,
@@ -19,7 +21,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mossy_cobblestone",
+			.block = "cubyz:moss:cubyz:cobblestone",
 			.chance = 0.064,
 			.width = 6,
 			.variation = 2,

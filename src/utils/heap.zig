@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const build_options = @import("build_options");
+
 const main = @import("main");
 
 var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allocator);
@@ -444,6 +446,18 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	pub fn dupeZ(self: NeverFailingAllocator, comptime T: type, m: []const T) [:0]T {
 		return self.allocator.dupeZ(T, m) catch unreachable;
 	}
+
+	pub fn createArena(self: NeverFailingAllocator) NeverFailingAllocator {
+		const arenaPtr = self.create(NeverFailingArenaAllocator);
+		arenaPtr.* = NeverFailingArenaAllocator.init(self);
+		return arenaPtr.allocator();
+	}
+
+	pub fn destroyArena(self: NeverFailingAllocator, arena: NeverFailingAllocator) void {
+		const arenaAllocatorPtr: *NeverFailingArenaAllocator = @ptrCast(@alignCast(arena.allocator.ptr));
+		arenaAllocatorPtr.deinit();
+		self.destroy(arenaAllocatorPtr);
+	}
 };
 
 pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
@@ -618,8 +632,10 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		if(old.cycle != threadCycle) removeThreadFromWaiting();
 		const newTime = std.time.milliTimestamp();
 		if(newTime -% lastSyncPointTime > 20_000) {
-			std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
-			std.debug.dumpCurrentStackTrace(null);
+			if(!build_options.isTaggedRelease) {
+				std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
+				std.debug.dumpCurrentStackTrace(null);
+			}
 		}
 		for(&lists) |*list| {
 			freeItemsFromList(list);

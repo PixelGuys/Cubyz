@@ -23,13 +23,13 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:mushroom/big/glimmergill/base",
+			.structure = "cubyz:mushroom/big/glimmergill",
 			.placeMode = .degradable,
 			.chance = 0.15,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:mushroom/small/glimmergill/base",
+			.structure = "cubyz:mushroom/small/glimmergill",
 			.placeMode = .degradable,
 			.chance = 0.2,
 		},
