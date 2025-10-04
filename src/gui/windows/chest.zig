@@ -4,6 +4,7 @@ const main = @import("main");
 const Player = main.game.Player;
 const ItemStack = main.items.ItemStack;
 const Vec2f = main.vec.Vec2f;
+const Vec3i = main.vec.Vec3i;
 const Texture = main.graphics.Texture;
 
 const gui = @import("../gui.zig");
@@ -37,9 +38,12 @@ pub fn deinit() void {
 	itemSlots.deinit();
 }
 
-pub var openInventory: main.items.Inventory = undefined;
+var openPos: Vec3i = undefined;
+var openInventory: main.items.Inventory = undefined;
 
 pub fn setInventory(selectedInventory: main.items.Inventory) void {
+	std.debug.assert(selectedInventory.source == .blockInventory);
+	openPos = selectedInventory.source.blockInventory;
 	openInventory = selectedInventory;
 }
 
