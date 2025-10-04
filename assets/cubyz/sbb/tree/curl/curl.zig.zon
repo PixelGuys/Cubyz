@@ -1,0 +1,18 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/curl/curl/0"},
+		.{.id = "cubyz:tree/curl/curl/1"},
+		.{.id = "cubyz:tree/curl/curl/2"},
+		.{.id = "cubyz:tree/curl/curl/3"},
+		.{.id = "cubyz:tree/curl/curl/4"},
+	},
+	.children = .{
+		.white = .{
+			.{.structure = "cubyz:tree/curl/curl/0"},
+			.{.structure = "cubyz:tree/curl/curl/1"},
+			.{.structure = "cubyz:tree/curl/curl/2"},
+			.{.structure = "cubyz:tree/curl/curl/3"},
+			.{.structure = "cubyz:tree/curl/curl/4"},
+		},
+	},
+}
