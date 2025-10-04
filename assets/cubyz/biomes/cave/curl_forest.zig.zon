@@ -14,7 +14,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/curl/base",
+			.structure = "cubyz:tree/curl",
 			.placeMode = .degradable,
 			.chance = 0.15,
 		},
