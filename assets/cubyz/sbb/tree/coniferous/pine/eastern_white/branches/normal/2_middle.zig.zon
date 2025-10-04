@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/coniferous/branch/normal/5/0"},
+		.{.id = "cubyz:tree/coniferous/branch/normal/5/1"},
+		.{.id = "cubyz:tree/coniferous/branch/normal/5/2"},
+		.{.id = "cubyz:tree/coniferous/branch/normal/5/3"},
+		.{.id = "cubyz:tree/coniferous/branch/normal/5/4"},
+	},
+}
