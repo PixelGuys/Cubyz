@@ -678,7 +678,9 @@ pub const World = struct { // MARK: World
 		errdefer self.toolPalette.deinit();
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
-		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id}, .{});
 		Player.loadFrom(zon.getChild("player"));
