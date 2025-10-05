@@ -36,9 +36,15 @@
 		},
 		.{
 			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/ancient",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/mahogany/sapele/large",
 			.placeMode = .degradable,
-			.chance = 0.4,
+			.chance = 0.2,
 		},
 		.{
 			.id = "cubyz:sbb",
@@ -50,7 +56,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/mahogany/sapele/small",
 			.placeMode = .degradable,
-			.chance = 0.6,
+			.chance = 0.5,
 		},
 		.{
 			.id = "cubyz:ground_patch",
