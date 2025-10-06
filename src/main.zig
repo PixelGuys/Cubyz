@@ -454,15 +454,6 @@ pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
-fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
-	if(str.len == 0) return false;
-	if(!std.ascii.isAlphabetic(str[0]) and str[0] != '_') return false;
-	for(str[1..]) |c| {
-		if(!std.ascii.isAlphanumeric(c) and c != '_') return false;
-	}
-	return true;
-}
-
 fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	var iter = std.fs.path.componentIterator(path) catch |err| {
 		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
@@ -501,16 +492,6 @@ pub fn main() void { // MARK: main()
 	files.init();
 	defer files.deinit();
 
-	// Background image migration, should be removed after version 0 (#480)
-	if(files.cwd().hasDir("assets/backgrounds")) moveBlueprints: {
-		std.fs.rename(std.fs.cwd(), "assets/backgrounds", files.cubyzDir().dir, "backgrounds") catch |err| {
-			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving backgrounds: {s}\nYou may have to move your assets/backgrounds manually to {s}/backgrounds", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
-			defer stackAllocator.free(notification);
-			gui.windowlist.notification.raiseNotification(notification);
-			break :moveBlueprints;
-		};
-		std.log.info("Moved backgrounds to {s}/backgrounds", .{files.cubyzDirStr()});
-	}
 
 	settings.init();
 	defer settings.deinit();
@@ -584,28 +565,6 @@ pub fn main() void { // MARK: main()
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
-	}
-
-	// Save migration, should be removed after version 0 (#480)
-	if(files.cwd().hasDir("saves")) moveSaves: {
-		std.fs.rename(std.fs.cwd(), "saves", files.cubyzDir().dir, "saves") catch |err| {
-			const notification = std.fmt.allocPrint(stackAllocator.allocator, "Encountered error while moving saves: {s}\nYou may have to move your saves manually to {s}/saves", .{@errorName(err), files.cubyzDirStr()}) catch unreachable;
-			defer stackAllocator.free(notification);
-			gui.windowlist.notification.raiseNotification(notification);
-			break :moveSaves;
-		};
-		const notification = std.fmt.allocPrint(stackAllocator.allocator, "Your saves have been moved from saves to {s}/saves", .{files.cubyzDirStr()}) catch unreachable;
-		defer stackAllocator.free(notification);
-		gui.windowlist.notification.raiseNotification(notification);
-	}
-
-	// Blueprint migration, should be removed after version 0 (#480)
-	if(files.cwd().hasDir("blueprints")) moveBlueprints: {
-		std.fs.rename(std.fs.cwd(), "blueprints", files.cubyzDir().dir, "blueprints") catch |err| {
-			std.log.err("Encountered error while moving blueprints: {s}\nYou may have to move your blueprints manually to {s}/blueprints", .{@errorName(err), files.cubyzDirStr()});
-			break :moveBlueprints;
-		};
-		std.log.info("Moved blueprints to {s}/blueprints", .{files.cubyzDirStr()});
 	}
 
 	server.terrain.globalInit();
