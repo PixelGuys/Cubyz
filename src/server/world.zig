@@ -459,34 +459,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	};
 
 	pub fn init(path: []const u8, nullGeneratorSettings: ?ZonElement) !*ServerWorld { // MARK: init()
-		covert_old_worlds: { // TODO: Remove after #480
-			const worldDatPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.dat", .{path});
-			defer main.stackAllocator.free(worldDatPath);
-			if(main.files.cubyzDir().openFile(worldDatPath)) |file| {
-				file.close();
-				std.log.warn("Detected old world in saves/{s}. Converting all .json files to .zig.zon", .{path});
-				const dirPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{path});
-				defer main.stackAllocator.free(dirPath);
-				var dir = main.files.cubyzDir().openIterableDir(dirPath) catch |err| {
-					std.log.err("Could not open world directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
-					break :covert_old_worlds;
-				};
-				defer dir.close();
-
-				var walker = dir.walk(main.stackAllocator);
-				defer walker.deinit();
-				while(walker.next() catch |err| {
-					std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
-					break :covert_old_worlds;
-				}) |entry| {
-					if(entry.kind == .file and (std.ascii.endsWithIgnoreCase(entry.basename, ".json") or std.mem.eql(u8, entry.basename, "world.dat"))) {
-						const fullPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{dirPath, entry.path}) catch unreachable;
-						defer main.stackAllocator.free(fullPath);
-						main.convertJsonToZon(fullPath);
-					}
-				}
-			} else |_| {}
-		}
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{

@@ -15,7 +15,6 @@ pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
-pub const JsonElement = @import("json.zig").JsonElement;
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
@@ -479,67 +478,6 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	}
 	return false;
 }
-pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
-	if(isHiddenOrParentHiddenPosix(jsonPath)) {
-		std.log.info("NOT converting {s}.", .{jsonPath});
-		return;
-	}
-	std.log.info("Converting {s}:", .{jsonPath});
-	const jsonString = files.cubyzDir().read(stackAllocator, jsonPath) catch |err| {
-		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
-		return;
-	};
-	defer stackAllocator.free(jsonString);
-	var zonString = List(u8).init(stackAllocator);
-	defer zonString.deinit();
-	std.log.debug("{s}", .{jsonString});
-
-	var i: usize = 0;
-	while(i < jsonString.len) : (i += 1) {
-		switch(jsonString[i]) {
-			'\"' => {
-				var j = i + 1;
-				while(j < jsonString.len and jsonString[j] != '"') : (j += 1) {}
-				const string = jsonString[i + 1 .. j];
-				if(isValidIdentifierName(string)) {
-					zonString.append('.');
-					zonString.appendSlice(string);
-				} else {
-					zonString.append('"');
-					zonString.appendSlice(string);
-					zonString.append('"');
-				}
-				i = j;
-			},
-			'[', '{' => {
-				zonString.append('.');
-				zonString.append('{');
-			},
-			']', '}' => {
-				zonString.append('}');
-			},
-			':' => {
-				zonString.append('=');
-			},
-			else => |c| {
-				zonString.append(c);
-			},
-		}
-	}
-	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0 .. std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
-	defer stackAllocator.free(zonPath);
-	std.log.info("Outputting to {s}:", .{zonPath});
-	std.log.debug("{s}", .{zonString.items});
-	files.cubyzDir().write(zonPath, zonString.items) catch |err| {
-		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
-		return;
-	};
-	std.log.info("Deleting file {s}", .{jsonPath});
-	files.cubyzDir().deleteFile(jsonPath) catch |err| {
-		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
-		return;
-	};
-}
 
 pub fn main() void { // MARK: main()
 	defer if(global_gpa.deinit() == .leak) {
@@ -551,27 +489,6 @@ pub fn main() void { // MARK: main()
 
 	initLogging();
 	defer deinitLogging();
-
-	if(files.cwd().openFile("settings.json")) |file| blk: { // TODO: Remove after #480
-		file.close();
-		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
-		var dir = files.cwd().openIterableDir(".") catch |err| {
-			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
-			break :blk;
-		};
-		defer dir.close();
-
-		var walker = dir.walk(stackAllocator);
-		defer walker.deinit();
-		while(walker.next() catch |err| {
-			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
-			break :blk;
-		}) |entry| {
-			if(entry.kind == .file and (std.ascii.endsWithIgnoreCase(entry.basename, ".json") or std.mem.eql(u8, entry.basename, "world.dat")) and !std.ascii.startsWithIgnoreCase(entry.path, "compiler") and !std.ascii.startsWithIgnoreCase(entry.path, ".zig-cache") and !std.ascii.startsWithIgnoreCase(entry.path, ".vscode")) {
-				convertJsonToZon(entry.path);
-			}
-		}
-	} else |_| {}
 
 	std.log.info("Starting game client with version {s}", .{settings.version.version});
 
@@ -797,6 +714,5 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
-	_ = @import("json.zig");
 	_ = @import("zon.zig");
 }
