@@ -492,7 +492,6 @@ pub fn main() void { // MARK: main()
 	files.init();
 	defer files.deinit();
 
-
 	settings.init();
 	defer settings.deinit();
 
