@@ -12,7 +12,7 @@ then
 	fail
 fi
 
-echo "Building Zig Cubyz ($@) from source. This may take a few minutes..."
+echo "Building Zig Cubyz ($*) from source. This may take a few minutes..."
 
 ./compiler/zig/zig build --prominent-compile-errors "$@"
 
