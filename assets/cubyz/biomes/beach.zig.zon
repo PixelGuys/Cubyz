@@ -27,5 +27,5 @@
 			.depth = 1,
 			.smoothness = 0.1,
 		},
-	}
+	},
 }
