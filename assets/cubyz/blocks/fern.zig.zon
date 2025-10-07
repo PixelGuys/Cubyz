@@ -8,7 +8,7 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:cross",
+	.model = "cubyz:fern",
 	.texture = "cubyz:fern",
 	.item = .{
 		.texture = "fern.png",
