@@ -61,26 +61,26 @@ fn getDataPath() ![2][]const u8 {
 	const gameFolder = if(builtin.os.tag == .windows) "Cubyz" else "cubyz";
 	const homePath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, if(builtin.os.tag == .windows) "USERPROFILE" else "HOME");
 	defer main.stackAllocator.free(homePath);
-	const legacyPath = try std.fs.path.join(main.stackAllocator.allocator, &.{ homePath, legacyGameFolder });
+	const legacyPath = try std.fs.path.join(main.stackAllocator.allocator, &.{homePath, legacyGameFolder});
 	defer main.stackAllocator.free(legacyPath);
 	if(builtin.os.tag == .windows) {
-		if (dirExists(legacyPath)) {
-	const dataPath = try main.globalAllocator.allocator.dupe(u8, homePath);
-	return .{ dataPath, legacyGameFolder };
+		if(dirExists(legacyPath)) {
+			const dataPath = try main.globalAllocator.allocator.dupe(u8, homePath);
+			return .{dataPath, legacyGameFolder};
 		}
 		const dataPath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, "APPDATA");
-					return .{ dataPath, gameFolder };
+		return .{dataPath, gameFolder};
 	} else {
-		if (dirExists(legacyPath)) {
-	const dataPath = try main.globalAllocator.allocator.dupe(u8, homePath);
-	return .{ dataPath, legacyGameFolder };
+		if(dirExists(legacyPath)) {
+			const dataPath = try main.globalAllocator.allocator.dupe(u8, homePath);
+			return .{dataPath, legacyGameFolder};
 		}
 		var dataPath = std.process.getEnvVarOwned(main.stackAllocator.allocator, "XDG_DATA_HOME") catch "";
-		if (dataPath.len != 0) {
-	return .{ dataPath, gameFolder };
+		if(dataPath.len != 0) {
+			return .{dataPath, gameFolder};
 		}
-		dataPath = try std.fs.path.join(main.stackAllocator.allocator, &.{ homePath, "/.local/share" });
-		return .{ dataPath, gameFolder };
+		dataPath = try std.fs.path.join(main.stackAllocator.allocator, &.{homePath, "/.local/share"});
+		return .{dataPath, gameFolder};
 	}
 }
 
