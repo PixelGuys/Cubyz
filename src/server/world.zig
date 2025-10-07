@@ -604,21 +604,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 							};
 							const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
 							defer ch.decreaseRefCount();
-							if(self.storeMaps and ch.super.pos.voxelSize == 1) { // TODO: Remove after first release
-								// Store the surrounding map pieces as well:
-								const mapStartX = ch.super.pos.wx -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
-								const mapStartY = ch.super.pos.wy -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
-								for(0..2) |dx| {
-									for(0..2) |dy| {
-										const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
-										const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
-										const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, ch.super.pos.voxelSize);
-										if(!map.wasStored.swap(true, .monotonic)) {
-											map.save(null, .{});
-										}
-									}
-								}
-							}
 							var nextPos = pos;
 							nextPos.wx &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
 							nextPos.wy &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
