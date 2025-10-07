@@ -1,0 +1,26 @@
+.{
+	.properties = .{},
+	.minRadius = 16,
+	.maxRadius = 24,
+	.chance = 0,
+	.minHeight = 4,
+	.maxHeight = 8,
+	.maxHeightLimit = 4,
+	.minHeightLimit = 8,
+	.roughness = 0,
+	.hills = 0,
+	.mountains = 0,
+	.stoneBlock = "cubyz:chalk/purple",
+	.ground_structure = .{
+		"1 cubyz:glass/purple",
+		"1 cubyz:glass/violet",
+		"1 cubyz:glass/magenta",
+		"1 cubyz:glass/pink",
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/bubblegum_hills/base",
+			.chance = 25,
+		},
+	},
+}
