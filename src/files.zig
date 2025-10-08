@@ -56,14 +56,23 @@ fn dirExists(path: []const u8) bool {
 	return true;
 }
 
-fn moveLegacyData(oldPath: []const u8, newPath: []const u8) !void {
+fn moveLegacyData(oldPath: []const u8, dataPath: []const u8, gameFolder: []const u8) !void {
+	const newPath = try std.fs.path.join(main.stackAllocator.allocator, &.{dataPath, gameFolder});
+	defer main.stackAllocator.free(newPath);
 	if((!dirExists(oldPath)) or dirExists(newPath)) {
 		return;
 	}
-	var oldDir = try std.fs.openDirAbsolute(oldPath, .{});
-	defer oldDir.close();
-	var newDir = try std.fs.openDirAbsolute(newPath, .{});
-	defer newDir.close();
+	const command = if(builtin.os.tag == .windows) .{"cmd", "/C", "move", oldPath, newPath} else .{"mv", oldPath, newPath};
+	const result = std.process.Child.run(.{
+		.allocator = main.stackAllocator.allocator,
+		.argv = &command,
+	}) catch |err| {
+		std.log.err("Got error while trying to migrate legacy data: {s}", .{@errorName(err)});
+		return;
+	};
+	if(result.stderr.len != 0) {
+		std.log.err("Got error while trying to migrate legacy data: {s}", .{result.stderr});
+	}
 }
 
 fn getDataPath() ![2][]const u8 {
@@ -78,7 +87,7 @@ fn getDataPath() ![2][]const u8 {
 	switch(builtin.os.tag) {
 		.windows => {
 			const dataPath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, "APPDATA");
-			try moveLegacyData(legacyPath, dataPath);
+			try moveLegacyData(legacyPath, dataPath, gameFolder);
 			return .{dataPath, gameFolder};
 		},
 		.macos => {
@@ -88,11 +97,11 @@ fn getDataPath() ![2][]const u8 {
 		else => {
 			var dataPath = std.process.getEnvVarOwned(main.stackAllocator.allocator, "XDG_DATA_HOME") catch "";
 			if(dataPath.len != 0) {
-				try moveLegacyData(legacyPath, dataPath);
+				try moveLegacyData(legacyPath, dataPath, gameFolder);
 				return .{dataPath, gameFolder};
 			}
 			dataPath = try std.fs.path.join(main.stackAllocator.allocator, &.{homePath, "/.local/share"});
-			try moveLegacyData(legacyPath, dataPath);
+			try moveLegacyData(legacyPath, dataPath, gameFolder);
 			return .{dataPath, gameFolder};
 		},
 	}
