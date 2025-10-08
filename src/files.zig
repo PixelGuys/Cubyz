@@ -13,7 +13,7 @@ pub fn openDirInWindow(path: []const u8) void {
 		std.mem.replaceScalar(u8, newPath, '/', '\\');
 	}
 
-	const command = if(builtin.os.tag == .windows) .{"explorer", newPath} else .{"open", newPath};
+	const command = if(builtin.os.tag == .windows) .{"explorer", newPath} else .{"xdg-open", newPath};
 
 	const result = std.process.Child.run(.{
 		.allocator = main.stackAllocator.allocator,
