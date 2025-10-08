@@ -67,7 +67,7 @@ fn moveLegacyData(oldPath: []const u8, newPath: []const u8) !void {
 }
 
 fn getDataPath() ![2][]const u8 {
-	const gameFolder = if(builtin.os.tag == .windows) "Cubyz" else "cubyz";
+	const gameFolder = "Cubyz";
 	const homePath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, if(builtin.os.tag == .windows) "USERPROFILE" else "HOME");
 	defer main.stackAllocator.free(homePath);
 
