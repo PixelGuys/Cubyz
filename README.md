@@ -25,6 +25,7 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 
 
 # Run Cubyz
+### This section is about compiling a dev version, if you just want a precompiled version, go to [releases](https://github.com/PixelGuys/Cubyz/releases)
 ## The Easy Way (no tools needed)
 1. Download the latest [source code](https://codeload.github.com/PixelGuys/Cubyz/zip/refs/heads/master)
 2. Extract the zip file
