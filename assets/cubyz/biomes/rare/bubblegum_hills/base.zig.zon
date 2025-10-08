@@ -10,7 +10,7 @@
 	.roughness = 1,
 	.hills = 25,
 	.mountains = 15,
-	.chance = 0.01,
+	.chance = 0.1,
 	.validPlayerSpawn = false,
 	.stoneBlock = "cubyz:chalk/purple",
 	.stripes = .{
@@ -59,17 +59,28 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cloth/block/pink",
-			.log = "cubyz:chalk/white",
-			.top = "cubyz:chalk/white",
-			.chance = 0.016,
-			.type = .round,
-			.height = 12,
-			.height_variation = 6,
-			.leafRadius = 4,
-			.leafRadius_variation = 3,
-			.branched = false,
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy/cotton",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy/lollypop",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy/ice_cream",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy/wrapped",
+			.placeMode = .degradable,
+			.chance = 0.01,
 		},
 	},
 }
