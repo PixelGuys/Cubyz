@@ -1,0 +1,37 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = "cubyz:branch",
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:candy_cane/branch/dot",
+	.texture1 = "cubyz:candy_cane/branch/half_line",
+	.texture2 = "cubyz:candy_cane/branch/line",
+	.texture3 = "cubyz:candy_cane/branch/bend",
+	.texture4 = "cubyz:candy_cane/branch/intersection",
+	.texture5 = "cubyz:candy_cane/branch/cross",
+	.item = .{
+		.material = .{
+			.durability = 20,
+			.massDamage = 0.4,
+			.hardnessDamage = 0.4,
+			.swingSpeed = 6.3,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff514438, 0xff665045, 0xff7a5d4d, 0xff93715c, 0xff7a5d4d,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.10,
+				},
+			},
+		},
+		.texture = "branch/baobab.png",
+	},
+}

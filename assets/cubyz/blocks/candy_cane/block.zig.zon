@@ -1,0 +1,16 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 8,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:log",
+	.model = "cubyz:cube",
+	
+	.texture0 = "cubyz:candy_cane/dot",
+	.texture1 = "cubyz:candy_cane/line",
+	.texture2 = "cubyz:candy_cane/bend",
+	.texture3 = "cubyz:candy_cane/intersection",
+	.texture4 = "cubyz:candy_cane/cross",
+	.texture5 = "cubyz:candy_cane/top",
+}
