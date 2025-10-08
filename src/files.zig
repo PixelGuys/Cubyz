@@ -56,8 +56,8 @@ fn dirExists(path: []const u8) bool {
 	return true;
 }
 
-fn moveLegacyData(oldPath: u8, newPath: u8) void {
-	if(!dirExists(oldPath) || dirExists(newPath)) {
+fn moveLegacyData(oldPath: []const u8, newPath: []const u8) !void {
+	if((!dirExists(oldPath)) or dirExists(newPath)) {
 		return;
 	}
 	var oldDir = try std.fs.openDirAbsolute(oldPath, .{});
@@ -77,16 +77,16 @@ fn getDataPath() ![2][]const u8 {
 
 	if(builtin.os.tag == .windows) {
 		const dataPath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, "APPDATA");
-		moveLegacyData(legacyPath, dataPath);
+		try moveLegacyData(legacyPath, dataPath);
 		return .{dataPath, gameFolder};
 	} else {
 		var dataPath = std.process.getEnvVarOwned(main.stackAllocator.allocator, "XDG_DATA_HOME") catch "";
 		if(dataPath.len != 0) {
-			moveLegacyData(legacyPath, dataPath);
+			try moveLegacyData(legacyPath, dataPath);
 			return .{dataPath, gameFolder};
 		}
 		dataPath = try std.fs.path.join(main.stackAllocator.allocator, &.{homePath, "/.local/share"});
-		moveLegacyData(legacyPath, dataPath);
+		try moveLegacyData(legacyPath, dataPath);
 		return .{dataPath, gameFolder};
 	}
 }
