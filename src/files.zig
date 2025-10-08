@@ -75,19 +75,26 @@ fn getDataPath() ![2][]const u8 {
 	const legacyPath = try std.fs.path.join(main.stackAllocator.allocator, &.{homePath, legacyGameFolder});
 	defer main.stackAllocator.free(legacyPath);
 
-	if(builtin.os.tag == .windows) {
-		const dataPath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, "APPDATA");
-		try moveLegacyData(legacyPath, dataPath);
-		return .{dataPath, gameFolder};
-	} else {
-		var dataPath = std.process.getEnvVarOwned(main.stackAllocator.allocator, "XDG_DATA_HOME") catch "";
-		if(dataPath.len != 0) {
+	switch(builtin.os.tag) {
+		.windows => {
+			const dataPath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, "APPDATA");
 			try moveLegacyData(legacyPath, dataPath);
 			return .{dataPath, gameFolder};
-		}
-		dataPath = try std.fs.path.join(main.stackAllocator.allocator, &.{homePath, "/.local/share"});
-		try moveLegacyData(legacyPath, dataPath);
-		return .{dataPath, gameFolder};
+		},
+		.macos => {
+			const dataPath = try std.fs.path.join(main.stackAllocator.allocator, &.{homePath, "/Library/Application Support/"});
+			return .{dataPath, gameFolder};
+		},
+		else => {
+			var dataPath = std.process.getEnvVarOwned(main.stackAllocator.allocator, "XDG_DATA_HOME") catch "";
+			if(dataPath.len != 0) {
+				try moveLegacyData(legacyPath, dataPath);
+				return .{dataPath, gameFolder};
+			}
+			dataPath = try std.fs.path.join(main.stackAllocator.allocator, &.{homePath, "/.local/share"});
+			try moveLegacyData(legacyPath, dataPath);
+			return .{dataPath, gameFolder};
+		},
 	}
 }
 
