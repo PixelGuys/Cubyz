@@ -859,33 +859,29 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			}
 			bindModelUniforms(model.index, blockType);
 
-			// Swing animation: swingProgress goes from 0 to swingTime
-			// Define start and end offsets for position and rotation
+			// Item swing animation
 			const startPos: Vec3f = pos;
-			const swingPosOffset: Vec3f = Vec3f{-0.1, 0.0, 0.2}; // Offset: -X (left), +Z (forward) in player hand coordinates
+			const swingPosOffset: Vec3f = Vec3f{-0.1, 0.0, 0.2};
 			const startRot: Vec3f = Vec3f{0.0, 0.0, 0.0};
-			const swingRotOffset: Vec3f = Vec3f{-0.2, -0.1, 0.0}; // swing rotation offset: negative X (down), negative Y (side), Z unchanged
+			const swingRotOffset: Vec3f = Vec3f{-0.2, -0.1, 0.0};
 			var swingPhase: f32 = 0.0;
-			   if(swingTime <= 0) {
-				   swingPhase = 0.0;
-			   } else {
-				   swingPhase = std.math.sin((swingProgress / swingTime) * std.math.pi);
-			   }
-			   const lerpedPos: Vec3f = startPos + swingPosOffset * Vec3f{ swingPhase, swingPhase, swingPhase };
-			const lerpedRot: Vec3f = Vec3f{
-				startRot[0] + (swingRotOffset[0] * swingPhase),
-				startRot[1] + (swingRotOffset[1] * swingPhase),
-				startRot[2] + (swingRotOffset[2] * swingPhase),
-			};
-			   // Rotation and translation for swing
-			   var modelMatrix = Mat4f.rotationX(-rot[0] + lerpedRot[0]);
-			   modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1] + lerpedRot[1]));
-			   modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2] + lerpedRot[2]));
-			   modelMatrix = modelMatrix.mul(Mat4f.translation(lerpedPos));
-			const TOOL_ROT_Z: f32 = -std.math.pi * 0.47;
-			const TOOL_ROT_Y: f32 = std.math.pi * 0.25;
-			const ITEM_ROT_Z: f32 = -std.math.pi * 0.45;
-			const BLOCK_ROT_Z: f32 = -std.math.pi * 0.2;
+			if(swingTime <= 0) {
+				swingPhase = 0.0;
+			} else {
+				swingPhase = std.math.sin((swingProgress/swingTime)*std.math.pi);
+			}
+			const lerpedPos: Vec3f = startPos + swingPosOffset*@as(Vec3f, @splat(swingPhase));
+			const lerpedRot: Vec3f = startRot + swingRotOffset*@as(Vec3f, @splat(swingPhase));
+
+			var modelMatrix = Mat4f.rotationX(-rot[0] + lerpedRot[0]);
+			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1] + lerpedRot[1]));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2] + lerpedRot[2]));
+			modelMatrix = modelMatrix.mul(Mat4f.translation(lerpedPos));
+
+			const TOOL_ROT_Z: f32 = -std.math.pi*0.47;
+			const TOOL_ROT_Y: f32 = std.math.pi*0.25;
+			const ITEM_ROT_Z: f32 = -std.math.pi*0.45;
+			const BLOCK_ROT_Z: f32 = -std.math.pi*0.2;
 
 			if(!isBlock) {
 				if(item == .tool) {
