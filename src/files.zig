@@ -95,13 +95,8 @@ fn flawedInit() !void {
 
 	var dataDir = try std.fs.openDirAbsolute(dataPath, .{});
 	defer dataDir.close();
-	if(builtin.os.tag == .windows) {
-		cubyzDir_ = try dataDir.makeOpenPath(gameFolder, .{});
-		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{dataPath, "/", gameFolder}) catch unreachable;
-	} else {
-		cubyzDir_ = try dataDir.makeOpenPath(gameFolder, .{});
-		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{dataPath, "/", gameFolder}) catch unreachable;
-	}
+	cubyzDir_ = try dataDir.makeOpenPath(gameFolder, .{});
+	cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{dataPath, "/", gameFolder}) catch unreachable;
 }
 
 pub fn init() void {
