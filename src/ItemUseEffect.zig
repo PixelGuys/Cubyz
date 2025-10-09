@@ -52,7 +52,9 @@ inner: ItemUseEffectInner,
 pub fn createByID(allocator: main.heap.NeverFailingAllocator, id: []const u8, zon: ZonElement) ?ItemUseEffect {
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		if(std.mem.eql(u8, decl.name, id)) {
-			return .{.inner = @unionInit(ItemUseEffectInner, decl.name, &@field(list, decl.name).init(allocator, zon))};
+			const value = allocator.create(@field(list, decl.name));
+			value.* = .init(allocator, zon);
+			return .{.inner = @unionInit(ItemUseEffectInner, decl.name, value)};
 		}
 	}
 	return null;
