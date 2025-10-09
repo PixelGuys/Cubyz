@@ -22,7 +22,7 @@ const ItemUseEffectInner = blk: {
 	for(0.., @typeInfo(list).@"struct".decls) |i, declaration| {
 		unionFields[i] = std.builtin.Type.UnionField{
 			.name = declaration.name,
-			.type = @field(list, declaration.name),
+			.type = *const @field(list, declaration.name),
 			.alignment = 0,
 		};
 		enumFields[i] = std.builtin.Type.EnumField{
@@ -50,9 +50,9 @@ const ItemUseEffectInner = blk: {
 
 inner: ItemUseEffectInner,
 pub fn createByID(allocator: main.heap.NeverFailingAllocator, id: []const u8, zon: ZonElement) ?ItemUseEffect {
-	inline for(@typeInfo(ItemUseEffectInner).@"union".fields) |field| {
-		if(std.mem.eql(u8, field.name, id)) {
-			return .{.inner = @unionInit(ItemUseEffectInner, field.name, @FieldType(ItemUseEffectInner, field.name).init(allocator, zon))};
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
+		if(std.mem.eql(u8, decl.name, id)) {
+			return .{.inner = @unionInit(ItemUseEffectInner, decl.name, &@field(list, decl.name).init(allocator, zon))};
 		}
 	}
 	return null;
