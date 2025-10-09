@@ -2,7 +2,7 @@
 
 echo Detecting Zig compiler...
 
-set /p baseVersion=<".zig-version"
+set /p baseVersion=<".zigversion"
 
 IF "%PROCESSOR_ARCHITECTURE%"=="AMD64"	(set arch=x86_64)
 IF "%PROCESSOR_ARCHITECTURE%"=="IA64"	(set arch=x86_64)
