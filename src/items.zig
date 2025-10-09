@@ -229,6 +229,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn block(self: BaseItemIndex) ?u16 {
 		return itemList[@intFromEnum(self)].block;
 	}
+	pub fn foodEffects(self: BaseItemIndex) ?[]const FoodEffect {
+		return itemList[@intFromEnum(self)].foodEffects;
+	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasTag(tag);
 	}
@@ -254,7 +257,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
-	foodEffects: []const FoodEffect,
+	foodEffects: ?[]const FoodEffect,
 
 	var unobtainable = BaseItem{
 		.image = graphics.Image.defaultImage,
@@ -264,7 +267,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		.stackSize = 0,
 		.material = null,
 		.block = null,
-		.foodEffects = .{},
+		.foodEffects = null,
 	};
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
@@ -307,7 +310,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			if(foodEffectsZon != .null) {
 				std.log.err("Invalid food effects for {}, expected a list.", self.id);
 			}
-			self.foodEffects = &.{};
+			self.foodEffects = null;
 		}
 
 		var tooltip: main.List(u8) = .init(allocator);

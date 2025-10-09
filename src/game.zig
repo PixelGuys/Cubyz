@@ -537,6 +537,16 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
+	pub fn eatFood() void {
+		const item = inventory.getItem(selectedSlot) orelse return;
+		if(item != .baseItem) return;
+		const foodEffects = item.baseItem.foodEffects() orelse return;
+		for(foodEffects) |foodEffect| {
+			foodEffect.apply(world.?);
+		}
+		inventory.removeOne(selectedSlot);
+	}
+
 	pub fn kill() void {
 		Player.super.pos = world.?.spawn;
 		Player.super.vel = .{0, 0, 0};
@@ -772,6 +782,10 @@ pub fn pressBreak() void {
 
 pub fn releaseBreak() void {
 	nextBlockBreakTime = null;
+}
+
+pub fn pressEat() void {
+	Player.eatFood();
 }
 
 pub fn pressAcquireSelectedBlock() void {

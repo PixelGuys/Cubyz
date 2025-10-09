@@ -52,8 +52,8 @@ pub fn parse(allocator: main.heap.NeverFailingAllocator, zon: ZonElement) ?FoodE
 	return createByID(allocator, id, zon);
 }
 
-pub fn apply(self: *FoodEffect, world: *main.game.World, player: *main.game.Player) void {
+pub fn apply(self: *const FoodEffect, world: *main.game.World) void {
 	switch(self.inner) {
-		inline else => |effect| effect.apply(world, player),
+		inline else => |effect| effect.apply(world),
 	}
 }
