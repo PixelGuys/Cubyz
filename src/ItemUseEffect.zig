@@ -12,11 +12,11 @@ const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
 
-const list = @import("food_effect");
+const list = @import("item_use_effect");
 
-const FoodEffect = @This();
+const ItemUseEffect = @This();
 
-const FoodEffectInner = blk: {
+const ItemUseEffectInner = blk: {
 	var unionFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.UnionField = undefined;
 	var enumFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
 	for(0.., @typeInfo(list).@"struct".decls) |i, declaration| {
@@ -48,22 +48,22 @@ const FoodEffectInner = blk: {
 	});
 };
 
-inner: FoodEffectInner,
-pub fn createByID(allocator: main.heap.NeverFailingAllocator, id: []const u8, zon: ZonElement) ?FoodEffect {
-	inline for(@typeInfo(FoodEffectInner).@"union".fields) |field| {
+inner: ItemUseEffectInner,
+pub fn createByID(allocator: main.heap.NeverFailingAllocator, id: []const u8, zon: ZonElement) ?ItemUseEffect {
+	inline for(@typeInfo(ItemUseEffectInner).@"union".fields) |field| {
 		if(std.mem.eql(u8, field.name, id)) {
-			return .{.inner = @unionInit(FoodEffectInner, field.name, @FieldType(FoodEffectInner, field.name).init(allocator, zon))};
+			return .{.inner = @unionInit(ItemUseEffectInner, field.name, @FieldType(ItemUseEffectInner, field.name).init(allocator, zon))};
 		}
 	}
 	return null;
 }
 
-pub fn parse(allocator: main.heap.NeverFailingAllocator, zon: ZonElement) ?FoodEffect {
+pub fn parse(allocator: main.heap.NeverFailingAllocator, zon: ZonElement) ?ItemUseEffect {
 	const id = zon.get(?[]const u8, "id", null) orelse return null;
 	return createByID(allocator, id, zon);
 }
 
-pub fn apply(self: *const FoodEffect, world: *main.game.World) void {
+pub fn apply(self: *const ItemUseEffect, world: *main.game.World) void {
 	switch(self.inner) {
 		inline else => |effect| effect.apply(world),
 	}

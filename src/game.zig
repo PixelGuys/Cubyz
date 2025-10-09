@@ -537,12 +537,12 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn eatFood() void {
+	pub fn pressUseItem() void {
 		const item = inventory.getItem(selectedSlot) orelse return;
 		if(item != .baseItem) return;
-		const foodEffects = item.baseItem.foodEffects() orelse return;
-		for(foodEffects) |foodEffect| {
-			foodEffect.apply(world.?);
+		const itemUseEffects = item.baseItem.itemUseEffects() orelse return;
+		for(itemUseEffects) |itemUseEffect| {
+			itemUseEffect.apply(world.?);
 		}
 		inventory.removeOne(selectedSlot);
 	}
@@ -785,7 +785,7 @@ pub fn releaseBreak() void {
 }
 
 pub fn pressEat() void {
-	Player.eatFood();
+	Player.useItem();
 }
 
 pub fn pressAcquireSelectedBlock() void {

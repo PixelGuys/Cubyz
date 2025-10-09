@@ -24,7 +24,7 @@ const modifierList = @import("tool/modifiers/_list.zig");
 const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
 pub const Inventory = @import("Inventory.zig");
-pub const FoodEffect = @import("FoodEffect.zig");
+pub const ItemUseEffect = @import("ItemUseEffect.zig");
 
 const Material = struct { // MARK: Material
 	massDamage: f32 = undefined,
@@ -229,8 +229,8 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn block(self: BaseItemIndex) ?u16 {
 		return itemList[@intFromEnum(self)].block;
 	}
-	pub fn foodEffects(self: BaseItemIndex) ?[]const FoodEffect {
-		return itemList[@intFromEnum(self)].foodEffects;
+	pub fn itemUseEffects(self: BaseItemIndex) ?[]const ItemUseEffect {
+		return itemList[@intFromEnum(self)].itemUseEffects;
 	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasTag(tag);
@@ -257,7 +257,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
-	foodEffects: ?[]const FoodEffect,
+	itemUseEffects: ?[]const ItemUseEffect,
 
 	var unobtainable = BaseItem{
 		.image = graphics.Image.defaultImage,
@@ -267,7 +267,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		.stackSize = 0,
 		.material = null,
 		.block = null,
-		.foodEffects = null,
+		.itemUseEffects = null,
 	};
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
@@ -294,23 +294,23 @@ pub const BaseItem = struct { // MARK: BaseItem
 			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
 		};
 		self.texture = null;
-		const foodEffectsZon = zon.getChild("foodEffects");
-		if(foodEffectsZon == .array) {
-			const foodEffectSlice = foodEffectsZon.array.items;
-			var foodEffects: []FoodEffect = allocator.alloc(FoodEffect, foodEffectSlice.len);
-			for(0.., foodEffectSlice) |i, foodEffectZon| {
-				const foodEffect = FoodEffect.parse(allocator, foodEffectZon) orelse {
-					std.log.err("Failed to load food effect of {s}", .{self.id});
+		const itemUseEffectsZon = zon.getChild("itemUseEffects");
+		if(itemUseEffectsZon == .array) {
+			const itemUseEffectsSlice = itemUseEffectsZon.array.items;
+			var itemUseEffects: []ItemUseEffect = allocator.alloc(ItemUseEffect, itemUseEffectsSlice.len);
+			for(0.., itemUseEffectsSlice) |i, itemUseEffectZon| {
+				const itemUseEffect = ItemUseEffect.parse(allocator, itemUseEffectZon) orelse {
+					std.log.err("Failed to load item use effect of {s}", .{self.id});
 					continue;
 				};
-				foodEffects[i] = foodEffect;
+				itemUseEffects[i] = itemUseEffect;
 			}
-			self.foodEffects = foodEffects;
+			self.itemUseEffects = itemUseEffects;
 		} else {
-			if(foodEffectsZon != .null) {
-				std.log.err("Invalid food effects for {s}, expected a list.", .{self.id});
+			if(itemUseEffectsZon != .null) {
+				std.log.err("Invalid item use effects for {s}, expected a list.", .{self.id});
 			}
-			self.foodEffects = null;
+			self.itemUseEffects = null;
 		}
 
 		var tooltip: main.List(u8) = .init(allocator);
