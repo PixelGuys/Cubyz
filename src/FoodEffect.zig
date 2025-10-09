@@ -17,20 +17,33 @@ const list = @import("food_effect");
 const FoodEffect = @This();
 
 const FoodEffectInner = blk: {
-	var fields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.UnionField = undefined;
+	var unionFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.UnionField = undefined;
+	var enumFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
 	for(0.., @typeInfo(list).@"struct".decls) |i, declaration| {
-		fields[i] = std.builtin.Type.UnionField {
+		unionFields[i] = std.builtin.Type.UnionField {
 			.name = declaration.name,
 			.type =  @field(list, declaration.name),
 			.alignment = 0,
 		};
+		enumFields[i] = std.builtin.Type.EnumField {
+			.name = declaration.name,
+			.value = i,
+		};
 	}
+	const _enum = @Type(.{
+		.@"enum" = .{
+			.fields = &enumFields,
+			.decls = &.{},
+			.is_exhaustive = false,
+			.tag_type = std.meta.Int(.unsigned, std.math.log2_int(usize, unionFields.len) + 1)
+		}
+	});
 	break :blk @Type(.{
 		.@"union" = .{
-			.fields = &fields,
+			.fields = &unionFields,
 			.decls = &.{},
 			.layout = .auto,
-			.tag_type = null,
+			.tag_type = _enum,
 		}
 	});
 };
