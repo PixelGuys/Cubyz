@@ -91,7 +91,7 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 				}
 				if(placementPos[2] & ~@as(i32, 31) != oldZ & ~@as(i32, 31)) return; // Too far from the surface.
 			},
-			.none => {}
+			.none => {},
 		}
 		placeSbb(self, child, placementPos, childBlock.direction(), childRotation, chunk, caveMap, seed);
 	}
