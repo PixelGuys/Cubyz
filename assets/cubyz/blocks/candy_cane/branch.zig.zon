@@ -17,21 +17,15 @@
 	.texture5 = "cubyz:candy_cane/branch/cross",
 	.item = .{
 		.material = .{
-			.durability = 20,
-			.massDamage = 0.4,
-			.hardnessDamage = 0.4,
-			.swingSpeed = 6.3,
+			.durability = 260,
+			.massDamage = 1.5,
+			.hardnessDamage = 0.5,
+			.swingSpeed = 4.2,
 			.textureRoughness = 0.7,
 			.colors = .{
-				0xff514438, 0xff665045, 0xff7a5d4d, 0xff93715c, 0xff7a5d4d,
-			},
-			.modifiers = .{
-				.{
-					.id = "fragile",
-					.strength = 0.10,
-				},
+				0xffc4a6a8, 0xffce2632, 0xfffff1ec, 0xfff0424e, 0xffffffff,
 			},
 		},
-		.texture = "branch/baobab.png",
+		.texture = "candy_cane.png",
 	},
 }
