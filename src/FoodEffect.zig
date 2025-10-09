@@ -30,13 +30,22 @@ const FoodEffectInner = blk: {
 			.value = i,
 		};
 	}
-	const _enum = @Type(.{.@"enum" = .{.fields = &enumFields, .decls = &.{}, .is_exhaustive = false, .tag_type = std.meta.Int(.unsigned, std.math.log2_int(usize, unionFields.len) + 1)}});
-	break :blk @Type(.{.@"union" = .{
-		.fields = &unionFields,
-		.decls = &.{},
-		.layout = .auto,
-		.tag_type = _enum,
-	}});
+	const _enum = @Type(.{
+		.@"enum" = .{
+			.fields = &enumFields,
+			.decls = &.{},
+			.is_exhaustive = false,
+			.tag_type = std.meta.Int(.unsigned, std.math.log2_int(usize, unionFields.len) + 1),
+		},
+	});
+	break :blk @Type(.{
+		.@"union" = .{
+			.fields = &unionFields,
+			.decls = &.{},
+			.layout = .auto,
+			.tag_type = _enum,
+		},
+	});
 };
 
 inner: FoodEffectInner,
