@@ -24,6 +24,7 @@ const modifierList = @import("tool/modifiers/_list.zig");
 const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
 pub const Inventory = @import("Inventory.zig");
+pub const FoodEffect = @import("FoodEffect.zig");
 
 const Material = struct { // MARK: Material
 	massDamage: f32 = undefined,
@@ -253,7 +254,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
-	foodValue: f32, // TODO: Effects.
+	foodEffects: []const FoodEffect, // TODO: Effects.
 
 	var unobtainable = BaseItem{
 		.image = graphics.Image.defaultImage,
@@ -263,7 +264,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		.stackSize = 0,
 		.material = null,
 		.block = null,
-		.foodValue = 0,
+		.foodEffects = .{},
 	};
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
