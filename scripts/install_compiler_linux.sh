@@ -6,7 +6,7 @@ fail () {
 
 echo "Detecting Zig compiler..."
 
-BASE_VERSION=$(< .zig-version)
+BASE_VERSION=$(< .zigversion)
 
 case "$(uname -s)" in
 "Darwin")
