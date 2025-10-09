@@ -1,0 +1,19 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_0", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_1", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_2", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_3", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_4", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_5", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_6", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_7", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_8", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_9", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_10", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_11", .chance = 0.1},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_12", .chance = 1.5},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_13", .chance = 0.5},
+		.{.id = null, .chance = 0.3},
+	},
+}
