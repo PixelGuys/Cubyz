@@ -34,6 +34,9 @@ textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
 optional: OptionalCallbacks,
+dashes: [128]u8 = undefined,
+dashes_len: usize = 0,
+obfuscated: bool = false,
 
 pub fn __init() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -61,8 +64,10 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 		.scrollBar = scrollBar,
 		.onNewline = onNewline,
 		.optional = optional,
+		.obfuscated = false,
 	};
 	self.currentString.appendSlice(text);
+	self.updateDashes();
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
 	return self;
 }
@@ -89,6 +94,14 @@ pub fn clear(self: *TextInput) void {
 
 pub fn toComponent(self: *TextInput) GuiComponent {
 	return .{.textInput = self};
+}
+
+pub fn updateDashes(self: *TextInput) void {
+	const dash_count = self.currentString.items.len;
+	for(self.dashes[0..dash_count]) |*c| {
+		c.* = '-';
+	}
+	self.dashes_len = dash_count;
 }
 
 pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) void {
@@ -160,6 +173,7 @@ fn reloadText(self: *TextInput) void {
 	self.textBuffer.deinit();
 	self.textBuffer = TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
+	self.updateDashes();
 }
 
 fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
@@ -504,7 +518,11 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
 		self.scrollBar.render(mousePosition - self.pos);
 	}
-	self.textBuffer.render(textPos[0], textPos[1], fontSize);
+	if(self.obfuscated) {
+		graphics.draw.text(self.dashes[0..self.dashes_len], textPos[0], textPos[1], fontSize, .left);
+	} else {
+		self.textBuffer.render(textPos[0], textPos[1], fontSize);
+	}
 	if(self.pressed) {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}

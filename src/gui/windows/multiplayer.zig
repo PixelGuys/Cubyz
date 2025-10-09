@@ -13,12 +13,15 @@ const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
+const globalAllocator = main.globalAllocator.allocator;
+
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
 var ipAddressLabel: *Label = undefined;
 var ipAddressEntry: *TextInput = undefined;
+var ipObfuscated: bool = true;
 
 const padding: f32 = 8;
 
@@ -85,14 +88,23 @@ fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
+fn revealIp(_: usize) void {
+	ipObfuscated = false;
+	ipAddressLabel.updateText(ipAddress);
+	ipAddressEntry.obfuscated = ipObfuscated;
+	ipAddressEntry.updateDashes();
+}
+
 pub fn onOpen() void {
+	ipObfuscated = true;
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
-	//                                               255.255.255.255:?65536 (longest possible ip address)
-	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
+	ipAddressLabel = Label.init(.{0, 0}, width, "", .center);
 	list.add(ipAddressLabel);
+	list.add(Button.initText(.{0, 0}, 100, "Reveal", .{.callback = &revealIp}));
 	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}, .{});
+	ipAddressEntry.obfuscated = true;
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
 	list.finish(.center);
@@ -129,6 +141,15 @@ pub fn onClose() void {
 pub fn update() void {
 	if(gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
-		ipAddressLabel.updateText(ipAddress);
+		if(ipObfuscated) {
+			const dash_count = if(ipAddress.len > 0) ipAddress.len else 21;
+			var dashes: [21]u8 = undefined;
+			for(dashes[0..dash_count]) |*c| {
+				c.* = '-';
+			}
+			ipAddressLabel.updateText(dashes[0..dash_count]);
+		} else {
+			ipAddressLabel.updateText(ipAddress);
+		}
 	}
 }
