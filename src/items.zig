@@ -300,7 +300,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			var foodEffects: []FoodEffect = allocator.alloc(FoodEffect, foodEffectSlice.len);
 			for(0.., foodEffectSlice) |i, foodEffectZon| {
 				const foodEffect = FoodEffect.parse(allocator, foodEffectZon) orelse {
-					std.log.err("Failed to load food effect of {}", self.id);
+					std.log.err("Failed to load food effect of {s}", .{self.id});
 					continue;
 				};
 				foodEffects[i] = foodEffect;
@@ -308,7 +308,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			self.foodEffects = foodEffects;
 		} else {
 			if(foodEffectsZon != .null) {
-				std.log.err("Invalid food effects for {}, expected a list.", self.id);
+				std.log.err("Invalid food effects for {s}, expected a list.", .{self.id});
 			}
 			self.foodEffects = null;
 		}
