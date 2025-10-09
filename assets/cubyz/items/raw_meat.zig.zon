@@ -1,4 +1,6 @@
 .{
 	.texture = "raw_meat.png",
-	.food = 3,
+	.foodEffects = .{
+		.{.id = "cubyz:health", .amount = 0.5},
+	},
 }
