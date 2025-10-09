@@ -64,8 +64,9 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 	});
 	const rotated = &blueprints[@intFromEnum(blueprintRotation)];
 	const rotatedOrigin = rotated.originBlock.pos();
-	const pastePosition = placementPosition - rotatedOrigin - placementDirection.relPos();
-
+	var pastePosition = placementPosition - rotatedOrigin - placementDirection.relPos();
+	pastePosition += structure.originOffset;
+	
 	rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
 
 	for(rotated.childBlocks) |childBlock| {
