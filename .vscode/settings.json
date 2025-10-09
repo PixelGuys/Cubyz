@@ -1,0 +1,4 @@
+{
+    "zig.formattingProvider": "off",
+    "zig.path": "${workspaceFolder}/compiler/zig/zig.exe"
+}
