@@ -20,41 +20,30 @@ const FoodEffectInner = blk: {
 	var unionFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.UnionField = undefined;
 	var enumFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
 	for(0.., @typeInfo(list).@"struct".decls) |i, declaration| {
-		unionFields[i] = std.builtin.Type.UnionField {
+		unionFields[i] = std.builtin.Type.UnionField{
 			.name = declaration.name,
 			.type =  @field(list, declaration.name),
 			.alignment = 0,
 		};
-		enumFields[i] = std.builtin.Type.EnumField {
+		enumFields[i] = std.builtin.Type.EnumField{
 			.name = declaration.name,
 			.value = i,
 		};
 	}
-	const _enum = @Type(.{
-		.@"enum" = .{
-			.fields = &enumFields,
-			.decls = &.{},
-			.is_exhaustive = false,
-			.tag_type = std.meta.Int(.unsigned, std.math.log2_int(usize, unionFields.len) + 1)
-		}
-	});
-	break :blk @Type(.{
-		.@"union" = .{
-			.fields = &unionFields,
-			.decls = &.{},
-			.layout = .auto,
-			.tag_type = _enum,
-		}
-	});
+	const _enum = @Type(.{.@"enum" = .{.fields = &enumFields, .decls = &.{}, .is_exhaustive = false, .tag_type = std.meta.Int(.unsigned, std.math.log2_int(usize, unionFields.len) + 1)}});
+	break :blk @Type(.{.@"union" = .{
+		.fields = &unionFields,
+		.decls = &.{},
+		.layout = .auto,
+		.tag_type = _enum,
+	}});
 };
 
 inner: FoodEffectInner,
 pub fn createByID(allocator: main.heap.NeverFailingAllocator, id: []const u8, zon: ZonElement) ?FoodEffect {
 	inline for(@typeInfo(FoodEffectInner).@"union".fields) |field| {
 		if(std.mem.eql(u8, field.name, id)) {
-			return .{
-				.inner = @unionInit(FoodEffectInner, field.name, @FieldType(FoodEffectInner, field.name).init(allocator, zon))
-			};
+			return .{.inner = @unionInit(FoodEffectInner, field.name, @FieldType(FoodEffectInner, field.name).init(allocator, zon))};
 		}
 	}
 	return null;
