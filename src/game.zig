@@ -784,8 +784,8 @@ pub fn releaseBreak() void {
 	nextBlockBreakTime = null;
 }
 
-pub fn pressEat() void {
-	Player.useItem();
+pub fn pressUseItem() void {
+	Player.pressUseItem();
 }
 
 pub fn pressAcquireSelectedBlock() void {
