@@ -22,33 +22,38 @@ const FoodEffectInner = blk: {
 		fields[i] = std.builtin.Type.UnionField {
 			.name = declaration.name,
 			.type =  @field(list, declaration.name),
+			.alignment = 0,
 		};
 	}
 	break :blk @Type(.{
 		.@"union" = .{
-			.fields = fields,
-			.decls = .{},
+			.fields = &fields,
+			.decls = &.{},
+			.layout = .auto,
+			.tag_type = null,
 		}
 	});
 };
 
 inner: FoodEffectInner,
-pub fn createByID(id: []const u8, zon: ZonElement) ?FoodEffect {
+pub fn createByID(allocator: main.heap.NeverFailingAllocator, id: []const u8, zon: ZonElement) ?FoodEffect {
 	inline for(@typeInfo(FoodEffectInner).@"union".fields) |field| {
 		if(std.mem.eql(u8, field.name, id)) {
 			return .{
-				.inner = @unionInit(FoodEffectInner, field.name, @FieldType(FoodEffectInner, field.name).init(zon))
+				.inner = @unionInit(FoodEffectInner, field.name, @FieldType(FoodEffectInner, field.name).init(allocator, zon))
 			};
 		}
 	}
+	return null;
 }
+
+pub fn parse(allocator: main.heap.NeverFailingAllocator, zon: ZonElement) ?FoodEffect {
+	const id = zon.get(?[]const u8, "id", null) orelse return null;
+	return createByID(allocator, id, zon);
+}
+
 pub fn apply(self: *FoodEffect, world: *main.game.World, player: *main.game.Player) void {
 	switch(self.inner) {
 		inline else => |effect| effect.apply(world, player),
-	}
-}
-pub fn deinit(self: *FoodEffect) void {
-	switch(self.inner) {
-		inline else => |effect| effect.deinit(),
 	}
 }

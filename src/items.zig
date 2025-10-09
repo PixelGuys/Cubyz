@@ -254,7 +254,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
-	foodEffects: []const FoodEffect, // TODO: Effects.
+	foodEffects: []const FoodEffect,
 
 	var unobtainable = BaseItem{
 		.image = graphics.Image.defaultImage,
@@ -291,7 +291,24 @@ pub const BaseItem = struct { // MARK: BaseItem
 			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
 		};
 		self.texture = null;
-		self.foodValue = zon.get(f32, "food", 0);
+		const foodEffectsZon = zon.getChild("foodEffects");
+		if(foodEffectsZon == .array) {
+			const foodEffectSlice = foodEffectsZon.array.items;
+			var foodEffects: []FoodEffect = allocator.alloc(FoodEffect, foodEffectSlice.len);
+			for(0.., foodEffectSlice) |i, foodEffectZon| {
+				const foodEffect = FoodEffect.parse(allocator, foodEffectZon) orelse {
+					std.log.err("Failed to load food effect of {}", self.id);
+					continue;
+				};
+				foodEffects[i] = foodEffect;
+			}
+			self.foodEffects = foodEffects;
+		} else {
+			if(foodEffectsZon != .null) {
+				std.log.err("Invalid food effects for {}, expected a list.", self.id);
+			}
+			self.foodEffects = &.{};
+		}
 
 		var tooltip: main.List(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);
