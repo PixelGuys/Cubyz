@@ -225,11 +225,14 @@ pub const Rotation = union(RotationMode) {
 	}
 };
 
+const Snapping = enum {none, top, bottom};
+
 pub const StructureBuildingBlock = struct {
 	id: []const u8,
 	children: []?*StructureBuildingBlock,
 	blueprints: AliasTable(Blueprints),
 	rotation: Rotation,
+	snapping: Snapping,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
 		const zonBlueprintsList = zon.getChild("blueprints");
@@ -280,11 +283,14 @@ pub const StructureBuildingBlock = struct {
 			break :blk .inherit;
 		};
 
+		const snapping = std.meta.stringToEnum(Snapping, zon.get([]const u8, "snapping", "none")) orelse .none;
+
 		const self = StructureBuildingBlock{
 			.id = stringId,
 			.children = arenaAllocator.alloc(?*StructureBuildingBlock, childBlockName.items.len),
 			.blueprints = .init(arenaAllocator, blueprintArray),
 			.rotation = rotation,
+			.snapping = snapping,
 		};
 		@memset(self.children, null);
 

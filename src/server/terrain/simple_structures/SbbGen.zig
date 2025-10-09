@@ -50,11 +50,11 @@ pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SbbGen {
 	return self;
 }
 
-pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, seed);
+pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, caveMap, seed);
 }
 
-fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
+fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, caveMap: CaveMapView, seed: *u64) void {
 	const blueprints = &(structure.getBlueprints(seed).* orelse return);
 
 	const origin = blueprints[0].originBlock;
@@ -71,7 +71,29 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 	for(rotated.childBlocks) |childBlock| {
 		const child = structure.getChildStructure(childBlock) orelse continue;
 		const childRotation = rotation.getChildRotation(seed, child.rotation, childBlock.direction());
-		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed);
+		var placementPos = pastePosition + childBlock.pos();
+		const oldZ = placementPos[2];
+
+		switch(child.snapping) {
+			.top => {
+				if(caveMap.isSolid(placementPos[0], placementPos[1], placementPos[2])) {
+					placementPos[2] = caveMap.findTerrainChangeBelow(placementPos[0], placementPos[1], placementPos[2]);
+				} else {
+					placementPos[2] = caveMap.findTerrainChangeAbove(placementPos[0], placementPos[1], placementPos[2]) + chunk.super.pos.voxelSize;
+				}
+				if(placementPos[2] & ~@as(i32, 31) != oldZ & ~@as(i32, 31)) return; // Too far from the surface.
+			},
+			.bottom => {
+				if(caveMap.isSolid(placementPos[0], placementPos[1], placementPos[2])) {
+					placementPos[2] = caveMap.findTerrainChangeAbove(placementPos[0], placementPos[1], placementPos[2]);
+				} else {
+					placementPos[2] = caveMap.findTerrainChangeBelow(placementPos[0], placementPos[1], placementPos[2]) + chunk.super.pos.voxelSize;
+				}
+				if(placementPos[2] & ~@as(i32, 31) != oldZ & ~@as(i32, 31)) return; // Too far from the surface.
+			},
+			.none => {}
+		}
+		placeSbb(self, child, placementPos, childBlock.direction(), childRotation, chunk, caveMap, seed);
 	}
 }
 
