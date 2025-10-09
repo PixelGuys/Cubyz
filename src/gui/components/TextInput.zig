@@ -102,7 +102,7 @@ pub fn updateObfuscation(self: *TextInput) void {
 	if(self.obfuscated) {
 		var i: usize = 0;
 		while(i < self.currentString.items.len) : (i += 1) {
-			self.obfuscated_buffer.appendSlice("●"); // \u25cf
+			self.obfuscated_buffer.appendSlice("•"); // \u2022
 		}
 	} else {
 		self.obfuscated_buffer.appendSlice(self.currentString.items);

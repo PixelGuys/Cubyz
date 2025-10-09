@@ -124,7 +124,7 @@ pub fn update() void {
 			defer obfuscatedText.deinit();
 			var i: usize = 0;
 			while(i < ipAddress.len) : (i += 1) {
-				obfuscatedText.appendSlice("●");
+				obfuscatedText.appendSlice("•"); // \u2022
 			}
 			ipAddressLabel.updateText(obfuscatedText.items);
 		} else {
