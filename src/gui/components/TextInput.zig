@@ -98,16 +98,15 @@ pub fn toComponent(self: *TextInput) GuiComponent {
 }
 
 pub fn updateObfuscation(self: *TextInput) void {
-		self.obfuscated_buffer.clearRetainingCapacity();
-		if (self.obfuscated) {
-			const obfu_char = "●"; // \u25cf
-			var i: usize = 0;
-			while (i < self.currentString.items.len) : (i += 1) {
-			self.obfuscated_buffer.appendSlice(obfu_char);
-			}
-		} else {
-		self.obfuscated_buffer.appendSlice(self.currentString.items);
+	self.obfuscated_buffer.clearRetainingCapacity();
+	if(self.obfuscated) {
+		var i: usize = 0;
+		while(i < self.currentString.items.len) : (i += 1) {
+			self.obfuscated_buffer.appendSlice("●"); // \u25cf
 		}
+	} else {
+		self.obfuscated_buffer.appendSlice(self.currentString.items);
+	}
 }
 
 pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) void {
