@@ -22,7 +22,7 @@ const FoodEffectInner = blk: {
 	for(0.., @typeInfo(list).@"struct".decls) |i, declaration| {
 		unionFields[i] = std.builtin.Type.UnionField{
 			.name = declaration.name,
-			.type =  @field(list, declaration.name),
+			.type = @field(list, declaration.name),
 			.alignment = 0,
 		};
 		enumFields[i] = std.builtin.Type.EnumField{
