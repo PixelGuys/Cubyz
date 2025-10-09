@@ -45,7 +45,7 @@ const glslang = @cImport({
 });
 
 pub const draw = struct { // MARK: draw
-	var color: u32 = 0;
+	pub var color: u32 = 0;
 	var clip: ?Vec4i = null;
 	var translation: Vec2f = Vec2f{0, 0};
 	var scale: f32 = 1;

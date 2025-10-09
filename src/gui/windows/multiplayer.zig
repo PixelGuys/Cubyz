@@ -92,7 +92,7 @@ fn revealIp(_: usize) void {
 	ipObfuscated = false;
 	ipAddressLabel.updateText(ipAddress);
 	ipAddressEntry.obfuscated = ipObfuscated;
-	ipAddressEntry.updateDashes();
+	ipAddressEntry.updateObfuscation();
 }
 
 pub fn onOpen() void {
@@ -142,12 +142,13 @@ pub fn update() void {
 	if(gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
 		if(ipObfuscated) {
-			const dash_count = if(ipAddress.len > 0) ipAddress.len else 21;
-			var dashes: [21]u8 = undefined;
-			for(dashes[0..dash_count]) |*c| {
-				c.* = '-';
+			var obfuscatedText = main.List(u8).init(main.globalAllocator);
+			defer obfuscatedText.deinit();
+			var i: usize = 0;
+			while (i < ipAddress.len) : (i += 1) {
+				obfuscatedText.appendSlice("●");
 			}
-			ipAddressLabel.updateText(dashes[0..dash_count]);
+			ipAddressLabel.updateText(obfuscatedText.items);
 		} else {
 			ipAddressLabel.updateText(ipAddress);
 		}
