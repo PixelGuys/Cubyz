@@ -1,6 +1,6 @@
 .{
 	.texture = "apple.png",
 	.foodEffects = .{
-		.{.id = "cubyz:health", .amount = 1},
+		.{.id = "cubyz:health", .amount = 0.5},
 	},
 }
