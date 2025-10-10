@@ -183,6 +183,10 @@
 		.inputs = .{"cubyz:log/glimmergill"},
 		.output = "2 cubyz:glimmergill_branch",
 	},
+	.{
+		.inputs = .{"cubyz:candy_cane/block"},
+		.output = "2 cubyz:candy_cane/branch",
+	},
 
 	.{
 		.inputs = .{"cubyz:birch_planks", "cubyz:coal_ore"},

@@ -1,0 +1,31 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = "cubyz:branch",
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:candy_cane/branch/dot",
+	.texture1 = "cubyz:candy_cane/branch/half_line",
+	.texture2 = "cubyz:candy_cane/branch/line",
+	.texture3 = "cubyz:candy_cane/branch/bend",
+	.texture4 = "cubyz:candy_cane/branch/intersection",
+	.texture5 = "cubyz:candy_cane/branch/cross",
+	.item = .{
+		.material = .{
+			.durability = 260,
+			.massDamage = 1.5,
+			.hardnessDamage = 0.5,
+			.swingSpeed = 4.2,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xffc4a6a8, 0xffce2632, 0xfffff1ec, 0xfff0424e, 0xffffffff,
+			},
+		},
+		.texture = "candy_cane.png",
+	},
+}

@@ -1,0 +1,24 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/tuften/stem/straight/5"},
+		.{.id = "cubyz:tree/tuften/stem/straight/6"},
+		.{.id = "cubyz:tree/tuften/stem/straight/7"},
+		.{.id = "cubyz:tree/tuften/stem/straight/8", .chance = 0.5},
+		.{.id = "cubyz:tree/tuften/stem/straight/9", .chance = 0.5},
+		.{.id = "cubyz:tree/tuften/stem/straight/10", .chance = 0.5},
+		.{.id = "cubyz:tree/tuften/stem/tilt/7"},
+		.{.id = "cubyz:tree/tuften/stem/tilt/8"},
+		.{.id = "cubyz:tree/tuften/stem/tilt/9"},
+		.{.id = "cubyz:tree/tuften/stem/tilt/10"},
+		.{.id = "cubyz:tree/tuften/stem/curvy/7"},
+		.{.id = "cubyz:tree/tuften/stem/askew/8"},
+		.{.id = "cubyz:tree/tuften/stem/askew/8"},
+		.{.id = "cubyz:tree/tuften/stem/askew/10"},
+		.{.id = "cubyz:tree/tuften/stem/curvy/7"},
+		.{.id = "cubyz:tree/tuften/stem/curvy/8"},
+		.{.id = "cubyz:tree/tuften/stem/curvy/10"},
+	},
+	.children = .{
+		.pink = "cubyz:tree/tuften/tuft_canopy",
+	},
+}
