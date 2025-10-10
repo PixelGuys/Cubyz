@@ -173,10 +173,10 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const zoomOutPos = btnPos[1];
 		const zoomInPos = btnPos[2];
 		const mousePositionRelative = mousePosition - self.pos;
-		const grabPositionRelative = if (grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
-		const windowEnd: f32 = closePos + (btnPos[0]-btnPos[1]);
+		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
+		const windowEnd: f32 = closePos + (btnPos[0] - btnPos[1]);
 		
-		if(utils.InRange(f32, mousePositionRelative[1], 0, btnPos[0]-btnPos[1])){
+		if(utils.InRange(f32, mousePositionRelative[1], 0, btnPos[0] - btnPos[1])) {
 			if(utils.InRange(f32, mousePositionRelative[0], zoomInPos, zoomOutPos) and utils.InRange(f32, grabPositionRelative[0], zoomInPos, zoomOutPos)) {
 				//Zoom in
 				if(self.scale >= 1) {
@@ -187,7 +187,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 				gui.updateWindowPositions();
 				gui.save();
 			}
-			if(utils.InRange(f32, mousePositionRelative[0], zoomOutPos, closePos) and utils.InRange(f32, grabPositionRelative[0],zoomOutPos, closePos)) {
+			if(utils.InRange(f32, mousePositionRelative[0], zoomOutPos, closePos) and utils.InRange(f32, grabPositionRelative[0], zoomOutPos, closePos)) {
 				//Zoom out
 				if(self.scale > 1) {
 					self.scale -= 0.5;
