@@ -1,8 +1,8 @@
 .{
 	.properties = .{},
 	.chance = 0.015,
-	.minHeight = 128,
-	.maxHeight = 384,
+	.minHeight = 80,
+	.maxHeight = 256,
 	.music = "cubyz:above_the_mist",
 
 	.hills = 75,
