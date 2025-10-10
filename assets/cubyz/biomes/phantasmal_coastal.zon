@@ -4,7 +4,7 @@
 	.chance = 0.015,
 	.minHeight = -128,
 	.maxHeight = 64,
-	.music = "phantasmal:above_the_mist",
+	.music = "cubyz:above_the_mist",
 
 	.hills = 45,
 	.roughness = 85,
