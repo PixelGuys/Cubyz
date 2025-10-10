@@ -176,7 +176,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 		const windowEnd: f32 = closePos + (btnPos[0] - btnPos[1]);
 
-		if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= btnPos[0] - btnPos[1]) {
+		if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
 			if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
 				// Zoom in
 				if(self.scale >= 1) {
