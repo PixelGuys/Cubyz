@@ -90,5 +90,6 @@ fn alignDirections(input: Neighbor, desired: Neighbor) !sbb.Rotation.FixedRotati
 			alignTable[in.toInt()][out.toInt()] = error.NotPossibleToAlign;
 		}
 	};
-	return alignTable[input.toInt()][desired.toInt()];
+	const runtimeTable = alignTable;
+	return runtimeTable[input.toInt()][desired.toInt()];
 }

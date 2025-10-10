@@ -213,7 +213,7 @@ pub fn List(comptime T: type) type {
 			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
 				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
 		else
-			std.io.GenericWriter(*@This(), error{}, appendWrite);
+			std.Io.GenericWriter(*@This(), error{}, appendWrite);
 
 		pub fn writer(self: *@This()) Writer {
 			return .{.context = self};

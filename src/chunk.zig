@@ -124,7 +124,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub fn extractDirectionComponent(self: Neighbor, in: anytype) @TypeOf(in[0]) {
 		switch(self) {
 			inline else => |val| {
-				return in[@intFromEnum(val.vectorComponent())];
+				return in[@intFromEnum(comptime val.vectorComponent())];
 			},
 		}
 	}

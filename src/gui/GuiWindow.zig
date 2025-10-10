@@ -235,7 +235,7 @@ fn detectCycles(self: *GuiWindow, other: *GuiWindow) bool {
 }
 
 fn snapToOtherWindow(self: *GuiWindow) void {
-	for(&self.relativePosition, 0..) |*relPos, i| {
+	inline for(&self.relativePosition, 0..) |*relPos, i| {
 		var minDist: f32 = snapDistance;
 		var minWindow: ?*GuiWindow = null;
 		var selfAttachment: AttachmentPoint = undefined;
@@ -270,7 +270,7 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 
 fn positionRelativeToFrame(self: *GuiWindow) void {
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(&self.relativePosition, 0..) |*relPos, i| {
+	inline for(&self.relativePosition, 0..) |*relPos, i| {
 		// Snap to the center:
 		if(@abs(self.pos[i] + self.size[i] - windowSize[i]/2) <= snapDistance) {
 			relPos.* = .{.attachedToFrame = .{
@@ -299,7 +299,7 @@ fn positionRelativeToFrame(self: *GuiWindow) void {
 	}
 }
 
-fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usize) void {
+fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, comptime i: usize) void {
 	const otherSize = other.size;
 	const relPos = &self.relativePosition[i];
 	// Snap to the center:
@@ -391,7 +391,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 	}
 	self.size = self.contentSize*@as(Vec2f, @splat(self.scale));
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(self.relativePosition, 0..) |relPos, i| {
+	inline for(self.relativePosition, 0..) |relPos, i| {
 		switch(relPos) {
 			.ratio => |ratio| {
 				self.pos[i] = windowSize[i]*ratio - self.size[i]/2;
@@ -439,10 +439,10 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 fn drawOrientationLines(self: *const GuiWindow) void {
 	draw.setColor(0x80000000);
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(self.relativePosition, 0..) |relPos, i| {
+	inline for(self.relativePosition, 0..) |relPos, i| _continue: {
 		switch(relPos) {
 			.ratio, .relativeToWindow => {
-				continue;
+				break :_continue;
 			},
 			.attachedToFrame => |attachedToFrame| {
 				const pos = switch(attachedToFrame.otherAttachmentPoint) {
