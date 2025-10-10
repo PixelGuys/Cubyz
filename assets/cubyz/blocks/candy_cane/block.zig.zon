@@ -6,6 +6,5 @@
 	},
 	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
-	
 	.texture = "cubyz:candy_cane/block",
 }
