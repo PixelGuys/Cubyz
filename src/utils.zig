@@ -83,6 +83,10 @@ pub const Compression = struct { // MARK: Compression
 	}
 };
 
+pub fn inRange(comptime T: type, x: T, lo: T, hi: T) bool {
+    return x > lo and x < hi;
+}
+
 /// Implementation of https://en.wikipedia.org/wiki/Alias_method
 pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 	return struct {
