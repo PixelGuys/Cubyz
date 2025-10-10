@@ -178,7 +178,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 
 		if(mousePositionRelative[1] > 0 and mousePositionRelative[1] < btnPos[0] - btnPos[1]) {
 			if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] < zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] < zoomOutPos) {
-				//Zoom in
+				// Zoom in
 				if(self.scale >= 1) {
 					self.scale += 0.5;
 				} else {
@@ -188,7 +188,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 				gui.save();
 			}
 			if(mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] < closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] < closePos) {
-				//Zoom out
+				// Zoom out
 				if(self.scale > 1) {
 					self.scale -= 0.5;
 				} else {
@@ -199,7 +199,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 				gui.save();
 			}
 			if(mousePositionRelative[0] > closePos and mousePositionRelative[0] < windowEnd and grabPositionRelative[0] > closePos and grabPositionRelative[0] < windowEnd) {
-				//Close
+				// Close
 				if(self.closeable) gui.closeWindowFromRef(self);
 			}
 		}
