@@ -1,6 +1,6 @@
 .{
 	.properties = .{
-		.ocean,},
+		.ocean},
 	.chance = 0.015,
 	.minHeight = -128,
 	.maxHeight = 64,
