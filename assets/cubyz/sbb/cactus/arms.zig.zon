@@ -5,5 +5,6 @@
 		.{.id = "cubyz:cactus/arm/2"},
 		.{.id = "cubyz:cactus/arm/3"},
 		.{.id = "cubyz:cactus/arm/4", .chance = 0.5},
+		.{.id = null},
 	},
 }
