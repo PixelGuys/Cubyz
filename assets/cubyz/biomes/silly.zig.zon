@@ -1,0 +1,27 @@
+.{
+	.properties = .{},
+	.minHeightLimit = 7,
+	.minHeight = 22,
+	.maxHeight = 40,
+	.maxHeightLimit = 50,
+	.smoothBeaches = true,
+	.minRadius = 256,
+	.maxRadius = 320,
+	.roughness = 1,
+	.hills = 5,
+	.chance = 100000,
+	.music = "cubyz:sunrise",
+	.validPlayerSpawn = true,
+	.ground_structure = .{
+		"cubyz:grass",
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:village/origin",
+			.placeMode = .all,
+			.chance = 0.0005,
+		},
+	},
+}

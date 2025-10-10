@@ -51,10 +51,10 @@ pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SbbGen {
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, caveMap, seed);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, caveMap, seed, 5);
 }
 
-fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, caveMap: CaveMapView, seed: *u64) void {
+fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, caveMap: CaveMapView, seed: *u64, iterationsLeft: usize) void {
 	const blueprints = &(structure.getBlueprints(seed).* orelse return);
 
 	const origin = blueprints[0].originBlock;
@@ -69,12 +69,16 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 
 	rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
 
+	if(iterationsLeft == 0) return;
 	for(rotated.childBlocks) |childBlock| {
 		const child = structure.getChildStructure(childBlock) orelse continue;
 		const childRotation = rotation.getChildRotation(seed, child.rotation, childBlock.direction());
 		var placementPos = pastePosition + childBlock.pos();
 		const oldZ = placementPos[2];
-
+		// std.debug.print("{d} {d}\n", .{placementPos[0], placementPos[1]});
+		if(placementPos[0] < 0 or placementPos[0] >= terrain.CaveMap.CaveMapFragment.width or placementPos[1] < 0 or placementPos[1] >= terrain.CaveMap.CaveMapFragment.width) {
+			return;
+		}
 		switch(child.snapping) {
 			.top => {
 				if(caveMap.isSolid(placementPos[0], placementPos[1], placementPos[2])) {
@@ -94,7 +98,7 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 			},
 			.none => {},
 		}
-		placeSbb(self, child, placementPos, childBlock.direction(), childRotation, chunk, caveMap, seed);
+		placeSbb(self, child, placementPos, childBlock.direction(), childRotation, chunk, caveMap, seed, iterationsLeft - 1);
 	}
 }
 
