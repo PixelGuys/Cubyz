@@ -18,8 +18,8 @@
 
 	.ground_structure = .{
 		"cubyz:lush_grass",
+		"3 to 4 cubyz:mud"
 	},
-	.stoneBlock = "cubyz:soil",
 
 	.structures = .{
 		.{
@@ -60,21 +60,12 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:soil",
-			.chance = 0.04,
-			.width = 4,
-			.variation = 4,
+			.block = "cubyz:mud",
+			.chance = 0.2,
+			.width = 5,
+			.variation = 6,
 			.depth = 2,
-			.smoothness = 0.2,
-		},
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:grass",
-			.chance = 0.1,
-			.width = 4,
-			.variation = 4,
-			.depth = 2,
-			.smoothness = 0.2,
+			.smoothness = 0.6,
 		},
 		.{
 			.id = "cubyz:flower_patch",
