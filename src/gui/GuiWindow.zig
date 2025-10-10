@@ -175,7 +175,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const mousePositionRelative = mousePosition - self.pos;
 		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 		const windowEnd: f32 = closePos + (btnPos[0] - btnPos[1]);
-		
+
 		if(utils.InRange(f32, mousePositionRelative[1], 0, btnPos[0] - btnPos[1])) {
 			if(utils.InRange(f32, mousePositionRelative[0], zoomInPos, zoomOutPos) and utils.InRange(f32, grabPositionRelative[0], zoomInPos, zoomOutPos)) {
 				//Zoom in
