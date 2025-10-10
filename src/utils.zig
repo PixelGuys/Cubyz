@@ -83,7 +83,7 @@ pub const Compression = struct { // MARK: Compression
 	}
 };
 
-pub fn inRange(comptime T: type, x: T, lo: T, hi: T) bool {
+pub fn InRange(comptime T: type, x: T, lo: T, hi: T) bool {
     return x > lo and x < hi;
 }
 
