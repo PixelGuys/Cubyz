@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const utils = main.utils;
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -164,39 +165,41 @@ pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
 	const zoomInPos = zoomOutPos - iconWidth*self.scale;
 	return .{closePos, zoomOutPos, zoomInPos};
 }
+
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
-	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
-		if(self.showTitleBar or gui.reorderWindows) {
-			const btnPos = self.getButtonPositions();
-			const closePos = btnPos[0];
-			const zoomOutPos = btnPos[1];
-			const zoomInPos = btnPos[2];
-			if(mousePosition[0] - self.pos[0] > zoomInPos) {
-				if(mousePosition[0] - self.pos[0] > zoomOutPos) {
-					if(mousePosition[0] - self.pos[0] > closePos) {
-						// Close
-						if(self.closeable) gui.closeWindowFromRef(self);
-					} else {
-						// Zoom out
-						if(self.scale > 1) {
-							self.scale -= 0.5;
-						} else {
-							self.scale -= 0.25;
-						}
-						self.scale = @max(self.scale, 0.25);
-						gui.updateWindowPositions();
-						gui.save();
-					}
+	if(grabPosition != null and grabbedWindow == self and (self.showTitleBar or gui.reorderWindows)) {
+		const btnPos = self.getButtonPositions();
+		const closePos = btnPos[0];
+		const zoomOutPos = btnPos[1];
+		const zoomInPos = btnPos[2];
+		const mousePositionRelative = mousePosition - self.pos;
+		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
+
+		if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
+			if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
+				// Zoom in
+				if(self.scale >= 1) {
+					self.scale += 0.5;
 				} else {
-					// Zoom in
-					if(self.scale >= 1) {
-						self.scale += 0.5;
-					} else {
-						self.scale += 0.25;
-					}
-					gui.updateWindowPositions();
-					gui.save();
+					self.scale += 0.25;
 				}
+				gui.updateWindowPositions();
+				gui.save();
+			}
+			if(mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] <= closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] <= closePos) {
+				// Zoom out
+				if(self.scale > 1) {
+					self.scale -= 0.5;
+				} else {
+					self.scale -= 0.25;
+				}
+				self.scale = @max(self.scale, 0.25);
+				gui.updateWindowPositions();
+				gui.save();
+			}
+			if(mousePositionRelative[0] > closePos and grabPositionRelative[0] > closePos) {
+				// Close
+				if(self.closeable) gui.closeWindowFromRef(self);
 			}
 		}
 	}
