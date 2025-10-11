@@ -349,7 +349,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	}
 };
 
-///Generates the texture of a Tool using the material information.
+/// Generates the texture of a Tool using the material information.
 const TextureGenerator = struct { // MARK: TextureGenerator
 	fn generateHeightMap(itemGrid: *[16][16]?BaseItemIndex, seed: *u64) [17][17]f32 {
 		var heightMap: [17][17]f32 = undefined;
