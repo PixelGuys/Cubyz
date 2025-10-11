@@ -74,7 +74,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 		// Apply springs to the eye position:
 		var springConstants = Vec3d{0, 0, 0};
 		{
-			//Player.eyePos += move;
+			// Player.eyePos += move;
 			const forceMultipliers = Vec3d{
 				400,
 				400,

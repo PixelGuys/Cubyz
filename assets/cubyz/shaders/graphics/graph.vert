@@ -1,6 +1,6 @@
 #version 460
 
-//in pixel
+// in pixel
 layout(location = 0) uniform vec2 start;
 layout(location = 1) uniform vec2 dimension;
 layout(location = 2) uniform vec2 screen;
