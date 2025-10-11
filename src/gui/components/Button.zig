@@ -121,26 +121,41 @@ pub fn updateHovered(self: *Button, _: Vec2f) void {
 }
 
 pub fn mainButtonPressed(self: *Button, _: Vec2f) void {
+	if(self.isDisabled()) return;
 	self.pressed = true;
 }
 
 pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	if(self.pressed) {
 		self.pressed = false;
-		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
+		if(!self.isDisabled() and GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			self.onAction.run();
 		}
 	}
 }
 
+fn isDisabled(self: *const Button) bool {
+	// During reorder mode, only allow the reorder button itself to be clicked
+	if(gui.reorderWindows) {
+		// Check if this button's callback is the reorder callback
+		if(self.onAction.callback != gui.reorderHudCallback) {
+			return true;
+		}
+	}
+	return false;
+}
+
 pub fn render(self: *Button, mousePosition: Vec2f) void {
+	const disabled = self.isDisabled();
 	const textures = if(self.pressed)
 		pressedTextures
-	else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
+	else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered and !disabled)
 		hoveredTextures
 	else
 		normalTextures;
-	draw.setColor(0xff000000);
+	// Grey out disabled buttons
+	const color: u32 = if(disabled) 0xff808080 else 0xff000000;
+	draw.setColor(color);
 	textures.texture.bindTo(0);
 	pipeline.bind(draw.getScissor());
 	self.hovered = false;

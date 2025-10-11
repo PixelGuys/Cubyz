@@ -151,9 +151,12 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 		selfPositionWhenGrabbed = self.pos;
 		windowMoving = scaledMousePos[0] <= zoomInPos;
 	} else {
-		if(self.rootComponent) |*component| {
-			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
-				component.mainButtonPressed(scaledMousePos);
+		// During reorder mode, only block HUD windows, allow menu windows (like pause)
+		if(!gui.reorderWindows or !self.isHud) {
+			if(self.rootComponent) |*component| {
+				if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
+					component.mainButtonPressed(scaledMousePos);
+				}
 			}
 		}
 	}
@@ -168,45 +171,50 @@ pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
 
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	if(grabPosition != null and grabbedWindow == self and (self.showTitleBar or gui.reorderWindows)) {
-		const btnPos = self.getButtonPositions();
-		const closePos = btnPos[0];
-		const zoomOutPos = btnPos[1];
-		const zoomInPos = btnPos[2];
-		const mousePositionRelative = mousePosition - self.pos;
-		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
+		if(!gui.reorderWindows) {
+			const btnPos = self.getButtonPositions();
+			const closePos = btnPos[0];
+			const zoomOutPos = btnPos[1];
+			const zoomInPos = btnPos[2];
+			const mousePositionRelative = mousePosition - self.pos;
+			const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
-		if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
-			if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
-				// Zoom in
-				if(self.scale >= 1) {
-					self.scale += 0.5;
-				} else {
-					self.scale += 0.25;
+			if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
+				if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
+					// Zoom in
+					if(self.scale >= 1) {
+						self.scale += 0.5;
+					} else {
+						self.scale += 0.25;
+					}
+					gui.updateWindowPositions();
+					gui.save();
 				}
-				gui.updateWindowPositions();
-				gui.save();
-			}
-			if(mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] <= closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] <= closePos) {
-				// Zoom out
-				if(self.scale > 1) {
-					self.scale -= 0.5;
-				} else {
-					self.scale -= 0.25;
+				if(mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] <= closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] <= closePos) {
+					// Zoom out
+					if(self.scale > 1) {
+						self.scale -= 0.5;
+					} else {
+						self.scale -= 0.25;
+					}
+					self.scale = @max(self.scale, 0.25);
+					gui.updateWindowPositions();
+					gui.save();
 				}
-				self.scale = @max(self.scale, 0.25);
-				gui.updateWindowPositions();
-				gui.save();
-			}
-			if(mousePositionRelative[0] > closePos and grabPositionRelative[0] > closePos) {
-				// Close
-				if(self.closeable) gui.closeWindowFromRef(self);
+				if(mousePositionRelative[0] > closePos and grabPositionRelative[0] > closePos) {
+					// Close
+					if(self.closeable) gui.closeWindowFromRef(self);
+				}
 			}
 		}
 	}
 	grabPosition = null;
 	grabbedWindow = undefined;
-	if(self.rootComponent) |*component| {
-		component.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+	// During reorder mode, only block HUD windows, allow menu windows (like pause)
+	if(!gui.reorderWindows or !self.isHud) {
+		if(self.rootComponent) |*component| {
+			component.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+		}
 	}
 }
 
