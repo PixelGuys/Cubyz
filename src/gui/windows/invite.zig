@@ -13,6 +13,7 @@ const CheckBox = @import("../components/CheckBox.zig");
 const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
+const HorizontalList = @import("../components/HorizontalList.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
@@ -20,6 +21,7 @@ pub var window = GuiWindow{
 
 var ipAddressLabel: *Label = undefined;
 var ipAddressEntry: *TextInput = undefined;
+var ipObfuscated: bool = true;
 
 const padding: f32 = 8;
 
@@ -59,18 +61,30 @@ fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
+fn revealIp(_: usize) void {
+	ipObfuscated = false;
+	ipAddressLabel.updateText(ipAddress);
+	ipAddressEntry.obfuscated = ipObfuscated;
+	ipAddressEntry.updateObfuscation();
+}
+
 fn makePublic(public: bool) void {
 	main.server.connectionManager.allowNewConnections.store(public, .monotonic);
 }
 
 pub fn onOpen() void {
+	ipObfuscated = settings.streamerModeEnabled;
 	const list = VerticalList.init(.{padding, 16 + padding}, 260, 16);
 	list.add(Label.init(.{0, 0}, width, "Please send your IP to the player who wants to join and enter their IP below.", .center));
-	//                                           255.255.255.255:?65536 (longest possible ip address)
-	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
+	ipAddressLabel = Label.init(.{0, 0}, width, "", .center);
 	list.add(ipAddressLabel);
-	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
+	const buttonRow = HorizontalList.init();
+	buttonRow.add(Button.initText(.{0, 0}, 100, "Reveal", .{.callback = &revealIp}));
+	buttonRow.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
+	buttonRow.finish(.{0, 0}, .left);
+	list.add(buttonRow);
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &invite}, .{});
+	ipAddressEntry.obfuscated = ipObfuscated;
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.callback = &invite}));
 	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
@@ -105,6 +119,16 @@ pub fn onClose() void {
 pub fn update() void {
 	if(gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
-		ipAddressLabel.updateText(ipAddress);
+		if(ipObfuscated) {
+			var obfuscatedText = main.List(u8).init(main.globalAllocator);
+			defer obfuscatedText.deinit();
+			var i: usize = 0;
+			while(i < ipAddress.len) : (i += 1) {
+				obfuscatedText.appendSlice("•"); // \u2022
+			}
+			ipAddressLabel.updateText(obfuscatedText.items);
+		} else {
+			ipAddressLabel.updateText(ipAddress);
+		}
 	}
 }

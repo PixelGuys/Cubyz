@@ -34,6 +34,8 @@ textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
 optional: OptionalCallbacks,
+obfuscated_buffer: main.List(u8),
+obfuscated: bool = false,
 
 pub fn __init() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -61,8 +63,11 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 		.scrollBar = scrollBar,
 		.onNewline = onNewline,
 		.optional = optional,
+		.obfuscated = false,
+		.obfuscated_buffer = main.List(u8).init(main.globalAllocator),
 	};
 	self.currentString.appendSlice(text);
+	self.updateObfuscation();
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
 	return self;
 }
@@ -74,6 +79,7 @@ pub fn deinit(self: *const TextInput) void {
 
 	self.textBuffer.deinit();
 	self.currentString.deinit();
+	self.obfuscated_buffer.deinit();
 	self.scrollBar.deinit();
 	main.globalAllocator.destroy(self);
 }
@@ -89,6 +95,18 @@ pub fn clear(self: *TextInput) void {
 
 pub fn toComponent(self: *TextInput) GuiComponent {
 	return .{.textInput = self};
+}
+
+pub fn updateObfuscation(self: *TextInput) void {
+	self.obfuscated_buffer.clearRetainingCapacity();
+	if(self.obfuscated) {
+		var i: usize = 0;
+		while(i < self.currentString.items.len) : (i += 1) {
+			self.obfuscated_buffer.appendSlice("•"); // \u2022
+		}
+	} else {
+		self.obfuscated_buffer.appendSlice(self.currentString.items);
+	}
 }
 
 pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) void {
@@ -160,6 +178,7 @@ fn reloadText(self: *TextInput) void {
 	self.textBuffer.deinit();
 	self.textBuffer = TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
+	self.updateObfuscation();
 }
 
 fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
@@ -504,7 +523,14 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
 		self.scrollBar.render(mousePosition - self.pos);
 	}
-	self.textBuffer.render(textPos[0], textPos[1], fontSize);
+	if(self.obfuscated) {
+		const oldColor = draw.color;
+		draw.setColor(0xffffffff); // Force white color for obfuscated glyphs
+		graphics.draw.text(self.obfuscated_buffer.items, textPos[0], textPos[1], fontSize, .left);
+		draw.setColor(oldColor);
+	} else {
+		self.textBuffer.render(textPos[0], textPos[1], fontSize);
+	}
 	if(self.pressed) {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}
