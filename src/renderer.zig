@@ -1063,7 +1063,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
-				var damage: f32 = main.items.defaultBlockDamage;
+				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
 					damage = stack.item.?.tool.getBlockDamage(block);

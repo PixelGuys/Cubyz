@@ -25,8 +25,6 @@ const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig")
 
 pub const Inventory = @import("Inventory.zig");
 
-pub const defaultBlockDamage: f32 = 1;
-
 const Material = struct { // MARK: Material
 	massDamage: f32 = undefined,
 	hardnessDamage: f32 = undefined,
@@ -868,7 +866,7 @@ pub const Tool = struct { // MARK: Tool
 		if(self.isEffectiveOn(block)) {
 			return damage;
 		}
-		return defaultBlockDamage;
+		return main.game.Player.defaultBlockDamage;
 	}
 
 	pub fn onUseReturnBroken(self: *Tool) bool {
