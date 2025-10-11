@@ -147,6 +147,10 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 		ambient[1] = @max(0.1, world.ambientLight);
 		ambient[2] = @max(0.1, world.ambientLight);
 
+		// Reset swing animation if not mining (input released)
+		if(game.nextBlockBreakTime == null) {
+			MeshSelection.currentSwingProgress = 0;
+		}
 		itemdrop.ItemDisplayManager.update(deltaTime);
 		renderWorld(world, ambient, game.fog.skyColor, playerPosition);
 		const startTime = std.time.milliTimestamp();
@@ -277,7 +281,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 
 	c.glDepthRange(0, 0.001);
-	itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos);
+	itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos, MeshSelection.currentSwingProgress, MeshSelection.currentSwingTime);
 	c.glDepthRange(0.001, 1);
 
 	chunk_meshing.endRender();

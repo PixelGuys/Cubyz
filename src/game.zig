@@ -752,7 +752,7 @@ var biomeFog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .dens
 pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 
 var nextBlockPlaceTime: ?i64 = null;
-var nextBlockBreakTime: ?i64 = null;
+pub var nextBlockBreakTime: ?i64 = null;
 
 pub fn pressPlace() void {
 	const time = std.time.milliTimestamp();
