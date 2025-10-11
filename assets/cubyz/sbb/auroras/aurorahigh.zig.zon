@@ -1,0 +1,13 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_0", .chance = 1},
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_1", .chance = 1},
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_2", .chance = 1},
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_3", .chance = 1},
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_4", .chance = 1},
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_5", .chance = 1},
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_6", .chance = 1},
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_7", .chance = 1},
+		.{.id = "cubyz:auroras/aurorahigh/aurorahigh_8", .chance = 1},
+	},
+}
