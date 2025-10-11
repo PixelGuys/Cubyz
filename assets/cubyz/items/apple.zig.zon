@@ -1,4 +1,6 @@
 .{
 	.texture = "apple.png",
-	.food = 4,
+	.itemUseEffects = .{
+		.{.id = "cubyz:heal", .amount = 0.5},
+	},
 }

@@ -537,6 +537,16 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
+	pub fn pressUseItem() void {
+		const item = inventory.getItem(selectedSlot) orelse return;
+		if(item != .baseItem) return;
+		const itemUseEffects = item.baseItem.itemUseEffects() orelse return;
+		for(itemUseEffects) |itemUseEffect| {
+			itemUseEffect.apply(world.?);
+		}
+		inventory.removeOne(selectedSlot);
+	}
+
 	pub fn kill() void {
 		Player.super.pos = world.?.spawn;
 		Player.super.vel = .{0, 0, 0};
@@ -772,6 +782,10 @@ pub fn pressBreak() void {
 
 pub fn releaseBreak() void {
 	nextBlockBreakTime = null;
+}
+
+pub fn pressUseItem() void {
+	Player.pressUseItem();
 }
 
 pub fn pressAcquireSelectedBlock() void {
