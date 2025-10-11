@@ -5,4 +5,8 @@
 	.texture_right = "cubyz:chest/baobab/side",
 	.texture_top = "cubyz:chest/baobab/top",
 	.texture_bottom = "cubyz:chest/baobab/bottom",
+	.texture6 = "cubyz:chest/baobab/inside_body",
+	.texture7 = "cubyz:chest/baobab/inside_lid",
+	.texture8 = "cubyz:chest/baobab/front_open",
+	.texture9 = "cubyz:chest/baobab/latch",
 }
