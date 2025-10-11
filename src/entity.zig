@@ -164,7 +164,7 @@ pub const ClientEntityManager = struct {
 			};
 
 			const distance: f64 = std.math.sqrt(pos3d[0]*pos3d[0] + pos3d[1]*pos3d[1] + pos3d[2]*pos3d[2]);
-			const dstclamped :f32 = @as(f32, @floatCast((std.math.clamp(distance, 0, 160)+80)/80));
+			const dstclamped: f32 = @as(f32, @floatCast((std.math.clamp(distance, 0, 160) + 80)/80));
 
 			const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
 			const projectedPos = projMatrix.mulVec(rotatedPos);
