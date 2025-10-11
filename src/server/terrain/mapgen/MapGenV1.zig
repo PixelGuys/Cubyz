@@ -110,7 +110,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 					const biomeMapX = @as(usize, @intCast(xBiome)) + dx;
 					const biomeMapY = @as(usize, @intCast(yBiome)) + dy;
 					const biomeSample = biomePositions.get(biomeMapX, biomeMapY);
-					const weight = interpolationCoefficientsX[dx]*interpolationCoefficientsY[dy]*biomeSample.biome.interpolationWeight;
+					const weight = @as([2]f32, interpolationCoefficientsX)[dx]*@as([2]f32, interpolationCoefficientsY)[dy]*biomeSample.biome.interpolationWeight;
 					coefficientsX += interpolationWeights(relXBiome, biomeSample.biome.interpolation)*@as(Vec2f, @splat(weight));
 					coefficientsY += interpolationWeights(relYBiome, biomeSample.biome.interpolation)*@as(Vec2f, @splat(weight));
 					totalWeight += weight;
@@ -122,7 +122,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 				for(0..2) |dy| {
 					const biomeMapX = @as(usize, @intCast(xBiome)) + dx;
 					const biomeMapY = @as(usize, @intCast(yBiome)) + dy;
-					const weight = coefficientsX[dx]*coefficientsY[dy];
+					const weight = @as([2]f32, coefficientsX)[dx]*@as([2]f32, coefficientsY)[dy];
 					const biomeSample = biomePositions.get(biomeMapX, biomeMapY);
 					height += biomeSample.height*weight;
 					roughness += biomeSample.roughness*weight;
