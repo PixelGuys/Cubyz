@@ -1,0 +1,14 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/tuften/young/tufts/small/violet"},
+		.{.id = "cubyz:tree/tuften/young/tufts/small/pink"},
+		.{.id = "cubyz:tree/tuften/young/tufts/small/red"},
+		.{.id = "cubyz:tree/tuften/young/tufts/small/orange"},
+		.{.id = "cubyz:tree/tuften/young/tufts/small/yellow"},
+		.{.id = "cubyz:tree/tuften/young/tufts/big/violet"},
+		.{.id = "cubyz:tree/tuften/young/tufts/big/pink"},
+		.{.id = "cubyz:tree/tuften/young/tufts/big/red"},
+		.{.id = "cubyz:tree/tuften/young/tufts/big/orange"},
+		.{.id = "cubyz:tree/tuften/young/tufts/big/yellow"},
+	},
+}

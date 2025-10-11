@@ -1,6 +1,6 @@
 .{
-	.tags = .{.choppable, .cuttable, .mushroom},
-	.blockHealth = 2,
+	.tags = .{.choppable, .wood},
+	.blockHealth = 4,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
@@ -9,46 +9,23 @@
 	.model = .{
 		.radius = 4,
 	},
-	.texture0 = "cubyz:branch/bolete/dot",
-	.texture1 = "cubyz:branch/bolete/half_line",
-	.texture2 = "cubyz:branch/bolete/line",
-	.texture3 = "cubyz:branch/bolete/bend",
-	.texture4 = "cubyz:branch/bolete/intersection",
-	.texture5 = "cubyz:branch/bolete/cross",
+	.texture0 = "cubyz:candy_cane/branch/dot",
+	.texture1 = "cubyz:candy_cane/branch/half_line",
+	.texture2 = "cubyz:candy_cane/branch/line",
+	.texture3 = "cubyz:candy_cane/branch/bend",
+	.texture4 = "cubyz:candy_cane/branch/intersection",
+	.texture5 = "cubyz:candy_cane/branch/cross",
 	.item = .{
-		.texture = "diamond.png",
 		.material = .{
-			.durability = 250,
-			.massDamage = 0.7,
-			.hardnessDamage = 8.7,
-			.swingSpeed = 4.7,
-			.textureRoughness = 0.1,
+			.durability = 260,
+			.massDamage = 1.5,
+			.hardnessDamage = 0.5,
+			.swingSpeed = 4.2,
+			.textureRoughness = 0.7,
 			.colors = .{
-				0xff5d7ae4, 0xff8d85ff, 0xff78c1f9, 0xffa8f0ff, 0xffffffff,
-			},
-			.modifiers = .{
-				.{
-					.id = "fragile",
-					.strength = 0.5,
-					.restriction = .{
-						.id = .not,
-						.child = .{
-							.id = .encased,
-							.tag = .precious,
-							.amount = 4,
-						},
-					},
-				},
-				.{
-					.id = "powerful",
-					.strength = 0.5,
-					.restriction = .{
-						.id = .encased,
-						.tag = .precious,
-						.amount = 4,
-					},
-				},
+				0xffc4a6a8, 0xffce2632, 0xfffff1ec, 0xfff0424e, 0xffffffff,
 			},
 		},
+		.texture = "candy_cane.png",
 	},
 }
