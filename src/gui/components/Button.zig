@@ -154,7 +154,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 	else
 		normalTextures;
 	// Grey out disabled buttons
-	const color: u32 = if(disabled) 0xff808080 else 0xff000000;
+	const color: u32 = if(disabled) 0xff303030 else 0xff000000;
 	draw.setColor(color);
 	textures.texture.bindTo(0);
 	pipeline.bind(draw.getScissor());
