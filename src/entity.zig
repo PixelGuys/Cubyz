@@ -178,7 +178,7 @@ pub const ClientEntityManager = struct {
 			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0}, false, .center);
 			defer buf.deinit();
 			const size = buf.calculateLineBreaks(48/dstclamped*heightRef, 1024);
-			buf.render(xCenter - size[0]/2, yCenter - size[1], 48/dstclamped*heightRef);
+			buf.renderTextWithoutShadow(xCenter - size[0]/2, yCenter - size[1], 48/dstclamped*heightRef);
 		}
 	}
 
