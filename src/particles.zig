@@ -40,10 +40,12 @@ pub const ParticleManager = struct {
 		types = .init(arenaAllocator);
 		textures = .init(arenaAllocator);
 		emissionTextures = .init(arenaAllocator);
-		textureArray = .init();
-		emissionTextureArray = .init();
-		particleTypesSSBO = SSBO.init();
-		ParticleSystem.init();
+		if(!main.settings.launchConfig.headlessServerMode) {
+			textureArray = .init();
+			emissionTextureArray = .init();
+			particleTypesSSBO = SSBO.init();
+			ParticleSystem.init();
+		}
 	}
 
 	pub fn deinit() void {

@@ -2145,16 +2145,19 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 	pub fn init() TextureArray {
 		var self: TextureArray = undefined;
-		c.glGenTextures(1, &self.textureID);
+		if(!main.settings.launchConfig.headlessServerMode)
+			c.glGenTextures(1, &self.textureID);
 		return self;
 	}
 
 	pub fn deinit(self: TextureArray) void {
-		c.glDeleteTextures(1, &self.textureID);
+		if(!main.settings.launchConfig.headlessServerMode)
+			c.glDeleteTextures(1, &self.textureID);
 	}
 
 	pub fn bind(self: TextureArray) void {
-		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
+		if(!main.settings.launchConfig.headlessServerMode)
+			c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
 	}
 
 	fn lodColorInterpolation(colors: [4]Color, alphaCorrection: bool) Color {
@@ -2292,7 +2295,12 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn init() Texture {
 		var self: Texture = undefined;
-		c.glGenTextures(1, &self.textureID);
+		if(!main.settings.launchConfig.headlessServerMode) {
+			c.glGenTextures(1, &self.textureID);
+		} else {
+			self.textureID = 0;
+		}
+
 		return self;
 	}
 
