@@ -308,6 +308,12 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
+pub fn tab(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+	_ = mods;
+	_ = self;
+	std.log.info("TAB", .{});
+}
+
 fn moveCursorToStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		self.cursor.? = 0;
