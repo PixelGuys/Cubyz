@@ -46,6 +46,7 @@ pub fn __deinit() void {
 const OptionalCallbacks = struct {
 	onUp: ?gui.Callback = null,
 	onDown: ?gui.Callback = null,
+	onTab: ?gui.Callback = null,
 };
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
