@@ -1063,7 +1063,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
-				var damage: f32 = 1;
+				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
 					damage = stack.item.?.tool.getBlockDamage(block);
@@ -1074,7 +1074,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
-					const swingTime = if(isTool) 1.0/stack.item.?.tool.swingSpeed else 0.5;
+					const swingTime = if(isTool and stack.item.?.tool.isEffectiveOn(block)) 1.0/stack.item.?.tool.swingSpeed else 0.5;
 					if(currentSwingTime != swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
