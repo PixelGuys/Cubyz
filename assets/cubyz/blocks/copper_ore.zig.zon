@@ -18,4 +18,5 @@
 	.item = .{
 		.texture = "raw_copper.png",
 	},
+	.smelted_into = "cubyz:copper_ingot",
 }
