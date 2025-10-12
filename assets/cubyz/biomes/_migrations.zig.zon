@@ -5,6 +5,7 @@
 	.{.old = "desert", .new = "desert/base"},
 	.{.old = "forest", .new = "forest/base"},
 	.{.old = "jungle(TODO)", .new = "jungle"},
+	.{.old = "jungle", .new = "jungle/base"},
 	.{.old = "swamp", .new = "swamp/base"},
 	.{.old = "taiga", .new = "taiga/base"},
 	.{.old = "tundra", .new = "tundra/base"},
