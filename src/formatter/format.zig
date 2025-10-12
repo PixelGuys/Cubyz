@@ -84,7 +84,7 @@ fn checkDirectory(dir: std.fs.Dir) !void {
 			std.log.err("File name should end with .zig.zon so it gets syntax highlighting on github.", .{});
 			failed = true;
 		}
-		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".vert") or std.mem.endsWith(u8, child.basename, ".frag") or std.mem.endsWith(u8, child.basename, ".comp") or (std.mem.endsWith(u8, child.basename, ".zig") and !std.mem.startsWith(u8, child.basename, "fmt.zig")))) {
+		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".vert") or std.mem.endsWith(u8, child.basename, ".frag") or std.mem.endsWith(u8, child.basename, ".comp") or (std.mem.endsWith(u8, child.basename, ".zig") and !std.mem.eql(u8, child.basename, "fmt.zig")))) {
 			try checkFile(dir, child.path);
 		}
 	}
