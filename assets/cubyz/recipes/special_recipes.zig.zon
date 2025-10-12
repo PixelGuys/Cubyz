@@ -48,6 +48,10 @@
 		.output = "cubyz:terracotta",
 	},
 	.{
+		.inputs = .{"cubyz:coal_ore", "cubyz:sand"},
+		.output = "cubyz:glass/white",
+	},
+	.{
 		.inputs = .{"1 cubyz:torch", "2 cubyz:iron_ingot"},
 		.output = "cubyz:lamp",
 	},
