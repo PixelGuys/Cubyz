@@ -60,7 +60,7 @@ fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
 				}
 			},
 			'/' => {
-				if(data[i + 1] == '/' and data[i + 2] != '/' and data[i + 2] != ' ' and data[i + 2] != '\n' and ( if (i > 0) (data[i - 1] != ':' and data[i - 1] != '"') else true)) {
+				if(data[i + 1] == '/' and data[i + 2] != '/' and data[i + 2] != ' ' and data[i + 2] != '\n' and (if(i > 0) (data[i - 1] != ':' and data[i - 1] != '"') else true)) {
 					printError("Comments should include a space before text, ex: // whatever", filePath, data, i + 2);
 				}
 				lineStart = false;
