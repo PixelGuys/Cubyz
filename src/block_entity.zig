@@ -332,16 +332,17 @@ pub const BlockEntityTypes = struct {
 			StorageServer.init();
 			StorageClient.init();
 			textureDeinitList = .init(main.globalAllocator);
-
-			pipeline = graphics.Pipeline.init(
-				"assets/cubyz/shaders/block_entity/sign.vert",
-				"assets/cubyz/shaders/block_entity/sign.frag",
-				"",
-				&uniforms,
-				.{},
-				.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
-				.{.attachments = &.{.alphaBlending}},
-			);
+			if(!main.settings.launchConfig.headlessServerMode) {
+				pipeline = graphics.Pipeline.init(
+					"assets/cubyz/shaders/block_entity/sign.vert",
+					"assets/cubyz/shaders/block_entity/sign.frag",
+					"",
+					&uniforms,
+					.{},
+					.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
+					.{.attachments = &.{.alphaBlending}},
+				);
+			}
 		}
 		pub fn deinit() void {
 			while(textureDeinitList.popOrNull()) |texture| {
