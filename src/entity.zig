@@ -165,6 +165,8 @@ pub const ClientEntityManager = struct {
 
 			const distance: f64 = std.math.sqrt(pos3d[0]*pos3d[0] + pos3d[1]*pos3d[1] + pos3d[2]*pos3d[2]);
 			const dstclamped: f32 = @as(f32, @floatCast((std.math.clamp(distance, 0, 160) + 80)/80));
+			const heightRef: f16 = (@as(f16, @floatFromInt(main.Window.height))/1080.0);
+			// 1080p = 16px
 
 			const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
 			const projectedPos = projMatrix.mulVec(rotatedPos);
@@ -175,8 +177,8 @@ pub const ClientEntityManager = struct {
 			graphics.draw.setColor(0xff000000);
 			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0}, false, .center);
 			defer buf.deinit();
-			const size = buf.calculateLineBreaks(40/dstclamped, 1024);
-			buf.render(xCenter - size[0]/2, yCenter - size[1], 40/dstclamped);
+			const size = buf.calculateLineBreaks(48/dstclamped*heightRef, 1024);
+			buf.render(xCenter - size[0]/2, yCenter - size[1], 48/dstclamped*heightRef);
 		}
 	}
 
