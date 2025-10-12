@@ -164,7 +164,7 @@ pub const ClientEntityManager = struct {
 			};
 
 			const distance: f64 = std.math.sqrt(pos3d[0]*pos3d[0] + pos3d[1]*pos3d[1] + pos3d[2]*pos3d[2]);
-			const dstclamped: f32 = @as(f32, @floatCast((std.math.clamp(distance, 0, 160) + 80)/80));
+			const dstclamped: f32 = @as(f32, @floatCast((std.math.clamp(distance, 0, 100) + 50)/50));
 			const heightRef: f16 = (@as(f16, @floatFromInt(main.Window.height))/1080.0);
 			// 1080p = 16px
 
