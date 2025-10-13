@@ -82,7 +82,7 @@ pub fn init(pos: Vec2f, inventory: Inventory, itemSlot: u32, texture: TexturePar
 		.texture = texture.value(),
 		.mode = mode,
 	};
-	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
+	self.textSize = self.text.calculateLineBreaks(12, self.size[0] - 2*border);
 	return self;
 }
 
@@ -105,7 +105,7 @@ fn refreshText(self: *ItemSlot) void {
 		false,
 		.right,
 	);
-	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
+	self.textSize = self.text.calculateLineBreaks(12, self.size[0] - 2*border);
 }
 
 pub fn toComponent(self: *ItemSlot) GuiComponent {
@@ -142,7 +142,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		draw.setColor(0xffffffff);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
 		if(self.inventory.getAmount(self.itemSlot) != 1) {
-			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
+			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 12);
 		}
 		if(item == .tool) {
 			const tool = item.tool;
