@@ -187,11 +187,10 @@ pub fn loadPreviousHistoryEntry(_: usize) void {
 }
 
 pub fn autoComplete(_: usize) void {
-    const line = input.currentString;
 	const lineSlice = input.currentString.items[0..input.currentString.items.len];
     var start: usize = 0;
-    if (line.items[0..line.items.len].len > 0) {
-        var i: usize = line.items[0..line.items.len].len;
+    if (lineSlice.len > 0) {
+        var i: usize = lineSlice.len;
         while (i > 0) : (i -= 1) {
             if (lineSlice[i - 1] == ' ' or lineSlice[i - 1] == '/') {
                 start = i;
