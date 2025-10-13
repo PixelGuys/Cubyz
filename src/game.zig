@@ -450,7 +450,6 @@ pub const Player = struct { // MARK: Player
 
 	fn loadFrom(zon: ZonElement) void {
 		super.loadFrom(zon);
-		inventory.loadFromZon(zon.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
