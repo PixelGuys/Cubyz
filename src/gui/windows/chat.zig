@@ -160,7 +160,7 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{.onUp = .{.callback = loadNextHistoryEntry}, .onDown = .{.callback = loadPreviousHistoryEntry}, .onTab = .{.callback = loadPreviousHistoryEntry}});
+	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{.onUp = .{.callback = loadNextHistoryEntry}, .onDown = .{.callback = loadPreviousHistoryEntry}, .onTab = .{.callback = autoComplete}});
 	refresh();
 }
 
@@ -184,6 +184,53 @@ pub fn loadPreviousHistoryEntry(_: usize) void {
 	}
 	const msg = messageHistory.down.peekBack() orelse "";
 	input.setString(msg);
+}
+
+pub fn autoComplete(_: usize) void {
+    const line = input.currentString;
+	const lineSlice = input.currentString.items[0..input.currentString.items.len];
+    var start: usize = 0;
+    if (line.items[0..line.items.len].len > 0) {
+        var i: usize = line.items[0..line.items.len].len;
+        while (i > 0) : (i -= 1) {
+            if (lineSlice[i - 1] == ' ' or lineSlice[i - 1] == '/') {
+                start = i;
+                break;
+            }
+        }
+    }
+    const prefix = lineSlice[start..];
+
+	//For now a list it will be dynamically taken from command list propably will modify all command files to have their command and arguments avaliable
+    const commands:  []const []const u8 = &[_][]const u8{
+        "clear", "gamemode", "help", "invite", "kill", "time", "tp",
+        "undo", "redo", "pos1", "pos2", "deselect", "copy", "paste",
+        "blueprint", "rotate", "set", "mask", "replace",
+    };
+
+    var matches: [64][]const u8 = undefined; 
+    var mlen: usize = 0;
+    for (commands) |c| {
+        if (c.len >= prefix.len and std.mem.startsWith(u8, c, prefix)) {
+            matches[mlen] = c;
+            mlen += 1;
+            if (mlen >= matches.len) break;
+        }
+    }
+
+	if(mlen == 1) {
+		var buf: [512]u8 = undefined;
+		const comp = matches[0];
+		const newLen = start + comp.len + 1; 
+		if (newLen > buf.len) return;
+
+		@memcpy(buf[0..start], lineSlice[0..start]);
+        @memcpy(buf[start..start+comp.len], comp);
+		buf[start + comp.len] = ' '; 
+		input.setString(buf[0..newLen]);
+	}
+
+	std.log.info("matches: {any}", .{mlen});
 }
 
 pub fn onClose() void {
