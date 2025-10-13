@@ -10,7 +10,6 @@
 	.roughness = 10,
 	.hills = 12,
 
-
 	.ground_structure = .{"cubyz:lush_grass", "3 to 4 cubyz:mud"},
 
 	.structures = .{
