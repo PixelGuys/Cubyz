@@ -135,10 +135,14 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	exe.step.dependOn(step);
 
 	try addModFeatureModule(b, exe, "rotation");
+	try addModFeatureModule(b, exe, "game");
+	try addModFeatureModule(b, exe, "assets");
 }
 
 pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
 	try makeModFeature(step, "rotation");
+	try makeModFeature(step, "game");
+	try makeModFeature(step, "assets");
 }
 
 fn createLaunchConfig() !void {
