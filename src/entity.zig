@@ -170,7 +170,7 @@ pub const ClientEntityManager = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
 			graphics.draw.setColor(0xff000000);
-			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0}, false, .center);
+			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
 			defer buf.deinit();
 			const size = buf.calculateLineBreaks(32, 1024);
 			buf.render(xCenter - size[0]/2, yCenter - size[1], 32);
