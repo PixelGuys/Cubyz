@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const Inventory = main.items.Inventory;
+const Item = main.items.Item;
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -127,6 +128,10 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 	}
 }
 
+fn shouldRenderStackSizeText(self: *ItemSlot, item: Item) bool {
+	return item.stackSize() > 1 and self.inventory.type != .creative;
+}
+
 pub fn render(self: *ItemSlot, _: Vec2f) void {
 	self.refreshText();
 	draw.setColor(0xffffffff);
@@ -141,7 +146,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)) + Vec2f{1.0, 1.0}, self.size - @as(Vec2f, @splat(2*border)));
 		draw.setColor(0xffffffff);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
-		if(self.inventory.getAmount(self.itemSlot) != 1) {
+		if(self.shouldRenderStackSizeText(item)) {
 			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
 		}
 		if(item == .tool) {
