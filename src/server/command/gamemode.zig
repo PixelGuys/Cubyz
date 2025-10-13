@@ -6,6 +6,9 @@ const User = main.server.User;
 pub const description = "Get or set your gamemode.";
 pub const usage = "/gamemode\n/gamemode <survival/creative>";
 
+pub const command = "gamemode";
+pub const arguements: []const []const u8 = &[_][]const u8{"creative", "survival"};
+
 pub fn execute(args: []const u8, source: *User) void {
 	if(args.len == 0) {
 		source.sendMessage("#ffff00{s}", .{@tagName(source.gamemode.load(.monotonic))});

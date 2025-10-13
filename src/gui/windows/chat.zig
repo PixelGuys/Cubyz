@@ -223,10 +223,13 @@ pub fn autoComplete(_: usize) void {
 		const newLen = start + comp.len + 1; 
 		if (newLen > buf.len) return;
 
-		@memcpy(buf[0..start], lineSlice[0..start]);
-        @memcpy(buf[start..start+comp.len], comp);
+		@memcpy(buf[0 .. start], lineSlice[0..start]);
+        @memcpy(buf[start .. start + comp.len], comp);
 		buf[start + comp.len] = ' '; 
 		input.setString(buf[0..newLen]);
+	}
+	if(mlen > 1) {
+		// print in chat all the possible matched commands
 	}
 
 	std.log.info("matches: {any}", .{mlen});
