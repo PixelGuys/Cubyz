@@ -15,6 +15,9 @@ const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 const files = main.files;
 
+
+const list = @import("assets");
+
 var commonAssetArena: NeverFailingAllocator = undefined;
 var common: Assets = undefined;
 
@@ -321,6 +324,9 @@ fn createAssetStringID(
 }
 
 pub fn init() void {
+    inline for(@typeInfo(list).@"struct".decls) |declaration| {
+        @field(list, declaration.name).init();
+    }
 	biomes_zig.init();
 	blocks_zig.init();
 	migrations_zig.init();
@@ -330,6 +336,9 @@ pub fn init() void {
 	common = .init();
 	common.read(commonAssetArena, main.files.cwd(), "assets/");
 	common.log(.common);
+    inline for(@typeInfo(list).@"struct".decls) |declaration| {
+        @field(list, declaration.name).postInit();
+    }
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -683,8 +692,14 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 }
 
 pub fn deinit() void {
+    inline for(@typeInfo(list).@"struct".decls) |declaration| {
+        @field(list, declaration.name).deinit();
+    }
 	main.globalAllocator.destroyArena(commonAssetArena);
 	biomes_zig.deinit();
 	blocks_zig.deinit();
 	migrations_zig.deinit();
+    inline for(@typeInfo(list).@"struct".decls) |declaration| {
+        @field(list, declaration.name).postDeinit();
+    }
 }

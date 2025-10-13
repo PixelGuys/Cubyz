@@ -1,4 +1,4 @@
-const std = @import("std");
+    const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const assets = @import("assets.zig");
@@ -26,6 +26,9 @@ const settings = @import("settings.zig");
 const Block = main.blocks.Block;
 const physics = main.physics;
 const KeyBoard = main.KeyBoard;
+
+
+const list = @import("game");
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -616,6 +619,9 @@ pub const World = struct { // MARK: World
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+        inline for(@typeInfo(list).@"struct".decls) |declaration| {
+            @field(list, declaration.name).init(self);
+        }
 		self.* = .{
 			.conn = try Connection.init(manager, ip, null),
 			.manager = manager,
@@ -633,9 +639,15 @@ pub const World = struct { // MARK: World
 		main.blocks.meshes.generateTextureArray();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
+        inline for(@typeInfo(list).@"struct".decls) |declaration| {
+            @field(list, declaration.name).postInit(self);
+        }
 	}
 
 	pub fn deinit(self: *World) void {
+        inline for(@typeInfo(list).@"struct".decls) |declaration| {
+            @field(list, declaration.name).deinit(self);
+        }
 		self.conn.deinit();
 
 		self.connected = false;
@@ -665,6 +677,9 @@ pub const World = struct { // MARK: World
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();
+        inline for(@typeInfo(list).@"struct".decls) |declaration| {
+            @field(list, declaration.name).postDeinit(self);
+        }
 	}
 
 	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
@@ -804,6 +819,10 @@ pub fn hyperSpeedToggle() void {
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
+                                    //
+    inline for(@typeInfo(list).@"struct".decls) |declaration| {
+        @field(list, declaration.name).update(deltaTime);
+    }
 	physics.calculateProperties();
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
@@ -984,5 +1003,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	biomeFog.fogHigher = (biome.fogHigher - biomeFog.fogHigher)*t + biomeFog.fogHigher;
 
 	world.?.update();
-	particles.ParticleSystem.update(@floatCast(deltaTime));
+	particles.ParticleSystem.update(@floatCast(deltaTime));                                //
+    inline for(@typeInfo(list).@"struct".decls) |declaration| {
+        @field(list, declaration.name).postUpdate   (deltaTime);
+    }
 }
