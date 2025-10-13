@@ -710,8 +710,9 @@ pub const Protocols = struct {
 					},
 					.assets => {
 						std.log.info("Received assets.", .{});
-						main.files.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
-						var dir = try main.files.cwd().openDir("serverAssets");
+						main.files.cwd().deleteTree("serverAssets") catch {}; // Delete the assets created before migration
+						main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
+						var dir = try main.files.cubyzDir().openDir("serverAssets");
 						defer dir.close();
 						try utils.Compression.unpack(dir, reader.remaining);
 					},

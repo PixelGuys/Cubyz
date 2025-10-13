@@ -32,6 +32,10 @@
 		.output = "2 cubyz:cactus_arm",
 	},
 	.{
+		.inputs = .{"cubyz:candy_cane/block"},
+		.output = "2 cubyz:candy_cane/branch",
+	},
+	.{
 		.inputs = .{"{mod}:{type}_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
