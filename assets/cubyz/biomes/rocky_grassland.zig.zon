@@ -31,8 +31,8 @@
 			.id = "cubyz:boulder",
 			.chance = 0.016,
 			.block = .{
-				.{.chance = 2, .id="cubyz:cobblestone"},
-				"cubyz:moss:cubyz:cobblestone",
+				.{.id = "cubyz:cobblestone", .chance = 2},
+				.{.id = "cubyz:moss:cubyz:cobblestone", .chance = 1},
 			},
 			.size = 5,
 			.size_variance = 4,
