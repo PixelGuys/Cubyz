@@ -567,19 +567,16 @@ pub const Player = struct { // MARK: Player
 				}
 			} else return;
 
-			// Check if there is already a slot with that item type
 			for(0..30) |slotIdx| {
 				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
 					if(isCreative()) {
 						inventory.fillFromCreative(@intCast(slotIdx), item);
 					}
-					if(slotIdx <= 12)
-					{
+					if(slotIdx < 12) {
 						selectedSlot = @intCast(slotIdx);
 						return;
 					}
-					else 
-					{
+					else {
 						const targetSlot = blk: {
 							if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 							// Look for an empty slot
@@ -590,10 +587,20 @@ pub const Player = struct { // MARK: Player
 							}
 							break :blk selectedSlot;
 						};
-					std.log.info("slot for found item: {any}" ,.{targetSlot});
+						std.log.info("slot for found item: {any}" ,.{targetSlot});
+						
+						var carried: Inventory = undefined;
+						carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
+
+						//inventory.deposit(@intCast(slotIdx), carried, inventory.getAmount(slotIdx));
+						inventory.takeHalf(@intCast(slotIdx), carried);
+						inventory.takeHalf(@intCast(slotIdx), carried);
+						std.log.info("carried: {any}",.{carried});
+						
+						inventory.depositOrSwap(@intCast(targetSlot), carried);
+						carried.deinit(main.globalAllocator);
+						return;	
 					}
-					
-					
 				}
 			}
 
