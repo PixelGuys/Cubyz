@@ -599,7 +599,7 @@ pub const MenuBackGround = struct {
 		pipeline.bind(null);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
-		if(settings.fov != lastFov){
+		if(settings.fov != lastFov) {
 			updateFov(Window.width, Window.height, settings.fov);
 		}
 		texture.bindTo(0);
