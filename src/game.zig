@@ -567,10 +567,10 @@ pub const Player = struct { // MARK: Player
 				}
 			} else return;
 
-			for(0..(main.gui.windowlist.inventory.itemSlots.len - 1 + main.gui.windowlist.hotbar.itemSlots.len - 1)) |slotIdx| {
+			for(0..(main.gui.windowlist.inventory.itemSlots.len + main.gui.windowlist.hotbar.itemSlots.len)) |slotIdx| {
 				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
 
-					if(slotIdx < (main.gui.windowlist.hotbar.itemSlots.len - 1)) {
+					if(slotIdx < (main.gui.windowlist.hotbar.itemSlots.len)) {
 						// when item is in hotbar
 						selectedSlot = @intCast(slotIdx);
 					} else {
@@ -578,7 +578,7 @@ pub const Player = struct { // MARK: Player
 						const targetSlot = blk: {
 							if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 							// Look for an empty slot
-							for(0..12) |slotId| {
+							for(0..main.gui.windowlist.hotbar.itemSlots.len) |slotId| {
 								if(inventory.getItem(slotId) == null) {
 									break :blk slotId;
 								}
