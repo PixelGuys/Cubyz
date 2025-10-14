@@ -1,10 +1,7 @@
 .{
-	.blueprint = "cubyz:mushroom/big/toadstool/empty",
-	.children = .{
-		.white = .{
-			.{.structure = "cubyz:mushroom/big/toadstool/small_cap/0"},
-			.{.structure = "cubyz:mushroom/big/toadstool/small_cap/1"},
-			.{.structure = "cubyz:mushroom/big/toadstool/small_cap/2"},
-		},
+	.blueprints = .{
+		.{.id = "cubyz:mushroom/big/toadstool/small_cap/0"},
+		.{.id = "cubyz:mushroom/big/toadstool/small_cap/1"},
+		.{.id = "cubyz:mushroom/big/toadstool/small_cap/2"},
 	},
 }

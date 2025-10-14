@@ -19,27 +19,27 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/tall",
+			.structure = "cubyz:tree/coniferous/pine/loblolly",
 			.placeMode = .degradable,
-			.chance = 0.12,
+			.chance = 0.15,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/short",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
 			.placeMode = .degradable,
-			.chance = 0.03,
+			.chance = 0.15,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/sapling",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
-			.chance = 0.2,
+			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/roots",
+			.structure = "cubyz:tree/coniferous/standalone_roots",
 			.placeMode = .degradable,
-			.chance = 0.05,
+			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:flower_patch",

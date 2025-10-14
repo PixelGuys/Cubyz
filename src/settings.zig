@@ -13,6 +13,8 @@ pub const entityLookback: i16 = 100;
 
 pub const highestSupportedLod: u3 = 5;
 
+pub var lastVersionString: []const u8 = "";
+
 pub var simulationDistance: u16 = 4;
 
 pub var cpuThreads: ?u64 = null;
@@ -130,6 +132,10 @@ pub fn save() void {
 	defer zonObject.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		if(comptime std.mem.eql(u8, decl.name, "lastVersionString")) {
+			zonObject.put(decl.name, version.version);
+			continue;
+		}
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
@@ -176,3 +182,21 @@ pub fn save() void {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }
+
+pub const launchConfig = struct {
+	pub var cubyzDir: []const u8 = "";
+
+	pub fn init() void {
+		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
+			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
+			break :blk .null;
+		};
+		defer zon.deinit(main.stackAllocator);
+
+		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+	}
+
+	pub fn deinit() void {
+		main.globalAllocator.free(cubyzDir);
+	}
+};

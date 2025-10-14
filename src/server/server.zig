@@ -144,13 +144,15 @@ pub const User = struct { // MARK: User
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 
-		world.?.savePlayer(self) catch |err| {
-			std.log.err("Failed to save player: {s}", .{@errorName(err)});
-			return;
-		};
+		if(self.inventory != null) {
+			world.?.savePlayer(self) catch |err| {
+				std.log.err("Failed to save player: {s}", .{@errorName(err)});
+				return;
+			};
 
-		if(self.inventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
-		if(self.handInventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
+		}
 
 		self.worldEditData.deinit();
 

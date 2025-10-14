@@ -19,9 +19,9 @@ pub const Compression = struct { // MARK: Compression
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
-		var streamIn = std.io.fixedBufferStream(data);
+		var streamIn = std.Io.fixedBufferStream(data);
 		var decomp = std.compress.flate.decompressor(streamIn.reader());
-		var streamOut = std.io.fixedBufferStream(buf);
+		var streamOut = std.Io.fixedBufferStream(buf);
 		try decomp.decompress(streamOut.writer());
 		return streamOut.getWritten().len;
 	}

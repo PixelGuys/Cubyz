@@ -756,7 +756,7 @@ test "element parsing" {
 	try std.testing.expectEqual(JsonType.JsonArray, std.meta.activeTag(result.JsonObject.get("\tobject1θ") orelse JsonType.JsonNull));
 	result.free(allocator);
 
-	//Array:
+	// Array:
 	index = 0;
 	result = Parser.parseElement(allocator, "[\"name\",1]", &index);
 	try std.testing.expectEqual(JsonType.JsonArray, std.meta.activeTag(result));

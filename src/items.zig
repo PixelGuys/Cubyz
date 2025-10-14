@@ -349,7 +349,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	}
 };
 
-///Generates the texture of a Tool using the material information.
+/// Generates the texture of a Tool using the material information.
 const TextureGenerator = struct { // MARK: TextureGenerator
 	fn generateHeightMap(itemGrid: *[16][16]?BaseItemIndex, seed: *u64) [17][17]f32 {
 		var heightMap: [17][17]f32 = undefined;
@@ -670,9 +670,9 @@ pub const Tool = struct { // MARK: Tool
 
 	pub fn deinit(self: *const Tool) void {
 		// TODO: This is leaking textures!
-		//if(self.texture) |texture| {
-		//texture.deinit();
-		//}
+		// if(self.texture) |texture| {
+		// texture.deinit();
+		// }
 		self.image.deinit(main.globalAllocator);
 		self.tooltip.deinit();
 		main.globalAllocator.free(self.modifiers);
@@ -849,17 +849,24 @@ pub const Tool = struct { // MARK: Tool
 		return self.tooltip.items;
 	}
 
+	pub fn isEffectiveOn(self: *Tool, block: main.blocks.Block) bool {
+		for(block.blockTags()) |blockTag| {
+			for(self.type.blockTags()) |toolTag| {
+				if(toolTag == blockTag) return true;
+			}
+		}
+		return false;
+	}
+
 	pub fn getBlockDamage(self: *Tool, block: main.blocks.Block) f32 {
 		var damage = self.damage;
 		for(self.modifiers) |modifier| {
 			damage = modifier.changeBlockDamage(damage, block);
 		}
-		for(block.blockTags()) |blockTag| {
-			for(self.type.blockTags()) |toolTag| {
-				if(toolTag == blockTag) return damage;
-			}
+		if(self.isEffectiveOn(block)) {
+			return damage;
 		}
-		return 0;
+		return main.game.Player.defaultBlockDamage;
 	}
 
 	pub fn onUseReturnBroken(self: *Tool) bool {
@@ -1068,7 +1075,8 @@ pub const Recipe = struct { // MARK: Recipe
 	cachedInventory: ?Inventory = null,
 };
 
-var arena: main.heap.NeverFailingArenaAllocator = undefined;
+var arenaAllocator: main.heap.NeverFailingArenaAllocator = undefined;
+var arena: main.heap.NeverFailingAllocator = undefined;
 
 var toolTypeList: ListUnmanaged(ToolType) = undefined;
 var toolTypeIdToIndex: std.StringHashMapUnmanaged(ToolTypeIndex) = undefined;
@@ -1098,13 +1106,14 @@ pub fn recipes() []Recipe {
 }
 
 pub fn globalInit() void {
-	arena = .init(main.globalAllocator);
+	arenaAllocator = .init(main.globalAllocator);
+	arena = arenaAllocator.allocator();
 
 	toolTypeList = .{};
 	toolTypeIdToIndex = .{};
 
-	reverseIndices = .init(arena.allocator().allocator);
-	recipeList = .init(arena.allocator());
+	reverseIndices = .init(arena.allocator);
+	recipeList = .init(arena);
 	itemListSize = 0;
 	modifiers = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(modifierList).@"struct".decls) |decl| {
@@ -1134,7 +1143,7 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
-	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
+	newItem.init(arena, texturePath, replacementTexturePath, id, zon);
 	reverseIndices.put(newItem.id, @enumFromInt(itemListSize)) catch unreachable;
 
 	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
@@ -1192,7 +1201,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		}
 		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
 	}
-	var parameterMatrices: main.List(PropertyMatrix) = .init(arena.allocator());
+	var parameterMatrices: main.List(PropertyMatrix) = .init(arena);
 	for(zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne();
 		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
@@ -1209,16 +1218,16 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	var pixelSourcesOverlay: [16][16]u8 = undefined;
 	loadPixelSources(assetFolder, id, "_overlay", &pixelSourcesOverlay);
 
-	const idDupe = arena.allocator().dupe(u8, id);
-	toolTypeList.append(arena.allocator(), .{
+	const idDupe = arena.dupe(u8, id);
+	toolTypeList.append(arena, .{
 		.id = idDupe,
-		.blockTags = Tag.loadTagsFromZon(arena.allocator(), zon.getChild("blockTags")),
+		.blockTags = Tag.loadTagsFromZon(arena, zon.getChild("blockTags")),
 		.slotInfos = slotInfos,
 		.properties = parameterMatrices.toOwnedSlice(),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
-	toolTypeIdToIndex.put(arena.allocator().allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
+	toolTypeIdToIndex.put(arena.allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
 
 	std.log.debug("Registered tool: '{s}'", .{id});
 }
@@ -1240,14 +1249,14 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 	const inputs = zon.getChild("inputs").toSlice();
 	const output = try parseRecipeItem(zon.getChild("output"));
 	const recipe = Recipe{
-		.sourceItems = arena.allocator().alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = arena.allocator().alloc(u16, inputs.len),
+		.sourceItems = arena.alloc(BaseItemIndex, inputs.len),
+		.sourceAmounts = arena.alloc(u16, inputs.len),
 		.resultItem = output.item.?.baseItem,
 		.resultAmount = output.amount,
 	};
 	errdefer {
-		arena.allocator().free(recipe.sourceAmounts);
-		arena.allocator().free(recipe.sourceItems);
+		arena.free(recipe.sourceAmounts);
+		arena.free(recipe.sourceItems);
 	}
 	for(inputs, 0..) |inputZon, i| {
 		const input = try parseRecipeItem(inputZon);
@@ -1269,32 +1278,30 @@ pub fn registerRecipes(zon: ZonElement) void {
 	}
 }
 
-pub fn reset() void {
-	toolTypeList.clearAndFree(arena.allocator());
-	toolTypeIdToIndex.clearAndFree(arena.allocator().allocator);
-	reverseIndices.clearAndFree();
+pub fn clearRecipeCachedInventories() void {
 	for(recipeList.items) |recipe| {
 		if(recipe.cachedInventory) |inv| {
 			inv.deinit(main.globalAllocator);
 		}
 	}
+}
+
+pub fn reset() void {
+	toolTypeList.clearAndFree(arena);
+	toolTypeIdToIndex.clearAndFree(arena.allocator);
+	reverseIndices.clearAndFree();
 	recipeList.clearAndFree();
 	itemListSize = 0;
-	_ = arena.reset(.free_all);
+	_ = arenaAllocator.reset(.free_all);
 }
 
 pub fn deinit() void {
-	toolTypeList.deinit(arena.allocator());
-	toolTypeIdToIndex.deinit(arena.allocator().allocator);
+	toolTypeList.deinit(arena);
+	toolTypeIdToIndex.deinit(arena.allocator);
 	reverseIndices.clearAndFree();
-	for(recipeList.items) |recipe| {
-		if(recipe.cachedInventory) |inv| {
-			inv.deinit(main.globalAllocator);
-		}
-	}
 	recipeList.clearAndFree();
 	modifiers.deinit();
 	modifierRestrictions.deinit();
-	arena.deinit();
+	arenaAllocator.deinit();
 	Inventory.Sync.ClientSide.deinit();
 }

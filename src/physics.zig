@@ -33,7 +33,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
 		var acc = inputAcc;
 		if(!Player.isFlying.load(.monotonic)) {
-			acc[2] = -effectiveGravity;
+			acc[2] -= effectiveGravity;
 		}
 
 		const baseFrictionCoefficient: f32 = Player.currentFriction;
@@ -74,7 +74,6 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 		// Apply springs to the eye position:
 		var springConstants = Vec3d{0, 0, 0};
 		{
-			//Player.eyePos += move;
 			const forceMultipliers = Vec3d{
 				400,
 				400,

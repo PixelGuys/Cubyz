@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/coniferous/stem/3/0"},
+	},
+	.children = .{
+		.white = "cubyz:tree/coniferous/pine/loblolly/3_tip",
+		.red = "cubyz:tree/coniferous/pine/loblolly/branches/lushy/2_top",
+		.orange = "cubyz:tree/coniferous/pine/loblolly/branches/lushy/1_middle",
+		.yellow = "cubyz:tree/coniferous/pine/loblolly/branches/lushy/0_bottom",
+	},
+}

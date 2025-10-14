@@ -2216,11 +2216,11 @@ pub const TextureArray = struct { // MARK: TextureArray
 		for(0..maxLOD) |i| {
 			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
-		var arena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
-		defer arena.deinit();
-		const lodBuffer: [][]Color = arena.allocator().alloc([]Color, maxLOD);
+		const arena = main.stackAllocator.createArena();
+		defer main.stackAllocator.destroyArena(arena);
+		const lodBuffer: [][]Color = arena.alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {
-			buffer.* = arena.allocator().alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
+			buffer.* = arena.alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
 		}
 
 		for(images, 0..) |image, i| {
@@ -2280,7 +2280,6 @@ pub const TextureArray = struct { // MARK: TextureArray
 			}
 		}
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);
-		//glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);

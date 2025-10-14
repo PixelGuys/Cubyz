@@ -6,6 +6,7 @@ zig-cache/
 serverAssets/
 gamecontrollerdb.txt
 gamecontrollerdb.stamp
+launchConfig.zon
 
 test.png
 
