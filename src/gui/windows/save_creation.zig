@@ -196,19 +196,18 @@ pub fn populateWorldAssets(worldAssetsPath: []const u8, gameAssetsPath: []const 
     defer walker.deinit();
 
     while (try walker.next()) |entry| {
+        const rel_path = entry.path;
         switch (entry.kind) {
             .directory => {
-                std.log.debug("Creating directory {s}", .{rel_path});
                 _ = dst_dir.dir.makeDir(rel_path) catch |e| {
                     if (e != error.PathAlreadyExists) return e;
                 };
             },
             .file => {
-                std.log.debug("Copying file {s}", .{rel_path});
                 try src_dir.dir.copyFile(rel_path, dst_dir.dir, rel_path, .{});
             },
-            else => |kind| {
-                std.log.debug("Skipping entry {s} of kind {}", .{ rel_path, kind });
+            else => |_| {
+
             },
         }
     }
