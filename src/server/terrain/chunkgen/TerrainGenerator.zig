@@ -62,6 +62,14 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				var biomeHeight: i32 = chunk.super.width - zBiome;
 				var baseSeed: u64 = undefined;
 				const biome = biomeMap.getBiomeColumnAndSeed(x, y, zBiome, true, &baseSeed, &biomeHeight);
+				var isWaterChangeEdge = false;
+				var maxWaterLevel = biome.waterProperties.waterLevel;
+				for (@as([4]i32, .{0, -1, 0, 1}), @as([4]i32, .{1, 0, -1, 0})) |dx, dy| {
+					const otherWaterProperties = biomeMap.getBiome(x + dx, y + dy, zBiome).waterProperties;
+					maxWaterLevel = @max(maxWaterLevel, otherWaterProperties.waterLevel);
+					isWaterChangeEdge |= !std.meta.eql(otherWaterProperties, biome.waterProperties);
+				}
+
 				defer zBiome = chunk.startIndex(zBiome + biomeHeight - 1 + chunk.super.pos.voxelSize);
 				var z: i32 = @min(chunk.super.width - chunk.super.pos.voxelSize, chunk.startIndex(zBiome + biomeHeight - 1));
 				while(z >= zBiome) : (z -= chunk.super.pos.voxelSize) {
@@ -151,7 +159,11 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 								z = oceanHeight - chunk.super.pos.voxelSize;
 							}
 							if(z >= zStart) {
-								chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.waterProperties.waterBlock);
+								if(isWaterChangeEdge) {
+									chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.stoneBlock);
+								} else {
+									chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.waterProperties.waterBlock);
+								}
 							}
 						}
 						z = zStart;
