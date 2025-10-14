@@ -528,7 +528,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 
 		if(self.showCusor) {
 			draw.setColor(0xff000000);
-			const thickness = @min(@ceil(fontSize / 8), 1);
+			const thickness = @min(@ceil(fontSize/8), 1);
 			draw.rect(cursorPos, Vec2f{thickness, fontSize});
 		}
 	}
