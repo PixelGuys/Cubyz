@@ -454,34 +454,12 @@ var shouldExitToMenu = std.atomic.Value(bool).init(false);
 pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
 }
-var kickReason: ?[]const u8 = null;
-var kickReasonMutex: std.Thread.Mutex = .{};
 
 pub fn setKickReason(reason: ?[]const u8) void {
 	if(reason) |r| {
-		kickReasonMutex.lock();
-		defer kickReasonMutex.unlock();
-
-		if(kickReason) |oldReason| {
-			globalAllocator.free(oldReason);
-		}
-		kickReason = globalAllocator.dupe(u8, r);
-	}
-}
-
-pub fn getKickReason() ?[]const u8 {
-	kickReasonMutex.lock();
-	defer kickReasonMutex.unlock();
-	return kickReason;
-}
-
-pub fn clearKickReason() void {
-	kickReasonMutex.lock();
-	defer kickReasonMutex.unlock();
-
-	if(kickReason) |reason| {
-		globalAllocator.free(reason);
-		kickReason = null;
+		gui.windowlist.disconnected.setDisconnectedReason(
+			std.fmt.allocPrint(globalAllocator.allocator, "Disconnected: {s}", .{r}) catch "Disconnected"
+		);
 	}
 }
 
@@ -796,13 +774,7 @@ pub fn main() void { // MARK: main()
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:cubyz");
-
-			if(getKickReason()) |reason| {
-				const message = std.fmt.allocPrint(stackAllocator.allocator, "Disconnected: {s}", .{reason}) catch "Déconnecté";
-				defer stackAllocator.free(message);
-				gui.windowlist.notification.raiseNotification(message);
-				clearKickReason();
-			}
+			gui.windowlist.disconnected.showDisconnectReason();
 		}
 	}
 

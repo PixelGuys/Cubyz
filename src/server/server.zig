@@ -486,8 +486,11 @@ pub fn removePlayer(user: *User, reason: ?[]const u8) void { // MARK: removePlay
 	};
 	if(!foundUser) return;
 
-	const finalReason: []const u8 = if(reason) |r| r else "no reason";
-	sendMessage("{s}§#ffff00 left: {s}", .{user.name, finalReason});
+	if (reason)|r|{
+		sendMessage("{s}§#ffff00 left: {s}", .{user.name, r});
+	}else{
+		sendMessage("{s}§#ffff00 left.", .{user.name});
+	}
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
