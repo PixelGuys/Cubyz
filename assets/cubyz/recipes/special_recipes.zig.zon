@@ -44,8 +44,12 @@
 		.output = "cubyz:uranium_ingot",
 	},
 	.{
-		.inputs = .{"cubyz:coal_ore", "cubyz:clay"},
-		.output = "cubyz:terracotta",
+		.inputs = .{"cubyz:coal_ore", "8 cubyz:clay"},
+		.output = "8 cubyz:terracotta",
+	},
+	.{
+		.inputs = .{"cubyz:coal_ore", "8 cubyz:sand"},
+		.output = "8 cubyz:glass/white",
 	},
 	.{
 		.inputs = .{"1 cubyz:torch", "2 cubyz:iron_ingot"},
