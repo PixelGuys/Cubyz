@@ -12,8 +12,6 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const simple_structure_utils = terrain.biomes.simple_structure_utils;
-const parsePatternWithDefault = simple_structure_utils.parsePatternWithDefault;
 const Pattern = main.blueprint.Pattern;
 
 pub const id = "cubyz:flower_patch";
@@ -30,7 +28,7 @@ density: f32,
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *FlowerPatch {
 	const self = arena.create(FlowerPatch);
 	self.* = .{
-		.block = parsePatternWithDefault(arena, parameters.getChild("block").as(?[]const u8, null), ""),
+		.block = Pattern.initFromZon(arena, parameters.getChild("block"), ""),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.density = parameters.get(f32, "density", 0.5),

@@ -12,8 +12,6 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const simple_structure_utils = terrain.biomes.simple_structure_utils;
-const parsePatternWithDefault = simple_structure_utils.parsePatternWithDefault;
 const Pattern = main.blueprint.Pattern;
 
 pub const id = "cubyz:simple_vegetation";
@@ -29,7 +27,7 @@ deltaHeight: u31,
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SimpleVegetation {
 	const self = arena.create(SimpleVegetation);
 	self.* = .{
-		.block = parsePatternWithDefault(arena, parameters.getChild("block").as(?[]const u8, null), ""),
+		.block = Pattern.initFromZon(arena, parameters.getChild("block"), ""),
 		.height0 = parameters.get(u31, "height", 1),
 		.deltaHeight = parameters.get(u31, "height_variation", 0),
 	};

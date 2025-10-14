@@ -12,8 +12,6 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const simple_structure_utils = terrain.biomes.simple_structure_utils;
-const parsePatternWithDefault = simple_structure_utils.parsePatternWithDefault;
 const Pattern = main.blueprint.Pattern;
 
 pub const id = "cubyz:simple_tree";
@@ -46,9 +44,9 @@ pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SimpleTr
 			if(parameters.get(?[]const u8, "type", null)) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
 			break :blk .round;
 		},
-		.leavesBlock = parsePatternWithDefault(arena, parameters.getChild("leaves").as(?[]const u8, null), "cubyz:oak_leaves"),
-		.woodBlock = parsePatternWithDefault(arena, parameters.getChild("log").as(?[]const u8, null), "cubyz:oak_log"),
-		.topWoodBlock = parsePatternWithDefault(arena, parameters.getChild("top").as(?[]const u8, null), "cubyz:oak_top"),
+		.leavesBlock = Pattern.initFromZon(arena, parameters.getChild("leaves"), "cubyz:oak_leaves"),
+		.woodBlock = Pattern.initFromZon(arena, parameters.getChild("log"), "cubyz:oak_log"),
+		.topWoodBlock = Pattern.initFromZon(arena, parameters.getChild("top"), "cubyz:oak_top"),
 		.height0 = parameters.get(i32, "height", 6),
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
 		.leafRadius = parameters.get(f32, "leafRadius", (1 + parameters.get(f32, "height", 6))/2),

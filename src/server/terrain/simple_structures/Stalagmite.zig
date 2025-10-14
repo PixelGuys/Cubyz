@@ -12,8 +12,6 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const simple_structure_utils = terrain.biomes.simple_structure_utils;
-const parsePatternWithDefault = simple_structure_utils.parsePatternWithDefault;
 const Pattern = main.blueprint.Pattern;
 
 pub const id = "cubyz:stalagmite";
@@ -29,7 +27,7 @@ sizeVariation: f32,
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *Stalagmite {
 	const self = arena.create(Stalagmite);
 	self.* = .{
-		.block = parsePatternWithDefault(arena, parameters.getChild("block").as(?[]const u8, null), "cubyz:stalagmite"),
+		.block = Pattern.initFromZon(arena, parameters.getChild("block"), "cubyz:stalagmite"),
 		.size = parameters.get(f32, "size", 12),
 		.sizeVariation = parameters.get(f32, "size_variation", 8),
 	};
