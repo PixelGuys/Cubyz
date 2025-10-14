@@ -195,32 +195,20 @@ pub fn populateWorldAssets(worldAssetsPath: []const u8, gameAssetsPath: []const 
     var walker = src_dir.walk(main.stackAllocator);
     defer walker.deinit();
 
-	var src_path_buf: [std.fs.max_path_bytes]u8 = undefined;
-	var dst_path_buf: [std.fs.max_path_bytes]u8 = undefined;
-
-	const src_path = try std.os.getFdPath(src_dir.dir.fd, &src_path_buf);
-	const dst_path = try std.os.getFdPath(dst_dir.dir.fd, &dst_path_buf);
-	std.log.debug("Src_path: {s}", .{src_path});
-	std.log.debug("dst_path: {s}", .{dst_path});
-	if (src_dir.dir.fd == std.os.windows.INVALID_HANDLE_VALUE) {
-		std.log.err("src_dir.dir.fd is invalid", .{});
-	}
     while (try walker.next()) |entry| {
-        const rel_path = entry.path;
-		std.log.debug("rel_path: {s}", .{rel_path});
         switch (entry.kind) {
             .directory => {
-                std.log.info("Creating directory {s}", .{rel_path});
+                std.log.debug("Creating directory {s}", .{rel_path});
                 _ = dst_dir.dir.makeDir(rel_path) catch |e| {
                     if (e != error.PathAlreadyExists) return e;
                 };
             },
             .file => {
-                std.log.info("Copying file {s}", .{rel_path});
+                std.log.debug("Copying file {s}", .{rel_path});
                 try src_dir.dir.copyFile(rel_path, dst_dir.dir, rel_path, .{});
             },
             else => |kind| {
-                std.log.info("Skipping entry {s} of kind {}", .{ rel_path, kind });
+                std.log.debug("Skipping entry {s} of kind {}", .{ rel_path, kind });
             },
         }
     }
