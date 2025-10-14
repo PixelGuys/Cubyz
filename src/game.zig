@@ -569,7 +569,6 @@ pub const Player = struct { // MARK: Player
 
 			for(0..(main.gui.windowlist.inventory.itemSlots.len + main.gui.windowlist.hotbar.itemSlots.len)) |slotIdx| {
 				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
-
 					if(slotIdx < (main.gui.windowlist.hotbar.itemSlots.len)) {
 						// when item is in hotbar
 						selectedSlot = @intCast(slotIdx);
@@ -589,8 +588,7 @@ pub const Player = struct { // MARK: Player
 						carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
 						defer carried.deinit(main.globalAllocator);
 
-						inventory.takeHalf(@intCast(slotIdx), carried);
-						inventory.takeHalf(@intCast(slotIdx), carried);
+						inventory.depositToAny(@intCast(slotIdx), carried, inventory.getAmount(slotIdx));
 						inventory.depositOrSwap(@intCast(targetSlot), carried);
 						inventory.depositOrSwap(@intCast(slotIdx), carried);
 					}
