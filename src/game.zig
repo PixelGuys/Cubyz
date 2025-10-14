@@ -598,6 +598,7 @@ pub const Player = struct { // MARK: Player
 						std.log.info("carried: {any}",.{carried});
 						
 						inventory.depositOrSwap(@intCast(targetSlot), carried);
+						inventory.depositOrSwap(@intCast(slotIdx), carried);
 						carried.deinit(main.globalAllocator);
 						return;	
 					}
