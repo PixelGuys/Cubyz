@@ -4,12 +4,6 @@
 		.{.id = "cubyz:tree/curl/base/1"},
 	},
 	.children = .{
-		.white = .{
-			.{.structure = "cubyz:tree/curl/curl/0"},
-			.{.structure = "cubyz:tree/curl/curl/1"},
-			.{.structure = "cubyz:tree/curl/curl/2"},
-			.{.structure = "cubyz:tree/curl/curl/3"},
-			.{.structure = "cubyz:tree/curl/curl/4"},
-		},
+		.white = "cubyz:tree/curl/curl",
 	},
 }
