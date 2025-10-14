@@ -17,7 +17,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 			return;
 		}
-		const radius = 16384;
+		const radius = 24576;
 		const mapSize: i32 = main.server.terrain.ClimateMap.ClimateMapFragment.mapSize;
 		// Explore chunks in a spiral from the center:
 		const spiralLen = 2*radius/mapSize*2*radius/mapSize;
@@ -60,7 +60,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				stepsRemaining = dirChanges/2;
 			}
 		}
-		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
+		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of {} blocks.", .{radius});
 		return;
 	}
 	var x: ?f64 = null;
