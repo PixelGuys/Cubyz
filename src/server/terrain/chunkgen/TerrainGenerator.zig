@@ -20,13 +20,11 @@ pub const generatorSeed = 0x65c7f9fdc0641f94;
 
 var air: main.blocks.Block = undefined;
 var stone: main.blocks.Block = undefined;
-var water: main.blocks.Block = undefined;
 
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 	air = main.blocks.parseBlock("cubyz:air");
 	stone = main.blocks.parseBlock("cubyz:slate");
-	water = main.blocks.parseBlock("cubyz:water");
 }
 
 pub fn deinit() void {}
@@ -142,7 +140,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						}
 					} else {
 						const surface = biomeMap.getSurfaceHeight(x + chunk.super.pos.wx, y + chunk.super.pos.wy) - (chunk.super.pos.voxelSize - 1) -% chunk.super.pos.wz;
-						const oceanHeight = 0 -% chunk.super.pos.wz;
+						const oceanHeight = biome.waterProperties.waterLevel -% chunk.super.pos.wz;
 						const airVolumeStart = caveMap.findTerrainChangeBelow(x, y, z) + chunk.super.pos.voxelSize;
 						const zStart = @max(airVolumeStart, zBiome);
 						if(z < surface or zStart >= oceanHeight) {
@@ -152,7 +150,9 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 								chunk.updateBlockColumnInGeneration(x, y, oceanHeight, z, .{.typ = 0, .data = 0});
 								z = oceanHeight - chunk.super.pos.voxelSize;
 							}
-							chunk.updateBlockColumnInGeneration(x, y, zStart, z, water);
+							if(z >= zStart) {
+								chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.waterProperties.waterBlock);
+							}
 						}
 						z = zStart;
 					}
