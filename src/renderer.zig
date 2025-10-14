@@ -129,11 +129,17 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
-pub fn updateViewport(width: u31, height: u31, fov: f32) void {
+
+
+pub fn updateFov(width: u31, height: u31, fov: f32) void{
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
 	lastFov = fov;
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+}
+pub fn updateViewport(width: u31, height: u31) void {
+	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
+	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
@@ -472,7 +478,6 @@ pub const MenuBackGround = struct {
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
 	} = undefined;
-
 	var vao: c_uint = undefined;
 	var vbos: [2]c_uint = undefined;
 	var texture: graphics.Texture = undefined;
@@ -592,12 +597,11 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		pipeline.bind(null);
-		updateViewport(main.Window.width, main.Window.height, 70.0);
-		defer updateViewport(Window.width, Window.height, settings.fov);
-
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
-
+		if(settings.fov != lastFov){
+			updateFov(Window.width, Window.height, settings.fov);
+		}
 		texture.bindTo(0);
 
 		c.glBindVertexArray(vao);
@@ -613,9 +617,9 @@ pub const MenuBackGround = struct {
 
 		const oldResolutionScale = main.settings.resolutionScale;
 		main.settings.resolutionScale = 1;
-		updateViewport(size, size, 90.0);
+		updateViewport(size, size);
 		main.settings.resolutionScale = oldResolutionScale;
-		defer updateViewport(Window.width, Window.height, settings.fov);
+		defer updateViewport(Window.width, Window.height);
 
 		var buffer: graphics.FrameBuffer = undefined;
 		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);
