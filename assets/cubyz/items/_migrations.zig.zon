@@ -5,4 +5,5 @@
 	.{.old = "stone_wall", .new = "slate_wall"},
 	.{.old = "coal", .new = "coal_ore"},
 	.{.old = "diamond", .new = "diamond_ore"},
+	.{.old = "mossy_cobblestone", .new = "cobblestone"},
 }

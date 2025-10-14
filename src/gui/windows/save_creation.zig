@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const build_options = @import("build_options");
+
 const main = @import("main");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
@@ -70,8 +72,7 @@ fn findValidFolderName(allocator: NeverFailingAllocator, name: []const u8) []con
 		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
 		defer main.stackAllocator.free(resultPath);
 
-		var dir = main.files.cubyzDir().openDir(resultPath) catch break;
-		dir.close();
+		if(!main.files.cubyzDir().hasDir(resultPath)) break;
 
 		main.stackAllocator.free(resultName);
 		resultName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_{}", .{escapedName, i}) catch unreachable;
@@ -149,8 +150,7 @@ pub fn onOpen() void {
 	while(true) {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		var dir = std.fs.cwd().openDir(path, .{}) catch break;
-		dir.close();
+		if(!main.files.cubyzDir().hasDir(path)) break;
 		num += 1;
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
@@ -163,7 +163,9 @@ pub fn onOpen() void {
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
 
-	list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
+	if(!build_options.isTaggedRelease) {
+		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
+	}
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 

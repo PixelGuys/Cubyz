@@ -8,4 +8,6 @@
 	.{.old = "swamp", .new = "swamp/base"},
 	.{.old = "taiga", .new = "taiga/base"},
 	.{.old = "tundra", .new = "tundra/base"},
+	.{.old = "forest/base", .new = "forest/mixed/oak_birch"},
+	.{.old = "forest/clearing", .new = "forest/mixed/oak_birch_clearing"},
 }

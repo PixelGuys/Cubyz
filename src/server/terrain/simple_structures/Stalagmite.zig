@@ -25,8 +25,8 @@ block: BlockSelector,
 size: f32,
 sizeVariation: f32,
 
-pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *Stalagmite {
-	const self = arenaAllocator.create(Stalagmite);
+pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *Stalagmite {
+	const self = arena.create(Stalagmite);
 	self.* = .{
 		.block = BlockSelector.parse(arenaAllocator, parameters.getChild("block"), "cubyz:stalagmite"),
 		.size = parameters.get(f32, "size", 12),

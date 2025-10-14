@@ -8,4 +8,5 @@
 	.{.old = "stone_bricks", .new = "slate_bricks"},
 	.{.old = "stone_tile", .new = "slate_tile"},
 	.{.old = "stone_wall", .new = "slate_wall"},
+	.{.old = "mossy_cobblestone", .new = "cobblestone"},
 }

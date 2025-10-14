@@ -501,42 +501,41 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
 
-		var loadArena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
-		defer loadArena.deinit();
-		const arenaAllocator = loadArena.allocator();
+		const arena = main.stackAllocator.createArena();
+		defer main.stackAllocator.destroyArena(arena);
 		var generatorSettings: ZonElement = undefined;
 
 		if(nullGeneratorSettings) |_generatorSettings| {
 			generatorSettings = _generatorSettings;
 			// Store generator settings:
-			try files.cubyzDir().writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{path}), generatorSettings);
+			try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/generatorSettings.zig.zon", .{path}), generatorSettings);
 		} else { // Read the generator settings:
-			generatorSettings = try files.cubyzDir().readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{path}));
+			generatorSettings = try files.cubyzDir().readToZon(arena, try std.fmt.allocPrint(arena.allocator, "saves/{s}/generatorSettings.zig.zon", .{path}));
 		}
-		self.wio = WorldIO.init(try files.cubyzDir().openDir(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}", .{path})), self);
+		self.wio = WorldIO.init(try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path})), self);
 		errdefer self.wio.deinit();
 
-		self.blockPalette = try loadPalette(arenaAllocator, path, "palette", "cubyz:air");
+		self.blockPalette = try loadPalette(arena, path, "palette", "cubyz:air");
 		errdefer self.blockPalette.deinit();
 
-		self.itemPalette = try loadPalette(arenaAllocator, path, "item_palette", null);
+		self.itemPalette = try loadPalette(arena, path, "item_palette", null);
 		errdefer self.itemPalette.deinit();
 
-		self.toolPalette = try loadPalette(arenaAllocator, path, "tool_palette", null);
+		self.toolPalette = try loadPalette(arena, path, "tool_palette", null);
 		errdefer self.toolPalette.deinit();
 
-		self.biomePalette = try loadPalette(arenaAllocator, path, "biome_palette", null);
+		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
 
 		errdefer main.assets.unloadAssets();
 
 		self.seed = try self.wio.loadWorldSeed();
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
-		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/palette.zig.zon", .{path}), self.blockPalette.storeToZon(arenaAllocator));
-		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arenaAllocator));
-		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arenaAllocator));
-		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arenaAllocator));
+		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/palette.zig.zon", .{path}), self.blockPalette.storeToZon(arena));
+		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arena));
+		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arena));
+		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arena));
 
 		convert_player_data_to_binary: { // TODO: Remove after #480
 			std.log.debug("Migrating old player inventory format to binary.", .{});
@@ -610,7 +609,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 
-		var gamerules = files.cubyzDir().readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arenaAllocator);
+		var gamerules = files.cubyzDir().readToZon(arena, try std.fmt.allocPrint(arena.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arena);
 
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
@@ -743,13 +742,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	fn regenerateLOD(self: *ServerWorld, newBiomeCheckSum: i64) !void {
 		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
-		const hasSurfaceMaps = blk: {
-			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
-			defer main.stackAllocator.free(path);
-			var dir = main.files.cubyzDir().openDir(path) catch break :blk false;
-			defer dir.close();
-			break :blk true;
-		};
+		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
+		defer main.stackAllocator.free(mapsPath);
+		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath);
 		if(hasSurfaceMaps) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}
@@ -901,11 +896,22 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 		try self.wio.saveWorldData();
-		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/items.zig.zon", .{self.path}) catch unreachable;
-		defer main.stackAllocator.free(itemsPath);
-		const zon = files.cubyzDir().readToZon(main.stackAllocator, itemsPath) catch .null;
-		defer zon.deinit(main.stackAllocator);
-		self.itemDropManager.loadFrom(zon);
+		loadItemDrops: {
+			const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
+			defer main.stackAllocator.free(itemsPath);
+			const itemDropData: []const u8 = files.cubyzDir().read(main.stackAllocator, itemsPath) catch |err| {
+				if(err != error.FileNotFound) {
+					std.log.err("Got error while loading {s}: {s}", .{itemsPath, @errorName(err)});
+				}
+				break :loadItemDrops;
+			};
+			defer main.stackAllocator.free(itemDropData);
+			var reader = main.utils.BinaryReader.init(itemDropData);
+			self.itemDropManager.loadFromBytes(&reader) catch |err| {
+				std.log.err("Failed to load item drop data: {s}", .{@errorName(err)});
+				std.log.debug("Data: {any}", .{itemDropData});
+			};
+		}
 	}
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
@@ -1017,11 +1023,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		try self.saveAllPlayers();
 
-		const itemDropZon = self.itemDropManager.store(main.stackAllocator);
-		defer itemDropZon.deinit(main.stackAllocator);
-		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/items.zig.zon", .{self.path}) catch unreachable;
+		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer itemDropData.deinit();
+		self.itemDropManager.storeToBytes(&itemDropData);
+		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(itemsPath);
-		try files.cubyzDir().writeZon(itemsPath, itemDropZon);
+		try files.cubyzDir().write(itemsPath, itemDropData.data.items);
 	}
 
 	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {

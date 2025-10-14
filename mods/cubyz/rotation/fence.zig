@@ -52,7 +52,8 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 		}
 	};
 	if(data >= 16) return 0;
-	return rotationTable[@intFromEnum(angle)][data];
+	const runtimeTable = rotationTable;
+	return runtimeTable[@intFromEnum(angle)][data];
 }
 
 fn fenceTransform(quad: *main.models.QuadInfo, data: FenceData) void {
@@ -106,7 +107,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	const blockBaseModelIndex = blocks.meshes.modelIndexStart(block.*);
 	const neighborBaseModelIndex = blocks.meshes.modelIndexStart(neighborBlock);
 	const neighborModel = blocks.meshes.model(neighborBlock).model();
-	const targetVal = !neighborBlock.replacable() and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.reverse().toInt()]);
+	const targetVal = !neighborBlock.replacable() and !neighborBlock.transparent() and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.reverse().toInt()]);
 	var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
 	switch(neighbor) {
 		.dirNegX => {

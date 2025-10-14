@@ -99,15 +99,15 @@ pub const RotationMode = struct { // MARK: RotationMode
 			if(oldBlock == newBlock) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
 			if(!oldBlock.replacable()) {
-				var damage: f32 = 1;
+				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isTool = item.item != null and item.item.? == .tool;
 				if(isTool) {
 					damage = item.item.?.tool.getBlockDamage(oldBlock);
 				}
 				damage -= oldBlock.blockResistance();
 				if(damage > 0) {
-					if(isTool) {
-						return .{.yes_costsDurability = @intFromFloat(@ceil(oldBlock.blockHealth()/damage))};
+					if(isTool and item.item.?.tool.isEffectiveOn(oldBlock)) {
+						return .{.yes_costsDurability = 1};
 					} else return .yes;
 				}
 			} else {

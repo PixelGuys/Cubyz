@@ -21,7 +21,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		water_surface,
 	};
 	const VTable = struct {
-		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
+		loadModel: *const fn(arena: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
 		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
@@ -41,7 +41,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		};
 		return SimpleStructureModel{
 			.vtable = vtable,
-			.data = vtable.loadModel(arena.allocator(), parameters),
+			.data = vtable.loadModel(arenaAllocator.allocator(), parameters),
 			.chance = parameters.get(f32, "chance", 0.1),
 			.priority = parameters.get(f32, "priority", 1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
@@ -53,10 +53,10 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	}
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
+	var arenaAllocator: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 
 	pub fn reset() void {
-		std.debug.assert(arena.reset(.free_all));
+		std.debug.assert(arenaAllocator.reset(.free_all));
 	}
 
 	pub fn registerGenerator(comptime Generator: type) void {
@@ -300,6 +300,7 @@ pub const Biome = struct { // MARK: Biome
 	fogHigher: f32,
 	fogDensity: f32,
 	fogColor: Vec3f,
+	skyColor: Vec3f,
 	id: []const u8,
 	paletteId: u32,
 	structure: BlockStructure = undefined,
@@ -327,7 +328,10 @@ pub const Biome = struct { // MARK: Biome
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
 			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate")),
-			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
+			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
+			.skyColor = blk: {
+				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
+			},
 			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
 			.fogLower = zon.get(f32, "fogLower", 100.0),
 			.fogHigher = zon.get(f32, "fogHigher", 1000.0),

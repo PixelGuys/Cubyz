@@ -1,0 +1,15 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/oak/trunk/1"},
+		.{.id = "cubyz:tree/oak/trunk/2"},
+		.{.id = "cubyz:tree/oak/trunk/3"},
+		.{.id = "cubyz:tree/oak/trunk/4"},
+		.{.id = "cubyz:tree/oak/trunk/5"},
+		.{.id = "cubyz:tree/oak/trunk/6"},
+	},
+	.children = .{
+		.blue = "cubyz:tree/oak/white/branch",
+		.crimson = "cubyz:tree/oak/white/leaf",
+		.yellow = "cubyz:tree/oak/white/stub",
+	},
+}

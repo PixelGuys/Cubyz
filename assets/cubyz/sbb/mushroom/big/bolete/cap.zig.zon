@@ -1,12 +1,9 @@
 .{
-	.blueprint = "cubyz:mushroom/big/bolete/empty",
-	.children = .{
-		.white = .{
-			.{.structure = "cubyz:mushroom/big/bolete/cap/0"},
-			.{.structure = "cubyz:mushroom/big/bolete/cap/1"},
-			.{.structure = "cubyz:mushroom/big/bolete/cap/2"},
-			.{.structure = "cubyz:mushroom/big/bolete/cap/3"},
-			.{.structure = "cubyz:mushroom/big/bolete/cap/4"},
-		},
+	.blueprints = .{
+		.{.id = "cubyz:mushroom/big/bolete/cap/0"},
+		.{.id = "cubyz:mushroom/big/bolete/cap/1"},
+		.{.id = "cubyz:mushroom/big/bolete/cap/2"},
+		.{.id = "cubyz:mushroom/big/bolete/cap/3"},
+		.{.id = "cubyz:mushroom/big/bolete/cap/4"},
 	},
 }

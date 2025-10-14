@@ -56,9 +56,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
-	} else if(t.os.tag == .linux) {
-		exe.linkSystemLibrary("X11");
-		exe.linkSystemLibrary("GL");
 	} else if(t.os.tag == .macos) {
 		exe.linkFramework("AudioUnit");
 		exe.linkFramework("AudioToolbox");
@@ -71,7 +68,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
 		exe.root_module.addRPathSpecial("@executable_path/../Library");
 		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
-	} else {
+	} else if(t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
 }
@@ -144,7 +141,18 @@ pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions)
 	try makeModFeature(step, "rotation");
 }
 
+fn createLaunchConfig() !void {
+	std.fs.cwd().access("launchConfig.zon", .{}) catch {
+		try std.fs.cwd().writeFile(.{
+			.data = ".{\n\t.cubyzDir = \"\",\n}\n",
+			.sub_path = "launchConfig.zon",
+		});
+	};
+}
+
 pub fn build(b: *std.Build) !void {
+	try createLaunchConfig();
+
 	// Standard target options allows the person running `zig build` to choose
 	// what target to build for. Here we do not override the defaults, which
 	// means any target is allowed, and the default is native. Other options
@@ -154,6 +162,12 @@ pub fn build(b: *std.Build) !void {
 	// Standard release options allow the person running `zig build` to select
 	// between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
 	const optimize = b.standardOptimizeOption(.{});
+
+	const options = b.addOptions();
+	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
+	const version = b.fmt("0.1.0{s}", .{if(isRelease) "" else "-dev"});
+	options.addOption([]const u8, "version", version);
+	options.addOption(bool, "isTaggedRelease", isRelease);
 
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
 
@@ -176,13 +190,18 @@ pub fn build(b: *std.Build) !void {
 	});
 
 	const exe = b.addExecutable(.{
-		.name = "Cubyzig",
+		.name = "Cubyz",
 		.root_module = mainModule,
 		//.sanitize_thread = true,
 		.use_llvm = true,
 	});
+	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
+
+	if(isRelease and target.result.os.tag == .windows) {
+		exe.subsystem = .Windows;
+	}
 
 	linkLibraries(b, exe, useLocalDeps);
 
@@ -202,6 +221,7 @@ pub fn build(b: *std.Build) !void {
 		.test_runner = .{.path = b.path("test/runner.zig"), .mode = .simple},
 	});
 	linkLibraries(b, exe_tests, useLocalDeps);
+	exe_tests.root_module.addOptions("build_options", options);
 	exe_tests.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe_tests);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
@@ -212,7 +232,7 @@ pub fn build(b: *std.Build) !void {
 	// MARK: Formatter
 
 	const formatter = b.addExecutable(.{
-		.name = "CubyzigFormatter",
+		.name = "CubyzFormatter",
 		.root_module = b.addModule("format", .{
 			.root_source_file = b.path("src/formatter/format.zig"),
 			.target = target,
@@ -220,6 +240,7 @@ pub fn build(b: *std.Build) !void {
 		}),
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
+	formatter.root_module.addOptions("build_options", options);
 	formatter.root_module.addImport("main", mainModule);
 
 	const formatter_install = b.addInstallArtifact(formatter, .{});
@@ -242,6 +263,7 @@ pub fn build(b: *std.Build) !void {
 		}),
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
+	zig_fmt.root_module.addOptions("build_options", options);
 	zig_fmt.root_module.addImport("main", mainModule);
 
 	const zig_fmt_install = b.addInstallArtifact(zig_fmt, .{});

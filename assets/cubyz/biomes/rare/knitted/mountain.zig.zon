@@ -1,0 +1,27 @@
+.{
+	.properties = .{},
+	.radius = 20,
+	.chance = 0,
+	.minHeight = 40,
+	.maxHeight = 70,
+	.keepOriginalTerrain = 0,
+	.roughness = 1,
+	.mountains = 4,
+	.hills = 20,
+	.stoneBlock = "cubyz:cloth/block/grey",
+	.stripes = .{
+		.{
+			.direction = .{1, 1, 1},
+			.block = "cubyz:cloth/block/dark_grey",
+			.distance = 6,
+			.offset = 3,
+			.width = 2,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/knitted/forest",
+			.chance = 8,
+		},
+	},
+}
