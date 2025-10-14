@@ -349,17 +349,19 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	structureMap.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
 
 	childrenToResolve = .init(main.stackAllocator);
+    var index: u32 = 0;
 	defer childrenToResolve.deinit();
 	{
 		var iterator = structures.iterator();
-		var index: u32 = 0;
 		while(iterator.next()) |entry| {
-			defer index += 1;
 
 			structureList.items[index] = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
 				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.*, @errorName(err)});
 				continue;
 			};
+
+            defer index += 1;
+
 
 			const key = arenaAllocator.dupe(u8, entry.key_ptr.*);
 			structureMap.put(arenaAllocator.allocator, key, @enumFromInt(index)) catch unreachable;
@@ -376,7 +378,7 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 			entry.structure.* = childStructure.get();
 		}
 	}
-	for(structureList.items) |sbb| sbb.postResolutionChecks();
+	for(structureList.items[0..index-1]) |sbb| sbb.postResolutionChecks();
 }
 
 pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
