@@ -6,7 +6,7 @@ layout(location = 0) flat out vec2 startCoord;
 layout(location = 1) flat out vec2 endCoord;
 layout(location = 2) flat out vec4 fColor;
 
-//in pixel
+// in pixel
 layout(location = 0) uniform vec2 start;
 layout(location = 1) uniform vec2 size;
 layout(location = 2) uniform vec2 screen;
