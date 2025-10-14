@@ -598,7 +598,7 @@ pub const Player = struct { // MARK: Player
 						inventory.depositOrSwap(@intCast(targetSlot), carried);
 						inventory.depositOrSwap(@intCast(slotIdx), carried);
 						
-						return;	
+						return;
 					}
 				}
 			}
