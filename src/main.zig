@@ -204,7 +204,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 				resultArgs[resultArgs.len - 1] = colorReset;
 			}
 			logToStdErr(formatString, resultArgs);
-			if(level == .err and !openingErrorWindow) {
+			if(level == .err and !openingErrorWindow and !main.settings.launchConfig.headlessServerMode) {
 				openingErrorWindow = true;
 				gui.openWindow("error_prompt");
 				openingErrorWindow = false;
