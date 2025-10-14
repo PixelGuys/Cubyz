@@ -587,17 +587,14 @@ pub const Player = struct { // MARK: Player
 							}
 							break :blk selectedSlot;
 						};
-						
 						var carried: Inventory = undefined;
 						carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
 						defer carried.deinit(main.globalAllocator);
 
 						inventory.takeHalf(@intCast(slotIdx), carried);
 						inventory.takeHalf(@intCast(slotIdx), carried);
-						
 						inventory.depositOrSwap(@intCast(targetSlot), carried);
 						inventory.depositOrSwap(@intCast(slotIdx), carried);
-						
 						return;
 					}
 				}
