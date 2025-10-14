@@ -437,7 +437,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn deinit(self: *ConnectionManager) void {
 		for(self.connections.items) |conn| {
-			conn.disconnect();
+			conn.disconnect("Server stopped.");
 		}
 
 		self.running.store(false, .monotonic);
@@ -1924,7 +1924,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect();
+		self.disconnect(null);
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
 		self.lossyChannel.deinit();
 		self.fastChannel.deinit();
@@ -1945,7 +1945,7 @@ pub const Connection = struct { // MARK: Connection
 			else => comptime unreachable,
 		} catch {
 			std.log.err("Cannot send any more packets. Disconnecting", .{});
-			self.disconnect();
+			self.disconnect("Wrong channel");
 		};
 	}
 
@@ -2047,7 +2047,7 @@ pub const Connection = struct { // MARK: Connection
 			if(@errorReturnTrace()) |trace| {
 				std.log.info("{f}", .{trace});
 			}
-			self.disconnect();
+			self.disconnect("Error proceeding packet");
 		};
 	}
 
@@ -2092,10 +2092,10 @@ pub const Connection = struct { // MARK: Connection
 					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) { // Reconnection attempt
 						if(self.user) |user| {
 							self.manager.removeConnection(self);
-							main.server.disconnect(user);
+							main.server.disconnect(user, "Reconnection failed");
 						} else {
 							std.log.err("Server reconnected?", .{});
-							self.disconnect();
+							self.disconnect("Reconnection failed");
 						}
 						return;
 					}
@@ -2153,7 +2153,13 @@ pub const Connection = struct { // MARK: Connection
 			.init => unreachable,
 			.keepalive => {},
 			.disconnect => {
-				self.disconnect();
+				const reasonLen = try reader.readVarInt(u16);
+				if(reasonLen == 0) {
+					self.disconnect(null);
+				} else {
+					const reason = try reader.readSlice(reasonLen);
+					self.disconnect(reason);
+				}
 			},
 		}
 		self.lastConnection = networkTimestamp();
@@ -2189,7 +2195,7 @@ pub const Connection = struct { // MARK: Connection
 			.connected => {
 				if(timestamp -% self.lastConnection -% settings.connectionTimeout > 0) {
 					std.log.info("timeout", .{});
-					self.disconnect();
+					self.disconnect("Timeout");
 					return;
 				}
 			},
@@ -2234,20 +2240,38 @@ pub const Connection = struct { // MARK: Connection
 		}
 	}
 
-	pub fn disconnect(self: *Connection) void {
-		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
+	pub fn disconnect(self: *Connection, reason: ?[]const u8) void {
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.mtuEstimate);
+		defer writer.deinit();
+		writer.writeEnum(ChannelId, .disconnect);
+
+		if(reason) |r| {
+			const maxReasonLen = std.math.maxInt(u16);
+			const truncatedReason: []const u8 = if(r.len > maxReasonLen) r[0..maxReasonLen] else r;
+			writer.writeVarInt(u16, @intCast(truncatedReason.len));
+			writer.writeSlice(truncatedReason);
+		} else {
+			writer.writeVarInt(u16, 0);
+		}
+		self.manager.send(writer.data.items, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			std.Thread.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
-			main.server.disconnect(user);
+			main.server.disconnect(user, reason);
 		} else {
 			self.handShakeWaiting.broadcast();
+			main.setKickReason(reason);
 			main.exitToMenu(undefined);
 		}
-		std.log.info("Disconnected", .{});
+
+		if(reason) |r| {
+			std.log.info("Disconnected, reason {s}", .{r});
+		} else {
+			std.log.info("Disconnected.", .{});
+		}
 	}
 };
 
