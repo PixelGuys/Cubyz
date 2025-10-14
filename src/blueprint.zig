@@ -324,7 +324,7 @@ pub const Blueprint = struct {
 					const current = self.blocks.get(x, y, z);
 					if(whitelist) |m| if(!m.match(current)) continue;
 					if(blacklist) |m| if(m.match(current)) continue;
-					self.blocks.set(x, y, z, newBlocks.blocks.sample(&main.seed).block);
+					self.blocks.set(x, y, z, newBlocks.sample(&main.seed));
 				}
 			}
 		}
@@ -375,6 +375,10 @@ pub const Pattern = struct {
 		}
 
 		return .{.blocks = .init(allocator, entries)};
+	}
+
+	pub fn sample(self: @This(), seed: *u64) Block {
+		return self.blocks.sample(seed).block;
 	}
 
 	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {

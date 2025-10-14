@@ -13,7 +13,8 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const simple_structure_utils = terrain.biomes.simple_structure_utils;
-const BlockSelector = simple_structure_utils.BlockSelector;
+const parsePatternWithDefault = simple_structure_utils.parsePatternWithDefault;
+const Pattern = main.blueprint.Pattern;
 
 pub const id = "cubyz:flower_patch";
 
@@ -21,7 +22,7 @@ pub const generationMode = .floor;
 
 const FlowerPatch = @This();
 
-block: BlockSelector,
+block: Pattern,
 width: f32,
 variation: f32,
 density: f32,
@@ -29,7 +30,7 @@ density: f32,
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *FlowerPatch {
 	const self = arena.create(FlowerPatch);
 	self.* = .{
-		.block = BlockSelector.parse(arenaAllocator, parameters.getChild("block"), ""),
+		.block = parsePatternWithDefault(arena, parameters.getChild("block").as(?[]const u8, null), ""),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.density = parameters.get(f32, "density", 0.5),
@@ -88,7 +89,7 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				startHeight = chunk.startIndex(startHeight + chunk.super.pos.voxelSize);
 				if(@abs(startHeight -% baseHeight) > 5) continue;
 				if(chunk.liesInChunk(px, py, startHeight)) {
-					chunk.updateBlockInGeneration(px, py, startHeight, self.block.getBlock(seed));
+					chunk.updateBlockInGeneration(px, py, startHeight, self.block.sample(seed));
 				}
 			}
 		}

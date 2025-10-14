@@ -13,7 +13,8 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const simple_structure_utils = terrain.biomes.simple_structure_utils;
-const BlockSelector = simple_structure_utils.BlockSelector;
+const parsePatternWithDefault = simple_structure_utils.parsePatternWithDefault;
+const Pattern = main.blueprint.Pattern;
 
 pub const id = "cubyz:ground_patch";
 
@@ -21,7 +22,7 @@ pub const generationMode = .floor;
 
 const GroundPatch = @This();
 
-block: BlockSelector,
+block: Pattern,
 width: f32,
 variation: f32,
 depth: i32,
@@ -30,7 +31,7 @@ smoothness: f32,
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *GroundPatch {
 	const self = arena.create(GroundPatch);
 	self.* = .{
-		.block = BlockSelector.parse(arenaAllocator, parameters.getChild("block"), ""),
+		.block = parsePatternWithDefault(arena, parameters.getChild("block").as(?[]const u8, null), ""),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.depth = parameters.get(i32, "depth", 2),
@@ -94,7 +95,7 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				while(pz <= startHeight) : (pz += chunk.super.pos.voxelSize) {
 					if(dist <= self.smoothness or (dist - self.smoothness)/(1 - self.smoothness) < random.nextFloat(seed)) {
 						if(chunk.liesInChunk(px, py, pz)) {
-							chunk.updateBlockInGeneration(px, py, pz, self.block.getBlock(seed));
+							chunk.updateBlockInGeneration(px, py, pz, self.block.sample(seed));
 						}
 					}
 				}

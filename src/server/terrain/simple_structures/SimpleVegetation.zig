@@ -13,7 +13,8 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const simple_structure_utils = terrain.biomes.simple_structure_utils;
-const BlockSelector = simple_structure_utils.BlockSelector;
+const parsePatternWithDefault = simple_structure_utils.parsePatternWithDefault;
+const Pattern = main.blueprint.Pattern;
 
 pub const id = "cubyz:simple_vegetation";
 
@@ -21,14 +22,14 @@ pub const generationMode = .floor;
 
 const SimpleVegetation = @This();
 
-block: BlockSelector,
+block: Pattern,
 height0: u31,
 deltaHeight: u31,
 
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SimpleVegetation {
 	const self = arena.create(SimpleVegetation);
 	self.* = .{
-		.block = BlockSelector.parse(arenaAllocator, parameters.getChild("block"), ""),
+		.block = parsePatternWithDefault(arena, parameters.getChild("block").as(?[]const u8, null), ""),
 		.height0 = parameters.get(u31, "height", 1),
 		.deltaHeight = parameters.get(u31, "height_variation", 0),
 	};
@@ -43,13 +44,13 @@ pub fn generate(self: *SimpleVegetation, _: GenerationMode, x: i32, y: i32, z: i
 	if(isCeiling) {
 		while(pz >= z - height) : (pz -= chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, self.block.getBlock(seed));
+				chunk.updateBlockIfDegradable(x, y, pz, self.block.sample(seed));
 			}
 		}
 	} else {
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, self.block.getBlock(seed));
+				chunk.updateBlockIfDegradable(x, y, pz, self.block.sample(seed));
 			}
 		}
 	}
