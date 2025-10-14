@@ -64,8 +64,14 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				const biome = biomeMap.getBiomeColumnAndSeed(x, y, zBiome, true, &baseSeed, &biomeHeight);
 				var isWaterChangeEdge = false;
 				var maxWaterLevel = biome.waterProperties.waterLevel;
-				for (@as([4]i32, .{0, -1, 0, 1}), @as([4]i32, .{1, 0, -1, 0})) |dx, dy| {
-					const otherWaterProperties = biomeMap.getBiome(x + dx, y + dy, zBiome).waterProperties;
+				const cardinalDirections = [_]Vec3i{
+					Vec3i{1, 0, 0},
+					Vec3i{-1, 0, 0},
+					Vec3i{0, 1, 0},
+					Vec3i{0, -1, 0},
+				};
+				for (cardinalDirections) |direction| {
+					const otherWaterProperties = biomeMap.getBiome(x + direction[0], y + direction[1], zBiome).waterProperties;
 					maxWaterLevel = @max(maxWaterLevel, otherWaterProperties.waterLevel);
 					isWaterChangeEdge |= !std.meta.eql(otherWaterProperties, biome.waterProperties);
 				}
@@ -75,12 +81,6 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				while(z >= zBiome) : (z -= chunk.super.pos.voxelSize) {
 					const mask = @as(u64, 1) << @intCast(z >> voxelSizeShift);
 					if(heightData & mask != 0) {
-						const cardinalDirections = [_]Vec3i{
-							Vec3i{1, 0, 0},
-							Vec3i{-1, 0, 0},
-							Vec3i{0, 1, 0},
-							Vec3i{0, -1, 0},
-						};
 
 						const surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
 						var maxUp: i32 = 0;
