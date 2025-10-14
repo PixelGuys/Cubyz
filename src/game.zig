@@ -569,9 +569,6 @@ pub const Player = struct { // MARK: Player
 
 			for(0..(main.gui.windowlist.inventory.itemSlots.len-1 + main.gui.windowlist.hotbar.itemSlots.len-1)) |slotIdx| {
 				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
-					//if(isCreative()) {
-					//inventory.fillFromCreative(@intCast(slotIdx), item);
-					//}
 
 					if(slotIdx < (main.gui.windowlist.hotbar.itemSlots.len-1)) {
 						// when item is in hotbar
