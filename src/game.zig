@@ -575,8 +575,7 @@ pub const Player = struct { // MARK: Player
 					if(slotIdx < 12) {
 						selectedSlot = @intCast(slotIdx);
 						return;
-					}
-					else {
+					} else {
 						const targetSlot = blk: {
 							if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 							// Look for an empty slot
