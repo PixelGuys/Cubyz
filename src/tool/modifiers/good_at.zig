@@ -26,5 +26,5 @@ pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.writer().print("#80ff40**Good at**#808080 *Increases damage by **{d:.0}%** on \n***#80ff40{s}#808080*** blocks", .{data.strength*100, data.tag.getName()}) catch unreachable;
+	outString.print("#80ff40**Good at**#808080 *Increases damage by **{d:.0}%** on \n***#80ff40{s}#808080*** blocks", .{data.strength*100, data.tag.getName()});
 }

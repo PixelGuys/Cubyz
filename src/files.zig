@@ -99,7 +99,7 @@ pub const Dir = struct {
 	}
 
 	pub fn read(self: Dir, allocator: NeverFailingAllocator, path: []const u8) ![]u8 {
-		return self.dir.readFileAlloc(allocator.allocator, path, std.math.maxInt(usize));
+		return self.dir.readFileAlloc(path, allocator.allocator, .unlimited);
 	}
 
 	pub fn readToZon(self: Dir, allocator: NeverFailingAllocator, path: []const u8) !ZonElement {
