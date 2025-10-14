@@ -687,6 +687,10 @@ pub const Skybox = struct {
 
 	var starSsbo: graphics.SSBO = undefined;
 
+	// Textures for sun and moon
+	var sunTexture: graphics.Texture = undefined;
+	var moonTexture: graphics.Texture = undefined;
+
 	const numStars = 10000;
 	const celestialDistance = 300.0; // Further away than stars for better visibility
 
@@ -832,6 +836,10 @@ pub const Skybox = struct {
 
 		createCelestialQuad();
 
+		// Load sun and moon textures
+		sunTexture = graphics.Texture.initFromFile("assets/cubyz/ui/sun.png");
+		moonTexture = graphics.Texture.initFromFile("assets/cubyz/ui/moon.png");
+
 		var starData: [numStars*20]f32 = undefined;
 
 		const starDist = 200.0;
@@ -908,21 +916,11 @@ pub const Skybox = struct {
 		// At midnight (time=dayCycle/2, angle=π): sun below (z=-max, y=0)
 		// At sunrise (time=3*dayCycle/4, angle=3π/2): sun at eastern horizon (z=0, y=east)
 		
-		const position = Vec3f{
+		return Vec3f{
 			0.0, // No north-south movement
 			@sin(angle) * celestialDistance, // East-west: 0 -> west -> 0 -> east -> 0
 			@cos(angle) * celestialDistance, // Height: max -> 0 -> -max -> 0 -> max
 		};
-
-		// Debug logging every few frames to avoid spam
-		if(@mod(time, 60) == 0) { // Log every 60 time units
-			std.log.info("Sun - time: {}, normalized: {d:.3}, angle: {d:.3}, pos: [{d:.1}, {d:.1}, {d:.1}]", .{
-				time, normalizedTime, angle,
-				position[0], position[1], position[2],
-			});
-		}
-
-		return position;
 	}
 
 	fn calculateMoonPosition(time: i64) Vec3f {
@@ -966,6 +964,7 @@ pub const Skybox = struct {
 				const billboardMatrix = createBillboardMatrix(sunPos, viewMatrix);
 				const sunMatrix = game.projectionMatrix.mul(viewMatrix.mul(billboardMatrix));
 
+				sunTexture.bindTo(0); // Bind sun texture
 				c.glUniformMatrix4fv(celestialUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&sunMatrix));
 				c.glUniform1f(celestialUniforms.celestialOpacity, sunOpacity);
 				c.glUniform3f(celestialUniforms.celestialColor, 1.0, 0.9, 0.7); // Sun color
@@ -992,6 +991,7 @@ pub const Skybox = struct {
 				const billboardMatrix = createBillboardMatrix(moonPos, viewMatrix);
 				const moonMatrix = game.projectionMatrix.mul(viewMatrix.mul(billboardMatrix));
 
+				moonTexture.bindTo(0); // Bind moon texture
 				c.glUniformMatrix4fv(celestialUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&moonMatrix));
 				c.glUniform1f(celestialUniforms.celestialOpacity, moonOpacity);
 				c.glUniform3f(celestialUniforms.celestialColor, 0.8, 0.8, 1.0); // Moon color
@@ -1006,6 +1006,8 @@ pub const Skybox = struct {
 		starPipeline.deinit();
 		celestialPipeline.deinit();
 		starSsbo.deinit();
+		sunTexture.deinit();
+		moonTexture.deinit();
 		c.glDeleteVertexArrays(1, &starVao);
 		c.glDeleteVertexArrays(1, &celestialVao);
 		c.glDeleteBuffers(1, &celestialVbo);
