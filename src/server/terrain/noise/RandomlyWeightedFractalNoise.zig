@@ -43,7 +43,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31,
 	// Each new gridpoint gets the interpolated height value of the surrounding known grid points using random weights. Afterwards this value gets offset by a random value.
 	// Here is a visual representation of this process(with random starting values):
 	//
-	//█░▒▓                      small                           small
+	// █░▒▓                     small                           small
 	//  █???█   grid    █?█?█   random  █?▓?█   grid    ██▓▓█   random  ██▓▓█
 	//  ?????   resize  ?????   change  ?????   resize  █▓▓▓▒   change  █▓█▓▒
 	//  ?????   →→→→    ▓?▓?▒   →→→→    ▒?█?▒   →→→→    ▒▒██▒   →→→→    ▒▒██▒

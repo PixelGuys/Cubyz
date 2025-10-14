@@ -209,10 +209,7 @@ pub const ClientEntityManager = struct {
 					@floatCast(pos[1]),
 					@floatCast(pos[2] - 1.0 + 0.09375),
 				}))
-				.mul(Mat4f.rotationZ(-ent.rot[2]))
-				//.mul(Mat4f.rotationY(-ent.rot[1]))
-				//.mul(Mat4f.rotationX(-ent.rot[0]))
-			);
+				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			c.glDrawElements(c.GL_TRIANGLES, 6*modelSize, c.GL_UNSIGNED_INT, null);

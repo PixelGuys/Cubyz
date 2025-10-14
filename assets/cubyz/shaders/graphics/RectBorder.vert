@@ -4,7 +4,7 @@ layout(location = 0) in vec4 vertex_pos;
 
 layout(location = 0) flat out vec4 color;
 
-//in pixel
+// in pixel
 layout(location = 0) uniform vec2 start;
 layout(location = 1) uniform vec2 size;
 layout(location = 2) uniform vec2 screen;
