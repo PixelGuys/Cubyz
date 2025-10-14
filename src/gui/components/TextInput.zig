@@ -34,6 +34,9 @@ textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
 optional: OptionalCallbacks,
+blinkDurationMs: i64 = 500.0,
+lastBlinkTime: i64 = 0,
+showCusor: bool = true,
 
 pub fn __init() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -472,6 +475,8 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn ensureCursorVisibility(self: *TextInput) void {
+	self.showCusor = true;
+	self.lastBlinkTime = main.game.world.?.milliTime;
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		var y: f32 = 0;
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
@@ -514,8 +519,17 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			draw.setColor(0x440000ff);
 			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
-		draw.setColor(0xff000000);
-		const thickness = @min(@ceil(fontSize / 8), 1);
-		draw.rect(cursorPos, Vec2f{thickness, fontSize});
+
+		const milliTime = main.game.world.?.milliTime;
+		if(self.lastBlinkTime + self.blinkDurationMs <= milliTime) {
+			self.lastBlinkTime = milliTime;
+			self.showCusor = !self.showCusor;
+		}
+
+		if(self.showCusor) {
+			draw.setColor(0xff000000);
+			const thickness = @min(@ceil(fontSize / 8), 1);
+			draw.rect(cursorPos, Vec2f{thickness, fontSize});
+		}
 	}
 }
