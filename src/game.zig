@@ -568,13 +568,32 @@ pub const Player = struct { // MARK: Player
 			} else return;
 
 			// Check if there is already a slot with that item type
-			for(0..12) |slotIdx| {
+			for(0..30) |slotIdx| {
 				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
 					if(isCreative()) {
 						inventory.fillFromCreative(@intCast(slotIdx), item);
 					}
-					selectedSlot = @intCast(slotIdx);
-					return;
+					if(slotIdx <= 12)
+					{
+						selectedSlot = @intCast(slotIdx);
+						return;
+					}
+					else 
+					{
+						const targetSlot = blk: {
+							if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
+							// Look for an empty slot
+							for(0..12) |slotId| {
+								if(inventory.getItem(slotId) == null) {
+									break :blk slotId;
+								}
+							}
+							break :blk selectedSlot;
+						};
+					std.log.info("slot for found item: {any}" ,.{targetSlot});
+					}
+					
+					
 				}
 			}
 
