@@ -16,8 +16,6 @@
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
 	},
-	.waterLevel = 31,
-	.waterBlock = "cubyz:lava",
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
