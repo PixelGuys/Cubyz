@@ -672,11 +672,23 @@ pub const Skybox = struct {
 		starOpacity: c_int,
 	} = undefined;
 
+	// Add celestial pipeline and uniforms for sun/moon
+	var celestialPipeline: graphics.Pipeline = undefined;
+	var celestialUniforms: struct {
+		mvp: c_int,
+		celestialOpacity: c_int,
+		celestialColor: c_int,
+	} = undefined;
+
 	var starVao: c_uint = undefined;
+	var celestialVao: c_uint = undefined; // New VAO for sun/moon
+	var celestialVbo: c_uint = undefined; // VBO for sun/moon quad
+	var celestialEbo: c_uint = undefined; // EBO for sun/moon quad
 
 	var starSsbo: graphics.SSBO = undefined;
 
 	const numStars = 10000;
+	const celestialDistance = 300.0; // Further away than stars for better visibility
 
 	fn getStarPos(seed: *u64) Vec3f {
 		const x: f32 = @floatCast(main.random.nextFloatGauss(seed));
@@ -703,6 +715,79 @@ pub const Skybox = struct {
 		return rgb;
 	}
 
+	fn createCelestialQuad() void {
+		// Create a simple quad for sun/moon (will be billboarded to always face camera)
+		const size: f32 = 20.0;
+		const vertices = [_]f32{
+			// Position (x, y, z)     // UV coordinates (u, v)
+			-size, -size, 0.0, 0.0, 0.0,
+			size,  -size, 0.0, 1.0, 0.0,
+			size,  size,  0.0, 1.0, 1.0,
+			-size, size,  0.0, 0.0, 1.0,
+		};
+
+		const indices = [_]c_uint{
+			0, 1, 2,
+			0, 2, 3,
+		};
+
+		c.glGenVertexArrays(1, &celestialVao);
+		c.glBindVertexArray(celestialVao);
+
+		c.glGenBuffers(1, &celestialVbo);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, celestialVbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len*@sizeOf(f32)), &vertices, c.GL_STATIC_DRAW);
+
+		// Position attribute
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+
+		// UV attribute
+		c.glVertexAttribPointer(1, 2, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @ptrFromInt(3*@sizeOf(f32)));
+		c.glEnableVertexAttribArray(1);
+
+		c.glGenBuffers(1, &celestialEbo);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, celestialEbo);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_uint)), &indices, c.GL_STATIC_DRAW);
+	}
+
+	fn createBillboardMatrix(position: Vec3f, viewMatrix: Mat4f) Mat4f {
+		// Create a billboard matrix that makes the quad always face the camera position
+		// For celestial objects, we want them to face toward the camera regardless of view direction
+
+		// Extract camera position from view matrix (inverse translation)
+		const cameraPos = Vec3f{
+			-(viewMatrix.rows[0][0]*viewMatrix.rows[0][3] + viewMatrix.rows[1][0]*viewMatrix.rows[1][3] + viewMatrix.rows[2][0]*viewMatrix.rows[2][3]),
+			-(viewMatrix.rows[0][1]*viewMatrix.rows[0][3] + viewMatrix.rows[1][1]*viewMatrix.rows[1][3] + viewMatrix.rows[2][1]*viewMatrix.rows[2][3]),
+			-(viewMatrix.rows[0][2]*viewMatrix.rows[0][3] + viewMatrix.rows[1][2]*viewMatrix.rows[1][3] + viewMatrix.rows[2][2]*viewMatrix.rows[2][3]),
+		};
+
+		// Calculate direction from celestial object to camera
+		const toCamera = vec.normalize(cameraPos - position);
+
+		// Create up vector (preferably world up, but avoid parallel case)
+		var up = Vec3f{0, 0, 1}; // World up
+		if(@abs(vec.dot(toCamera, up)) > 0.99) {
+			up = Vec3f{0, 1, 0}; // Use forward if nearly parallel to world up
+		}
+
+		// Create right vector perpendicular to both toCamera and up
+		const right = vec.normalize(vec.cross(up, toCamera));
+
+		// Recalculate up to ensure orthogonality
+		up = vec.cross(toCamera, right);
+
+		// Create billboard transform matrix (right, up, forward=toCamera, position)
+		return Mat4f{
+			.rows = .{
+				.{right[0], up[0], toCamera[0], position[0]},
+				.{right[1], up[1], toCamera[1], position[1]},
+				.{right[2], up[2], toCamera[2], position[2]},
+				.{0, 0, 0, 1},
+			},
+		};
+	}
+
 	fn init() void {
 		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png") catch |err| {
 			std.log.err("Failed to load star image: {s}", .{@errorName(err)});
@@ -726,6 +811,26 @@ pub const Skybox = struct {
 				.alphaBlendOp = .add,
 			}}},
 		);
+
+		// Initialize celestial pipeline
+		celestialPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/skybox/celestial.vert",
+			"assets/cubyz/shaders/skybox/celestial.frag",
+			"",
+			&celestialUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.{
+				.srcColorBlendFactor = .one,
+				.dstColorBlendFactor = .one,
+				.colorBlendOp = .add,
+				.srcAlphaBlendFactor = .one,
+				.dstAlphaBlendFactor = .one,
+				.alphaBlendOp = .add,
+			}}},
+		);
+
+		createCelestialQuad();
 
 		var starData: [numStars*20]f32 = undefined;
 
@@ -789,10 +894,122 @@ pub const Skybox = struct {
 		c.glEnableVertexAttribArray(0);
 	}
 
+	fn calculateSunPosition(time: i64) Vec3f {
+		// Day/night cycle: 0 = noon (sun overhead), dayCycle/4 = sunset, dayCycle/2 = midnight, 3*dayCycle/4 = sunrise
+		// Normalize time to [0, 1) range
+		const normalizedTime = @as(f32, @floatFromInt(@mod(time, game.World.dayCycle))) / @as(f32, @floatFromInt(game.World.dayCycle));
+		
+		// Convert to angle: 0 (noon) -> 2π (full cycle back to noon)
+		// We want the sun to move: noon (overhead) -> west horizon -> below -> east horizon -> overhead
+		const angle = normalizedTime * 2.0 * std.math.pi;
+		
+		// At noon (time=0, angle=0): sun should be at zenith (z=max, y=0)
+		// At sunset (time=dayCycle/4, angle=π/2): sun at western horizon (z=0, y=west)
+		// At midnight (time=dayCycle/2, angle=π): sun below (z=-max, y=0)
+		// At sunrise (time=3*dayCycle/4, angle=3π/2): sun at eastern horizon (z=0, y=east)
+		
+		const position = Vec3f{
+			0.0, // No north-south movement
+			@sin(angle) * celestialDistance, // East-west: 0 -> west -> 0 -> east -> 0
+			@cos(angle) * celestialDistance, // Height: max -> 0 -> -max -> 0 -> max
+		};
+
+		// Debug logging every few frames to avoid spam
+		if(@mod(time, 60) == 0) { // Log every 60 time units
+			std.log.info("Sun - time: {}, normalized: {d:.3}, angle: {d:.3}, pos: [{d:.1}, {d:.1}, {d:.1}]", .{
+				time, normalizedTime, angle,
+				position[0], position[1], position[2],
+			});
+		}
+
+		return position;
+	}
+
+	fn calculateMoonPosition(time: i64) Vec3f {
+		// Moon is offset by half a day cycle (opposite to sun)
+		// At sunset (dayCycle/4): sun going down west, moon rising east
+		// At midnight (dayCycle/2): moon overhead
+		// At sunrise (3*dayCycle/4): sun rising east, moon setting west
+		
+		const normalizedTime = @as(f32, @floatFromInt(@mod(time, game.World.dayCycle))) / @as(f32, @floatFromInt(game.World.dayCycle));
+		
+		// Moon is π radians (180 degrees) ahead of sun
+		const angle = normalizedTime * 2.0 * std.math.pi + std.math.pi;
+		
+		return Vec3f{
+			0.0, // No north-south movement
+			@sin(angle) * celestialDistance, // East-west movement
+			@cos(angle) * celestialDistance, // Height
+		};
+	}
+
+	fn renderCelestialObjects(viewMatrix: Mat4f, time: i64) void {
+		celestialPipeline.bind(null);
+
+		// Use the same day/night logic as stars for consistent lighting
+		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
+
+		// Render sun
+		const sunPos = calculateSunPosition(time);
+		// Sun should be visible when above horizon (Z > -25)
+		if(sunPos[2] > -25.0) { // Show sun until it's 25 units below horizon
+			var sunOpacity: f32 = 0;
+			if(dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
+				// Fully visible during daytime
+				sunOpacity = 1.0;
+			} else if(dayTime > game.World.dayCycle/4 - game.World.dayCycle/16) {
+				// Fading during dawn/dusk
+				sunOpacity = (@as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8)));
+			}
+
+			if(sunOpacity > 0) {
+				const billboardMatrix = createBillboardMatrix(sunPos, viewMatrix);
+				const sunMatrix = game.projectionMatrix.mul(viewMatrix.mul(billboardMatrix));
+
+				c.glUniformMatrix4fv(celestialUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&sunMatrix));
+				c.glUniform1f(celestialUniforms.celestialOpacity, sunOpacity);
+				c.glUniform3f(celestialUniforms.celestialColor, 1.0, 0.9, 0.7); // Sun color
+
+				c.glBindVertexArray(celestialVao);
+				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
+			}
+		}
+
+		// Render moon
+		const moonPos = calculateMoonPosition(time);
+		// Moon should be visible when above horizon (Z > -25)
+		if(moonPos[2] > -25.0) { // Show moon until it's 25 units below horizon
+			var moonOpacity: f32 = 0;
+			if(dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
+				// Fully visible at night
+				moonOpacity = 1.0;
+			} else if(dayTime < game.World.dayCycle/4 + game.World.dayCycle/16) {
+				// Fading during dawn/dusk
+				moonOpacity = 1.0 - (@as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8)));
+			}
+
+			if(moonOpacity > 0) {
+				const billboardMatrix = createBillboardMatrix(moonPos, viewMatrix);
+				const moonMatrix = game.projectionMatrix.mul(viewMatrix.mul(billboardMatrix));
+
+				c.glUniformMatrix4fv(celestialUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&moonMatrix));
+				c.glUniform1f(celestialUniforms.celestialOpacity, moonOpacity);
+				c.glUniform3f(celestialUniforms.celestialColor, 0.8, 0.8, 1.0); // Moon color
+
+				c.glBindVertexArray(celestialVao);
+				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
+			}
+		}
+	}
+
 	pub fn deinit() void {
 		starPipeline.deinit();
+		celestialPipeline.deinit();
 		starSsbo.deinit();
 		c.glDeleteVertexArrays(1, &starVao);
+		c.glDeleteVertexArrays(1, &celestialVao);
+		c.glDeleteBuffers(1, &celestialVbo);
+		c.glDeleteBuffers(1, &celestialEbo);
 	}
 
 	pub fn render() void {
@@ -802,14 +1019,19 @@ pub const Skybox = struct {
 
 		var starOpacity: f32 = 0;
 		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
+		// Fade out stars during daytime and fade in during nighttime
 		if(dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
+			// Fully visible at night
 			starOpacity = 1;
 		} else if(dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
+			// Fully invisible during daytime
 			starOpacity = 0;
 		} else {
+			// Fading in/out during dawn/dusk
 			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
 		}
 
+		// Render starts when opacity is > 0
 		if(starOpacity != 0) {
 			starPipeline.bind(null);
 
@@ -825,6 +1047,9 @@ pub const Skybox = struct {
 
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
+
+		// Render celestial objects
+		renderCelestialObjects(viewMatrix, time);
 	}
 };
 
