@@ -515,6 +515,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 		draw.setColor(0xff000000);
-		draw.line(cursorPos, cursorPos + Vec2f{0, 16});
+		const thickness = @min(@ceil(fontSize / 8), 1);
+		draw.rect(cursorPos, Vec2f{thickness, fontSize});
 	}
 }
