@@ -5,7 +5,7 @@
 
 	.fogDensity = 2,
 
-	.chance = 0.04,
+	.chance = 0.01,
 
 	.caves = -0.1,
 
