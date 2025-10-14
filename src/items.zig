@@ -849,17 +849,24 @@ pub const Tool = struct { // MARK: Tool
 		return self.tooltip.items;
 	}
 
+	pub fn isEffectiveOn(self: *Tool, block: main.blocks.Block) bool {
+		for(block.blockTags()) |blockTag| {
+			for(self.type.blockTags()) |toolTag| {
+				if(toolTag == blockTag) return true;
+			}
+		}
+		return false;
+	}
+
 	pub fn getBlockDamage(self: *Tool, block: main.blocks.Block) f32 {
 		var damage = self.damage;
 		for(self.modifiers) |modifier| {
 			damage = modifier.changeBlockDamage(damage, block);
 		}
-		for(block.blockTags()) |blockTag| {
-			for(self.type.blockTags()) |toolTag| {
-				if(toolTag == blockTag) return damage;
-			}
+		if(self.isEffectiveOn(block)) {
+			return damage;
 		}
-		return 0;
+		return main.game.Player.defaultBlockDamage;
 	}
 
 	pub fn onUseReturnBroken(self: *Tool) bool {
