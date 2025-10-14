@@ -174,11 +174,11 @@ pub const handShake = struct { // MARK: handShake
 						defer main.stackAllocator.free(path);
 						var dir = try main.files.cubyzDir().openIterableDir(path);
 						defer dir.close();
-						var arrayList = main.List(u8).init(main.stackAllocator);
-						defer arrayList.deinit();
-						arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
-						try utils.Compression.pack(dir, arrayList.writer());
-						conn.send(.fast, id, arrayList.items);
+						var writer = try std.Io.Writer.Allocating.initCapacity(main.stackAllocator.allocator, 16);
+						defer writer.deinit();
+						try writer.writer.writeByte(@intFromEnum(Connection.HandShakeState.assets));
+						try utils.Compression.pack(dir, &writer.writer);
+						conn.send(.fast, id, writer.written());
 					}
 
 					conn.user.?.initPlayer(name);
