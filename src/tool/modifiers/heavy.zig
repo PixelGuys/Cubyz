@@ -24,5 +24,5 @@ pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.writer().print("#ffcc30**Heavy**#808080 *Increases swing time by **{d:.0}%", .{data.strength*100}) catch unreachable;
+	outString.print("#ffcc30**Heavy**#808080 *Increases swing time by **{d:.0}%", .{data.strength*100});
 }
