@@ -82,7 +82,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 					const mask = @as(u64, 1) << @intCast(z >> voxelSizeShift);
 					if(heightData & mask != 0) {
 
-						const surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
+						var surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
 						var maxUp: i32 = 0;
 						var maxDown: i32 = 0;
 						for(cardinalDirections) |direction| {
@@ -94,6 +94,9 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 								const diff = caveMap.findTerrainChangeBelow(x + move[0], y + move[1], z + move[2]) - surfaceBlock;
 								maxDown = @max(maxDown, -diff);
 							}
+						}
+						if(isWaterChangeEdge) {
+							surfaceBlock = @max(surfaceBlock, maxWaterLevel - chunk.super.pos.voxelSize);
 						}
 						const slope = @min(maxUp, maxDown);
 
@@ -148,7 +151,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						}
 					} else {
 						const surface = biomeMap.getSurfaceHeight(x + chunk.super.pos.wx, y + chunk.super.pos.wy) - (chunk.super.pos.voxelSize - 1) -% chunk.super.pos.wz;
-						const oceanHeight = biome.waterProperties.waterLevel -% chunk.super.pos.wz;
+						const oceanHeight = maxWaterLevel -% chunk.super.pos.wz;
 						const airVolumeStart = caveMap.findTerrainChangeBelow(x, y, z) + chunk.super.pos.voxelSize;
 						const zStart = @max(airVolumeStart, zBiome);
 						if(z < surface or zStart >= oceanHeight) {
