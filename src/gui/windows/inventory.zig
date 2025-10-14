@@ -37,7 +37,7 @@ pub fn deinit() void {
 	craftingIcon.deinit();
 }
 
-var itemSlots: [20]*ItemSlot = undefined;
+pub var itemSlots: [20]*ItemSlot = undefined;
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);

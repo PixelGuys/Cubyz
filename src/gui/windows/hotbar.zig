@@ -37,7 +37,7 @@ pub fn deinit() void {
 	hotbarSlotTexture.deinit();
 }
 
-var itemSlots: [12]*ItemSlot = undefined;
+pub var itemSlots: [12]*ItemSlot = undefined;
 
 pub fn onOpen() void {
 	const list = HorizontalList.init();

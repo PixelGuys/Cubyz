@@ -567,15 +567,17 @@ pub const Player = struct { // MARK: Player
 				}
 			} else return;
 
-			for(0..30) |slotIdx| {
+			for(0..(main.gui.windowlist.inventory.itemSlots.len-1 + main.gui.windowlist.hotbar.itemSlots.len-1)) |slotIdx| {
 				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
-					if(isCreative()) {
-						inventory.fillFromCreative(@intCast(slotIdx), item);
-					}
-					if(slotIdx < 12) {
+					//if(isCreative()) {
+					//inventory.fillFromCreative(@intCast(slotIdx), item);
+					//}
+
+					if(slotIdx < (main.gui.windowlist.hotbar.itemSlots.len-1)) {
+						// when item is in hotbar
 						selectedSlot = @intCast(slotIdx);
-						return;
 					} else {
+						// when item is in inventory
 						const targetSlot = blk: {
 							if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 							// Look for an empty slot
@@ -594,8 +596,8 @@ pub const Player = struct { // MARK: Player
 						inventory.takeHalf(@intCast(slotIdx), carried);
 						inventory.depositOrSwap(@intCast(targetSlot), carried);
 						inventory.depositOrSwap(@intCast(slotIdx), carried);
-						return;
 					}
+					return;
 				}
 			}
 
