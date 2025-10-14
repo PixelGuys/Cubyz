@@ -20,15 +20,28 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:pine_needles",
-			.log = "cubyz:pine_log",
-			.top = "cubyz:pine_top",
-			.chance = 0.2,
-			.type = .pyramid,
-			.height = 7,
-			.height_variation = 5,
-			.branched = false,
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/loblolly",
+			.placeMode = .degradable,
+			.chance = 0.06,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.06,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.06,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/standalone_roots",
+			.placeMode = .degradable,
+			.chance = 0.02,
 		},
 		.{
 			.id = "cubyz:simple_tree",
