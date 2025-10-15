@@ -678,6 +678,7 @@ pub const Skybox = struct {
 		mvp: c_int,
 		celestialOpacity: c_int,
 		celestialColor: c_int,
+		emissionStrength: c_int,
 		@"fog.color": c_int,
 		@"fog.density": c_int,
 	} = undefined;
@@ -722,8 +723,8 @@ pub const Skybox = struct {
 	}
 
 	fn createCelestialQuad() void {
-		// Create a simple quad for sun/moon (will be billboarded to always face camera)
-		const size: f32 = 20.0;
+		// Create a simple unit quad (will be scaled via billboard matrix)
+		const size: f32 = 1.0;
 		const vertices = [_]f32{
 			// Position (x, y, z)     // UV coordinates (u, v)
 			-size, -size, 0.0, 0.0, 0.0,
@@ -757,7 +758,7 @@ pub const Skybox = struct {
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_uint)), &indices, c.GL_STATIC_DRAW);
 	}
 
-	fn createBillboardMatrix(position: Vec3f, viewMatrix: Mat4f) Mat4f {
+	fn createBillboardMatrix(position: Vec3f, viewMatrix: Mat4f, scale: f32) Mat4f {
 		// Create a billboard matrix that makes the quad always face the camera position
 		// For celestial objects, we want them to face toward the camera regardless of view direction
 
@@ -783,12 +784,12 @@ pub const Skybox = struct {
 		// Recalculate up to ensure orthogonality
 		up = vec.cross(toCamera, right);
 
-		// Create billboard transform matrix (right, up, forward=toCamera, position)
+		// Create billboard transform matrix with scale (right, up, forward=toCamera, position)
 		return Mat4f{
 			.rows = .{
-				.{right[0], up[0], toCamera[0], position[0]},
-				.{right[1], up[1], toCamera[1], position[1]},
-				.{right[2], up[2], toCamera[2], position[2]},
+				.{right[0]*scale, up[0]*scale, toCamera[0], position[0]},
+				.{right[1]*scale, up[1]*scale, toCamera[1], position[1]},
+				.{right[2]*scale, up[2]*scale, toCamera[2], position[2]},
 				.{0, 0, 0, 1},
 			},
 		};
@@ -916,6 +917,30 @@ pub const Skybox = struct {
 		return calculateCelestialPosition(time, std.math.pi);
 	}
 
+	fn calculateHorizonScaleMultiplier(position: Vec3f) f32 {
+		// Calculate how high the celestial object is in the sky
+		// Z component ranges from -celestialDistance to +celestialDistance
+		const heightRatio = (position[2] + celestialDistance) / (2.0 * celestialDistance);
+		
+		// Scale from 1.0x at horizon (0.0 and 1.0) to 2.0x between quarter points (0.25 to 0.75)
+		// heightRatio: 0.0 (horizon/rising) -> 0.25 (quarter) -> 0.5 (zenith) -> 0.75 (three-quarter) -> 1.0 (horizon/setting)
+		
+		// Between 0.25 and 0.75: keep at 2.0x (largest size, including zenith)
+		if (heightRatio >= 0.25 and heightRatio <= 0.75) {
+			return 2.0;
+		}
+		
+		// Below 0.25 (rising to quarter point): interpolate from 1.0x to 2.0x
+		if (heightRatio < 0.25) {
+			const t = heightRatio / 0.25; // 0.0 at horizon, 1.0 at quarter
+			return 1.0 + t; // 1.0 at horizon, 2.0 at quarter
+		}
+		
+		// Above 0.75 (three-quarter to setting): interpolate from 2.0x to 1.0x
+		const t = (heightRatio - 0.75) / 0.25; // 0.0 at three-quarter, 1.0 at horizon
+		return 2.0 - t; // 2.0 at three-quarter, 1.0 at horizon
+	}
+
 	fn calculateCelestialOpacity(dayTime: u64, isDaytime: bool) f32 {
 		const fadeStart = game.World.dayCycle/4 - game.World.dayCycle/16;
 		const fadeEnd = game.World.dayCycle/4 + game.World.dayCycle/16;
@@ -942,16 +967,19 @@ pub const Skybox = struct {
 		opacity: f32,
 		texture: graphics.Texture,
 		color: Vec3f,
+		emissionStrength: f32,
+		scale: f32,
 	) void {
 		if(position[2] <= -25.0 or opacity <= 0.0) return;
 
-		const billboardMatrix = createBillboardMatrix(position, viewMatrix);
+		const billboardMatrix = createBillboardMatrix(position, viewMatrix, scale);
 		const mvpMatrix = game.projectionMatrix.mul(viewMatrix.mul(billboardMatrix));
 
 		texture.bindTo(0);
 		c.glUniformMatrix4fv(celestialUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&mvpMatrix));
 		c.glUniform1f(celestialUniforms.celestialOpacity, opacity);
 		c.glUniform3f(celestialUniforms.celestialColor, color[0], color[1], color[2]);
+		c.glUniform1f(celestialUniforms.emissionStrength, emissionStrength);
 
 		c.glBindVertexArray(celestialVao);
 		c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
@@ -967,11 +995,21 @@ pub const Skybox = struct {
 		// Use the same day/night logic as stars for consistent lighting
 		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
 
-		// Render sun
-		renderCelestialObject(viewMatrix, calculateSunPosition(time), calculateCelestialOpacity(dayTime, true), sunTexture, Vec3f{1.0, 1.0, 0.8});
+		// Calculate sun position and scale
+		const sunPos = calculateSunPosition(time);
+		const sunScaleMultiplier = calculateHorizonScaleMultiplier(sunPos);
+		
+		// Calculate moon position and scale
+		const moonPos = calculateMoonPosition(time);
+		const moonScaleMultiplier = calculateHorizonScaleMultiplier(moonPos);
 
-		// Render moon
-		renderCelestialObject(viewMatrix, calculateMoonPosition(time), calculateCelestialOpacity(dayTime, false), moonTexture, Vec3f{0.8, 0.8, 1.0});
+		// Render sun with dynamic size (base 10.0) and reduced emission for better blending
+		// Muted warm yellow color, lower emission (0.8 instead of 3.0)
+		renderCelestialObject(viewMatrix, sunPos, calculateCelestialOpacity(dayTime, true), sunTexture, Vec3f{0.95, 0.95, 0.85}, 0.8, 10.0 * sunScaleMultiplier);
+
+		// Render moon with dynamic size (base 7.5) and very subtle emission
+		// Desaturated cool color, minimal emission (0.2 instead of 0.5)
+		renderCelestialObject(viewMatrix, moonPos, calculateCelestialOpacity(dayTime, false), moonTexture, Vec3f{0.85, 0.85, 0.92}, 0.2, 7.5 * moonScaleMultiplier);
 	}
 
 	pub fn deinit() void {
