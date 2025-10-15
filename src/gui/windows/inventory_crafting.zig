@@ -125,10 +125,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 fn refresh() void {
 	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
-	if(!findAvailableRecipes(list)) {
-		list.deinit();
-		return;
-	}
+	_ = findAvailableRecipes(list);
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
