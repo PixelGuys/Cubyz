@@ -130,7 +130,6 @@ pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 
-
 pub fn updateFov(width: u31, height: u31, fov: f32) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
