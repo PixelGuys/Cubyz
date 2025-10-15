@@ -4,7 +4,11 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.model = "cubyz:cube",
-	.rotation = "cubyz:planar",
+	.model = .{
+		.closed = "cubyz:cube",
+		.open = "cubyz:open_chest",
+		.lid = "cubyz:chest_lid",
+	},
+	.rotation = "cubyz:chest",
 	.blockEntity = .chest,
 }

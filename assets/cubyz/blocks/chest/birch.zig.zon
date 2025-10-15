@@ -5,4 +5,8 @@
 	.texture_right = "cubyz:chest/birch/side",
 	.texture_top = "cubyz:chest/birch/top",
 	.texture_bottom = "cubyz:chest/birch/bottom",
+	.texture6 = "cubyz:chest/birch/inside_body",
+	.texture7 = "cubyz:chest/birch/inside_lid",
+	.texture8 = "cubyz:chest/birch/front_open",
+	.texture9 = "cubyz:chest/birch/latch",
 }
