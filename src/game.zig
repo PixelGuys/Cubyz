@@ -416,6 +416,7 @@ pub const Player = struct { // MARK: Player
 	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = .{};
 	pub const inventorySize = 32;
+	pub const hotbarSize = 12;
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 	pub const defaultBlockDamage: f32 = 1;
@@ -567,9 +568,9 @@ pub const Player = struct { // MARK: Player
 				}
 			} else return;
 
-			for(0..(main.gui.windowlist.inventory.itemSlots.len + main.gui.windowlist.hotbar.itemSlots.len)) |slotIdx| {
+			for(0..main.game.Player.inventorySize) |slotIdx| {
 				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
-					if(slotIdx < (main.gui.windowlist.hotbar.itemSlots.len)) {
+					if(slotIdx < (main.game.Player.hotbarSize)) {
 						// when item is in hotbar
 						selectedSlot = @intCast(slotIdx);
 					} else {
@@ -577,7 +578,7 @@ pub const Player = struct { // MARK: Player
 						const targetSlot = blk: {
 							if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 							// Look for an empty slot
-							for(0..main.gui.windowlist.hotbar.itemSlots.len) |slotId| {
+							for(0..main.game.Player.hotbarSize) |slotId| {
 								if(inventory.getItem(slotId) == null) {
 									break :blk slotId;
 								}
@@ -591,6 +592,8 @@ pub const Player = struct { // MARK: Player
 						inventory.depositToAny(@intCast(slotIdx), carried, inventory.getAmount(slotIdx));
 						inventory.depositOrSwap(@intCast(targetSlot), carried);
 						inventory.depositOrSwap(@intCast(slotIdx), carried);
+						//inventory.depositOrSwap(@intCast(slotIdx),main.game.Player.inventory.getItem(targetSlot));
+
 					}
 					return;
 				}
@@ -600,7 +603,7 @@ pub const Player = struct { // MARK: Player
 				const targetSlot = blk: {
 					if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 					// Look for an empty slot
-					for(0..12) |slotIdx| {
+					for(0..main.game.Player.hotbarSize) |slotIdx| {
 						if(inventory.getItem(slotIdx) == null) {
 							break :blk slotIdx;
 						}
