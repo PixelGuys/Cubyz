@@ -11,9 +11,7 @@ pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
-		var result = std.Io.Writer.Allocating.init(allocator.allocator);
-		var bufferStupid: [16]u8 = undefined;
-		result.writer.buffer = &bufferStupid;
+		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
 		var buffer: [65536]u8 = undefined;
 		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
 		compress.writer.writeAll(data) catch unreachable;
@@ -31,10 +29,6 @@ pub const Compression = struct { // MARK: Compression
 
 	pub fn pack(sourceDir: main.files.Dir, writer: *std.Io.Writer) !void {
 		var buffer: [65536]u8 = undefined;
-		var bufferStupid: [16]u8 = undefined;
-		const oldBuffer = writer.buffer;
-		writer.buffer = &bufferStupid;
-		defer writer.buffer = oldBuffer;
 		var comp = try std.compress.flate.Compress.init(writer, &buffer, .raw, .default);
 		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();

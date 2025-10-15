@@ -684,13 +684,11 @@ pub const Protocols = struct {
 							defer main.stackAllocator.free(path);
 							var dir = try main.files.cubyzDir().openIterableDir(path);
 							defer dir.close();
-							var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator);
+							var writer = try std.Io.Writer.Allocating.initCapacity(main.stackAllocator.allocator, 16);
 							defer writer.deinit();
 							try writer.writer.writeByte(@intFromEnum(Connection.HandShakeState.assets));
 							try utils.Compression.pack(dir, &writer.writer);
 							conn.send(.fast, id, writer.written());
-
-							try utils.Compression.unpack(try main.files.cwd().openDir("test"), writer.written());
 						}
 
 						conn.user.?.initPlayer(name);
