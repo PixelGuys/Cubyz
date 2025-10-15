@@ -194,7 +194,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
 	gpu_performance_measuring.startQuery(.skybox);
-	Skybox.render();
+	Skybox.render(skyColor, game.fog.density);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.animation);
@@ -678,6 +678,8 @@ pub const Skybox = struct {
 		mvp: c_int,
 		celestialOpacity: c_int,
 		celestialColor: c_int,
+		@"fog.color": c_int,
+		@"fog.density": c_int,
 	} = undefined;
 
 	var starVao: c_uint = undefined;
@@ -955,8 +957,12 @@ pub const Skybox = struct {
 		c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
 	}
 
-	fn renderCelestialObjects(viewMatrix: Mat4f, time: i64) void {
+	fn renderCelestialObjects(viewMatrix: Mat4f, time: i64, fogColor: Vec3f, fogDensity: f32) void {
 		celestialPipeline.bind(null);
+
+		// Set fog uniforms
+		c.glUniform3f(celestialUniforms.@"fog.color", fogColor[0], fogColor[1], fogColor[2]);
+		c.glUniform1f(celestialUniforms.@"fog.density", fogDensity);
 
 		// Use the same day/night logic as stars for consistent lighting
 		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
@@ -980,7 +986,7 @@ pub const Skybox = struct {
 		c.glDeleteBuffers(1, &celestialEbo);
 	}
 
-	pub fn render() void {
+	pub fn render(fogColor: Vec3f, fogDensity: f32) void {
 		const viewMatrix = game.camera.viewMatrix;
 
 		const time = game.world.?.gameTime.load(.monotonic);
@@ -1017,7 +1023,7 @@ pub const Skybox = struct {
 		}
 
 		// Render celestial objects
-		renderCelestialObjects(viewMatrix, time);
+		renderCelestialObjects(viewMatrix, time, fogColor, fogDensity);
 	}
 };
 
