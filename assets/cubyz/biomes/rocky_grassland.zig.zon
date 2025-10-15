@@ -18,14 +18,10 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
 			.chance = 0.016,
-			.type = .round,
-			.height = 6,
-			.height_variation = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
