@@ -11,7 +11,7 @@ layout (location = 1) out float fragDistance;
 void main() {
 	gl_Position = mvp * vec4(position, 1.0);
 	texCoord = uv;
-	
+
 	// Calculate distance from origin (billboard center) for fog
 	// The celestial objects are at a fixed distance (celestialDistance)
 	fragDistance = length(position);

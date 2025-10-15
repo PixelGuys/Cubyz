@@ -22,11 +22,11 @@ void main() {
 
 	// Apply celestial color tint and opacity
 	vec3 finalColor = texColor.rgb * celestialColor;
-	
+
 	// Apply fog
 	float fogAmount = 1.0 - exp(-fog.density * fragDistance);
 	finalColor = mix(finalColor, fog.color, fogAmount);
-	
+
 	fragColor = vec4(finalColor, texColor.a * celestialOpacity);
 
 	// Discard fully transparent pixels
