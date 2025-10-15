@@ -118,7 +118,7 @@ const Chunk = struct {
 		outer: while(rejections < 100) {
 			const x = random.nextIntBounded(u31, &seed, chunkSize) + wx;
 			const y = random.nextIntBounded(u31, &seed, chunkSize) + wy;
-			var biomeSeed: u64 = 562478564;
+			var biomeSeed: u64 = worldSeed;
 			const drawnBiome = tree.getBiome(&biomeSeed, x, y, 0);
 			const radius = drawnBiome.radius + drawnBiome.radiusVariation*random.nextFloatSigned(&seed);
 			if(!checkIfBiomeIsValid(x, y, radius, selectedBiomes.items(), chunkLocalMaxBiomeRadius)) {
