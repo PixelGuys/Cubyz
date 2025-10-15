@@ -11,10 +11,10 @@ layout(location = 0, index = 0) out vec4 fragColor;
 void main() {
 	// Sample the texture
 	vec4 texColor = texture(celestialTexture, texCoord);
-	
+
 	// Apply celestial color tint and opacity
 	fragColor = vec4(texColor.rgb * celestialColor, texColor.a * celestialOpacity);
-	
+
 	// Discard fully transparent pixels
 	if (fragColor.a < 0.01) {
 		discard;
