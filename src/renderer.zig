@@ -902,43 +902,64 @@ pub const Skybox = struct {
 		c.glEnableVertexAttribArray(0);
 	}
 
-	fn calculateSunPosition(time: i64) Vec3f {
-		// Day/night cycle: 0 = noon (sun overhead), dayCycle/4 = sunset, dayCycle/2 = midnight, 3*dayCycle/4 = sunrise
-		// Normalize time to [0, 1) range
-		const normalizedTime = @as(f32, @floatFromInt(@mod(time, game.World.dayCycle))) / @as(f32, @floatFromInt(game.World.dayCycle));
-		
-		// Convert to angle: 0 (noon) -> 2π (full cycle back to noon)
-		// We want the sun to move: noon (overhead) -> west horizon -> below -> east horizon -> overhead
-		const angle = normalizedTime * 2.0 * std.math.pi;
-		
-		// At noon (time=0, angle=0): sun should be at zenith (z=max, y=0)
-		// At sunset (time=dayCycle/4, angle=π/2): sun at western horizon (z=0, y=west)
-		// At midnight (time=dayCycle/2, angle=π): sun below (z=-max, y=0)
-		// At sunrise (time=3*dayCycle/4, angle=3π/2): sun at eastern horizon (z=0, y=east)
-		
+	fn calculateCelestialPosition(time: i64, angleOffset: f32) Vec3f {
+		const normalizedTime = @as(f32, @floatFromInt(@mod(time, game.World.dayCycle)))/@as(f32, @floatFromInt(game.World.dayCycle));
+		const angle = normalizedTime*2.0*std.math.pi + angleOffset;
+
 		return Vec3f{
-			0.0, // No north-south movement
-			@sin(angle) * celestialDistance, // East-west: 0 -> west -> 0 -> east -> 0
-			@cos(angle) * celestialDistance, // Height: max -> 0 -> -max -> 0 -> max
+			0.0,
+			@sin(angle)*celestialDistance,
+			@cos(angle)*celestialDistance,
 		};
 	}
 
+	fn calculateSunPosition(time: i64) Vec3f {
+		return calculateCelestialPosition(time, 0.0);
+	}
+
 	fn calculateMoonPosition(time: i64) Vec3f {
-		// Moon is offset by half a day cycle (opposite to sun)
-		// At sunset (dayCycle/4): sun going down west, moon rising east
-		// At midnight (dayCycle/2): moon overhead
-		// At sunrise (3*dayCycle/4): sun rising east, moon setting west
-		
-		const normalizedTime = @as(f32, @floatFromInt(@mod(time, game.World.dayCycle))) / @as(f32, @floatFromInt(game.World.dayCycle));
-		
-		// Moon is π radians (180 degrees) ahead of sun
-		const angle = normalizedTime * 2.0 * std.math.pi + std.math.pi;
-		
-		return Vec3f{
-			0.0, // No north-south movement
-			@sin(angle) * celestialDistance, // East-west movement
-			@cos(angle) * celestialDistance, // Height
-		};
+		return calculateCelestialPosition(time, std.math.pi);
+	}
+
+	fn calculateCelestialOpacity(dayTime: u64, isDaytime: bool) f32 {
+		const fadeStart = game.World.dayCycle/4 - game.World.dayCycle/16;
+		const fadeEnd = game.World.dayCycle/4 + game.World.dayCycle/16;
+		const fadeRange = @as(f32, @floatFromInt(game.World.dayCycle/8));
+
+		if(isDaytime) {
+			if(dayTime > fadeEnd) return 1.0;
+			if(dayTime > fadeStart) {
+				return @as(f32, @floatFromInt(dayTime - fadeStart))/fadeRange;
+			}
+			return 0.0;
+		} else {
+			if(dayTime < fadeStart) return 1.0;
+			if(dayTime < fadeEnd) {
+				return 1.0 - @as(f32, @floatFromInt(dayTime - fadeStart))/fadeRange;
+			}
+			return 0.0;
+		}
+	}
+
+	fn renderCelestialObject(
+		viewMatrix: Mat4f,
+		position: Vec3f,
+		opacity: f32,
+		texture: graphics.Texture,
+		color: Vec3f,
+	) void {
+		if(position[2] <= -25.0 or opacity <= 0.0) return;
+
+		const billboardMatrix = createBillboardMatrix(position, viewMatrix);
+		const mvpMatrix = game.projectionMatrix.mul(viewMatrix.mul(billboardMatrix));
+
+		texture.bindTo(0);
+		c.glUniformMatrix4fv(celestialUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&mvpMatrix));
+		c.glUniform1f(celestialUniforms.celestialOpacity, opacity);
+		c.glUniform3f(celestialUniforms.celestialColor, color[0], color[1], color[2]);
+
+		c.glBindVertexArray(celestialVao);
+		c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
 	}
 
 	fn renderCelestialObjects(viewMatrix: Mat4f, time: i64) void {
@@ -948,58 +969,10 @@ pub const Skybox = struct {
 		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
 
 		// Render sun
-		const sunPos = calculateSunPosition(time);
-		// Sun should be visible when above horizon (Z > -25)
-		if(sunPos[2] > -25.0) { // Show sun until it's 25 units below horizon
-			var sunOpacity: f32 = 0;
-			if(dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
-				// Fully visible during daytime
-				sunOpacity = 1.0;
-			} else if(dayTime > game.World.dayCycle/4 - game.World.dayCycle/16) {
-				// Fading during dawn/dusk
-				sunOpacity = (@as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8)));
-			}
-
-			if(sunOpacity > 0) {
-				const billboardMatrix = createBillboardMatrix(sunPos, viewMatrix);
-				const sunMatrix = game.projectionMatrix.mul(viewMatrix.mul(billboardMatrix));
-
-				sunTexture.bindTo(0); // Bind sun texture
-				c.glUniformMatrix4fv(celestialUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&sunMatrix));
-				c.glUniform1f(celestialUniforms.celestialOpacity, sunOpacity);
-				c.glUniform3f(celestialUniforms.celestialColor, 1.0, 0.9, 0.7); // Sun color
-
-				c.glBindVertexArray(celestialVao);
-				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
-			}
-		}
+		renderCelestialObject(viewMatrix, calculateSunPosition(time), calculateCelestialOpacity(dayTime, true), sunTexture, Vec3f{1.0, 1.0, 0.8});
 
 		// Render moon
-		const moonPos = calculateMoonPosition(time);
-		// Moon should be visible when above horizon (Z > -25)
-		if(moonPos[2] > -25.0) { // Show moon until it's 25 units below horizon
-			var moonOpacity: f32 = 0;
-			if(dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
-				// Fully visible at night
-				moonOpacity = 1.0;
-			} else if(dayTime < game.World.dayCycle/4 + game.World.dayCycle/16) {
-				// Fading during dawn/dusk
-				moonOpacity = 1.0 - (@as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8)));
-			}
-
-			if(moonOpacity > 0) {
-				const billboardMatrix = createBillboardMatrix(moonPos, viewMatrix);
-				const moonMatrix = game.projectionMatrix.mul(viewMatrix.mul(billboardMatrix));
-
-				moonTexture.bindTo(0); // Bind moon texture
-				c.glUniformMatrix4fv(celestialUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&moonMatrix));
-				c.glUniform1f(celestialUniforms.celestialOpacity, moonOpacity);
-				c.glUniform3f(celestialUniforms.celestialColor, 0.8, 0.8, 1.0); // Moon color
-
-				c.glBindVertexArray(celestialVao);
-				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
-			}
-		}
+		renderCelestialObject(viewMatrix, calculateMoonPosition(time), calculateCelestialOpacity(dayTime, false), moonTexture, Vec3f{0.8, 0.8, 1.0});
 	}
 
 	pub fn deinit() void {
