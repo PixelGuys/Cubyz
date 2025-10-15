@@ -456,11 +456,11 @@ pub fn exitToMenu(_: usize) void {
 }
 
 pub fn setKickReason(reason: ?[]const u8) void {
-	if(reason) |r| {
-		gui.windowlist.disconnected.setDisconnectedReason(
-			std.fmt.allocPrint(globalAllocator.allocator, "Disconnected: {s}", .{r}) catch "Disconnected"
-		);
-	}
+    if (reason) |r| {
+        const reasonFormatted = std.fmt.allocPrint(globalAllocator.allocator, "Disconnected: {s}", .{r}) catch "Disconnected";
+        defer globalAllocator.free(reasonFormatted);
+        gui.windowlist.disconnected.setDisconnectedReason(reasonFormatted);
+    }
 }
 
 fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480

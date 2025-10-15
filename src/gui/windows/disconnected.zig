@@ -16,27 +16,32 @@ pub var window: GuiWindow = GuiWindow{
 const padding: f32 = 16;
 const width: f32 = 256;
 
-var reason: []const u8 = "";
+var reason: ?[]const u8 = null;
 
-pub fn setDisconnectedReason(newReason: [] const u8) void {
-	main.globalAllocator.free(reason);
+pub fn setDisconnectedReason(newReason: []const u8) void {
+	if(reason) |old| {
+		main.globalAllocator.free(old);
+	}
 	reason = main.globalAllocator.dupe(u8, newReason);
 }
 
 pub fn showDisconnectReason() void {
-	if(reason.len > 0){
+	if(reason) |_| {
 		gui.openWindowFromRef(&window);
 	}
 }
 
 fn ack(_: usize) void {
 	gui.closeWindowFromRef(&window);
-	main.globalAllocator.free(reason);
+	if(reason) |r| {
+		main.globalAllocator.free(r);
+		reason = null;
+	}
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Label.init(.{0, 0}, width, reason, .center));
+	list.add(Label.init(.{0, 0}, width, reason orelse "", .center));
 	list.add(Button.initText(.{0, 0}, 100, "OK", .{.callback = &ack}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
