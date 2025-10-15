@@ -692,7 +692,7 @@ pub const Skybox = struct {
 	var moonTexture: graphics.Texture = undefined;
 
 	const numStars = 10000;
-	const celestialDistance = 300.0; // Further away than stars for better visibility
+	const celestialDistance = 199.0;
 
 	fn getStarPos(seed: *u64) Vec3f {
 		const x: f32 = @floatCast(main.random.nextFloatGauss(seed));
@@ -793,7 +793,7 @@ pub const Skybox = struct {
 	}
 
 	fn init() void {
-		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png") catch |err| {
+		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/world/star.png") catch |err| {
 			std.log.err("Failed to load star image: {s}", .{@errorName(err)});
 			return;
 		};
@@ -824,21 +824,14 @@ pub const Skybox = struct {
 			&celestialUniforms,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.{
-				.srcColorBlendFactor = .one,
-				.dstColorBlendFactor = .one,
-				.colorBlendOp = .add,
-				.srcAlphaBlendFactor = .one,
-				.dstAlphaBlendFactor = .one,
-				.alphaBlendOp = .add,
-			}}},
+			.{.attachments = &.{.noBlending}},
 		);
 
 		createCelestialQuad();
 
 		// Load sun and moon textures
-		sunTexture = graphics.Texture.initFromFile("assets/cubyz/ui/sun.png");
-		moonTexture = graphics.Texture.initFromFile("assets/cubyz/ui/moon.png");
+		sunTexture = graphics.Texture.initFromFile("assets/cubyz/world/sun.png");
+		moonTexture = graphics.Texture.initFromFile("assets/cubyz/world/moon.png");
 
 		var starData: [numStars*20]f32 = undefined;
 
