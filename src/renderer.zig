@@ -586,13 +586,14 @@ pub const MenuBackGround = struct {
     pub fn render() void {
         if (texture.textureID == 0) return;
 
-        // Use a simple rotation around the z axis, with a steadily increasing angle.
-        const newTime = std.time.nanoTimestamp();
-        angle += @as(f32, @floatFromInt(newTime - lastTime)) / 2e10;
-        lastTime = newTime;
-        const viewMatrix = Mat4f.rotationZ(angle);
-        pipeline.bind(null);
-        updateViewport(main.Window.width, main.Window.height, 70.0);
+		// Use a simple rotation around the z axis, with a steadily increasing angle.
+		const newTime = std.time.nanoTimestamp();
+		angle += @as(f32, @floatFromInt(newTime - lastTime))/2e10;
+		lastTime = newTime;
+		const viewMatrix = Mat4f.rotationZ(angle);
+		pipeline.bind(null);
+		updateViewport(main.Window.width, main.Window.height, 70.0);
+		defer updateViewport(Window.width, Window.height, settings.fov);
 
         c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
         c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
