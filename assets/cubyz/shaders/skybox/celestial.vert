@@ -8,6 +8,6 @@ layout (location = 0) uniform mat4 mvp;
 layout (location = 0) out vec2 texCoord;
 
 void main() {
-    gl_Position = mvp * vec4(position, 1.0);
-    texCoord = uv;
+	gl_Position = mvp * vec4(position, 1.0);
+	texCoord = uv;
 }
