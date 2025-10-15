@@ -689,8 +689,6 @@ pub const Protocols = struct {
 							try writer.writer.writeByte(@intFromEnum(Connection.HandShakeState.assets));
 							try utils.Compression.pack(dir, &writer.writer);
 							conn.send(.fast, id, writer.written());
-
-							try utils.Compression.unpack(try main.files.cwd().openDir("test"), writer.written());
 						}
 
 						conn.user.?.initPlayer(name);

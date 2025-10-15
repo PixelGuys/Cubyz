@@ -11,15 +11,15 @@ pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
-		var result = std.Io.Writer.Allocating.init(allocator.allocator);
-		var bufferStupid: [16]u8 = undefined;
-		result.writer.buffer = &bufferStupid;
+		const writerBuffer = main.stackAllocator.alloc(u8, @max(16, data.len*10)); // TODO: How to use allocating writer?
+		defer main.stackAllocator.free(writerBuffer);
+		var result = std.Io.Writer.fixed(writerBuffer);
 		var buffer: [65536]u8 = undefined;
-		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
+		var compress = std.compress.flate.Compress.init(&result, &buffer, .raw, level) catch unreachable;
 		compress.writer.writeAll(data) catch unreachable;
 		compress.writer.flush() catch unreachable;
-		result.writer.flush() catch unreachable;
-		return result.toOwnedSlice() catch unreachable;
+		result.flush() catch unreachable;
+		return allocator.dupe(u8, result.buffered());
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
@@ -29,13 +29,9 @@ pub const Compression = struct { // MARK: Compression
 		return try decompressor.reader.readSliceShort(buf);
 	}
 
-	pub fn pack(sourceDir: main.files.Dir, writer: *std.Io.Writer) !void {
-		var buffer: [65536]u8 = undefined;
-		var bufferStupid: [16]u8 = undefined;
-		const oldBuffer = writer.buffer;
-		writer.buffer = &bufferStupid;
-		defer writer.buffer = oldBuffer;
-		var comp = try std.compress.flate.Compress.init(writer, &buffer, .raw, .default);
+	pub fn pack(sourceDir: main.files.Dir, outWriter: *std.Io.Writer) !void {
+		var rawData = main.List(u8).init(main.stackAllocator);
+		defer rawData.deinit();
 		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
@@ -52,19 +48,26 @@ pub const Compression = struct { // MARK: Compression
 				};
 				var len: [4]u8 = undefined;
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), endian);
-				_ = try comp.writer.write(&len);
-				_ = try comp.writer.write(relPath);
+				rawData.appendSlice(&len);
+				rawData.appendSlice(relPath);
 
 				const fileData = try sourceDir.read(main.stackAllocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
-				_ = try comp.writer.write(&len);
-				_ = try comp.writer.write(fileData);
+				rawData.appendSlice(&len);
+				rawData.appendSlice(fileData);
 			}
 		}
+		var buffer: [65536]u8 = undefined;
+		const writerBuffer = main.stackAllocator.alloc(u8, @max(16, rawData.items.len*10)); // TODO: How to use allocating writer?
+		defer main.stackAllocator.free(writerBuffer);
+		var writer = std.Io.Writer.fixed(writerBuffer);
+		var comp = try std.compress.flate.Compress.init(&writer, &buffer, .raw, .default);
 		try comp.writer.flush();
 		try writer.flush();
+		try outWriter.writeAll(writer.buffered());
+		try outWriter.flush();
 	}
 
 	pub fn unpack(outDir: main.files.Dir, input: []const u8) !void {
