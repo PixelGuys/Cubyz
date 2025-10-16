@@ -803,6 +803,39 @@ pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
+pub fn join(serverAddress: []const u8, _manager: ?*ConnectionManager) bool {
+	std.log.info("Connecting to server: {s}", .{serverAddress});
+
+	var formattedError: []u8 = "";
+	defer if(formattedError.len != 0) main.stackAllocator.free(formattedError);
+
+	const manager = if(_manager == null) ConnectionManager.init(main.settings.defaultPort, true) catch |err| {
+		formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "Could not initialize connection: {s}", .{@errorName(err)}) catch unreachable;
+		std.log.err("{s}", .{formattedError});
+		main.gui.windowlist.notification.raiseNotification(formattedError);
+		return false;
+	} else _manager.?;
+
+	world = &testWorld;
+	manager.world = &testWorld;
+	testWorld.init(serverAddress, manager) catch |err| {
+		world = null;
+		manager.world = null;
+
+		formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "Encountered error while opening world: {s}", .{@errorName(err)}) catch unreachable;
+		std.log.err("{s}", .{formattedError});
+		main.gui.windowlist.notification.raiseNotification(formattedError);
+		return false;
+	};
+
+	for(main.gui.openWindows.items) |window| {
+		main.gui.closeWindowFromRef(window);
+	}
+	main.gui.openHud();
+
+	return true;
+}
+
 pub fn update(deltaTime: f64) void { // MARK: update()
 	physics.calculateProperties();
 	var acc = Vec3d{0, 0, 0};

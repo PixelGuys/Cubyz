@@ -25,13 +25,9 @@ fn onEnterName(_: usize) void {
 	addressEntry.select();
 }
 
-fn isCorrectInput(address: []const u8) bool {
-	return address.len > 0 and std.mem.indexOfAny(u8, address, " \n\r\t<>!@#$%^&*(){}=+/*~,;\"\'\\") == null;
-}
-
 fn join(_: usize) void {
 	const address = addressEntry.currentString.items;
-	multiplayer.joinServer(address);
+	_ = main.game.join(address, null);
 }
 
 pub fn onOpen() void {
@@ -43,9 +39,11 @@ pub fn onOpen() void {
 	joinButton.disabled = true;
 	list.add(joinButton);
 	list.finish(.center);
+
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	window.scale = 1;
+
 	gui.updateWindowPositions();
 }
 
@@ -57,5 +55,5 @@ pub fn onClose() void {
 
 pub fn update() void {
 	const address = addressEntry.currentString.items;
-	joinButton.disabled = !isCorrectInput(address);
+	joinButton.disabled = address.len == 0 or std.mem.indexOfAny(u8, address, " \n\r\t<>!@#$%^&*(){}=+/*~,;\"\'\\") != null;
 }

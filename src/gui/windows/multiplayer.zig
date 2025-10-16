@@ -1,19 +1,15 @@
 const std = @import("std");
 
 const main = @import("main");
-const ConnectionManager = main.network.ConnectionManager;
-const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 const ZonElement = @import("../../zon.zig").ZonElement;
 
 const gui = @import("../gui.zig");
-const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const HorizontalList = @import("../components/HorizontalList.zig");
 const Selectable = @import("../components/Selectable.zig");
 const Label = @import("../components/Label.zig");
-const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow{
@@ -30,11 +26,6 @@ const ServerInfo = struct {
 	}
 };
 
-const Tabs = enum(u8) {
-	WORLD,
-	LOCAL
-};
-
 const serverListPath = "server_list.zig.zon";
 const width: f32 = 490;
 const padding: f32 = 8;
@@ -42,59 +33,9 @@ const padding: f32 = 8;
 var servers: main.List(ServerInfo) = .init(main.globalAllocator);
 var serverList: *VerticalList = undefined;
 var selectedServerIdx: ?u32 = null;
-
-var connection: ?*ConnectionManager = null;
-var ipAddress: []const u8 = "";
-var ipAddressLabel: *Label = undefined;
-var ipAddressEntry: *TextInput = undefined;
-var gotIpAddress: std.atomic.Value(bool) = .init(false);
-var thread: ?std.Thread = null;
-
 var joinButton: *Button = undefined;
 var removeButton: *Button = undefined;
-var selectedTab: Tabs = .WORLD;
 var refresh: bool = false;
-
-fn initConnection() void {
-	connection = ConnectionManager.init(main.settings.defaultPort, true) catch |err| {
-		std.log.err("Could not open Connection: {s}", .{@errorName(err)});
-		ipAddress = main.globalAllocator.dupe(u8, @errorName(err));
-		return;
-	};
-}
-
-fn discoverIpAddress() void {
-	initConnection();
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{connection.?.externalAddress}) catch unreachable;
-	gotIpAddress.store(true, .release);
-}
-
-fn discoverIpAddressFromNewThread() void {
-	std.log.debug("thread started", .{});
-
-	main.initThreadLocals();
-	defer main.deinitThreadLocals();
-
-	discoverIpAddress();
-}
-
-fn joinWorld(_: usize) void {
-	const server = &servers.items[selectedServerIdx.?];
-	joinServer(server.address);
-}
-
-fn joinLocal(_: usize) void {
-	const address = ipAddressEntry.currentString.items;
-	joinServer(address);
-
-	main.globalAllocator.free(settings.lastUsedIPAddress);
-	settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, address);
-	settings.save();
-}
-
-fn copyIp(_: usize) void {
-	main.Window.setClipboardString(ipAddress);
-}
 
 fn loadServerList() void {
 	servers.clearRetainingCapacity();
@@ -123,10 +64,7 @@ fn loadServerList() void {
 			std.log.err("Invalid entry in server list file: {}", .{i});
 			continue;
 		}
-		servers.append(.{
-			.name = main.globalAllocator.dupe(u8, name.?.stringOwned),
-			.address = main.globalAllocator.dupe(u8, address.?.stringOwned)
-		});
+		servers.append(.{.name = main.globalAllocator.dupe(u8, name.?.stringOwned), .address = main.globalAllocator.dupe(u8, address.?.stringOwned)});
 	}
 }
 
@@ -161,77 +99,21 @@ fn initServerElement(server: *const ServerInfo, idx: usize) *Selectable {
 	return panel;
 }
 
-fn initWorldTab(root: *VerticalList) void {
-	if(!refresh) {
-		loadServerList();
-	}
-
-	if(servers.items.len == 0) {
-		root.add(Label.init(.{0, 0}, width/3*2, "#d0d0d0The list is empty :(\n\nAdd a new #ffffff__server__ #d0d0d0by clicking the *button* below!", .center));
-	}
-	serverList = VerticalList.init(.{0, 0}, root.maxHeight/2, 0);
-	for(servers.items, 0..) |*server, i| {
-		serverList.add(initServerElement(server, i));
-	}
-	serverList.finish(.left);
-	selectedServerIdx = null;
-
-	const bottomPanel = HorizontalList.init();
-	const buttonWidth = (width - padding*3)/4;
-	bottomPanel.add(Button.initText(.{0, 0}, buttonWidth, "Add server", gui.openWindowCallback("add_server")));
-	bottomPanel.add(Button.initText(.{padding, 0}, buttonWidth, "Join Directly", gui.openWindowCallback("join_directly")));
-	joinButton = Button.initText(.{padding, 0}, buttonWidth, "Join", .{.callback = &joinWorld});
-	joinButton.disabled = true;
-	bottomPanel.add(joinButton);
-	removeButton = Button.initText(.{padding, 0}, buttonWidth, "Remove", .{.callback = &removeServer});
-	removeButton.disabled = true;
-	bottomPanel.add(removeButton);
-	bottomPanel.finish(.{0, 0}, .center);
-
-	root.add(serverList);
-	root.add(bottomPanel);
-}
-
-fn initLocalTab(root: *VerticalList) void {
-	root.add(Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
-	//                                               255.255.255.255:?65536 (longest possible ip address)
-
-	const ipBar = HorizontalList.init();
-	const ipText = if(refresh and ipAddress.len != 0) ipAddress else "                      ";
-	ipAddressLabel = Label.init(.{padding/3, 0}, width/2.5 - padding/3, ipText, .left);
-	ipBar.add(ipAddressLabel);
-	ipBar.add(Button.initText(.{padding, 0}, 100, "Copy IP", .{.callback = &copyIp}));
-	ipBar.finish(.{0, 0}, .center);
-
-	const inputBar = HorizontalList.init();
-	ipAddressEntry = TextInput.init(.{0, 0}, width/2.5, 24, settings.lastUsedIPAddress, .{.callback = &joinLocal}, .{});
-	inputBar.add(ipAddressEntry);
-	inputBar.add(Button.initText(.{padding, 0}, 100, "Join", .{.callback = &joinLocal}));
-	inputBar.finish(.{0, 0}, .center);
-
-	root.add(ipBar);
-	root.add(inputBar);
-
-	if(thread == null) {
-		thread = std.Thread.spawn(.{}, discoverIpAddressFromNewThread, .{}) catch |err| blk: {
-			std.log.err("Error spawning thread: {s}. Doing it in the current thread instead.", .{@errorName(err)});
-			discoverIpAddress();
-			break :blk null;
-		};
-	}
-}
-
 fn refreshWindow() void {
 	refresh = true;
 	gui.closeWindowFromRef(&window);
 	gui.openWindowFromRef(&window);
 }
 
+fn join(_: usize) void {
+	const serverAddress = servers.items[selectedServerIdx.?].address;
+	_ = main.game.join(serverAddress, null);
+}
+
 fn selectServer(serverIdx: usize) void {
 	if(selectedServerIdx) |idx| {
 		serverList.children.items[idx].selectable.deselect();
 	}
-
 	selectedServerIdx = @truncate(serverIdx);
 }
 
@@ -242,76 +124,44 @@ fn removeServer(_: usize) void {
 	refreshWindow();
 }
 
-fn switchTab(tab: usize) void {
-	selectedTab = @enumFromInt(tab);
-	refreshWindow();
-}
-
 pub fn addServer(name: []const u8, address: []const u8) void {
 	const server = servers.addOne();
-	server.* = .{
-		.name = main.globalAllocator.dupe(u8, name),
-		.address = main.globalAllocator.dupe(u8, address)
-	};
+	server.* = .{.name = main.globalAllocator.dupe(u8, name), .address = main.globalAllocator.dupe(u8, address)};
 	saveServerList();
 	refreshWindow();
 }
 
-pub fn joinServer(address: []const u8) void {
-	if(thread) |_thread| {
-		_thread.join();
-		thread = null;
-	} else if(connection == null) {
-		initConnection();
-	}
-
-	if(ipAddress.len != 0) {
-		main.globalAllocator.free(ipAddress);
-		ipAddress = "";
-	}
-	if(connection) |_connection| {
-		_connection.world = &main.game.testWorld;
-		main.game.world = &main.game.testWorld;
-		std.log.info("Connecting to server: {s}", .{address});
-		main.game.testWorld.init(address, _connection) catch |err| {
-			const formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "Encountered error while opening world: {s}", .{@errorName(err)}) catch unreachable;
-			defer main.stackAllocator.free(formattedError);
-			std.log.err("{s}", .{formattedError});
-			main.gui.windowlist.notification.raiseNotification(formattedError);
-			main.game.world = null;
-			_connection.world = null;
-			return;
-		};
-		connection = null;
-	} else {
-		std.log.err("No connection found. Cannot connect.", .{});
-		main.gui.windowlist.notification.raiseNotification("No connection found. Cannot connect.");
-	}
-
-	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindowFromRef(openWindow);
-	}
-	gui.openHud();
-}
-
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	//list.add(Label.init(.{0, 0}, 100, "**Multiplayer**", .center));
+	list.add(Label.init(.{0, 0}, width/3, "**Multiplayer**", .center));
 
-	const tabs = HorizontalList.init();
-	const worldButton = Button.initText(.{0, 0}, width/2 + 4, "World", .{.callback = &switchTab, .arg = @intFromEnum(Tabs.WORLD)});
-	const localButton = Button.initText(.{-4, 0}, width/2 + 4, "Local", .{.callback = &switchTab, .arg = @intFromEnum(Tabs.LOCAL)});
-	worldButton.disabled = selectedTab == .WORLD;
-	localButton.disabled = selectedTab == .LOCAL;
-	tabs.add(worldButton);
-	tabs.add(localButton);
-	tabs.finish(.{0, 0}, .center);
-	list.add(tabs);
-
-	switch(selectedTab) {
-		.WORLD => initWorldTab(list),
-		.LOCAL => initLocalTab(list)
+	if(!refresh) {
+		loadServerList();
 	}
+	if(servers.items.len == 0) {
+		list.add(Label.init(.{0, 0}, width/3*2, "#d0d0d0The list is empty :(\n\nAdd a new #ffffff__server__ #d0d0d0by clicking the *button* below!", .center));
+	}
+	serverList = VerticalList.init(.{0, 0}, list.maxHeight/2, 0);
+	for(servers.items, 0..) |*server, i| {
+		serverList.add(initServerElement(server, i));
+	}
+	serverList.finish(.left);
+	selectedServerIdx = null;
+
+	const bottomPanel = HorizontalList.init();
+	const buttonWidth = (width - padding*3)/4;
+	bottomPanel.add(Button.initText(.{0, 0}, buttonWidth, "Add a Server", gui.openWindowCallback("add_server")));
+	bottomPanel.add(Button.initText(.{padding, 0}, buttonWidth, "Join Directly", gui.openWindowCallback("join_directly")));
+	joinButton = Button.initText(.{padding, 0}, buttonWidth, "Join", .{.callback = &join});
+	joinButton.disabled = true;
+	bottomPanel.add(joinButton);
+	removeButton = Button.initText(.{padding, 0}, buttonWidth, "Remove", .{.callback = &removeServer});
+	removeButton.disabled = true;
+	bottomPanel.add(removeButton);
+	bottomPanel.finish(.{0, 0}, .center);
+
+	list.add(serverList);
+	list.add(bottomPanel);
 
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -323,22 +173,13 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	if(!refresh) {
-		if(thread) |_thread| {
-			_thread.join();
-			thread = null;
-		}
-		if(ipAddress.len != 0) {
-			main.globalAllocator.free(ipAddress);
-			ipAddress = "";
-		}
-		if(connection) |_connection| {
-			_connection.deinit();
-			connection = null;
-		}
 		if(servers.items.len != 0) {
 			for(0..servers.items.len) |i| servers.items[i].deinit();
 			servers.clearAndFree();
 		}
+
+		gui.closeWindow("join_directly");
+		gui.closeWindow("add_server");
 	}
 
 	if(window.rootComponent) |*comp| {
@@ -347,16 +188,6 @@ pub fn onClose() void {
 }
 
 pub fn update() void {
-	switch (selectedTab) {
-		.LOCAL => {
-			if(gotIpAddress.load(.acquire)) {
-				gotIpAddress.store(false, .monotonic);
-				ipAddressLabel.updateText(ipAddress);
-			}
-		},
-		.WORLD => {
-			joinButton.disabled = selectedServerIdx == null;
-			removeButton.disabled = joinButton.disabled;
-		}
-	}
+	joinButton.disabled = selectedServerIdx == null;
+	removeButton.disabled = joinButton.disabled;
 }
