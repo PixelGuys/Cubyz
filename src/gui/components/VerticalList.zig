@@ -126,7 +126,6 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
 	const oldClip = draw.setClip(self.size);
-	std.log.info("size: {}, maxHeight: {}", .{self.size, self.maxHeight});
 	defer draw.restoreClip(oldClip);
 	const diff = self.childrenHeight - self.maxHeight;
 	var shiftedPos = self.pos;
