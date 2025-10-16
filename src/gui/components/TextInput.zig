@@ -18,6 +18,7 @@ const TextInput = @This();
 const scrollBarWidth = 5;
 const border: f32 = 3;
 const fontSize: f32 = 16;
+const blinkDurationMs: i64 = 500;
 
 var texture: Texture = undefined;
 
@@ -34,7 +35,6 @@ textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
 optional: OptionalCallbacks,
-blinkDurationMs: i64 = 500.0,
 lastBlinkTime: i64 = 0,
 showCusor: bool = true,
 
@@ -124,6 +124,7 @@ pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) void {
 	}
 	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	self.pressed = true;
+	self.ensureCursorVisibility();
 }
 
 pub fn mainButtonReleased(self: *TextInput, mousePosition: Vec2f) void {
@@ -476,7 +477,7 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 
 fn ensureCursorVisibility(self: *TextInput) void {
 	self.showCusor = true;
-	self.lastBlinkTime = main.game.world.?.milliTime;
+	self.lastBlinkTime = std.time.milliTimestamp();
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		var y: f32 = 0;
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
@@ -520,8 +521,8 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 
-		const milliTime = main.game.world.?.milliTime;
-		if(self.lastBlinkTime + self.blinkDurationMs <= milliTime) {
+		const milliTime = std.time.milliTimestamp();
+		if(self.lastBlinkTime + blinkDurationMs <= milliTime) {
 			self.lastBlinkTime = milliTime;
 			self.showCusor = !self.showCusor;
 		}
