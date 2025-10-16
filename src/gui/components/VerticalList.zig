@@ -129,19 +129,17 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	defer draw.restoreClip(oldClip);
 	const diff = self.childrenHeight - self.maxHeight;
 	var shiftedPos = self.pos;
-	const scrollOffset = if(self.scrollBarEnabled) diff*self.scrollBar.currentState else 0.0;
+	// const scrollOffset = if (self.scrollBarEnabled) diff * self.scrollBar.currentState else 0.0;
 	if(self.scrollBarEnabled) {
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
 		self.scrollBar.render(mousePosition - self.pos);
 	}
 	_ = draw.setTranslation(shiftedPos - self.pos);
-	var currPos: i32 = 0;
 	for(self.children.items) |*child| {
-		const childHeight = std.math.lossyCast(i32, child.size()[1]);
-		currPos += childHeight;
-		const itemYPos = currPos;
-		const itemYPosScrolled = itemYPos - std.math.lossyCast(i32, scrollOffset);
-		if(itemYPosScrolled + childHeight < 0 or itemYPosScrolled > std.math.lossyCast(i32, std.math.ceil(self.maxHeight)) + childHeight) {
+		const itemYPos = child.pos()[1];
+		const adjustedYPos = itemYPos + shiftedPos[1];
+
+		if(adjustedYPos + child.size()[1] < 0 or adjustedYPos > self.maxHeight + child.size()[1]) {
 			continue;
 		}
 		child.render(mousePosition - shiftedPos);
