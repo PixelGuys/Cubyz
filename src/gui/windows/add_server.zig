@@ -43,7 +43,6 @@ fn addServer(_: usize) void {
 	const address = addressEntry.currentString.items;
 
 	multiplayer.addServer(trimName, address);
-	gui.closeWindowFromRef(&window);
 }
 
 pub fn onOpen() void {
@@ -54,7 +53,7 @@ pub fn onOpen() void {
 	list.add(Label.init(.{0, 0}, width, "Address:", .left));
 	addressEntry = TextInput.init(.{0, 0}, width, 24, "", .{.callback = &addServer}, .{});
 	list.add(addressEntry);
-	addButton = Button.initText(.{0, 0}, 100, "Add", .{.callback = &addServer});
+	addButton = Button.initText(.{0, 0}, width/3, "Add", .{.callback = &addServer});
 	addButton.disabled = true;
 	list.add(addButton);
 	list.finish(.center);
