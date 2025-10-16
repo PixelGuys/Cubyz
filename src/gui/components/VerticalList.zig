@@ -134,6 +134,7 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 		self.scrollBar.render(mousePosition - self.pos);
 	}
 	_ = draw.setTranslation(shiftedPos - self.pos);
+
 	for(self.children.items) |*child| {
 		const itemYPos = child.pos()[1];
 		const adjustedYPos = itemYPos + shiftedPos[1];
