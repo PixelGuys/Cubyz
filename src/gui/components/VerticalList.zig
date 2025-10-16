@@ -128,8 +128,8 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	const oldClip = draw.setClip(self.size);
 	std.log.info("size: {}, maxHeight: {}", .{self.size, self.maxHeight});
 	defer draw.restoreClip(oldClip);
-	var shiftedPos = self.pos;
 	const diff = self.childrenHeight - self.maxHeight;
+	var shiftedPos = self.pos;
 	const scrollOffset = if(self.scrollBarEnabled) diff*self.scrollBar.currentState else 0.0;
 	if(self.scrollBarEnabled) {
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
