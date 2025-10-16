@@ -2285,3 +2285,21 @@ pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);
 }
+
+pub const TimeMeasure = struct {
+	start: i128,
+
+	pub fn init() TimeMeasure {
+		return .{.start = std.time.nanoTimestamp()};
+	}
+	pub fn elapsedNano(self: *const TimeMeasure) i128 {
+		return std.time.nanoTimestamp() -% self.start;
+	}
+	pub fn elapsedMilli(self: *const TimeMeasure) f64 {
+		return @as(f64, @floatFromInt(self.elapsedNano()))/std.time.ns_per_ms;
+	}
+	/// Elapsed time in seconds
+	pub fn elapsed(self: *const TimeMeasure) f64 {
+		return @as(f64, @floatFromInt(self.elapsedNano()))/std.time.ns_per_s;
+	}
+};

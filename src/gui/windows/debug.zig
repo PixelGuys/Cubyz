@@ -41,6 +41,10 @@ pub fn render() void {
 	y += 8;
 	draw.print("frameTime: {d:.1} ms", .{main.lastFrameTime.load(.monotonic)*1000.0}, 0, y, 8, .left);
 	y += 8;
+	draw.print("gameUpdateTime: {d:.1} ms", .{main.lastGameUpdateTimeMs.load(.monotonic)}, 0, y, 8, .left);
+	y += 8;
+	draw.print("renderTime: {d:.1} ms", .{main.lastRenderTimeMs.load(.monotonic)}, 0, y, 8, .left);
+	y += 8;
 	draw.print("window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8, .left);
 	y += 8;
 	if(main.game.world != null) {

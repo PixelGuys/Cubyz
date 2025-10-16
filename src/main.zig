@@ -40,6 +40,7 @@ pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 pub const MultiArray = @import("utils/list.zig").MultiArray;
 
 const file_monitor = utils.file_monitor;
+const TimeMeasure = utils.TimeMeasure;
 
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
@@ -447,6 +448,9 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 
 /// Records gpu time per frame.
 pub var lastFrameTime = std.atomic.Value(f64).init(0);
+/// Records game update time per frame.
+pub var lastGameUpdateTimeMs = std.atomic.Value(f64).init(0);
+pub var lastRenderTimeMs = std.atomic.Value(f64).init(0);
 /// Measures time between different frames' beginnings.
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
@@ -697,7 +701,7 @@ pub fn main() void { // MARK: main()
 	const c = Window.c;
 
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastBeginRendering = std.time.nanoTimestamp();
+	var lastBeginRendering: TimeMeasure = .init();
 
 	if(settings.developerAutoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
@@ -723,8 +727,7 @@ pub fn main() void { // MARK: main()
 			std.Thread.sleep(16_000_000);
 		}
 
-		const endRendering = std.time.nanoTimestamp();
-		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+		const frameTime = lastBeginRendering.elapsed();
 		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
 			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
 			std.posix.exit(1);
@@ -733,28 +736,31 @@ pub fn main() void { // MARK: main()
 
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
-			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - lastBeginRendering.elapsedNano()));
 			std.Thread.sleep(sleep);
 		}
-		const begin = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+		const deltaTime = lastBeginRendering.elapsed();
 		lastDeltaTime.store(deltaTime, .monotonic);
-		lastBeginRendering = begin;
+		lastBeginRendering = .init();
 
 		Window.handleEvents(deltaTime);
 
 		file_monitor.handleEvents();
 
 		if(game.world != null) { // Update the game
+			const measure: TimeMeasure = .init();
 			game.update(deltaTime);
+			lastGameUpdateTimeMs.store(measure.elapsedMilli(), .monotonic);
 		}
 
 		if(!isHidden) {
+			const measure: TimeMeasure = .init();
 			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+			lastRenderTimeMs.store(measure.elapsedMilli(), .monotonic);
 		}
 
 		if(shouldExitToMenu.load(.monotonic)) {
