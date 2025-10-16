@@ -127,9 +127,9 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	defer draw.restoreTranslation(oldTranslation);
 	const oldClip = draw.setClip(self.size);
 	defer draw.restoreClip(oldClip);
-	const diff = self.childrenHeight - self.maxHeight;
 	var shiftedPos = self.pos;
 	if(self.scrollBarEnabled) {
+		const diff = self.childrenHeight - self.maxHeight;
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
 		self.scrollBar.render(mousePosition - self.pos);
 	}
