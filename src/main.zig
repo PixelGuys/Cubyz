@@ -456,11 +456,11 @@ pub fn exitToMenu(_: usize) void {
 }
 
 pub fn setKickReason(reason: ?[]const u8) void {
-    if (reason) |r| {
-        const reasonFormatted = std.fmt.allocPrint(globalAllocator.allocator, "Disconnected: {s}", .{r}) catch "Disconnected";
-        defer globalAllocator.free(reasonFormatted);
-        gui.windowlist.disconnected.setDisconnectedReason(reasonFormatted);
-    }
+	if(reason) |r| {
+		const reasonFormatted = std.fmt.allocPrint(globalAllocator.allocator, "Disconnected: {s}", .{r}) catch "Disconnected";
+		defer globalAllocator.free(reasonFormatted);
+		gui.windowlist.disconnected.setDisconnectedReason(reasonFormatted);
+	}
 }
 
 fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
@@ -769,6 +769,7 @@ pub fn main() void { // MARK: main()
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
+				server.kickPlayers("Server stopped.");
 				world.deinit();
 				game.world = null;
 			}

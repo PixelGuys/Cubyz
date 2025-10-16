@@ -463,6 +463,17 @@ pub fn stop() void {
 	running.store(false, .monotonic);
 }
 
+pub fn kickPlayers(reason: ?[]const u8) void {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+	for(userList) |user| {
+		if(user.connected.load(.monotonic) and !user.isLocal) {
+			user.conn.disconnect(reason);
+		}
+	}
+}
+
 pub fn disconnect(user: *User, reason: ?[]const u8) void { // MARK: disconnect()
 	if(!user.connected.load(.unordered)) return;
 	removePlayer(user, reason);
@@ -486,9 +497,9 @@ pub fn removePlayer(user: *User, reason: ?[]const u8) void { // MARK: removePlay
 	};
 	if(!foundUser) return;
 
-	if (reason)|r|{
+	if(reason) |r| {
 		sendMessage("{s}§#ffff00 left: {s}", .{user.name, r});
-	}else{
+	} else {
 		sendMessage("{s}§#ffff00 left.", .{user.name});
 	}
 	// Let the other clients know about that this new one left.
