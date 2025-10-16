@@ -360,7 +360,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
 		.{.name = "backward", .key = c.GLFW_KEY_S, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
 		.{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
-		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
+		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB, .isToggling = .no},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
 		.{.name = "crouch", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
@@ -434,14 +434,33 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
 	};
 
-	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
+	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
 		for(&keys) |*_key| {
 			if(std.mem.eql(u8, name, _key.name)) {
 				return _key;
 			}
 		}
-		std.log.err("Couldn't find keyboard key with name {s}", .{name});
-		return &.{.name = ""};
+		return null;
+	}
+	pub fn key(name: []const u8) *const Window.Key {
+		return findKey(name) orelse {
+			std.log.err("Couldn't find keyboard key with name {s}", .{name});
+			return &.{.name = ""};
+		};
+	}
+	pub fn setIsToggling(name: []const u8, value: bool) void {
+		if(findKey(name)) |theKey| {
+			if(theKey.isToggling == .never) {
+				std.log.err("Tried setting toggling on non-toggling key with name {s}", .{name});
+				return;
+			}
+			theKey.isToggling = if(value) .yes else .no;
+			if(!value) {
+				theKey.pressed = false;
+			}
+		} else {
+			std.log.err("Couldn't find keyboard key to toggle with name {s}", .{name});
+		}
 	}
 };
 
