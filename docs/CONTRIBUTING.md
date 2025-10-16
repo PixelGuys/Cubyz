@@ -8,6 +8,12 @@ The sections are roughly sorted by the time you'll encounter them, starting befo
 
 I'd recommend to check out the [Discord Server](https://discord.gg/XtqCRRG) if you have any further questions.
 
+# Please don't use AI/LLMs to make pull requests
+Modern (narrow) AI is not trained to be good at programming, it is trained to be good at producing code that matches the training data. The result is inevitably going to be worse in quality and likely won't follow a project's conventions as outlined in this document.
+Furthermore narrow AI is unable to learn. Compare that to a human who will generally not make the same mistake twice.
+
+So, if you want to help the project, then please don't waste my time by making me review an AI-generated pull request. Instead please invest your own time and learn how to code properly. It is worth it, I promise.
+
 # Learn Zig
 
 Kind of obvious, but still important: https://ziglang.org/learn/
