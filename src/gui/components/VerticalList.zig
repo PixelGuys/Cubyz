@@ -126,6 +126,7 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
 	const oldClip = draw.setClip(self.size);
+	std.log.info("size: {}, maxHeight: {}", .{self.size, self.maxHeight});
 	defer draw.restoreClip(oldClip);
 	const diff = self.childrenHeight - self.maxHeight;
 	const itemHeight = self.childrenHeight/std.math.lossyCast(f32, self.children.items.len);
@@ -141,7 +142,7 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 		const itemYPos = @as(f32, @floatFromInt(counter))*itemHeight;
 		const itemYPosScrolled = itemYPos - scrollOffset;
 
-		if(itemYPosScrolled + itemHeight < 0 or itemYPosScrolled > self.maxHeight) {
+		if(itemYPosScrolled + child.size()[1] < 0 or itemYPosScrolled > self.maxHeight + child.size()[1]) {
 			continue;
 		}
 		child.render(mousePosition - shiftedPos);
