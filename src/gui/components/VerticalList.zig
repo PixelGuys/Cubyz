@@ -128,21 +128,21 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	const oldClip = draw.setClip(self.size);
 	std.log.info("size: {}, maxHeight: {}", .{self.size, self.maxHeight});
 	defer draw.restoreClip(oldClip);
-	const diff = self.childrenHeight - self.maxHeight;
-	const itemHeight = self.childrenHeight/std.math.lossyCast(f32, self.children.items.len);
 	var shiftedPos = self.pos;
+	const diff = self.childrenHeight - self.maxHeight;
 	const scrollOffset = if(self.scrollBarEnabled) diff*self.scrollBar.currentState else 0.0;
 	if(self.scrollBarEnabled) {
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
 		self.scrollBar.render(mousePosition - self.pos);
 	}
 	_ = draw.setTranslation(shiftedPos - self.pos);
-
-	for(self.children.items, 0..) |*child, counter| {
-		const itemYPos = @as(f32, @floatFromInt(counter))*itemHeight;
-		const itemYPosScrolled = itemYPos - scrollOffset;
-
-		if(itemYPosScrolled + child.size()[1] < 0 or itemYPosScrolled > self.maxHeight + child.size()[1]) {
+	var currPos: i32 = 0;
+	for(self.children.items) |*child| {
+		const childHeight = std.math.lossyCast(i32, child.size()[1]);
+		currPos += childHeight;
+		const itemYPos = currPos;
+		const itemYPosScrolled = itemYPos - std.math.lossyCast(i32, scrollOffset);
+		if(itemYPosScrolled + childHeight < 0 or itemYPosScrolled > std.math.lossyCast(i32, std.math.ceil(self.maxHeight)) + childHeight) {
 			continue;
 		}
 		child.render(mousePosition - shiftedPos);
