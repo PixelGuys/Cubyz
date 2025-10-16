@@ -922,6 +922,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}*@as(Vec2f, @splat(3.14*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
+	else {
+		Player.jumpCooldown = 0;
+	}
 
 	if(collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,
