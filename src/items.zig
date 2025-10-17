@@ -442,7 +442,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 	}
 };
 
-/// Determines the physical properties of a tool to caclulate in-game parameters such as durability and speed.
+/// Determines the physical properties of a tool to calculate in-game parameters such as durability and speed.
 const ToolPhysics = struct { // MARK: ToolPhysics
 	/// Determines all the basic properties of the tool.
 	pub fn evaluateTool(tool: *Tool) void {
@@ -463,7 +463,8 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			switch(property.method) {
 				.sum => {},
 				.average => {
-					sum /= weight;
+					const partialWeight = weight*0.8;
+					sum /= partialWeight;
 				},
 			}
 			sum *= property.resultScale;
