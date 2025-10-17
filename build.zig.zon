@@ -43,8 +43,8 @@
 			.lazy = true,
 		},
 		.cubyz_large_assets = .{
-			.url = "git+https://github.com/PixelGuys/Cubyz-Assets/#e0ea686f86c008b29cd109e1bdd757ce6574eaf3",
-			.hash = "N-V-__8AAAxDUATPdad1MQC8jeiFsoXRet_SvG6acW5Dmxdh",
+			.url = "git+https://github.com/PixelGuys/Cubyz-Assets/#fc6e9a79b7806fe753799ac0ebe83735da9cd999",
+			.hash = "N-V-__8AALlYgw-cuG8tF3jIBf8i37bbQ7LIeBfapee7uHbl",
 		},
 	},
 }
