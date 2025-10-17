@@ -31,6 +31,12 @@
 			.chance = 0.03,
 		},
 		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/baobab/young",
+			.placeMode = .degradable,
+			.chance = 0.005,
+		},
+		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:oak_leaves",
 			.log = "cubyz:oak_log",
