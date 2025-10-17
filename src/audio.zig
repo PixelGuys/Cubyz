@@ -31,7 +31,7 @@ const AudioData = struct {
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if(c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "serverAssets/{s}/music/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
+		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/music/{s}.ogg", .{main.files.cubyzDirStr(), addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if(c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
 		std.log.err("Couldn't find music with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{id, path1, path2});
