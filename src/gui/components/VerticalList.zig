@@ -91,6 +91,31 @@ pub fn finish(self: *VerticalList, alignment: graphics.TextBuffer.Alignment) voi
 	}
 }
 
+pub fn getShiftedPos(self: *VerticalList) Vec2f {
+	var result = self.pos;
+	if(self.scrollBarEnabled) {
+		const diff = self.childrenHeight - self.maxHeight;
+		result[1] -= diff*self.scrollBar.currentState;
+	}
+	return result;
+}
+
+pub fn mousePosToItem(self: *VerticalList, mousePosition: Vec2f) ?GuiComponent {
+	const shiftedPos = self.getShiftedPos();
+	if(self.scrollBarEnabled and GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+		return self.scrollBar.toComponent();
+	}
+	var i: usize = self.children.items.len;
+	while(i != 0) {
+		i -= 1;
+		const child = &self.children.items[i];
+		if(GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
+			return child.*;
+		}
+	}
+	return null;
+}
+
 pub fn updateSelected(self: *VerticalList) void {
 	for(self.children.items) |*child| {
 		child.updateSelected();
@@ -98,27 +123,17 @@ pub fn updateSelected(self: *VerticalList) void {
 }
 
 pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) void {
-	var shiftedPos = self.pos;
-	if(self.scrollBarEnabled) {
-		const diff = self.childrenHeight - self.maxHeight;
-		shiftedPos[1] -= diff*self.scrollBar.currentState;
-	}
-	var i: usize = self.children.items.len;
-	while(i != 0) {
-		i -= 1;
-		const child = &self.children.items[i];
-		if(GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
-			child.updateHovered(mousePosition - shiftedPos);
-			break;
-		}
-	}
 	if(self.scrollBarEnabled) {
 		const diff = self.childrenHeight - self.maxHeight;
 		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
 		main.Window.scrollOffset = 0;
-		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			self.scrollBar.updateHovered(mousePosition - self.pos);
-		}
+	}
+
+	const item = self.mousePosToItem(mousePosition) orelse return;
+	if(item == .scrollBar and item.scrollBar == self.scrollBar) {
+		self.scrollBar.updateHovered(mousePosition - self.pos);
+	} else {
+		item.updateHovered(mousePosition - self.getShiftedPos());
 	}
 }
 
@@ -127,12 +142,8 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	defer draw.restoreTranslation(oldTranslation);
 	const oldClip = draw.setClip(self.size);
 	defer draw.restoreClip(oldClip);
-	var shiftedPos = self.pos;
-	if(self.scrollBarEnabled) {
-		const diff = self.childrenHeight - self.maxHeight;
-		shiftedPos[1] -= diff*self.scrollBar.currentState;
-		self.scrollBar.render(mousePosition - self.pos);
-	}
+	const shiftedPos = self.getShiftedPos();
+	if(self.scrollBarEnabled) self.scrollBar.render(mousePosition - self.pos);
 	_ = draw.setTranslation(shiftedPos - self.pos);
 
 	for(self.children.items) |*child| {
@@ -147,33 +158,17 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 }
 
 pub fn mainButtonPressed(self: *VerticalList, mousePosition: Vec2f) void {
-	var shiftedPos = self.pos;
-	if(self.scrollBarEnabled) {
-		const diff = self.childrenHeight - self.maxHeight;
-		shiftedPos[1] -= diff*self.scrollBar.currentState;
-		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			self.scrollBar.mainButtonPressed(mousePosition - self.pos);
-			return;
-		}
-	}
-	var selectedChild: ?*GuiComponent = null;
-	for(self.children.items) |*child| {
-		if(GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
-			selectedChild = child;
-		}
-	}
-	if(selectedChild) |child| {
-		child.mainButtonPressed(mousePosition - shiftedPos);
+	const item = self.mousePosToItem(mousePosition) orelse return;
+	if(item == .scrollBar and item.scrollBar == self.scrollBar) {
+		self.scrollBar.mainButtonPressed(mousePosition - self.pos);
+	} else {
+		item.mainButtonPressed(mousePosition - self.getShiftedPos());
 	}
 }
 
 pub fn mainButtonReleased(self: *VerticalList, mousePosition: Vec2f) void {
-	var shiftedPos = self.pos;
-	if(self.scrollBarEnabled) {
-		const diff = self.childrenHeight - self.maxHeight;
-		shiftedPos[1] -= diff*self.scrollBar.currentState;
-		self.scrollBar.mainButtonReleased(mousePosition - self.pos);
-	}
+	const shiftedPos = self.getShiftedPos();
+	if(self.scrollBarEnabled) self.scrollBar.mainButtonReleased(mousePosition - self.pos);
 	for(self.children.items) |*child| {
 		child.mainButtonReleased(mousePosition - shiftedPos);
 	}
