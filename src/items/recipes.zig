@@ -71,7 +71,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 				var endIndices: main.List(usize) = .init(allocator);
 				defer endIndices.deinit();
 				if(newKeys.get(symbol)) |value| {
-					if(idx + value.len >= target.len or !std.mem.eql(u8, target[idx .. idx + value.len], value)) {
+					if(!std.mem.startsWith(u8, target[idx..], value)) {
 						return error.NoMatch;
 					}
 					idx += value.len;
