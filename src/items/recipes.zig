@@ -62,7 +62,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 	for(0.., pattern) |i, segment| {
 		switch(segment) {
 			.literal => |literal| {
-				if(literal.len + idx > target.len or !std.mem.eql(u8, target[idx .. idx + literal.len], literal)) {
+				if(!std.mem.startsWith(u8, target[idx..], literal)) {
 					return error.NoMatch;
 				}
 				idx += literal.len;
