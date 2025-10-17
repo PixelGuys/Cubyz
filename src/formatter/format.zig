@@ -59,6 +59,12 @@ fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
 					printError("Incorrect indentation. Please use tabs instead of spaces.", filePath, data, i);
 				}
 			},
+			'/' => {
+				if(data[i + 1] == '/' and data[i + 2] != '/' and data[i + 2] != ' ' and data[i + 2] != '\n' and (i == 0 or (data[i - 1] != ':' and data[i - 1] != '"'))) {
+					printError("Comments should include a space before text, ex: // whatever", filePath, data, i + 2);
+				}
+				lineStart = false;
+			},
 			'\t' => {},
 			else => {
 				lineStart = false;
@@ -78,7 +84,7 @@ fn checkDirectory(dir: std.fs.Dir) !void {
 			std.log.err("File name should end with .zig.zon so it gets syntax highlighting on github.", .{});
 			failed = true;
 		}
-		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".vert") or std.mem.endsWith(u8, child.basename, ".frag") or std.mem.endsWith(u8, child.basename, ".comp"))) {
+		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".vert") or std.mem.endsWith(u8, child.basename, ".frag") or std.mem.endsWith(u8, child.basename, ".comp") or (std.mem.endsWith(u8, child.basename, ".zig") and !std.mem.eql(u8, child.basename, "fmt.zig")))) {
 			try checkFile(dir, child.path);
 		}
 	}

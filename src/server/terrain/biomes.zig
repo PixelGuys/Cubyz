@@ -250,7 +250,7 @@ pub const Biome = struct { // MARK: Biome
 
 		mountain: bool = false,
 		lowTerrain: bool = false,
-		antiMountain: bool = false, //???
+		antiMountain: bool = false,
 
 		pub const mask: u15 = 0b001001001001001;
 
