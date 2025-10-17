@@ -1,47 +1,11 @@
 .{
 	.{
-		.inputs = .{"cubyz:birch_planks", "cubyz:iron_ingot"},
+		.inputs = .{"{mod}:{type}_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:oak_planks", "cubyz:iron_ingot"},
-		.output = "cubyz:chisel",
-	},
-	.{
-		.inputs = .{"cubyz:mahogany_planks", "cubyz:iron_ingot"},
-		.output = "cubyz:chisel",
-	},
-	.{
-		.inputs = .{"cubyz:pine_planks", "cubyz:iron_ingot"},
-		.output = "cubyz:chisel",
-	},
-	.{
-		.inputs = .{"cubyz:willow_planks", "cubyz:iron_ingot"},
-		.output = "cubyz:chisel",
-	},
-	.{
-		.inputs = .{"cubyz:baobab_planks", "cubyz:iron_ingot"},
-		.output = "cubyz:chisel",
-	},
-	.{
-		.inputs = .{"cubyz:coal_ore", "cubyz:copper_ore"},
-		.output = "cubyz:copper_ingot",
-	},
-	.{
-		.inputs = .{"cubyz:coal_ore", "cubyz:iron_ore"},
-		.output = "cubyz:iron_ingot",
-	},
-	.{
-		.inputs = .{"cubyz:coal_ore", "cubyz:silver_ore"},
-		.output = "cubyz:silver_ingot",
-	},
-	.{
-		.inputs = .{"cubyz:coal_ore", "cubyz:gold_ore"},
-		.output = "cubyz:gold_ingot",
-	},
-	.{
-		.inputs = .{"cubyz:coal_ore", "cubyz:uranium_ore"},
-		.output = "cubyz:uranium_ingot",
+		.inputs = .{"cubyz:coal_ore", "{mod}:{type}_ore"},
+		.output = "{mod}:{type}_ingot",
 	},
 	.{
 		.inputs = .{"cubyz:coal_ore", "8 cubyz:clay"},
@@ -174,5 +138,6 @@
 	.{
 		.inputs = .{"cubyz:gravel"},
 		.output = "4 cubyz:pebbles",
+		.reversible = true,
 	},
 }
