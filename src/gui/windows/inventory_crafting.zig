@@ -124,30 +124,22 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 }
 
 fn refresh() void {
+	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
 	const recipesChanged = findAvailableRecipes(list);
-	const hasRootComponent = (window.rootComponent != null);
-	if(!recipesChanged and hasRootComponent) {
+	if(!recipesChanged and window.rootComponent != null) {
 		list.deinit();
 		return;
 	}
-
-	const oldRootComponent = window.rootComponent;
-	defer if(oldRootComponent) |*comp| comp.deinit();
-
-	if(list.children.items.len == 0) {
-		list.deinit();
-		const label = Label.init(.{padding, padding + 16}, 120, "No craftable\nrecipes found", .center);
-		window.rootComponent = label.toComponent();
-	} else {
-		list.finish(.center);
-		if(oldRootComponent) |comp| {
-			if(comp == .verticalList)
-				list.scrollBar.currentState = comp.verticalList.scrollBar.currentState;
-		}
-		window.rootComponent = list.toComponent();
+	if(window.rootComponent) |*comp| {
+		comp.deinit();
 	}
-
+	if(list.children.items.len == 0) {
+		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));
+	}
+	list.finish(.center);
+	list.scrollBar.currentState = oldScrollState;
+	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	window.contentSize[0] = @max(window.contentSize[0], window.getMinWindowWidth());
 	gui.updateWindowPositions();
