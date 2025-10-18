@@ -18,6 +18,7 @@ const TextInput = @This();
 const scrollBarWidth = 5;
 const border: f32 = 3;
 const fontSize: f32 = 16;
+const blinkDurationMs: i64 = 500;
 
 var texture: Texture = undefined;
 
@@ -34,6 +35,8 @@ textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
 optional: OptionalCallbacks,
+lastBlinkTime: i64 = 0,
+showCusor: bool = true,
 
 pub fn __init() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -121,6 +124,7 @@ pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) void {
 	}
 	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	self.pressed = true;
+	self.ensureCursorVisibility();
 }
 
 pub fn mainButtonReleased(self: *TextInput, mousePosition: Vec2f) void {
@@ -472,6 +476,8 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn ensureCursorVisibility(self: *TextInput) void {
+	self.showCusor = true;
+	self.lastBlinkTime = std.time.milliTimestamp();
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		var y: f32 = 0;
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
@@ -514,7 +520,17 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			draw.setColor(0x440000ff);
 			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
-		draw.setColor(0xff000000);
-		draw.line(cursorPos, cursorPos + Vec2f{0, 16});
+
+		const milliTime = std.time.milliTimestamp();
+		if(milliTime -% self.lastBlinkTime > blinkDurationMs) {
+			self.lastBlinkTime = milliTime;
+			self.showCusor = !self.showCusor;
+		}
+
+		if(self.showCusor) {
+			draw.setColor(0xff000000);
+			const thickness = @min(@ceil(fontSize/8), 1);
+			draw.rect(cursorPos, Vec2f{thickness, fontSize});
+		}
 	}
 }
