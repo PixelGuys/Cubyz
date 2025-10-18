@@ -522,7 +522,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		}
 
 		const milliTime = std.time.milliTimestamp();
-		if(self.lastBlinkTime + blinkDurationMs <= milliTime) {
+		if(milliTime -% self.lastBlinkTime > blinkDurationMs) {
 			self.lastBlinkTime = milliTime;
 			self.showCusor = !self.showCusor;
 		}
