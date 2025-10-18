@@ -1396,10 +1396,8 @@ pub const Command = struct { // MARK: Command
 		fn run(self: TakeHalf, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
 			if(self.source.inv.type == .creative) {
-				if(self.dest.ref().item == null) {
-					const item = self.source.ref().item;
-					try FillFromCreative.run(.{.dest = self.dest, .item = item}, allocator, cmd, side, user, gamemode);
-				}
+				const item = self.source.ref().item;
+				try FillFromCreative.run(.{.dest = self.dest, .item = item}, allocator, cmd, side, user, gamemode);
 				return;
 			}
 			if(self.source.inv.type == .crafting) {
@@ -1519,7 +1517,7 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and user != null and mode != .creative) return;
 			if(side == .client and mode != .creative) return;
 
-			if(!self.dest.ref().empty()) {
+			if(!self.dest.ref().empty() and (cmd.payload != .takeHalf or !std.meta.eql(self.dest.ref().item, self.item))) {
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = self.dest,
 					.amount = self.dest.ref().amount,
@@ -1528,7 +1526,7 @@ pub const Command = struct { // MARK: Command
 			if(self.item) |_item| {
 				var amount = _item.stackSize();
 				if(cmd.payload == .takeHalf) {
-					amount = 1;
+					amount = @min(amount - self.dest.ref().amount, 1);
 				}
 				cmd.executeBaseOperation(allocator, .{.create = .{
 					.dest = self.dest,
