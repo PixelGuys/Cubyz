@@ -61,6 +61,10 @@ fn invertMouseYCallback(newValue: bool) void {
 	main.settings.invertMouseY = newValue;
 	main.settings.save();
 }
+fn sprintIsToggleCallback(newValue: bool) void {
+	main.KeyBoard.setIsToggling("sprint", newValue);
+	main.settings.save();
+}
 
 fn updateDeadzone(deadzone: f32) void {
 	main.settings.controllerAxisDeadzone = deadzone;
@@ -96,6 +100,7 @@ pub fn onOpen() void {
 	list.add(Button.initText(.{0, 0}, 128, if(editingKeyboard) "Gamepad" else "Keyboard", .{.callback = &toggleKeyboard}));
 	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if(editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
 	list.add(CheckBox.init(.{0, 0}, 256, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
+	list.add(CheckBox.init(.{0, 0}, 256, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
 
 	if(!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));

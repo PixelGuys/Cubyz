@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const Window = @import("graphics/Window.zig");
 
 pub const version = @import("utils/version.zig");
 
@@ -104,6 +105,9 @@ pub fn init() void {
 		key.key = keyZon.get(c_int, "key", key.key);
 		key.mouseButton = keyZon.get(c_int, "mouseButton", key.mouseButton);
 		key.scancode = keyZon.get(c_int, "scancode", key.scancode);
+		if(key.isToggling != .never) {
+			key.isToggling = std.meta.stringToEnum(Window.Key.IsToggling, keyZon.get([]const u8, "isToggling", "")) orelse key.isToggling;
+		}
 	}
 }
 
@@ -157,6 +161,9 @@ pub fn save() void {
 		keyZon.put("key", key.key);
 		keyZon.put("mouseButton", key.mouseButton);
 		keyZon.put("scancode", key.scancode);
+		if(key.isToggling != .never) {
+			keyZon.put("isToggling", @tagName(key.isToggling));
+		}
 		keyboard.put(key.name, keyZon);
 	}
 	zonObject.put("keyboard", keyboard);
