@@ -41,12 +41,7 @@ const NoImpl = struct {
 };
 
 const LinuxImpl = struct { // MARK: LinuxImpl
-	const c = @cImport({
-		@cInclude("sys/inotify.h");
-		@cInclude("sys/ioctl.h");
-		@cInclude("unistd.h");
-		@cInclude("errno.h");
-	});
+	const c = @import("file_monitor_linux_c");
 
 	const DirectoryInfo = struct {
 		callback: CallbackFunction,
@@ -211,9 +206,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 };
 
 const WindowsImpl = struct { // MARK: WindowsImpl
-	const c = @cImport({
-		@cInclude("fileapi.h");
-	});
+	const c = @import("file_monitor_windows_c");
 	const HANDLE = std.os.windows.HANDLE;
 	var notificationHandlers: std.StringHashMap(*DirectoryInfo) = undefined;
 	var callbacks: main.List(*DirectoryInfo) = undefined;
