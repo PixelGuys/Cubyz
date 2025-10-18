@@ -6,6 +6,7 @@
 	},
 	.rotation = "cubyz:planar",
 	.model = "cubyz:cube",
+	.blockEntity = .furnace,
 	.texture = "cubyz:kiln/back",
 	.texture_front = "cubyz:kiln/front",
 	.texture_left = "cubyz:kiln/side",

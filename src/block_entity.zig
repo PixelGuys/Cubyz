@@ -288,6 +288,106 @@ pub const BlockEntityTypes = struct {
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
+	pub const Furnace = struct {
+		const inventorySize = 4;
+		const StorageServer = BlockEntityDataStorage(struct {
+			invId: main.items.Inventory.InventoryId,
+			lastUpdate: i64,
+		});
+
+		pub const id = "furnace";
+		pub fn init() void {
+			StorageServer.init();
+		}
+		pub fn deinit() void {
+			StorageServer.deinit();
+		}
+		pub fn reset() void {
+			StorageServer.reset();
+		}
+
+		fn onInventoryUpdateCallback(source: main.items.Inventory.Source) void {
+			const pos = source.blockInventory;
+			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			defer simChunk.decreaseRefCount();
+			const ch = simChunk.getChunk() orelse return;
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			ch.setChanged();
+		}
+
+		const inventoryCallbacks = main.items.Inventory.Callbacks{
+			.onUpdateCallback = &onInventoryUpdateCallback,
+		};
+
+		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
+		pub fn onUnloadClient(_: BlockEntityIndex) void {}
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getOrPut(pos, chunk);
+			std.debug.assert(!data.foundExisting);
+			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, inventoryCallbacks);
+		}
+
+		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+			StorageServer.mutex.lock();
+			const data = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			StorageServer.mutex.unlock();
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.invId);
+		}
+		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const data = StorageServer.getByIndex(dataIndex) orelse return;
+
+			const inv = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.invId);
+			var isEmpty: bool = true;
+			for(inv._items) |item| {
+				if(item.amount != 0) isEmpty = false;
+			}
+			if(isEmpty) return;
+			inv.toBytes(writer);
+		}
+		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
+		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
+			if(main.KeyBoard.key("shift").pressed) return .ignored;
+
+			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+
+			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, .{});
+
+			main.gui.windowlist.furnace.setInventory(inventory);
+			main.gui.openWindow("furnace");
+			main.Window.setMouseGrabbed(false);
+
+			return .handled;
+		}
+
+		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+			switch(event) {
+				.remove => {
+					const chest = StorageServer.remove(pos, chunk) orelse return;
+					main.items.Inventory.Sync.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
+				},
+				.update => |_| {
+					StorageServer.mutex.lock();
+					defer StorageServer.mutex.unlock();
+					const data = StorageServer.getOrPut(pos, chunk);
+					if(data.foundExisting) return;
+					var reader = BinaryReader.init(&.{});
+					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
+				},
+			}
+		}
+		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+
+		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
+	};
+
 	pub const Sign = struct {
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
