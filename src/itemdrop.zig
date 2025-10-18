@@ -791,7 +791,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		return result;
 	}
 
-	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, swingProgress: f32, swingTime: f32) void {
 		if(!ItemDisplayManager.showItem) return;
 
 		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3);
@@ -800,7 +800,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 		const selectedItem = game.Player.inventory.getItem(game.Player.selectedSlot);
 		if(selectedItem) |item| {
-			var pos: Vec3d = Vec3d{0, 0, 0};
+			var pos: Vec3f = Vec3f{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 
 			const lightPos = @as(Vec3d, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
@@ -852,26 +852,46 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				blockType = item.baseItem.block().?;
 				vertices = model.len/2*6;
 				scale = 0.3;
-				pos = Vec3d{0.4, 0.55, -0.32};
+				pos = Vec3f{0.4, 0.40, -0.32};
 			} else {
 				scale = 0.57;
-				pos = Vec3d{0.4, 0.65, -0.3};
+				pos = Vec3f{0.4, 0.50, -0.3};
 			}
 			bindModelUniforms(model.index, blockType);
 
-			var modelMatrix = Mat4f.rotationZ(-rot[2]);
-			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
-			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
-			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
+			// Item swing animation
+			const startPos: Vec3f = pos;
+			const swingPosOffset: Vec3f = Vec3f{-0.1, 0.0, 0.2};
+			const startRot: Vec3f = Vec3f{0.0, 0.0, 0.0};
+			const swingRotOffset: Vec3f = Vec3f{-0.2, -0.1, 0.0};
+			var swingPhase: f32 = 0.0;
+			if(swingTime <= 0) {
+				swingPhase = 0.0;
+			} else {
+				swingPhase = std.math.sin((swingProgress/swingTime)*std.math.pi);
+			}
+			const lerpedPos: Vec3f = startPos + swingPosOffset*@as(Vec3f, @splat(swingPhase));
+			const lerpedRot: Vec3f = startRot + swingRotOffset*@as(Vec3f, @splat(swingPhase));
+
+			var modelMatrix = Mat4f.rotationX(-rot[0] + lerpedRot[0]);
+			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1] + lerpedRot[1]));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2] + lerpedRot[2]));
+			modelMatrix = modelMatrix.mul(Mat4f.translation(lerpedPos));
+
+			const TOOL_ROT_Z: f32 = -std.math.pi*0.47;
+			const TOOL_ROT_Y: f32 = std.math.pi*0.25;
+			const ITEM_ROT_Z: f32 = -std.math.pi*0.45;
+			const BLOCK_ROT_Z: f32 = -std.math.pi*0.2;
+
 			if(!isBlock) {
 				if(item == .tool) {
-					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
-					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.25));
+					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(TOOL_ROT_Z));
+					modelMatrix = modelMatrix.mul(Mat4f.rotationY(TOOL_ROT_Y));
 				} else {
-					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
+					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(ITEM_ROT_Z));
 				}
 			} else {
-				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.2));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(BLOCK_ROT_Z));
 			}
 			modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
