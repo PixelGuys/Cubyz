@@ -1036,7 +1036,10 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn clear(self: *ItemStack) void {
-		self.item = null;
+		if(self.item) |item| {
+			item.deinit();
+			self.item = null;
+		}
 		self.amount = 0;
 	}
 
