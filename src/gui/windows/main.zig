@@ -22,7 +22,8 @@ fn exitGame(_: usize) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Button.initText(.{0, 0}, 128, "Singleplayer", gui.openWindowCallback("save_selection")));
-	list.add(Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("multiplayer")));
+	list.add(Button.initText(.{0, 0}, 128, "Join a Server", gui.openWindowCallback("multiplayer")));
+	list.add(Button.initText(.{0, 0}, 128, "Play with Friends", gui.openWindowCallback("friends_multiplayer")));
 	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
 	list.add(Button.initText(.{0, 0}, 128, "Touch Grass", .{.callback = &exitGame}));
 	list.finish(.center);
