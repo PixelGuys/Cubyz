@@ -13,6 +13,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = GuiComponent.Button;
+const Label = GuiComponent.Label;
 const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const Icon = GuiComponent.Icon;
@@ -125,12 +126,16 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 fn refresh() void {
 	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
-	if(!findAvailableRecipes(list)) {
+	const recipesChanged = findAvailableRecipes(list);
+	if(!recipesChanged and window.rootComponent != null) {
 		list.deinit();
 		return;
 	}
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
+	}
+	if(list.children.items.len == 0) {
+		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));
 	}
 	list.finish(.center);
 	list.scrollBar.currentState = oldScrollState;
