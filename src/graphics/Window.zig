@@ -9,11 +9,7 @@ const Vec2f = vec.Vec2f;
 
 const vulkan = @import("vulkan.zig");
 
-pub const c = @cImport({
-	@cInclude("glad/gl.h");
-	@cInclude("glad/vulkan.h");
-	@cInclude("GLFW/glfw3.h");
-});
+pub const c = @import("window_c");
 
 var isFullscreen: bool = false;
 pub var lastUsedMouse: bool = true;
