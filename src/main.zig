@@ -223,7 +223,7 @@ pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 	var trace_buf: [1 << 20]u8 = undefined;
 	var fbw = std.io.Writer.fixed(&trace_buf);
 	std.debug.dumpCurrentStackTraceToWriter(addr, &fbw) catch {
-		std.log.err("failed to dump stack trace", {});
+		std.log.err("failed to dump stack trace", .{});
 	};
 	std.log.err("stack trace: {s}", .{fbw.buffered()});
 	std.log.err("----8<---- end of panic\n", .{});
