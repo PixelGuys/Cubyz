@@ -463,8 +463,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			switch(property.method) {
 				.sum => {},
 				.average => {
-					const partialWeight = weight*0.8;
-					sum /= partialWeight;
+					sum /= weight;
 				},
 			}
 			sum *= property.resultScale;
