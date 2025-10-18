@@ -10,24 +10,26 @@ pub const file_monitor = @import("utils/file_monitor.zig");
 pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 
 pub const Compression = struct { // MARK: Compression
-	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.deflate.Level) []u8 {
-		var result = main.List(u8).init(allocator);
-		var comp = std.compress.flate.compressor(result.writer(), .{.level = level}) catch unreachable;
-		_ = comp.write(data) catch unreachable;
-		comp.finish() catch unreachable;
-		return result.toOwnedSlice();
+	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
+		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
+		var buffer: [65536]u8 = undefined;
+		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
+		compress.writer.writeAll(data) catch unreachable;
+		compress.writer.flush() catch unreachable;
+		result.writer.flush() catch unreachable;
+		return result.toOwnedSlice() catch unreachable;
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
-		var streamIn = std.Io.fixedBufferStream(data);
-		var decomp = std.compress.flate.decompressor(streamIn.reader());
-		var streamOut = std.Io.fixedBufferStream(buf);
-		try decomp.decompress(streamOut.writer());
-		return streamOut.getWritten().len;
+		var reader = std.Io.Reader.fixed(data);
+		var buffer: [65536]u8 = undefined;
+		var decompressor = std.compress.flate.Decompress.init(&reader, .raw, &buffer);
+		return try decompressor.reader.readSliceShort(buf);
 	}
 
-	pub fn pack(sourceDir: main.files.Dir, writer: anytype) !void {
-		var comp = try std.compress.flate.compressor(writer, .{});
+	pub fn pack(sourceDir: main.files.Dir, writer: *std.Io.Writer) !void {
+		var buffer: [65536]u8 = undefined;
+		var comp = try std.compress.flate.Compress.init(writer, &buffer, .raw, .default);
 		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
@@ -44,25 +46,27 @@ pub const Compression = struct { // MARK: Compression
 				};
 				var len: [4]u8 = undefined;
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), endian);
-				_ = try comp.write(&len);
-				_ = try comp.write(relPath);
+				_ = try comp.writer.write(&len);
+				_ = try comp.writer.write(relPath);
 
 				const fileData = try sourceDir.read(main.stackAllocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
-				_ = try comp.write(&len);
-				_ = try comp.write(fileData);
+				_ = try comp.writer.write(&len);
+				_ = try comp.writer.write(fileData);
 			}
 		}
-		try comp.finish();
+		try comp.writer.flush();
+		try writer.flush();
 	}
 
 	pub fn unpack(outDir: main.files.Dir, input: []const u8) !void {
-		var stream = std.io.fixedBufferStream(input);
-		var decomp = std.compress.flate.decompressor(stream.reader());
-		const reader = decomp.reader();
-		const _data = try reader.readAllAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
+		var inputReader = std.Io.Reader.fixed(input);
+		var buffer: [65536]u8 = undefined;
+		var decompressor = std.compress.flate.Decompress.init(&inputReader, .raw, &buffer);
+		const reader = &decompressor.reader;
+		const _data = try reader.allocRemainingAlignedSentinel(main.stackAllocator.allocator, .unlimited, .@"1", null);
 		defer main.stackAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {

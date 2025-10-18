@@ -24,5 +24,5 @@ pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.writer().print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{data.strength}) catch unreachable;
+	outString.print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{data.strength});
 }

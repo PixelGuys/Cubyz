@@ -479,7 +479,7 @@ pub const Model = struct {
 
 			if(std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
-				var coords: Vec3f = undefined;
+				var coords: [3]f32 = undefined;
 				var i: usize = 0;
 				while(coordsIter.next()) |coord| : (i += 1) {
 					coords[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
@@ -490,7 +490,7 @@ pub const Model = struct {
 				vertices.append(coords);
 			} else if(std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
-				var norm: Vec3f = undefined;
+				var norm: [3]f32 = undefined;
 				var i: usize = 0;
 				while(coordsIter.next()) |coord| : (i += 1) {
 					norm[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
@@ -501,7 +501,7 @@ pub const Model = struct {
 				normals.append(norm);
 			} else if(std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
-				var uv: Vec2f = undefined;
+				var uv: [2]f32 = undefined;
 				var i: usize = 0;
 				while(coordsIter.next()) |coord| : (i += 1) {
 					uv[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
