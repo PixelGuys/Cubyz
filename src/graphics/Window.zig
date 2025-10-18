@@ -465,6 +465,17 @@ pub const Key = struct { // MARK: Key
 			.repeat => if(self.repeatAction) |a| a(mods),
 		}
 	}
+
+	pub fn toggleIsToggling(self: *Key) void {
+		if(self.isToggling == .never) {
+			std.log.err("Tried setting toggling on non-toggling key with name {s}", .{self.name});
+			return;
+		}
+		self.isToggling = if(self.isToggling == .no) .yes else .no;
+		if(self.isToggling == .no) {
+			self.pressed = false;
+		}
+	}
 };
 
 pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks

@@ -362,7 +362,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
 		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB, .isToggling = .no},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
-		.{.name = "crouch", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
+		.{.name = "crouch", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB, .isToggling = .no},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
@@ -447,20 +447,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 			std.log.err("Couldn't find keyboard key with name {s}", .{name});
 			return &.{.name = ""};
 		};
-	}
-	pub fn setIsToggling(name: []const u8, value: bool) void {
-		if(findKey(name)) |theKey| {
-			if(theKey.isToggling == .never) {
-				std.log.err("Tried setting toggling on non-toggling key with name {s}", .{name});
-				return;
-			}
-			theKey.isToggling = if(value) .yes else .no;
-			if(!value) {
-				theKey.pressed = false;
-			}
-		} else {
-			std.log.err("Couldn't find keyboard key to toggle with name {s}", .{name});
-		}
 	}
 };
 
