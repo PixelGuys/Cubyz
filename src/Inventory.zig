@@ -1526,10 +1526,14 @@ pub const Command = struct { // MARK: Command
 				}}, side);
 			}
 			if(self.item) |_item| {
+				var amount = _item.stackSize();
+				if(cmd.payload == .takeHalf) {
+					amount = 1;
+				}
 				cmd.executeBaseOperation(allocator, .{.create = .{
 					.dest = self.dest,
 					.item = _item,
-					.amount = if(self.amount == 0) _item.stackSize() else self.amount,
+					.amount = if(self.amount == 0) amount else self.amount,
 				}}, side);
 			}
 		}
