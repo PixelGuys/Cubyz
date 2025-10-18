@@ -52,8 +52,6 @@ pub const Ore = struct {
 };
 
 // MARK: Sorted Block Properties
-/// Generates a type for sorted block properties.
-/// For bool type uses only ID array (presence = true), for other types also a data array.
 fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: type) type {
 	const Cmp = struct {
 			fn less(target: u32, candidate: u32) std.math.Order {
@@ -63,7 +61,6 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 		}
 	};
 
-// For bool block properties, we don't need additional data array,
 	// if the block id is in the array, then the property value is true, otherwise false.
 	if(DataType == bool)
 	{
@@ -73,7 +70,6 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 			allocatedSize: usize = 0,
 			idxLookup: [sortedBlockSize]u32 = undefined,
 
-			/// Checks if block has the property (true if ID is in the array).
 			pub fn getBlockPropertyValue(self: *const Self, blockId: u32) bool {
 				const slice = self.idxLookup[0..self.allocatedSize];
 
@@ -87,7 +83,6 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 				return true;
 			}
 
-			/// Adds block ID to the sorted array (only if propVal == true).
 			pub fn addBlockProperty(self: *Self, blockId: u32, propVal: bool) void
 			{
 				if(propVal == false)
@@ -119,7 +114,6 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 				self.allocatedSize += 1;
 			}
 
-			/// Clears the array by resetting the counter.
 			pub fn clear(self: *Self) void {
 				self.allocatedSize = 0;
 			}
@@ -139,7 +133,6 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 				return .gt;
 			}
 
-			/// Returns the index of a block in the sorted array, or null if not found.
 			pub fn getBlockSortedIdx(self: *const Self, blockId: u32) ?usize {
 				const slice = self.idxLookup[0..self.allocatedSize];
 
@@ -165,11 +158,9 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 				}
 			}
 
-			/// Adds a block property while maintaining sorting in both arrays (ID and data).
 			pub fn addBlockProperty(self: *Self, blockId: u32, propVal: DataType) void
 			{
 				if (self.allocatedSize + 1 > sortedBlockSize) {
-					// Too many blocks in sorted block properties. Increase its size.
 					@panic("Failed to add block property. Consider increasing the size of the array");
 				}
 
@@ -200,7 +191,6 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 				self.allocatedSize += 1;
 			}
 
-			/// Clears the array by resetting the counter.
 			pub fn clear(self: *Self) void {
 				self.allocatedSize = 0;
 			}
@@ -214,7 +204,6 @@ fn isSortedProp(comptime T: type) bool {
            std.meta.hasFn(T, "getBlockPropertyValue");
 }
 
-/// Resets all sorted block properties.
 fn resetSortedProperties() void {
     inline for (@typeInfo(BlockProps).@"struct".decls) |decl| {
         const sortedProp = &@field(BlockProps, decl.name);
@@ -225,8 +214,6 @@ fn resetSortedProperties() void {
         }
     }
 }
-
-// ------------------------------------------------- MARK: Block Properties 
 
 const BlockProps = struct {
 	pub var transparent: [maxBlockCount]bool = undefined;
@@ -263,7 +250,7 @@ const BlockProps = struct {
 
 	/// ------------------------------------------------- Sorted Block Properties
 	/// These properties are rarely used, so to save memory we use sorted arrays 
-	/// with ~100-200 entries instead of creating arrays with maxBlockCount (65536) entries.
+	/// with ~100-300 entries instead of creating arrays with maxBlockCount (65536) entries.
 
 	/// Magic Value - Increase it if you need to store more block properties.
 	/// Consider creating a separate variable with a comment for a specific property if only one needs a larger size.
@@ -278,8 +265,6 @@ const BlockProps = struct {
 	/// GUI that is opened on click.
 	pub var sortedGui: SortedBlockProperties(maxSortedBlockProperties, []u8) = .{};
 };
-
-// ------------------------------------------------- End Of Block Properties 
 
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator);
 
