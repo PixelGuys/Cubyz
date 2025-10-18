@@ -538,10 +538,9 @@ pub fn updateWindowPositions() void {
 	}
 }
 
-pub fn updateAndRenderGui() void {
+pub fn updateHover() void {
 	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
-	GuiCommandQueue.executeCommands();
 	if(!main.Window.grabbed) {
 		if(selectedWindow) |selected| {
 			selected.updateSelected(mousePos);
@@ -559,6 +558,11 @@ pub fn updateAndRenderGui() void {
 		}
 		inventory.update();
 	}
+}
+pub fn updateAndRenderGui() void {
+	GuiCommandQueue.executeCommands();
+	updateHover();
+	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	for(openWindows.items) |window| {
 		window.update();
 	}

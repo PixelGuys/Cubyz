@@ -143,6 +143,7 @@ fn refresh() void {
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	window.contentSize[0] = @max(window.contentSize[0], window.getMinWindowWidth());
 	gui.updateWindowPositions();
+	gui.updateHover();
 }
 
 pub fn onOpen() void {
