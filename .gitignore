@@ -3,6 +3,7 @@ logs/
 zig-out/
 zig-cache/
 .zig-cache/
+.vscode/
 serverAssets/
 gamecontrollerdb.txt
 gamecontrollerdb.stamp
@@ -18,3 +19,4 @@ test.png
 !/assets/backgrounds/default_background.png
 /assets/cubyz/music
 /assets/cubyz/fonts
+/saves/*

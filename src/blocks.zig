@@ -51,43 +51,235 @@ pub const Ore = struct {
 	blockType: u16,
 };
 
-var _transparent: [maxBlockCount]bool = undefined;
-var _collide: [maxBlockCount]bool = undefined;
-var _id: [maxBlockCount][]u8 = undefined;
+// MARK: Sorted Block Properties
+/// Generates a type for sorted block properties.
+/// For bool type uses only ID array (presence = true), for other types also a data array.
+fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: type) type {
+	const Cmp = struct {
+			fn less(target: u32, candidate: u32) std.math.Order {
+			if (target == candidate) return .eq;
+			if (target < candidate) return .lt;
+			return .gt;
+		}
+	};
 
-var _blockHealth: [maxBlockCount]f32 = undefined;
-var _blockResistance: [maxBlockCount]f32 = undefined;
+// For bool block properties, we don't need additional data array,
+	// if the block id is in the array, then the property value is true, otherwise false.
+	if(DataType == bool)
+	{
+		return struct {
+			const Self = @This();
 
-/// Whether you can replace it with another block, mainly used for fluids/gases
-var _replacable: [maxBlockCount]bool = undefined;
-var _selectable: [maxBlockCount]bool = undefined;
-var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
-/// Meaning undegradable parts of trees or other structures can grow through this block.
-var _degradable: [maxBlockCount]bool = undefined;
-var _viewThrough: [maxBlockCount]bool = undefined;
-var _alwaysViewThrough: [maxBlockCount]bool = undefined;
-var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockTags: [maxBlockCount][]Tag = undefined;
-var _light: [maxBlockCount]u32 = undefined;
-/// How much light this block absorbs if it is transparent
-var _absorption: [maxBlockCount]u32 = undefined;
-/// GUI that is opened on click.
-var _gui: [maxBlockCount][]u8 = undefined;
-var _mode: [maxBlockCount]*RotationMode = undefined;
-var _modeData: [maxBlockCount]u16 = undefined;
-var _lodReplacement: [maxBlockCount]u16 = undefined;
-var _opaqueVariant: [maxBlockCount]u16 = undefined;
+			allocatedSize: usize = 0,
+			idxLookup: [sortedBlockSize]u32 = undefined,
 
-var _friction: [maxBlockCount]f32 = undefined;
-var _bounciness: [maxBlockCount]f32 = undefined;
-var _density: [maxBlockCount]f32 = undefined;
-var _terminalVelocity: [maxBlockCount]f32 = undefined;
-var _mobility: [maxBlockCount]f32 = undefined;
+			/// Checks if block has the property (true if ID is in the array).
+			pub fn getBlockPropertyValue(self: *const Self, blockId: u32) bool {
+				const slice = self.idxLookup[0..self.allocatedSize];
 
-var _allowOres: [maxBlockCount]bool = undefined;
-var _tickEvent: [maxBlockCount]?TickEvent = undefined;
-var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
-var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
+				_ = std.sort.binarySearch(
+					u32,
+					slice,
+					blockId,
+					Cmp.less,
+				) orelse return false;
+
+				return true;
+			}
+
+			/// Adds block ID to the sorted array (only if propVal == true).
+			pub fn addBlockProperty(self: *Self, blockId: u32, propVal: bool) void
+			{
+				if(propVal == false)
+				{
+					return;
+				}
+
+				if (self.allocatedSize + 1 > sortedBlockSize) {
+					@panic("Failed to add block property. Consider increasing the size of the array");
+				}
+
+				const slice = self.idxLookup[0 .. self.allocatedSize];
+
+				const insertIdx = std.sort.lowerBound(
+					u32, 
+					slice,
+					blockId, 
+					Cmp.less
+				);
+
+				std.mem.copyBackwards(
+					u32,
+					self.idxLookup[(insertIdx + 1) .. self.allocatedSize + 1], 
+					self.idxLookup[insertIdx .. self.allocatedSize]
+				);
+				
+				self.idxLookup[insertIdx] = blockId;
+
+				self.allocatedSize += 1;
+			}
+
+			/// Clears the array by resetting the counter.
+			pub fn clear(self: *Self) void {
+				self.allocatedSize = 0;
+			}
+		};
+	}
+	else {
+		return struct {
+			const Self = @This();
+
+			allocatedSize: usize = 0,
+			idxLookup: [sortedBlockSize]u32 = undefined,
+			data: [sortedBlockSize]DataType = undefined,
+
+			fn compare(target: u32, candidate: u32) std.math.Order {
+				if (target == candidate) return .eq;
+				if (target < candidate) return .lt;
+				return .gt;
+			}
+
+			/// Returns the index of a block in the sorted array, or null if not found.
+			pub fn getBlockSortedIdx(self: *const Self, blockId: u32) ?usize {
+				const slice = self.idxLookup[0..self.allocatedSize];
+
+				return std.sort.binarySearch(
+					u32,
+					slice,
+					blockId,
+					compare,
+				);
+			}
+
+			pub fn getBlockPropertyValue(self: *const Self, blockId: u32) ?DataType {
+				const idx = getBlockSortedIdx(self, blockId) orelse return null;
+				return self.data[idx];
+			}
+
+			pub fn getBlockPropertyValueByIdx(self: *const Self, blockIdx: u32) !DataType {
+				if(blockIdx < self.allocatedSize) {
+					return self.data[blockIdx];
+				}
+				else {
+					return error.OutOfBounds;
+				}
+			}
+
+			/// Adds a block property while maintaining sorting in both arrays (ID and data).
+			pub fn addBlockProperty(self: *Self, blockId: u32, propVal: DataType) void
+			{
+				if (self.allocatedSize + 1 > sortedBlockSize) {
+					// Too many blocks in sorted block properties. Increase its size.
+					@panic("Failed to add block property. Consider increasing the size of the array");
+				}
+
+				const slice = self.idxLookup[0 .. self.allocatedSize];
+
+				const insertIdx = std.sort.lowerBound(
+					u32, 
+					slice,
+					blockId, 
+					compare
+				);
+
+				std.mem.copyBackwards(
+					u32,
+					self.idxLookup[(insertIdx + 1) .. self.allocatedSize + 1], 
+					self.idxLookup[insertIdx .. self.allocatedSize]
+				);
+				
+				std.mem.copyBackwards(
+					DataType,
+					self.data[(insertIdx + 1) .. self.allocatedSize + 1], 
+					self.data[insertIdx .. self.allocatedSize]
+				);
+
+				self.idxLookup[insertIdx] = blockId;
+				self.data[insertIdx] = propVal;
+
+				self.allocatedSize += 1;
+			}
+
+			/// Clears the array by resetting the counter.
+			pub fn clear(self: *Self) void {
+				self.allocatedSize = 0;
+			}
+		};
+	}
+}
+
+fn isSortedProp(comptime T: type) bool {
+    return std.meta.hasFn(T, "clear") and
+           std.meta.hasFn(T, "addBlockProperty") and
+           std.meta.hasFn(T, "getBlockPropertyValue");
+}
+
+/// Resets all sorted block properties.
+fn resetSortedProperties() void {
+    inline for (@typeInfo(BlockProps).@"struct".decls) |decl| {
+        const sortedProp = &@field(BlockProps, decl.name);
+
+        if (comptime isSortedProp(@TypeOf(sortedProp.*))) {
+			std.log.info("Cleared \'{s}\' from {d} entries", .{decl.name, sortedProp.allocatedSize});
+           	sortedProp.clear();
+        }
+    }
+}
+
+// ------------------------------------------------- MARK: Block Properties 
+
+const BlockProps = struct {
+	pub var transparent: [maxBlockCount]bool = undefined;
+	pub var collide: [maxBlockCount]bool = undefined;
+	pub var id: [maxBlockCount][]u8 = undefined;
+
+	pub var blockHealth: [maxBlockCount]f32 = undefined;
+	pub var blockResistance: [maxBlockCount]f32 = undefined;
+
+	/// Whether you can replace it with another block, mainly used for fluids/gases
+	pub var replacable: [maxBlockCount]bool = undefined;
+	pub var selectable: [maxBlockCount]bool = undefined;
+	pub var blockDrops: [maxBlockCount][]BlockDrop = undefined;
+	/// Meaning undegradable parts of trees or other structures can grow through this block.
+	pub var degradable: [maxBlockCount]bool = undefined;
+	pub var viewThrough: [maxBlockCount]bool = undefined;
+	pub var alwaysViewThrough: [maxBlockCount]bool = undefined;
+	pub var hasBackFace: [maxBlockCount]bool = undefined;
+	pub var blockTags: [maxBlockCount][]Tag = undefined;
+	pub var light: [maxBlockCount]u32 = undefined;
+	/// How much light this block absorbs if it is transparent
+	pub var absorption: [maxBlockCount]u32 = undefined;
+	pub var mode: [maxBlockCount]*RotationMode = undefined;
+	pub var modeData: [maxBlockCount]u16 = undefined;
+	pub var lodReplacement: [maxBlockCount]u16 = undefined;
+	pub var opaqueVariant: [maxBlockCount]u16 = undefined;
+
+	pub var friction: [maxBlockCount]f32 = undefined;
+	pub var bounciness: [maxBlockCount]f32 = undefined;
+	pub var density: [maxBlockCount]f32 = undefined;
+	pub var terminalVelocity: [maxBlockCount]f32 = undefined;
+	pub var mobility: [maxBlockCount]f32 = undefined;
+
+
+	/// ------------------------------------------------- Sorted Block Properties
+	/// These properties are rarely used, so to save memory we use sorted arrays 
+	/// with ~100-200 entries instead of creating arrays with maxBlockCount (65536) entries.
+
+	/// Magic Value - Increase it if you need to store more block properties.
+	/// Consider creating a separate variable with a comment for a specific property if only one needs a larger size.
+	pub const maxSortedBlockProperties: usize = 100;
+
+	pub var sortedAllowOres: SortedBlockProperties(maxSortedBlockProperties, bool) = .{};
+	//TODO: Tick event is accessed like a milion times for no reason. FIX IT 
+	pub var sortedTickEvent: SortedBlockProperties(maxSortedBlockProperties, TickEvent) = .{};
+	pub var sortedTouchFunction: SortedBlockProperties(maxSortedBlockProperties, *const TouchFunction) = .{};
+	pub var sortedBlockEntity: SortedBlockProperties(maxSortedBlockProperties, *BlockEntityType) = .{};
+
+	/// GUI that is opened on click.
+	pub var sortedGui: SortedBlockProperties(maxSortedBlockProperties, []u8) = .{};
+};
+
+// ------------------------------------------------- End Of Block Properties 
 
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator);
 
@@ -102,49 +294,68 @@ pub fn deinit() void {
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-	_id[size] = arena.dupe(u8, id);
-	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
+	BlockProps.id[size] = arena.dupe(u8, id);
+	reverseIndices.put(BlockProps.id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
-	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
-	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
+	BlockProps.mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
+	BlockProps.blockHealth[size] = zon.get(f32, "blockHealth", 1);
+	BlockProps.blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
-	_blockTags[size] = Tag.loadTagsFromZon(arena, zon.getChild("tags"));
-	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
-	for(_blockTags[size]) |tag| {
+	BlockProps.blockTags[size] = Tag.loadTagsFromZon(arena, zon.getChild("tags"));
+	if(BlockProps.blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	for(BlockProps.blockTags[size]) |tag| {
 		if(tag == Tag.sbbChild) {
-			sbb.registerChildBlock(@intCast(size), _id[size]);
+			sbb.registerChildBlock(@intCast(size), BlockProps.id[size]);
 			break;
 		}
 	}
-	_light[size] = zon.get(u32, "emittedLight", 0);
-	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
-	_degradable[size] = zon.get(bool, "degradable", false);
-	_selectable[size] = zon.get(bool, "selectable", true);
-	_replacable[size] = zon.get(bool, "replacable", false);
-	_gui[size] = arena.dupe(u8, zon.get([]const u8, "gui", ""));
-	_transparent[size] = zon.get(bool, "transparent", false);
-	_collide[size] = zon.get(bool, "collide", true);
-	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
-	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
-	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
-	_friction[size] = zon.get(f32, "friction", 20);
-	_bounciness[size] = zon.get(f32, "bounciness", 0.0);
-	_density[size] = zon.get(f32, "density", 0.001);
-	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
-	_mobility[size] = zon.get(f32, "mobility", 1.0);
-	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
+	BlockProps.light[size] = zon.get(u32, "emittedLight", 0);
+	BlockProps.absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
+	BlockProps.degradable[size] = zon.get(bool, "degradable", false);
+	BlockProps.selectable[size] = zon.get(bool, "selectable", true);
+	BlockProps.replacable[size] = zon.get(bool, "replacable", false);
+	BlockProps.transparent[size] = zon.get(bool, "transparent", false);
+	BlockProps.collide[size] = zon.get(bool, "collide", true);
+	BlockProps.alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
+	BlockProps.viewThrough[size] = zon.get(bool, "viewThrough", false) or BlockProps.transparent[size] or BlockProps.alwaysViewThrough[size];
+	BlockProps.hasBackFace[size] = zon.get(bool, "hasBackFace", false);
+	BlockProps.friction[size] = zon.get(f32, "friction", 20);
+	BlockProps.bounciness[size] = zon.get(f32, "bounciness", 0.0);
+	BlockProps.density[size] = zon.get(f32, "density", 0.001);
+	BlockProps.terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
+	BlockProps.mobility[size] = zon.get(f32, "mobility", 1.0);
 
-	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
-		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
-		if(_function == null) {
-			std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
+	{
+		// bool properties are added to the sorted array only when the prop val is true.
+		BlockProps.sortedAllowOres.addBlockProperty(size, zon.get(bool, "allowOres", false));
+
+		const guidata = arena.dupe(u8, zon.get([]const u8, "gui", ""));
+		if(guidata.len != 0) {
+			BlockProps.sortedGui.addBlockProperty(size, guidata);
 		}
-		break :blk _function;
-	} else null;
 
-	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
+		const tickEventData = TickEvent.loadFromZon(zon.getChild("tickEvent"));
+		if (tickEventData) |tickEvent| {
+			BlockProps.sortedTickEvent.addBlockProperty(size, tickEvent);
+		}
+		
+
+		if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| {
+			const functionData = touchFunctions.getFunctionPointer(touchFunctionName);
+
+			if(functionData) |function| {
+				BlockProps.sortedTouchFunction.addBlockProperty(size, function);
+			}
+			else {
+				std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
+			}
+		}
+
+		const blockEntityData = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
+		if(blockEntityData) |blockEntity| {
+			BlockProps.sortedBlockEntity.addBlockProperty(size, blockEntity);
+		}
+	}
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -169,10 +380,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 	const drops = zon.getChild("drops").toSlice();
-	_blockDrops[typ] = arena.alloc(BlockDrop, drops.len);
+	BlockProps.blockDrops[typ] = arena.alloc(BlockDrop, drops.len);
 
 	for(drops, 0..) |blockDrop, i| {
-		_blockDrops[typ][i].chance = blockDrop.get(f32, "chance", 1);
+		BlockProps.blockDrops[typ][i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
 		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
@@ -191,42 +402,42 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 			}
 
 			if(std.mem.eql(u8, name, "auto")) {
-				name = _id[typ];
+				name = BlockProps.id[typ];
 			}
 
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
-		_blockDrops[typ][i].items = arena.dupe(items.ItemStack, resultItems.items);
+		BlockProps.blockDrops[typ][i].items = arena.dupe(items.ItemStack, resultItems.items);
 	}
 }
 
 fn registerLodReplacement(typ: u16, zon: ZonElement) void {
 	if(zon.get(?[]const u8, "lodReplacement", null)) |replacement| {
-		_lodReplacement[typ] = getTypeById(replacement);
+		BlockProps.lodReplacement[typ] = getTypeById(replacement);
 	} else {
-		_lodReplacement[typ] = typ;
+		BlockProps.lodReplacement[typ] = typ;
 	}
 }
 
 fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	if(zon.get(?[]const u8, "opaqueVariant", null)) |replacement| {
-		_opaqueVariant[typ] = getTypeById(replacement);
+		BlockProps.opaqueVariant[typ] = getTypeById(replacement);
 	} else {
-		_opaqueVariant[typ] = typ;
+		BlockProps.opaqueVariant[typ] = typ;
 	}
 }
 
 pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
-		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
+		registerBlockDrop(i, zonElements.get(BlockProps.id[i]) orelse continue);
 	}
 	i = 0;
 	while(i < size) : (i += 1) {
-		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
-		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
+		registerLodReplacement(i, zonElements.get(BlockProps.id[i]) orelse continue);
+		registerOpaqueVariant(i, zonElements.get(BlockProps.id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 }
@@ -237,6 +448,8 @@ pub fn reset() void {
 	meshes.reset();
 	_ = arenaAllocator.reset(.free_all);
 	reverseIndices = .init(arena.allocator);
+
+	resetSortedProperties();
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -312,58 +525,58 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	pub inline fn transparent(self: Block) bool {
-		return _transparent[self.typ];
+		return BlockProps.transparent[self.typ];
 	}
 
 	pub inline fn collide(self: Block) bool {
-		return _collide[self.typ];
+		return BlockProps.collide[self.typ];
 	}
 
 	pub inline fn id(self: Block) []u8 {
-		return _id[self.typ];
+		return BlockProps.id[self.typ];
 	}
 
 	pub inline fn blockHealth(self: Block) f32 {
-		return _blockHealth[self.typ];
+		return BlockProps.blockHealth[self.typ];
 	}
 
 	pub inline fn blockResistance(self: Block) f32 {
-		return _blockResistance[self.typ];
+		return BlockProps.blockResistance[self.typ];
 	}
 
 	/// Whether you can replace it with another block, mainly used for fluids/gases
 	pub inline fn replacable(self: Block) bool {
-		return _replacable[self.typ];
+		return BlockProps.replacable[self.typ];
 	}
 
 	pub inline fn selectable(self: Block) bool {
-		return _selectable[self.typ];
+		return BlockProps.selectable[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []BlockDrop {
-		return _blockDrops[self.typ];
+		return BlockProps.blockDrops[self.typ];
 	}
 
 	/// Meaning undegradable parts of trees or other structures can grow through this block.
 	pub inline fn degradable(self: Block) bool {
-		return _degradable[self.typ];
+		return BlockProps.degradable[self.typ];
 	}
 
 	pub inline fn viewThrough(self: Block) bool {
-		return _viewThrough[self.typ];
+		return BlockProps.viewThrough[self.typ];
 	}
 
 	/// shows backfaces even when next to the same block type
 	pub inline fn alwaysViewThrough(self: Block) bool {
-		return _alwaysViewThrough[self.typ];
+		return BlockProps.alwaysViewThrough[self.typ];
 	}
 
 	pub inline fn hasBackFace(self: Block) bool {
-		return _hasBackFace[self.typ];
+		return BlockProps.hasBackFace[self.typ];
 	}
 
 	pub inline fn blockTags(self: Block) []const Tag {
-		return _blockTags[self.typ];
+		return BlockProps.blockTags[self.typ];
 	}
 
 	pub inline fn hasTag(self: Block, tag: Tag) bool {
@@ -371,25 +584,20 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	pub inline fn light(self: Block) u32 {
-		return _light[self.typ];
+		return BlockProps.light[self.typ];
 	}
 
 	/// How much light this block absorbs if it is transparent.
 	pub inline fn absorption(self: Block) u32 {
-		return _absorption[self.typ];
-	}
-
-	/// GUI that is opened on click.
-	pub inline fn gui(self: Block) []u8 {
-		return _gui[self.typ];
+		return BlockProps.absorption[self.typ];
 	}
 
 	pub inline fn mode(self: Block) *RotationMode {
-		return _mode[self.typ];
+		return BlockProps.mode[self.typ];
 	}
 
 	pub inline fn modeData(self: Block) u16 {
-		return _modeData[self.typ];
+		return BlockProps.modeData[self.typ];
 	}
 
 	pub inline fn rotateZ(self: Block, angle: Degrees) Block {
@@ -397,47 +605,52 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	pub inline fn lodReplacement(self: Block) u16 {
-		return _lodReplacement[self.typ];
+		return BlockProps.lodReplacement[self.typ];
 	}
 
 	pub inline fn opaqueVariant(self: Block) u16 {
-		return _opaqueVariant[self.typ];
+		return BlockProps.opaqueVariant[self.typ];
 	}
 
 	pub inline fn friction(self: Block) f32 {
-		return _friction[self.typ];
+		return BlockProps.friction[self.typ];
 	}
 
 	pub inline fn bounciness(self: Block) f32 {
-		return _bounciness[self.typ];
+		return BlockProps.bounciness[self.typ];
 	}
 
 	pub inline fn density(self: Block) f32 {
-		return _density[self.typ];
+		return BlockProps.density[self.typ];
 	}
 
 	pub inline fn terminalVelocity(self: Block) f32 {
-		return _terminalVelocity[self.typ];
+		return BlockProps.terminalVelocity[self.typ];
 	}
 
 	pub inline fn mobility(self: Block) f32 {
-		return _mobility[self.typ];
+		return BlockProps.mobility[self.typ];
 	}
 
 	pub inline fn allowOres(self: Block) bool {
-		return _allowOres[self.typ];
+		return BlockProps.sortedAllowOres.getBlockPropertyValue(self.typ);
 	}
 
-	pub inline fn tickEvent(self: Block) ?TickEvent {
-		return _tickEvent[self.typ];
+	/// GUI that is opened on click.
+	pub inline fn gui(self: Block) []u8 {
+		return BlockProps.sortedGui.getBlockPropertyValue(self.typ) orelse "";
+	}
+
+	pub inline fn tickEvent(self: Block) ?TickEvent { //TODO: Tick is called for each block every game tick ...??? fix this
+		return BlockProps.sortedTickEvent.getBlockPropertyValue(self.typ);
 	}
 
 	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
-		return _touchFunction[self.typ];
+		return BlockProps.sortedTouchFunction.getBlockPropertyValue(self.typ);
 	}
 
 	pub fn blockEntity(self: Block) ?*BlockEntityType {
-		return _blockEntity[self.typ];
+		return BlockProps.sortedBlockEntity.getBlockPropertyValue(self.typ);
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
@@ -738,7 +951,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
-		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, &_modeData[meshes.size], zon.getChild("model"));
+		_modelIndex[meshes.size] = BlockProps.mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, &BlockProps.modeData[meshes.size], zon.getChild("model"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
