@@ -23,6 +23,8 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("tool/modifiers/_list.zig");
 const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
+pub const recipes_zig = @import("items/recipes.zig");
+
 pub const Inventory = @import("Inventory.zig");
 
 const Material = struct { // MARK: Material
@@ -1268,18 +1270,19 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 
 pub fn registerRecipes(zon: ZonElement) void {
 	for(zon.toSlice()) |recipeZon| {
-		const recipe = parseRecipe(recipeZon) catch |err| {
+		recipes_zig.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
-		recipeList.append(recipe);
 	}
 }
 
 pub fn clearRecipeCachedInventories() void {
 	for(recipeList.items) |recipe| {
+		main.globalAllocator.free(recipe.sourceItems);
+		main.globalAllocator.free(recipe.sourceAmounts);
 		if(recipe.cachedInventory) |inv| {
 			inv.deinit(main.globalAllocator);
 		}
