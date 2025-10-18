@@ -213,6 +213,25 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	}.logFn,
 };
 
+pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
+	const addr = first_trace_address orelse @returnAddress();
+	std.log.err("This is a bug, please report it on the issue tracker.\n----8<---- start of panic\npanic: {s}\nerror return trace: {?f}", .{
+		msg,
+		@errorReturnTrace(),
+	});
+
+	var trace_buf: [1 << 20]u8 = undefined;
+	var fbw = std.io.Writer.fixed(&trace_buf);
+	std.debug.dumpCurrentStackTraceToWriter(addr, &fbw) catch {
+		std.log.err("failed to dump stack trace", {});
+	};
+	std.log.err("stack trace: {s}", .{fbw.buffered()});
+	std.log.err("----8<---- end of panic\n", .{});
+	std.debug.defaultPanic(msg, addr);
+}
+
+pub const panic = std.debug.FullPanic(panicToLog);
+
 fn initLogging() void {
 	logFile = null;
 	files.cwd().makePath("logs") catch |err| {
