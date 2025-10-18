@@ -32,7 +32,8 @@ size: Vec2f,
 state: bool = false,
 pressed: bool = false,
 hovered: bool = false,
-onAction: *const fn(bool) void,
+ctx: *anyopaque,
+onAction: *const fn(ctx: *anyopaque) void,
 label: *Label,
 
 pub fn __init() void {
@@ -53,13 +54,14 @@ pub fn __deinit() void {
 	textureEmptyPressed.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) *CheckBox {
+pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, ctx: *anyopaque, onAction: *const fn(ctx: *anyopaque) void) *CheckBox {
 	const label = Label.init(undefined, width - 3*border - boxSize, text, .left);
 	const self = main.globalAllocator.create(CheckBox);
 	self.* = CheckBox{
 		.pos = pos,
 		.size = Vec2f{@max(width, label.size[0] + 3*border + boxSize), label.size[1] + 3*border},
 		.state = initialValue,
+		.ctx = ctx,
 		.onAction = onAction,
 		.label = label,
 	};
@@ -88,7 +90,7 @@ pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {
 		self.pressed = false;
 		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			self.state = !self.state;
-			self.onAction(self.state);
+			self.onAction(self.ctx);
 		}
 	}
 }

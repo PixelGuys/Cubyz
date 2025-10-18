@@ -29,21 +29,20 @@ var textInput: *TextInput = undefined;
 var gamemode: main.game.Gamemode = .creative;
 var gamemodeInput: *Button = undefined;
 
-var allowCheats: bool = true;
+const defaultAllowCheats = true;
+var allowCheats: bool = defaultAllowCheats;
 
-var testingMode: bool = false;
+const defaultTestingMode = false;
+var testingMode: bool = defaultTestingMode;
 
 fn gamemodeCallback(_: usize) void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(gamemode));
 }
 
-fn allowCheatsCallback(allow: bool) void {
-	allowCheats = allow;
-}
-
-fn testingModeCallback(enabled: bool) void {
-	testingMode = enabled;
+fn toggleBoolCallback(ctx: *anyopaque) void {
+	const theValue: *bool = @ptrCast(@alignCast(ctx));
+	theValue.* = !theValue.*;
 }
 
 fn createWorld(_: usize) void {
@@ -161,10 +160,12 @@ pub fn onOpen() void {
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
 	list.add(gamemodeInput);
 
-	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
+	allowCheats = defaultAllowCheats;
+	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", allowCheats, &allowCheats, &toggleBoolCallback));
 
 	if(!build_options.isTaggedRelease) {
-		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
+		testingMode = defaultTestingMode;
+		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", testingMode, &testingMode, &toggleBoolCallback));
 	}
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
