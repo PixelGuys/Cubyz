@@ -463,14 +463,25 @@ pub fn stop() void {
 	running.store(false, .monotonic);
 }
 
-pub fn disconnect(user: *User) void { // MARK: disconnect()
+pub fn kickPlayers(reason: ?[]const u8) void {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+	for(userList) |user| {
+		if(user.connected.load(.monotonic) and !user.isLocal) {
+			user.conn.disconnect(reason);
+		}
+	}
+}
+
+pub fn disconnect(user: *User, reason: ?[]const u8) void { // MARK: disconnect()
 	if(!user.connected.load(.unordered)) return;
-	removePlayer(user);
+	removePlayer(user, reason);
 	userDeinitList.pushBack(user);
 	user.connected.store(false, .unordered);
 }
 
-pub fn removePlayer(user: *User) void { // MARK: removePlayer()
+pub fn removePlayer(user: *User, reason: ?[]const u8) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
 
 	const foundUser = blk: {
@@ -486,7 +497,11 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	};
 	if(!foundUser) return;
 
-	sendMessage("{s}§#ffff00 left", .{user.name});
+	if(reason) |r| {
+		sendMessage("{s}§#ffff00 left: {s}", .{user.name, r});
+	} else {
+		sendMessage("{s}§#ffff00 left.", .{user.name});
+	}
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
@@ -512,7 +527,7 @@ pub fn connectInternal(user: *User) void {
 	if(!world.?.testingMode) {
 		for(userList) |other| {
 			if(std.mem.eql(u8, other.name, user.name)) {
-				user.conn.disconnect();
+				user.conn.disconnect("Already joined");
 				return;
 			}
 		}

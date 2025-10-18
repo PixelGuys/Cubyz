@@ -474,6 +474,14 @@ pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
+pub fn setKickReason(reason: ?[]const u8) void {
+	if(reason) |r| {
+		const reasonFormatted = std.fmt.allocPrint(globalAllocator.allocator, "Disconnected: {s}", .{r}) catch "Disconnected";
+		defer globalAllocator.free(reasonFormatted);
+		gui.windowlist.disconnected.setDisconnectedReason(reasonFormatted);
+	}
+}
+
 fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
 	if(str.len == 0) return false;
 	if(!std.ascii.isAlphabetic(str[0]) and str[0] != '_') return false;
@@ -780,11 +788,13 @@ pub fn main() void { // MARK: main()
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
+				server.kickPlayers("Server stopped.");
 				world.deinit();
 				game.world = null;
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:cubyz");
+			gui.windowlist.disconnected.showDisconnectReason();
 		}
 	}
 
