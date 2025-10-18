@@ -48,7 +48,8 @@ fn testingModeCallback(enabled: bool) void {
 
 fn createWorld(_: usize) void {
 	const worldName = textInput.currentString.items;
-	main.game.World.flawedCreateWorld(worldName, gamemode, allowCheats, testingMode) catch |err| {
+	const worldSettings: main.game.WorldSettings = .{.gamemode = gamemode, .allowCheats = allowCheats, .testingMode = testingMode};
+	main.game.World.tryCreateWorld(worldName, worldSettings) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 	};
 	gui.closeWindowFromRef(&window);

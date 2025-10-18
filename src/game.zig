@@ -596,7 +596,11 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 };
-
+pub const WorldSettings = struct {
+	gamemode: Gamemode = .creative,
+	allowCheats: bool = false,
+	testingMode: bool = false,
+};
 pub const World = struct { // MARK: World
 	pub const dayCycle: u63 = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 
@@ -717,7 +721,7 @@ pub const World = struct { // MARK: World
 		}
 		return allocator.dupe(u8, resultName);
 	}
-	pub fn flawedCreateWorld(worldName: []const u8, gamemode: main.game.Gamemode, allowCheats: bool, testingMode: bool) !void {
+	pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void {
 		const worldPath = findValidFolderName(main.stackAllocator, worldName);
 		defer main.stackAllocator.free(worldPath);
 		const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
@@ -761,9 +765,9 @@ pub const World = struct { // MARK: World
 			const gamerules = main.ZonElement.initObject(main.stackAllocator);
 			defer gamerules.deinit(main.stackAllocator);
 
-			gamerules.put("default_gamemode", @tagName(gamemode));
-			gamerules.put("cheats", allowCheats);
-			gamerules.put("testingMode", testingMode);
+			gamerules.put("default_gamemode", @tagName(worldSettings.gamemode));
+			gamerules.put("cheats", worldSettings.allowCheats);
+			gamerules.put("testingMode", worldSettings.testingMode);
 
 			try main.files.cubyzDir().writeZon(gamerulePath, gamerules);
 		}
