@@ -2024,8 +2024,8 @@ fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: Side) void {
 fn update(self: Inventory) void {
 	defer if(self.callbacks.onUpdateCallback) |cb| cb(self.source);
 	if(self.type == .workbench) {
-		self._items[self._items.len - 1].deinit();
 		self._items[self._items.len - 1].clear();
+		self._items[self._items.len - 1].deinit();
 		var availableItems: [25]?BaseItemIndex = undefined;
 		const slotInfos = self.type.workbench.slotInfos();
 
