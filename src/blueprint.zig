@@ -324,7 +324,7 @@ pub const Blueprint = struct {
 					const current = self.blocks.get(x, y, z);
 					if(whitelist) |m| if(!m.match(current)) continue;
 					if(blacklist) |m| if(m.match(current)) continue;
-					self.blocks.set(x, y, z, newBlocks.blocks.sample(&main.seed).block);
+					self.blocks.set(x, y, z, newBlocks.sample(&main.seed));
 				}
 			}
 		}
@@ -341,6 +341,46 @@ pub const Pattern = struct {
 		block: Block,
 		chance: f32,
 	};
+
+	pub fn initFromZon(allocator: NeverFailingAllocator, source: ZonElement, default: []const u8) @This() {
+		var items: []Entry = undefined;
+		switch(source) {
+			.string, .stringOwned => {
+				items = allocator.alloc(Entry, 1);
+				items[0] = .{
+					.block = main.blocks.parseBlock(source.as([]const u8, "")),
+					.chance = 1.0,
+				};
+			},
+			.array => {
+				items = allocator.alloc(Entry, source.array.items.len);
+				for(0.., items) |i, *item| {
+					const element = source.array.items[i];
+					if(element == .string or element == .stringOwned) {
+						item.* = .{
+							.block = main.blocks.parseBlock(element.as([]const u8, "")),
+							.chance = 1.0,
+						};
+					} else if(element == .object) {
+						item.* = .{
+							.block = main.blocks.parseBlock(element.get([]const u8, "id", "")),
+							.chance = element.get(f32, "chance", 1.0),
+						};
+					}
+				}
+			},
+			else => {
+				items = allocator.alloc(Entry, 1);
+				items[0] = .{
+					.block = main.blocks.parseBlock(default),
+					.chance = 1.0,
+				};
+			},
+		}
+		return .{
+			.blocks = .init(allocator, items),
+		};
+	}
 
 	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
 		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
@@ -375,6 +415,10 @@ pub const Pattern = struct {
 		}
 
 		return .{.blocks = .init(allocator, entries)};
+	}
+
+	pub fn sample(self: @This(), seed: *u64) Block {
+		return self.blocks.sample(seed).block;
 	}
 
 	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
