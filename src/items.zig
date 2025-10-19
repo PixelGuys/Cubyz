@@ -257,17 +257,6 @@ pub const BaseItem = struct { // MARK: BaseItem
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	var unobtainable = BaseItem{
-		.image = graphics.Image.defaultImage,
-		.texture = null,
-		.id = "unobtainable",
-		.name = "unobtainable",
-		.stackSize = 0,
-		.material = null,
-		.block = null,
-		.foodValue = 0,
-	};
-
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
 		if(texturePath.len == 0) {
