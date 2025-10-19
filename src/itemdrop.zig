@@ -490,8 +490,8 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	pub fn deinit(self: *ClientItemDropManager) void {
 		std.debug.assert(instance != null); // Double deinit.
-		instance = null;
 		self.super.deinit();
+		instance = null;
 	}
 
 	pub fn readPosition(self: *ClientItemDropManager, time: i16, itemData: []ItemDropNetworkData) void {
