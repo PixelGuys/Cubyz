@@ -285,7 +285,6 @@ pub const Key = struct { // MARK: Key
 	notifyRequirement: Requirement = .always,
 	grabbedOnPress: bool = false,
 	requiredModifiers: Modifiers = .{},
-	group: ?Group = null,
 
 	pub const IsToggling = enum {
 		never,
@@ -311,31 +310,6 @@ pub const Key = struct { // MARK: Key
 
 		fn isEmpty(self: Modifiers) bool {
 			return self.toInt() == 0;
-		}
-	};
-	pub const Group = enum {
-		display,
-		movement,
-		interaction,
-		camera,
-		ui,
-		hotbar,
-		text,
-		creative_controls,
-		debug,
-
-		pub fn displayName(self: Group) []const u8 {
-			return switch(self) {
-				.display => "Display",
-				.movement => "Movement",
-				.interaction => "Interaction",
-				.camera => "Camera",
-				.ui => "UI",
-				.hotbar => "Hotbar",
-				.text => "Text",
-				.creative_controls => "Creative Controls",
-				.debug => "Debug",
-			};
 		}
 	};
 	const Requirement = enum {
