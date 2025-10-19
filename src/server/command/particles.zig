@@ -3,12 +3,14 @@ const std = @import("std");
 const main = @import("main");
 const particles = main.particles;
 const User = main.server.User;
+const ZonElement = main.ZonElement;
 
 pub const description = "Spawns particles.";
 pub const usage =
 	\\/particles <id> <x> <y> <z>
 	\\/particles <id> <x> <y> <z> <collides>
 	\\/particles <id> <x> <y> <z> <collides> <count>
+	\\/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>
 	\\
 	\\tip: use "~" to apply current player position coordinate in <x> <y> <z> fields.
 ;
@@ -35,7 +37,11 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const y = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[1], source);
 	const z = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[2], source);
 	const collides = try parseBool(split.next() orelse "true");
+	const spawnZon = split.next() orelse return error.SmthcrazyhappenedinspawnZOn;
+	ZonElement.parseFromString(allocator, realPath orelse path, string);
+	
 	const particleCount = try parseNumber(split.next() orelse "1", source);
+
 	if(split.next() != null) return error.TooManyArguments;
 
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
