@@ -982,13 +982,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	biomeFog.density = (biome.fogDensity - biomeFog.density)*t + biomeFog.density;
 	biomeFog.fogLower = (biome.fogLower - biomeFog.fogLower)*t + biomeFog.fogLower;
 	biomeFog.fogHigher = (biome.fogHigher - biomeFog.fogHigher)*t + biomeFog.fogHigher;
-	
-	const emm: particles.Emitter = .init("cubyz:poof", false);
-    emm.spawnParticles(100, particles.Emitter.SpawnCube, particles.Emitter.SpawnCube{
-        .mode = .scatter,
-        .position = Player.getPosBlocking() + Vec3d{0, 0, 10},
-        .size = .{ 50, 50, 0 },
-    });
 
 	world.?.update();
 	particles.ParticleSystem.update(@floatCast(deltaTime));

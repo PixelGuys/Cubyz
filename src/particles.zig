@@ -217,7 +217,7 @@ pub const ParticleSystem = struct {
 				particlesLocal[i] = particlesLocal[particleCount];
 				continue;
 			}
-		
+
 			var posAndRotation = particle.posAndRotationVec();
 			const prevPos = Vec3d{posAndRotation[0], posAndRotation[1], posAndRotation[2]};
 			var rot = posAndRotation[3];
@@ -263,7 +263,7 @@ pub const ParticleSystem = struct {
 			particleLocal.velAndRotationVel[3] = rotVel;
 
 			const newPos = Vec3d{posAndRotation[0], posAndRotation[1], posAndRotation[2]};
-			if (@reduce(.Or, @floor(prevPos) != @floor(newPos))) {
+			if(@reduce(.Or, @floor(prevPos) != @floor(newPos))) {
 				const worldPos = @as(Vec3d, @floatCast(newPos)) + playerPos;
 				particle.light = getCompressedLight(worldPos);
 			}
