@@ -213,10 +213,7 @@ pub const ParticleSystem = struct {
 		mutex.lock();
 		if(networkCreationQueue.items.len != 0) {
 			for(networkCreationQueue.items) |creation| {
-				creation.emitter.spawnParticles(creation.count, Emitter.SpawnPoint, .{
-					.mode = .spread,
-					.position = creation.pos,
-				});
+				creation.emitter.spawnParticles(creation.pos, creation.count);
 			}
 			networkCreationQueue.clearAndFree();
 		}
@@ -243,7 +240,7 @@ pub const ParticleSystem = struct {
 			rot += rotVel*deltaTime;
 
 			particleLocal.velAndRotationVel += vec.combine(gravity, 0)*vecDeltaTime;
-			particleLocal.velAndRotationVel *= @splat(@exp(-properties.drag*deltaTime));
+			particleLocal.velAndRotationVel *= @splat(@exp(-particleLocal.drag*deltaTime));
 			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 			if(particleLocal.collides) {
@@ -298,6 +295,7 @@ pub const ParticleSystem = struct {
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool) void {
 		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
+		const drag = properties.dragMin + random.nextFloat(&seed)*properties.dragMax;
 		const rot = if(properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.pi*2 else 0;
 
 		particles[particleCount] = Particle{
@@ -307,6 +305,7 @@ pub const ParticleSystem = struct {
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax),
 			.lifeVelocity = 1/lifeTime,
+			.drag = drag,
 			.collides = collides,
 		};
 		particleCount += 1;
@@ -367,18 +366,47 @@ pub const DirectionMode = union(enum(u8)) {
 	scatter: void,
 	// The particle goes in the specified direction
 	direction: Vec3f,
+
+	pub fn parse(zon: ZonElement) !DirectionMode {
+		const dirModeName = zon.get(?[]const u8, "mode", null) orelse return error.ModeNotFound;
+		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.DirectionModeNotFound;
+		return switch (dirMode) {
+			.direction =>  @unionInit(DirectionMode, @tagName(DirectionMode.direction), zon.get(Vec3f, "direction", .{0, 0, 0})),
+			inline else => |mode| @unionInit(DirectionMode, @tagName(mode), {}),
+		};
+	}
 };
 
 pub const Emitter = struct {
 	typ: u16 = 0,
 	collides: bool,
+	spawnType: SpawnType,
+
+	pub const SpawnType = union(enum(u8)) {
+		point: SpawnPoint,
+		sphere: SpawnSphere,
+		cube: SpawnCube,
+
+		pub fn spawn(self: SpawnType, pos: Vec3d) struct {Vec3d, Vec3f} {
+			return switch (self) {
+				inline else => |typ| typ.spawn(pos),
+			};
+		}
+
+		pub fn parse(zon: ZonElement) !SpawnType {
+			const typeZon = zon.get(?[]const u8, "type", null) orelse return error.TypeNotFound;
+			const spawnType = std.meta.stringToEnum(std.meta.Tag(SpawnType), typeZon) orelse return error.InvalidType;
+			return switch (spawnType) {
+				inline else => |typ| @unionInit(SpawnType, @tagName(typ), try @FieldType(SpawnType, @tagName(typ)).parse(zon)),
+			};
+		}
+	};
 
 	pub const SpawnPoint = struct {
 		mode: DirectionMode,
-		position: Vec3d,
 
-		pub fn spawn(self: SpawnPoint) struct {Vec3d, Vec3f} {
-			const particlePos = self.position;
+		pub fn spawn(self: SpawnPoint, pos: Vec3d) struct {Vec3d, Vec3f} {
+			const particlePos = pos;
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
@@ -388,21 +416,26 @@ pub const Emitter = struct {
 
 			return .{particlePos, particleVel};
 		}
+
+		pub fn parse(zon: ZonElement) !SpawnPoint {
+			return SpawnPoint{
+				.mode = try DirectionMode.parse(zon),
+			};
+		}
 	};
 
 	pub const SpawnSphere = struct {
 		radius: f32,
 		mode: DirectionMode,
-		position: Vec3d,
 
-		pub fn spawn(self: SpawnSphere) struct {Vec3d, Vec3f} {
+		pub fn spawn(self: SpawnSphere, pos: Vec3d) struct {Vec3d, Vec3f} {
 			const spawnPos: Vec3f = @splat(self.radius);
 			var offsetPos: Vec3f = undefined;
 			while(true) {
 				offsetPos = random.nextFloatVectorSigned(3, &seed);
 				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
-			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
+			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
@@ -413,17 +446,23 @@ pub const Emitter = struct {
 
 			return .{particlePos, particleVel};
 		}
+
+		pub fn parse(zon: ZonElement) !SpawnSphere {
+			return SpawnSphere{
+				.mode = try DirectionMode.parse(zon),
+				.radius = zon.get(f32, "radius", 0),
+			};
+		}
 	};
 
 	pub const SpawnCube = struct {
 		size: Vec3f,
 		mode: DirectionMode,
-		position: Vec3d,
 
-		pub fn spawn(self: SpawnCube) struct {Vec3d, Vec3f} {
+		pub fn spawn(self: SpawnCube, pos: Vec3d) struct {Vec3d, Vec3f} {
 			const spawnPos: Vec3f = self.size;
 			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &seed);
-			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
+			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
@@ -434,21 +473,29 @@ pub const Emitter = struct {
 
 			return .{particlePos, particleVel};
 		}
+
+		pub fn parse(zon: ZonElement) !SpawnCube {
+			return SpawnCube{
+				.mode = try DirectionMode.parse(zon),
+				.size = zon.get(Vec3f, "size", .{0, 0, 0}),
+			};
+		}
 	};
 
-	pub fn init(id: []const u8, collides: bool) Emitter {
+	pub fn init(id: []const u8, collides: bool, spawnType: SpawnType) Emitter {
 		const emitter = Emitter{
 			.typ = ParticleManager.particleTypeHashmap.get(id) orelse 0,
 			.collides = collides,
+			.spawnType = spawnType,
 		};
 
 		return emitter;
 	}
 
-	pub fn spawnParticles(self: Emitter, spawnCount: u32, comptime T: type, spawnRules: T) void {
+	pub fn spawnParticles(self: Emitter, pos: Vec3d, spawnCount: u32) void {
 		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
 		for(0..count) |_| {
-			const particlePos, const particleVel = spawnRules.spawn();
+			const particlePos, const particleVel = self.spawnType.spawn(pos);
 
 			ParticleSystem.addParticle(self.typ, particlePos, particleVel, self.collides);
 		}

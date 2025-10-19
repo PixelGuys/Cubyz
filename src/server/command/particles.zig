@@ -5,6 +5,9 @@ const particles = main.particles;
 const User = main.server.User;
 const ZonElement = main.ZonElement;
 
+var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
+const arenaAllocator = arena.allocator();
+
 pub const description = "Spawns particles.";
 pub const usage =
 	\\/particles <id> <x> <y> <z>
@@ -30,24 +33,24 @@ pub fn execute(args: []const u8, source: *User) void {
 }
 
 fn parseArguments(source: *User, args: []const u8) anyerror!void {
-	var split = std.mem.splitScalar(u8, args, ' ');
+	const zonIndex = std.mem.indexOf(u8, args, " .{") orelse args.len;
+	const zonStr = args[zonIndex..args.len];
+	var split = std.mem.splitScalar(u8, args[0..zonIndex], ' ');
 	const particleId = split.next() orelse return error.TooFewArguments;
 
 	const x = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[0], source);
 	const y = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[1], source);
 	const z = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[2], source);
 	const collides = try parseBool(split.next() orelse "true");
-	const spawnZon = split.next() orelse return error.SmthcrazyhappenedinspawnZOn;
-	ZonElement.parseFromString(allocator, realPath orelse path, string);
-	
 	const particleCount = try parseNumber(split.next() orelse "1", source);
+	// .{ .type = .sphere, .radius = 0, .mode = .direction, .direction = .{0, 0, 0} }
 
 	if(split.next() != null) return error.TooManyArguments;
 
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for(users) |user| {
-		main.network.Protocols.genericUpdate.sendParticles(user.conn, particleId, .{x, y, z}, collides, particleCount);
+		main.network.Protocols.genericUpdate.sendParticles(user.conn, particleId, .{x, y, z}, collides, particleCount, zonStr);
 	}
 }
 

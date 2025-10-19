@@ -1103,13 +1103,25 @@ pub const Protocols = struct {
 				},
 				.particles => {
 					if(conn.manager.world) |_| {
-						const sliceSize = try reader.readInt(u16);
-						const particleId = try reader.readSlice(sliceSize);
+						const particleIdLen = try reader.readInt(u16);
+						const particleId = try reader.readSlice(particleIdLen);
 						const pos = try reader.readVec(Vec3d);
 						const collides = try reader.readBool();
 						const count = try reader.readInt(u32);
+						const spawnZonLen = try reader.readInt(u16);
+						const spawnZon = try reader.readSlice(spawnZonLen);
 
-						const emitter: particles.Emitter = .init(particleId, collides);
+						var spawnType = particles.Emitter.SpawnType{.point = .{ .mode = .spread }};
+						if (spawnZonLen != 0) {
+							const zon = ZonElement.parseFromString(main.stackAllocator, null, spawnZon);
+							defer zon.deinit(main.stackAllocator);
+							spawnType = particles.Emitter.SpawnType.parse(zon) catch |err| {
+								std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
+								return;
+							};
+						}
+
+						const emitter: particles.Emitter = .init(particleId, collides, spawnType);
 						particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 					}
 				},
@@ -1153,7 +1165,7 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 
-		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
+		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32, spawnZon: []const u8) void {
 			const bufferSize = particleId.len*8 + 32;
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
 			defer writer.deinit();
@@ -1164,6 +1176,8 @@ pub const Protocols = struct {
 			writer.writeVec(Vec3d, pos);
 			writer.writeBool(collides);
 			writer.writeInt(u32, count);
+			writer.writeInt(u16, @intCast(spawnZon.len));
+			writer.writeSlice(spawnZon);
 
 			conn.send(.fast, id, writer.data.items);
 		}
