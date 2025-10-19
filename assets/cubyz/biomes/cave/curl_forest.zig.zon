@@ -1,0 +1,45 @@
+.{
+	.isCave = true,
+	.maxHeight = -512,
+	.minHeight = -48250,
+
+	.fogDensity = 2,
+
+	.chance = 0.01,
+
+	.caves = -0.1,
+
+	.music = "cubyz:heart-of-the-beast",
+
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/curl",
+			.placeMode = .degradable,
+			.chance = 0.15,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:gravel",
+			.chance = 0.064,
+			.width = 5,
+			.variation = 5,
+			.depth = 3,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:cobblestone",
+			.size = 4,
+			.size_variance = 3,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:slate",
+			.size = 4,
+			.size_variance = 4,
+		},
+	},
+}

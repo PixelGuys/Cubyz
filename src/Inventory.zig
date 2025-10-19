@@ -578,10 +578,12 @@ pub const Command = struct { // MARK: Command
 
 		fn read(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !InventoryAndSlot {
 			const id = try reader.readEnum(InventoryId);
-			return .{
+			const result: InventoryAndSlot = .{
 				.inv = Sync.getInventory(id, side, user) orelse return error.InventoryNotFound,
 				.slot = try reader.readInt(u32),
 			};
+			if(result.slot >= result.inv._items.len) return error.Invalid;
+			return result;
 		}
 	};
 
@@ -1366,10 +1368,11 @@ pub const Command = struct { // MARK: Command
 					}}, side);
 				}
 			} else {
+				const amount = @min(self.amount, self.source.ref().amount);
 				cmd.executeBaseOperation(allocator, .{.move = .{
 					.dest = self.dest,
 					.source = self.source,
-					.amount = self.amount,
+					.amount = amount,
 				}}, side);
 			}
 		}
