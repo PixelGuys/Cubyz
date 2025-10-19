@@ -1,0 +1,17 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:cactus/base/4_arms"},
+		.{.id = "cubyz:cactus/base/3_arms"},
+		.{.id = "cubyz:cactus/base/2_tall"},
+		.{.id = "cubyz:cactus/base/2_tall_1"},
+		.{.id = "cubyz:cactus/base/3_tall"},
+		.{.id = "cubyz:cactus/base/3_tall_1"},
+		.{.id = "cubyz:cactus/old_growth/0", .chance = 0.1},
+		.{.id = "cubyz:cactus/old_growth/1", .chance = 0.1},
+	},
+	.children = .{
+		.lime = "cubyz:cactus/arms",
+		.pink = "cubyz:cactus/flower",
+		.viridian = "cubyz:cactus/saguaro_upper",
+	},
+}

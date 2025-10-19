@@ -211,9 +211,9 @@ pub const Model = struct {
 	}
 
 	fn solveDepth(normal: Vec3f, v0: Vec3f, xIndex: usize, yIndex: usize, zIndex: usize, u: f32, v: f32) f32 {
-		const nX = normal[xIndex];
-		const nY = normal[yIndex];
-		const nZ = normal[zIndex];
+		const nX = @as([3]f32, normal)[xIndex];
+		const nY = @as([3]f32, normal)[yIndex];
+		const nZ = @as([3]f32, normal)[zIndex];
 
 		const planeOffset = -vec.dot(v0, normal);
 
@@ -250,9 +250,9 @@ pub const Model = struct {
 		const voxelMin: Vec3i = @max(@as(Vec3i, @intFromFloat(@floor(min))), @as(Vec3i, @splat(0)));
 		const voxelMax: Vec3i = @max(@as(Vec3i, @intFromFloat(@ceil(max))), @as(Vec3i, @splat(0)));
 
-		var p0 = Vec2f{v0[xIndex], v0[yIndex]};
-		var p1 = Vec2f{v1[xIndex], v1[yIndex]};
-		var p2 = Vec2f{v2[xIndex], v2[yIndex]};
+		var p0 = Vec2f{@as([3]f32, v0)[xIndex], @as([3]f32, v0)[yIndex]};
+		var p1 = Vec2f{@as([3]f32, v1)[xIndex], @as([3]f32, v1)[yIndex]};
+		var p2 = Vec2f{@as([3]f32, v2)[xIndex], @as([3]f32, v2)[yIndex]};
 
 		if(p0[1] > p1[1]) {
 			std.mem.swap(Vec2f, &p0, &p1);
@@ -264,9 +264,9 @@ pub const Model = struct {
 			std.mem.swap(Vec2f, &p1, &p2);
 		}
 
-		for(@intCast(voxelMin[yIndex])..@intCast(voxelMax[yIndex])) |y| {
+		for(@intCast(@as([3]i32, voxelMin)[yIndex])..@intCast(@as([3]i32, voxelMax)[yIndex])) |y| {
 			if(y >= collisionGridSize) continue;
-			const yf = std.math.clamp(@as(f32, @floatFromInt(y)) + 0.5, min[yIndex], max[yIndex]);
+			const yf = std.math.clamp(@as(f32, @floatFromInt(y)) + 0.5, @as([3]f32, min)[yIndex], @as([3]f32, max)[yIndex]);
 			var xa: f32 = undefined;
 			var xb: f32 = undefined;
 			if(yf < p1[1]) {
@@ -309,7 +309,7 @@ pub const Model = struct {
 
 		for(modelQuads) |quad| {
 			var shift = Vec3f{0, 0, 0};
-			for(0..3) |i| {
+			inline for(0..3) |i| {
 				if(@abs(quad.normalVec()[i]) == 1.0 and @floor(quad.corners[0][i]*collisionGridSize) == quad.corners[0][i]*collisionGridSize) {
 					shift = quad.normalVec()*voxelSize*@as(Vec3f, @splat(0.5));
 				}

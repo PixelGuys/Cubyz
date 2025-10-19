@@ -1,0 +1,10 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:cactus/arm/0"},
+		.{.id = "cubyz:cactus/arm/1"},
+		.{.id = "cubyz:cactus/arm/2"},
+		.{.id = "cubyz:cactus/arm/3"},
+		.{.id = "cubyz:cactus/arm/4", .chance = 0.5},
+		.{.id = null},
+	},
+}
