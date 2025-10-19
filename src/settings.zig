@@ -55,6 +55,8 @@ pub var leavesQuality: u16 = 2;
 
 pub var @"lod0.5Distance": f32 = 200;
 
+pub var blockContrast: f32 = 0;
+
 pub var storageTime: i64 = 5000;
 
 pub var updateRepeatSpeed: u31 = 200;
