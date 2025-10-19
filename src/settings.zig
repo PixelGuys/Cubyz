@@ -188,7 +188,11 @@ pub fn save() void {
 
 pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
-
+	pub var headlessServer: bool = false;
+	pub var headlessServerWorldName: []const u8 = "";
+	pub var headlessGamemode: main.game.Gamemode = .survival;
+	pub var headlessTestingMode: bool = false;
+	pub var headlessAllowCheats: bool = false;
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
 			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
@@ -197,6 +201,17 @@ pub const launchConfig = struct {
 		defer zon.deinit(main.stackAllocator);
 
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+		headlessServer = zon.get(bool, "headlessServerMode", headlessServer);
+		headlessServerWorldName = main.globalAllocator.dupe(u8, zon.get([]const u8, "headlessServerWorldName", headlessServerWorldName));
+		var gameModeU8: []const u8 = "";
+		gameModeU8 = main.globalAllocator.dupe(u8, zon.get([]const u8, "headlessGameMode", gameModeU8));
+		if(std.mem.eql(u8, gameModeU8, "creative")) {
+			headlessGamemode = .creative;
+		} else {
+			headlessGamemode = .survival;
+		}
+		headlessTestingMode = zon.get(bool, "headlessTestingMode", headlessTestingMode);
+		headlessAllowCheats = zon.get(bool, "headlessAllowCheats", headlessAllowCheats);
 	}
 
 	pub fn deinit() void {
