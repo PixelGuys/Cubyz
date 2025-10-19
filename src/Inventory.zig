@@ -1368,10 +1368,11 @@ pub const Command = struct { // MARK: Command
 					}}, side);
 				}
 			} else {
+				const amount = @min(self.amount, self.source.ref().amount);
 				cmd.executeBaseOperation(allocator, .{.move = .{
 					.dest = self.dest,
 					.source = self.source,
-					.amount = self.amount,
+					.amount = amount,
 				}}, side);
 			}
 		}
