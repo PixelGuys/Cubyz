@@ -157,6 +157,9 @@ pub const ParticleSystem = struct {
 	var properties: EmitterProperties = undefined;
 	var previousPlayerPos: Vec3d = undefined;
 
+	var mutex: std.Thread.Mutex = .{};
+	var networkCreationQueue: main.List(struct {emitter: Emitter, pos: Vec3d, count: u32}) = undefined;
+
 	var particlesSSBO: SSBO = undefined;
 
 	var pipeline: graphics.Pipeline = undefined;
@@ -194,14 +197,29 @@ pub const ParticleSystem = struct {
 		particlesSSBO.bind(13);
 
 		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+
+		networkCreationQueue = .init(arenaAllocator);
 	}
 
 	pub fn deinit() void {
 		pipeline.deinit();
 		particlesSSBO.deinit();
+		networkCreationQueue.deinit();
 	}
 
 	pub fn update(deltaTime: f32) void {
+		mutex.lock();
+		if(networkCreationQueue.items.len != 0) {
+			for(networkCreationQueue.items) |creation| {
+				creation.emitter.spawnParticles(creation.count, Emitter.SpawnPoint, .{
+					.mode = .spread,
+					.position = creation.pos,
+				});
+			}
+			networkCreationQueue.clearRetainingCapacity();
+		}
+		mutex.unlock();
+
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
 		const playerPos = game.Player.getEyePosBlocking();
 		const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);
@@ -319,6 +337,12 @@ pub const ParticleSystem = struct {
 
 	pub fn getParticleCount() u32 {
 		return particleCount;
+	}
+
+	pub fn addParticlesFromNetwork(emitter: Emitter, pos: Vec3d, count: u32) void {
+		mutex.lock();
+		defer mutex.unlock();
+		networkCreationQueue.append(.{.emitter = emitter, .pos = pos, .count = count});
 	}
 };
 
