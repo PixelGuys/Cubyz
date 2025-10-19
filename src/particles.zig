@@ -218,7 +218,8 @@ pub const ParticleSystem = struct {
 				continue;
 			}
 
-			var rot = particle.posAndRotation[3];
+			var posAndRotation = particle.posAndRotationVec();
+			var rot = posAndRotation[3];
 			const rotVel = particleLocal.velAndRotationVel[3];
 			rot += rotVel*deltaTime;
 
@@ -229,7 +230,7 @@ pub const ParticleSystem = struct {
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
-				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference));
+				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{posAndRotation[0], posAndRotation[1], posAndRotation[2]} + prevPlayerPosDifference));
 				v3Pos[0] += posDelta[0];
 				if(game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					v3Pos[0] = if(posDelta[0] < 0)
@@ -251,15 +252,16 @@ pub const ParticleSystem = struct {
 					else
 						box.min[2] - hitBox.max[2];
 				}
-				particle.posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos - playerPos)), 0);
+				posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos - playerPos)), 0);
 			} else {
-				particle.posAndRotation += posDelta + vec.combine(prevPlayerPosDifference, 0);
+				posAndRotation += posDelta + vec.combine(prevPlayerPosDifference, 0);
 			}
 
+			particle.posAndRotation = posAndRotation;
 			particle.posAndRotation[3] = rot;
 			particleLocal.velAndRotationVel[3] = rotVel;
 
-			const positionf64 = @as(Vec4d, @floatCast(particle.posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
+			const positionf64 = @as(Vec4d, @floatCast(posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
 			const intPos: vec.Vec4i = @intFromFloat(@floor(positionf64));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			const compressedLight =
@@ -435,12 +437,16 @@ pub const ParticleType = struct {
 	size: f32,
 };
 
-pub const Particle = struct {
-	posAndRotation: Vec4f,
+pub const Particle = extern struct {
+	posAndRotation: [4]f32 align(16),
 	lifeRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
 	// 4 bytes left for use
+
+	pub fn posAndRotationVec(self: Particle) Vec4f {
+		return self.posAndRotation;
+	}
 };
 
 pub const ParticleLocal = struct {
