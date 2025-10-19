@@ -24,7 +24,6 @@ pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const storage = @import("storage.zig");
-pub const save_creator = @import("save_creator.zig");
 const command = @import("command/_command.zig");
 
 pub const WorldEditData = struct {
