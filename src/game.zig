@@ -540,9 +540,9 @@ pub const Player = struct { // MARK: Player
 	pub fn pressUseItem() void {
 		const item = inventory.getItem(selectedSlot) orelse return;
 		if(item != .baseItem) return;
-		const itemUseEffects = item.baseItem.itemUseEffects() orelse return;
-		for(itemUseEffects) |itemUseEffect| {
-			itemUseEffect.apply(world.?);
+		const useEffects = item.baseItem.useEffects() orelse return;
+		for(useEffects) |useEffect| {
+			useEffect.apply(world.?);
 		}
 		inventory.removeOne(selectedSlot);
 	}

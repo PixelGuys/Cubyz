@@ -229,8 +229,8 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn block(self: BaseItemIndex) ?u16 {
 		return itemList[@intFromEnum(self)].block;
 	}
-	pub fn itemUseEffects(self: BaseItemIndex) ?[]const ItemUseEffect {
-		return itemList[@intFromEnum(self)].itemUseEffects;
+	pub fn useEffects(self: BaseItemIndex) ?[]const ItemUseEffect {
+		return itemList[@intFromEnum(self)].useEffects;
 	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasTag(tag);
@@ -257,7 +257,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
-	itemUseEffects: ?[]const ItemUseEffect,
+	useEffects: ?[]const ItemUseEffect,
 
 	var unobtainable = BaseItem{
 		.image = graphics.Image.defaultImage,
@@ -267,7 +267,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		.stackSize = 0,
 		.material = null,
 		.block = null,
-		.itemUseEffects = null,
+		.useEffects = null,
 	};
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
@@ -294,23 +294,23 @@ pub const BaseItem = struct { // MARK: BaseItem
 			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
 		};
 		self.texture = null;
-		const itemUseEffectsZon = zon.getChild("itemUseEffects");
-		if(itemUseEffectsZon == .array) {
-			const itemUseEffectsSlice = itemUseEffectsZon.array.items;
-			var itemUseEffects: []ItemUseEffect = allocator.alloc(ItemUseEffect, itemUseEffectsSlice.len);
-			for(0.., itemUseEffectsSlice) |i, itemUseEffectZon| {
-				const itemUseEffect = ItemUseEffect.parse(allocator, itemUseEffectZon) orelse {
+		const useEffectsZon = zon.getChild("useEffects");
+		if(useEffectsZon == .array) {
+			const useEffectsSlice = useEffectsZon.array.items;
+			var useEffects: []ItemUseEffect = allocator.alloc(ItemUseEffect, useEffectsSlice.len);
+			for(0.., useEffectsSlice) |i, useEffectZon| {
+				const useEffect = ItemUseEffect.parse(allocator, useEffectZon) orelse {
 					std.log.err("Failed to load item use effect of {s}", .{self.id});
 					continue;
 				};
-				itemUseEffects[i] = itemUseEffect;
+				useEffects[i] = useEffect;
 			}
-			self.itemUseEffects = itemUseEffects;
+			self.useEffects = useEffects;
 		} else {
-			if(itemUseEffectsZon != .null) {
+			if(useEffectsZon != .null) {
 				std.log.err("Invalid item use effects for {s}, expected a list.", .{self.id});
 			}
-			self.itemUseEffects = null;
+			self.useEffects = null;
 		}
 
 		var tooltip: main.List(u8) = .init(allocator);
