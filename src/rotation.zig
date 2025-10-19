@@ -91,6 +91,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			return null;
 		}
+		pub fn onBlockInteract( _: Block, _: Vec3i, _: Vec3i, _: Vec3f, _: main.items.Inventory, _: u32, _: ?main.items.Item) bool {
+			return false; // don't override default interaction
+		}
 		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 			currentData.* = .{.typ = 0, .data = 0};
 		}
@@ -157,6 +160,23 @@ pub const RotationMode = struct { // MARK: RotationMode
 	modifyBlock: *const fn(block: *Block, newType: u16) bool = DefaultFunctions.modifyBlock,
 
 	rayIntersection: *const fn(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+
+	onBlockInteract: *const fn(
+		/// The block being interacted with.
+		block: Block,
+		/// The position of the interacted block.
+		pos: Vec3i,
+		/// The face, or normal, pointing away from the block.
+		face: Vec3i,
+		/// The relative position within the block being clicked, between {0,0,0} and {1,1,1}.
+		rel: Vec3f,
+		/// The player's inventory.
+		inv: main.items.Inventory,
+		/// The currently selected slot in the player's inventory.
+		slot: u32,
+		/// The item that's currently being held, if any.
+		item: ?main.items.Item,
+	) bool = &DefaultFunctions.onBlockInteract,
 
 	onBlockBreaking: *const fn(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 

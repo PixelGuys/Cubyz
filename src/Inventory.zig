@@ -1721,6 +1721,7 @@ pub const Command = struct { // MARK: Command
 			dir: Neighbor,
 			min: Vec3f,
 			max: Vec3f,
+			offset: Vec3f = .{0, 0, 0},
 
 			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.blocks.BlockDrop) void {
 				if(newBlock.collide()) {
@@ -1736,7 +1737,7 @@ pub const Command = struct { // MARK: Command
 			}
 			fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset();
+				return pos + self.offset + self.randomOffset();
 			}
 			fn randomOffset(self: BlockDropLocation) Vec3f {
 				const max = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
@@ -1752,7 +1753,7 @@ pub const Command = struct { // MARK: Command
 			}
 			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
+				return pos + self.offset + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
 			}
 			fn directionOffset(self: BlockDropLocation) Vec3d {
 				return half + self.direction()*half;
@@ -1866,6 +1867,7 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(Neighbor, self.dropLocation.dir);
 			writer.writeVec(Vec3f, self.dropLocation.min);
 			writer.writeVec(Vec3f, self.dropLocation.max);
+			writer.writeVec(Vec3f, self.dropLocation.offset);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
 			writer.writeInt(u32, @as(u32, @bitCast(self.newBlock)));
 		}
@@ -1878,6 +1880,7 @@ pub const Command = struct { // MARK: Command
 					.dir = try reader.readEnum(Neighbor),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),
+					.offset = try reader.readVec(Vec3f),
 				},
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),

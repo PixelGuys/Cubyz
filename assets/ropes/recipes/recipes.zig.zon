@@ -1,0 +1,38 @@
+.{
+	.{
+		.inputs = .{"2 cubyz:baobab_leaves"},
+		.output = "ropes:rope",
+	},
+	.{
+		.inputs = .{"2 cubyz:birch_leaves"},
+		.output = "ropes:rope",
+	},
+	.{
+		.inputs = .{"2 cubyz:dead_leaves"},
+		.output = "ropes:rope",
+	},
+	.{
+		.inputs = .{"2 cubyz:mahogany_leaves"},
+		.output = "ropes:rope",
+	},
+	.{
+		.inputs = .{"2 cubyz:oak_leaves"},
+		.output = "ropes:rope",
+	},
+	.{
+		.inputs = .{"2 cubyz:pine_needles"},
+		.output = "ropes:rope",
+	},
+	.{
+		.inputs = .{"2 cubyz:red_leaves"},
+		.output = "ropes:rope",
+	},
+	.{
+		.inputs = .{"2 cubyz:willow_leaves"},
+		.output = "ropes:rope",
+	},
+	.{
+		.inputs = .{"2 cubyz:yellow_leaves"},
+		.output = "ropes:rope",
+	},
+}

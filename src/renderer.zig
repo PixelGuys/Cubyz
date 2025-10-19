@@ -891,17 +891,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		pipeline.deinit();
 	}
 
-	var posBeforeBlock: Vec3i = undefined;
+	pub var posBeforeBlock: Vec3i = undefined;
 	var neighborOfSelection: chunk.Neighbor = undefined;
 	pub var selectedBlockPos: ?Vec3i = null;
 	var lastSelectedBlockPos: Vec3i = undefined;
 	var currentBlockProgress: f32 = 0;
 	var currentSwingProgress: f32 = 0;
 	var currentSwingTime: f32 = 0;
-	var selectionMin: Vec3f = undefined;
-	var selectionMax: Vec3f = undefined;
-	var selectionFace: chunk.Neighbor = undefined;
-	var lastPos: Vec3d = undefined;
+	pub var selectionMin: Vec3f = undefined;
+	pub var selectionMax: Vec3f = undefined;
+	pub var selectionFace: chunk.Neighbor = undefined;
+	pub var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: ?main.items.Item) void {
 		lastPos = pos;
@@ -971,7 +971,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// TODO: Test entities
 	}
 
-	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
+	pub fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
 		if(main.game.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
 		}
@@ -1115,7 +1115,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+	pub fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.items.Inventory.Sync.ClientSide.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source, .slot = slot},

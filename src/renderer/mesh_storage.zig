@@ -184,6 +184,15 @@ pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) EventStatu
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	const mesh = node.mesh.load(.acquire) orelse return .ignored;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
+
+	const pos: Vec3i = .{ x, y, z };
+	const dir: Vec3i = main.renderer.MeshSelection.posBeforeBlock - pos;
+	const rel: Vec3f = @floatCast(main.renderer.MeshSelection.lastPos - @as(Vec3d, @floatFromInt(pos)));
+	const inv  = main.game.Player.inventory;
+	const slot = main.game.Player.selectedSlot;
+	if(block.mode().onBlockInteract(block, pos, dir, rel, inv, slot, inv.getItem(slot)))
+		return .handled;
+
 	if(block.blockEntity()) |blockEntity| {
 		return blockEntity.onInteract(.{x, y, z}, mesh.chunk);
 	}
