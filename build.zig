@@ -241,7 +241,6 @@ pub fn build(b: *std.Build) !void {
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
 	formatter.root_module.addOptions("build_options", options);
-	formatter.root_module.addImport("main", mainModule);
 
 	const formatter_install = b.addInstallArtifact(formatter, .{});
 
@@ -264,7 +263,6 @@ pub fn build(b: *std.Build) !void {
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
 	zig_fmt.root_module.addOptions("build_options", options);
-	zig_fmt.root_module.addImport("main", mainModule);
 
 	const zig_fmt_install = b.addInstallArtifact(zig_fmt, .{});
 
@@ -276,4 +274,13 @@ pub fn build(b: *std.Build) !void {
 
 	const zig_fmt_step = b.step("fmt", "Run the (modified) zig fmt on the code");
 	zig_fmt_step.dependOn(&zig_fmt_cmd.step);
+
+	const checkStep = b.step("check", "Runs compiler checks without producing output files");
+	var modules = b.modules.iterator();
+	while(modules.next()) |*modEntry| {
+		checkStep.dependOn(&b.addExecutable(.{
+			.name = b.fmt("{s}-check", .{modEntry.key_ptr.*}),
+			.root_module = modEntry.value_ptr.*,
+		}).step);
+	}
 }
