@@ -271,27 +271,27 @@ fn deinitLogging() void {
 	}
 }
 
-fn logToFile(comptime format: []const u8, args: anytype) void {
+fn logToWriter(writer: *std.Io.Writer, comptime format: []const u8, args: anytype) std.Io.Writer.Error!void {
 	var buf: [log_buffer_size]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
+	const string = std.fmt.bufPrint(&buf, format, args) catch format;
+	try writer.writeAll(string);
+}
 
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
-	(logFile orelse return).writeAll(string) catch {};
-	(logFileTs orelse return).writeAll(string) catch {};
+fn logToFile(comptime format: []const u8, args: anytype) void {
+	{
+		var writer = (logFile orelse return).writerStreaming(&.{});
+		logToWriter(&writer.interface, format, args) catch {};
+	}
+	{
+		var writer = (logFileTs orelse return).writerStreaming(&.{});
+		logToWriter(&writer.interface, format, args) catch {};
+	}
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var buf: [log_buffer_size]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	const writer = std.debug.lockStderrWriter(&.{});
 	defer std.debug.unlockStderrWriter();
-	nosuspend writer.writeAll(string) catch {};
+	logToWriter(writer, format, args) catch {};
 }
 
 // MARK: Callbacks
