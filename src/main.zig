@@ -547,7 +547,7 @@ pub fn main() void { // MARK: main()
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 
-	if(settings.launchConfig.headlessServerMode) {
+	if(settings.launchConfig.headlessServer) {
 		blocks.meshes.init();
 		defer blocks.meshes.deinit();
 
