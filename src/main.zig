@@ -572,7 +572,7 @@ pub fn main() void { // MARK: main()
 			else => return,
 		};
 		if(!world_found) {
-			server.save_creator.flawedCreateWorld(settings.launchConfig.headlessServerWorldName, settings.launchConfig.headlessGameMode, settings.launchConfig.headlessAllowCheats, settings.launchConfig.headlessTestingMode) catch |e| switch(e) {
+			server.world_zig.tryCreateWorld(settings.launchConfig.headlessServerWorldName, settings.launchConfig.headlessGameMode, settings.launchConfig.headlessAllowCheats, settings.launchConfig.headlessTestingMode) catch |e| switch(e) {
 				else => return,
 			};
 		}
