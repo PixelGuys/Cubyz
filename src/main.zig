@@ -203,7 +203,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 				resultArgs[resultArgs.len - 1] = colorReset;
 			}
 			logToStdErr(formatString, resultArgs);
-			if(level == .err and !openingErrorWindow) {
+			if(level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
 				openingErrorWindow = true;
 				gui.openWindow("error_prompt");
 				openingErrorWindow = false;
@@ -498,11 +498,6 @@ pub fn main() void { // MARK: main()
 	initLogging();
 	defer deinitLogging();
 
-	std.log.info("Starting game client with version {s}", .{settings.version.version});
-
-	gui.initWindowList();
-	defer gui.deinitWindowList();
-
 	settings.launchConfig.init();
 	defer settings.launchConfig.deinit();
 
@@ -518,15 +513,6 @@ pub fn main() void { // MARK: main()
 	file_monitor.init();
 	defer file_monitor.deinit();
 
-	Window.init();
-	defer Window.deinit();
-
-	graphics.init();
-	defer graphics.deinit();
-
-	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
-	defer audio.deinit();
-
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
@@ -535,9 +521,6 @@ pub fn main() void { // MARK: main()
 
 	rotation.init();
 	defer rotation.deinit();
-
-	block_entity.init();
-	defer block_entity.deinit();
 
 	blocks.tickFunctions = .init();
 	defer blocks.tickFunctions.deinit();
@@ -551,121 +534,181 @@ pub fn main() void { // MARK: main()
 	items.globalInit();
 	defer items.deinit();
 
-	itemdrop.ItemDropRenderer.init();
-	defer itemdrop.ItemDropRenderer.deinit();
-
 	assets.init();
 
-	blocks.meshes.init();
-	defer blocks.meshes.deinit();
-
-	renderer.init();
-	defer renderer.deinit();
-
 	network.init();
-
-	entity.ClientEntityManager.init();
-	defer entity.ClientEntityManager.deinit();
-
-	gui.init();
-	defer gui.deinit();
-
-	particles.ParticleManager.init();
-	defer particles.ParticleManager.deinit();
-
-	if(settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		gui.openWindow("main");
-	}
 
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 
-	const c = Window.c;
+	if(settings.launchConfig.headlessServerMode) {
+		blocks.meshes.init();
+		defer blocks.meshes.deinit();
 
-	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastBeginRendering = std.time.nanoTimestamp();
+		itemdrop.ItemDropRenderer.init();
+		defer itemdrop.ItemDropRenderer.deinit();
 
-	if(settings.developerAutoEnterWorld.len != 0) {
-		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
-	}
+		block_entity.init();
+		defer block_entity.deinit();
 
-	audio.setMusic("cubyz:cubyz");
+		particles.ParticleManager.init();
+		defer particles.ParticleManager.deinit();
 
-	while(c.glfwWindowShouldClose(Window.window) == 0) {
-		heap.GarbageCollection.syncPoint();
-		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
-		if(!isHidden) {
-			c.glfwSwapBuffers(Window.window);
-			// Clear may also wait on vsync, so it's done before handling events:
-			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
-			c.glDepthFunc(c.GL_LESS);
-			c.glDepthMask(c.GL_TRUE);
-			c.glDisable(c.GL_SCISSOR_TEST);
-			c.glClearColor(0.5, 1, 1, 1);
-			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			gui.windowlist.gpu_performance_measuring.stopQuery();
+		std.log.info("Starting game server with version {s}", .{settings.version.version});
+		settings.playerName = "serverDummy";
+		const allocator = std.heap.page_allocator;
+		const world_dir_result = std.fs.path.join(
+			allocator,
+			&.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.headlessServerWorldName},
+		) catch |err| {
+			std.log.err("Could not join path: {s}", .{@errorName(err)});
+			return;
+		};
+		const world_dir = world_dir_result;
+		defer allocator.free(world_dir);
+		var world_found = true;
+		std.fs.cwd().access(world_dir, .{}) catch |e| switch(e) {
+			error.FileNotFound => world_found = false,
+			else => return,
+		};
+		if(!world_found) {
+			server.save_creator.flawedCreateWorld(settings.launchConfig.headlessServerWorldName, settings.launchConfig.headlessGameMode, settings.launchConfig.headlessAllowCheats, settings.launchConfig.headlessTestingMode) catch |e| switch(e) {
+				else => return,
+			};
+		}
+		const savesDir = std.fs.path.join(allocator, &.{settings.launchConfig.cubyzDir, "saves"}) catch |e| switch(e) {
+			else => return,
+		};
+		defer allocator.free(savesDir);
+		_ = std.fs.cwd().makeDir(savesDir) catch {};
+
+		const assetsDir = std.fs.path.join(allocator, &.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.headlessServerWorldName, "assets"}) catch |e| switch(e) {
+			else => return,
+		};
+		defer allocator.free(assetsDir);
+		_ = std.fs.cwd().makePath(assetsDir) catch {};
+		server.start(settings.launchConfig.headlessServerWorldName, null);
+	} else {
+		std.log.info("Starting game client with version {s}", .{settings.version.version});
+
+		gui.initWindowList();
+		defer gui.deinitWindowList();
+
+		Window.init();
+		defer Window.deinit();
+
+		graphics.init();
+		defer graphics.deinit();
+
+		audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
+		defer audio.deinit();
+
+		itemdrop.ItemDropRenderer.init();
+		defer itemdrop.ItemDropRenderer.deinit();
+
+		blocks.meshes.init();
+		defer blocks.meshes.deinit();
+
+		renderer.init();
+		defer renderer.deinit();
+
+		entity.ClientEntityManager.init();
+		defer entity.ClientEntityManager.deinit();
+
+		gui.init();
+		defer gui.deinit();
+
+		particles.ParticleManager.init();
+		defer particles.ParticleManager.deinit();
+
+		block_entity.init();
+		defer block_entity.deinit();
+
+		if(settings.playerName.len == 0) {
+			gui.openWindow("change_name");
 		} else {
 			std.Thread.sleep(16_000_000);
 		}
 
-		const endRendering = std.time.nanoTimestamp();
-		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
-		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
-			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
-			std.posix.exit(1);
-		}
-		lastFrameTime.store(frameTime, .monotonic);
+		const c = Window.c;
 
-		if(settings.fpsCap) |fpsCap| {
-			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
-			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-			std.Thread.sleep(sleep);
-		}
-		const begin = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
-		lastDeltaTime.store(deltaTime, .monotonic);
-		lastBeginRendering = begin;
+		Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
+		var lastBeginRendering = std.time.nanoTimestamp();
 
-		Window.handleEvents(deltaTime);
-
-		file_monitor.handleEvents();
-
-		if(game.world != null) { // Update the game
-			game.update(deltaTime);
+		if(settings.developerAutoEnterWorld.len != 0) {
+			// Speed up the dev process by entering the world directly.
+			gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
 		}
 
-		if(!isHidden) {
-			if(game.world != null) {
-				renderer.updateFov(settings.fov);
-				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+		audio.setMusic("cubyz:cubyz");
+
+		while(c.glfwWindowShouldClose(Window.window) == 0) {
+			heap.GarbageCollection.syncPoint();
+			const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
+			if(!isHidden) {
+				c.glfwSwapBuffers(Window.window);
+				// Clear may also wait on vsync, so it's done before handling events:
+				gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+				c.glDepthFunc(c.GL_LESS);
+				c.glDepthMask(c.GL_TRUE);
+				c.glDisable(c.GL_SCISSOR_TEST);
+				c.glClearColor(0.5, 1, 1, 1);
+				c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+				gui.windowlist.gpu_performance_measuring.stopQuery();
 			} else {
-				renderer.updateFov(70.0);
-				renderer.MenuBackGround.render();
+				std.Thread.sleep(16_000_000);
 			}
-			// Render the GUI
-			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
-			gui.updateAndRenderGui();
-			gui.windowlist.gpu_performance_measuring.stopQuery();
+
+			const endRendering = std.time.nanoTimestamp();
+			const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+			if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
+				std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
+				std.posix.exit(1);
+			}
+			lastFrameTime.store(frameTime, .monotonic);
+
+			if(settings.fpsCap) |fpsCap| {
+				const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
+				const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
+				std.Thread.sleep(sleep);
+			}
+			const begin = std.time.nanoTimestamp();
+			const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+			lastDeltaTime.store(deltaTime, .monotonic);
+			lastBeginRendering = begin;
+
+			Window.handleEvents(deltaTime);
+
+			file_monitor.handleEvents();
+
+			if(game.world != null) { // Update the game
+				game.update(deltaTime);
+			}
+
+			if(!isHidden) {
+				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+				// Render the GUI
+				gui.windowlist.gpu_performance_measuring.startQuery(.gui);
+				gui.updateAndRenderGui();
+				gui.windowlist.gpu_performance_measuring.stopQuery();
+			}
+
+			if(shouldExitToMenu.load(.monotonic)) {
+				shouldExitToMenu.store(false, .monotonic);
+				Window.setMouseGrabbed(false);
+				if(game.world) |world| {
+					world.deinit();
+					game.world = null;
+				}
+				gui.openWindow("main");
+				audio.setMusic("cubyz:cubyz");
+			}
 		}
 
-		if(shouldExitToMenu.load(.monotonic)) {
-			shouldExitToMenu.store(false, .monotonic);
-			Window.setMouseGrabbed(false);
-			if(game.world) |world| {
-				world.deinit();
-				game.world = null;
-			}
-			gui.openWindow("main");
-			audio.setMusic("cubyz:cubyz");
+		if(game.world) |world| {
+			world.deinit();
+			game.world = null;
 		}
-	}
-
-	if(game.world) |world| {
-		world.deinit();
-		game.world = null;
 	}
 }
 
