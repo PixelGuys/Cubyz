@@ -1462,7 +1462,11 @@ pub const Command = struct { // MARK: Command
 			std.debug.assert(self.dest.inv.type == .normal);
 			if(self.source.inv.type == .creative) {
 				const item = self.source.ref().item;
-				try FillFromCreative.run(.{.dest = self.dest, .item = item, .amount = 1}, allocator, cmd, side, user, gamemode);
+				var amount: u16 = 1;
+				if(std.meta.eql(self.dest.ref().item, item)) {
+					amount = @min(self.dest.ref().amount + 1, self.dest.ref().item.?.stackSize());
+				}
+				try FillFromCreative.run(.{.dest = self.dest, .item = item, .amount = amount}, allocator, cmd, side, user, gamemode);
 				return;
 			}
 		}
@@ -1547,7 +1551,7 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and user != null and mode != .creative) return;
 			if(side == .client and mode != .creative) return;
 
-			if(!self.dest.ref().empty() and (self.amount == 0 or !std.meta.eql(self.dest.ref().item, self.item))) {
+			if(!self.dest.ref().empty()) {
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = self.dest,
 					.amount = self.dest.ref().amount,
@@ -1557,7 +1561,7 @@ pub const Command = struct { // MARK: Command
 				cmd.executeBaseOperation(allocator, .{.create = .{
 					.dest = self.dest,
 					.item = _item,
-					.amount = if(self.amount == 0) _item.stackSize() else @min(self.amount, _item.stackSize() - self.dest.ref().amount),
+					.amount = if(self.amount == 0) _item.stackSize() else self.amount,
 				}}, side);
 			}
 		}
