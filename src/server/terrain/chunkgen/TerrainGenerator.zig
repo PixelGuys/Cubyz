@@ -70,7 +70,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 					Vec3i{0, 1, 0},
 					Vec3i{0, -1, 0},
 				};
-				for (cardinalDirections) |direction| {
+				for(cardinalDirections) |direction| {
 					const otherWaterProperties = biomeMap.getBiome(x + direction[0], y + direction[1], zBiome).waterProperties;
 					maxWaterLevel = @max(maxWaterLevel, otherWaterProperties.waterLevel);
 					isWaterChangeEdge |= !std.meta.eql(otherWaterProperties, biome.waterProperties);
