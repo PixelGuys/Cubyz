@@ -216,7 +216,7 @@ pub const ParticleSystem = struct {
 					.position = creation.pos,
 				});
 			}
-			networkCreationQueue.clearAndFree();
+			networkCreationQueue.clearRetainingCapacity();
 		}
 		mutex.unlock();
 
