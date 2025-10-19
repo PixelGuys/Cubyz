@@ -22,7 +22,7 @@ const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const BlockUpdate = renderer.mesh_storage.BlockUpdate;
 
-//TODO: Might want to use SSL or something similar to encode the message
+// TODO: Might want to use SSL or something similar to encode the message
 
 const ms = 1_000;
 inline fn networkTimestamp() i64 {

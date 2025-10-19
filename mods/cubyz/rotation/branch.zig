@@ -107,8 +107,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[3][1] - offY)),
 	};
 
-	var offset: Vec3f = .{0.0, 0.0, 0.0};
-	offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) max else min;
+	const offset: Vec3f = @as(Vec3f, @floatFromInt(@abs(side.relPos())))*@as(Vec3f, @splat(if(side.isPositive()) max else min));
 
 	const res: main.models.QuadInfo = .{
 		.corners = .{
@@ -117,7 +116,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 			corners3d[2] + offset,
 			corners3d[3] + offset,
 		},
-		.cornerUV = originalCorners,
+		.cornerUV = .{originalCorners[0], originalCorners[1], originalCorners[2], originalCorners[3]},
 		.normal = @as(Vec3f, @floatFromInt(side.relPos())),
 		.textureSlot = textureSlotOffset + @intFromEnum(pattern),
 	};
@@ -327,7 +326,8 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	if(data > 0b111111) return 0;
 	const rotationIndex = (data & 0b111100) >> 2;
 	const upDownFlags = data & 0b000011;
-	return rotationTable[@intFromEnum(angle)][rotationIndex] | upDownFlags;
+	const runtimeTable = rotationTable;
+	return runtimeTable[@intFromEnum(angle)][rotationIndex] | upDownFlags;
 }
 
 pub fn generateData(

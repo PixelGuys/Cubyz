@@ -910,7 +910,7 @@ test "element parsing" {
 	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("\tobject1θ") orelse .null));
 	result.deinit(allocator);
 
-	//Array:
+	// Array:
 	index = 0;
 	result = Parser.parseElement(allocator, null, ".{.name,1}", &index);
 	try std.testing.expectEqual(.array, std.meta.activeTag(result));
