@@ -6,7 +6,7 @@
 	.minHeightLimit = 7,
 	.minHeight = 30,
 	.maxHeight = 40,
-	.maxHeightLimit = 60,
+	.maxHeightLimit = 42,
 	.smoothBeaches = true,
 	.minRadius = 256,
 	.maxRadius = 320,
@@ -39,7 +39,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/baobab/young",
 			.placeMode = .degradable,
-			.chance = 0.05,
+			.chance = 0.048,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/baobab/grandidieri",
+			.placeMode = .degradable,
+			.chance = 0.002,
 		},
 		.{
 			.id = "cubyz:flower_patch",
