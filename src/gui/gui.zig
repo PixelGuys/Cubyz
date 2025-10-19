@@ -750,7 +750,11 @@ pub const inventory = struct { // MARK: inventory
 			if(rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
-				hovered.inventory.takeHalf(hovered.itemSlot, carried);
+				if(hovered.inventory.type == .creative) {
+					hovered.inventory.takeOne(hovered.itemSlot, carried);
+				} else {
+					hovered.inventory.takeHalf(hovered.itemSlot, carried);
+				}
 			} else if(!hoveredAWindow) {
 				carried.dropOne(0);
 			}

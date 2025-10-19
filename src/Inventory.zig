@@ -530,6 +530,7 @@ pub const Command = struct { // MARK: Command
 		depositOrSwap = 2,
 		deposit = 3,
 		takeHalf = 4,
+		takeOne = 12,
 		drop = 5,
 		fillFromCreative = 6,
 		depositOrDrop = 7,
@@ -544,6 +545,7 @@ pub const Command = struct { // MARK: Command
 		depositOrSwap: DepositOrSwap,
 		deposit: Deposit,
 		takeHalf: TakeHalf,
+		takeOne: TakeOne,
 		drop: Drop,
 		fillFromCreative: FillFromCreative,
 		depositOrDrop: DepositOrDrop,
@@ -1396,8 +1398,10 @@ pub const Command = struct { // MARK: Command
 		fn run(self: TakeHalf, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
 			if(self.source.inv.type == .creative) {
-				const item = self.source.ref().item;
-				try FillFromCreative.run(.{.dest = self.dest, .item = item}, allocator, cmd, side, user, gamemode);
+				if(self.dest.ref().item == null) {
+					const item = self.source.ref().item;
+					try FillFromCreative.run(.{.dest = self.dest, .item = item}, allocator, cmd, side, user, gamemode);
+				}
 				return;
 			}
 			if(self.source.inv.type == .crafting) {
@@ -1443,6 +1447,32 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !TakeHalf {
+			return .{
+				.dest = try InventoryAndSlot.read(reader, side, user),
+				.source = try InventoryAndSlot.read(reader, side, user),
+			};
+		}
+	};
+
+	const TakeOne = struct { // MARK: TakeOne
+		dest: InventoryAndSlot,
+		source: InventoryAndSlot,
+
+		fn run(self: TakeOne, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+			std.debug.assert(self.dest.inv.type == .normal);
+			if(self.source.inv.type == .creative) {
+				const item = self.source.ref().item;
+				try FillFromCreative.run(.{.dest = self.dest, .item = item, .amount = 1}, allocator, cmd, side, user, gamemode);
+				return;
+			}
+		}
+
+		fn serialize(self: TakeOne, writer: *utils.BinaryWriter) void {
+			self.dest.write(writer);
+			self.source.write(writer);
+		}
+
+		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !TakeOne {
 			return .{
 				.dest = try InventoryAndSlot.read(reader, side, user),
 				.source = try InventoryAndSlot.read(reader, side, user),
@@ -1517,21 +1547,17 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and user != null and mode != .creative) return;
 			if(side == .client and mode != .creative) return;
 
-			if(!self.dest.ref().empty() and (cmd.payload != .takeHalf or !std.meta.eql(self.dest.ref().item, self.item))) {
+			if(!self.dest.ref().empty() and (self.amount == 0 or !std.meta.eql(self.dest.ref().item, self.item))) {
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = self.dest,
 					.amount = self.dest.ref().amount,
 				}}, side);
 			}
 			if(self.item) |_item| {
-				var amount = _item.stackSize();
-				if(cmd.payload == .takeHalf) {
-					amount = @min(amount - self.dest.ref().amount, 1);
-				}
 				cmd.executeBaseOperation(allocator, .{.create = .{
 					.dest = self.dest,
 					.item = _item,
-					.amount = if(self.amount == 0) amount else self.amount,
+					.amount = if(self.amount == 0) _item.stackSize() else @min(self.amount, _item.stackSize() - self.dest.ref().amount),
 				}}, side);
 			}
 		}
@@ -2062,6 +2088,10 @@ pub fn deposit(dest: Inventory, destSlot: u32, carried: Inventory, amount: u16) 
 
 pub fn takeHalf(source: Inventory, sourceSlot: u32, carried: Inventory) void {
 	Sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried, .slot = 0}, .source = .{.inv = source, .slot = sourceSlot}}});
+}
+
+pub fn takeOne(source: Inventory, sourceSlot: u32, carried: Inventory) void {
+	Sync.ClientSide.executeCommand(.{.takeOne = .{.dest = .{.inv = carried, .slot = 0}, .source = .{.inv = source, .slot = sourceSlot}}});
 }
 
 pub fn distribute(carried: Inventory, destinationInventories: []const Inventory, destinationSlots: []const u32) void {
