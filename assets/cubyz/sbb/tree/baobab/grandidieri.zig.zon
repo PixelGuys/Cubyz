@@ -8,5 +8,6 @@
 	.children = .{
 		.white = "cubyz:tree/baobab/grandidieri/branch",
 		.grey = "cubyz:tree/baobab/grandidieri/leaves",
+		.brown = "cubyz:tree/baobab/grandidieri/roots",
 	},
 }
