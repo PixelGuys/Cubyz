@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const blocks_zig = @import("blocks/block_manager.zig");
+const block_manager = @import("blocks/block_manager.zig");
 const items_zig = @import("items.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
@@ -53,7 +53,7 @@ pub const Assets = struct {
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
-		self.block_manager.deinit(allocator.allocator);
+		self.blocks.deinit(allocator.allocator);
 		self.blockMigrations.deinit(allocator.allocator);
 		self.items.deinit(allocator.allocator);
 		self.itemMigrations.deinit(allocator.allocator);
@@ -322,7 +322,7 @@ fn createAssetStringID(
 
 pub fn init() void {
 	biomes_zig.init();
-	blocks_zig.init();
+	block_manager.init();
 	migrations_zig.init();
 
 	commonAssetArena = main.globalAllocator.createArena();
@@ -353,12 +353,12 @@ fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
 	if(zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 
-	_ = blocks_zig.register(assetFolder, id, zon);
-	blocks_zig.meshes.register(assetFolder, id, zon);
+	_ = block_manager.register(assetFolder, id, zon);
+	block_manager.meshes.register(assetFolder, id, zon);
 }
 
 fn assignBlockItem(stringId: []const u8) !void {
-	const block = blocks_zig.getTypeById(stringId);
+	const block = block_manager.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
 	const index = items_zig.BaseItemIndex.fromId(stringId) orelse unreachable;
 	const item = &items_zig.itemList[@intFromEnum(index)];
@@ -505,7 +505,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
+	block_manager.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
@@ -519,7 +519,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		const stringId = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if(blocks_zig.hasRegistered(stringId)) continue;
+		if(block_manager.hasRegistered(stringId)) continue;
 
 		try registerBlock(assetFolder, stringId, zon);
 		blockPalette.add(stringId);
@@ -528,7 +528,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// Items:
 	// First from the palette to enforce ID values.
 	for(itemPalette.palette.items) |stringId| {
-		// Some items are created automatically from block_manager.
+		// Some items are created automatically from .blocks
 		if(worldAssets.blocks.get(stringId)) |zon| {
 			if(!zon.get(bool, "hasItem", true)) continue;
 			try registerItem(assetFolder, stringId, zon.getChild("item"));
@@ -570,7 +570,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		itemPalette.add(stringId);
 	}
 
-	// After we have registered all items and all blocks, we can assign block references to those that come from block_manager.
+	// After we have registered all items and all blocks, we can assign block references to those that come from blocks.
 	for(blockPalette.palette.items) |stringId| {
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
@@ -594,7 +594,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// block drops:
-	blocks_zig.finishBlocks(worldAssets.blocks);
+	block_manager.finishBlocks(worldAssets.blocks);
 
 	iterator = worldAssets.recipes.iterator();
 	while(iterator.next()) |entry| {
@@ -652,7 +652,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	loadedAssets = false;
 
 	sbb.reset();
-	blocks_zig.reset();
+	block_manager.reset();
 	items_zig.reset();
 	migrations_zig.reset();
 	biomes_zig.reset();
@@ -685,6 +685,6 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 pub fn deinit() void {
 	main.globalAllocator.destroyArena(commonAssetArena);
 	biomes_zig.deinit();
-	blocks_zig.deinit();
+	block_manager.deinit();
 	migrations_zig.deinit();
 }

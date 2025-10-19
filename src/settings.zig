@@ -192,6 +192,7 @@ pub fn save() void {
 
 pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
+	pub var maxSortedBlockProperties: usize = 0;
 
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
@@ -201,6 +202,7 @@ pub const launchConfig = struct {
 		defer zon.deinit(main.stackAllocator);
 
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+		maxSortedBlockProperties = zon.get(usize, "maxSortedBlockProperties", 1000);
 	}
 
 	pub fn deinit() void {

@@ -11,6 +11,7 @@ const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 const items = @import("../items.zig");
+const launchConfig = @import("../settings.zig").launchConfig;
 
 pub const Block = block_props.Block;
 pub const BlockProps = block_props.BlockProps;
@@ -19,6 +20,8 @@ pub const BlockDrop = block_props.BlockDrop;
 
 var arenaAllocator = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arena = arenaAllocator.allocator();
+var blockPropsBuffer: []u8 = undefined;
+var blockPropsFba: std.heap.FixedBufferAllocator = undefined;
 
 /// Ores can be found underground in veins.
 /// TODO: Add support for non-stone ores.
@@ -42,10 +45,24 @@ var size: u32 = 0;
 
 pub var ores: main.List(Ore) = .init(arena);
 
-pub fn init() void {}
+pub fn init() void {
+	blockPropsBuffer = arena.alloc(u8, launchConfig.maxSortedBlockProperties*8);
+	blockPropsFba = std.heap.FixedBufferAllocator.init(blockPropsBuffer);
+	block_props.initSortedProperties(blockPropsFba.allocator());
+}
 
 pub fn deinit() void {
 	arenaAllocator.deinit();
+}
+
+pub fn reset() void {
+	size = 0;
+	ores.clearAndFree();
+	meshes.reset();
+	block_props.resetSortedProperties();
+
+	_ = arenaAllocator.reset(.free_all);
+	reverseIndices = .init(arena.allocator);
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
@@ -193,16 +210,6 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 		registerOpaqueVariant(i, zonElements.get(BlockProps.id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
-}
-
-pub fn reset() void {
-	size = 0;
-	ores.clearAndFree();
-	meshes.reset();
-	_ = arenaAllocator.reset(.free_all);
-	reverseIndices = .init(arena.allocator);
-
-	block_props.resetSortedProperties();
 }
 
 pub fn getTypeById(id: []const u8) u16 {
