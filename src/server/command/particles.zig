@@ -48,7 +48,7 @@ fn parsePosition(arg: []const u8, playerPos: f64, source: *User) anyerror!f64 {
 	const numberSlice = if(hasTilde) arg[1..] else arg;
 	const num: f64 = std.fmt.parseFloat(f64, numberSlice) catch ret: {
 		if(arg.len > 1 or arg.len == 0) {
-			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
+			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
 			return error.InvalidNumber;
 		}
 		break :ret 0;
