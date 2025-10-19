@@ -2026,7 +2026,7 @@ fn update(self: Inventory) void {
 	defer if(self.callbacks.onUpdateCallback) |cb| cb(self.source);
 	if(self.type == .workbench) {
 		self._items[self._items.len - 1].deinit();
-		self._items[self._items.len - 1].clear();
+		self._items[self._items.len - 1] = .{};
 		var availableItems: [25]?BaseItemIndex = undefined;
 		const slotInfos = self.type.workbench.slotInfos();
 
@@ -2135,25 +2135,6 @@ pub fn canHold(self: Inventory, sourceStack: ItemStack) bool {
 	return false;
 }
 
-// TODO: Remove after #480
-pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
-	for(self._items, 0..) |*stack, i| {
-		stack.clear();
-		var buf: [1024]u8 = undefined;
-		const stackZon = zon.getChild(buf[0..std.fmt.printInt(&buf, i, 10, .lower, .{})]);
-		if(stackZon == .object) {
-			stack.item = Item.init(stackZon) catch |err| {
-				const msg = stackZon.toStringEfficient(main.stackAllocator, "");
-				defer main.stackAllocator.free(msg);
-				std.log.err("Couldn't find item {s}: {s}", .{msg, @errorName(err)});
-				stack.clear();
-				continue;
-			};
-			stack.amount = stackZon.get(u16, "amount", 0);
-		}
-	}
-}
-
 pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {
 	writer.writeVarInt(u32, @intCast(self._items.len));
 	for(self._items) |stack| {
@@ -2165,13 +2146,13 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	var remainingCount = reader.readVarInt(u32) catch 0;
 	for(self._items) |*stack| {
 		if(remainingCount == 0) {
-			stack.clear();
+			stack.* = .{};
 			continue;
 		}
 		remainingCount -= 1;
 		stack.* = ItemStack.fromBytes(reader) catch |err| {
 			std.log.err("Failed to read item stack from bytes: {s}", .{@errorName(err)});
-			stack.clear();
+			stack.* = .{};
 			continue;
 		};
 	}

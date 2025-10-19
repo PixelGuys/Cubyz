@@ -459,34 +459,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	};
 
 	pub fn init(path: []const u8, nullGeneratorSettings: ?ZonElement) !*ServerWorld { // MARK: init()
-		covert_old_worlds: { // TODO: Remove after #480
-			const worldDatPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.dat", .{path});
-			defer main.stackAllocator.free(worldDatPath);
-			if(main.files.cubyzDir().openFile(worldDatPath)) |file| {
-				file.close();
-				std.log.warn("Detected old world in saves/{s}. Converting all .json files to .zig.zon", .{path});
-				const dirPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{path});
-				defer main.stackAllocator.free(dirPath);
-				var dir = main.files.cubyzDir().openIterableDir(dirPath) catch |err| {
-					std.log.err("Could not open world directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
-					break :covert_old_worlds;
-				};
-				defer dir.close();
-
-				var walker = dir.walk(main.stackAllocator);
-				defer walker.deinit();
-				while(walker.next() catch |err| {
-					std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
-					break :covert_old_worlds;
-				}) |entry| {
-					if(entry.kind == .file and (std.ascii.endsWithIgnoreCase(entry.basename, ".json") or std.mem.eql(u8, entry.basename, "world.dat"))) {
-						const fullPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{dirPath, entry.path}) catch unreachable;
-						defer main.stackAllocator.free(fullPath);
-						main.convertJsonToZon(fullPath);
-					}
-				}
-			} else |_| {}
-		}
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
@@ -536,78 +508,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arena));
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arena));
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arena));
-
-		convert_player_data_to_binary: { // TODO: Remove after #480
-			std.log.debug("Migrating old player inventory format to binary.", .{});
-
-			const playerDataPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{path}) catch unreachable;
-			defer main.stackAllocator.free(playerDataPath);
-
-			var playerDataDirectory = main.files.cubyzDir().openIterableDir(playerDataPath) catch break :convert_player_data_to_binary;
-			defer playerDataDirectory.close();
-
-			{
-				var walker = playerDataDirectory.walk(main.stackAllocator);
-				defer walker.deinit();
-
-				while(walker.next() catch |err| {
-					std.log.err("Couldn't fetch next directory entry due to an error: {s}", .{@errorName(err)});
-					break :convert_player_data_to_binary;
-				}) |entry| {
-					if(entry.kind != .file) continue;
-					if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
-
-					const absolutePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{playerDataPath, entry.path}) catch unreachable;
-					defer main.stackAllocator.free(absolutePath);
-
-					const playerData = files.cubyzDir().readToZon(main.stackAllocator, absolutePath) catch |err| {
-						std.log.err("Could not read player data file '{s}'': {s}.", .{absolutePath, @errorName(err)});
-						continue;
-					};
-					defer playerData.deinit(main.stackAllocator);
-
-					const entryKeys: [2][]const u8 = .{
-						"playerInventory",
-						"hand",
-					};
-					for(entryKeys) |key| {
-						const zon = playerData.getChild(key);
-						switch(zon) {
-							.object => {
-								std.log.debug("Migrating inventory '{s}' '{s}'", .{key, absolutePath});
-
-								var temp: main.items.Inventory = undefined;
-								temp._items = main.stackAllocator.alloc(ItemStack, zon.get(u32, "capacity", 0));
-								defer main.stackAllocator.free(temp._items);
-
-								for(temp._items) |*stack| stack.* = ItemStack{};
-								defer for(temp._items) |*stack| stack.deinit();
-
-								temp.loadFromZon(zon);
-
-								for(temp._items, 0..) |*stack, i| {
-									std.log.debug("Item #{}: {} x {s}", .{i, stack.amount, if(stack.item) |item| item.id() else "null"});
-								}
-
-								const base64Data = savePlayerInventory(main.stackAllocator, temp);
-								const old = playerData.object.fetchPut(key, .{.stringOwned = base64Data}) catch unreachable orelse unreachable;
-								old.value.deinit(main.stackAllocator);
-							},
-							.string, .stringOwned, .null => {}, // Key is skipped
-							else => |other| {
-								const representation = zon.toString(main.stackAllocator);
-								defer main.stackAllocator.free(representation);
-								std.log.err("Encountered unexpected type ({s}) while migrating '{s}': {s}", .{@tagName(other), absolutePath, representation});
-							},
-						}
-					}
-					files.cubyzDir().writeZon(absolutePath, playerData) catch |err| {
-						std.log.err("Could not write player data file {s}: {s}.", .{absolutePath, @errorName(err)});
-						continue;
-					};
-				}
-			}
-		}
 
 		var gamerules = files.cubyzDir().readToZon(arena, try std.fmt.allocPrint(arena.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arena);
 
@@ -704,21 +604,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 							};
 							const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
 							defer ch.decreaseRefCount();
-							if(self.storeMaps and ch.super.pos.voxelSize == 1) { // TODO: Remove after first release
-								// Store the surrounding map pieces as well:
-								const mapStartX = ch.super.pos.wx -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
-								const mapStartY = ch.super.pos.wy -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
-								for(0..2) |dx| {
-									for(0..2) |dy| {
-										const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
-										const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
-										const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, ch.super.pos.voxelSize);
-										if(!map.wasStored.swap(true, .monotonic)) {
-											map.save(null, .{});
-										}
-									}
-								}
-							}
 							var nextPos = pos;
 							nextPos.wx &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
 							nextPos.wy &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);

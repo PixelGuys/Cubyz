@@ -3,10 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const particles = main.particles;
 const User = main.server.User;
-const ZonElement = main.ZonElement;
-
-var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
-const arenaAllocator = arena.allocator();
 
 pub const description = "Spawns particles.";
 pub const usage =
@@ -44,7 +40,6 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const collides = try parseBool(split.next() orelse "true");
 	const particleCount = try parseNumber(split.next() orelse "1", source);
 	// .{ .type = .sphere, .radius = 0, .mode = .direction, .direction = .{0, 0, 0} }
-
 	if(split.next() != null) return error.TooManyArguments;
 
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);

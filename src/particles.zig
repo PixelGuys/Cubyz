@@ -215,7 +215,7 @@ pub const ParticleSystem = struct {
 			for(networkCreationQueue.items) |creation| {
 				creation.emitter.spawnParticles(creation.pos, creation.count);
 			}
-			networkCreationQueue.clearAndFree();
+			networkCreationQueue.clearRetainingCapacity();
 		}
 		mutex.unlock();
 
