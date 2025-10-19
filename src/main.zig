@@ -213,6 +213,9 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	}.logFn,
 };
 
+/// The maximum size a log message can have.
+const log_buffer_size = 64 << 10;
+
 pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 	const addr = first_trace_address orelse @returnAddress();
 	std.log.err("This is a bug, please report it on the issue tracker.\n----8<---- start of panic\npanic: {s}\nerror return trace: {?f}", .{
@@ -220,7 +223,7 @@ pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 		@errorReturnTrace(),
 	});
 
-	var trace_buf: [1 << 20]u8 = undefined;
+	var trace_buf: [log_buffer_size - "stack trace: ".len]u8 = undefined;
 	var fbw = std.io.Writer.fixed(&trace_buf);
 	std.debug.dumpCurrentStackTraceToWriter(addr, &fbw) catch {
 		std.log.err("failed to dump stack trace", .{});
@@ -269,7 +272,7 @@ fn deinitLogging() void {
 }
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
+	var buf: [log_buffer_size]u8 = undefined;
 	var fba = std.heap.FixedBufferAllocator.init(&buf);
 	const allocator = fba.allocator();
 
@@ -280,7 +283,7 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
+	var buf: [log_buffer_size]u8 = undefined;
 	var fba = std.heap.FixedBufferAllocator.init(&buf);
 	const allocator = fba.allocator();
 
