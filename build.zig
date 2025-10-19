@@ -260,4 +260,13 @@ pub fn build(b: *std.Build) !void {
 
 	const formatter_step = b.step("format", "Check the formatting of the code");
 	formatter_step.dependOn(&formatter_cmd.step);
+
+	const checkStep = b.step("check", "Runs compiler checks without producing output files");
+	var modules = b.modules.iterator();
+	while(modules.next()) |*modEntry| {
+		checkStep.dependOn(&b.addExecutable(.{
+			.name = b.fmt("{s}-check", .{modEntry.key_ptr.*}),
+			.root_module = modEntry.value_ptr.*,
+		}).step);
+	}
 }
