@@ -1026,11 +1026,6 @@ pub const ItemStack = struct { // MARK: ItemStack
 		return self.amount == 0;
 	}
 
-	pub fn clear(self: *ItemStack) void {
-		self.item = null;
-		self.amount = 0;
-	}
-
 	pub fn storeToZon(self: *const ItemStack, allocator: NeverFailingAllocator, zonObject: ZonElement) void {
 		if(self.item) |item| {
 			item.insertIntoZon(allocator, zonObject);
