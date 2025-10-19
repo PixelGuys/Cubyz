@@ -54,16 +54,15 @@ pub const Ore = struct {
 // MARK: Sorted Block Properties
 fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: type) type {
 	const Cmp = struct {
-			fn less(target: u32, candidate: u32) std.math.Order {
-			if (target == candidate) return .eq;
-			if (target < candidate) return .lt;
+		fn less(target: u32, candidate: u32) std.math.Order {
+			if(target == candidate) return .eq;
+			if(target < candidate) return .lt;
 			return .gt;
 		}
 	};
 
 	// if the block id is in the array, then the property value is true, otherwise false.
-	if(DataType == bool)
-	{
+	if(DataType == bool) {
 		return struct {
 			const Self = @This();
 
@@ -83,32 +82,21 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 				return true;
 			}
 
-			pub fn addBlockProperty(self: *Self, blockId: u32, propVal: bool) void
-			{
-				if(propVal == false)
-				{
+			pub fn addBlockProperty(self: *Self, blockId: u32, propVal: bool) void {
+				if(propVal == false) {
 					return;
 				}
 
-				if (self.allocatedSize + 1 > sortedBlockSize) {
+				if(self.allocatedSize + 1 > sortedBlockSize) {
 					@panic("Failed to add block property. Consider increasing the size of the array");
 				}
 
-				const slice = self.idxLookup[0 .. self.allocatedSize];
+				const slice = self.idxLookup[0..self.allocatedSize];
 
-				const insertIdx = std.sort.lowerBound(
-					u32, 
-					slice,
-					blockId, 
-					Cmp.less
-				);
+				const insertIdx = std.sort.lowerBound(u32, slice, blockId, Cmp.less);
 
-				std.mem.copyBackwards(
-					u32,
-					self.idxLookup[(insertIdx + 1) .. self.allocatedSize + 1], 
-					self.idxLookup[insertIdx .. self.allocatedSize]
-				);
-				
+				std.mem.copyBackwards(u32, self.idxLookup[(insertIdx + 1) .. self.allocatedSize + 1], self.idxLookup[insertIdx..self.allocatedSize]);
+
 				self.idxLookup[insertIdx] = blockId;
 
 				self.allocatedSize += 1;
@@ -118,8 +106,7 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 				self.allocatedSize = 0;
 			}
 		};
-	}
-	else {
+	} else {
 		return struct {
 			const Self = @This();
 
@@ -128,8 +115,8 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 			data: [sortedBlockSize]DataType = undefined,
 
 			fn compare(target: u32, candidate: u32) std.math.Order {
-				if (target == candidate) return .eq;
-				if (target < candidate) return .lt;
+				if(target == candidate) return .eq;
+				if(target < candidate) return .lt;
 				return .gt;
 			}
 
@@ -152,38 +139,23 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 			pub fn getBlockPropertyValueByIdx(self: *const Self, blockIdx: u32) !DataType {
 				if(blockIdx < self.allocatedSize) {
 					return self.data[blockIdx];
-				}
-				else {
+				} else {
 					return error.OutOfBounds;
 				}
 			}
 
-			pub fn addBlockProperty(self: *Self, blockId: u32, propVal: DataType) void
-			{
-				if (self.allocatedSize + 1 > sortedBlockSize) {
+			pub fn addBlockProperty(self: *Self, blockId: u32, propVal: DataType) void {
+				if(self.allocatedSize + 1 > sortedBlockSize) {
 					@panic("Failed to add block property. Consider increasing the size of the array");
 				}
 
-				const slice = self.idxLookup[0 .. self.allocatedSize];
+				const slice = self.idxLookup[0..self.allocatedSize];
 
-				const insertIdx = std.sort.lowerBound(
-					u32, 
-					slice,
-					blockId, 
-					compare
-				);
+				const insertIdx = std.sort.lowerBound(u32, slice, blockId, compare);
 
-				std.mem.copyBackwards(
-					u32,
-					self.idxLookup[(insertIdx + 1) .. self.allocatedSize + 1], 
-					self.idxLookup[insertIdx .. self.allocatedSize]
-				);
-				
-				std.mem.copyBackwards(
-					DataType,
-					self.data[(insertIdx + 1) .. self.allocatedSize + 1], 
-					self.data[insertIdx .. self.allocatedSize]
-				);
+				std.mem.copyBackwards(u32, self.idxLookup[(insertIdx + 1) .. self.allocatedSize + 1], self.idxLookup[insertIdx..self.allocatedSize]);
+
+				std.mem.copyBackwards(DataType, self.data[(insertIdx + 1) .. self.allocatedSize + 1], self.data[insertIdx..self.allocatedSize]);
 
 				self.idxLookup[insertIdx] = blockId;
 				self.data[insertIdx] = propVal;
@@ -199,20 +171,20 @@ fn SortedBlockProperties(comptime sortedBlockSize: usize, comptime DataType: typ
 }
 
 fn isSortedProp(comptime T: type) bool {
-    return std.meta.hasFn(T, "clear") and
-           std.meta.hasFn(T, "addBlockProperty") and
-           std.meta.hasFn(T, "getBlockPropertyValue");
+	return std.meta.hasFn(T, "clear") and
+		std.meta.hasFn(T, "addBlockProperty") and
+		std.meta.hasFn(T, "getBlockPropertyValue");
 }
 
 fn resetSortedProperties() void {
-    inline for (@typeInfo(BlockProps).@"struct".decls) |decl| {
-        const sortedProp = &@field(BlockProps, decl.name);
+	inline for(@typeInfo(BlockProps).@"struct".decls) |decl| {
+		const sortedProp = &@field(BlockProps, decl.name);
 
-        if (comptime isSortedProp(@TypeOf(sortedProp.*))) {
+		if(comptime isSortedProp(@TypeOf(sortedProp.*))) {
 			std.log.info("Cleared \'{s}\' from {d} entries", .{decl.name, sortedProp.allocatedSize});
-           	sortedProp.clear();
-        }
-    }
+			sortedProp.clear();
+		}
+	}
 }
 
 const BlockProps = struct {
@@ -247,17 +219,15 @@ const BlockProps = struct {
 	pub var terminalVelocity: [maxBlockCount]f32 = undefined;
 	pub var mobility: [maxBlockCount]f32 = undefined;
 
-
 	/// ------------------------------------------------- Sorted Block Properties
-	/// These properties are rarely used, so to save memory we use sorted arrays 
+	/// These properties are rarely used, so to save memory we use sorted arrays
 	/// with ~100-300 entries instead of creating arrays with maxBlockCount (65536) entries.
-
 	/// Magic Value - Increase it if you need to store more block properties.
 	/// Consider creating a separate variable with a comment for a specific property if only one needs a larger size.
 	pub const maxSortedBlockProperties: usize = 100;
 
 	pub var sortedAllowOres: SortedBlockProperties(maxSortedBlockProperties, bool) = .{};
-	//TODO: Tick event is accessed like a milion times for no reason. FIX IT 
+	// TODO: Tick event is accessed like a milion times for no reason. FIX IT
 	pub var sortedTickEvent: SortedBlockProperties(maxSortedBlockProperties, TickEvent) = .{};
 	pub var sortedTouchFunction: SortedBlockProperties(maxSortedBlockProperties, *const TouchFunction) = .{};
 	pub var sortedBlockEntity: SortedBlockProperties(maxSortedBlockProperties, *BlockEntityType) = .{};
@@ -320,18 +290,16 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		}
 
 		const tickEventData = TickEvent.loadFromZon(zon.getChild("tickEvent"));
-		if (tickEventData) |tickEvent| {
+		if(tickEventData) |tickEvent| {
 			BlockProps.sortedTickEvent.addBlockProperty(size, tickEvent);
 		}
-		
 
 		if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| {
 			const functionData = touchFunctions.getFunctionPointer(touchFunctionName);
 
 			if(functionData) |function| {
 				BlockProps.sortedTouchFunction.addBlockProperty(size, function);
-			}
-			else {
+			} else {
 				std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
 			}
 		}
@@ -626,7 +594,7 @@ pub const Block = packed struct { // MARK: Block
 		return BlockProps.sortedGui.getBlockPropertyValue(self.typ) orelse "";
 	}
 
-	pub inline fn tickEvent(self: Block) ?TickEvent { //TODO: Tick is called for each block every game tick ...??? fix this
+	pub inline fn tickEvent(self: Block) ?TickEvent {
 		return BlockProps.sortedTickEvent.getBlockPropertyValue(self.typ);
 	}
 
