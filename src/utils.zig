@@ -1720,8 +1720,8 @@ pub const BinaryReader = struct {
 	}
 
 	pub fn readBool(self: *BinaryReader) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!bool {
-		const int = try self.readInt(u8);
-		return int == 1;
+		const int = try self.readInt(u1);
+		return int != 0;
 	}
 
 	pub fn readUntilDelimiter(self: *BinaryReader, comptime delimiter: u8) ![:delimiter]const u8 {
@@ -1800,7 +1800,7 @@ pub const BinaryWriter = struct {
 	}
 
 	pub fn writeBool(self: *BinaryWriter, value: bool) void {
-		self.writeInt(u8, @intFromBool(value));
+		self.writeInt(u1, @intFromBool(value));
 	}
 
 	pub fn writeSlice(self: *BinaryWriter, slice: []const u8) void {
