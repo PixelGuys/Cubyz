@@ -158,7 +158,7 @@ pub const ParticleSystem = struct {
 	var previousPlayerPos: Vec3d = undefined;
 
 	var mutex: std.Thread.Mutex = .{};
-    var networkCreationQueue: main.List(struct{ emitter: Emitter, pos: Vec3d, count: u32 }) = undefined;
+	var networkCreationQueue: main.List(struct {emitter: Emitter, pos: Vec3d, count: u32}) = undefined;
 
 	var particlesSSBO: SSBO = undefined;
 
@@ -198,25 +198,25 @@ pub const ParticleSystem = struct {
 
 		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 
-        networkCreationQueue = .init(arenaAllocator);
+		networkCreationQueue = .init(arenaAllocator);
 	}
 
 	pub fn deinit() void {
 		pipeline.deinit();
 		particlesSSBO.deinit();
-        networkCreationQueue.deinit();
+		networkCreationQueue.deinit();
 	}
 
 	pub fn update(deltaTime: f32) void {
-        if (networkCreationQueue.items.len != 0) {
-            for (networkCreationQueue.items) |creation| {
-                creation.emitter.spawnParticles(creation.count, Emitter.SpawnPoint, .{
-                    .mode = .spread,
-                    .position = creation.pos,
-                });
-            }
-            networkCreationQueue.clearAndFree();
-        }
+		if(networkCreationQueue.items.len != 0) {
+			for(networkCreationQueue.items) |creation| {
+				creation.emitter.spawnParticles(creation.count, Emitter.SpawnPoint, .{
+					.mode = .spread,
+					.position = creation.pos,
+				});
+			}
+			networkCreationQueue.clearAndFree();
+		}
 
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
 		const playerPos = game.Player.getEyePosBlocking();
@@ -340,7 +340,7 @@ pub const ParticleSystem = struct {
 	pub fn addParticlesFromNetwork(emitter: Emitter, pos: Vec3d, count: u32) void {
 		mutex.lock();
 		defer mutex.unlock();
-		networkCreationQueue.append(.{ .emitter = emitter, .pos = pos, .count = count });
+		networkCreationQueue.append(.{.emitter = emitter, .pos = pos, .count = count});
 	}
 };
 

@@ -9,6 +9,8 @@ pub const usage =
 	\\/particles <id> <x> <y> <z>
 	\\/particles <id> <x> <y> <z> <collides>
 	\\/particles <id> <x> <y> <z> <collides> <count>
+	\\
+	\\tip: use "~" to apply current player position coordinate in <x> <y> <z> fields.
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
@@ -70,7 +72,7 @@ fn parseBool(arg: []const u8) anyerror!bool {
 fn parseNumber(arg: []const u8, source: *User) anyerror!u32 {
 	return std.fmt.parseUnsigned(u32, arg, 0) catch |err| {
 		switch(err) {
-			error.Overflow, => {
+			error.Overflow => {
 				const maxParticleCount = particles.ParticleSystem.maxCapacity;
 				source.sendMessage("#ff0000Too many particles spawned \"{s}\", maximum: \"{d}\"", .{arg, maxParticleCount});
 				return maxParticleCount;

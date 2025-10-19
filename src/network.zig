@@ -1154,7 +1154,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
-			const bufferSize = particleId.len * 8 + 32;
+			const bufferSize = particleId.len*8 + 32;
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
 			defer writer.deinit();
 
