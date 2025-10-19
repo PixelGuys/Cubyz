@@ -76,7 +76,7 @@ fn parseNumber(arg: []const u8, source: *User) anyerror!u32 {
 				return maxParticleCount;
 			},
 			error.InvalidCharacter => {
-				source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
+				source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
 				return error.InvalidNumber;
 			},
 		}
