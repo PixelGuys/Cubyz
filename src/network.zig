@@ -1028,7 +1028,7 @@ pub const Protocols = struct {
 			worldEditPos = 2,
 			time = 3,
 			biome = 4,
-			particle = 5,
+			particles = 5,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -1101,9 +1101,10 @@ pub const Protocols = struct {
 						}
 					}
 				},
-				.particle => {
+				.particles => {
 					if(conn.manager.world) |_| {
-						const particleId = particles.ParticleManager.getIdByTypeIndex(try reader.readInt(u16));
+						const sliceSize = try reader.readInt(u16);
+						const particleId = try reader.readSlice(sliceSize);
 						const pos = try reader.readVec(Vec3d);
 						const collides = try reader.readBool();
 						const count = try reader.readInt(u32);
@@ -1152,12 +1153,14 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 
-		pub fn sendParticle(conn: *Connection, particleId: u16, pos: Vec3d, collides: bool, count: u32) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 32);
+		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
+			const bufferSize = particleId.len * 8 + 32;
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
 			defer writer.deinit();
 
-			writer.writeEnum(UpdateType, .particle);
-			writer.writeInt(u16, particleId);
+			writer.writeEnum(UpdateType, .particles);
+			writer.writeInt(u16, @intCast(particleId.len));
+			writer.writeSlice(particleId);
 			writer.writeVec(Vec3d, pos);
 			writer.writeBool(collides);
 			writer.writeInt(u32, count);
