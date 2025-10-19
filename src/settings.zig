@@ -201,7 +201,7 @@ pub const launchConfig = struct {
 		defer zon.deinit(main.stackAllocator);
 
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
-		headlessServer = zon.get(bool, "headlessServerMode", headlessServer);
+		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		headlessServerWorldName = main.globalAllocator.dupe(u8, zon.get([]const u8, "headlessServerWorldName", headlessServerWorldName));
 		var gameModeU8: []const u8 = "";
 		gameModeU8 = main.globalAllocator.dupe(u8, zon.get([]const u8, "headlessGameMode", gameModeU8));

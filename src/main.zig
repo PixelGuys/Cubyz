@@ -572,7 +572,12 @@ pub fn main() void { // MARK: main()
 			else => return,
 		};
 		if(!world_found) {
-			server.world_zig.tryCreateWorld(settings.launchConfig.headlessServerWorldName, settings.launchConfig.headlessGameMode, settings.launchConfig.headlessAllowCheats, settings.launchConfig.headlessTestingMode) catch |e| switch(e) {
+			const worldSettings: server.world_zig.WorldSettings = .{
+				.gamemode = settings.launchConfig.headlessGamemode,
+				.allowCheats = settings.launchConfig.headlessAllowCheats,
+				.testingMode = false,
+			};
+			server.world_zig.tryCreateWorld(settings.launchConfig.headlessServerWorldName, worldSettings) catch |e| switch(e) {
 				else => return,
 			};
 		}
