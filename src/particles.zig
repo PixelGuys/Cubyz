@@ -208,6 +208,7 @@ pub const ParticleSystem = struct {
 	}
 
 	pub fn update(deltaTime: f32) void {
+		mutex.lock();
 		if(networkCreationQueue.items.len != 0) {
 			for(networkCreationQueue.items) |creation| {
 				creation.emitter.spawnParticles(creation.count, Emitter.SpawnPoint, .{
@@ -217,6 +218,7 @@ pub const ParticleSystem = struct {
 			}
 			networkCreationQueue.clearAndFree();
 		}
+		mutex.unlock();
 
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
 		const playerPos = game.Player.getEyePosBlocking();
