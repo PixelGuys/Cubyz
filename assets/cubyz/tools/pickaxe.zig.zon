@@ -38,7 +38,7 @@
 				1.0, 0x0, 0x0, 0.1, 0x0,
 				0x0, 0x0, 0x0, 0x0, 0.1,
 			},
-			.factor = 0.8,
+			.factor = 0.80,
 			.method = .average,
 		},
 		.{
@@ -51,20 +51,7 @@
 				1.0, 0x0, 0x0, 0.0, 0x0,
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
-			.factor = 0.2,
-			.method = .sum,
-		},
-		.{
-			.source = .hardnessDamage,
-			.destination = .damage,
-			.matrix = .{
-				0.0, 0.0, 0.1, 0.1, 0x0,
-				0.0, 0.1, 0.0, 0x0, 0x0,
-				0.1, 0.0, 0.0, 0x0, 0x0,
-				1.0, 0x0, 0x0, 0.0, 0x0,
-				0x0, 0x0, 0x0, 0x0, 0.0,
-			},
-			.factor = 0.8,
+			.factor = 1.0,
 			.method = .average,
 		},
 		.{

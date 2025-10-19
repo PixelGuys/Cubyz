@@ -456,10 +456,11 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			var weight: f32 = 0;
 			for(0..25) |i| {
 				const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
-				sum += property.weigths[i]*material.getProperty(property.source orelse break);
-				weight += property.weigths[i];
+				sum += property.weights[i]*material.getProperty(property.source orelse break);
+				weight += property.weights[i];
 			}
 			if(weight == 0) continue;
+			if(weight > 1) weight = 1;
 			switch(property.method) {
 				.sum => {},
 				.average => {
@@ -549,7 +550,7 @@ const SlotInfo = packed struct { // MARK: SlotInfo
 const PropertyMatrix = struct { // MARK: PropertyMatrix
 	source: ?MaterialProperty,
 	destination: ?ToolProperty,
-	weigths: [25]f32,
+	weights: [25]f32,
 	resultScale: f32,
 	method: Method,
 
@@ -1210,7 +1211,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
 		for(0..25) |i| {
-			val.weigths[i] = matrixZon.getAtIndex(f32, i, 0.0);
+			val.weights[i] = matrixZon.getAtIndex(f32, i, 0.0);
 		}
 	}
 	var pixelSources: [16][16]u8 = undefined;
