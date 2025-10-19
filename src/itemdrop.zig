@@ -327,7 +327,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	fn internalRemove(self: *ItemDropManager, i: u16) void {
 		self.size -= 1;
 		const ii = self.list.items(.reverseIndex)[i];
-		self.list.items(.itemStack)[i].clear();
+		self.list.items(.itemStack)[i].deinit();
+		self.list.items(.itemStack)[i] = .{};
 		self.indices[ii] = self.indices[self.size];
 		self.list.items(.reverseIndex)[self.indices[self.size]] = ii;
 	}
