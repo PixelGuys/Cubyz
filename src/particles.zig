@@ -170,6 +170,8 @@ pub const ParticleSystem = struct {
 	};
 	var uniforms: UniformStruct = undefined;
 
+	const gravity: Vec3f = .{0, 0, -2};
+
 	pub fn init() void {
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/particles/particles.vert",
@@ -182,8 +184,8 @@ pub const ParticleSystem = struct {
 		);
 
 		properties = EmitterProperties{
-			.gravity = .{0, 0, -2},
-			.drag = 0.2,
+			.dragMin = 0.2,
+			.dragMax = 0.3,
 			.lifeTimeMin = 10,
 			.lifeTimeMax = 10,
 			.velMin = 0.1,
@@ -240,7 +242,7 @@ pub const ParticleSystem = struct {
 			const rotVel = particleLocal.velAndRotationVel[3];
 			rot += rotVel*deltaTime;
 
-			particleLocal.velAndRotationVel += vec.combine(properties.gravity, 0)*vecDeltaTime;
+			particleLocal.velAndRotationVel += vec.combine(gravity, 0)*vecDeltaTime;
 			particleLocal.velAndRotationVel *= @splat(@exp(-properties.drag*deltaTime));
 			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
@@ -347,8 +349,8 @@ pub const ParticleSystem = struct {
 };
 
 pub const EmitterProperties = struct {
-	gravity: Vec3f = @splat(0),
-	drag: f32 = 0,
+	dragMin: f32 = 0,
+	dragMax: f32 = 0,
 	velMin: f32 = 0,
 	velMax: f32 = 0,
 	rotVelMin: f32 = 0,
@@ -470,5 +472,6 @@ pub const Particle = struct {
 pub const ParticleLocal = struct {
 	velAndRotationVel: Vec4f,
 	lifeVelocity: f32,
+	drag: f32,
 	collides: bool,
 };
