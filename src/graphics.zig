@@ -1824,7 +1824,9 @@ pub const SSBO = struct { // MARK: SSBO
 	bufferID: c_uint,
 	pub fn init() SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
+		if(!main.settings.launchConfig.headlessServer) {
+			c.glGenBuffers(1, &self.bufferID);
+		}
 		return self;
 	}
 
