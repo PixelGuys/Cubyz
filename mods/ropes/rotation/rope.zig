@@ -109,24 +109,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i,
 	return false;
 }
 
-pub fn onBlockInteract(
-	/// The block being interacted with.
-	block: Block,
-	/// The position of the interacted block.
-	pos: Vec3i,
-	/// The face, or normal, pointing away from the block.
-	face: Vec3i,
-	/// The relative position within the block being clicked, between {0,0,0} and {1,1,1}.
-	rel: Vec3f,
-	/// The player's inventory.
-	inv: Inventory,
-	/// The currently selected slot in the player's inventory.
-	slot: u32,
-	/// The item that's currently being held, if any.
-	item: ?Item,
-) bool {
-	_ = .{ face, rel, item }; // unused
-
+pub fn onBlockInteract(block: Block, pos: Vec3i, _: Vec3i, _: Vec3f, inv: Inventory, slot: u32, _: ?Item) bool {
 	// Check to see if the rope orientation is up/down.
 	if(block.data != RopeOrientation.z.toData()) return false;
 

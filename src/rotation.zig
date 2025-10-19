@@ -91,7 +91,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			return null;
 		}
-		pub fn onBlockInteract( _: Block, _: Vec3i, _: Vec3i, _: Vec3f, _: main.items.Inventory, _: u32, _: ?main.items.Item) bool {
+		pub fn onBlockInteract(_: Block, _: Vec3i, _: Vec3i, _: Vec3f, _: main.items.Inventory, _: u32, _: ?main.items.Item) bool {
 			return false; // don't override default interaction
 		}
 		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
