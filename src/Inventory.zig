@@ -2135,25 +2135,6 @@ pub fn canHold(self: Inventory, sourceStack: ItemStack) bool {
 	return false;
 }
 
-// TODO: Remove after #480
-pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
-	for(self._items, 0..) |*stack, i| {
-		stack.* = .{};
-		var buf: [1024]u8 = undefined;
-		const stackZon = zon.getChild(buf[0..std.fmt.printInt(&buf, i, 10, .lower, .{})]);
-		if(stackZon == .object) {
-			stack.item = Item.init(stackZon) catch |err| {
-				const msg = stackZon.toStringEfficient(main.stackAllocator, "");
-				defer main.stackAllocator.free(msg);
-				std.log.err("Couldn't find item {s}: {s}", .{msg, @errorName(err)});
-				stack.* = .{};
-				continue;
-			};
-			stack.amount = stackZon.get(u16, "amount", 0);
-		}
-	}
-}
-
 pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {
 	writer.writeVarInt(u32, @intCast(self._items.len));
 	for(self._items) |stack| {
