@@ -157,7 +157,8 @@ pub const ParticleSystem = struct {
 	var properties: EmitterProperties = undefined;
 	var previousPlayerPos: Vec3d = undefined;
 
-    pub var networkCreationQueue: main.List(struct{ Emitter, Vec3d, u32 }) = undefined;
+	var mutex: std.Thread.Mutex = .{};
+    var networkCreationQueue: main.List(struct{ emitter: Emitter, pos: Vec3d, count: u32 }) = undefined;
 
 	var particlesSSBO: SSBO = undefined;
 
@@ -209,10 +210,9 @@ pub const ParticleSystem = struct {
 	pub fn update(deltaTime: f32) void {
         if (networkCreationQueue.items.len != 0) {
             for (networkCreationQueue.items) |creation| {
-                const emitter, const pos, const count = creation;
-                emitter.spawnParticles(count, Emitter.SpawnPoint, .{
+                creation.emitter.spawnParticles(creation.count, Emitter.SpawnPoint, .{
                     .mode = .spread,
-                    .position = pos,
+                    .position = creation.pos,
                 });
             }
             networkCreationQueue.clearAndFree();
@@ -335,6 +335,12 @@ pub const ParticleSystem = struct {
 
 	pub fn getParticleCount() u32 {
 		return particleCount;
+	}
+
+	pub fn addParticlesFromNetwork(emitter: Emitter, pos: Vec3d, count: u32) void {
+		mutex.lock();
+		defer mutex.unlock();
+		networkCreationQueue.append(.{ .emitter = emitter, .pos = pos, .count = count });
 	}
 };
 
