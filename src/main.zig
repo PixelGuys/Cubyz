@@ -218,7 +218,7 @@ const log_buffer_size = 64 << 10;
 
 pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 	const addr = first_trace_address orelse @returnAddress();
-	std.log.err("This is probably a bug, if you think so please report it.\n----8<---- start of panic\npanic: {s}\nerror return trace: {?f}", .{
+	std.log.err("This is probably a bug, if you think so please report it: <https://github.com/pixelguys/cubyz/issues/new?template=bug.yml>\n----8<---- start of panic\npanic: {s}\nerror return trace: {?f}", .{
 		msg,
 		@errorReturnTrace(),
 	});
