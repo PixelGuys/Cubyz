@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -51,7 +51,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i,
 
 pub fn modifyBlock(block: *Block, newBlockType: u16) bool {
 	if(block.transparent() or block.viewThrough()) return false;
-	if(!main.blocks.meshes.modelIndexStart(block.*).model().allNeighborsOccluded) return false;
+	if(!main.block_manager.meshes.modelIndexStart(block.*).model().allNeighborsOccluded) return false;
 	if(block.data != 0) return false;
 	block.data = block.typ;
 	block.typ = newBlockType;
@@ -61,7 +61,7 @@ pub fn modifyBlock(block: *Block, newBlockType: u16) bool {
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, _: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	if(oldBlock == newBlock) return .no;
 	if(oldBlock.transparent() or oldBlock.viewThrough()) return .no;
-	if(!main.blocks.meshes.modelIndexStart(oldBlock).model().allNeighborsOccluded) return .no;
+	if(!main.block_manager.meshes.modelIndexStart(oldBlock).model().allNeighborsOccluded) return .no;
 	if(oldBlock.data != 0) return .no;
 	if(newBlock.data != oldBlock.typ) return .no;
 	shouldDropSourceBlockOnSuccess.* = false;

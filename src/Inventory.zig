@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const BaseItem = main.items.BaseItem;
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const Tool = main.items.Tool;
@@ -1721,14 +1721,14 @@ pub const Command = struct { // MARK: Command
 			min: Vec3f,
 			max: Vec3f,
 
-			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.blocks.BlockDrop) void {
+			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.block_manager.BlockDrop) void {
 				if(newBlock.collide()) {
 					self.dropOutside(pos, _drop);
 				} else {
 					self.dropInside(pos, _drop);
 				}
 			}
-			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
+			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: main.block_manager.BlockDrop) void {
 				for(_drop.items) |itemStack| {
 					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
 				}
@@ -1744,7 +1744,7 @@ pub const Command = struct { // MARK: Command
 				const width = (max - min)*half;
 				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
 			}
-			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
+			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.block_manager.BlockDrop) void {
 				for(_drop.items) |itemStack| {
 					main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
 				}

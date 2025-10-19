@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const Blueprint = main.blueprint.Blueprint;
 
 pub const description = "Undo last change done to world with world editing commands.";

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const blocks = @import("blocks.zig");
+const block_manager = @import("blocks/block_manager.zig");
 const chunk_zig = @import("chunk.zig");
 const ServerChunk = chunk_zig.ServerChunk;
 const game = @import("game.zig");
@@ -417,7 +417,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	fn checkBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, blockPos: Vec3i) bool {
 		// Transform to chunk-relative coordinates:
 		const chunkPos = blockPos & ~@as(Vec3i, @splat(main.chunk.chunkMask));
-		var block: blocks.Block = undefined;
+		var block: block_manager.Block = undefined;
 		if(chunk.super.pos.wx == chunkPos[0] and chunk.super.pos.wy == chunkPos[1] and chunk.super.pos.wz == chunkPos[2]) {
 			chunk.mutex.lock();
 			defer chunk.mutex.unlock();
@@ -613,19 +613,19 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			};
 			if(self.item == .baseItem and self.item.baseItem.block() != null and self.item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
+				var block = block_manager.Block{.typ = self.item.baseItem.block().?, .data = 0};
 				block.data = block.mode().naturalStandard;
-				const model = blocks.meshes.model(block).model();
+				const model = block_manager.meshes.model(block).model();
 				var data = main.List(u32).init(main.stackAllocator);
 				defer data.deinit();
 				for(model.internalQuads) |quad| {
-					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
+					const textureIndex = block_manager.meshes.textureIndex(block, quad.quadInfo().textureSlot);
 					data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
 					data.append(0); // offsetByNormal
 				}
 				for(model.neighborFacingQuads) |list| {
 					for(list) |quad| {
-						const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
+						const textureIndex = block_manager.meshes.textureIndex(block, quad.quadInfo().textureSlot);
 						data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
 						data.append(1); // offsetByNormal
 					}

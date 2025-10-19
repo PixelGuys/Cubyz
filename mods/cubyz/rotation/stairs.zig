@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -244,7 +244,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(block.data & 255);
+	return block_manager.meshes.modelIndexStart(block).add(block.data & 255);
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
@@ -260,7 +260,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, relativePlay
 	var resultBit: u16 = 0;
 	for([_]u16{1, 2, 4, 8, 16, 32, 64, 128}) |bit| {
 		if(block.data & bit == 0) {
-			const cornerModelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(255 ^ bit);
+			const cornerModelIndex: ModelIndex = block_manager.meshes.modelIndexStart(block).add(255 ^ bit);
 			if(RotationMode.DefaultFunctions.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or intersection.distance < result.?.distance) {
 					result = intersection;

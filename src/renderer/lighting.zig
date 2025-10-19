@@ -2,7 +2,7 @@ const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const main = @import("main");
-const blocks = main.blocks;
+const block_manager = main.block_manager;
 const chunk = main.chunk;
 const chunk_meshing = @import("chunk_meshing.zig");
 const mesh_storage = @import("mesh_storage.zig");
@@ -85,9 +85,9 @@ pub const ChannelChunk = struct {
 		return self.data.getValue(index).toArray();
 	}
 
-	fn calculateIncomingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
+	fn calculateIncomingOcclusion(result: *[3]u8, block: block_manager.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
 		if(block.typ == 0) return;
-		if(blocks.meshes.model(block).model().isNeighborOccluded[neighbor.toInt()]) {
+		if(block_manager.meshes.model(block).model().isNeighborOccluded[neighbor.toInt()]) {
 			var absorption: [3]u8 = extractColor(block.absorption());
 			absorption[0] *|= @intCast(voxelSize);
 			absorption[1] *|= @intCast(voxelSize);
@@ -98,9 +98,9 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	fn calculateOutgoingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
+	fn calculateOutgoingOcclusion(result: *[3]u8, block: block_manager.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
 		if(block.typ == 0) return;
-		const model = blocks.meshes.model(block).model();
+		const model = block_manager.meshes.model(block).model();
 		if(model.isNeighborOccluded[neighbor.toInt()] and !model.isNeighborOccluded[neighbor.reverse().toInt()]) { // Avoid calculating the absorption twice.
 			var absorption: [3]u8 = extractColor(block.absorption());
 			absorption[0] *|= @intCast(voxelSize);

@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -178,7 +178,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(block.data & 63);
+	return block_manager.meshes.modelIndexStart(block).add(block.data & 63);
 }
 
 pub const rotateZ = branch.rotateZ;
@@ -197,7 +197,7 @@ pub fn generateData(
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode();
 
 	if(blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
-		const neighborModel = blocks.meshes.model(neighborBlock).model();
+		const neighborModel = block_manager.meshes.model(neighborBlock).model();
 
 		var currentData = LogData.init(currentBlock.data);
 		// Log block upon placement should extend towards a block it was placed

@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -44,7 +44,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(@min(block.data, 5));
+	return block_manager.meshes.modelIndexStart(block).add(@min(block.data, 5));
 }
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {

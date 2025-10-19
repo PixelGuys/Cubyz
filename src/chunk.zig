@@ -1,8 +1,7 @@
 const std = @import("std");
 
-const blocks = @import("blocks.zig");
-const Block = blocks.Block;
 const main = @import("main");
+const Block = main.block_manager.Block;
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
@@ -15,7 +14,7 @@ pub const chunkSizeIterator: [chunkSize]u0 = undefined;
 pub const chunkVolume: u31 = 1 << 3*chunkShift;
 pub const chunkMask: i32 = chunkSize - 1;
 
-/// Contains a bunch of constants used to describe neighboring blocks.
+/// Contains a bunch of constants used to describe neighboring block_manager.
 pub const Neighbor = enum(u3) { // MARK: Neighbor
 	dirUp = 0,
 	dirDown = 1,
@@ -548,7 +547,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 								octantBlocks[i].typ = octantBlocks[i].lodReplacement();
 								if(octantBlocks[i].typ == 0) {
 									neighborCount[i] = 0;
-									continue; // I don't care about air blocks.
+									continue; // I don't care about air block_manager.
 								}
 
 								var count: u31 = 0;

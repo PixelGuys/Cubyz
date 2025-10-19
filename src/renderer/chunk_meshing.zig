@@ -2,8 +2,8 @@ const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const chunk = main.chunk;
 const game = main.game;
 const models = main.models;
@@ -497,7 +497,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		const quadInfo = quadIndex.quadInfo();
 		const extraQuadInfo = quadIndex.extraQuadInfo();
 		const normal = quadInfo.normal;
-		if(!blocks.meshes.textureOcclusionData.items[textureIndex]) { // No ambient occlusion (→ no smooth lighting)
+		if(!block_manager.meshes.textureOcclusionData.items[textureIndex]) { // No ambient occlusion (→ no smooth lighting)
 			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
 			var rawVals: [6]u5 = undefined;
 			for(0..6) |i| {
@@ -776,9 +776,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: chunk.Neighbor) bool {
-		const rotatedModel = blocks.meshes.model(block).model();
+		const rotatedModel = block_manager.meshes.model(block).model();
 		_ = rotatedModel; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
-		return block.typ != 0 and (other.typ == 0 or (block != other and other.viewThrough()) or other.alwaysViewThrough() or !blocks.meshes.model(other).model().isNeighborOccluded[neighbor.reverse().toInt()]);
+		return block.typ != 0 and (other.typ == 0 or (block != other and other.viewThrough()) or other.alwaysViewThrough() or !block_manager.meshes.model(other).model().isNeighborOccluded[neighbor.reverse().toInt()]);
 	}
 
 	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
@@ -870,12 +870,12 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn appendInternalQuads(block: Block, x: i32, y: i32, z: i32, comptime backFace: bool, list: *main.ListUnmanaged(FaceData), allocator: main.heap.NeverFailingAllocator) void {
-		const model = blocks.meshes.model(block).model();
+		const model = block_manager.meshes.model(block).model();
 		model.appendInternalQuadsToList(list, allocator, block, x, y, z, backFace);
 	}
 
 	fn appendNeighborFacingQuads(block: Block, neighbor: chunk.Neighbor, x: i32, y: i32, z: i32, comptime backFace: bool, list: *main.ListUnmanaged(FaceData), allocator: main.heap.NeverFailingAllocator) void {
-		const model = blocks.meshes.model(block).model();
+		const model = block_manager.meshes.model(block).model();
 		model.appendNeighborFacingQuadsToList(list, allocator, block, neighbor, x, y, z, backFace);
 	}
 
@@ -911,7 +911,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		defer main.stackAllocator.free(paletteCache);
 		for(0..self.chunk.data.palette().len) |i| {
 			const block = self.chunk.data.palette()[i].load(.unordered);
-			const model = blocks.meshes.model(block).model();
+			const model = block_manager.meshes.model(block).model();
 			var result: OcclusionInfo = .{};
 			if(model.noNeighborsOccluded or block.viewThrough()) {
 				result.canSeeAllNeighbors = true;

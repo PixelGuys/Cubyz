@@ -19,14 +19,14 @@ pub const generationMode = .floor;
 
 const Boulder = @This();
 
-block: main.blocks.Block,
+block: main.block_manager.Block,
 size: f32,
 sizeVariation: f32,
 
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *Boulder {
 	const self = arena.create(Boulder);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:slate")),
+		.block = main.block_manager.parseBlock(parameters.get([]const u8, "block", "cubyz:slate")),
 		.size = parameters.get(f32, "size", 4),
 		.sizeVariation = parameters.get(f32, "size_variation", 1),
 	};

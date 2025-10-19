@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -300,7 +300,7 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(block.data & 63);
+	return block_manager.meshes.modelIndexStart(block).add(block.data & 63);
 }
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
@@ -344,7 +344,7 @@ pub fn generateData(
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode() and currentBlock.modeData() == neighborBlock.modeData();
 
 	if(blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
-		const neighborModel = blocks.meshes.model(neighborBlock).model();
+		const neighborModel = block_manager.meshes.model(neighborBlock).model();
 
 		var currentData = BranchData.init(currentBlock.data);
 		// Branch block upon placement should extend towards a block it was placed
@@ -386,7 +386,7 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 	var closestIntersectionDistance: f64 = std.math.inf(f64);
 	var resultBitMask: ?u16 = null;
 	{
-		const modelIndex = blocks.meshes.modelIndexStart(block);
+		const modelIndex = block_manager.meshes.modelIndexStart(block);
 		if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 			closestIntersectionDistance = intersection.distance;
 			resultBitMask = 0;
@@ -396,7 +396,7 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 		const directionBitMask = Neighbor.bitMask(direction);
 
 		if((block.data & directionBitMask) != 0) {
-			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(directionBitMask);
+			const modelIndex: ModelIndex = block_manager.meshes.modelIndexStart(block).add(directionBitMask);
 			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
 					closestIntersectionDistance = intersection.distance;

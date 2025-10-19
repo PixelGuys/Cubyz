@@ -2604,7 +2604,7 @@ const block_texture = struct { // MARK: block_texture
 };
 
 pub fn generateBlockTexture(blockType: u16) Texture {
-	const block = main.blocks.Block{.typ = blockType, .data = 0}; // TODO: Use natural standard data.
+	const block = main.block_manager.Block{.typ = blockType, .data = 0}; // TODO: Use natural standard data.
 	const textureSize = block_texture.textureSize;
 	c.glViewport(0, 0, textureSize, textureSize);
 
@@ -2628,7 +2628,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
-	const model = main.blocks.meshes.model(block).model();
+	const model = main.block_manager.meshes.model(block).model();
 	if(block.hasBackFace()) {
 		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
 		for(main.chunk.Neighbor.iterable) |neighbor| {
@@ -2682,11 +2682,11 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		}
 		c.glUniform1f(uniforms.contrast, 0.25);
 		c.glActiveTexture(c.GL_TEXTURE0);
-		main.blocks.meshes.blockTextureArray.bind();
+		main.block_manager.meshes.blockTextureArray.bind();
 		c.glActiveTexture(c.GL_TEXTURE1);
-		main.blocks.meshes.emissionTextureArray.bind();
+		main.block_manager.meshes.emissionTextureArray.bind();
 		c.glActiveTexture(c.GL_TEXTURE2);
-		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+		main.block_manager.meshes.reflectivityAndAbsorptionTextureArray.bind();
 		block_texture.depthTexture.bindTo(5);
 		c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 	}

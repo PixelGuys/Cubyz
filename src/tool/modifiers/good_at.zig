@@ -18,7 +18,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 
 pub fn changeToolParameters(_: *Tool, _: Data) void {}
 
-pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 {
+pub fn changeBlockDamage(damage: f32, block: main.block_manager.Block, data: Data) f32 {
 	for(block.blockTags()) |tag| {
 		if(tag == data.tag) return damage*(1 + data.strength);
 	}

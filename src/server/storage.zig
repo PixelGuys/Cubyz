@@ -294,7 +294,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				uncompressedData[i] = @intCast(ch.data.impl.raw.data.getValue(i));
 				if(allowLossy) {
 					const block = ch.data.palette()[uncompressedData[i]].load(.unordered);
-					const model = main.blocks.meshes.model(block).model();
+					const model = main.block_manager.meshes.model(block).model();
 					const occluder = model.allNeighborsOccluded and !block.viewThrough();
 					if(occluder) {
 						solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
@@ -365,7 +365,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				var decompressedReader = BinaryReader.init(decompressedData);
 
 				for(0..chunk.chunkVolume) |i| {
-					ch.data.setValue(i, main.blocks.Block.fromInt(try decompressedReader.readInt(u32)));
+					ch.data.setValue(i, main.block_manager.Block.fromInt(try decompressedReader.readInt(u32)));
 				}
 			},
 			.deflate_with_8bit_palette, .deflate_with_8bit_palette_no_block_entities => {
@@ -375,7 +375,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				ch.data.initCapacity(paletteLength);
 
 				for(0..paletteLength) |i| {
-					ch.data.palette()[i] = .init(main.blocks.Block.fromInt(try reader.readInt(u32)));
+					ch.data.palette()[i] = .init(main.block_manager.Block.fromInt(try reader.readInt(u32)));
 				}
 
 				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
@@ -392,7 +392,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				}
 			},
 			.uniform => {
-				ch.data.palette()[0] = .init(main.blocks.Block.fromInt(try reader.readInt(u32)));
+				ch.data.palette()[0] = .init(main.block_manager.Block.fromInt(try reader.readInt(u32)));
 			},
 		}
 	}

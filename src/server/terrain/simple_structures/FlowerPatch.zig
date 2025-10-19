@@ -19,7 +19,7 @@ pub const generationMode = .floor;
 
 const FlowerPatch = @This();
 
-block: main.blocks.Block,
+block: main.block_manager.Block,
 width: f32,
 variation: f32,
 density: f32,
@@ -27,7 +27,7 @@ density: f32,
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *FlowerPatch {
 	const self = arena.create(FlowerPatch);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
+		.block = main.block_manager.parseBlock(parameters.get([]const u8, "block", "")),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.density = parameters.get(f32, "density", 0.5),

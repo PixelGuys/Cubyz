@@ -1,12 +1,11 @@
 const std = @import("std");
 
-const blocks = @import("blocks.zig");
-const Block = blocks.Block;
+const main = @import("main");
+const Block = main.block_manager.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
 const ListUnmanaged = main.ListUnmanaged;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
@@ -158,7 +157,7 @@ const Modifier = struct {
 		const Data = packed struct(u128) {pad: u128};
 		combineModifiers: *const fn(data1: Data, data2: Data) ?Data,
 		changeToolParameters: *const fn(tool: *Tool, data: Data) void,
-		changeBlockDamage: *const fn(damage: f32, block: main.blocks.Block, data: Data) f32,
+		changeBlockDamage: *const fn(damage: f32, block: main.block_manager.Block, data: Data) f32,
 		printTooltip: *const fn(outString: *main.List(u8), data: Data) void,
 		loadData: *const fn(zon: ZonElement) Data,
 		priority: f32,
@@ -177,7 +176,7 @@ const Modifier = struct {
 		self.vTable.changeToolParameters(tool, self.data);
 	}
 
-	pub fn changeBlockDamage(self: Modifier, damage: f32, block: main.blocks.Block) f32 {
+	pub fn changeBlockDamage(self: Modifier, damage: f32, block: main.block_manager.Block) f32 {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
@@ -289,7 +288,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			self.material = null;
 		}
 		self.block = blk: {
-			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
+			break :blk main.block_manager.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
 		};
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food", 0);
@@ -851,7 +850,7 @@ pub const Tool = struct { // MARK: Tool
 		return self.tooltip.items;
 	}
 
-	pub fn isEffectiveOn(self: *Tool, block: main.blocks.Block) bool {
+	pub fn isEffectiveOn(self: *Tool, block: main.block_manager.Block) bool {
 		for(block.blockTags()) |blockTag| {
 			for(self.type.blockTags()) |toolTag| {
 				if(toolTag == blockTag) return true;
@@ -860,7 +859,7 @@ pub const Tool = struct { // MARK: Tool
 		return false;
 	}
 
-	pub fn getBlockDamage(self: *Tool, block: main.blocks.Block) f32 {
+	pub fn getBlockDamage(self: *Tool, block: main.block_manager.Block) f32 {
 		var damage = self.damage;
 		for(self.modifiers) |modifier| {
 			damage = modifier.changeBlockDamage(damage, block);

@@ -19,7 +19,7 @@ pub fn changeToolParameters(tool: *Tool, data: Data) void {
 	tool.swingSpeed /= 1 + data.strength;
 }
 
-pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
+pub fn changeBlockDamage(damage: f32, _: main.block_manager.Block, _: Data) f32 {
 	return damage;
 }
 

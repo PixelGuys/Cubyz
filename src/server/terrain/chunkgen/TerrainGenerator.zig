@@ -18,15 +18,15 @@ pub const priority = 1024; // Within Cubyz the first to be executed, but mods mi
 
 pub const generatorSeed = 0x65c7f9fdc0641f94;
 
-var air: main.blocks.Block = undefined;
-var stone: main.blocks.Block = undefined;
-var water: main.blocks.Block = undefined;
+var air: main.block_manager.Block = undefined;
+var stone: main.block_manager.Block = undefined;
+var water: main.block_manager.Block = undefined;
 
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
-	air = main.blocks.parseBlock("cubyz:air");
-	stone = main.blocks.parseBlock("cubyz:slate");
-	water = main.blocks.parseBlock("cubyz:water");
+	air = main.block_manager.parseBlock("cubyz:air");
+	stone = main.block_manager.parseBlock("cubyz:slate");
+	water = main.block_manager.parseBlock("cubyz:water");
 }
 
 pub fn deinit() void {}

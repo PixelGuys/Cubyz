@@ -25,9 +25,9 @@ const Type = enum {
 };
 
 typ: Type,
-leavesBlock: main.blocks.Block,
-woodBlock: main.blocks.Block,
-topWoodBlock: main.blocks.Block,
+leavesBlock: main.block_manager.Block,
+woodBlock: main.block_manager.Block,
+topWoodBlock: main.block_manager.Block,
 height0: i32,
 deltaHeight: u31,
 leafRadius: f32,
@@ -43,9 +43,9 @@ pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SimpleTr
 			if(parameters.get(?[]const u8, "type", null)) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
 			break :blk .round;
 		},
-		.leavesBlock = main.blocks.parseBlock(parameters.get([]const u8, "leaves", "cubyz:oak_leaves")),
-		.woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log", "cubyz:oak_log")),
-		.topWoodBlock = main.blocks.parseBlock(parameters.get([]const u8, "top", "cubyz:oak_top")),
+		.leavesBlock = main.block_manager.parseBlock(parameters.get([]const u8, "leaves", "cubyz:oak_leaves")),
+		.woodBlock = main.block_manager.parseBlock(parameters.get([]const u8, "log", "cubyz:oak_log")),
+		.topWoodBlock = main.block_manager.parseBlock(parameters.get([]const u8, "top", "cubyz:oak_top")),
 		.height0 = parameters.get(i32, "height", 6),
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
 		.leafRadius = parameters.get(f32, "leafRadius", (1 + parameters.get(f32, "height", 6))/2),

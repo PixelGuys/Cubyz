@@ -61,9 +61,9 @@ If you want to add new textures, make sure they fit the style of the game. It's 
 
 If any of the following points are ignored, your texture will be rejected:
 1. Resolution is 16 x 16
-2. Lighting direction is top-left for items and blocks.
+2. Lighting direction is top-left for items and block_manager.
 3. Keep colour palettes small. Do not use near-duplicate colours, do not use noise, filters, or brushes that create unnecessary amounts of colours. Most blocks can be textured with ~4-6 colours.
-4. Reference other block textures to see how colours & contrast is used. Test your textures ingame alongside other blocks.
+4. Reference other block textures to see how colours & contrast is used. Test your textures ingame alongside other block_manager.
 5. Blocks should tile smoothly. Avoid creating seams or repetitive patterns.
 6. Use hue shifting conservatively. Take the material into account when choosing colours.
 7. Items have full, coloured, 1-pixel outlines. It should be shaded so that the side in light (top left) is brighter, while the side in shadow (bottom right) is darker.

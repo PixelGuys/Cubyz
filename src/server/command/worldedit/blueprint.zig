@@ -7,7 +7,7 @@ const Vec3i = vec.Vec3i;
 
 const Dir = main.files.Dir;
 const List = main.List;
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 

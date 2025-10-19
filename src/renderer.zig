@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const blocks = @import("blocks.zig");
+const block_manager = @import("blocks/block_manager.zig");
 const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
@@ -198,20 +198,20 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.animation);
-	blocks.meshes.preProcessAnimationData(time);
+	block_manager.meshes.preProcessAnimationData(time);
 	gpu_performance_measuring.stopQuery();
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, playerPos);
 
 	c.glActiveTexture(c.GL_TEXTURE0);
-	blocks.meshes.blockTextureArray.bind();
+	block_manager.meshes.blockTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
-	blocks.meshes.emissionTextureArray.bind();
+	block_manager.meshes.emissionTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE2);
-	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+	block_manager.meshes.reflectivityAndAbsorptionTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE5);
-	blocks.meshes.ditherTexture.bind();
+	block_manager.meshes.ditherTexture.bind();
 	reflectionCubeMap.bindTo(4);
 
 	chunk_meshing.quadsDrawn = 0;
@@ -250,9 +250,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	// Rebind block textures back to their original slots
 	c.glActiveTexture(c.GL_TEXTURE0);
-	blocks.meshes.blockTextureArray.bind();
+	block_manager.meshes.blockTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
-	blocks.meshes.emissionTextureArray.bind();
+	block_manager.meshes.emissionTextureArray.bind();
 
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
@@ -297,15 +297,15 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
-	if(!blocks.meshes.hasFog(playerBlock)) {
+	if(!block_manager.meshes.hasFog(playerBlock)) {
 		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
 		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
 	} else {
-		const fogColor = blocks.meshes.fogColor(playerBlock);
+		const fogColor = block_manager.meshes.fogColor(playerBlock);
 		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
-		c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+		c.glUniform1f(deferredUniforms.@"fog.density", block_manager.meshes.fogDensity(playerBlock));
 		c.glUniform1f(deferredUniforms.@"fog.fogLower", 1e10);
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", 1e10);
 	}
@@ -391,20 +391,20 @@ const Bloom = struct { // MARK: Bloom
 		colorExtractAndDownsamplePipeline.deinit();
 	}
 
-	fn extractImageDataAndDownsample(playerBlock: blocks.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
+	fn extractImageDataAndDownsample(playerBlock: block_manager.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
 		colorExtractAndDownsamplePipeline.bind(null);
 		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
-		if(!blocks.meshes.hasFog(playerBlock)) {
+		if(!block_manager.meshes.hasFog(playerBlock)) {
 			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
 		} else {
-			const fogColor = blocks.meshes.fogColor(playerBlock);
+			const fogColor = block_manager.meshes.fogColor(playerBlock);
 			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
-			c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+			c.glUniform1f(colorExtractUniforms.@"fog.density", block_manager.meshes.fogDensity(playerBlock));
 			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", 1e10);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", 1e10);
 		}
@@ -435,7 +435,7 @@ const Bloom = struct { // MARK: Bloom
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
+	fn render(currentWidth: u31, currentHeight: u31, playerBlock: block_manager.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
@@ -971,7 +971,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// TODO: Test entities
 	}
 
-	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
+	fn canPlaceBlock(pos: Vec3i, block: main.block_manager.Block) bool {
 		if(main.game.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
 		}
@@ -986,7 +986,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				switch(item) {
 					.baseItem => |baseItem| {
 						if(baseItem.block()) |itemBlock| {
-							const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
+							const rotationMode = block_manager.Block.mode(.{.typ = itemBlock, .data = 0});
 							var neighborDir = Vec3i{0, 0, 0};
 							// Check if stuff can be added to the block itself:
 							if(itemBlock == block.typ) {
@@ -1034,7 +1034,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						}
 					},
 					.tool => |tool| {
-						_ = tool; // TODO: Tools might change existing blocks.
+						_ = tool; // TODO: Tools might change existing block_manager.
 					},
 				}
 			}
@@ -1115,7 +1115,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: block_manager.Block, newBlock: block_manager.Block) void {
 		main.items.Inventory.Sync.ClientSide.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source, .slot = slot},

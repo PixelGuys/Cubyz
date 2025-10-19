@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
+const block_manager = main.block_manager;
 const ServerChunk = main.chunk.ServerChunk;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
@@ -78,7 +78,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
-	block: main.blocks.Block,
+	block: main.block_manager.Block,
 	minDistance: f64,
 	maxDistance: f64,
 	minOffset: f64,
@@ -92,7 +92,7 @@ const Stripe = struct { // MARK: Stripe
 			dir = main.vec.normalize(dir.?);
 		}
 
-		const block: main.blocks.Block = blocks.parseBlock(parameters.get([]const u8, "block", ""));
+		const block: main.block_manager.Block = block_manager.parseBlock(parameters.get([]const u8, "block", ""));
 
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
@@ -294,7 +294,7 @@ pub const Biome = struct { // MARK: Biome
 	crystals: u32,
 	/// How much of the surface structure should be eroded depending on the slope.
 	soilCreep: f32,
-	stoneBlock: main.blocks.Block,
+	stoneBlock: main.block_manager.Block,
 	fogLower: f32,
 	fogHigher: f32,
 	fogDensity: f32,
@@ -326,7 +326,7 @@ pub const Biome = struct { // MARK: Biome
 			.isCave = zon.get(bool, "isCave", false),
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
-			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate")),
+			.stoneBlock = block_manager.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
 			.skyColor = blk: {
 				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
@@ -427,7 +427,7 @@ pub const Biome = struct { // MARK: Biome
 /// Stores the vertical ground structure of a biome from top to bottom.
 pub const BlockStructure = struct { // MARK: BlockStructure
 	pub const BlockStack = struct {
-		block: main.blocks.Block = .{.typ = 0, .data = 0},
+		block: main.block_manager.Block = .{.typ = 0, .data = 0},
 		min: u31 = 0,
 		max: u31 = 0,
 
@@ -452,7 +452,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 				self.min = 1;
 				self.max = 1;
 			}
-			self.block = blocks.parseBlock(blockId);
+			self.block = block_manager.parseBlock(blockId);
 		}
 	};
 	structure: []BlockStack,

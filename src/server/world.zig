@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const Cache = main.utils.Cache;
 const chunk = main.chunk;
 const ChunkPosition = chunk.ChunkPosition;

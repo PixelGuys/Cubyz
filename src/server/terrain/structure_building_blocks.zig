@@ -8,7 +8,7 @@ const List = main.List;
 const ListUnmanaged = main.ListUnmanaged;
 const AliasTable = main.utils.AliasTable;
 const Neighbor = main.chunk.Neighbor;
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Assets = main.assets.Assets;
@@ -400,7 +400,7 @@ pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 	blueprintList.resize(arenaAllocator, blueprints.count());
 	blueprintMap.ensureTotalCapacity(arenaAllocator.allocator, blueprints.count()) catch unreachable;
 
-	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
+	originBlockNumericId = main.block_manager.parseBlock(originBlockStringId).typ;
 	std.debug.assert(originBlockNumericId != 0);
 
 	var iterator = blueprints.iterator();
@@ -410,7 +410,7 @@ pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 
 		const stringId = entry.key_ptr.*;
 
-		// Rotated copies need to be made before initializing BlueprintEntry as to removes origin and child blocks.
+		// Rotated copies need to be made before initializing BlueprintEntry as to removes origin and child block_manager.
 		const blueprint0 = Blueprint.load(arenaAllocator, entry.value_ptr.*) catch |err| {
 			std.log.err("Could not load blueprint '{s}' ({s})", .{stringId, @errorName(err)});
 			continue;

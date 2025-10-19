@@ -85,7 +85,7 @@ fn initContent() void {
 		if(searchString.len > 1 and searchString[0] == '.') {
 			const tag = searchString[1..];
 			while(itemIterator.next()) |item| {
-				if(hasMatchingTag(item.tags(), tag) or (item.block() != null and hasMatchingTag((main.blocks.Block{.typ = item.block().?, .data = undefined}).blockTags(), tag))) {
+				if(hasMatchingTag(item.tags(), tag) or (item.block() != null and hasMatchingTag((main.block_manager.Block{.typ = item.block().?, .data = undefined}).blockTags(), tag))) {
 					items.append(Item{.baseItem = item.*});
 				}
 			}

@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -54,7 +54,7 @@ pub fn createBlockModel(block: Block, modeData: *u16, zon: ZonElement) ModelInde
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(@min(block.data, block.modeData() - 1));
+	return block_manager.meshes.modelIndexStart(block).add(@min(block.data, block.modeData() - 1));
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {

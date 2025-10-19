@@ -5,8 +5,9 @@ pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
-pub const block_entity = @import("block_entity.zig");
-pub const blocks = @import("blocks.zig");
+pub const block_entity = @import("blocks/block_entity.zig");
+pub const block_manager = @import("blocks/block_manager.zig");
+pub const block_props = @import("blocks/block_props.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
@@ -644,11 +645,11 @@ pub fn main() void { // MARK: main()
 	block_entity.init();
 	defer block_entity.deinit();
 
-	blocks.tickFunctions = .init();
-	defer blocks.tickFunctions.deinit();
+	block_props.tickFunctions = .init();
+	defer block_props.tickFunctions.deinit();
 
-	blocks.touchFunctions = .init();
-	defer blocks.touchFunctions.deinit();
+	block_props.touchFunctions = .init();
+	defer block_manager.deinit();
 
 	models.init();
 	defer models.deinit();
@@ -665,8 +666,8 @@ pub fn main() void { // MARK: main()
 	assets.init();
 	defer assets.deinit();
 
-	blocks.meshes.init();
-	defer blocks.meshes.deinit();
+	block_manager.meshes.init();
+	defer block_manager.meshes.deinit();
 
 	renderer.init();
 	defer renderer.deinit();

@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const main = @import("main.zig");
-const Block = main.blocks.Block;
+const main = @import("main");
+const Block = main.block_manager.Block;
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
@@ -296,7 +296,7 @@ pub const BlockEntityTypes = struct {
 			text: []const u8,
 			renderedTexture: ?main.graphics.Texture = null,
 			blockPos: Vec3i,
-			block: main.blocks.Block,
+			block: main.block_manager.Block,
 
 			fn deinit(self: @This()) void {
 				main.globalAllocator.free(self.text);
@@ -519,8 +519,8 @@ pub const BlockEntityTypes = struct {
 			c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 
 			outer: for(StorageClient.storage.dense.items) |signData| {
-				if(main.blocks.meshes.model(signData.block).model().internalQuads.len == 0) continue;
-				const quad = main.blocks.meshes.model(signData.block).model().internalQuads[0];
+				if(main.block_manager.meshes.model(signData.block).model().internalQuads.len == 0) continue;
+				const quad = main.block_manager.meshes.model(signData.block).model().internalQuads[0];
 
 				signData.renderedTexture.?.bindTo(0);
 

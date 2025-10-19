@@ -31,7 +31,7 @@ pub fn init(parameters: ZonElement) void {
 	// Find all the glow crystal ores:
 	inline for(crystalColor[0..], glowCrystals[0..]) |color, *block| {
 		const oreID = "cubyz:glow_crystal/" ++ color;
-		block.* = main.blocks.getTypeById(oreID);
+		block.* = main.block_manager.getTypeById(oreID);
 	}
 }
 
@@ -101,7 +101,7 @@ fn considerCrystal(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, seed:
 						const dist = distSqr(@as(f32, @floatFromInt(x3)) - x2, @as(f32, @floatFromInt(y3)) - y2, @as(f32, @floatFromInt(z3)) - z2);
 						if(dist < size*size) {
 							if(x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width and z3 >= 0 and z3 < chunk.super.width) {
-								const block: main.blocks.Block = chunk.getBlock(x3, y3, z3);
+								const block: main.block_manager.Block = chunk.getBlock(x3, y3, z3);
 								if(block.typ == 0 or block.degradable()) {
 									chunk.updateBlockInGeneration(x3, y3, z3, .{.typ = typ, .data = 0});
 								}

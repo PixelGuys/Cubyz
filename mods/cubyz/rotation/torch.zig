@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -94,7 +94,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(@as(u5, @truncate(block.data)) -| 1);
+	return block_manager.meshes.modelIndexStart(block).add(@as(u5, @truncate(block.data)) -| 1);
 }
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
@@ -122,7 +122,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, _: bool) bool {
 	if(neighbor == null) return false;
-	const neighborModel = blocks.meshes.model(neighborBlock).model();
+	const neighborModel = block_manager.meshes.model(neighborBlock).model();
 	const neighborSupport = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.?.reverse().toInt()].len != 0;
 	if(!neighborSupport) return false;
 	var data: TorchData = @bitCast(@as(u5, @truncate(currentData.data)));
@@ -140,7 +140,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeD
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-	const neighborModel = blocks.meshes.model(neighborBlock).model();
+	const neighborModel = block_manager.meshes.model(neighborBlock).model();
 	const neighborSupport = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
 	var currentData: TorchData = @bitCast(@as(u5, @truncate(block.data)));
 	switch(neighbor) {
@@ -173,7 +173,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 	var resultBit: u16 = 0;
 	for([_]u16{1, 2, 4, 8, 16}) |bit| {
 		if(block.data & bit != 0) {
-			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(bit - 1);
+			const modelIndex: ModelIndex = block_manager.meshes.modelIndexStart(block).add(bit - 1);
 			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or intersection.distance < result.?.distance) {
 					result = intersection;

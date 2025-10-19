@@ -7,7 +7,7 @@ const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const Tag = main.Tag;
 const Recipe = items.Recipe;
 const BaseItemIndex = items.BaseItemIndex;
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 
 const Segment = union(enum) {literal: []const u8, symbol: []const u8};
 

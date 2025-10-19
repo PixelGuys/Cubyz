@@ -4,7 +4,7 @@ const main = @import("main");
 const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
 
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const Blueprint = main.blueprint.Blueprint;
 const Pattern = main.blueprint.Pattern;
 

@@ -7,7 +7,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const Array3D = main.utils.Array3D;
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
 const ServerChunk = main.chunk.ServerChunk;
@@ -245,7 +245,7 @@ pub const Blueprint = struct {
 		var blueprintIdToGameIdMap = allocator.alloc(u16, palette.len);
 
 		for(palette, 0..) |blockName, blueprintBlockId| {
-			const gameBlockId = main.blocks.parseBlock(blockName).typ;
+			const gameBlockId = main.block_manager.parseBlock(blockName).typ;
 			blueprintIdToGameIdMap[blueprintBlockId] = gameBlockId;
 		}
 		return blueprintIdToGameIdMap;
@@ -362,8 +362,8 @@ pub const Pattern = struct {
 				if(weight <= 0) return error.@"Weight must be greater than 0";
 			}
 
-			_ = main.blocks.getBlockById(blockId) catch return error.@"Block not found";
-			const block = main.blocks.parseBlock(blockId);
+			_ = main.block_manager.getBlockById(blockId) catch return error.@"Block not found";
+			const block = main.block_manager.parseBlock(blockId);
 
 			totalWeight += weight;
 			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = weight});
@@ -515,8 +515,8 @@ pub const Mask = struct {
 
 fn parseBlockLike(block: []const u8) error{DataParsingFailed, IdParsingFailed}!Mask.Entry.Inner {
 	if(@import("builtin").is_test) return try Test.parseBlockLikeTest(block);
-	const typ = main.blocks.getBlockById(block) catch return error.IdParsingFailed;
-	const dataNullable = main.blocks.getBlockData(block) catch return error.DataParsingFailed;
+	const typ = main.block_manager.getBlockById(block) catch return error.IdParsingFailed;
+	const dataNullable = main.block_manager.getBlockData(block) catch return error.DataParsingFailed;
 	if(dataNullable) |data| return .{.block = .{.typ = typ, .data = data}};
 	return .{.blockType = typ};
 }

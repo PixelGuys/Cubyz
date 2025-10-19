@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -121,7 +121,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(@as(u6, @truncate(block.data)) -| 1);
+	return block_manager.meshes.modelIndexStart(block).add(@as(u6, @truncate(block.data)) -| 1);
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, _: ?Neighbor, currentData: *Block, neighbor: Block, _: bool) bool {
@@ -155,7 +155,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 	var resultBit: u16 = 0;
 	for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
 		if(block.data & bit != 0) {
-			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(bit - 1);
+			const modelIndex: ModelIndex = block_manager.meshes.modelIndexStart(block).add(bit - 1);
 			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or result.?.distance > intersection.distance) {
 					result = intersection;

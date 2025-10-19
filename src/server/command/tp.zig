@@ -60,7 +60,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				stepsRemaining = dirChanges/2;
 			}
 		}
-		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
+		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 block_manager.", .{});
 		return;
 	}
 	var x: ?f64 = null;

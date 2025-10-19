@@ -7,12 +7,12 @@ const Vec3i = vec.Vec3i;
 
 const copy = @import("copy.zig");
 
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const Blueprint = main.blueprint.Blueprint;
 
 pub const description =
 	\\Paste clipboard content to current player position.
-	\\'-v' - Enable preserving void blocks. By default, void blocks are not preserved.
+	\\'-v' - Enable preserving void block_manager. By default, void blocks are not preserved.
 ;
 pub const usage = "/paste [-v]";
 

@@ -19,7 +19,7 @@ pub const generationMode = .floor;
 
 const GroundPatch = @This();
 
-block: main.blocks.Block,
+block: main.block_manager.Block,
 width: f32,
 variation: f32,
 depth: i32,
@@ -28,7 +28,7 @@ smoothness: f32,
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *GroundPatch {
 	const self = arena.create(GroundPatch);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
+		.block = main.block_manager.parseBlock(parameters.get([]const u8, "block", "")),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.depth = parameters.get(i32, "depth", 2),

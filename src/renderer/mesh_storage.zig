@@ -2,7 +2,7 @@ const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const main = @import("main");
-const blocks = main.blocks;
+const block_manager = main.block_manager;
 const chunk = main.chunk;
 const game = main.game;
 const network = main.network;
@@ -48,10 +48,10 @@ pub const BlockUpdate = struct {
 	x: i32,
 	y: i32,
 	z: i32,
-	newBlock: blocks.Block,
+	newBlock: block_manager.Block,
 	blockEntityData: []const u8,
 
-	pub fn init(pos: Vec3i, block: blocks.Block, blockEntityData: []const u8) BlockUpdate {
+	pub fn init(pos: Vec3i, block: block_manager.Block, blockEntityData: []const u8) BlockUpdate {
 		return .{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = blockEntityData};
 	}
 
@@ -173,7 +173,7 @@ pub fn getLightMapPiece(x: i32, y: i32, voxelSize: u31) ?*LightMap.LightMapFragm
 	return getMapPiecePointer(x, y, voxelSize).load(.acquire);
 }
 
-pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
+pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?block_manager.Block {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	const mesh = node.mesh.load(.acquire) orelse return null;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
@@ -200,7 +200,7 @@ pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
 }
 
-pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
+pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) block_manager.Block {
 	var lod: u5 = 0;
 	while(lod <= settings.highestLod) : (lod += 1) {
 		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod});
@@ -208,7 +208,7 @@ pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask << lod, y & chunk.chunkMask << lod, z & chunk.chunkMask << lod);
 		return block;
 	}
-	return blocks.Block{.typ = 0, .data = 0};
+	return block_manager.Block{.typ = 0, .data = 0};
 }
 
 pub fn getMesh(pos: chunk.ChunkPosition) ?*chunk_meshing.ChunkMesh {
@@ -916,11 +916,11 @@ pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
 // MARK: Block breaking animation
 
 pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
-	const animationFrame: usize = @intFromFloat(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));
-	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
+	const animationFrame: usize = @intFromFloat(breakingProgress*@as(f32, @floatFromInt(main.block_manager.meshes.blockBreakingTextures.items.len)));
+	const texture = main.block_manager.meshes.blockBreakingTextures.items[animationFrame];
 
 	const block = getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;
-	const model = main.blocks.meshes.model(block).model();
+	const model = main.block_manager.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
 		addBreakingAnimationFace(pos, quadIndex, texture, null, block.transparent());
@@ -981,7 +981,7 @@ fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, nei
 
 pub fn removeBreakingAnimation(pos: Vec3i) void {
 	const block = getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;
-	const model = main.blocks.meshes.model(block).model();
+	const model = main.block_manager.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
 		removeBreakingAnimationFace(pos, quadIndex, null);

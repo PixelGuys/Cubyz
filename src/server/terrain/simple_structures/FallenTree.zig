@@ -27,8 +27,8 @@ deltaHeight: u31,
 pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *FallenTree {
 	const self = arena.create(FallenTree);
 	self.* = .{
-		.woodBlock = main.blocks.getTypeById(parameters.get([]const u8, "log", "cubyz:oak_log")),
-		.topWoodBlock = main.blocks.getTypeById(parameters.get([]const u8, "top", "cubyz:oak_top")),
+		.woodBlock = main.block_manager.getTypeById(parameters.get([]const u8, "log", "cubyz:oak_log")),
+		.topWoodBlock = main.block_manager.getTypeById(parameters.get([]const u8, "top", "cubyz:oak_top")),
 		.height0 = parameters.get(u32, "height", 6),
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
 	};

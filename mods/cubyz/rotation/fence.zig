@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const blocks = main.blocks;
-const Block = blocks.Block;
+const block_manager = main.block_manager;
+const Block = block_manager.Block;
 const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
@@ -100,13 +100,13 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 }
 
 pub fn model(block: Block) ModelIndex {
-	return blocks.meshes.modelIndexStart(block).add(block.data & 15);
+	return block_manager.meshes.modelIndexStart(block).add(block.data & 15);
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-	const blockBaseModelIndex = blocks.meshes.modelIndexStart(block.*);
-	const neighborBaseModelIndex = blocks.meshes.modelIndexStart(neighborBlock);
-	const neighborModel = blocks.meshes.model(neighborBlock).model();
+	const blockBaseModelIndex = block_manager.meshes.modelIndexStart(block.*);
+	const neighborBaseModelIndex = block_manager.meshes.modelIndexStart(neighborBlock);
+	const neighborModel = block_manager.meshes.model(neighborBlock).model();
 	const targetVal = !neighborBlock.replacable() and !neighborBlock.transparent() and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.reverse().toInt()]);
 	var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
 	switch(neighbor) {

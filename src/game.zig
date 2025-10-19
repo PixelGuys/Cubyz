@@ -23,7 +23,7 @@ const graphics = @import("graphics.zig");
 const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
-const Block = main.blocks.Block;
+const Block = main.block_manager.Block;
 const physics = main.physics;
 const KeyBoard = main.KeyBoard;
 
@@ -69,7 +69,7 @@ pub const collision = struct {
 
 	const Direction = enum(u2) {x = 0, y = 1, z = 2};
 
-	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct {box: Box, dist: f64} {
+	pub fn collideWithBlock(block: main.block_manager.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct {box: Box, dist: f64} {
 		var resultBox: ?Box = null;
 		var minDistance: f64 = std.math.floatMax(f64);
 		if(block.collide()) {
@@ -272,8 +272,8 @@ pub const collision = struct {
 
 					if(_block) |block| {
 						const collisionBox: Box = .{ // TODO: Check all AABBs individually
-							.min = totalBox.min + main.blocks.meshes.model(block).model().min,
-							.max = totalBox.min + main.blocks.meshes.model(block).model().max,
+							.min = totalBox.min + main.block_manager.meshes.model(block).model().min,
+							.max = totalBox.min + main.block_manager.meshes.model(block).model().max,
 						};
 						const filledVolume = @min(gridVolume, overlapVolume(collisionBox, totalBox));
 						const emptyVolume = gridVolume - filledVolume;
@@ -526,7 +526,7 @@ pub const Player = struct { // MARK: Player
 			if(!main.KeyBoard.key("shift").pressed) {
 				if(main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
 			}
-			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
+			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.block_manager.Block{.typ = 0, .data = 0};
 			const gui = block.gui();
 			if(gui.len != 0 and !main.KeyBoard.key("shift").pressed) {
 				main.gui.openWindow(gui);
@@ -630,7 +630,7 @@ pub const World = struct { // MARK: World
 
 		main.Window.setMouseGrabbed(true);
 
-		main.blocks.meshes.generateTextureArray();
+		main.block_manager.meshes.generateTextureArray();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 	}

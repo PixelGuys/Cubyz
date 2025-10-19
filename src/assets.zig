@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const blocks_zig = @import("blocks.zig");
+const blocks_zig = @import("blocks/block_manager.zig");
 const items_zig = @import("items.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
@@ -53,7 +53,7 @@ pub const Assets = struct {
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
-		self.blocks.deinit(allocator.allocator);
+		self.block_manager.deinit(allocator.allocator);
 		self.blockMigrations.deinit(allocator.allocator);
 		self.items.deinit(allocator.allocator);
 		self.itemMigrations.deinit(allocator.allocator);
@@ -528,7 +528,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// Items:
 	// First from the palette to enforce ID values.
 	for(itemPalette.palette.items) |stringId| {
-		// Some items are created automatically from blocks.
+		// Some items are created automatically from block_manager.
 		if(worldAssets.blocks.get(stringId)) |zon| {
 			if(!zon.get(bool, "hasItem", true)) continue;
 			try registerItem(assetFolder, stringId, zon.getChild("item"));
@@ -570,7 +570,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		itemPalette.add(stringId);
 	}
 
-	// After we have registered all items and all blocks, we can assign block references to those that come from blocks.
+	// After we have registered all items and all blocks, we can assign block references to those that come from block_manager.
 	for(blockPalette.palette.items) |stringId| {
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
@@ -640,7 +640,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if(!main.files.cwd().hasDir(path)) continue;
-			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
+			main.utils.file_monitor.listenToPath(path, main.block_manager.meshes.reloadTextures, 0);
 		}
 	}
 

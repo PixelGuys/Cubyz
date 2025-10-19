@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const blocks = @import("blocks.zig");
-const Block = blocks.Block;
+const block_manager = @import("blocks/block_manager.zig");
+const Block = block_manager.Block;
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const main = @import("main");
@@ -35,7 +35,7 @@ pub const Degrees = enum(u2) {
 pub const RotationMode = struct { // MARK: RotationMode
 	pub const DefaultFunctions = struct {
 		pub fn model(block: Block) ModelIndex {
-			return blocks.meshes.modelIndexStart(block);
+			return block_manager.meshes.modelIndexStart(block);
 		}
 		pub fn rotateZ(data: u16, _: Degrees) u16 {
 			return data;
@@ -53,7 +53,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			return false;
 		}
 		pub fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
+			return rayModelIntersection(block_manager.meshes.model(block), relativePlayerPos, playerDir);
 		}
 		pub fn rayModelIntersection(modelIndex: ModelIndex, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
