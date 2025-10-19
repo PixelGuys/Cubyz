@@ -2026,7 +2026,7 @@ fn update(self: Inventory) void {
 	defer if(self.callbacks.onUpdateCallback) |cb| cb(self.source);
 	if(self.type == .workbench) {
 		self._items[self._items.len - 1].deinit();
-		self._items[self._items.len - 1].clear();
+		self._items[self._items.len - 1] = .{};
 		var availableItems: [25]?BaseItemIndex = undefined;
 		const slotInfos = self.type.workbench.slotInfos();
 
@@ -2146,13 +2146,13 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	var remainingCount = reader.readVarInt(u32) catch 0;
 	for(self._items) |*stack| {
 		if(remainingCount == 0) {
-			stack.clear();
+			stack.* = .{};
 			continue;
 		}
 		remainingCount -= 1;
 		stack.* = ItemStack.fromBytes(reader) catch |err| {
 			std.log.err("Failed to read item stack from bytes: {s}", .{@errorName(err)});
-			stack.clear();
+			stack.* = .{};
 			continue;
 		};
 	}
