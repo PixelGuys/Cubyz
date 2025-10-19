@@ -107,7 +107,7 @@ pub fn onOpen() void {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
 
-	inline for (std.meta.fields(Window.KeyGroup)) |keyGroupField| {
+	inline for (std.meta.fields(main.KeyGroup)) |keyGroupField| {
 		const groupKeys: []*Window.Key = @field(&main.KeyBoard.keys, keyGroupField.name);
 		const groupDisplayLabel = Label.init(.{0, 0}, 320, keyGroupField, .center);
 		groupDisplayLabel.alpha = 0.9;
