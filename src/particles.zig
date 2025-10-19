@@ -217,8 +217,9 @@ pub const ParticleSystem = struct {
 				particlesLocal[i] = particlesLocal[particleCount];
 				continue;
 			}
-
+		
 			var posAndRotation = particle.posAndRotationVec();
+			const prevPos = Vec3d{posAndRotation[0], posAndRotation[1], posAndRotation[2]};
 			var rot = posAndRotation[3];
 			const rotVel = particleLocal.velAndRotationVel[3];
 			rot += rotVel*deltaTime;
@@ -261,21 +262,29 @@ pub const ParticleSystem = struct {
 			particle.posAndRotation[3] = rot;
 			particleLocal.velAndRotationVel[3] = rotVel;
 
-			const positionf64 = @as(Vec4d, @floatCast(posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
-			const intPos: vec.Vec4i = @intFromFloat(@floor(positionf64));
-			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-			const compressedLight =
-				@as(u32, light[0] >> 3) << 25 |
-				@as(u32, light[1] >> 3) << 20 |
-				@as(u32, light[2] >> 3) << 15 |
-				@as(u32, light[3] >> 3) << 10 |
-				@as(u32, light[4] >> 3) << 5 |
-				@as(u32, light[5] >> 3);
-			particle.light = compressedLight;
+			const newPos = Vec3d{posAndRotation[0], posAndRotation[1], posAndRotation[2]};
+			if (@reduce(.Or, @floor(prevPos) != @floor(newPos))) {
+				const worldPos = @as(Vec3d, @floatCast(newPos)) + playerPos;
+				particle.light = getCompressedLight(worldPos);
+			}
 
 			i += 1;
 		}
 		previousPlayerPos = playerPos;
+	}
+
+	fn getCompressedLight(worldPos: Vec3d) u32 {
+		const intPos: vec.Vec3i = @intFromFloat(@floor(worldPos));
+		const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
+		const compressedLight =
+			@as(u32, light[0] >> 3) << 25 |
+			@as(u32, light[1] >> 3) << 20 |
+			@as(u32, light[2] >> 3) << 15 |
+			@as(u32, light[3] >> 3) << 10 |
+			@as(u32, light[4] >> 3) << 5 |
+			@as(u32, light[5] >> 3);
+
+		return compressedLight;
 	}
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool) void {
@@ -285,6 +294,7 @@ pub const ParticleSystem = struct {
 		particles[particleCount] = Particle{
 			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
 			.typ = typ,
+			.light = getCompressedLight(pos),
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax),
