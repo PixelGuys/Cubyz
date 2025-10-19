@@ -2145,16 +2145,19 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 	pub fn init() TextureArray {
 		var self: TextureArray = undefined;
-		c.glGenTextures(1, &self.textureID);
+		if(!main.settings.launchConfig.headlessServer)
+			c.glGenTextures(1, &self.textureID);
 		return self;
 	}
 
 	pub fn deinit(self: TextureArray) void {
-		c.glDeleteTextures(1, &self.textureID);
+		if(!main.settings.launchConfig.headlessServer)
+			c.glDeleteTextures(1, &self.textureID);
 	}
 
 	pub fn bind(self: TextureArray) void {
-		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
+		if(!main.settings.launchConfig.headlessServer)
+			c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
 	}
 
 	fn lodColorInterpolation(colors: [4]Color, alphaCorrection: bool) Color {
