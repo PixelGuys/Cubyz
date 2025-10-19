@@ -361,7 +361,7 @@ pub const Biome = struct { // MARK: Biome
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 			.waterProperties = .{
 				.waterLevel = zon.get(i32, "waterLevel", 0),
-				.waterBlock = blocks.parseBlock(zon.get([]const u8, "waterBlock", "cubyz:water"))
+				.waterBlock = blocks.parseBlock(zon.get([]const u8, "waterBlock", "cubyz:water")),
 			},
 		};
 		if(self.minHeight > self.maxHeight) {
