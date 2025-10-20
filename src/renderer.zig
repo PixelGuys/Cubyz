@@ -1098,6 +1098,28 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingProgress += (currentBlockProgress - 1)*block.blockHealth()/damage*currentSwingTime;
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
+
+						// Spawn block break particles
+						const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
+						const particleCount: u32 = 8;
+						std.log.info("Breaking block at pos {d}, spawning {} particles", .{particlePos, particleCount});
+
+						// Spawn locally on client
+						const emitter = particles.Emitter.init("cubyz:poof", true);
+						emitter.spawnParticles(particleCount, particles.Emitter.SpawnCube, .{
+							.mode = .spread,
+							.position = particlePos,
+							.size = Vec3f{0.5, 0.5, 0.5},
+						});
+
+						// Also send to server for multiplayer
+						main.network.Protocols.genericUpdate.sendParticles(
+							main.game.world.?.conn,
+							"cubyz:poof",
+							particlePos,
+							true,
+							particleCount
+						);
 					}
 				} else {
 					main.items.Inventory.Sync.ClientSide.mutex.unlock();
@@ -1111,6 +1133,30 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			if(newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
+
+				// Spawn block break particles (also in creative mode)
+				if(newBlock.typ == 0 or newBlock.hasTag(.air)) { // Block was completely broken
+					const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
+					const particleCount: u32 = 8;
+					std.log.info("Breaking block (creative/partial) at pos {d}, spawning {} particles", .{particlePos, particleCount});
+
+					// Spawn locally on client
+					const emitter = particles.Emitter.init("cubyz:poof", true);
+					emitter.spawnParticles(particleCount, particles.Emitter.SpawnCube, .{
+						.mode = .spread,
+						.position = particlePos,
+						.size = Vec3f{0.5, 0.5, 0.5},
+					});
+
+					// Also send to server for multiplayer
+					main.network.Protocols.genericUpdate.sendParticles(
+						main.game.world.?.conn,
+						"cubyz:poof",
+						particlePos,
+						true,
+						particleCount
+					);
+				}
 			}
 		}
 	}
