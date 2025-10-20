@@ -253,6 +253,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.blockTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE2);
+	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
 
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
