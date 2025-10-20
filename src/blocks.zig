@@ -792,6 +792,22 @@ pub const meshes = struct { // MARK: meshes
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		emissionTextureArray.generate(emissionTextures.items, true, false);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+
+		// Register all block textures as particles for block break effects
+		const blockCount = @import("blocks.zig").size;
+		for(_id[0..blockCount], 0..) |blockId, i| {
+			if(blockId.len > 0) {
+				// Check if block has air tag (skip air blocks)
+				const block: Block = .{.typ = @intCast(i), .data = 0};
+				if(!block.hasTag(.air)) {
+					// Use the first texture (index 0) of the block
+					const textureIdx = textureIndices[i][0];
+					if(textureIdx < blockTextures.items.len) {
+						main.particles.ParticleManager.registerBlockTextureAsParticle(blockId, blockTextures.items[textureIdx]);
+					}
+				}
+			}
+		}
 		const reflectivityAndAbsorptionTextures = main.stackAllocator.alloc(Image, reflectivityTextures.items.len);
 		defer main.stackAllocator.free(reflectivityAndAbsorptionTextures);
 		defer for(reflectivityAndAbsorptionTextures) |texture| {

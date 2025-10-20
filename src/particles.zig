@@ -140,6 +140,22 @@ pub const ParticleManager = struct {
 		return result;
 	}
 
+	pub fn registerBlockTextureAsParticle(blockId: []const u8, blockTexture: main.graphics.Image) void {
+		const particleType = ParticleType{
+			.frameCount = 1,
+			.startFrame = @floatFromInt(textures.items.len),
+			.size = 0.25, // Smaller than default particles
+		};
+
+		const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
+		particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
+		types.append(particleType);
+		textures.append(blockTexture);
+		emissionTextures.append(main.graphics.Image.emptyImage);
+
+		std.log.debug("Registered block particle: {s}", .{particleId});
+	}
+
 	pub fn generateTextureArray() void {
 		textureArray.generate(textures.items, true, true);
 		emissionTextureArray.generate(emissionTextures.items, true, false);

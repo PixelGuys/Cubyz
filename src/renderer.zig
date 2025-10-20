@@ -1099,13 +1099,19 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 
-						// Spawn block break particles
+						// Spawn block break particles using the block's texture
 						const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 						const particleCount: u32 = 8;
-						std.log.info("Breaking block at pos {d}, spawning {} particles", .{particlePos, particleCount});
+
+						// Get particle ID from block ID
+						const blockId = block.id();
+						const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
+						defer main.stackAllocator.free(particleId);
+
+						std.log.info("Breaking block {s} at pos {d}, spawning {} particles", .{blockId, particlePos, particleCount});
 
 						// Spawn locally on client
-						const emitter = particles.Emitter.init("cubyz:poof", true);
+						const emitter = particles.Emitter.init(particleId, true);
 						emitter.spawnParticles(particleCount, particles.Emitter.SpawnCube, .{
 							.mode = .spread,
 							.position = particlePos,
@@ -1115,7 +1121,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						// Also send to server for multiplayer
 						main.network.Protocols.genericUpdate.sendParticles(
 							main.game.world.?.conn,
-							"cubyz:poof",
+							particleId,
 							particlePos,
 							true,
 							particleCount
@@ -1138,10 +1144,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if(newBlock.typ == 0 or newBlock.hasTag(.air)) { // Block was completely broken
 					const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 					const particleCount: u32 = 8;
-					std.log.info("Breaking block (creative/partial) at pos {d}, spawning {} particles", .{particlePos, particleCount});
+
+					// Get particle ID from block ID
+					const blockId = block.id();
+					const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
+					defer main.stackAllocator.free(particleId);
+
+					std.log.info("Breaking block {s} (creative/partial) at pos {d}, spawning {} particles", .{blockId, particlePos, particleCount});
 
 					// Spawn locally on client
-					const emitter = particles.Emitter.init("cubyz:poof", true);
+					const emitter = particles.Emitter.init(particleId, true);
 					emitter.spawnParticles(particleCount, particles.Emitter.SpawnCube, .{
 						.mode = .spread,
 						.position = particlePos,
@@ -1151,7 +1163,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					// Also send to server for multiplayer
 					main.network.Protocols.genericUpdate.sendParticles(
 						main.game.world.?.conn,
-						"cubyz:poof",
+						particleId,
 						particlePos,
 						true,
 						particleCount
