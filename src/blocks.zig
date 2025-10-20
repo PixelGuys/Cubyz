@@ -803,7 +803,7 @@ pub const meshes = struct { // MARK: meshes
 					if(texId < animation.items.len) {
 						const actualTextureIdx = animation.items[texId].startFrame;
 						if(actualTextureIdx < blockTextures.items.len) {
-							main.particles.ParticleManager.registerBlockTextureAsParticle(blockId, blockTextures.items[actualTextureIdx]);
+							main.particles.ParticleManager.registerBlockTextureAsParticle(blockId, @intCast(actualTextureIdx));
 						}
 					}
 				}

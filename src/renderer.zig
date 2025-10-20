@@ -1102,29 +1102,30 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						// Spawn block break particles
 						const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 						const particleCount: u32 = 8;
-						const numFragments = 4;
 						const blockId = block.id();
+						const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
+						defer main.stackAllocator.free(particleId);
 
-						for(0..particleCount) |i| {
-							const fragmentIdx = i % numFragments;
-							const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
-							defer main.stackAllocator.free(particleId);
+						const emitter = particles.Emitter.init(particleId, true);
+						for(0..particleCount) |_| {
+							const uvX = main.random.nextIntBounded(u16, &main.seed, 4);
+							const uvY = main.random.nextIntBounded(u16, &main.seed, 4);
+							const uvOffset = uvX | (@as(u32, uvY) << 16);
 
-							const emitter = particles.Emitter.init(particleId, true);
-							emitter.spawnParticles(1, particles.Emitter.SpawnCube, .{
+							emitter.spawnParticlesWithUV(1, particles.Emitter.SpawnCube, .{
 								.mode = .spread,
 								.position = particlePos,
 								.size = Vec3f{0.5, 0.5, 0.5},
-							});
-
-							main.network.Protocols.genericUpdate.sendParticles(
-								main.game.world.?.conn,
-								particleId,
-								particlePos,
-								true,
-								1
-							);
+							}, uvOffset);
 						}
+
+						main.network.Protocols.genericUpdate.sendParticles(
+							main.game.world.?.conn,
+							particleId,
+							particlePos,
+							true,
+							particleCount
+						);
 					}
 				} else {
 					main.items.Inventory.Sync.ClientSide.mutex.unlock();
@@ -1142,29 +1143,30 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if(newBlock.typ == 0 or newBlock.hasTag(.air)) {
 					const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 					const particleCount: u32 = 8;
-					const numFragments = 4;
 					const blockId = block.id();
+					const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
+					defer main.stackAllocator.free(particleId);
 
-					for(0..particleCount) |i| {
-						const fragmentIdx = i % numFragments;
-						const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
-						defer main.stackAllocator.free(particleId);
+					const emitter = particles.Emitter.init(particleId, true);
+					for(0..particleCount) |_| {
+						const uvX = main.random.nextIntBounded(u16, &main.seed, 4);
+						const uvY = main.random.nextIntBounded(u16, &main.seed, 4);
+						const uvOffset = uvX | (@as(u32, uvY) << 16);
 
-						const emitter = particles.Emitter.init(particleId, true);
-						emitter.spawnParticles(1, particles.Emitter.SpawnCube, .{
+						emitter.spawnParticlesWithUV(1, particles.Emitter.SpawnCube, .{
 							.mode = .spread,
 							.position = particlePos,
 							.size = Vec3f{0.5, 0.5, 0.5},
-						});
-
-						main.network.Protocols.genericUpdate.sendParticles(
-							main.game.world.?.conn,
-							particleId,
-							particlePos,
-							true,
-							1
-						);
+						}, uvOffset);
 					}
+
+					main.network.Protocols.genericUpdate.sendParticles(
+						main.game.world.?.conn,
+						particleId,
+						particlePos,
+						true,
+						particleCount
+					);
 				}
 			}
 		}

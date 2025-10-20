@@ -140,48 +140,16 @@ pub const ParticleManager = struct {
 		return result;
 	}
 
-	pub fn registerBlockTextureAsParticle(blockId: []const u8, blockTexture: main.graphics.Image) void {
-		const fragmentsPerSide = 4;
-		const fragmentSize = blockTexture.width / fragmentsPerSide;
-		const numFragments = 4;
+	pub fn registerBlockTextureAsParticle(blockId: []const u8, textureIndex: u16) void {
+		const particleType = ParticleType{
+			.frameCount = 1,
+			.startFrame = -@as(f32, @floatFromInt(textureIndex)) - 1, // negative to indicate block texture
+			.size = 0.15,
+		};
 
-		for(0..numFragments) |fragmentIdx| {
-			const gridX = (fragmentIdx * 3) % fragmentsPerSide;
-			const gridY = (fragmentIdx * 2) % fragmentsPerSide;
-			const startX = gridX * fragmentSize;
-			const startY = gridY * fragmentSize;
-
-			const fragmentImageData = arenaAllocator.alloc(main.graphics.Color, fragmentSize * fragmentSize);
-			for(0..fragmentSize) |y| {
-				for(0..fragmentSize) |x| {
-					const srcIdx = (startY + y) * blockTexture.width + (startX + x);
-					const dstIdx = y * fragmentSize + x;
-					if(srcIdx < blockTexture.imageData.len) {
-						fragmentImageData[dstIdx] = blockTexture.imageData[srcIdx];
-					} else {
-						fragmentImageData[dstIdx] = .{.r = 0, .g = 0, .b = 0, .a = 0};
-					}
-				}
-			}
-
-			const fragmentTexture = main.graphics.Image{
-				.width = @intCast(fragmentSize),
-				.height = @intCast(fragmentSize),
-				.imageData = fragmentImageData,
-			};
-
-			const particleType = ParticleType{
-				.frameCount = 1,
-				.startFrame = @floatFromInt(textures.items.len),
-				.size = 0.15,
-			};
-
-			const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
-			particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
-			types.append(particleType);
-			textures.append(fragmentTexture);
-			emissionTextures.append(main.graphics.Image.emptyImage);
-		}
+		const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
+		particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
+		types.append(particleType);
 	}
 
 	pub fn generateTextureArray() void {
@@ -339,12 +307,17 @@ pub const ParticleSystem = struct {
 	}
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool) void {
+		addParticleWithUV(typ, pos, vel, collides, 0);
+	}
+
+	fn addParticleWithUV(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, uvOffset: u32) void {
 		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
 		const rot = if(properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.pi*2 else 0;
 
 		particles[particleCount] = Particle{
 			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
 			.typ = typ,
+			.uvOffset = uvOffset,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax),
@@ -371,6 +344,8 @@ pub const ParticleSystem = struct {
 		ParticleManager.textureArray.bind();
 		c.glActiveTexture(c.GL_TEXTURE1);
 		ParticleManager.emissionTextureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE2);
+		@import("blocks.zig").meshes.blockTextureArray.bind();
 
 		c.glBindVertexArray(chunk_meshing.vao);
 
@@ -495,6 +470,15 @@ pub const Emitter = struct {
 			ParticleSystem.addParticle(self.typ, particlePos, particleVel, self.collides);
 		}
 	}
+
+	pub fn spawnParticlesWithUV(self: Emitter, spawnCount: u32, comptime T: type, spawnRules: T, uvOffset: u32) void {
+		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
+		for(0..count) |_| {
+			const particlePos, const particleVel = spawnRules.spawn();
+
+			ParticleSystem.addParticleWithUV(self.typ, particlePos, particleVel, self.collides, uvOffset);
+		}
+	}
 };
 
 pub const ParticleType = struct {
@@ -508,7 +492,7 @@ pub const Particle = struct {
 	lifeRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
-	// 4 bytes left for use
+	uvOffset: u32 = 0, // packed u16 offsets (x in low 16 bits, y in high 16 bits)
 };
 
 pub const ParticleLocal = struct {

@@ -13,6 +13,7 @@ struct ParticleData {
 	float lifeRatio;
 	uint light;
 	uint type;
+	uint uvOffset;
 };
 layout(std430, binding = 13) restrict readonly buffer _particleData
 {
@@ -78,5 +79,14 @@ void main() {
 	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
 
 	float textureIndex = floor(particle.lifeRatio*particleType.animationFrames + particleType.startFrame);
-	textureCoords = vec3(uvPositions[vertexID], textureIndex);
+
+	// Apply UV offset for block particles (4x4 grid sampling)
+	vec2 baseUV = uvPositions[vertexID];
+	if (particle.uvOffset != 0u) {
+		uint uvOffsetX = particle.uvOffset & 0xFFFFu;
+		uint uvOffsetY = particle.uvOffset >> 16;
+		baseUV = (baseUV + vec2(uvOffsetX, uvOffsetY)) / 4.0;
+	}
+
+	textureCoords = vec3(baseUV, textureIndex);
 }
