@@ -296,10 +296,10 @@ pub const ParticleSystem = struct {
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
 		const lifeTime = properties.lifeTimeMin + (properties.lifeTimeMax - properties.lifeTimeMin) * random.nextFloat(&seed);
-		const drag = properties.dragMin + random.nextFloat(&seed)*properties.dragMax;
-		const density = properties.densityMin + random.nextFloat(&seed)*properties.densityMax;
+		const drag = properties.dragMin + (properties.dragMax - properties.dragMin) * random.nextFloat(&seed);
+		const density = properties.densityMin + (properties.densityMax - properties.densityMin) * random.nextFloat(&seed);
 		const rot = if(properties.randomizeRotation) random.nextFloat(&seed)*std.math.pi*2 else 0;
-		const rotVel = (properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax) * (std.math.pi / 180.0);
+		const rotVel = (properties.rotVelMin + (properties.rotVelMax - properties.rotVelMin) * random.nextFloatSigned(&seed)) * (std.math.pi / 180.0);
 		const color = properties.colorMin + (properties.colorMax - properties.colorMin) * if (properties.randomColorPerChannel)
 			  random.nextFloatVector(3, &seed)
 		else 
