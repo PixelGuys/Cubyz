@@ -1099,17 +1099,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 
-						// Spawn block break particles using the block's texture fragments
+						// Spawn block break particles
 						const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 						const particleCount: u32 = 8;
-						const numFragments = 4; // Must match the value in particles.zig
-
+						const numFragments = 4;
 						const blockId = block.id();
-						std.log.info("Breaking block {s} at pos {d}, spawning {} particles", .{blockId, particlePos, particleCount});
 
-						// Spawn particles with random fragment variations locally on client
 						for(0..particleCount) |i| {
-							const fragmentIdx = i % numFragments; // Cycle through fragments
+							const fragmentIdx = i % numFragments;
 							const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
 							defer main.stackAllocator.free(particleId);
 
@@ -1120,7 +1117,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								.size = Vec3f{0.5, 0.5, 0.5},
 							});
 
-							// Also send to server for multiplayer
 							main.network.Protocols.genericUpdate.sendParticles(
 								main.game.world.?.conn,
 								particleId,
@@ -1143,18 +1139,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 
-				// Spawn block break particles (also in creative mode)
-				if(newBlock.typ == 0 or newBlock.hasTag(.air)) { // Block was completely broken
+				if(newBlock.typ == 0 or newBlock.hasTag(.air)) {
 					const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 					const particleCount: u32 = 8;
-					const numFragments = 4; // Must match the value in particles.zig
-
+					const numFragments = 4;
 					const blockId = block.id();
-					std.log.info("Breaking block {s} (creative/partial) at pos {d}, spawning {} particles", .{blockId, particlePos, particleCount});
 
-					// Spawn particles with random fragment variations locally on client
 					for(0..particleCount) |i| {
-						const fragmentIdx = i % numFragments; // Cycle through fragments
+						const fragmentIdx = i % numFragments;
 						const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
 						defer main.stackAllocator.free(particleId);
 
@@ -1165,7 +1157,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							.size = Vec3f{0.5, 0.5, 0.5},
 						});
 
-						// Also send to server for multiplayer
 						main.network.Protocols.genericUpdate.sendParticles(
 							main.game.world.?.conn,
 							particleId,

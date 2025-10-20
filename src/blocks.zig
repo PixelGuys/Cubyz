@@ -797,13 +797,14 @@ pub const meshes = struct { // MARK: meshes
 		const blockCount = @import("blocks.zig").size;
 		for(_id[0..blockCount], 0..) |blockId, i| {
 			if(blockId.len > 0) {
-				// Check if block has air tag (skip air blocks)
 				const block: Block = .{.typ = @intCast(i), .data = 0};
 				if(!block.hasTag(.air)) {
-					// Use the first texture (index 0) of the block
-					const textureIdx = textureIndices[i][0];
-					if(textureIdx < blockTextures.items.len) {
-						main.particles.ParticleManager.registerBlockTextureAsParticle(blockId, blockTextures.items[textureIdx]);
+					const texId = textureIndex(block, 0);
+					if(texId < animation.items.len) {
+						const actualTextureIdx = animation.items[texId].startFrame;
+						if(actualTextureIdx < blockTextures.items.len) {
+							main.particles.ParticleManager.registerBlockTextureAsParticle(blockId, blockTextures.items[actualTextureIdx]);
+						}
 					}
 				}
 			}

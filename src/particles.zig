@@ -141,23 +141,16 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn registerBlockTextureAsParticle(blockId: []const u8, blockTexture: main.graphics.Image) void {
-		// Create multiple small texture fragments from the block texture (like Minecraft)
-		const fragmentsPerSide = 4; // 4x4 grid = 16 fragments per block texture
+		const fragmentsPerSide = 4;
 		const fragmentSize = blockTexture.width / fragmentsPerSide;
-
-		// We'll create just a few random fragments to keep memory usage down
 		const numFragments = 4;
 
 		for(0..numFragments) |fragmentIdx| {
-			// Pick a random position in the 4x4 grid
-			const gridX = (fragmentIdx * 3) % fragmentsPerSide; // Semi-random distribution
+			const gridX = (fragmentIdx * 3) % fragmentsPerSide;
 			const gridY = (fragmentIdx * 2) % fragmentsPerSide;
-
-			// Extract a small fragment from the block texture
 			const startX = gridX * fragmentSize;
 			const startY = gridY * fragmentSize;
 
-			// Create a new image for this fragment
 			const fragmentImageData = arenaAllocator.alloc(main.graphics.Color, fragmentSize * fragmentSize);
 			for(0..fragmentSize) |y| {
 				for(0..fragmentSize) |x| {
@@ -180,7 +173,7 @@ pub const ParticleManager = struct {
 			const particleType = ParticleType{
 				.frameCount = 1,
 				.startFrame = @floatFromInt(textures.items.len),
-				.size = 0.15, // Small fragment size
+				.size = 0.15,
 			};
 
 			const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
@@ -189,8 +182,6 @@ pub const ParticleManager = struct {
 			textures.append(fragmentTexture);
 			emissionTextures.append(main.graphics.Image.emptyImage);
 		}
-
-		std.log.debug("Registered block particle fragments: {s} ({d} fragments)", .{blockId, numFragments});
 	}
 
 	pub fn generateTextureArray() void {
