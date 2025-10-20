@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:village/path/path_left", .chance = 0.5},
+		.{.id = "cubyz:village/path/path_right", .chance = 0.5},
+	},
+	.children = .{
+		.red = "cubyz:village/path/path_block",
+		.green = "cubyz:village/path/path",
+		.yellow = "cubyz:village/house/any",
+	},
+}
