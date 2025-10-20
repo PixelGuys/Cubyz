@@ -455,28 +455,28 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			var sum: f32 = 0;
 			var weight: f32 = 0;
 			for(0..25) |i| {
-				const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
-				sum += property.weights[i]*material.getProperty(property.source orelse break);
 				weight += property.weights[i];
+			}
+			for(0..25) |i| {
+				const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
+				var divisor: f32 = 1.0;
+				switch(property.method) {
+					.sum => {
+						divisor = weight;
+					},
+					.average => {},
+				}
+				sum += (property.weights[i]/divisor)*material.getProperty(property.source orelse break);
 			}
 
 			if(weight == 0) continue;
-			if(property.method == .sum)
-				std.log.info("sum: {}", .{sum});
 			switch(property.method) {
 				.sum => {},
 				.average => {
 					sum /= weight;
 				},
 			}
-			if(property.method == .average) {
-				std.log.info("average: {}", .{sum});
-			}
 			sum *= property.resultScale;
-			if(property.method == .sum)
-				std.log.info("sum scaled: {}", .{sum});
-			if(property.method == .average)
-				std.log.info("average scaled: {}", .{sum});
 			tool.getProperty(property.destination orelse continue).* += sum;
 		}
 		if(tool.damage < 1) tool.damage = 1/(2 - tool.damage);
