@@ -1110,9 +1110,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 						const emitter = particles.Emitter.init(particleId, true);
 						for(0..particleCount) |_| {
-							const uvX = main.random.nextIntBounded(u16, &main.seed, 4);
-							const uvY = main.random.nextIntBounded(u16, &main.seed, 4);
-							const uvOffset = uvX | (@as(u32, uvY) << 16);
+							const uvX = main.random.nextIntBounded(u16, &main.seed, particles.blockParticleUVGridSize);
+							const uvY = main.random.nextIntBounded(u16, &main.seed, particles.blockParticleUVGridSize);
+							const uvOffset = uvX | (@as(u32, uvY) << 16) | (1 << 31); // Set high bit to indicate UV offset is present
 
 							emitter.spawnParticlesWithUV(1, particles.Emitter.SpawnCube, .{
 								.mode = .spread,
@@ -1151,9 +1151,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 					const emitter = particles.Emitter.init(particleId, true);
 					for(0..particleCount) |_| {
-						const uvX = main.random.nextIntBounded(u16, &main.seed, 4);
-						const uvY = main.random.nextIntBounded(u16, &main.seed, 4);
-						const uvOffset = uvX | (@as(u32, uvY) << 16);
+						const uvX = main.random.nextIntBounded(u16, &main.seed, particles.blockParticleUVGridSize);
+						const uvY = main.random.nextIntBounded(u16, &main.seed, particles.blockParticleUVGridSize);
+						const uvOffset = uvX | (@as(u32, uvY) << 16) | (1 << 31); // Set high bit to indicate UV offset is present
 
 						emitter.spawnParticlesWithUV(1, particles.Emitter.SpawnCube, .{
 							.mode = .spread,
