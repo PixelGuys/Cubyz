@@ -295,24 +295,24 @@ pub const ParticleSystem = struct {
 	}
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
-		const lifeTime = properties.lifeTimeMin + (properties.lifeTimeMax - properties.lifeTimeMin) * random.nextFloat(&seed);
-		const drag = properties.dragMin + (properties.dragMax - properties.dragMin) * random.nextFloat(&seed);
-		const density = properties.densityMin + (properties.densityMax - properties.densityMin) * random.nextFloat(&seed);
+		const lifeTime = properties.lifeTimeMin + (properties.lifeTimeMax - properties.lifeTimeMin)*random.nextFloat(&seed);
+		const drag = properties.dragMin + (properties.dragMax - properties.dragMin)*random.nextFloat(&seed);
+		const density = properties.densityMin + (properties.densityMax - properties.densityMin)*random.nextFloat(&seed);
 		const rot = if(properties.randomizeRotation) random.nextFloat(&seed)*std.math.pi*2 else 0;
-		const rotVel = (properties.rotVelMin + (properties.rotVelMax - properties.rotVelMin) * random.nextFloatSigned(&seed)) * (std.math.pi / 180.0);
-		const color = properties.colorMin + (properties.colorMax - properties.colorMin) * if (properties.randomColorPerChannel)
-			  random.nextFloatVector(3, &seed)
-		else 
+		const rotVel = (properties.rotVelMin + (properties.rotVelMax - properties.rotVelMin)*random.nextFloatSigned(&seed))*(std.math.pi/180.0);
+		const color = properties.colorMin + (properties.colorMax - properties.colorMin)*if(properties.randomColorPerChannel)
+			random.nextFloatVector(3, &seed)
+		else
 			@as(Vec3f, @splat(random.nextFloat(&seed)));
-		const colorInt: @Vector(3, u5) = @intFromFloat(color * @as(Vec3f, @splat(31)));
+		const colorInt: @Vector(3, u5) = @intFromFloat(color*@as(Vec3f, @splat(31)));
 
 		particles[particleCount] = Particle{
 			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
 			.typ = typ,
 			.light = getCompressedLight(pos),
 			.color = @as(u16, colorInt[0]) << 10 |
-					 @as(u16, colorInt[1]) << 5 |
-					 @as(u16, colorInt[2]),
+				@as(u16, colorInt[1]) << 5 |
+				@as(u16, colorInt[2]),
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, rotVel),
@@ -402,14 +402,10 @@ pub const EmitterProperties = struct {
 			.rotVelMax = rotVel[1],
 			.lifeTimeMin = lifeTime[0],
 			.lifeTimeMax = lifeTime[1],
-			.colorMin = Vec3f{(@floatFromInt(color[0] >> 16 & 0xff)),
-						(@floatFromInt(color[0] >> 8 & 0xff)),
-						(@floatFromInt(color[0] & 0xff))} / @as(Vec3f, @splat(255)),
-			.colorMax = Vec3f{(@floatFromInt(color[1] >> 16 & 0xff)),
-						(@floatFromInt(color[1] >> 8 & 0xff)),
-						(@floatFromInt(color[1] & 0xff))} / @as(Vec3f, @splat(255)),
+			.colorMin = Vec3f{(@floatFromInt(color[0] >> 16 & 0xff)), (@floatFromInt(color[0] >> 8 & 0xff)), (@floatFromInt(color[0] & 0xff))}/@as(Vec3f, @splat(255)),
+			.colorMax = Vec3f{(@floatFromInt(color[1] >> 16 & 0xff)), (@floatFromInt(color[1] >> 8 & 0xff)), (@floatFromInt(color[1] & 0xff))}/@as(Vec3f, @splat(255)),
 			.randomizeRotation = randomizeRotation,
-			.randomColorPerChannel = if (colorRandomnessStr) |str| std.mem.eql(u8, str, "channel") else false, // TODO: redesign?
+			.randomColorPerChannel = if(colorRandomnessStr) |str| std.mem.eql(u8, str, "channel") else false, // TODO: redesign?
 		};
 	}
 };
@@ -427,40 +423,32 @@ pub const DirectionMode = union(enum(u8)) {
 		radius: f32,
 
 		pub fn getConeVel(self: DirectionData) Vec3f {
-			if (self.radius == 0) return self.dir;
+			if(self.radius == 0) return self.dir;
 
 			const dir = vec.normalize(self.dir);
-    
-			var u: Vec3f = if(@abs(self.dir[0]) > 0.7) Vec3f{0,1,0} else Vec3f{1,0,0};
-			const v: Vec3f = vec.normalize(Vec3f{
-				u[1] * dir[2] - u[2] * dir[1],
-				u[2] * dir[0] - u[0] * dir[2],
-				u[0] * dir[1] - u[1] * dir[0]
-			});
-			u = vec.normalize(Vec3f{
-				dir[1] * v[2] - dir[2] * v[1],
-				dir[2] * v[0] - dir[0] * v[2],
-				dir[0] * v[1] - dir[1] * v[0]
-			});
 
-			var sample: Vec2f = undefined;		
+			var u: Vec3f = if(@abs(self.dir[0]) > 0.7) Vec3f{0, 1, 0} else Vec3f{1, 0, 0};
+			const v: Vec3f = vec.normalize(Vec3f{u[1]*dir[2] - u[2]*dir[1], u[2]*dir[0] - u[0]*dir[2], u[0]*dir[1] - u[1]*dir[0]});
+			u = vec.normalize(Vec3f{dir[1]*v[2] - dir[2]*v[1], dir[2]*v[0] - dir[0]*v[2], dir[0]*v[1] - dir[1]*v[0]});
+
+			var sample: Vec2f = undefined;
 			while(true) {
 				sample = random.nextFloatVectorSigned(2, &seed);
-				if (vec.lengthSquare(sample) < 1) break;
+				if(vec.lengthSquare(sample) < 1) break;
 			}
 
 			const cosTheta: f32 = std.math.cos(self.radius);
-			const z: f32 = cosTheta + (1.0 - cosTheta) * random.nextFloat(&seed);
+			const z: f32 = cosTheta + (1.0 - cosTheta)*random.nextFloat(&seed);
 			const scale: f32 = @sqrt(1.0 - z*z);
-			
-			return (u * @as(Vec3f, @splat(sample[0] * scale)) + v * @as(Vec3f, @splat(sample[1] * scale)) + dir * @as(Vec3f, @splat(z)));
+
+			return (u*@as(Vec3f, @splat(sample[0]*scale)) + v*@as(Vec3f, @splat(sample[1]*scale)) + dir*@as(Vec3f, @splat(z)));
 		}
 	};
 
 	pub fn parse(zon: ZonElement) !DirectionMode {
 		const dirModeName = zon.get(?[]const u8, "mode", null) orelse return error.ModeNotFound;
 		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.DirectionModeNotFound;
-		return switch (dirMode) {
+		return switch(dirMode) {
 			.direction => {
 				const dir = zon.get(Vec3f, "direction", .{0, 0, 1});
 				const radius = zon.get(f32, "coneRadius", 10);
@@ -483,7 +471,7 @@ pub const Emitter = struct {
 		cube: SpawnCube,
 
 		pub fn spawn(self: SpawnType, pos: Vec3d, properties: EmitterProperties) struct {Vec3d, Vec3f} {
-			return switch (self) {
+			return switch(self) {
 				inline else => |typ| typ.spawn(pos, properties),
 			};
 		}
@@ -491,7 +479,7 @@ pub const Emitter = struct {
 		pub fn parse(zon: ZonElement) !SpawnType {
 			const typeZon = zon.get(?[]const u8, "type", null) orelse return error.TypeNotFound;
 			const spawnType = std.meta.stringToEnum(std.meta.Tag(SpawnType), typeZon) orelse return error.InvalidType;
-			return switch (spawnType) {
+			return switch(spawnType) {
 				inline else => |typ| @unionInit(SpawnType, @tagName(typ), try @FieldType(SpawnType, @tagName(typ)).parse(zon)),
 			};
 		}
@@ -610,9 +598,9 @@ pub const Particle = extern struct {
 	light: u32 = 0,
 	typ: u32,
 	color: u16 = @as(u16, 255 >> 3) << 10 |
-				 @as(u16, 255 >> 3) << 5 |
-				 @as(u16, 255 >> 3),
-				 
+		@as(u16, 255 >> 3) << 5 |
+		@as(u16, 255 >> 3),
+
 	// 2 bytes left for use
 
 	pub fn posAndRotationVec(self: Particle) Vec4f {

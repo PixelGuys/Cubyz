@@ -1110,13 +1110,13 @@ pub const Protocols = struct {
 						const spawnZonLen = try reader.readInt(u16);
 						const spawnZon = try reader.readSlice(spawnZonLen);
 
-						var spawnType = particles.Emitter.SpawnType{.point = .{ .mode = .spread }};
+						var spawnType = particles.Emitter.SpawnType{.point = .{.mode = .spread}};
 						var emitterProperties = particles.EmitterProperties{};
-						if (spawnZonLen != 0) {
+						if(spawnZonLen != 0) {
 							const zon = ZonElement.parseFromString(main.stackAllocator, null, spawnZon);
 							defer zon.deinit(main.stackAllocator);
 							emitterProperties = particles.EmitterProperties.parse(zon);
-							if (zon.get(?[]const u8, "type", null)) |_|{
+							if(zon.get(?[]const u8, "type", null)) |_| {
 								spawnType = particles.Emitter.SpawnType.parse(zon) catch |err| {
 									std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
 									return;

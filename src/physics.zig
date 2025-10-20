@@ -238,7 +238,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			}
 
 			if(damage > 0.000001) {
-				const spawnType = particles.Emitter.SpawnType{.cube = .{ .mode = .scatter, .size = .{0.3, 0.3, 0} }};
+				const spawnType = particles.Emitter.SpawnType{.cube = .{.mode = .scatter, .size = .{0.3, 0.3, 0}}};
 				const emitterProps = particles.EmitterProperties{
 					.dragMin = 0.5,
 					.dragMax = 0.8,
