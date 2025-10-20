@@ -1549,7 +1549,10 @@ pub const Connection = struct { // MARK: Connection
 					ProtocolTask.schedule(conn, protocolIndex, self.protocolBuffer.items);
 				} else {
 					var reader = utils.BinaryReader.init(self.protocolBuffer.items);
-					try protocolReceive(conn, &reader);
+					protocolReceive(conn, &reader) catch |err| {
+						std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, self.protocolBuffer.items});
+						return err;
+					};
 				}
 
 				_ = Protocols.bytesReceived[protocolIndex].fetchAdd(self.protocolBuffer.items.len, .monotonic);
@@ -2048,6 +2051,7 @@ pub const Connection = struct { // MARK: Connection
 			if(@errorReturnTrace()) |trace| {
 				std.log.info("{f}", .{trace});
 			}
+			std.log.debug("Packet data: {any}", data);
 			self.disconnect();
 		};
 	}
