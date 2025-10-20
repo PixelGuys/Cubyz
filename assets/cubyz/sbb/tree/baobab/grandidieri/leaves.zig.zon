@@ -1,0 +1,6 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/baobab/grandidieri/leaves/0"},
+		.{.id = "cubyz:tree/baobab/grandidieri/leaves/1"},
+	},
+}
