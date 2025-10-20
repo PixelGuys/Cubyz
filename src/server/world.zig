@@ -448,6 +448,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	biomeChecksum: i64 = 0,
 
+	// TODO: DEBUG - REMOVE LATER
+	lastDebugLogTime: i64 = 0,
+	// END OF DEBUG
+
 	const ChunkUpdateRequest = struct {
 		ch: *ServerChunk,
 		milliTimeStamp: i64,
@@ -1090,6 +1094,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			std.log.warn("Update time is getting too high. It's already at {} s!", .{deltaTime});
 			deltaTime = 0.3;
 		}
+
+		// TODO: DEBUG - REMOVE LATER
+
+		if(newTime - self.lastDebugLogTime >= 60000) { // 60~ sec
+			self.lastDebugLogTime = newTime;
+			main.block_props.debugSortedBlockProperties();
+		}
+
+		// END OF DEBUG
+
 
 		while(self.milliTime + 100 < newTime) {
 			self.milliTime += 100;

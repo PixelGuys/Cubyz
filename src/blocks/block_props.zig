@@ -221,9 +221,20 @@ fn SortedBlockProperties(comptime DataType: type) type {
 
             idxLookup: std.ArrayList(u32) = undefined,
 
+            // TODO: DEBUG - REMOVE LATER
+            debugGetCount: u64 = 0,
+            debugBinarySearchTime: u64 = 0,
+            debugLinearSearchTime: u64 = 0,
+            // END OF DEBUG
+
             pub fn init(allocator: std.mem.Allocator) Self {
                 return .{
                     .idxLookup = std.ArrayList(u32).init(allocator),
+                    // TODO: DEBUG - REMOVE LATER
+                    .debugGetCount = 0,
+                    .debugBinarySearchTime = 0,
+                    .debugLinearSearchTime = 0,
+                    // END OF DEBUG
                 };
             }
 
@@ -231,16 +242,35 @@ fn SortedBlockProperties(comptime DataType: type) type {
                 self.idxLookup.deinit();
             }
 
-            pub fn get(self: *const Self, blockId: u32) bool {
+            pub fn get(self: *Self, blockId: u32) bool {
+                // TODO: DEBUG - REMOVE LATER
+                self.debugGetCount += 1;
+                // END OF DEBUG
+
                 const slice = self.idxLookup.items;
 
-                _ = std.sort.binarySearch(
+                // TODO: DEBUG - REMOVE LATER
+                const binaryStart = std.time.nanoTimestamp();
+                // END OF DEBUG
+
+                const result = std.sort.binarySearch(
                     u32,
                     slice,
                     blockId,
                     Cmp.less,
-                ) orelse return false;
-                return true;
+                );
+
+                // TODO: DEBUG - REMOVE LATER
+                const binaryEnd = std.time.nanoTimestamp();
+                self.debugBinarySearchTime += @intCast(binaryEnd - binaryStart);
+                
+                const linearStart = std.time.nanoTimestamp();
+                _ = std.mem.indexOfScalar(u32, slice, blockId);
+                const linearEnd = std.time.nanoTimestamp();
+                self.debugLinearSearchTime += @intCast(linearEnd - linearStart);
+                // END OF DEBUG
+
+                return result != null;
             }
 
             pub fn add(self: *Self, blockId: u32, propVal: bool) void {
@@ -260,6 +290,14 @@ fn SortedBlockProperties(comptime DataType: type) type {
             pub fn clear(self: *Self) void {
                 self.idxLookup.clearRetainingCapacity();
             }
+
+            // TODO: DEBUG - REMOVE LATER
+            pub fn resetDebugCounters(self: *Self) void {
+                self.debugGetCount = 0;
+                self.debugBinarySearchTime = 0;
+                self.debugLinearSearchTime = 0;
+            }
+            // END OF DEBUG
         };
     } else {
         return struct {
@@ -270,10 +308,21 @@ fn SortedBlockProperties(comptime DataType: type) type {
             idxLookup: std.ArrayList(u32) = undefined,
             data: std.ArrayList(DataType) = undefined,
 
+            // TODO: DEBUG - REMOVE LATER
+            debugGetCount: u64 = 0,
+            debugBinarySearchTime: u64 = 0,
+            debugLinearSearchTime: u64 = 0,
+            // END OF DEBUG
+
             pub fn init(allocator: std.mem.Allocator) Self {
                 return .{
                     .idxLookup = std.ArrayList(u32).init(allocator),
                     .data = std.ArrayList(DataType).init(allocator),
+                    // TODO: DEBUG - REMOVE LATER
+                    .debugGetCount = 0,
+                    .debugBinarySearchTime = 0,
+                    .debugLinearSearchTime = 0,
+                    // END OF DEBUG
                 };
             }
 
@@ -282,17 +331,37 @@ fn SortedBlockProperties(comptime DataType: type) type {
                 self.data.deinit();
             }
 
-            fn getIdx(self: *const Self, blockId: u32) ?usize {
+            fn getIdx(self: *Self, blockId: u32) ?usize {
                 const slice = self.idxLookup.items;
-                return std.sort.binarySearch(
+
+                // TODO: DEBUG - REMOVE LATER
+                const binaryStart = std.time.nanoTimestamp();
+                // END OF DEBUG
+
+                const result = std.sort.binarySearch(
                     u32,
                     slice,
                     blockId,
                     Cmp.less,
                 );
+
+                // TODO: DEBUG - REMOVE LATER
+                const binaryEnd = std.time.nanoTimestamp();
+                self.debugBinarySearchTime += @intCast(binaryEnd - binaryStart);
+                // END OF DEBUG
+
+                return result;
             }
 
-            pub fn get(self: *const Self, blockId: u32) ?DataType {
+            pub fn get(self: *Self, blockId: u32) ?DataType {
+                // TODO: DEBUG - REMOVE LATER
+                self.debugGetCount += 1;
+                const linearStart = std.time.nanoTimestamp();
+                _ = std.mem.indexOfScalar(u32, self.idxLookup.items, blockId);
+                const linearEnd = std.time.nanoTimestamp();
+                self.debugLinearSearchTime += @intCast(linearEnd - linearStart);
+                // END OF DEBUG
+
                 const idx = self.getIdx(blockId) orelse return null;
                 return self.data.items[idx];
             }
@@ -300,7 +369,7 @@ fn SortedBlockProperties(comptime DataType: type) type {
             pub fn add(self: *Self, blockId: u32, propVal: DataType) void {
                 const slice = self.idxLookup.items;
                 const insertIdx = std.sort.lowerBound(u32, slice, blockId, Cmp.less);
-
+                
                 self.idxLookup.insert(insertIdx, blockId) catch @panic(panicMsg);
                 self.data.insert(insertIdx, propVal) catch @panic(panicMsg);
             }
@@ -309,6 +378,14 @@ fn SortedBlockProperties(comptime DataType: type) type {
                 self.idxLookup.clearRetainingCapacity();
                 self.data.clearRetainingCapacity();
             }
+
+            // TODO: DEBUG - REMOVE LATER
+            pub fn resetDebugCounters(self: *Self) void {
+                self.debugGetCount = 0;
+                self.debugBinarySearchTime = 0;
+                self.debugLinearSearchTime = 0;
+            }
+            // END OF DEBUG
         };
     }
 }
@@ -386,3 +463,37 @@ pub const BlockProps = struct {
     /// GUI that is opened on click.
     pub var sortedGui: SortedBlockProperties([]u8) = undefined;
 };
+
+// TODO: DEBUG - REMOVE LATER
+pub fn debugSortedBlockProperties() void {
+    std.log.info("=== SortedBlockProperties Performance Report ===", .{});
+    
+    inline for (@typeInfo(BlockProps).@"struct".decls) |decl| {
+        const sortedProp = &@field(BlockProps, decl.name);
+        const sortedPropType = @TypeOf(sortedProp.*);
+
+        if (comptime isSortedProp(sortedPropType)) {
+            const getCount = sortedProp.debugGetCount;
+            const binarySearchTimeNs = sortedProp.debugBinarySearchTime;
+            const linearSearchTimeNs = sortedProp.debugLinearSearchTime;
+            
+            const binarySearchTimeMs = @as(f64, @floatFromInt(binarySearchTimeNs)) / 1_000_000.0;
+            const linearSearchTimeMs = @as(f64, @floatFromInt(linearSearchTimeNs)) / 1_000_000.0;
+            
+            std.log.info("Property: {s} | Num of entries: {d}", .{decl.name, sortedProp.idxLookup.items.len});
+            std.log.info("  get() calls: {d}", .{getCount});
+            std.log.info("  Binary search time: {d:.3}ms", .{binarySearchTimeMs});
+            std.log.info("  Linear search time (alternative): {d:.3}ms", .{linearSearchTimeMs});
+            
+            if (linearSearchTimeMs > 0) {
+                const speedup = linearSearchTimeMs / binarySearchTimeMs;
+                std.log.info("  Speedup: {d:.2}x", .{speedup});
+            }
+            
+            sortedProp.resetDebugCounters();
+        }
+    }
+    
+    std.log.info("==============================================", .{});
+}
+    // END OF DEBUG
