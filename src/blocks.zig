@@ -508,7 +508,7 @@ pub const meshes = struct { // MARK: meshes
 	var loadedMeshes: u32 = 0;
 
 	var textureIDs: main.List([]const u8) = undefined;
-	var animation: main.List(AnimationData) = undefined;
+	pub var animation: main.List(AnimationData) = undefined;
 	var blockTextures: main.List(Image) = undefined;
 	var emissionTextures: main.List(Image) = undefined;
 	var reflectivityTextures: main.List(Image) = undefined;
@@ -803,7 +803,8 @@ pub const meshes = struct { // MARK: meshes
 					if(texId < animation.items.len) {
 						const actualTextureIdx = animation.items[texId].startFrame;
 						if(actualTextureIdx < blockTextures.items.len) {
-							main.particles.ParticleManager.registerBlockTextureAsParticle(blockId, @intCast(actualTextureIdx));
+							const image = blockTextures.items[actualTextureIdx];
+							main.particles.ParticleManager.registerBlockTextureAsParticle(blockId, @intCast(actualTextureIdx), image);
 						}
 					}
 				}

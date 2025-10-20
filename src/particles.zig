@@ -39,6 +39,9 @@ pub const ParticleManager = struct {
     const ParticleIndex = u16;
     var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
 
+    const UVRegion = struct { x: u16, y: u16 };
+    var blockTextureValidRegions: std.AutoHashMapUnmanaged(u16, main.List(UVRegion)) = .{};
+
     pub fn init() void {
         types = .init(arenaAllocator);
         textures = .init(arenaAllocator);
@@ -56,6 +59,14 @@ pub const ParticleManager = struct {
         textureArray.deinit();
         emissionTextureArray.deinit();
         particleTypeHashmap.deinit(arenaAllocator.allocator);
+
+        // Clean up valid regions
+        var it = blockTextureValidRegions.valueIterator();
+        while (it.next()) |validRegions| {
+            validRegions.deinit();
+        }
+        blockTextureValidRegions.deinit(arenaAllocator.allocator);
+
         ParticleSystem.deinit();
         particleTypesSSBO.deinit();
         arena.deinit();
@@ -143,7 +154,54 @@ pub const ParticleManager = struct {
         return result;
     }
 
-    pub fn registerBlockTextureAsParticle(blockId: []const u8, textureIndex: u16) void {
+    fn computeValidUVRegions(image: Image) main.List(UVRegion) {
+        var validRegions = main.List(UVRegion).init(arenaAllocator);
+
+        const gridSize = blockParticleUVGridSize;
+        const regionWidth = image.width / gridSize;
+        const regionHeight = image.height / gridSize;
+        const minVisiblePixels = (regionWidth * regionHeight) / 4; // At least 25% visible
+
+        var gridY: u16 = 0;
+        while (gridY < gridSize) : (gridY += 1) {
+            var gridX: u16 = 0;
+            while (gridX < gridSize) : (gridX += 1) {
+                // Count visible pixels in this region
+                var visibleCount: u32 = 0;
+                const startX = gridX * regionWidth;
+                const startY = gridY * regionHeight;
+
+                var y: u32 = 0;
+                while (y < regionHeight) : (y += 1) {
+                    var x: u32 = 0;
+                    while (x < regionWidth) : (x += 1) {
+                        const pixelX = startX + x;
+                        const pixelY = startY + y;
+                        if (pixelX < image.width and pixelY < image.height) {
+                            const pixel = image.getRGB(pixelX, pixelY);
+                            if (pixel.a >= 128) { // Consider semi-transparent as visible
+                                visibleCount += 1;
+                            }
+                        }
+                    }
+                }
+
+                // If this region has enough visible pixels, add it to valid regions
+                if (visibleCount >= minVisiblePixels) {
+                    validRegions.append(.{ .x = gridX, .y = gridY });
+                }
+            }
+        }
+
+        // If no valid regions found, add the center region as fallback
+        if (validRegions.items.len == 0) {
+            validRegions.append(.{ .x = gridSize / 2, .y = gridSize / 2 });
+        }
+
+        return validRegions;
+    }
+
+    pub fn registerBlockTextureAsParticle(blockId: []const u8, textureIndex: u16, image: Image) void {
         // Calculate size based on UV grid: if we sample 1/N of the texture, particle should be 1/N of block size
         // Regular particles use: size = texture.width / 16, where 16x16 is standard block texture size
         // Block particles sample a (16/N)x(16/N) region, so size should be (16/N) / 16 = 1/N
@@ -156,6 +214,30 @@ pub const ParticleManager = struct {
         const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
         particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
         types.append(particleType);
+
+        // Compute and store valid UV regions for this texture
+        const validRegions = computeValidUVRegions(image);
+        blockTextureValidRegions.put(arenaAllocator.allocator, textureIndex, validRegions) catch unreachable;
+    }
+
+    /// Returns a random valid UV offset for a block texture
+    pub fn getRandomValidUVOffset(textureIndex: u16, randomSeed: *u64) u32 {
+        const validRegions = blockTextureValidRegions.get(textureIndex) orelse {
+            // Fallback: return center region
+            const center = blockParticleUVGridSize / 2;
+            return center | (@as(u32, center) << 16) | (1 << 31);
+        };
+
+        if (validRegions.items.len == 0) {
+            // Fallback: return center region
+            const center = blockParticleUVGridSize / 2;
+            return center | (@as(u32, center) << 16) | (1 << 31);
+        }
+
+        // Pick a random valid region (use u32 to avoid bitSize overflow)
+        const idx = main.random.nextIntBounded(u32, randomSeed, @as(u32, @intCast(validRegions.items.len)));
+        const region = validRegions.items[idx];
+        return region.x | (@as(u32, region.y) << 16) | (1 << 31);
     }
 
     pub fn generateTextureArray() void {
