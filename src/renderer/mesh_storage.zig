@@ -16,7 +16,7 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
-const EventStatus = main.block_entity.EventStatus;
+const EventStatus = @import("../blocks/block_props.zig").EventStatus;
 
 const chunk_meshing = @import("chunk_meshing.zig");
 const ChunkMesh = chunk_meshing.ChunkMesh;

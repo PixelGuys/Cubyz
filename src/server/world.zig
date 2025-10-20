@@ -1050,21 +1050,23 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.dropWithCooldown(stack, pos, dir, velocity, 0);
 	}
 
-	fn tickBlocksInChunk(self: *ServerWorld, _chunk: *chunk.ServerChunk) void {
-		for(0..self.tickSpeed) |_| {
-			const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
+	fn tickBlocksInChunk(_: *ServerWorld, _: *chunk.ServerChunk) void {
+		//TODO: No.
 
-			const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;
-			const y: i32 = blockIndex >> chunk.chunkShift & chunk.chunkMask;
-			const z: i32 = blockIndex & chunk.chunkMask;
-
-			_chunk.mutex.lock();
-			const block = _chunk.getBlock(x, y, z);
-			_chunk.mutex.unlock();
-			if(block.tickEvent()) |event| {
-				event.tryRandomTick(block, _chunk, x, y, z);
-			}
-		}
+		// for(0..self.tickSpeed) |_| {
+		// const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
+		//
+		// const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;
+		// const y: i32 = blockIndex >> chunk.chunkShift & chunk.chunkMask;
+		// const z: i32 = blockIndex & chunk.chunkMask;
+		//
+		// _chunk.mutex.lock();
+		// const block = _chunk.getBlock(x, y, z);
+		// _chunk.mutex.unlock();
+		// if(block.tickEvent()) |event| {
+		// event.tryRandomTick(block, _chunk, x, y, z);
+		// }
+		//}
 	}
 
 	fn tick(self: *ServerWorld) void {
@@ -1103,7 +1105,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		// END OF DEBUG
-
 
 		while(self.milliTime + 100 < newTime) {
 			self.milliTime += 100;

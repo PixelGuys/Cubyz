@@ -83,9 +83,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	}
 	BlockProps.light[size] = zon.get(u32, "emittedLight", 0);
 	BlockProps.absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
-	BlockProps.degradable[size] = zon.get(bool, "degradable", false);
 	BlockProps.selectable[size] = zon.get(bool, "selectable", true);
 	BlockProps.replacable[size] = zon.get(bool, "replacable", false);
+	BlockProps.degradable[size] = zon.get(bool, "degradable", false);
 	BlockProps.transparent[size] = zon.get(bool, "transparent", false);
 	BlockProps.collide[size] = zon.get(bool, "collide", true);
 	BlockProps.alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -100,15 +100,16 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	{
 		// bool properties are added to the s array only when the prop val is true.
 		BlockProps.sAllowOres.add(size, zon.get(bool, "allowOres", false));
+		BlockProps.sDegradable.add(size, zon.get(bool, "degradable", false));
 
 		const guidata = arena.dupe(u8, zon.get([]const u8, "gui", ""));
 		if(guidata.len != 0) {
-			BlockProps.sGui.add(size, guidata);
+			BlockProps.saGui.appendSlice(size, guidata);
 		}
 
 		const tickEventData = block_props.TickEvent.loadFromZon(zon.getChild("tickEvent"));
 		if(tickEventData) |tickEvent| {
-			BlockProps.sTickEvent.add(size, tickEvent);
+			BlockProps.saTickEvents.add(size, tickEvent);
 		}
 
 		if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| {

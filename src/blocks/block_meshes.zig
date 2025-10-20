@@ -16,7 +16,6 @@ const chunk = @import("../chunk.zig");
 const Neighbor = chunk.Neighbor;
 const ZonElement = @import("../zon.zig").ZonElement;
 
-
 pub const meshes = struct {
 	const AnimationData = extern struct {
 		startFrame: u32,

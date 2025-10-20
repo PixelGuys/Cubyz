@@ -3,6 +3,8 @@ const std = @import("std");
 const main = @import("main");
 const Block = main.block_manager.Block;
 const Chunk = main.chunk.Chunk;
+const EventStatus = main.block_props.EventStatus;
+const UpdateEvent = main.block_props.UpdateEvent;
 const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
 const graphics = main.graphics;
@@ -17,13 +19,9 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const BlockEntityDataStorage = @import("block_data_storage.zig").BlockDataStorage;
 
 pub const BlockEntityIndex = main.utils.DenseId(u32);
-
-const UpdateEvent = union(enum) {
-	remove: void,
-	update: *BinaryReader,
-};
 
 pub const BlockEntityType = struct {
 	id: []const u8,
@@ -75,7 +73,7 @@ pub const BlockEntityType = struct {
 	pub inline fn onStoreServerToClient(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(dataIndex, writer);
 	}
-	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) EventStatus {
+	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) main.block_props.EventStatus {
 		return self.vtable.onInteract(pos, chunk);
 	}
 	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
@@ -91,102 +89,6 @@ pub const BlockEntityType = struct {
 		return self.vtable.getClientToServerData(pos, chunk, writer);
 	}
 };
-
-pub const EventStatus = enum {
-	handled,
-	ignored,
-};
-
-fn BlockEntityDataStorage(T: type) type {
-	return struct {
-		pub const DataT = T;
-		var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
-		var nextIndex: BlockEntityIndex = @enumFromInt(0);
-		var storage: main.utils.SparseSet(DataT, BlockEntityIndex) = .{};
-		pub var mutex: std.Thread.Mutex = .{};
-
-		pub fn init() void {
-			storage = .{};
-			freeIndexList = .{};
-		}
-		pub fn deinit() void {
-			storage.deinit(main.globalAllocator);
-			freeIndexList.deinit(main.globalAllocator);
-			nextIndex = @enumFromInt(0);
-		}
-		pub fn reset() void {
-			storage.clear();
-			freeIndexList.clearRetainingCapacity();
-		}
-		fn createEntry(pos: Vec3i, chunk: *Chunk) BlockEntityIndex {
-			main.utils.assertLocked(&mutex);
-			const dataIndex: BlockEntityIndex = freeIndexList.popOrNull() orelse blk: {
-				defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
-				break :blk nextIndex;
-			};
-			const blockIndex = chunk.getLocalBlockIndex(pos);
-
-			chunk.blockPosToEntityDataMapMutex.lock();
-			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex) catch unreachable;
-			chunk.blockPosToEntityDataMapMutex.unlock();
-			return dataIndex;
-		}
-		pub fn add(pos: Vec3i, value: DataT, chunk: *Chunk) void {
-			mutex.lock();
-			defer mutex.unlock();
-
-			const dataIndex = createEntry(pos, chunk);
-			storage.set(main.globalAllocator, dataIndex, value);
-		}
-		pub fn removeAtIndex(dataIndex: BlockEntityIndex) ?DataT {
-			main.utils.assertLocked(&mutex);
-			freeIndexList.append(main.globalAllocator, dataIndex);
-			return storage.fetchRemove(dataIndex) catch null;
-		}
-		pub fn remove(pos: Vec3i, chunk: *Chunk) ?DataT {
-			mutex.lock();
-			defer mutex.unlock();
-
-			const blockIndex = chunk.getLocalBlockIndex(pos);
-
-			chunk.blockPosToEntityDataMapMutex.lock();
-			const entityNullable = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex);
-			chunk.blockPosToEntityDataMapMutex.unlock();
-
-			const entry = entityNullable orelse return null;
-
-			const dataIndex = entry.value;
-			return removeAtIndex(dataIndex);
-		}
-		pub fn getByIndex(dataIndex: BlockEntityIndex) ?*DataT {
-			main.utils.assertLocked(&mutex);
-
-			return storage.get(dataIndex);
-		}
-		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
-			main.utils.assertLocked(&mutex);
-
-			const blockIndex = chunk.getLocalBlockIndex(pos);
-
-			chunk.blockPosToEntityDataMapMutex.lock();
-			defer chunk.blockPosToEntityDataMapMutex.unlock();
-
-			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse return null;
-			return storage.get(dataIndex);
-		}
-		pub const GetOrPutResult = struct {
-			valuePtr: *DataT,
-			foundExisting: bool,
-		};
-		pub fn getOrPut(pos: Vec3i, chunk: *Chunk) GetOrPutResult {
-			main.utils.assertLocked(&mutex);
-			if(get(pos, chunk)) |result| return .{.valuePtr = result, .foundExisting = true};
-
-			const dataIndex = createEntry(pos, chunk);
-			return .{.valuePtr = storage.add(main.globalAllocator, dataIndex), .foundExisting = false};
-		}
-	};
-}
 
 pub const BlockEntityTypes = struct {
 	pub const Chest = struct {

@@ -373,15 +373,16 @@ pub const collision = struct {
 				while(posZ <= maxZ) : (posZ += 1) {
 					const block: ?Block =
 						if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
-					
-					const touchFunctions = block.?.touchFunctions();
-					if(block == null or touchFunctions == null)
-						continue;
+
+					const touchFunctions = (block orelse return).touchFunctions() orelse return;
+
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
 					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
-					if(touchX or touchY or touchZ)
-						touchFunctions.?[0](block.?, entity, posX, posY, posZ, touchX and touchY and touchZ);
+
+					if(touchX or touchY or touchZ) {
+						touchFunctions[0](block.?, entity, posX, posY, posZ, touchX and touchY and touchZ);
+					}
 				}
 			}
 		}
