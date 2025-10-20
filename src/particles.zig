@@ -372,7 +372,7 @@ pub const EmitterProperties = struct {
 		const velocity = zon.get(Vec2f, "velocity", .{1, 1.5});
 		const rotVel = zon.get(Vec2f, "rotationVel", .{20, 60});
 		const lifeTime = zon.get(Vec2f, "lifeTime", .{0.75, 1});
-		const randomizeRotation = zon.get(bool, "randomizeRotation", true);
+		const randomizeRotation = zon.get(bool, "randomRotate", true);
 		return EmitterProperties{
 			.densityMin = density[0],
 			.densityMax = density[1],
