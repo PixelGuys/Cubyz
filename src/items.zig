@@ -459,15 +459,24 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				sum += property.weights[i]*material.getProperty(property.source orelse break);
 				weight += property.weights[i];
 			}
+
 			if(weight == 0) continue;
-			if(weight > 1) weight = 1;
+			if(property.method == .sum)
+				std.log.info("sum: {}", .{sum});
 			switch(property.method) {
 				.sum => {},
 				.average => {
 					sum /= weight;
 				},
 			}
+			if(property.method == .average) {
+				std.log.info("average: {}", .{sum});
+			}
 			sum *= property.resultScale;
+			if(property.method == .sum)
+				std.log.info("sum scaled: {}", .{sum});
+			if(property.method == .average)
+				std.log.info("average scaled: {}", .{sum});
 			tool.getProperty(property.destination orelse continue).* += sum;
 		}
 		if(tool.damage < 1) tool.damage = 1/(2 - tool.damage);
