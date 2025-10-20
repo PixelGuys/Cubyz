@@ -1111,16 +1111,20 @@ pub const Protocols = struct {
 						const spawnZon = try reader.readSlice(spawnZonLen);
 
 						var spawnType = particles.Emitter.SpawnType{.point = .{ .mode = .spread }};
+						var emitterProperties = particles.EmitterProperties{};
 						if (spawnZonLen != 0) {
 							const zon = ZonElement.parseFromString(main.stackAllocator, null, spawnZon);
 							defer zon.deinit(main.stackAllocator);
-							spawnType = particles.Emitter.SpawnType.parse(zon) catch |err| {
-								std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
-								return;
-							};
+							emitterProperties = particles.EmitterProperties.parse(zon);
+							if (zon.get(?[]const u8, "type", null)) |_|{
+								spawnType = particles.Emitter.SpawnType.parse(zon) catch |err| {
+									std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
+									return;
+								};
+							}
 						}
 
-						const emitter: particles.Emitter = .init(particleId, collides, spawnType);
+						const emitter: particles.Emitter = .init(particleId, collides, spawnType, emitterProperties);
 						particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 					}
 				},
