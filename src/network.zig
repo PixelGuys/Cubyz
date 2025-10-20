@@ -1043,6 +1043,7 @@ pub const Protocols = struct {
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
 				.teleport => {
+					if(conn.isServerSide()) return error.InvalidPacket;
 					game.Player.setPosBlocking(try reader.readVec(Vec3d));
 				},
 				.worldEditPos => {
