@@ -81,7 +81,6 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				while(z >= zBiome) : (z -= chunk.super.pos.voxelSize) {
 					const mask = @as(u64, 1) << @intCast(z >> voxelSizeShift);
 					if(heightData & mask != 0) {
-
 						var surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
 						var maxUp: i32 = 0;
 						var maxDown: i32 = 0;
