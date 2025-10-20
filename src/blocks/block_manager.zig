@@ -98,24 +98,24 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	BlockProps.mobility[size] = zon.get(f32, "mobility", 1.0);
 
 	{
-		// bool properties are added to the sorted array only when the prop val is true.
-		BlockProps.sortedAllowOres.add(size, zon.get(bool, "allowOres", false));
+		// bool properties are added to the s array only when the prop val is true.
+		BlockProps.sAllowOres.add(size, zon.get(bool, "allowOres", false));
 
 		const guidata = arena.dupe(u8, zon.get([]const u8, "gui", ""));
 		if(guidata.len != 0) {
-			BlockProps.sortedGui.add(size, guidata);
+			BlockProps.sGui.add(size, guidata);
 		}
 
 		const tickEventData = block_props.TickEvent.loadFromZon(zon.getChild("tickEvent"));
 		if(tickEventData) |tickEvent| {
-			BlockProps.sortedTickEvent.add(size, tickEvent);
+			BlockProps.sTickEvent.add(size, tickEvent);
 		}
 
 		if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| {
 			const functionData = block_props.touchFunctions.getFunctionPointer(touchFunctionName);
 
 			if(functionData) |function| {
-				BlockProps.sortedTouchFunction.add(size, function);
+				BlockProps.saTouchFunctions.add(size, function);
 			} else {
 				std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
 			}
@@ -123,7 +123,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 		const blockEntityData = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 		if(blockEntityData) |blockEntity| {
-			BlockProps.sortedBlockEntity.add(size, blockEntity);
+			BlockProps.sBlockEntity.add(size, blockEntity);
 		}
 	}
 

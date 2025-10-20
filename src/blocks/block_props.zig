@@ -175,24 +175,24 @@ pub const Block = packed struct { // MARK: Block
     }
 
     pub inline fn allowOres(self: Block) bool {
-        return BlockProps.sortedAllowOres.get(self.typ);
+        return BlockProps.sAllowOres.get(self.typ);
     }
 
     /// GUI that is opened on click.
     pub inline fn gui(self: Block) []u8 {
-        return BlockProps.sortedGui.get(self.typ) orelse "";
+        return BlockProps.sGui.get(self.typ) orelse "";
     }
 
     pub inline fn tickEvent(self: Block) ?TickEvent {
-        return BlockProps.sortedTickEvent.get(self.typ);
+        return BlockProps.sTickEvent.get(self.typ);
     }
 
-    pub inline fn touchFunction(self: Block) ?*const TouchFunction {
-        return BlockProps.sortedTouchFunction.get(self.typ);
+    pub inline fn touchFunctions(self: Block) ?[]const *const TouchFunction {
+        return BlockProps.saTouchFunctions.get(self.typ);
     }
 
     pub fn blockEntity(self: Block) ?*BlockEntityType {
-        return BlockProps.sortedBlockEntity.get(self.typ);
+        return BlockProps.sBlockEntity.get(self.typ);
     }
 
     pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
@@ -200,18 +200,16 @@ pub const Block = packed struct { // MARK: Block
     }
 };
 
+const panicMsg = "Out of memory when allocating Sorted Array Of Block Properties! Increase maxSortedBlockProperties in launchConfig.";
+
+fn less(target: u32, candidate: u32) std.math.Order {
+    if (target == candidate) return .eq;
+    if (target < candidate) return .lt;
+    return .gt;
+}
+
 // MARK: Sorted Block Properties
 fn SortedBlockProperties(comptime DataType: type) type {
-    const panicMsg = "Out of memory when allocating Sorted Block Properties! Increase maxSortedBlockProperties in launchConfig.";
-
-    const Cmp = struct {
-        fn less(target: u32, candidate: u32) std.math.Order {
-            if (target == candidate) return .eq;
-            if (target < candidate) return .lt;
-            return .gt;
-        }
-    };
-
     // if the block id is in the array, then the property value is true, otherwise false.
     if (DataType == bool) {
         return struct {
@@ -257,7 +255,7 @@ fn SortedBlockProperties(comptime DataType: type) type {
                     u32,
                     slice,
                     blockId,
-                    Cmp.less,
+                    less,
                 );
 
                 // TODO: DEBUG - REMOVE LATER
@@ -281,7 +279,7 @@ fn SortedBlockProperties(comptime DataType: type) type {
                     u32,
                     slice,
                     blockId,
-                    Cmp.less,
+                    less,
                 );
 
                 self.idxLookup.insert(insertIdx, blockId) catch @panic(panicMsg);
@@ -342,7 +340,7 @@ fn SortedBlockProperties(comptime DataType: type) type {
                     u32,
                     slice,
                     blockId,
-                    Cmp.less,
+                    less,
                 );
 
                 // TODO: DEBUG - REMOVE LATER
@@ -368,7 +366,7 @@ fn SortedBlockProperties(comptime DataType: type) type {
 
             pub fn add(self: *Self, blockId: u32, propVal: DataType) void {
                 const slice = self.idxLookup.items;
-                const insertIdx = std.sort.lowerBound(u32, slice, blockId, Cmp.less);
+                const insertIdx = std.sort.lowerBound(u32, slice, blockId, less);
                 
                 self.idxLookup.insert(insertIdx, blockId) catch @panic(panicMsg);
                 self.data.insert(insertIdx, propVal) catch @panic(panicMsg);
@@ -390,9 +388,123 @@ fn SortedBlockProperties(comptime DataType: type) type {
     }
 }
 
+// MARK: Sorted Array Of Block Properties
+fn SortedArrayOfBlockProperties(comptime DataType: type) type {
+    return struct {
+        const Self = @This();
+        pub const __is_sorted_array_of_block_properties = true;
+        pub const __property_data_type = DataType;
+
+        allocator: std.mem.Allocator,
+        idxLookup: std.ArrayList(u32) = undefined,
+        data: std.ArrayList(std.ArrayList(DataType)) = undefined,
+
+        // TODO: DEBUG - REMOVE LATER
+        debugGetCount: u64 = 0,
+        debugBinarySearchTime: u64 = 0,
+        debugLinearSearchTime: u64 = 0,
+        // END OF DEBUG
+
+        pub fn init(allocator: std.mem.Allocator) Self {
+            return .{
+                .allocator = allocator,
+                .idxLookup = std.ArrayList(u32).init(allocator),
+                .data = std.ArrayList(std.ArrayList(DataType)).init(allocator),
+                // TODO: DEBUG - REMOVE LATER
+                .debugGetCount = 0,
+                .debugBinarySearchTime = 0,
+                .debugLinearSearchTime = 0,
+                // END OF DEBUG
+            };
+        }
+
+        pub fn deinit(self: *Self) void {
+            for (self.data.items) |*list| {
+                list.deinit();
+            }
+            self.idxLookup.deinit();
+            self.data.deinit();
+        }
+
+        fn getIdx(self: *Self, blockId: u32) ?usize {
+            const slice = self.idxLookup.items;
+
+            // TODO: DEBUG - REMOVE LATER
+            const binaryStart = std.time.nanoTimestamp();
+            // END OF DEBUG
+
+            const result = std.sort.binarySearch(
+                u32,
+                slice,
+                blockId,
+                less,
+            );
+
+            // TODO: DEBUG - REMOVE LATER
+            const binaryEnd = std.time.nanoTimestamp();
+            self.debugBinarySearchTime += @intCast(binaryEnd - binaryStart);
+            // END OF DEBUG
+
+            return result;
+        }
+
+        pub fn get(self: *Self, blockId: u32) ?[]const DataType {
+            // TODO: DEBUG - REMOVE LATER
+            self.debugGetCount += 1;
+            const linearStart = std.time.nanoTimestamp();
+            _ = std.mem.indexOfScalar(u32, self.idxLookup.items, blockId);
+            const linearEnd = std.time.nanoTimestamp();
+            self.debugLinearSearchTime += @intCast(linearEnd - linearStart);
+            // END OF DEBUG
+
+            const idx = self.getIdx(blockId) orelse return null;
+            return self.data.items[idx].items;
+        }
+
+        pub fn add(self: *Self, blockId: u32, propVal: DataType) void {
+            const slice = self.idxLookup.items;
+            
+            if (self.getIdx(blockId)) |idx| {
+                // Block ID already exists, append to existing ArrayList
+                self.data.items[idx].append(propVal) catch @panic(panicMsg);
+            } else {
+                // Block ID doesn't exist, create new entry
+                const insertIdx = std.sort.lowerBound(u32, slice, blockId, less);
+                
+                var newList = std.ArrayList(DataType).init(self.allocator);
+                newList.append(propVal) catch @panic(panicMsg);
+                
+                self.idxLookup.insert(insertIdx, blockId) catch @panic(panicMsg);
+                self.data.insert(insertIdx, newList) catch @panic(panicMsg);
+            }
+        }
+
+        pub fn clear(self: *Self) void {
+            for (self.data.items) |*list| {
+                list.deinit();
+            }
+            self.idxLookup.clearRetainingCapacity();
+            self.data.clearRetainingCapacity();
+        }
+
+        // TODO: DEBUG - REMOVE LATER
+        pub fn resetDebugCounters(self: *Self) void {
+            self.debugGetCount = 0;
+            self.debugBinarySearchTime = 0;
+            self.debugLinearSearchTime = 0;
+        }
+        // END OF DEBUG
+    };
+}
+
 fn isSortedProp(comptime T: type) bool {
     comptime if (@typeInfo(T) != .@"struct") return false;
     return @hasDecl(T, "__is_sorted_block_property");
+}
+
+fn isSortedArrayOfProp(comptime T: type) bool {
+    comptime if (@typeInfo(T) != .@"struct") return false;
+    return @hasDecl(T, "__is_sorted_array_of_block_properties");
 }
 
 pub fn resetSortedProperties() void {
@@ -413,6 +525,9 @@ pub fn initSortedProperties(comptime allocator: std.mem.Allocator) void {
 
         if (comptime isSortedProp(sortedPropType)) {
             sortedProp.* = SortedBlockProperties(sortedPropType.__property_data_type).init(allocator);
+        }
+        else if (comptime isSortedArrayOfProp(sortedPropType)) {
+            sortedProp.* = SortedArrayOfBlockProperties(sortedPropType.__property_data_type).init(allocator);
         }
     }
 }
@@ -453,15 +568,15 @@ pub const BlockProps = struct {
     pub var mobility: [maxBlockCount]f32 = undefined;
 
     /// ------------------------------------------------- Sorted Block Properties
-    /// These properties are rarely used, so to save memory we use sorted arrays
-    pub var sortedAllowOres: SortedBlockProperties(bool) = undefined;
+    /// These properties are rarely used and accesed, so to save memory we use sorted arrays
+    pub var sAllowOres: SortedBlockProperties(bool) = undefined;
     // TODO: Tick event is accessed like a milion times for no reason. FIX IT
-    pub var sortedTickEvent: SortedBlockProperties(TickEvent) = undefined;
-    pub var sortedTouchFunction: SortedBlockProperties(*const TouchFunction) = undefined;
-    pub var sortedBlockEntity: SortedBlockProperties(*BlockEntityType) = undefined;
+    pub var sTickEvent: SortedBlockProperties(TickEvent) = undefined;
+    pub var saTouchFunctions: SortedArrayOfBlockProperties(*const TouchFunction) = undefined;
+    pub var sBlockEntity: SortedBlockProperties(*BlockEntityType) = undefined;
 
     /// GUI that is opened on click.
-    pub var sortedGui: SortedBlockProperties([]u8) = undefined;
+    pub var sGui: SortedBlockProperties([]u8) = undefined;
 };
 
 // TODO: DEBUG - REMOVE LATER
@@ -472,15 +587,30 @@ pub fn debugSortedBlockProperties() void {
         const sortedProp = &@field(BlockProps, decl.name);
         const sortedPropType = @TypeOf(sortedProp.*);
 
-        if (comptime isSortedProp(sortedPropType)) {
+        const isSortedPropVal = comptime isSortedProp(sortedPropType);
+        const isSortedArrayPropVal = comptime isSortedArrayOfProp(sortedPropType);
+        const isAnySortedProp = comptime isSortedPropVal or isSortedArrayPropVal;
+
+        if (isSortedPropVal) {
+            std.log.info("Property: {s} | Num of entries: {d}", .{decl.name, sortedProp.idxLookup.items.len});
+        }
+        if (isSortedArrayPropVal) {
+            var totalElements: usize = 0;
+            for (sortedProp.data.items) |list| {
+                totalElements += list.items.len;
+            }
+            std.log.info("Property: {s} | Num of entries: {d} | Num of properties: {d}", .{decl.name, sortedProp.idxLookup.items.len, totalElements});
+        }
+
+        if(isAnySortedProp)
+        {
             const getCount = sortedProp.debugGetCount;
             const binarySearchTimeNs = sortedProp.debugBinarySearchTime;
             const linearSearchTimeNs = sortedProp.debugLinearSearchTime;
             
             const binarySearchTimeMs = @as(f64, @floatFromInt(binarySearchTimeNs)) / 1_000_000.0;
             const linearSearchTimeMs = @as(f64, @floatFromInt(linearSearchTimeNs)) / 1_000_000.0;
-            
-            std.log.info("Property: {s} | Num of entries: {d}", .{decl.name, sortedProp.idxLookup.items.len});
+
             std.log.info("  get() calls: {d}", .{getCount});
             std.log.info("  Binary search time: {d:.3}ms", .{binarySearchTimeMs});
             std.log.info("  Linear search time (alternative): {d:.3}ms", .{linearSearchTimeMs});
