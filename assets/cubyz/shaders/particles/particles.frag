@@ -4,6 +4,7 @@ layout(location = 0) out vec4 fragColor;
 
 layout(location = 0) in vec3 textureCoords;
 layout(location = 1) flat in vec3 light;
+layout(location = 2) flat in vec3 pColor;
 
 layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionTextureSampler;
@@ -13,5 +14,5 @@ void main() {
 	if(texColor.a < 0.5) discard;
 
 	const vec3 pixelLight = max(light, texture(emissionTextureSampler, textureCoords).r*4);
-	fragColor = texColor*vec4(pixelLight, 1);
+	fragColor = texColor*vec4(pixelLight*pColor, 1);
 }

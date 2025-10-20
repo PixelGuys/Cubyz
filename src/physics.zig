@@ -8,6 +8,7 @@ const Vec2f = vec.Vec2f;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const settings = @import("settings.zig");
+const particles = @import("particles.zig");
 const Player = main.game.Player;
 const collision = main.game.collision;
 const camera = main.game.camera;
@@ -234,6 +235,28 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
 			if(damage > 0.01) {
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+			}
+
+			if(damage > 0.000001) {
+				const spawnType = particles.Emitter.SpawnType{.cube = .{ .mode = .scatter, .size = .{0.3, 0.3, 0} }};
+				const emitterProps = particles.EmitterProperties{
+					.dragMin = 0.5,
+					.dragMax = 0.8,
+					.densityMin = 1,
+					.densityMax = 1,
+					.velMin = 2,
+					.velMax = 3,
+					.rotVelMin = 0,
+					.rotVelMax = 0,
+					.lifeTimeMin = 0.4,
+					.lifeTimeMax = 0.7,
+					.colorMin = .{0.6, 0.6, 0.6},
+					.colorMax = .{0.8, 0.8, 0.8},
+					.randomColorPerChannel = false,
+					.randomizeRotation = true,
+				};
+				const emitter = particles.Emitter.init("cubyz:dust", true, spawnType, emitterProps);
+				emitter.spawnParticles(Player.super.pos - Vec3d{0, 0, Player.outerBoundingBoxExtent[2] - 0.2}, 20);
 			}
 
 			// Always unstuck upwards for now

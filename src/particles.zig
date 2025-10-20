@@ -275,7 +275,6 @@ pub const ParticleSystem = struct {
 				const worldPos = @as(Vec3d, @floatCast(newPos)) + playerPos;
 				particle.light = getCompressedLight(worldPos);
 			}
-
 			i += 1;
 		}
 		previousPlayerPos = playerPos;
@@ -296,16 +295,24 @@ pub const ParticleSystem = struct {
 	}
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
-		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
+		const lifeTime = properties.lifeTimeMin + (properties.lifeTimeMax - properties.lifeTimeMin) * random.nextFloat(&seed);
 		const drag = properties.dragMin + random.nextFloat(&seed)*properties.dragMax;
 		const density = properties.densityMin + random.nextFloat(&seed)*properties.densityMax;
 		const rot = if(properties.randomizeRotation) random.nextFloat(&seed)*std.math.pi*2 else 0;
 		const rotVel = (properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax) * (std.math.pi / 180.0);
+		const color = properties.colorMin + (properties.colorMax - properties.colorMin) * if (properties.randomColorPerChannel)
+			  random.nextFloatVector(3, &seed)
+		else 
+			@as(Vec3f, @splat(random.nextFloat(&seed)));
+		const colorInt: @Vector(3, u5) = @intFromFloat(color * @as(Vec3f, @splat(31)));
 
 		particles[particleCount] = Particle{
 			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
 			.typ = typ,
 			.light = getCompressedLight(pos),
+			.color = @as(u16, colorInt[0]) << 10 |
+					 @as(u16, colorInt[1]) << 5 |
+					 @as(u16, colorInt[2]),
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, rotVel),
@@ -369,7 +376,10 @@ pub const EmitterProperties = struct {
 	rotVelMax: f32 = 60,
 	lifeTimeMin: f32 = 0.75,
 	lifeTimeMax: f32 = 1,
+	colorMin: Vec3f = .{1, 1, 1},
+	colorMax: Vec3f = .{1, 1, 1},
 	randomizeRotation: bool = true,
+	randomColorPerChannel: bool = false,
 
 	pub fn parse(zon: ZonElement) EmitterProperties {
 		const drag = zon.get(Vec2f, "drag", .{0.1, 0.2});
@@ -377,7 +387,10 @@ pub const EmitterProperties = struct {
 		const velocity = zon.get(Vec2f, "velocity", .{1, 1.5});
 		const rotVel = zon.get(Vec2f, "rotationVel", .{20, 60});
 		const lifeTime = zon.get(Vec2f, "lifeTime", .{0.75, 1});
+		const color = zon.get(@Vector(2, u24), "color", .{std.math.maxInt(u24), std.math.maxInt(u24)});
 		const randomizeRotation = zon.get(bool, "randomRotate", true);
+		const colorRandomnessStr = zon.get(?[]const u8, "colorRandom", null);
+
 		return EmitterProperties{
 			.dragMin = drag[0],
 			.dragMax = drag[1],
@@ -389,7 +402,14 @@ pub const EmitterProperties = struct {
 			.rotVelMax = rotVel[1],
 			.lifeTimeMin = lifeTime[0],
 			.lifeTimeMax = lifeTime[1],
+			.colorMin = Vec3f{(@floatFromInt(color[0] >> 16 & 0xff)),
+						(@floatFromInt(color[0] >> 8 & 0xff)),
+						(@floatFromInt(color[0] & 0xff))} / @as(Vec3f, @splat(255)),
+			.colorMax = Vec3f{(@floatFromInt(color[1] >> 16 & 0xff)),
+						(@floatFromInt(color[1] >> 8 & 0xff)),
+						(@floatFromInt(color[1] & 0xff))} / @as(Vec3f, @splat(255)),
 			.randomizeRotation = randomizeRotation,
+			.randomColorPerChannel = if (colorRandomnessStr) |str| std.mem.eql(u8, str, "channel") else false, // TODO: redesign?
 		};
 	}
 };
@@ -550,7 +570,11 @@ pub const Particle = extern struct {
 	lifeRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
-	// 4 bytes left for use
+	color: u16 = @as(u16, 255 >> 3) << 10 |
+				 @as(u16, 255 >> 3) << 5 |
+				 @as(u16, 255 >> 3),
+				 
+	// 2 bytes left for use
 
 	pub fn posAndRotationVec(self: Particle) Vec4f {
 		return self.posAndRotation;
