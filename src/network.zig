@@ -2051,7 +2051,7 @@ pub const Connection = struct { // MARK: Connection
 			if(@errorReturnTrace()) |trace| {
 				std.log.info("{f}", .{trace});
 			}
-			std.log.debug("Packet data: {any}", data);
+			std.log.debug("Packet data: {any}", .{data});
 			self.disconnect();
 		};
 	}
