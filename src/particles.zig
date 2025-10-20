@@ -141,19 +141,56 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn registerBlockTextureAsParticle(blockId: []const u8, blockTexture: main.graphics.Image) void {
-		const particleType = ParticleType{
-			.frameCount = 1,
-			.startFrame = @floatFromInt(textures.items.len),
-			.size = 0.25, // Smaller than default particles
-		};
+		// Create multiple small texture fragments from the block texture (like Minecraft)
+		const fragmentsPerSide = 4; // 4x4 grid = 16 fragments per block texture
+		const fragmentSize = blockTexture.width / fragmentsPerSide;
 
-		const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
-		particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
-		types.append(particleType);
-		textures.append(blockTexture);
-		emissionTextures.append(main.graphics.Image.emptyImage);
+		// We'll create just a few random fragments to keep memory usage down
+		const numFragments = 4;
 
-		std.log.debug("Registered block particle: {s}", .{particleId});
+		for(0..numFragments) |fragmentIdx| {
+			// Pick a random position in the 4x4 grid
+			const gridX = (fragmentIdx * 3) % fragmentsPerSide; // Semi-random distribution
+			const gridY = (fragmentIdx * 2) % fragmentsPerSide;
+
+			// Extract a small fragment from the block texture
+			const startX = gridX * fragmentSize;
+			const startY = gridY * fragmentSize;
+
+			// Create a new image for this fragment
+			const fragmentImageData = arenaAllocator.alloc(main.graphics.Color, fragmentSize * fragmentSize);
+			for(0..fragmentSize) |y| {
+				for(0..fragmentSize) |x| {
+					const srcIdx = (startY + y) * blockTexture.width + (startX + x);
+					const dstIdx = y * fragmentSize + x;
+					if(srcIdx < blockTexture.imageData.len) {
+						fragmentImageData[dstIdx] = blockTexture.imageData[srcIdx];
+					} else {
+						fragmentImageData[dstIdx] = .{.r = 0, .g = 0, .b = 0, .a = 0};
+					}
+				}
+			}
+
+			const fragmentTexture = main.graphics.Image{
+				.width = @intCast(fragmentSize),
+				.height = @intCast(fragmentSize),
+				.imageData = fragmentImageData,
+			};
+
+			const particleType = ParticleType{
+				.frameCount = 1,
+				.startFrame = @floatFromInt(textures.items.len),
+				.size = 0.15, // Small fragment size
+			};
+
+			const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
+			particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
+			types.append(particleType);
+			textures.append(fragmentTexture);
+			emissionTextures.append(main.graphics.Image.emptyImage);
+		}
+
+		std.log.debug("Registered block particle fragments: {s} ({d} fragments)", .{blockId, numFragments});
 	}
 
 	pub fn generateTextureArray() void {

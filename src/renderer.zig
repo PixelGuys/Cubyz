@@ -1099,33 +1099,36 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 
-						// Spawn block break particles using the block's texture
+						// Spawn block break particles using the block's texture fragments
 						const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 						const particleCount: u32 = 8;
+						const numFragments = 4; // Must match the value in particles.zig
 
-						// Get particle ID from block ID
 						const blockId = block.id();
-						const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
-						defer main.stackAllocator.free(particleId);
-
 						std.log.info("Breaking block {s} at pos {d}, spawning {} particles", .{blockId, particlePos, particleCount});
 
-						// Spawn locally on client
-						const emitter = particles.Emitter.init(particleId, true);
-						emitter.spawnParticles(particleCount, particles.Emitter.SpawnCube, .{
-							.mode = .spread,
-							.position = particlePos,
-							.size = Vec3f{0.5, 0.5, 0.5},
-						});
+						// Spawn particles with random fragment variations locally on client
+						for(0..particleCount) |i| {
+							const fragmentIdx = i % numFragments; // Cycle through fragments
+							const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
+							defer main.stackAllocator.free(particleId);
 
-						// Also send to server for multiplayer
-						main.network.Protocols.genericUpdate.sendParticles(
-							main.game.world.?.conn,
-							particleId,
-							particlePos,
-							true,
-							particleCount
-						);
+							const emitter = particles.Emitter.init(particleId, true);
+							emitter.spawnParticles(1, particles.Emitter.SpawnCube, .{
+								.mode = .spread,
+								.position = particlePos,
+								.size = Vec3f{0.5, 0.5, 0.5},
+							});
+
+							// Also send to server for multiplayer
+							main.network.Protocols.genericUpdate.sendParticles(
+								main.game.world.?.conn,
+								particleId,
+								particlePos,
+								true,
+								1
+							);
+						}
 					}
 				} else {
 					main.items.Inventory.Sync.ClientSide.mutex.unlock();
@@ -1144,30 +1147,33 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if(newBlock.typ == 0 or newBlock.hasTag(.air)) { // Block was completely broken
 					const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 					const particleCount: u32 = 8;
+					const numFragments = 4; // Must match the value in particles.zig
 
-					// Get particle ID from block ID
 					const blockId = block.id();
-					const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
-					defer main.stackAllocator.free(particleId);
-
 					std.log.info("Breaking block {s} (creative/partial) at pos {d}, spawning {} particles", .{blockId, particlePos, particleCount});
 
-					// Spawn locally on client
-					const emitter = particles.Emitter.init(particleId, true);
-					emitter.spawnParticles(particleCount, particles.Emitter.SpawnCube, .{
-						.mode = .spread,
-						.position = particlePos,
-						.size = Vec3f{0.5, 0.5, 0.5},
-					});
+					// Spawn particles with random fragment variations locally on client
+					for(0..particleCount) |i| {
+						const fragmentIdx = i % numFragments; // Cycle through fragments
+						const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}:{d}", .{blockId, fragmentIdx}) catch unreachable;
+						defer main.stackAllocator.free(particleId);
 
-					// Also send to server for multiplayer
-					main.network.Protocols.genericUpdate.sendParticles(
-						main.game.world.?.conn,
-						particleId,
-						particlePos,
-						true,
-						particleCount
-					);
+						const emitter = particles.Emitter.init(particleId, true);
+						emitter.spawnParticles(1, particles.Emitter.SpawnCube, .{
+							.mode = .spread,
+							.position = particlePos,
+							.size = Vec3f{0.5, 0.5, 0.5},
+						});
+
+						// Also send to server for multiplayer
+						main.network.Protocols.genericUpdate.sendParticles(
+							main.game.world.?.conn,
+							particleId,
+							particlePos,
+							true,
+							1
+						);
+					}
 				}
 			}
 		}
