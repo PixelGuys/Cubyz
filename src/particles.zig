@@ -232,8 +232,8 @@ pub const ParticleSystem = struct {
 			const rotVel = particleLocal.velAndRotationVel[3];
 			rot += rotVel*deltaTime;
 
-			particleLocal.velAndRotationVel += vec.combine(gravity, 0)*vecDeltaTime;
-			particleLocal.velAndRotationVel *= @splat(@exp(-particleLocal.density*deltaTime));
+			particleLocal.velAndRotationVel += @as(Vec4f, @splat(particleLocal.density))*vec.combine(gravity, 0)*vecDeltaTime;
+			particleLocal.velAndRotationVel *= @splat(@exp(-particleLocal.drag*deltaTime));
 			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 			if(particleLocal.collides) {
@@ -297,6 +297,7 @@ pub const ParticleSystem = struct {
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
 		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
+		const drag = properties.dragMin + random.nextFloat(&seed)*properties.dragMax;
 		const density = properties.densityMin + random.nextFloat(&seed)*properties.densityMax;
 		const rot = if(properties.randomizeRotation) random.nextFloat(&seed)*std.math.pi*2 else 0;
 		const rotVel = (properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax) * (std.math.pi / 180.0);
@@ -310,6 +311,7 @@ pub const ParticleSystem = struct {
 			.velAndRotationVel = vec.combine(vel, rotVel),
 			.lifeVelocity = 1/lifeTime,
 			.density = density,
+			.drag = drag,
 			.collides = collides,
 		};
 		particleCount += 1;
@@ -357,6 +359,8 @@ pub const ParticleSystem = struct {
 };
 
 pub const EmitterProperties = struct {
+	dragMin: f32 = 0.1,
+	dragMax: f32 = 0.2,
 	densityMin: f32 = 0.1,
 	densityMax: f32 = 0.2,
 	velMin: f32 = 1,
@@ -368,12 +372,15 @@ pub const EmitterProperties = struct {
 	randomizeRotation: bool = true,
 
 	pub fn parse(zon: ZonElement) EmitterProperties {
+		const drag = zon.get(Vec2f, "drag", .{0.1, 0.2});
 		const density = zon.get(Vec2f, "density", .{0.1, 0.2});
 		const velocity = zon.get(Vec2f, "velocity", .{1, 1.5});
 		const rotVel = zon.get(Vec2f, "rotationVel", .{20, 60});
 		const lifeTime = zon.get(Vec2f, "lifeTime", .{0.75, 1});
 		const randomizeRotation = zon.get(bool, "randomRotate", true);
 		return EmitterProperties{
+			.dragMin = drag[0],
+			.dragMax = drag[1],
 			.densityMin = density[0],
 			.densityMax = density[1],
 			.velMin = velocity[0],
@@ -554,5 +561,6 @@ pub const ParticleLocal = struct {
 	velAndRotationVel: Vec4f,
 	lifeVelocity: f32,
 	density: f32,
+	drag: f32,
 	collides: bool,
 };
