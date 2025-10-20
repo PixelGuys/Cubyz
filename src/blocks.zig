@@ -508,7 +508,7 @@ pub const meshes = struct { // MARK: meshes
 	var loadedMeshes: u32 = 0;
 
 	var textureIDs: main.List([]const u8) = undefined;
-	pub var animation: main.List(AnimationData) = undefined;
+	var animation: main.List(AnimationData) = undefined;
 	var blockTextures: main.List(Image) = undefined;
 	var emissionTextures: main.List(Image) = undefined;
 	var reflectivityTextures: main.List(Image) = undefined;
@@ -641,6 +641,15 @@ pub const meshes = struct { // MARK: meshes
 		} else {
 			return textureIndices[block.data][orientation - 16];
 		}
+	}
+
+	/// Returns the actual texture frame index for a given texture ID
+	/// Returns null if the texture ID is out of bounds
+	pub fn getTextureAnimationFrame(texId: u16) ?u16 {
+		if(texId < animation.items.len) {
+			return @intCast(animation.items[texId].startFrame);
+		}
+		return null;
 	}
 
 	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {

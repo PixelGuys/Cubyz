@@ -886,10 +886,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		// Get the texture index for this block
 		const texId = main.blocks.meshes.textureIndex(block, 0);
-		const actualTextureIdx: u16 = if (texId < main.blocks.meshes.animation.items.len)
-			@intCast(main.blocks.meshes.animation.items[texId].startFrame)
-		else
-			0;
+		const actualTextureIdx: u16 = main.blocks.meshes.getTextureAnimationFrame(texId) orelse 0;
 
 		const emitter = particles.Emitter.init(particleId, true);
 		for(0..particleCount) |_| {
