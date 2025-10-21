@@ -653,8 +653,6 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	/// Returns the actual texture frame index for a given texture ID
-	/// Returns null if the texture ID is out of bounds
 	pub fn getTextureAnimationFrame(texId: u16) ?u16 {
 		if(texId < animation.items.len) {
 			return @intCast(animation.items[texId].startFrame);
