@@ -21,7 +21,7 @@ void main() {
         : texture(textureSampler, vec3(textureCoords.xy, layer));
 
     // Early alpha discard — GPU likes this near top
-    if (texColor.a == 0.0)
+    if (texColor.a < 0.5)
         discard;
 
     // Compute lighting — avoid branching using mix()
