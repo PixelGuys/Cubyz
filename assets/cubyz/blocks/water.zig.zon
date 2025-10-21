@@ -13,4 +13,7 @@
 	.mobility = 0.6,
 	.model = "cubyz:cube",
 	.texture = "cubyz:water",
+	.item = .{
+		.tags = .{.fluidPlaceable}
+	},
 }

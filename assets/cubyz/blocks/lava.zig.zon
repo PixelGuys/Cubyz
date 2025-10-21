@@ -11,4 +11,7 @@
 	.emittedLight = 0xff7b00,
 	.model = "cubyz:cube",
 	.texture = "cubyz:lava",
+	.item = .{
+		.tags = .{.fluidPlaceable}
+	},
 }
