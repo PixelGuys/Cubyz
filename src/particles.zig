@@ -424,7 +424,7 @@ pub const DirectionMode = union(enum(u8)) {
 
 pub const Emitter = struct {
 	typ: u16 = 0,
-    particleType: ParticleTypeLocal,
+	particleType: ParticleTypeLocal,
 	collides: bool,
 	spawnType: SpawnType,
 	properties: EmitterProperties,
@@ -530,11 +530,11 @@ pub const Emitter = struct {
 	};
 
 	pub fn init(id: []const u8, collides: bool, spawnType: SpawnType, properties: EmitterProperties) Emitter {
-        const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
+		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
 
 		return Emitter{
 			.typ = typ,
-            .particleType = ParticleManager.typesLocal.items[typ],
+			.particleType = ParticleManager.typesLocal.items[typ],
 			.collides = collides,
 			.spawnType = spawnType,
 			.properties = properties,
