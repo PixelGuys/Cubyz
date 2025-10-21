@@ -1,0 +1,13 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/baobab/grandidieri/trunk/0"},
+		.{.id = "cubyz:tree/baobab/grandidieri/trunk/1"},
+		.{.id = "cubyz:tree/baobab/grandidieri/trunk/2"},
+		.{.id = "cubyz:tree/baobab/grandidieri/trunk/3"},
+	},
+	.children = .{
+		.white = "cubyz:tree/baobab/grandidieri/branch",
+		.grey = "cubyz:tree/baobab/grandidieri/leaves",
+		.brown = "cubyz:tree/baobab/grandidieri/roots",
+	},
+}
