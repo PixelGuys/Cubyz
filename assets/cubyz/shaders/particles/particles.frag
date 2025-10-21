@@ -24,9 +24,9 @@ void main() {
     if (texColor.a < 0.5)
         discard;
 
-    // Compute lighting — avoid branching using mix()
-    float emission = texture(emissionTextureSampler, vec3(textureCoords.xy, layer)).r * 4.0;
-    vec3 pixelLight = mix(max(light, vec3(emission)), light, float(isBlock));
+	// Compute lighting — avoid branching using mix()
+	float emission = texture(emissionTextureSampler, vec3(textureCoords.xy, layer)).r * 4.0;
+	vec3 pixelLight = mix(max(light, vec3(emission)), light, float(isBlock));
 
-    fragColor = texColor * vec4(pixelLight, 1.0);
+	fragColor = texColor * vec4(pixelLight, 1.0);
 }
