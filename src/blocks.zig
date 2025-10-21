@@ -88,6 +88,7 @@ var _allowOres: [maxBlockCount]bool = undefined;
 var _tickEvent: [maxBlockCount]?TickEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
+var _particleOverride: [maxBlockCount]?[]u8 = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator);
 
@@ -145,6 +146,11 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	} else null;
 
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
+
+	_particleOverride[size] = if(zon.get(?[]const u8, "particle", null)) |particleId|
+		arena.dupe(u8, particleId)
+	else
+		null;
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -438,6 +444,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub fn blockEntity(self: Block) ?*BlockEntityType {
 		return _blockEntity[self.typ];
+	}
+
+	pub fn particleId(self: Block) []u8 {
+		return _particleOverride[self.typ] orelse _id[self.typ];
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
@@ -808,12 +818,22 @@ pub const meshes = struct { // MARK: meshes
 			if(blockId.len > 0) {
 				const block: Block = .{.typ = @intCast(i), .data = 0};
 				if(!block.hasTag(.air)) {
-					const texId = textureIndex(block, 0);
+					// Use particle override if specified, otherwise use block's own ID
+					const particleId = block.particleId();
+
+					// Determine which block's texture to use
+					const textureBlock = if(_particleOverride[i]) |overrideId| blk: {
+						// Look up the override block and use its texture
+						const overrideType = getTypeById(overrideId);
+						break :blk Block{.typ = overrideType, .data = 0};
+					} else block;
+
+					const texId = textureIndex(textureBlock, 0);
 					if(texId < animation.items.len) {
 						const actualTextureIdx = animation.items[texId].startFrame;
 						if(actualTextureIdx < blockTextures.items.len) {
 							const image = blockTextures.items[actualTextureIdx];
-							main.particles.ParticleManager.registerBlockTextureAsParticle(blockId, @intCast(actualTextureIdx), image);
+							main.particles.ParticleManager.registerBlockTextureAsParticle(particleId, @intCast(actualTextureIdx), image);
 						}
 					}
 				}

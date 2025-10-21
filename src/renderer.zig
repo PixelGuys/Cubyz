@@ -880,12 +880,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	fn spawnBlockBreakParticles(block: main.blocks.Block, selectedPos: Vec3i) void {
 		const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
 		const particleCount: u32 = 8;
-		const blockId = block.id();
-		const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
+		const particleBlockId = block.particleId();
+		const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{particleBlockId}) catch unreachable;
 		defer main.stackAllocator.free(particleId);
 
-		// Get the texture index for this block
-		const texId = main.blocks.meshes.textureIndex(block, 0);
+		// Get the texture index for the particle (may be overridden)
+		const particleBlock = main.blocks.parseBlock(particleBlockId);
+		const texId = main.blocks.meshes.textureIndex(particleBlock, 0);
 		const actualTextureIdx: u16 = main.blocks.meshes.getTextureAnimationFrame(texId) orelse 0;
 
 		const emitter = particles.Emitter.init(particleId, true);
