@@ -819,9 +819,7 @@ pub const meshes = struct { // MARK: meshes
 					// Use particle override if specified, otherwise use block's own ID
 					const particleId = block.particleId();
 
-					// Determine which block's texture to use
 					const textureBlock = if(_particleOverride[i]) |overrideId| blk: {
-						// Look up the override block and use its texture
 						const overrideType = getTypeById(overrideId);
 						break :blk Block{.typ = overrideType, .data = 0};
 					} else block;
