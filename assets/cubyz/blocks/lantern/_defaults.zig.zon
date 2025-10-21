@@ -1,6 +1,6 @@
 .{
 	.tags = .{.choppable, .wood},
-	.blockHealth = 2,
+	.blockHealth = 0.5,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
@@ -12,12 +12,5 @@
 		.ceiling = "cubyz:lantern/ceiling",
 		.floor = "cubyz:lantern/floor",
 	},
-	.emittedLight = 0xc5b29a,
 	.lodReplacement = "cubyz:air",
-	.texture = "cubyz:lantern/side",
-	.texture_top = "cubyz:lantern/top",
-	.texture_bottom = "cubyz:lantern/top",
-	.item = .{
-		.texture = "lantern.png",
-	},
 }
