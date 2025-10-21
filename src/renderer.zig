@@ -1084,7 +1084,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					}
 					if(currentBlockProgress < 1) {
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						if(currentBlockProgress != 0 and isTool and !std.mem.eql(u8, stack.item.?.tool.id(), "cubyz:chisel")) {
+						if(currentBlockProgress != 0) {
+							if(isTool and std.mem.eql(u8, stack.item.?.tool.id(), "cubyz:chisel")) {
+								main.items.Inventory.Sync.ClientSide.mutex.unlock();
+								return;
+							}
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						}
 						main.items.Inventory.Sync.ClientSide.mutex.unlock();
