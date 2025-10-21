@@ -2,7 +2,6 @@
 
 layout(location = 0) out vec3 textureCoords;
 layout(location = 1) flat out vec3 light;
-layout(location = 2) flat out vec3 pColor;
 
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionAndViewMatrix;

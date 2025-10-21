@@ -237,6 +237,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 			}
 
+			// EXAMPLE CODE!! WILL BE REMOVED BEFORE MERGING
 			if(damage > 0.000001) {
 				const spawnType = particles.Emitter.SpawnType{.cube = .{.mode = .scatter, .size = .{0.3, 0.3, 0}}};
 				const emitterProps = particles.EmitterProperties{

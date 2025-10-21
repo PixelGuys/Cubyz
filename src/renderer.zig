@@ -1112,6 +1112,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 
+                // EXAMPLE CODE!! WILL BE REMOVED BEFORE MERGING
 				const spawnType = particles.Emitter.SpawnType{.cube = .{.mode = .scatter, .size = .{0.5, 0.5, 0.5}}};
 				const emitterProps = particles.EmitterProperties{
 					.velocity = .{2, 3},
