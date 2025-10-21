@@ -170,7 +170,7 @@ pub const ClientEntityManager = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
 			graphics.draw.setColor(0xff000000);
-			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0}, false, .center);
+			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
 			defer buf.deinit();
 			const size = buf.calculateLineBreaks(32, 1024);
 			buf.render(xCenter - size[0]/2, yCenter - size[1], 32);
@@ -209,10 +209,7 @@ pub const ClientEntityManager = struct {
 					@floatCast(pos[1]),
 					@floatCast(pos[2] - 1.0 + 0.09375),
 				}))
-				.mul(Mat4f.rotationZ(-ent.rot[2]))
-				//.mul(Mat4f.rotationY(-ent.rot[1]))
-				//.mul(Mat4f.rotationX(-ent.rot[0]))
-			);
+				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			c.glDrawElements(c.GL_TRIANGLES, 6*modelSize, c.GL_UNSIGNED_INT, null);

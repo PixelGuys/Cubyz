@@ -593,6 +593,7 @@ pub const MenuBackGround = struct {
 		const viewMatrix = Mat4f.rotationZ(angle);
 		pipeline.bind(null);
 		updateViewport(main.Window.width, main.Window.height, 70.0);
+		defer updateViewport(Window.width, Window.height, settings.fov);
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
@@ -1063,7 +1064,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
-				var damage: f32 = 1;
+				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
 					damage = stack.item.?.tool.getBlockDamage(block);
@@ -1074,7 +1075,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
-					const swingTime = if(isTool) 1.0/stack.item.?.tool.swingSpeed else 0.5;
+					const swingTime = if(isTool and stack.item.?.tool.isEffectiveOn(block)) 1.0/stack.item.?.tool.swingSpeed else 0.5;
 					if(currentSwingTime != swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
