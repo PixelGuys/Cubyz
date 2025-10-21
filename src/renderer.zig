@@ -884,7 +884,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{particleBlockId}) catch unreachable;
 		defer main.stackAllocator.free(particleId);
 
-		// Get the texture index for the particle (may be overridden)
 		const particleBlock = main.blocks.parseBlock(particleBlockId);
 		const texId = main.blocks.meshes.textureIndex(particleBlock, 0);
 		const actualTextureIdx: u16 = main.blocks.meshes.getTextureAnimationFrame(texId) orelse 0;
