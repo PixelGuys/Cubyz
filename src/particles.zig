@@ -185,7 +185,6 @@ pub const ParticleManager = struct {
                     }
                 }
 
-                // If this region has enough visible pixels, add it to valid regions
                 if (visibleCount >= minVisiblePixels) {
                     validRegions.append(.{ .x = gridX, .y = gridY });
                 }
@@ -201,9 +200,6 @@ pub const ParticleManager = struct {
     }
 
     pub fn registerBlockTextureAsParticle(blockId: []const u8, textureIndex: u16, image: Image) void {
-        // Calculate size based on UV grid: if we sample 1/N of the texture, particle should be 1/N of block size
-        // Regular particles use: size = texture.width / 16, where 16x16 is standard block texture size
-        // Block particles sample a (16/N)x(16/N) region, so size should be (16/N) / 16 = 1/N
         const particleType = ParticleType{
             .frameCount = 1,
             .startFrame = -@as(f32, @floatFromInt(textureIndex)) - 1, // negative to indicate block texture
@@ -214,12 +210,10 @@ pub const ParticleManager = struct {
         particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
         types.append(particleType);
 
-        // Compute and store valid UV regions for this texture
         const validRegions = computeValidUVRegions(image);
         blockTextureValidRegions.put(arenaAllocator.allocator, textureIndex, validRegions) catch unreachable;
     }
 
-    /// Returns a random valid UV offset for a block texture
     pub fn getRandomValidUVOffset(textureIndex: u16, randomSeed: *u64) u32 {
         const validRegions = blockTextureValidRegions.get(textureIndex) orelse {
             // Fallback: return center region
@@ -233,7 +227,6 @@ pub const ParticleManager = struct {
             return center | (@as(u32, center) << 16) | (1 << 31);
         }
 
-        // Pick a random valid region (use u32 to avoid bitSize overflow)
         const idx = main.random.nextIntBounded(u32, randomSeed, @as(u32, @intCast(validRegions.items.len)));
         const region = validRegions.items[idx];
         return region.x | (@as(u32, region.y) << 16) | (1 << 31);
