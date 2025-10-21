@@ -791,6 +791,20 @@ const Parser = struct { // MARK: Parser
 					return parseArray(allocator, filePath, chars, index);
 				}
 			},
+			'/' => {
+				if(chars[index.* + 1] == '/') {
+					// Ignore line, it's a comment.
+					while(chars[index.*] != '\n') {
+						index.* += 1;
+					}
+					index.* += 1;
+					return .null;
+				} else {
+					printError(filePath, chars, index.*, "Possibly a malformed comment, but interpreting as null.");
+					index.* += 1;
+					return .null;
+				}
+			},
 			else => {
 				printError(filePath, chars, index.*, "Unexpected character.");
 				index.* += 1;
