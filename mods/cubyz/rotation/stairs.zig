@@ -309,6 +309,7 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 	if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 	if(oldBlock.data == newBlock.data) return .no;
 	if(item.item != null and item.item.? == .tool and std.mem.eql(u8, item.item.?.tool.id(), "cubyz:chisel")) {
+		item.item.?.tool.durability -= 1;
 		return .yes; // TODO: Durability change, after making the chisel a proper tool.
 	}
 	return .no;
