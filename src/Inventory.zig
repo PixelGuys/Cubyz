@@ -112,7 +112,7 @@ pub const Sync = struct { // MARK: Sync
 		pub fn receiveConfirmation(reader: *utils.BinaryReader) !void {
 			mutex.lock();
 			defer mutex.unlock();
-			if (commands.popFront()) |command|
+			if(commands.popFront()) |command|
 				try command.finalize(main.globalAllocator, .client, reader);
 		}
 
