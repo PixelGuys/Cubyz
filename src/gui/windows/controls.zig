@@ -95,7 +95,7 @@ fn unbindKey(keyPtr: usize) void {
     needsUpdate = true;
 }
 
-fn resetControlsCallback(_: usize) void { // TODO: Add confirmation dialog
+fn resetsControlsCallback(_: usize) void { // TODO: Add confirmation dialog
     main.KeyBoard.resetKeysToDefault();
     main.settings.save();
     needsUpdate = true;
@@ -103,7 +103,7 @@ fn resetControlsCallback(_: usize) void { // TODO: Add confirmation dialog
 
 pub fn onOpen() void {
     const list = VerticalList.init(.{ padding, 16 + padding }, 364, 8);
-    list.add(Button.initText(.{ 0, 0 }, 256, "Reset Controls", .{ .callback = &resetControlsCallback }));
+    list.add(Button.initText(.{ 0, 0 }, 256, "Reset Controls", .{ .callback = &resetsControlsCallback }));
     list.add(Button.initText(.{ 0, 0 }, 128, if (editingKeyboard) "Gamepad" else "Keyboard", .{ .callback = &toggleKeyboard }));
     list.add(ContinuousSlider.init(.{ 0, 0 }, 256, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
     list.add(CheckBox.init(.{ 0, 0 }, 256, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
