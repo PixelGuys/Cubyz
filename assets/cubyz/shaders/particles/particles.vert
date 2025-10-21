@@ -15,7 +15,6 @@ struct ParticleData {
 	float lifeRatio;
 	uint light;
 	uint type;
-	uint color;
 };
 layout(std430, binding = 13) restrict readonly buffer _particleData
 {
@@ -66,14 +65,6 @@ void main() {
 		fullLight >> 0 & 31u
 	);
 	light = max(sunLight*ambientLight, blockLight)/31;
-
-	uint fullColor = particle.color;
-	vec3 color = vec3(
-		fullColor >> 10 & 31u,
-		fullColor >> 5 & 31u,
-		fullColor >> 0 & 31u
-	)/31;
-	pColor = color;
 
 	float rotation = particle.rotation;
 	vec3 faceVertPos = facePositions[vertexID];

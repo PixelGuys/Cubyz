@@ -240,22 +240,11 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			if(damage > 0.000001) {
 				const spawnType = particles.Emitter.SpawnType{.cube = .{.mode = .scatter, .size = .{0.3, 0.3, 0}}};
 				const emitterProps = particles.EmitterProperties{
-					.dragMin = 0.5,
-					.dragMax = 0.8,
-					.densityMin = 1,
-					.densityMax = 1,
-					.velMin = 2,
-					.velMax = 3,
-					.rotVelMin = 0,
-					.rotVelMax = 0,
-					.lifeTimeMin = 0.4,
-					.lifeTimeMax = 0.7,
-					.colorMin = .{0.6, 0.6, 0.6},
-					.colorMax = .{0.8, 0.8, 0.8},
-					.randomColorPerChannel = false,
+					.velocity = .{2, 3},
+					.lifeTime = .{0.4, 0.7},
 					.randomizeRotation = true,
 				};
-				const emitter = particles.Emitter.init("cubyz:dust", true, spawnType, emitterProps);
+				const emitter = particles.Emitter.init("cubyz:poof", true, spawnType, emitterProps);
 				emitter.spawnParticles(Player.super.pos - Vec3d{0, 0, Player.outerBoundingBoxExtent[2] - 0.2}, 20);
 			}
 

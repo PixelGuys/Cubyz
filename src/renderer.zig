@@ -1114,22 +1114,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 				const spawnType = particles.Emitter.SpawnType{.cube = .{.mode = .scatter, .size = .{0.5, 0.5, 0.5}}};
 				const emitterProps = particles.EmitterProperties{
-					.dragMin = 0.5,
-					.dragMax = 0.8,
-					.densityMin = 1,
-					.densityMax = 1,
-					.velMin = 2,
-					.velMax = 3,
-					.rotVelMin = 0,
-					.rotVelMax = 0,
-					.lifeTimeMin = 0.4,
-					.lifeTimeMax = 0.7,
-					.colorMin = .{0.5, 0.3, 0.01},
-					.colorMax = .{0.6, 0.4, 0.05},
-					.randomColorPerChannel = true,
-					.randomizeRotation = true,
+					.velocity = .{2, 3},
+					.lifeTime = .{0.4, 0.7},
+					.randomizeRotation = false,
 				};
-				const emitter = particles.Emitter.init("cubyz:dust", false, spawnType, emitterProps);
+				const emitter = particles.Emitter.init("cubyz:flame", false, spawnType, emitterProps);
 				emitter.spawnParticles(@as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5}, 100);
 			}
 		}
