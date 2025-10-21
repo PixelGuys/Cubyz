@@ -811,7 +811,7 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
-	fn id(self: *Tool) []const u8 {
+	pub fn id(self: *Tool) []const u8 {
 		return self.type.id();
 	}
 
