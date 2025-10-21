@@ -6,5 +6,4 @@
     },
     .model = "cubyz:cube",
     .texture = "cubyz:soil",
-    .particle = "cubyz:slate",
 }
