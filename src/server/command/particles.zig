@@ -12,6 +12,26 @@ pub const usage =
 	\\/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>
 	\\
 	\\tip: use "~" to apply current player position coordinate in <x> <y> <z> fields.
+	\\zon example: 
+	\\.{ 
+	\\  // comment: other types:
+	\\  // .point, .cube
+	\\  .type = .sphere,
+	\\  .radius = 5,
+	\\  // when .cube write:
+	\\  // .size = .{10, 10, 5},
+	\\
+	\\  // or use .spread, .direction
+	\\  .mode = .scatter,
+	\\  // when .direction write:
+	\\  // .direction = .{0, 0, 1},
+	\\  // .coneRadius = 1,
+	\\
+	\\  // take min and max values
+	\\  .velocity = .{0.5, 10}, 
+	\\  .lifeTime = .{0.5, 10},
+	\\  .randomRotate = true
+	\\}
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
