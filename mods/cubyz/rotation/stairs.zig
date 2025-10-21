@@ -293,7 +293,6 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 			.tool => |tool| {
 				if(std.mem.eql(u8, tool.id(), "cubyz:chisel")) { // Break only one eigth of a block
 					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
-					std.log.info("data: {}, closestRay: {}", .{currentData.data, closestRay(.bit, currentData.*, relativePlayerPos, playerDir)});
 					if(currentData.data == 255)
 						currentData.* = .{.typ = 0, .data = 0};
 					return;
