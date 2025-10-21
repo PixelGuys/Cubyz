@@ -294,8 +294,7 @@ pub const ParticleSystem = struct {
 		previousPlayerPos = playerPos;
 	}
 
-	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
-		const particleType = ParticleManager.typesLocal.items[typ];
+	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
 		const lifeTime = properties.lifeTime[0] + (properties.lifeTime[1] - properties.lifeTime[0])*random.nextFloat(&seed);
 		const drag = particleType.drag[0] + (particleType.drag[1] - particleType.drag[0])*random.nextFloat(&seed);
 		const density = particleType.density[0] + (particleType.density[1] - particleType.density[0])*random.nextFloat(&seed);
@@ -425,6 +424,7 @@ pub const DirectionMode = union(enum(u8)) {
 
 pub const Emitter = struct {
 	typ: u16 = 0,
+    particleType: ParticleTypeLocal,
 	collides: bool,
 	spawnType: SpawnType,
 	properties: EmitterProperties,
@@ -530,14 +530,15 @@ pub const Emitter = struct {
 	};
 
 	pub fn init(id: []const u8, collides: bool, spawnType: SpawnType, properties: EmitterProperties) Emitter {
-		const emitter = Emitter{
-			.typ = ParticleManager.particleTypeHashmap.get(id) orelse 0,
+        const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
+
+		return Emitter{
+			.typ = typ,
+            .particleType = ParticleManager.typesLocal.items[typ],
 			.collides = collides,
 			.spawnType = spawnType,
 			.properties = properties,
 		};
-
-		return emitter;
 	}
 
 	pub fn spawnParticles(self: Emitter, pos: Vec3d, spawnCount: u32) void {
@@ -545,7 +546,7 @@ pub const Emitter = struct {
 		for(0..count) |_| {
 			const particlePos, const particleVel = self.spawnType.spawn(pos, self.properties);
 
-			ParticleSystem.addParticle(self.typ, particlePos, particleVel, self.collides, self.properties);
+			ParticleSystem.addParticle(self.typ, self.particleType, particlePos, particleVel, self.collides, self.properties);
 		}
 	}
 };
