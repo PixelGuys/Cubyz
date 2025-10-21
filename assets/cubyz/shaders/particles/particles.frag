@@ -10,19 +10,23 @@ layout(binding = 1) uniform sampler2DArray emissionTextureSampler;
 layout(binding = 2) uniform sampler2DArray blockTextureSampler;
 
 void main() {
-	vec4 texColor;
-	vec3 pixelLight;
+    // Detect if we're sampling from blockTextureSampler
+    bool isBlock = textureCoords.z < 0.0;
 
-	// Negative textureIndex indicates block texture
-	if (textureCoords.z < 0) {
-		float blockTexIndex = -textureCoords.z - 1;
-		texColor = texture(blockTextureSampler, vec3(textureCoords.xy, blockTexIndex));
-		pixelLight = light; // blocks don't have emission
-	} else {
-		texColor = texture(textureSampler, textureCoords);
-		pixelLight = max(light, texture(emissionTextureSampler, textureCoords).r*4);
-	}
+    // Resolve texture index and sampler
+    float layer = isBlock ? (-textureCoords.z - 1.0) : textureCoords.z;
 
-	if(texColor.a < 0.5) discard;
-	fragColor = texColor*vec4(pixelLight, 1);
+    vec4 texColor = isBlock
+        ? texture(blockTextureSampler, vec3(textureCoords.xy, layer))
+        : texture(textureSampler, vec3(textureCoords.xy, layer));
+
+    // Early alpha discard — GPU likes this near top
+    if (texColor.a == 0.0)
+        discard;
+
+    // Compute lighting — avoid branching using mix()
+    float emission = texture(emissionTextureSampler, vec3(textureCoords.xy, layer)).r * 4.0;
+    vec3 pixelLight = mix(max(light, vec3(emission)), light, float(isBlock));
+
+    fragColor = texColor * vec4(pixelLight, 1.0);
 }
