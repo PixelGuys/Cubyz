@@ -12,8 +12,8 @@ pub const usage =
 	\\/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>
 	\\
 	\\tip: use "~" to apply current player position coordinate in <x> <y> <z> fields.
-	\\zon example: 
-	\\.{ 
+	\\zon example:
+	\\.{
 	\\  // comment: other types:
 	\\  // .point, .cube
 	\\  .type = .sphere,
@@ -28,7 +28,7 @@ pub const usage =
 	\\  // .coneRadius = 1,
 	\\
 	\\  // take min and max values
-	\\  .velocity = .{0.5, 10}, 
+	\\  .velocity = .{0.5, 10},
 	\\  .lifeTime = .{0.5, 10},
 	\\  .randomRotate = true
 	\\}
