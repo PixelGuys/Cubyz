@@ -28,7 +28,7 @@ const arenaAllocator = arena.allocator();
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
 	var types: main.List(ParticleType) = undefined;
-    var typesLocal: main.List(ParticleTypeLocal) = undefined;
+	var typesLocal: main.List(ParticleTypeLocal) = undefined;
 	var textures: main.List(Image) = undefined;
 	var emissionTextures: main.List(Image) = undefined;
 
@@ -40,7 +40,7 @@ pub const ParticleManager = struct {
 
 	pub fn init() void {
 		types = .init(arenaAllocator);
-        typesLocal = .init(arenaAllocator);
+		typesLocal = .init(arenaAllocator);
 		textures = .init(arenaAllocator);
 		emissionTextures = .init(arenaAllocator);
 		textureArray = .init();
@@ -51,7 +51,7 @@ pub const ParticleManager = struct {
 
 	pub fn deinit() void {
 		types.deinit();
-        typesLocal.deinit();
+		typesLocal.deinit();
 		textures.deinit();
 		emissionTextures.deinit();
 		textureArray.deinit();
@@ -69,15 +69,15 @@ pub const ParticleManager = struct {
 		};
 
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
-        const particleTypeLocal = ParticleTypeLocal{
-            .drag = zon.get(Vec2f, "drag", .{0.1, 0.2}),
-            .density = zon.get(Vec2f, "density", .{2, 3}),
-            .rotVel = zon.get(Vec2f, "rotationVelocity", .{20, 60}),
-        };
+		const particleTypeLocal = ParticleTypeLocal{
+			.drag = zon.get(Vec2f, "drag", .{0.1, 0.2}),
+			.density = zon.get(Vec2f, "density", .{2, 3}),
+			.rotVel = zon.get(Vec2f, "rotationVelocity", .{20, 60}),
+		};
 
 		particleTypeHashmap.put(arenaAllocator.allocator, id, @intCast(types.items.len)) catch unreachable;
 		types.append(particleType);
-        typesLocal.append(particleTypeLocal);
+		typesLocal.append(particleTypeLocal);
 
 		std.log.debug("Registered particle type: {s}", .{id});
 	}
@@ -177,7 +177,6 @@ pub const ParticleSystem = struct {
 		projectionAndViewMatrix: c_int,
 		billboardMatrix: c_int,
 		ambientLight: c_int,
-		particleOffset: c_int,
 	};
 	var uniforms: UniformStruct = undefined;
 
@@ -235,9 +234,7 @@ pub const ParticleSystem = struct {
 				continue;
 			}
 
-			var posAndRotation = particle.posAndRotationVec();
-			const prevPos = Vec3d{posAndRotation[0], posAndRotation[1], posAndRotation[2]};
-			var rot = posAndRotation[3];
+			var rot = particle.posAndRotation[3];
 			const rotVel = particleLocal.velAndRotationVel[3];
 			rot += rotVel*deltaTime;
 
@@ -248,7 +245,7 @@ pub const ParticleSystem = struct {
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
-				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{posAndRotation[0], posAndRotation[1], posAndRotation[2]} + prevPlayerPosDifference));
+				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference));
 				v3Pos[0] += posDelta[0];
 				if(game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					v3Pos[0] = if(posDelta[0] < 0)
@@ -270,41 +267,35 @@ pub const ParticleSystem = struct {
 					else
 						box.min[2] - hitBox.max[2];
 				}
-				posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos - playerPos)), 0);
+				particle.posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos - playerPos)), 0);
 			} else {
-				posAndRotation += posDelta + vec.combine(prevPlayerPosDifference, 0);
+				particle.posAndRotation += posDelta + vec.combine(prevPlayerPosDifference, 0);
 			}
 
-			particle.posAndRotation = posAndRotation;
 			particle.posAndRotation[3] = rot;
 			particleLocal.velAndRotationVel[3] = rotVel;
 
-			const newPos = Vec3d{posAndRotation[0], posAndRotation[1], posAndRotation[2]};
-			if(@reduce(.Or, @floor(prevPos) != @floor(newPos))) {
-				const worldPos = @as(Vec3d, @floatCast(newPos)) + playerPos;
-				particle.light = getCompressedLight(worldPos);
-			}
+			const positionf64 = @as(Vec4d, @floatCast(particle.posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
+			const intPos: vec.Vec4i = @intFromFloat(@floor(positionf64));
+			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
+			const compressedLight =
+				@as(u32, light[0] >> 3) << 25 |
+				@as(u32, light[1] >> 3) << 20 |
+				@as(u32, light[2] >> 3) << 15 |
+				@as(u32, light[3] >> 3) << 10 |
+				@as(u32, light[4] >> 3) << 5 |
+				@as(u32, light[5] >> 3);
+			particle.light = compressedLight;
+
+			particle.light = compressedLight;
+
 			i += 1;
 		}
 		previousPlayerPos = playerPos;
 	}
 
-	fn getCompressedLight(worldPos: Vec3d) u32 {
-		const intPos: vec.Vec3i = @intFromFloat(@floor(worldPos));
-		const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-		const compressedLight =
-			@as(u32, light[0] >> 3) << 25 |
-			@as(u32, light[1] >> 3) << 20 |
-			@as(u32, light[2] >> 3) << 15 |
-			@as(u32, light[3] >> 3) << 10 |
-			@as(u32, light[4] >> 3) << 5 |
-			@as(u32, light[5] >> 3);
-
-		return compressedLight;
-	}
-
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
-        const particleType = ParticleManager.typesLocal.items[typ];
+		const particleType = ParticleManager.typesLocal.items[typ];
 		const lifeTime = properties.lifeTime[0] + (properties.lifeTime[1] - properties.lifeTime[0])*random.nextFloat(&seed);
 		const drag = particleType.drag[0] + (particleType.drag[1] - particleType.drag[0])*random.nextFloat(&seed);
 		const density = particleType.density[0] + (particleType.density[1] - particleType.density[0])*random.nextFloat(&seed);
@@ -314,7 +305,6 @@ pub const ParticleSystem = struct {
 		particles[particleCount] = Particle{
 			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
 			.typ = typ,
-			.light = getCompressedLight(pos),
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, rotVel),
@@ -346,13 +336,8 @@ pub const ParticleSystem = struct {
 
 		c.glBindVertexArray(chunk_meshing.vao);
 
-		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
-		const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;
-		for(0..count) |i| {
-			const particleOffset = maxQuads*i;
-			const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
-			c.glUniform1ui(uniforms.particleOffset, @intCast(particleOffset));
-			c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCurrentCount*6), c.GL_UNSIGNED_INT, null);
+		for(0..std.math.divCeil(u32, particleCount, chunk_meshing.maxQuadsInIndexBuffer) catch unreachable) |_| {
+			c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCount*6), c.GL_UNSIGNED_INT, null);
 		}
 	}
 
@@ -577,17 +562,12 @@ pub const ParticleTypeLocal = struct {
 	rotVel: Vec2f,
 };
 
-pub const Particle = extern struct {
-	posAndRotation: [4]f32 align(16),
+pub const Particle = struct {
+	posAndRotation: Vec4f,
 	lifeRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
-
 	// 4 bytes left for use
-
-	pub fn posAndRotationVec(self: Particle) Vec4f {
-		return self.posAndRotation;
-	}
 };
 
 pub const ParticleLocal = struct {
