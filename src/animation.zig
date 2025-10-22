@@ -23,19 +23,19 @@ pub const Animation = struct {
 
     frames: [3]Frame = .{
         .{
-            .duration = 0.5,
+            .duration = 0.65,
             .position = .{0, 0, 0},
             .rotation = .{0, 0, 0},
         },
         .{
-            .duration = 0.5,
-            .position = .{0.2, -0.1, 0.35},
-            .rotation = .{-180, 180, 0}, // TODO: turn degrees to radians automatically
+            .duration = 0.35,
+            .position = .{0.2, -0.1, 0.15},
+            .rotation = .{0, 30, 0},
         },
         .{
             .duration = 0,
-            .position = .{-0.2, 0.8, -0.05},
-            .rotation = .{-180, -10, 0},
+            .position = .{-0.2, 1, -0.2},
+            .rotation = .{0, -120, 15},
         },
         // .{
         //     .duration = 0,
