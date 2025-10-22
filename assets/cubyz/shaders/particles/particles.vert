@@ -1,5 +1,9 @@
 #version 460
 
+#ifndef BLOCK_PARTICLE_UV_GRID_SIZE
+#define BLOCK_PARTICLE_UV_GRID_SIZE 8
+#endif
+
 layout(location = 0) out vec3 textureCoords;
 layout(location = 1) flat out vec3 light;
 
