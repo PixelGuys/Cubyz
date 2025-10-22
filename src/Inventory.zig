@@ -1632,10 +1632,23 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			if(self.dest.type == .creative) return;
 			if(self.dest.type == .crafting) return;
 			if(self.dest.type == .workbench) return;
+			if(self.source.inv.type == .creative and self.dest.type == .normal) {
+				if(self.source.ref().item == null) return;
+				const item = self.source.ref().item.?;
+				var amount: u16 = self.amount;
+				if(self.dest.getItem(0)) |dItem| {
+					if(std.meta.eql(dItem, item)) {
+						amount = @min(self.dest.getAmount(0) + self.amount, item.stackSize());
+					}
+				}
+				try FillFromCreative.run(.{.dest = .{.inv = self.dest, .slot = 0}, .item = item, .amount = amount}, allocator, cmd, side, user, gamemode);
+				return;
+			}
+
 			if(self.source.inv.type == .crafting) {
 				cmd.tryCraftingTo(allocator, self.dest, self.source, side, user);
 				return;
