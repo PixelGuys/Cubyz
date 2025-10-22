@@ -556,6 +556,9 @@ pub fn main() void { // MARK: main()
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
+	itemdrop.ItemDisplayManager.init();
+	defer itemdrop.ItemDisplayManager.deinit();
+
 	tag.init();
 	defer tag.deinit();
 
