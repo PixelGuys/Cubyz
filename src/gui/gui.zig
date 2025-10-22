@@ -751,7 +751,7 @@ pub const inventory = struct { // MARK: inventory
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
 				if(hovered.inventory.type == .creative) {
-					hovered.inventory.takeOne(hovered.itemSlot, carried);
+					hovered.inventory.depositToAny(hovered.itemSlot, carried, 1);
 				} else {
 					hovered.inventory.takeHalf(hovered.itemSlot, carried);
 				}

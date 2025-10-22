@@ -530,7 +530,6 @@ pub const Command = struct { // MARK: Command
 		depositOrSwap = 2,
 		deposit = 3,
 		takeHalf = 4,
-		takeOne = 12,
 		drop = 5,
 		fillFromCreative = 6,
 		depositOrDrop = 7,
@@ -545,7 +544,6 @@ pub const Command = struct { // MARK: Command
 		depositOrSwap: DepositOrSwap,
 		deposit: Deposit,
 		takeHalf: TakeHalf,
-		takeOne: TakeOne,
 		drop: Drop,
 		fillFromCreative: FillFromCreative,
 		depositOrDrop: DepositOrDrop,
@@ -1454,36 +1452,6 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const TakeOne = struct { // MARK: TakeOne
-		dest: InventoryAndSlot,
-		source: InventoryAndSlot,
-
-		fn run(self: TakeOne, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
-			std.debug.assert(self.dest.inv.type == .normal);
-			if(self.source.inv.type == .creative) {
-				const item = self.source.ref().item;
-				var amount: u16 = 1;
-				if(std.meta.eql(self.dest.ref().item, item)) {
-					amount = @min(self.dest.ref().amount + 1, self.dest.ref().item.?.stackSize());
-				}
-				try FillFromCreative.run(.{.dest = self.dest, .item = item, .amount = amount}, allocator, cmd, side, user, gamemode);
-				return;
-			}
-		}
-
-		fn serialize(self: TakeOne, writer: *utils.BinaryWriter) void {
-			self.dest.write(writer);
-			self.source.write(writer);
-		}
-
-		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !TakeOne {
-			return .{
-				.dest = try InventoryAndSlot.read(reader, side, user),
-				.source = try InventoryAndSlot.read(reader, side, user),
-			};
-		}
-	};
-
 	const Drop = struct { // MARK: Drop
 		source: InventoryAndSlot,
 		desiredAmount: u16 = 0xffff,
@@ -1661,10 +1629,23 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			if(self.dest.type == .creative) return;
 			if(self.dest.type == .crafting) return;
 			if(self.dest.type == .workbench) return;
+			if(self.source.inv.type == .creative and self.dest.type == .normal) {
+				if(self.source.ref().item == null) return;
+				const item = self.source.ref().item.?;
+				var amount: u16 = self.amount;
+				if(self.dest.getItem(0)) |dItem| {
+					if(std.meta.eql(dItem, item)) {
+						amount = @min(self.dest.getAmount(0) + self.amount, item.stackSize());
+					}
+				}
+				try FillFromCreative.run(.{.dest = .{.inv = self.dest, .slot = 0}, .item = item, .amount = amount}, allocator, cmd, side, user, gamemode);
+				return;
+			}
+
 			if(self.source.inv.type == .crafting) {
 				cmd.tryCraftingTo(allocator, self.dest, self.source, side, user);
 				return;
@@ -2092,10 +2073,6 @@ pub fn deposit(dest: Inventory, destSlot: u32, carried: Inventory, amount: u16) 
 
 pub fn takeHalf(source: Inventory, sourceSlot: u32, carried: Inventory) void {
 	Sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried, .slot = 0}, .source = .{.inv = source, .slot = sourceSlot}}});
-}
-
-pub fn takeOne(source: Inventory, sourceSlot: u32, carried: Inventory) void {
-	Sync.ClientSide.executeCommand(.{.takeOne = .{.dest = .{.inv = carried, .slot = 0}, .source = .{.inv = source, .slot = sourceSlot}}});
 }
 
 pub fn distribute(carried: Inventory, destinationInventories: []const Inventory, destinationSlots: []const u32) void {
