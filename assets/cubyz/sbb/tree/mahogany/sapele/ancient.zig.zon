@@ -2,4 +2,7 @@
 	.blueprints = .{
 		.{.id = "cubyz:tree/mahogany/sapele/ancient/1"},
 	},
+	.children = .{
+		.yellow = "cubyz:deco/side_dense",
+	},
 }
