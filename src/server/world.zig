@@ -1155,7 +1155,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	pub fn getBlockAndBlockEntityData(self: *ServerWorld, x: i32, y: i32, z: i32, blockEntityDataWriter: *utils.BinaryWriter) ?Block {
 		const chunkPos = Vec3i{x, y, z} & ~@as(Vec3i, @splat(main.chunk.chunkMask));
 		const otherChunk = self.getSimulationChunk(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
-		// defer otherChunk.decreaseRefCount();
 		const ch = otherChunk.getChunk() orelse return null;
 		ch.mutex.lock();
 		defer ch.mutex.unlock();

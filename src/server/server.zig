@@ -155,7 +155,6 @@ pub const User = struct { // MARK: User
 
 		self.worldEditData.deinit();
 
-		// self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
