@@ -1,0 +1,18 @@
+.{
+	.{
+		.inputs = .{"4 cubyz:soil", "cubyz:grass_vegetation"},
+		.output = "4 cubyz:grass",
+	},
+	.{
+		.inputs = .{"4 cubyz:mud", "cubyz:lush_grass_vegetation"},
+		.output = "4 cubyz:lush_grass",
+	},
+	.{
+		.inputs = .{"4 cubyz:dirt", "cubyz:dry_grass_vegetation"},
+		.output = "4 cubyz:dry_grass",
+	},
+	.{
+		.inputs = .{"4 cubyz:permafrost", "cubyz:cold_grass_vegetation"},
+		.output = "4 cubyz:cold_grass",
+	},
+}
