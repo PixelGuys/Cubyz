@@ -21,16 +21,10 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/bush",
+			.placeMode = .degradable,
 			.chance = 0.16,
-			.type = .round,
-			.height = 1,
-			.height_variation = 1,
-			.leafRadius = 2,
-			.leafRadius_variation = 1,
 		},
 		.{
 			.id = "cubyz:ground_patch",

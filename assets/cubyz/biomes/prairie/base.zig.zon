@@ -35,14 +35,10 @@
 			.smoothness = 0.5,
 		},
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/bush",
+			.placeMode = .degradable,
 			.chance = 0.025,
-			.type = .round,
-			.height = 2,
-			.height_variation = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
