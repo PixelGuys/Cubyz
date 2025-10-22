@@ -247,29 +247,13 @@ pub const ParticleSystem = struct {
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
-				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference));
-				v3Pos[0] += posDelta[0];
-				if(game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
-					v3Pos[0] = if(posDelta[0] < 0)
-						box.max[0] - hitBox.min[0]
-					else
-						box.min[0] - hitBox.max[0];
-				}
-				v3Pos[1] += posDelta[1];
-				if(game.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
-					v3Pos[1] = if(posDelta[1] < 0)
-						box.max[1] - hitBox.min[1]
-					else
-						box.min[1] - hitBox.max[1];
-				}
-				v3Pos[2] += posDelta[2];
-				if(game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-					v3Pos[2] = if(posDelta[2] < 0)
-						box.max[2] - hitBox.min[2]
-					else
-						box.min[2] - hitBox.max[2];
-				}
-				particle.posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos - playerPos)), 0);
+				const startPos = playerPos + @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference));
+
+				const desiredMovement = @as(Vec3d, @floatCast(Vec3f{posDelta[0], posDelta[1], posDelta[2]}));
+				const actualMovement = game.collision.resolveCollision(.client, desiredMovement, startPos, hitBox, main.stackAllocator.allocator) catch desiredMovement;
+
+				const finalPos = startPos + actualMovement;
+				particle.posAndRotation = vec.combine(@as(Vec3f, @floatCast(finalPos - playerPos)), 0);
 			} else {
 				particle.posAndRotation += posDelta + vec.combine(prevPlayerPosDifference, 0);
 			}
