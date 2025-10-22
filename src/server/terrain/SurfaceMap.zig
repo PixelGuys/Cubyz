@@ -80,7 +80,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		};
 	}
 
-	fn privateDeinit(self: *MapFragment, _: usize) void {
+	fn privateDeinit(self: *MapFragment) void {
 		memoryPool.destroy(self);
 	}
 

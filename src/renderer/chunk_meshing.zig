@@ -703,7 +703,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return self;
 	}
 
-	fn privateDeinit(self: *ChunkMesh, _: usize) void {
+	fn privateDeinit(self: *ChunkMesh) void {
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();

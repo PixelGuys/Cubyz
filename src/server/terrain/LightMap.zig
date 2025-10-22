@@ -26,7 +26,7 @@ pub const LightMapFragment = struct {
 		};
 	}
 
-	fn privateDeinit(self: *const LightMapFragment, _: usize) void {
+	fn privateDeinit(self: *const LightMapFragment) void {
 		main.globalAllocator.destroy(self);
 	}
 

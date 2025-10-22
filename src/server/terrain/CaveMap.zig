@@ -35,7 +35,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 		@memset(&self.data, std.math.maxInt(u64));
 	}
 
-	fn privateDeinit(self: *CaveMapFragment, _: usize) void {
+	fn privateDeinit(self: *CaveMapFragment) void {
 		memoryPool.destroy(self);
 	}
 
