@@ -593,6 +593,7 @@ pub const MenuBackGround = struct {
 		const viewMatrix = Mat4f.rotationZ(angle);
 		pipeline.bind(null);
 		updateViewport(main.Window.width, main.Window.height, 70.0);
+		defer updateViewport(Window.width, Window.height, settings.fov);
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
@@ -971,7 +972,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
-		if(main.game.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent() - @as(Vec3d, @splat(0.00005)), .{0, 0, 0}) != null) {
+		if(main.game.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
 		}
 		return true; // TODO: Check other entities
@@ -1063,7 +1064,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
-				var damage: f32 = 1;
+				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
 					damage = stack.item.?.tool.getBlockDamage(block);
@@ -1074,7 +1075,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
-					const swingTime = if(isTool) 1.0/stack.item.?.tool.swingSpeed else 0.5;
+					const swingTime = if(isTool and stack.item.?.tool.isEffectiveOn(block)) 1.0/stack.item.?.tool.swingSpeed else 0.5;
 					if(currentSwingTime != swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
