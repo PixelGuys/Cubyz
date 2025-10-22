@@ -236,7 +236,7 @@ pub const Sync = struct { // MARK: Sync
 					if(self.managed == .internallyManaged) {
 						if(self.inv.type.shouldDepositToUserOnClose()) {
 							const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv}}, null);
+							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv}}, user);
 						}
 						self.deinit();
 					}
