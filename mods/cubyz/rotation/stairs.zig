@@ -277,7 +277,7 @@ pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: 
 	if(item) |_item| {
 		switch(_item) {
 			.tool => |tool| {
-				if(std.mem.eql(u8, tool.id(), "cubyz:chisel")) { // Select only one eighth of a block
+				if(std.mem.eql(u8, tool.type.id(), "cubyz:chisel")) { // Select only one eighth of a block
 					return closestRay(.intersection, block, relativePlayerPos, playerDir);
 				}
 			},
@@ -291,10 +291,9 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 	if(item) |_item| {
 		switch(_item) {
 			.tool => |tool| {
-				if(std.mem.eql(u8, tool.id(), "cubyz:chisel")) { // Break only one eigth of a block
+				if(std.mem.eql(u8, tool.type.id(), "cubyz:chisel")) { // Break only one eigth of a block
 					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
-					if(currentData.data == 255)
-						currentData.* = .{.typ = 0, .data = 0};
+					if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
 					return;
 				}
 			},
@@ -307,9 +306,8 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 	if(oldBlock.data == newBlock.data) return .no;
-	if(item.item != null and item.item.? == .tool and std.mem.eql(u8, item.item.?.tool.id(), "cubyz:chisel")) {
-		item.item.?.tool.durability -= 1;
-		return .yes; // TODO: Durability change, after making the chisel a proper tool.
+	if(item.item != null and item.item.? == .tool) {
+		return .{.yes_costsDurability = 1};
 	}
 	return .no;
 }
