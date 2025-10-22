@@ -1044,16 +1044,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		const stack = inventory.getStack(slot);
 		const isTool = stack.item != null and stack.item.? == .tool;
-		if(!game.Player.isCreative()) {
-			// and stack.item.?.tool.isEffectiveOn(block)
-			const swingTime = if(isTool) 1.0/stack.item.?.tool.swingSpeed else 0.5;
-			if(currentSwingTime != swingTime) {
-				currentSwingProgress = 0;
-				currentSwingTime = swingTime;
-				main.itemdrop.ItemDisplayManager.resetAnimation();
-				main.itemdrop.ItemDisplayManager.setSwingData(swingTime);
-			}
-			currentSwingProgress += @floatCast(deltaTime);
+		// and stack.item.?.tool.isEffectiveOn(block)
+		const swingTime = if(isTool) 1.0/stack.item.?.tool.swingSpeed else 0.5;
+		if(currentSwingTime != swingTime) {
+			currentSwingProgress = 0;
+			currentSwingTime = swingTime;
+			main.itemdrop.ItemDisplayManager.resetAnimation();
+			main.itemdrop.ItemDisplayManager.setSwingData(swingTime);
+		}
+		currentSwingProgress += @floatCast(deltaTime);
+		if (currentSwingProgress > currentSwingTime and selectedBlockPos == null) {
+			currentSwingProgress = 0;
 		}
 
 		itemdrop.ItemDisplayManager.isSwinging = true;

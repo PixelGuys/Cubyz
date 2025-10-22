@@ -30,12 +30,12 @@ pub const Animation = struct {
         .{
             .duration = 0.5,
             .position = .{0.2, -0.1, 0.35},
-            .rotation = .{0, 180, 0}, // TODO: turn degrees to radians automatically
+            .rotation = .{-180, 180, 0}, // TODO: turn degrees to radians automatically
         },
         .{
             .duration = 0,
             .position = .{-0.2, 0.8, -0.05},
-            .rotation = .{-20, -10, 0},
+            .rotation = .{-180, -10, 0},
         },
         // .{
         //     .duration = 0,
