@@ -121,8 +121,8 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void
 
 pub const EntityChunk = struct {
 	const State = packed struct(u8) {
-		pub const NotLoaded: State = .{.loaded = false,.touched = true};
-		pub const Loaded: State = .{.loaded = true,.touched = true};
+		pub const NotLoaded: State = .{.loaded = false, .touched = true};
+		pub const Loaded: State = .{.loaded = true, .touched = true};
 		pub const NotTouched: State = .{.loaded = true, .touched = false};
 		pub const Touched: State = .{.loaded = true, .touched = true};
 		touched: bool,
