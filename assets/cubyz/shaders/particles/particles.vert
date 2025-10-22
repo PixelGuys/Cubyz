@@ -1,5 +1,9 @@
 #version 460
 
+#ifndef BLOCK_PARTICLE_UV_GRID_SIZE
+#define BLOCK_PARTICLE_UV_GRID_SIZE 8
+#endif
+
 layout(location = 0) out vec3 textureCoords;
 layout(location = 1) flat out vec3 light;
 
@@ -13,6 +17,7 @@ struct ParticleData {
 	float lifeRatio;
 	uint light;
 	uint type;
+	uint uvOffset;
 };
 layout(std430, binding = 13) restrict readonly buffer _particleData
 {
@@ -78,5 +83,15 @@ void main() {
 	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
 
 	float textureIndex = floor(particle.lifeRatio*particleType.animationFrames + particleType.startFrame);
-	textureCoords = vec3(uvPositions[vertexID], textureIndex);
+
+	// Apply UV offset for block particles (NxN grid sampling)
+	vec2 baseUV = uvPositions[vertexID];
+	// Check if high bit is set (indicates UV offset is present)
+	if ((particle.uvOffset & 0x80000000u) != 0u) {
+		uint uvOffsetX = particle.uvOffset & 0xFFFFu;
+		uint uvOffsetY = (particle.uvOffset >> 16) & 0x7FFFu; // Mask out the flag bit
+		baseUV = (baseUV + vec2(uvOffsetX, uvOffsetY)) / float(BLOCK_PARTICLE_UV_GRID_SIZE);
+	}
+
+	textureCoords = vec3(baseUV, textureIndex);
 }

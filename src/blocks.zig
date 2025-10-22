@@ -88,6 +88,7 @@ var _allowOres: [maxBlockCount]bool = undefined;
 var _tickEvent: [maxBlockCount]?TickEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
+var _particleOverride: [maxBlockCount]?[]u8 = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator);
 
@@ -145,6 +146,11 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	} else null;
 
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
+
+	_particleOverride[size] = if(zon.get(?[]const u8, "particle", null)) |particleId|
+		arena.dupe(u8, particleId)
+	else
+		null;
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -440,6 +446,10 @@ pub const Block = packed struct { // MARK: Block
 		return _blockEntity[self.typ];
 	}
 
+	pub fn particleId(self: Block) []u8 {
+		return _particleOverride[self.typ] orelse _id[self.typ];
+	}
+
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
@@ -643,6 +653,13 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
+	pub fn getTextureAnimationFrame(texId: u16) ?u16 {
+		if(texId < animation.items.len) {
+			return @intCast(animation.items[texId].startFrame);
+		}
+		return null;
+	}
+
 	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
 		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
 	}
@@ -792,6 +809,32 @@ pub const meshes = struct { // MARK: meshes
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		emissionTextureArray.generate(emissionTextures.items, true, false);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+
+		// Register all block textures as particles for block break effects
+		const blockCount = @import("blocks.zig").size;
+		for(_id[0..blockCount], 0..) |blockId, i| {
+			if(blockId.len > 0) {
+				const block: Block = .{.typ = @intCast(i), .data = 0};
+				if(!block.hasTag(.air)) {
+					// Use particle override if specified, otherwise use block's own ID
+					const particleId = block.particleId();
+
+					const textureBlock = if(_particleOverride[i]) |overrideId| blk: {
+						const overrideType = getTypeById(overrideId);
+						break :blk Block{.typ = overrideType, .data = 0};
+					} else block;
+
+					const texId = textureIndex(textureBlock, 0);
+					if(texId < animation.items.len) {
+						const actualTextureIdx = animation.items[texId].startFrame;
+						if(actualTextureIdx < blockTextures.items.len) {
+							const image = blockTextures.items[actualTextureIdx];
+							main.particles.ParticleManager.registerBlockTextureAsParticle(particleId, @intCast(actualTextureIdx), image);
+						}
+					}
+				}
+			}
+		}
 		const reflectivityAndAbsorptionTextures = main.stackAllocator.alloc(Image, reflectivityTextures.items.len);
 		defer main.stackAllocator.free(reflectivityAndAbsorptionTextures);
 		defer for(reflectivityAndAbsorptionTextures) |texture| {
