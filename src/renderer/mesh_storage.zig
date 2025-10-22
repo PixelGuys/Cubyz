@@ -6,6 +6,7 @@ const blocks = main.blocks;
 const chunk = main.chunk;
 const game = main.game;
 const network = main.network;
+const particles = main.particles;
 const settings = main.settings;
 const utils = main.utils;
 const LightMap = main.server.terrain.LightMap;
@@ -49,6 +50,7 @@ pub const BlockUpdate = struct {
 	y: i32,
 	z: i32,
 	newBlock: blocks.Block,
+	oldBlock: blocks.Block = blocks.Block.air, // Optional: the block that was there before (for particle spawning)
 	blockEntityData: []const u8,
 
 	pub fn init(pos: Vec3i, block: blocks.Block, blockEntityData: []const u8) BlockUpdate {
@@ -61,6 +63,7 @@ pub const BlockUpdate = struct {
 			.y = template.y,
 			.z = template.z,
 			.newBlock = template.newBlock,
+			.oldBlock = template.oldBlock,
 			.blockEntityData = allocator.dupe(u8, template.blockEntityData),
 		};
 	}
@@ -73,6 +76,29 @@ pub const BlockUpdate = struct {
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
 
 pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
+
+fn spawnBlockBreakParticles(block: blocks.Block, selectedPos: Vec3i) void {
+	const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
+	const particleCount: u32 = 8;
+	const particleBlockId = block.particleId();
+	const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{particleBlockId}) catch unreachable;
+	defer main.stackAllocator.free(particleId);
+
+	const particleBlock = blocks.parseBlock(particleBlockId);
+	const texId = blocks.meshes.textureIndex(particleBlock, 0);
+	const actualTextureIdx: u16 = blocks.meshes.getTextureAnimationFrame(texId) orelse 0;
+
+	const emitter = particles.Emitter.init(particleId, true);
+	for(0..particleCount) |_| {
+		const uvOffset = particles.ParticleManager.getRandomValidUVOffset(actualTextureIdx, &main.seed);
+
+		emitter.spawnParticlesWithUV(1, particles.Emitter.SpawnCube, .{
+			.mode = .spread,
+			.position = particlePos,
+			.size = Vec3f{0.5, 0.5, 0.5},
+		}, uvOffset);
+	}
+}
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
@@ -811,6 +837,29 @@ fn batchUpdateBlocks() void {
 		defer blockUpdate.deinitManaged(main.globalAllocator);
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMesh(pos)) |mesh| {
+			// Use the oldBlock from the network packet if provided, otherwise read from mesh
+			const oldBlock = if(blockUpdate.oldBlock.typ != 0)
+				blockUpdate.oldBlock
+			else
+				mesh.chunk.getBlock(blockUpdate.x & chunk.chunkMask, blockUpdate.y & chunk.chunkMask, blockUpdate.z & chunk.chunkMask);
+
+			// Debug: log ALL block updates to see what's happening
+			std.log.debug("Block update received: old={s}({d}), new=({d}) at ({d},{d},{d})", .{
+				oldBlock.id(), oldBlock.typ, blockUpdate.newBlock.typ,
+				blockUpdate.x, blockUpdate.y, blockUpdate.z
+			});
+
+			// Check if this is a block break: old block was solid, new block is air/replaceable
+			// Also check that the old block is different from the new block (avoid duplicate updates)
+			const wasValidBlock = oldBlock.typ != 0 and !oldBlock.hasTag(.air) and !oldBlock.hasTag(.fluid);
+			const becomesAir = blockUpdate.newBlock.typ == 0 or blockUpdate.newBlock.hasTag(.air) or blockUpdate.newBlock.replacable();
+			const actuallyChanged = oldBlock.typ != blockUpdate.newBlock.typ or oldBlock.data != blockUpdate.newBlock.data;
+
+			if(wasValidBlock and becomesAir and actuallyChanged) {
+				std.log.debug("  -> Spawning particles!", .{});
+				spawnBlockBreakParticles(oldBlock, Vec3i{blockUpdate.x, blockUpdate.y, blockUpdate.z});
+			}
+
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}

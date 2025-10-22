@@ -1116,8 +1116,23 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer ch.mutex.unlock();
 
 			var neighborBlock = ch.getBlock(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
-			if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-				ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
+			if(neighborBlock.mode().dependsOnNeighbors) {
+				const oldNeighborBlock = neighborBlock;
+				if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+					// Send network update with the old block so clients can spawn particles
+					const nwx = ch.super.pos.wx + (nx & chunk.chunkMask);
+					const nwy = ch.super.pos.wy + (ny & chunk.chunkMask);
+					const nwz = ch.super.pos.wz + (nz & chunk.chunkMask);
+					std.log.debug("Dependent block update: old type={d}, new type={d} at ({d},{d},{d})", .{oldNeighborBlock.typ, neighborBlock.typ, nwx, nwy, nwz});
+					const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+					defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+					for(userList) |user| {
+						main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = nwx, .y = nwy, .z = nwz, .newBlock = neighborBlock, .oldBlock = oldNeighborBlock, .blockEntityData = &.{}}});
+					}
+
+					// Now update the chunk
+					ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
+				}
 			}
 			if(newBlock.mode().dependsOnNeighbors) {
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlock);
@@ -1137,7 +1152,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
 		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
+			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .oldBlock = currentBlock, .blockEntityData = &.{}}});
 		}
 		return null;
 	}
