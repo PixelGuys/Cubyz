@@ -596,8 +596,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 	threadlocal var lastSyncPointTime: i64 = undefined;
 	const FreeItem = struct {
 		ptr: *anyopaque,
-		extraData: usize = 0,
-		freeFunction: *const fn(*anyopaque, usize) void,
+		freeFunction: *const fn(*anyopaque) void,
 	};
 	threadlocal var lists: [4]main.ListUnmanaged(FreeItem) = undefined;
 
@@ -622,7 +621,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 
 	fn freeItemsFromList(list: *main.ListUnmanaged(FreeItem)) void {
 		while(list.popOrNull()) |item| {
-			item.freeFunction(item.ptr, item.extraData);
+			item.freeFunction(item.ptr);
 		}
 	}
 

@@ -54,7 +54,7 @@ pub const ClimateMapFragment = struct {
 		};
 	}
 
-	fn privateDeinit(self: *ClimateMapFragment, _: usize) void {
+	fn privateDeinit(self: *ClimateMapFragment) void {
 		memoryPool.destroy(self);
 	}
 
