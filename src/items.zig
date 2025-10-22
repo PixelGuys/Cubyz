@@ -455,18 +455,9 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			var sum: f32 = 0;
 			var weight: f32 = 0;
 			for(0..25) |i| {
-				weight += property.weights[i];
-			}
-			for(0..25) |i| {
 				const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
-				var divisor: f32 = 1.0;
-				switch(property.method) {
-					.sum => {
-						divisor = weight;
-					},
-					.average => {},
-				}
-				sum += (property.weights[i]/divisor)*material.getProperty(property.source orelse break);
+				sum += property.weights[i]*material.getProperty(property.source orelse break);
+				weight += property.weights[i];
 			}
 
 			if(weight == 0) continue;
@@ -1219,8 +1210,19 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		val.resultScale = paramZon.get(f32, "factor", 1.0);
 		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
+		var total_weight: f32 = 0.0;
 		for(0..25) |i| {
 			val.weights[i] = matrixZon.getAtIndex(f32, i, 0.0);
+		}
+		for(0..25) |i| {
+			if(val.weights[i] != 0x0) {
+				total_weight += val.weights[i];
+			}
+		}
+		for(0..25) |i| {
+			if(val.method == .sum and val.weights[i] != 0x0) {
+				val.weights[i] /= total_weight;
+			}
 		}
 	}
 	var pixelSources: [16][16]u8 = undefined;
@@ -1237,6 +1239,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
+
 	toolTypeIdToIndex.put(arena.allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
 
 	std.log.debug("Registered tool: '{s}'", .{id});
