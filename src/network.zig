@@ -1379,7 +1379,6 @@ pub const Protocols = struct {
 
 		pub fn sendServerDataUpdateToClients(pos: Vec3i) void {
 			const simChunk = main.server.world.?.getSimulationChunk(pos[0], pos[1], pos[2]) orelse return;
-			defer simChunk.decreaseRefCount();
 			const ch = simChunk.chunk.load(.unordered) orelse return;
 			ch.mutex.lock();
 			defer ch.mutex.unlock();
