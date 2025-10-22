@@ -108,7 +108,7 @@ pub fn onOpen() void {
 	}
 
 	inline for (std.meta.fields(main.KeyGroup)) |keyGroupField| {
-		const groupKeys: []*Window.Key = @field(&main.KeyBoard.keys, keyGroupField.name);
+		const groupKeys: []Window.Key = @field(main.KeyBoard.keys, keyGroupField.name);
 		const groupDisplayLabel = Label.init(.{0, 0}, 320, keyGroupField, .center);
 		groupDisplayLabel.alpha = 0.9;
 		const titleRow = HorizontalList.init();

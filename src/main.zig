@@ -455,12 +455,25 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		},
 	};
 
-	pub const keys = @as(KeyGroup, _keys);
+	pub const keys = _keys;
+
+	pub fn allKeys() []Window.Key {
+		var buffer: [1024]Window.Key = undefined;
+		var i: usize = 0;
+		inline for (std.meta.fields(@TypeOf(_keys))) |keyField| {
+			const group_keys = @field(_keys, keyField.name);
+			inline for (group_keys) |_key|{
+				buffer[i] = _key;
+				i+=1;
+			}
+		}
+		return buffer[0..i];
+	}
 
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
-		inline for (std.meta.fields(KeyGroup)) |key_group_field| {
-			const group_keys = @field(keys, key_group_field.name);
-			for(group_keys) |*_key| {
+		inline for (std.meta.fields(@TypeOf(_keys))) |key_group_field| {
+			const group_keys = @as([]Window.Key, @field(_keys, key_group_field.name));
+			for(group_keys) |_key| {
 				if(std.mem.eql(u8, name, _key.name)) {
 					return _key;
 				}
