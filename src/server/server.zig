@@ -106,7 +106,6 @@ pub const User = struct { // MARK: User
 	isLocal: bool = false,
 	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
-	loadedChunks: [simulationSize][simulationSize][simulationSize]*@import("world.zig").EntityChunk = undefined,
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
@@ -156,7 +155,7 @@ pub const User = struct { // MARK: User
 
 		self.worldEditData.deinit();
 
-		self.unloadOldChunk(.{0, 0, 0}, 0);
+		// self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -188,30 +187,6 @@ pub const User = struct { // MARK: User
 		return @intCast(x >> chunk.chunkShift & simulationMask);
 	}
 
-	fn unloadOldChunk(self: *User, newPos: Vec3i, newRenderDistance: u16) void {
-		const lastBoxStart = (self.lastPos -% @as(Vec3i, @splat(self.lastRenderDistance*chunk.chunkSize))) & ~@as(Vec3i, @splat(chunk.chunkMask));
-		const lastBoxEnd = (self.lastPos +% @as(Vec3i, @splat(self.lastRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
-		const newBoxStart = (newPos -% @as(Vec3i, @splat(newRenderDistance*chunk.chunkSize))) & ~@as(Vec3i, @splat(chunk.chunkMask));
-		const newBoxEnd = (newPos +% @as(Vec3i, @splat(newRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
-		// Clear all chunks not inside the new box:
-		var x: i32 = lastBoxStart[0];
-		while(x != lastBoxEnd[0]) : (x +%= chunk.chunkSize) {
-			const inXDistance = x -% newBoxStart[0] >= 0 and x -% newBoxEnd[0] < 0;
-			var y: i32 = lastBoxStart[1];
-			while(y != lastBoxEnd[1]) : (y +%= chunk.chunkSize) {
-				const inYDistance = y -% newBoxStart[1] >= 0 and y -% newBoxEnd[1] < 0;
-				var z: i32 = lastBoxStart[2];
-				while(z != lastBoxEnd[2]) : (z +%= chunk.chunkSize) {
-					const inZDistance = z -% newBoxStart[2] >= 0 and z -% newBoxEnd[2] < 0;
-					if(!inXDistance or !inYDistance or !inZDistance) {
-						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)].decreaseRefCount();
-						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = undefined;
-					}
-				}
-			}
-		}
-	}
-
 	fn loadNewChunk(self: *User, newPos: Vec3i, newRenderDistance: u16) void {
 		const lastBoxStart = (self.lastPos -% @as(Vec3i, @splat(self.lastRenderDistance*chunk.chunkSize))) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const lastBoxEnd = (self.lastPos +% @as(Vec3i, @splat(self.lastRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
@@ -228,18 +203,18 @@ pub const User = struct { // MARK: User
 				while(z != newBoxEnd[2]) : (z +%= chunk.chunkSize) {
 					const inZDistance = z -% lastBoxStart[2] >= 0 and z -% lastBoxEnd[2] < 0;
 					if(!inXDistance or !inYDistance or !inZDistance) {
-						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = @TypeOf(world.?.chunkManager).getOrGenerateEntityChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+						const found_chunk = @TypeOf(world.?.chunkManager).getOrGenerateEntityChunk(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+						found_chunk.touchChunk();
 					}
 				}
 			}
 		}
 	}
 
-	fn loadUnloadChunks(self: *User) void {
+	fn loadChunks(self: *User) void {
 		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if(@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
-			self.unloadOldChunk(newPos, newRenderDistance);
 			self.loadNewChunk(newPos, newRenderDistance);
 			self.lastRenderDistance = newRenderDistance;
 			self.lastPos = newPos;
@@ -262,7 +237,7 @@ pub const User = struct { // MARK: User
 			self.lastSaveTime = saveTime;
 		}
 
-		self.loadUnloadChunks();
+		self.loadChunks();
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
@@ -282,6 +257,7 @@ pub const User = struct { // MARK: User
 		defer main.stackAllocator.free(msg);
 		self.sendRawMessage(msg);
 	}
+
 	fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.Protocols.chat.send(self.conn, msg);
 	}

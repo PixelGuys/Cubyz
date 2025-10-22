@@ -771,7 +771,7 @@ pub const Protocols = struct {
 				};
 				if(conn.user) |user| {
 					user.increaseRefCount();
-					main.server.world.?.queueChunkAndDecreaseRefCount(request, user);
+					main.server.world.?.queueChunk(request, user);
 				}
 			}
 		}
@@ -1334,8 +1334,7 @@ pub const Protocols = struct {
 
 			const pos = try reader.readVec(Vec3i);
 			const blockType = try reader.readInt(u16);
-			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
-			defer simChunk.decreaseRefCount();
+			const simChunk = main.server.world.?.getSimulationChunk(pos[0], pos[1], pos[2]) orelse return;
 			const ch = simChunk.chunk.load(.unordered) orelse return;
 			ch.mutex.lock();
 			defer ch.mutex.unlock();
@@ -1379,7 +1378,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendServerDataUpdateToClients(pos: Vec3i) void {
-			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			const simChunk = main.server.world.?.getSimulationChunk(pos[0], pos[1], pos[2]) orelse return;
 			defer simChunk.decreaseRefCount();
 			const ch = simChunk.chunk.load(.unordered) orelse return;
 			ch.mutex.lock();
