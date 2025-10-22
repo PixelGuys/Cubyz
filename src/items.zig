@@ -822,10 +822,6 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
-	pub fn id(self: *Tool) []const u8 {
-		return self.type.id();
-	}
-
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.writer().print(
@@ -969,7 +965,10 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn id(self: Item) []const u8 {
 		switch(self) {
-			inline else => |item| {
+			.tool => |tool| {
+				return tool.type.id();
+			},
+			.baseItem => |item| {
 				return item.id();
 			},
 		}
