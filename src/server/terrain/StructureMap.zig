@@ -67,7 +67,7 @@ pub const StructureMapFragment = struct {
 		@memset(self.tempData.lists, .{});
 	}
 
-	fn privateDeinit(self: *StructureMapFragment, _: usize) void {
+	fn privateDeinit(self: *StructureMapFragment) void {
 		self.arena.deinit();
 		memoryPool.destroy(self);
 	}
