@@ -1139,7 +1139,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			@memset(impl.data.data, .init(0));
 		}
 
-		fn privateDeinit(impl: *Impl, _: usize) void {
+		fn privateDeinit(impl: *Impl) void {
 			impl.data.deinit();
 			main.globalAllocator.free(impl.palette);
 			main.globalAllocator.free(impl.paletteOccupancy);

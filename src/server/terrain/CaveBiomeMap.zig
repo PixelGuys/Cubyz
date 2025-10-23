@@ -39,7 +39,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 		};
 	}
 
-	fn privateDeinit(self: *CaveBiomeMapFragment, _: usize) void {
+	fn privateDeinit(self: *CaveBiomeMapFragment) void {
 		memoryPool.destroy(self);
 	}
 
