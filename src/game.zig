@@ -814,7 +814,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const density = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.density;
 	const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;
 
-	const baseFrictionCoefficient: f32 = Player.currentFriction;
+	const baseFrictionCoefficient: f32 = physicsState.currentFriction;
 	inputState.jumping = false;
 	Player.jumpCooldown -= deltaTime;
 	// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
