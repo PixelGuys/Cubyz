@@ -19,8 +19,8 @@ const physicsStateDensity = 1.2;
 pub const PhysicsState = struct {
 	pos: Vec3d,
 	vel: Vec3d,
-	volumeProperties: collision.VolumeProperties,
-	currentFriction: f32,
+	volumeProperties: collision.VolumeProperties = undefined,
+	currentFriction: f32 = undefined,
 	onGround: bool = false,
 	jumpCoyote: f64 = 0,
 	eyePos: ?Vec3d = null,
@@ -81,19 +81,19 @@ pub const InputState = struct {
 	}
 };
 
-pub fn calculateProperties(physicsState: *PhysicsState, inputState: InputState) void {
-	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(physicsState.pos[0])), @intFromFloat(@floor(physicsState.pos[1])), @intFromFloat(@floor(physicsState.pos[2]))) != null) {
-		physicsState.volumeProperties = collision.calculateVolumeProperties(.client, physicsState.pos, inputState.boundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
+pub fn calculateProperties(physicsState: *PhysicsState, inputState: InputState, comptime side: main.utils.Side) void {
+	if(side == .server or main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(physicsState.pos[0])), @intFromFloat(@floor(physicsState.pos[1])), @intFromFloat(@floor(physicsState.pos[2]))) != null) {
+		physicsState.volumeProperties = collision.calculateVolumeProperties(side, physicsState.pos, inputState.boundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
 
-		const groundFriction = if(!physicsState.onGround and !inputState.isFlying) 0 else collision.calculateSurfaceProperties(.client, physicsState.pos, inputState.boundingBox, 20).friction;
+		const groundFriction = if(!physicsState.onGround and !inputState.isFlying) 0 else collision.calculateSurfaceProperties(side, physicsState.pos, inputState.boundingBox, 20).friction;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/physicsState.volumeProperties.terminalVelocity);
 		physicsState.currentFriction = if(inputState.isFlying) 20 else groundFriction + volumeFrictionCoeffecient;
 	}
 }
 
-pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputState) void { // MARK: update()
+pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputState, comptime side: main.utils.Side) void { // MARK: update()
 	var move: Vec3d = .{0, 0, 0};
-	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(physicsState.pos[0])), @intFromFloat(@floor(physicsState.pos[1])), @intFromFloat(@floor(physicsState.pos[2]))) != null) {
+	if(side == .server or main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(physicsState.pos[0])), @intFromFloat(@floor(physicsState.pos[1])), @intFromFloat(@floor(physicsState.pos[2]))) != null) {
 		const effectiveGravity = gravity*(physicsStateDensity - physicsState.volumeProperties.density)/physicsStateDensity;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/physicsState.volumeProperties.terminalVelocity);
 		var acc = inputState.movementForce;
@@ -226,19 +226,19 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 
 		const slipLimit = 0.25*physicsState.currentFriction;
 
-		const xMovement = collision.collideOrStep(.client, .x, move[0], physicsState.pos, hitBox, steppingHeight);
+		const xMovement = collision.collideOrStep(side, .x, move[0], physicsState.pos, hitBox, steppingHeight);
 		physicsState.pos += xMovement;
 		if(inputState.crouching and physicsState.onGround and @abs(physicsState.vel[0]) < slipLimit) {
-			if(collision.collides(.client, .x, 0, physicsState.pos - Vec3d{0, 0, 1}, hitBox) == null) {
+			if(collision.collides(side, .x, 0, physicsState.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				physicsState.pos -= xMovement;
 				physicsState.vel[0] = 0;
 			}
 		}
 
-		const yMovement = collision.collideOrStep(.client, .y, move[1], physicsState.pos, hitBox, steppingHeight);
+		const yMovement = collision.collideOrStep(side, .y, move[1], physicsState.pos, hitBox, steppingHeight);
 		physicsState.pos += yMovement;
 		if(inputState.crouching and physicsState.onGround and @abs(physicsState.vel[1]) < slipLimit) {
-			if(collision.collides(.client, .y, 0, physicsState.pos - Vec3d{0, 0, 1}, hitBox) == null) {
+			if(collision.collides(side, .y, 0, physicsState.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				physicsState.pos -= yMovement;
 				physicsState.vel[1] = 0;
 			}
@@ -273,7 +273,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 		const wasOnGround = physicsState.onGround;
 		physicsState.onGround = false;
 		physicsState.pos[2] += move[2];
-		if(collision.collides(.client, .z, -move[2], physicsState.pos, hitBox)) |box| {
+		if(collision.collides(side, .z, -move[2], physicsState.pos, hitBox)) |box| {
 			if(move[2] < 0) {
 				if(physicsState.eyePos != null) {
 					if(!wasOnGround) {
@@ -287,7 +287,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			} else {
 				physicsState.pos[2] = box.min[2] - hitBox.max[2];
 			}
-			var bounciness = if(inputState.isFlying) 0 else collision.calculateSurfaceProperties(.client, physicsState.pos, inputState.boundingBox, 0.0).bounciness;
+			var bounciness = if(inputState.isFlying) 0 else collision.calculateSurfaceProperties(side, physicsState.pos, inputState.boundingBox, 0.0).bounciness;
 			if(inputState.crouching) {
 				bounciness *= 0.5;
 			}
@@ -310,7 +310,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			}
 
 			// Always unstuck upwards for now
-			while(collision.collides(.client, .z, 0, physicsState.pos, hitBox)) |_| {
+			while(collision.collides(side, .z, 0, physicsState.pos, hitBox)) |_| {
 				physicsState.pos[2] += 1;
 			}
 		} else if(wasOnGround and move[2] < 0) {
