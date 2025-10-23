@@ -253,7 +253,6 @@ pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 		std.log.err("failed to dump stack trace", .{});
 	};
 	std.log.err("stack trace: {s}", .{fbw.buffered()});
-	std.log.err("end of panic\n", .{});
 	std.debug.defaultPanic(msg, addr);
 }
 
