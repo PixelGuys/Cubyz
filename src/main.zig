@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
@@ -215,6 +216,29 @@ pub const std_options: std.Options = .{ // MARK: std_options
 
 /// The maximum size a log message can have.
 const log_buffer_size = 64 << 10;
+
+fn dumpStackTraceNoAnsi(writer: *std.Io.Writer, start_addr: ?usize) !void {
+	if (builtin.target.cpu.arch.isWasm()) {
+		if (builtin.os.tag == .wasi) {
+			try writer.writeAll("Unable to dump stack trace: not implemented for Wasm\n");
+		}
+		return;
+	}
+	// TODO: update when cubyz' zig gets updated to b64535e, which
+	// added toggling stacktraces independently of strip
+	if (builtin.strip_debug_info) {
+		try writer.writeAll("Unable to dump stack trace: debug info stripped\n");
+		return;
+	}
+	const debug_info = std.debug.getSelfDebugInfo() catch |err| {
+		try writer.print("Unable to dump stack trace: Unable to open debug info: {s}\n", .{@errorName(err)});
+		return;
+	};
+	std.debug.writeCurrentStackTrace(writer, debug_info, .no_color, start_addr) catch |err| {
+		try writer.print("Unable to dump stack trace: {s}\n", .{@errorName(err)});
+		return;
+	};
+}
 
 pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 	const addr = first_trace_address orelse @returnAddress();
