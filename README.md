@@ -37,12 +37,6 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 - If you see an error message in the terminal, please report it in the [Issues](https://github.com/PixelGuys/Cubyz/issues) tab or on the [Discord server](https://discord.gg/XtqCRRG).
 - Otherwise you can always ask for help on the Discord server. If you are unable to get it compiling on your machine, you can also ask on the Discord server and we may compile a release for you.
 
-#### Note for Linux Users:
-I also had to install a few `-dev` packages for the compilation to work:
-```
-sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
-```
-
 ## The Better Way
 1. Install Git
 2. Clone this repository `git clone https://github.com/pixelguys/Cubyz`
