@@ -242,7 +242,7 @@ fn dumpStackTraceNoAnsi(writer: *std.Io.Writer, start_addr: ?usize) !void {
 
 pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 	const addr = first_trace_address orelse @returnAddress();
-	std.log.err("This is probably a bug, if you think so please make and issue and add the entire log: <https://github.com/pixelguys/cubyz/issues/new?template=bug.yml>\n----8<---- start of panic\npanic: {s}\nerror return trace: {?f}", .{
+	std.log.err("This is probably a bug. If you think so, please make an issue and upload the entire log: <https://github.com/pixelguys/cubyz/issues/new?template=bug.yml>\npanic: {s}\nerror return trace: {?f}", .{
 		msg,
 		@errorReturnTrace(),
 	});
