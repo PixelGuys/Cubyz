@@ -54,6 +54,8 @@ pub const collision = struct {
 		min: Vec3d,
 		max: Vec3d,
 
+		pub const point: Box = .{.min = .{0.0, 0.0, 0.0}, .max = .{0.0, 0.0, 0.0}};
+
 		pub fn center(self: Box) Vec3d {
 			return (self.min + self.max)*@as(Vec3d, @splat(0.5));
 		}
@@ -803,21 +805,8 @@ pub fn hyperSpeedToggle() void {
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
-	var physicsState: physics.PhysicsState = .{
-		.pos = Player.super.pos,
-		.vel = Player.super.vel,
-		.volumeProperties = Player.volumeProperties,
-		.currentFriction = Player.currentFriction,
-		.onGround = Player.onGround,
-	};
-	var inputState: physics.InputState = .{
-		.jumping = false,
-		.jumpHeight = Player.jumpHeight,
-		.steppingHeight = Player.steppingHeight(),
-		.isFlying = Player.isFlying.load(.monotonic),
-		.hasCollision = !Player.isGhost.load(.monotonic),
-		.boundingBox = Player.outerBoundingBox,
-	};
+	var physicsState = physics.PhysicsState.fromPlayer();
+	var inputState = physics.InputState.fromPlayer();
 	physics.calculateProperties(&physicsState, inputState);
 	const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
@@ -971,11 +960,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	}
 
 	physics.update(deltaTime, &physicsState, inputState);
-	Player.super.pos = physicsState.pos;
-	Player.super.vel = physicsState.vel;
-	Player.volumeProperties = physicsState.volumeProperties;
-	Player.currentFriction = physicsState.currentFriction;
-	Player.onGround = physicsState.onGround;
+	physicsState.toPlayer();
 
 	const time = std.time.milliTimestamp();
 	if(nextBlockPlaceTime) |*placeTime| {
