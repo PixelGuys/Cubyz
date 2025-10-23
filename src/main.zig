@@ -249,9 +249,7 @@ pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 
 	var trace_buf: [log_buffer_size - "stack trace: ".len]u8 = undefined;
 	var fbw = std.io.Writer.fixed(&trace_buf);
-	std.debug.dumpCurrentStackTraceToWriter(addr, &fbw) catch {
-		std.log.err("failed to dump stack trace", .{});
-	};
+	dumpStackTraceNoAnsi(&fbw, addr) catch {};
 	std.log.err("stack trace: {s}", .{fbw.buffered()});
 
 	@breakpoint();
