@@ -151,9 +151,12 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 		selfPositionWhenGrabbed = self.pos;
 		windowMoving = scaledMousePos[0] <= zoomInPos;
 	} else {
-		if(self.rootComponent) |*component| {
-			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
-				component.mainButtonPressed(scaledMousePos);
+		// During reorder mode, only block HUD windows, allow menu windows (like pause)
+		if(!gui.reorderWindows or !self.isHud) {
+			if(self.rootComponent) |*component| {
+				if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
+					component.mainButtonPressed(scaledMousePos);
+				}
 			}
 		}
 	}
@@ -176,7 +179,11 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
 		if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
-			if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
+			// During reorder mode, allow zoom buttons on HUD windows, but block close button
+			const allowZoom = !gui.reorderWindows or self.isHud;
+			const allowClose = !gui.reorderWindows;
+
+			if(allowZoom and mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
 				// Zoom in
 				if(self.scale >= 1) {
 					self.scale += 0.5;
@@ -186,7 +193,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 				gui.updateWindowPositions();
 				gui.save();
 			}
-			if(mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] <= closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] <= closePos) {
+			if(allowZoom and mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] <= closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] <= closePos) {
 				// Zoom out
 				if(self.scale > 1) {
 					self.scale -= 0.5;
@@ -197,7 +204,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 				gui.updateWindowPositions();
 				gui.save();
 			}
-			if(mousePositionRelative[0] > closePos and grabPositionRelative[0] > closePos) {
+			if(allowClose and mousePositionRelative[0] > closePos and grabPositionRelative[0] > closePos) {
 				// Close
 				if(self.closeable) gui.closeWindowFromRef(self);
 			}
@@ -205,8 +212,11 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 	grabPosition = null;
 	grabbedWindow = undefined;
-	if(self.rootComponent) |*component| {
-		component.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+	// During reorder mode, only block HUD windows, allow menu windows (like pause)
+	if(!gui.reorderWindows or !self.isHud) {
+		if(self.rootComponent) |*component| {
+			component.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+		}
 	}
 }
 
