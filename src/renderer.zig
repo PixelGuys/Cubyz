@@ -130,9 +130,7 @@ pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 
-pub fn updateFov(width: u31, height: u31, fov: f32) void {
-	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
-	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
+pub fn updateFov(fov: f32) void {
 	lastFov = fov;
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 }
@@ -302,6 +300,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
+	if(lastFov != main.settings.fov) {
+		updateFov(main.settings.fov);
+	}
 	if(!blocks.meshes.hasFog(playerBlock)) {
 		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
@@ -477,6 +478,7 @@ pub const MenuBackGround = struct {
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
 	} = undefined;
+
 	var vao: c_uint = undefined;
 	var vbos: [2]c_uint = undefined;
 	var texture: graphics.Texture = undefined;
@@ -596,11 +598,12 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		pipeline.bind(null);
+		if(lastFov != 70.0) {
+			updateFov(70.0);
+		}
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
-		if(settings.fov != lastFov) {
-			updateFov(Window.width, Window.height, settings.fov);
-		}
+
 		texture.bindTo(0);
 
 		c.glBindVertexArray(vao);
@@ -617,6 +620,7 @@ pub const MenuBackGround = struct {
 		const oldResolutionScale = main.settings.resolutionScale;
 		main.settings.resolutionScale = 1;
 		updateViewport(size, size);
+		updateFov(90.0);
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height);
 
