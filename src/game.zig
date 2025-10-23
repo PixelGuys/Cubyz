@@ -810,9 +810,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	physics.calculateProperties(&physicsState, inputState, .client);
 	const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
-	const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else Player.volumeProperties.mobility;
-	const density = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.density;
-	const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;
+	const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else physicsState.volumeProperties.mobility;
+	const density = if(Player.isFlying.load(.monotonic)) 0.0 else physicsState.volumeProperties.density;
+	const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else physicsState.volumeProperties.maxDensity;
 
 	const baseFrictionCoefficient: f32 = physicsState.currentFriction;
 	inputState.jumping = false;
