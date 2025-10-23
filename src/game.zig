@@ -875,7 +875,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				inputState.jumping = true;
 				Player.jumpCooldown = Player.jumpCooldownConstant;
 				if(!Player.onGround) {
-					Player.eyeCoyote = 0;
+					physicsState.eyeCoyote = 0;
 				}
 				Player.jumpCoyote = 0;
 			} else if(!KeyBoard.key("fall").pressed) {
@@ -944,7 +944,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const newOuterBox = (Player.crouchingBoundingBoxExtent - Player.standingBoundingBoxExtent)*@as(Vec3d, @splat(smoothPerc)) + Player.standingBoundingBoxExtent;
 
-		Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - Player.outerBoundingBoxExtent[2])};
+		physicsState.pos += newOuterBox - Player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - Player.outerBoundingBoxExtent[2])};
 
 		Player.outerBoundingBoxExtent = newOuterBox;
 
@@ -959,6 +959,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.desiredEyePos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 	}
 	inputState.crouching = Player.crouching;
+	inputState.eyeBox = Player.eyeBox;
+	inputState.boundingBox = Player.outerBoundingBox;
 	physics.update(deltaTime, &physicsState, inputState, .client);
 	physicsState.toPlayer();
 	if(!Player.isGhost.load(.monotonic)) {
