@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
@@ -212,6 +213,50 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	}.logFn,
 };
 
+/// The maximum size a log message can have.
+const log_buffer_size = 64 << 10;
+
+fn dumpStackTraceNoAnsi(writer: *std.Io.Writer, start_addr: ?usize) !void {
+	if(builtin.target.cpu.arch.isWasm()) {
+		if(builtin.os.tag == .wasi) {
+			try writer.writeAll("Unable to dump stack trace: not implemented for Wasm\n");
+		}
+		return;
+	}
+	// TODO: update when cubyz' zig gets updated to b64535e, which
+	// added toggling stacktraces independently of strip
+	if(builtin.strip_debug_info) {
+		try writer.writeAll("Unable to dump stack trace: debug info stripped\n");
+		return;
+	}
+	const debug_info = std.debug.getSelfDebugInfo() catch |err| {
+		try writer.print("Unable to dump stack trace: Unable to open debug info: {s}\n", .{@errorName(err)});
+		return;
+	};
+	std.debug.writeCurrentStackTrace(writer, debug_info, .no_color, start_addr) catch |err| {
+		try writer.print("Unable to dump stack trace: {s}\n", .{@errorName(err)});
+		return;
+	};
+}
+
+pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
+	const addr = first_trace_address orelse @returnAddress();
+	std.log.err("This is probably a bug. If you think so, please make an issue and upload the entire log: <https://github.com/pixelguys/cubyz/issues/new?template=bug.yml>\npanic: {s}\nerror return trace: {?f}", .{
+		msg,
+		@errorReturnTrace(),
+	});
+
+	var trace_buf: [log_buffer_size - "stack trace: ".len]u8 = undefined;
+	var fbw = std.io.Writer.fixed(&trace_buf);
+	dumpStackTraceNoAnsi(&fbw, addr) catch {};
+	std.log.err("stack trace: {s}", .{fbw.buffered()});
+
+	@breakpoint();
+	@trap();
+}
+
+pub const panic = std.debug.FullPanic(panicToLog);
+
 fn initLogging() void {
 	logFile = null;
 	files.cwd().makePath("logs") catch |err| {
@@ -248,27 +293,27 @@ fn deinitLogging() void {
 	}
 }
 
-fn logToFile(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
+fn logToWriter(writer: *std.Io.Writer, comptime format: []const u8, args: anytype) std.Io.Writer.Error!void {
+	var buf: [log_buffer_size]u8 = undefined;
+	const string = std.fmt.bufPrint(&buf, format, args) catch format;
+	try writer.writeAll(string);
+}
 
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
-	(logFile orelse return).writeAll(string) catch {};
-	(logFileTs orelse return).writeAll(string) catch {};
+fn logToFile(comptime format: []const u8, args: anytype) void {
+	{
+		var writer = (logFile orelse return).writerStreaming(&.{});
+		logToWriter(&writer.interface, format, args) catch {};
+	}
+	{
+		var writer = (logFileTs orelse return).writerStreaming(&.{});
+		logToWriter(&writer.interface, format, args) catch {};
+	}
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	const writer = std.debug.lockStderrWriter(&.{});
 	defer std.debug.unlockStderrWriter();
-	nosuspend writer.writeAll(string) catch {};
+	logToWriter(writer, format, args) catch {};
 }
 
 // MARK: Callbacks
