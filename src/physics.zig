@@ -14,7 +14,7 @@ const camera = main.game.camera;
 
 const gravity = 30.0;
 const airTerminalVelocity = 90.0;
-const physicsStateDensity = 1.2;
+const playerDensity = 1.2;
 
 pub const PhysicsState = struct {
 	pos: Vec3d,
@@ -94,7 +94,7 @@ pub fn calculateProperties(physicsState: *PhysicsState, inputState: InputState, 
 pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputState, comptime side: main.utils.Side) void { // MARK: update()
 	var move: Vec3d = .{0, 0, 0};
 	if(side == .server or main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(physicsState.pos[0])), @intFromFloat(@floor(physicsState.pos[1])), @intFromFloat(@floor(physicsState.pos[2]))) != null) {
-		const effectiveGravity = gravity*(physicsStateDensity - physicsState.volumeProperties.density)/physicsStateDensity;
+		const effectiveGravity = gravity*(playerDensity - physicsState.volumeProperties.density)/playerDensity;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/physicsState.volumeProperties.terminalVelocity);
 		var acc = inputState.movementForce;
 		if(!inputState.isFlying) {
