@@ -218,15 +218,15 @@ pub const std_options: std.Options = .{ // MARK: std_options
 const log_buffer_size = 64 << 10;
 
 fn dumpStackTraceNoAnsi(writer: *std.Io.Writer, start_addr: ?usize) !void {
-	if (builtin.target.cpu.arch.isWasm()) {
-		if (builtin.os.tag == .wasi) {
+	if(builtin.target.cpu.arch.isWasm()) {
+		if(builtin.os.tag == .wasi) {
 			try writer.writeAll("Unable to dump stack trace: not implemented for Wasm\n");
 		}
 		return;
 	}
 	// TODO: update when cubyz' zig gets updated to b64535e, which
 	// added toggling stacktraces independently of strip
-	if (builtin.strip_debug_info) {
+	if(builtin.strip_debug_info) {
 		try writer.writeAll("Unable to dump stack trace: debug info stripped\n");
 		return;
 	}
