@@ -99,19 +99,19 @@ const Material = struct { // MARK: Material
 		}
 	}
 
-	pub fn printTooltip(self: Material, outString: *main.List(u8)) void {
+	pub fn printTooltip(self: Material, outString: *main.List(u8), item: Item) void {
 		if(self.modifiers.len == 0) {
 			outString.appendSlice("§#808080Material\n");
 		}
 		for(self.modifiers) |modifier| {
 			if(modifier.restriction.vTable == modifierRestrictions.get("always") orelse unreachable) {
-				modifier.printTooltip(outString);
+				modifier.printTooltip(outString, item);
 				outString.appendSlice("\n");
 			} else {
 				outString.appendSlice("§#808080if ");
 				modifier.restriction.printTooltip(outString);
 				outString.appendSlice("\n  ");
-				modifier.printTooltip(outString);
+				modifier.printTooltip(outString, item);
 				outString.appendSlice("\n");
 			}
 		}
@@ -159,7 +159,7 @@ const Modifier = struct {
 		combineModifiers: *const fn(data1: Data, data2: Data) ?Data,
 		changeToolParameters: *const fn(tool: *Tool, data: Data) void,
 		changeBlockDamage: *const fn(damage: f32, block: main.blocks.Block, data: Data) f32,
-		printTooltip: *const fn(outString: *main.List(u8), data: Data) void,
+		printTooltip: *const fn(outString: *main.List(u8), data: Data, item: Item) void,
 		loadData: *const fn(zon: ZonElement) Data,
 		priority: f32,
 	};
@@ -181,8 +181,8 @@ const Modifier = struct {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
-	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
-		self.vTable.printTooltip(outString, self.data);
+	pub fn printTooltip(self: Modifier, outString: *main.List(u8), item: Item) void {
+		self.vTable.printTooltip(outString, self.data, item);
 	}
 };
 
@@ -298,7 +298,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		tooltip.appendSlice(self.name);
 		tooltip.append('\n');
 		if(self.material) |mat| {
-			mat.printTooltip(&tooltip);
+			mat.printTooltip(&tooltip, Item{.baseItem = @enumFromInt(itemListSize)});
 		}
 		if(self.tags.len != 0) {
 			tooltip.appendSlice("§#808080");
@@ -843,7 +843,7 @@ pub const Tool = struct { // MARK: Tool
 		if(self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
 			for(self.modifiers) |modifier| {
-				modifier.printTooltip(&self.tooltip);
+				modifier.printTooltip(&self.tooltip, Item{.tool = self});
 				self.tooltip.appendSlice("§\n");
 			}
 			_ = self.tooltip.pop();
