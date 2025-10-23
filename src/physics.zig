@@ -159,32 +159,41 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 
 		const slipLimit = 0.25*Player.currentFriction;
 
-		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
-		Player.super.pos += xMovement;
-		if(Player.crouching and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {
-			if(collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
-				Player.super.pos -= xMovement;
-				Player.super.vel[0] = 0;
+		// Use new collision system with stepping for horizontal movement
+		const horizontalMovement = Vec3d{move[0], move[1], 0};
+		const actualMovement = collision.resolveCollisionWithStepping(.client, horizontalMovement, Player.super.pos, hitBox, steppingHeight, main.stackAllocator.allocator) catch horizontalMovement;
+
+		Player.super.pos += actualMovement;
+
+		// Crouch edge detection - prevent sliding off edges
+		if(Player.crouching and Player.onGround) {
+			if(@abs(Player.super.vel[0]) < slipLimit and actualMovement[0] != 0) {
+				// Check if we'd fall off the edge
+				const checkResult = collision.resolveCollision(.client, Vec3d{0, 0, -1}, Player.super.pos, hitBox, main.stackAllocator.allocator) catch Vec3d{0, 0, -1};
+				if(@abs(checkResult[2]) > 0.99) { // Would fall
+					Player.super.pos[0] -= actualMovement[0];
+					Player.super.vel[0] = 0;
+				}
+			}
+			if(@abs(Player.super.vel[1]) < slipLimit and actualMovement[1] != 0) {
+				const checkResult = collision.resolveCollision(.client, Vec3d{0, 0, -1}, Player.super.pos, hitBox, main.stackAllocator.allocator) catch Vec3d{0, 0, -1};
+				if(@abs(checkResult[2]) > 0.99) {
+					Player.super.pos[1] -= actualMovement[1];
+					Player.super.vel[1] = 0;
+				}
 			}
 		}
 
-		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
-		Player.super.pos += yMovement;
-		if(Player.crouching and Player.onGround and @abs(Player.super.vel[1]) < slipLimit) {
-			if(collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
-				Player.super.pos -= yMovement;
-				Player.super.vel[1] = 0;
-			}
-		}
-
-		if(xMovement[0] != move[0]) {
+		// Zero velocity on blocked axes
+		if(@abs(actualMovement[0]) < @abs(horizontalMovement[0]) * 0.999) {
 			Player.super.vel[0] = 0;
 		}
-		if(yMovement[1] != move[1]) {
+		if(@abs(actualMovement[1]) < @abs(horizontalMovement[1]) * 0.999) {
 			Player.super.vel[1] = 0;
 		}
 
-		const stepAmount = xMovement[2] + yMovement[2];
+		// Handle stepping
+		const stepAmount = actualMovement[2];
 		if(stepAmount > 0) {
 			if(Player.eyeCoyote <= 0) {
 				Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
@@ -201,21 +210,27 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			Player.onGround = true;
 		}
 
+		// Handle vertical movement
 		const wasOnGround = Player.onGround;
 		Player.onGround = false;
-		Player.super.pos[2] += move[2];
-		if(collision.collides(.client, .z, -move[2], Player.super.pos, hitBox)) |box| {
+
+		const verticalMovement = Vec3d{0, 0, move[2]};
+		const verticalResult = collision.resolveCollision(.client, verticalMovement, Player.super.pos, hitBox, main.stackAllocator.allocator) catch verticalMovement;
+		Player.super.pos[2] += verticalResult[2];
+
+		// Check if we hit something vertically
+		if(@abs(verticalResult[2]) < @abs(move[2]) * 0.999) {
 			if(move[2] < 0) {
+				// Hit ground
 				if(!wasOnGround) {
 					Player.eyeVel[2] = Player.super.vel[2];
-					Player.eyePos[2] -= (box.max[2] - hitBox.min[2] - Player.super.pos[2]);
+					Player.eyePos[2] -= verticalResult[2] - move[2];
 				}
 				Player.onGround = true;
-				Player.super.pos[2] = box.max[2] - hitBox.min[2];
 				Player.eyeCoyote = 0;
-			} else {
-				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
+
+			// Calculate bounciness
 			var bounciness = if(Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 0.0).bounciness;
 			if(Player.crouching) {
 				bounciness *= 0.5;
@@ -231,25 +246,21 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				velocityChange = Player.super.vel[2];
 				Player.super.vel[2] = 0;
 			}
+
+			// Fall damage
 			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
 			if(damage > 0.01) {
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 			}
-
-			// Always unstuck upwards for now
-			while(collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
-				Player.super.pos[2] += 1;
-			}
 		} else if(wasOnGround and move[2] < 0) {
-			// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
-			// This calculates how long the player has to fall until we know they're not walking over a small gap.
-			// We add deltaTime because we subtract deltaTime at the bottom of update
+			// Dropped off ledge - eye coyote time
 			Player.eyeCoyote = @sqrt(2*Player.steppingHeight()[2]/gravity) + deltaTime;
 			Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			Player.eyePos[2] -= move[2];
 		} else if(Player.eyeCoyote > 0) {
 			Player.eyePos[2] -= move[2];
 		}
+
 		collision.touchBlocks(Player.super, hitBox, .client);
 	} else {
 		Player.super.pos += move;

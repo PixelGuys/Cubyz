@@ -89,8 +89,6 @@ pub const collision = struct {
 					if(distance < minDistance) {
 						resultBox = blockCollision;
 						minDistance = distance;
-					} else if(distance == minDistance) {
-						resultBox = .{.min = @min(resultBox.?.min, blockCollision.min), .max = @max(resultBox.?.max, blockCollision.max)};
 					}
 				}
 			}
@@ -144,9 +142,6 @@ pub const collision = struct {
 							if(res.dist < minDistance) {
 								resultBox = res.box;
 								minDistance = res.dist;
-							} else if(res.dist == minDistance) {
-								resultBox.?.min = @min(resultBox.?.min, res.box.min);
-								resultBox.?.max = @min(resultBox.?.max, res.box.max);
 							}
 						}
 					}
@@ -271,11 +266,17 @@ pub const collision = struct {
 					volumeSum += gridVolume;
 
 					if(_block) |block| {
-						const collisionBox: Box = .{ // TODO: Check all AABBs individually
-							.min = totalBox.min + main.blocks.meshes.model(block).model().min,
-							.max = totalBox.min + main.blocks.meshes.model(block).model().max,
-						};
-						const filledVolume = @min(gridVolume, overlapVolume(collisionBox, totalBox));
+						// Calculate total filled volume from all AABBs
+						var totalFilledVolume: f64 = 0;
+						const model = block.mode().model(block).model();
+						for(model.collision) |relativeBlockCollision| {
+							const collisionBox: Box = .{
+								.min = totalBox.min + relativeBlockCollision.min,
+								.max = totalBox.min + relativeBlockCollision.max,
+							};
+							totalFilledVolume += overlapVolume(boundingBox, collisionBox);
+						}
+						const filledVolume = @min(gridVolume, totalFilledVolume);
 						const emptyVolume = gridVolume - filledVolume;
 						invTerminalVelocitySum += emptyVolume/defaults.terminalVelocity;
 						densitySum += emptyVolume*defaults.density;
@@ -383,6 +384,171 @@ pub const collision = struct {
 				}
 			}
 		}
+	}
+
+	fn getAllCollisionBoxes(comptime side: main.utils.Side, sweptBox: Box, allocator: std.mem.Allocator) !std.ArrayList(Box) {
+		var result = std.ArrayList(Box).init(allocator);
+
+		const minX: i32 = @intFromFloat(@floor(sweptBox.min[0]));
+		const maxX: i32 = @intFromFloat(@floor(sweptBox.max[0]));
+		const minY: i32 = @intFromFloat(@floor(sweptBox.min[1]));
+		const maxY: i32 = @intFromFloat(@floor(sweptBox.max[1]));
+		const minZ: i32 = @intFromFloat(@floor(sweptBox.min[2]));
+		const maxZ: i32 = @intFromFloat(@floor(sweptBox.max[2]));
+
+		var x: i32 = minX;
+		while(x <= maxX) : (x += 1) {
+			var y: i32 = minY;
+			while(y <= maxY) : (y += 1) {
+				var z: i32 = minZ;
+				while(z <= maxZ) : (z += 1) {
+					const _block = if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
+					if(_block) |block| {
+						if(block.collide()) {
+							const model = block.mode().model(block).model();
+							const blockPos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
+
+							for(model.collision) |relativeBox| {
+								const worldBox = Box{
+									.min = blockPos + relativeBox.min,
+									.max = blockPos + relativeBox.max,
+								};
+								try result.append(worldBox);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return result;
+	}
+
+	fn boxesCouldCollideOnOtherAxes(axis: u2, entityBox: Box, blockBox: Box) bool {
+		return switch(axis) {
+			0 => (entityBox.max[1] > blockBox.min[1] and entityBox.min[1] < blockBox.max[1] and
+				  entityBox.max[2] > blockBox.min[2] and entityBox.min[2] < blockBox.max[2]), // X axis: check Y and Z
+			1 => (entityBox.max[0] > blockBox.min[0] and entityBox.min[0] < blockBox.max[0] and
+				  entityBox.max[2] > blockBox.min[2] and entityBox.min[2] < blockBox.max[2]), // Y axis: check X and Z
+			2 => (entityBox.max[0] > blockBox.min[0] and entityBox.min[0] < blockBox.max[0] and
+				  entityBox.max[1] > blockBox.min[1] and entityBox.min[1] < blockBox.max[1]), // Z axis: check X and Y
+			else => false,
+		};
+	}
+
+	/// Calculate maximum safe movement along an axis before collision
+	fn calculateMaxOffset(axis: u2, entityBox: Box, collisionBoxes: []const Box, desiredMovement: f64) f64 {
+		if(desiredMovement == 0) return 0;
+
+		var maxOffset = desiredMovement;
+
+		for(collisionBoxes) |blockBox| {
+			// Only check boxes that overlap on the other two axes
+			if(!boxesCouldCollideOnOtherAxes(axis, entityBox, blockBox)) continue;
+
+			// Calculate how far we can move before hitting this box
+			if(desiredMovement > 0) {
+				// Moving positive: check distance to block's min face
+				const distance = blockBox.min[axis] - entityBox.max[axis];
+				if(distance < maxOffset) {
+					maxOffset = @max(distance, 0);
+				}
+			} else {
+				// Moving negative: check distance to block's max face
+				const distance = blockBox.max[axis] - entityBox.min[axis];
+				if(distance > maxOffset) {
+					maxOffset = @min(distance, 0);
+				}
+			}
+		}
+
+		return maxOffset;
+	}
+
+	pub fn resolveCollision(comptime side: main.utils.Side, movement: Vec3d, pos: Vec3d, hitBox: Box, allocator: std.mem.Allocator) !Vec3d {
+		// Calculate swept bounding box
+		const startBox = Box{
+			.min = pos + hitBox.min,
+			.max = pos + hitBox.max,
+		};
+		const endBox = Box{
+			.min = pos + hitBox.min + movement,
+			.max = pos + hitBox.max + movement,
+		};
+
+		// Get union of start and end boxes (swept volume)
+		const sweptBox = Box{
+			.min = @min(startBox.min, endBox.min),
+			.max = @max(startBox.max, endBox.max),
+		};
+
+		// Get all collision boxes in the swept volume
+		const collisionBoxes = try getAllCollisionBoxes(side, sweptBox, allocator);
+		defer collisionBoxes.deinit();
+
+		if(collisionBoxes.items.len == 0) return movement;
+
+		// Resolve collisions axis by axis: Z (vertical) first, then X, then Y
+		var result = Vec3d{0, 0, 0};
+		var currentBox = startBox;
+
+		// Z axis (vertical) - most important for ground detection
+		result[2] = calculateMaxOffset(2, currentBox, collisionBoxes.items, movement[2]);
+		currentBox = Box{
+			.min = currentBox.min + Vec3d{0, 0, result[2]},
+			.max = currentBox.max + Vec3d{0, 0, result[2]},
+		};
+
+		// X axis
+		result[0] = calculateMaxOffset(0, currentBox, collisionBoxes.items, movement[0]);
+		currentBox = Box{
+			.min = currentBox.min + Vec3d{result[0], 0, 0},
+			.max = currentBox.max + Vec3d{result[0], 0, 0},
+		};
+
+		// Y axis
+		result[1] = calculateMaxOffset(1, currentBox, collisionBoxes.items, movement[1]);
+
+		return result;
+	}
+
+	/// Collision resolution with automatic stepping for horizontal movement
+	/// Returns Vec3d with actual movement (including vertical step-up)
+	pub fn resolveCollisionWithStepping(comptime side: main.utils.Side, movement: Vec3d, pos: Vec3d, hitBox: Box, maxStepHeight: f64, allocator: std.mem.Allocator) !Vec3d {
+		// First try normal collision
+		const normalResult = try resolveCollision(side, movement, pos, hitBox, allocator);
+
+		// If horizontal movement was blocked and we have step height available
+		const horizontalBlocked = (@abs(normalResult[0]) < @abs(movement[0]) * 0.999) or
+								   (@abs(normalResult[1]) < @abs(movement[1]) * 0.999);
+
+		if(horizontalBlocked and maxStepHeight > 0) {
+			// Try stepping up
+			const stepUpMovement = Vec3d{0, 0, maxStepHeight};
+			const stepUpResult = try resolveCollision(side, stepUpMovement, pos, hitBox, allocator);
+
+			if(stepUpResult[2] > 0) {
+				// We can step up, try horizontal movement from stepped position
+				const steppedPos = pos + stepUpResult;
+				const horizontalMovement = Vec3d{movement[0], movement[1], 0};
+				const steppedHorizontalResult = try resolveCollision(side, horizontalMovement, steppedPos, hitBox, allocator);
+
+				// Check if we can actually move horizontally after stepping
+				const horizontalImproved = (@abs(steppedHorizontalResult[0]) > @abs(normalResult[0]) * 1.001) or
+										   (@abs(steppedHorizontalResult[1]) > @abs(normalResult[1]) * 1.001);
+
+				if(horizontalImproved) {
+					// Stepping helped! Return combined movement
+					return Vec3d{
+						steppedHorizontalResult[0],
+						steppedHorizontalResult[1],
+						stepUpResult[2],
+					};
+				}
+			}
+		}
+
+		return normalResult;
 	}
 };
 
