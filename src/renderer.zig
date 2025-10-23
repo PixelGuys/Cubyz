@@ -378,17 +378,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 }
 
-pub const TransparencyMode = enum {
-	noTransparency,
-	transparency,
-};
-
-pub const LightingMode = union(enum) {
+pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lighting: union(enum) {
 	world: Vec3i,
-	solid: u32,
-};
-
-pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lighting: LightingMode, ambientLight: Vec3f, playerPosition: Vec3d, transparencyMode: TransparencyMode, contrast: f32) void {
+	uniform: u32,
+}, ambientLight: Vec3f, playerPosition: Vec3d, transparencyMode: enum {
+	@"opaque",
+	transparent,
+}, contrast: f32) void {
 	var faceData: main.ListUnmanaged(chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
@@ -407,11 +403,11 @@ pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, l
 	}
 
 	var lightData = main.stackAllocator.alloc(u32, faceData.items.len*4);
+	defer main.stackAllocator.free(lightData);
 
 	switch(lighting) {
 		.world => |lightPos| {
 			const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
-			defer main.stackAllocator.free(lightData);
 			for(faceData.items) |face| {
 				const quad = face.blockAndQuad.quadIndex.quadInfo();
 				var rawData: [4][6]u5 = undefined;
@@ -424,20 +420,20 @@ pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, l
 					}
 				}
 				const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
-				@memcpy(lightData[face.position.lightIndex*4 .. face.position.lightIndex*4 + 4], &packedLight);
+				lightData[face.position.lightIndex*4..][0..4].* = packedLight;
 			}
 		},
-		.solid => |light| {
+		.uniform => |light| {
 			@memset(lightData, light);
 		},
 	}
 
-	const transparent = block.transparent() and transparencyMode == .transparency;
+	const transparent = block.transparent() and transparencyMode == .transparent;
 
-	renderBlockImpl(projMatrix, modelMatrix, faceData.items, lightData, ambientLight, playerPosition, transparent, contrast);
+	renderFaces(projMatrix, modelMatrix, faceData.items, lightData, ambientLight, playerPosition, transparent, contrast);
 }
 
-fn renderBlockImpl(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d, transparent: bool, contrast: f32) void {
+fn renderFaces(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d, transparent: bool, contrast: f32) void {
 	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData, &allocation);
 	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);

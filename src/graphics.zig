@@ -2634,7 +2634,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	if(i & 2 != 0) y = -y + 1;
 	if(i & 4 != 0) z = -z + 1;
 
-	main.renderer.renderBlock(projMatrix, Mat4f.identity(), block, .{.solid = 0xffffffff}, .{1, 1, 1}, .{x, y, z}, .transparency, 0.25);
+	main.renderer.renderBlock(projMatrix, Mat4f.identity(), block, .{.uniform = 0xffffffff}, .{1, 1, 1}, .{x, y, z}, .transparent, 0.25);
 
 	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = undefined;
