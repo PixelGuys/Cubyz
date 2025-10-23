@@ -3,11 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const utils = main.utils;
 
-const c = @cImport({
-	@cInclude("miniaudio.h");
-	@cDefine("STB_VORBIS_HEADER_ONLY", "");
-	@cInclude("stb/stb_vorbis.h");
-});
+const c = @import("audio_c");
 
 fn handleError(miniaudioError: c.ma_result) !void {
 	if(miniaudioError != c.MA_SUCCESS) {

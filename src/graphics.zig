@@ -2,19 +2,7 @@
 /// Also contains some basic 2d drawing stuff.
 const std = @import("std");
 
-pub const hbft = @cImport({
-	@cInclude("freetype/ftadvanc.h");
-	@cInclude("freetype/ftbbox.h");
-	@cInclude("freetype/ftbitmap.h");
-	@cInclude("freetype/ftcolor.h");
-	@cInclude("freetype/ftlcdfil.h");
-	@cInclude("freetype/ftsizes.h");
-	@cInclude("freetype/ftstroke.h");
-	@cInclude("freetype/fttrigon.h");
-	@cInclude("freetype/ftsynth.h");
-	@cInclude("hb.h");
-	@cInclude("hb-ft.h");
-});
+pub const hbft = @import("hbft_c");
 
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
@@ -29,20 +17,11 @@ const Window = main.Window;
 
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-pub const c = @cImport({
-	@cInclude("glad/gl.h");
-	@cInclude("glad/vulkan.h");
-});
+pub const c = @import("glad_c");
 
-pub const stb_image = @cImport({
-	@cInclude("stb/stb_image.h");
-	@cInclude("stb/stb_image_write.h");
-});
+pub const stb_image = @import("stb_c");
 
-const glslang = @cImport({
-	@cInclude("glslang/Include/glslang_c_interface.h");
-	@cInclude("glslang/Public/resource_limits_c.h");
-});
+const glslang = @import("glslang_c");
 
 pub const draw = struct { // MARK: draw
 	var color: u32 = 0;

@@ -10,7 +10,6 @@ fn libName(b: *std.Build, name: []const u8, target: std.Target) []const u8 {
 fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool) void {
 	const target = exe.root_module.resolved_target.?;
 	const t = target.result;
-	const optimize = exe.root_module.optimize.?;
 
 	exe.linkLibC();
 	exe.linkLibCpp();
@@ -23,22 +22,9 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	}});
 	const artifactName = libName(b, depsLib, t);
 
-	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
-	if(useLocalDeps) depsName = "local";
-
-	const libsDeps = b.lazyDependency(depsName, .{
-		.target = target,
-		.optimize = optimize,
-	}) orelse {
-		// Lazy dependencies with a `url` field will fail here the first time.
-		// build.zig will restart and try again.
-		std.log.info("Downloading cubyz_deps libraries {s}.", .{depsName});
-		return;
-	};
-	const headersDeps = if(useLocalDeps) libsDeps else b.lazyDependency("cubyz_deps_headers", .{}) orelse {
-		std.log.info("Downloading cubyz_deps headers {s}.", .{depsName});
-		return;
-	};
+	const deps = getDeps(b, exe.root_module, useLocalDeps) orelse return;
+	const libsDeps = deps.libs;
+	const headersDeps = deps.headers;
 
 	exe.addIncludePath(headersDeps.path("include"));
 	exe.addObjectFile(libsDeps.path("lib").path(b, artifactName));
@@ -71,6 +57,72 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	} else if(t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
+}
+
+const Deps = struct {
+	headers: *std.Build.Dependency,
+	libs: *std.Build.Dependency,
+};
+fn getDeps(b: *std.Build, module: *std.Build.Module, useLocalDeps: bool) ?Deps {
+	const target = module.resolved_target.?;
+	const optimize = module.optimize.?;
+	const t = target.result;
+	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
+	if(useLocalDeps) depsName = "local";
+
+	const libsDeps = b.lazyDependency(depsName, .{
+		.target = target,
+		.optimize = optimize,
+	}) orelse {
+		// Lazy dependencies with a `url` field will fail here the first time.
+		// build.zig will restart and try again.
+		std.log.info("Downloading cubyz_deps libraries {s}.", .{depsName});
+		return null;
+	};
+	const headersDeps = if(useLocalDeps) libsDeps else b.lazyDependency("cubyz_deps_headers", .{}) orelse {
+		std.log.info("Downloading cubyz_deps headers {s}.", .{depsName});
+		return null;
+	};
+	return .{
+		.headers = headersDeps,
+		.libs = libsDeps,
+	};
+}
+
+fn addCImports(b: *std.Build, module: *std.Build.Module, useLocalDeps: bool) void {
+	const target = module.resolved_target.?;
+	const t = target.result;
+	const deps = getDeps(b, module, useLocalDeps) orelse return;
+
+	addCImport(b, module, deps.headers, "audio");
+	addCImport(b, module, deps.headers, "window");
+	addCImport(b, module, deps.headers, "hbft");
+	addCImport(b, module, deps.headers, "glad");
+	addCImport(b, module, deps.headers, "stb");
+	addCImport(b, module, deps.headers, "glslang");
+
+	if(t.os.tag == .windows) {
+		addCImport(b, module, deps.headers, "file_monitor_windows");
+	} else if(t.os.tag == .linux) {
+		addCImport(b, module, deps.headers, "file_monitor_linux");
+	}
+}
+
+fn addCImport(
+	b: *std.Build,
+	module: *std.Build.Module,
+	headersDeps: *std.Build.Dependency,
+	comptime depFileBaseName: []const u8,
+) void {
+	const target = module.resolved_target.?;
+	const optimize = module.optimize.?;
+	const cDep = b.addTranslateC(.{
+		.root_source_file = b.path("src/cImports/" ++ depFileBaseName ++ ".c"),
+		.target = target,
+		.optimize = optimize,
+	});
+	cDep.addIncludePath(headersDeps.path("include"));
+	module.addImport(depFileBaseName ++ "_c", cDep.createModule());
 }
 
 pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
@@ -188,6 +240,8 @@ pub fn build(b: *std.Build) !void {
 		.target = target,
 		.optimize = optimize,
 	});
+
+	addCImports(b, mainModule, useLocalDeps);
 
 	const exe = b.addExecutable(.{
 		.name = "Cubyz",
