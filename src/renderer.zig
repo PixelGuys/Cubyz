@@ -402,7 +402,7 @@ pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, l
 		face.position.lightIndex = @intCast(i);
 	}
 
-	var lightData = main.stackAllocator.alloc(u32, faceData.items.len*4);
+	const lightData = main.stackAllocator.alloc(u32, faceData.items.len*4);
 	defer main.stackAllocator.free(lightData);
 
 	switch(lighting) {
