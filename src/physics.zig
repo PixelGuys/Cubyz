@@ -22,10 +22,12 @@ pub const PhysicsState = struct {
 	volumeProperties: collision.VolumeProperties,
 	currentFriction: f32,
 	onGround: bool = false,
+	jumpCoyote: f64 = 0,
 	eyePos: ?Vec3d = null,
 	eyeVel: ?Vec3d = null,
-	eyeCoyote: ?f32 = null,
+	eyeCoyote: ?f64 = null,
 	eyeStep: ?@Vector(3, bool) = null,
+	fallDamage: f32 = 0.0,
 
 	pub fn fromPlayer() PhysicsState {
 		return .{
@@ -34,7 +36,7 @@ pub const PhysicsState = struct {
 			.volumeProperties = Player.volumeProperties,
 			.currentFriction = Player.currentFriction,
 			.onGround = Player.onGround,
-			.eyePos = Player.eyeBox,
+			.eyePos = Player.eyePos,
 			.eyeVel = Player.eyeVel,
 			.eyeCoyote = Player.eyeCoyote,
 			.eyeStep = Player.eyeStep,
@@ -48,10 +50,10 @@ pub const PhysicsState = struct {
 		Player.volumeProperties = self.volumeProperties;
 		Player.currentFriction = self.currentFriction;
 		Player.onGround = self.onGround;
-		Player.eyePos = self.eyeBox;
-		Player.eyeVel = self.eyeVel;
-		Player.eyeCoyote = self.eyeCoyote;
-		Player.eyeStep = self.eyeStep;
+		Player.eyeVel = self.eyeVel.?;
+		Player.eyeCoyote = self.eyeCoyote.?;
+		Player.eyeStep = self.eyeStep.?;
+		Inventory.Sync.addHealth(-self.fallDamage, .fall, .client, Player.id);
 	}
 };
 
@@ -59,6 +61,7 @@ pub const InputState = struct {
 	steppingHeight: Vec3d = .{0.0, 0.0, 0.0},
 	movementForce: Vec3d = .{0.0, 0.0, 0.0},
 	jumping: bool = false,
+	crouching: bool = false,
 	jumpHeight: f64 = 0.0,
 	isFlying: bool = false,
 	hasCollision: bool = true,
@@ -67,11 +70,13 @@ pub const InputState = struct {
 
 	pub fn fromPlayer() InputState {
 		return .{
+			.crouching = Player.crouching,
 			.jumpHeight = Player.jumpHeight,
 			.steppingHeight = Player.steppingHeight(),
 			.isFlying = Player.isFlying.load(.monotonic),
 			.hasCollision = !Player.isGhost.load(.monotonic),
 			.boundingBox = Player.outerBoundingBox,
+			.eyeBox = Player.eyeBox,
 		};
 	}
 };
@@ -80,7 +85,7 @@ pub fn calculateProperties(physicsState: *PhysicsState, inputState: InputState) 
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(physicsState.pos[0])), @intFromFloat(@floor(physicsState.pos[1])), @intFromFloat(@floor(physicsState.pos[2]))) != null) {
 		physicsState.volumeProperties = collision.calculateVolumeProperties(.client, physicsState.pos, inputState.boundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
 
-		const groundFriction = if(!inputState.onGround and !inputState.isFlying) 0 else collision.calculateSurfaceProperties(.client, physicsState.pos, inputState.boundingBox, 20).friction;
+		const groundFriction = if(!physicsState.onGround and !inputState.isFlying) 0 else collision.calculateSurfaceProperties(.client, physicsState.pos, inputState.boundingBox, 20).friction;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/physicsState.volumeProperties.terminalVelocity);
 		physicsState.currentFriction = if(inputState.isFlying) 20 else groundFriction + volumeFrictionCoeffecient;
 	}
@@ -223,7 +228,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 
 		const xMovement = collision.collideOrStep(.client, .x, move[0], physicsState.pos, hitBox, steppingHeight);
 		physicsState.pos += xMovement;
-		if(physicsState.crouching and inputState.onGround and @abs(physicsState.vel[0]) < slipLimit) {
+		if(inputState.crouching and physicsState.onGround and @abs(physicsState.vel[0]) < slipLimit) {
 			if(collision.collides(.client, .x, 0, physicsState.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				physicsState.pos -= xMovement;
 				physicsState.vel[0] = 0;
@@ -232,7 +237,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 
 		const yMovement = collision.collideOrStep(.client, .y, move[1], physicsState.pos, hitBox, steppingHeight);
 		physicsState.pos += yMovement;
-		if(physicsState.crouching and inputState.onGround and @abs(physicsState.vel[1]) < slipLimit) {
+		if(inputState.crouching and physicsState.onGround and @abs(physicsState.vel[1]) < slipLimit) {
 			if(collision.collides(.client, .y, 0, physicsState.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				physicsState.pos -= yMovement;
 				physicsState.vel[1] = 0;
@@ -252,8 +257,8 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 				if(physicsState.eyeCoyote.? <= 0) {
 					physicsState.eyeVel.?[2] = @max(1.5*vec.length(physicsState.vel), physicsState.eyeVel.?[2], 4);
 					physicsState.eyeStep.?[2] = true;
-					if(physicsState.vel.?[2] > 0) {
-						physicsState.eyeVel.?[2] = physicsState.vel.?[2];
+					if(physicsState.vel[2] > 0) {
+						physicsState.eyeVel.?[2] = physicsState.vel[2];
 						physicsState.eyeStep.?[2] = false;
 					}
 				} else {
@@ -262,11 +267,11 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 				physicsState.eyePos.?[2] -= stepAmount;
 			}
 			move[2] = -0.01;
-			inputState.onGround = true;
+			physicsState.onGround = true;
 		}
 
-		const wasOnGround = inputState.onGround;
-		inputState.onGround = false;
+		const wasOnGround = physicsState.onGround;
+		physicsState.onGround = false;
 		physicsState.pos[2] += move[2];
 		if(collision.collides(.client, .z, -move[2], physicsState.pos, hitBox)) |box| {
 			if(move[2] < 0) {
@@ -277,13 +282,13 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 					}
 					physicsState.eyeCoyote = 0;
 				}
-				inputState.onGround = true;
+				physicsState.onGround = true;
 				physicsState.pos[2] = box.max[2] - hitBox.min[2];
 			} else {
 				physicsState.pos[2] = box.min[2] - hitBox.max[2];
 			}
 			var bounciness = if(inputState.isFlying) 0 else collision.calculateSurfaceProperties(.client, physicsState.pos, inputState.boundingBox, 0.0).bounciness;
-			if(physicsState.crouching) {
+			if(inputState.crouching) {
 				bounciness *= 0.5;
 			}
 			var velocityChange: f64 = undefined;
@@ -291,7 +296,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			if(bounciness != 0.0 and physicsState.vel[2] < -3.0) {
 				velocityChange = physicsState.vel[2]*@as(f64, @floatCast(1 - bounciness));
 				physicsState.vel[2] = -physicsState.vel[2]*bounciness;
-				physicsState.jumpCoyote = physicsState.jumpCoyoteTimeConstant + deltaTime;
+				physicsState.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 				if(physicsState.eyeVel != null) {
 					physicsState.eyeVel.?[2] *= 2;
 				}
@@ -301,7 +306,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			}
 			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
 			if(damage > 0.01) {
-				Inventory.Sync.addHealth(-damage, .fall, .client, physicsState.id);
+				physicsState.fallDamage += damage;
 			}
 
 			// Always unstuck upwards for now
@@ -312,25 +317,22 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			// If the physicsState drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
 			// This calculates how long the physicsState has to fall until we know they're not walking over a small gap.
 			// We add deltaTime because we subtract deltaTime at the bottom of update
-			physicsState.jumpCoyote = physicsState.jumpCoyoteTimeConstant + deltaTime;
+			physicsState.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			if(physicsState.eyePos != null) {
 				physicsState.eyeCoyote = @sqrt(2*inputState.steppingHeight[2]/gravity) + deltaTime;
 				physicsState.eyePos.?[2] -= move[2];
 			}
-		} else if(physicsState.eyeCoyote > 0) {
-			if(physicsState.eyePos != null) {
-				physicsState.eyePos.?[2] -= move[2];
-			}
+		} else if(physicsState.eyePos != null and physicsState.eyeCoyote.? > 0) {
+			physicsState.eyePos.?[2] -= move[2];
 		}
-		collision.touchBlocks(physicsState, hitBox, .client);
 	} else {
 		physicsState.pos += move;
 	}
 
 	// Clamp the eyePosition and subtract eye coyote time.
-	if(PhysicsState.eyePos != null) {
-		physicsState.eyePos = @max(inputState.eyeBox.?.min, @min(inputState.eyePos, inputState.eyeBox.max));
-		physicsState.eyeCoyote -= deltaTime;
+	if(physicsState.eyePos != null) {
+		physicsState.eyePos = @max(inputState.eyeBox.?.min, @min(physicsState.eyePos.?, inputState.eyeBox.?.max));
+		physicsState.eyeCoyote.? -= deltaTime;
 	}
 	physicsState.jumpCoyote -= deltaTime;
 }

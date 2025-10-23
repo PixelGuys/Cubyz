@@ -958,9 +958,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		};
 		Player.desiredEyePos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 	}
-
+	inputState.crouching = Player.crouching;
 	physics.update(deltaTime, &physicsState, inputState);
 	physicsState.toPlayer();
+	if(!Player.isGhost.load(.monotonic)) {
+		collision.touchBlocks(Player.super, Player.outerBoundingBox, .client);
+	}
 
 	const time = std.time.milliTimestamp();
 	if(nextBlockPlaceTime) |*placeTime| {
