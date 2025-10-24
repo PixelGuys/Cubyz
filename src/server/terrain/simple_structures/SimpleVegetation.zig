@@ -23,8 +23,8 @@ block: main.blocks.Block,
 height0: u31,
 deltaHeight: u31,
 
-pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SimpleVegetation {
-	const self = arena.create(SimpleVegetation);
+pub fn loadModel(parameters: ZonElement) *SimpleVegetation {
+	const self = main.worldArena.create(SimpleVegetation);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
 		.height0 = parameters.get(u31, "height", 1),

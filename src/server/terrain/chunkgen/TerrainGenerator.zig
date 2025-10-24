@@ -29,8 +29,6 @@ pub fn init(parameters: ZonElement) void {
 	water = main.blocks.parseBlock("cubyz:water");
 }
 
-pub fn deinit() void {}
-
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	if(chunk.super.pos.voxelSize >= 8) {
 		var maxHeight: i32 = 0;

@@ -19,8 +19,6 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {}
-
 /// Assumes the 2 points are at tᵢ = (0, 1)
 fn interpolationWeights(t: f32, interpolation: terrain.biomes.Interpolation) Vec2f {
 	switch(interpolation) {

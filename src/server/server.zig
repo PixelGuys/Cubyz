@@ -304,6 +304,7 @@ var lastTime: i128 = undefined;
 pub var thread: ?std.Thread = null;
 
 fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
+	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = .init(main.globalAllocator);
@@ -358,6 +359,7 @@ fn deinit() void {
 	main.items.Inventory.Sync.ServerSide.deinit();
 
 	command.deinit();
+	main.heap.allocators.destroyWorldArena();
 }
 
 pub fn getUserListAndIncreaseRefCount(allocator: main.heap.NeverFailingAllocator) []*User {
