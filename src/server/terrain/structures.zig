@@ -78,12 +78,21 @@ pub const StructureTable = struct {
 	id: []const u8,
 	biomeTags: [][]const u8,
 	structures: []SimpleStructureModel = &.{},
+	paletteId: u32,
 
-	pub fn init(self: *StructureTable, id: []const u8, zon: ZonElement) void {
+	pub fn init(self: *StructureTable, id: []const u8, paletteId: u32, zon: ZonElement) void {
+		const biome_tags = zon.getChild("biomeTags");
+		var tags_list = main.ListUnmanaged([]const u8){};
+		for(biome_tags.toSlice()) |tag| {
+			tags_list.append(main.globalAllocator, tag.toString(main.globalAllocator));
+		}
+
 		self.* = .{
 			.id = main.globalAllocator.dupe(u8, id),
-			.biomeTags = zon.getChild("biomeTags"),
+			.paletteId = paletteId,
+			.biomeTags = tags_list.items,
 		};
+
 		const structures = zon.getChild("structures");
 		var structure_list = main.ListUnmanaged(SimpleStructureModel){};
 		var total_chance: f32 = 0;
@@ -105,13 +114,27 @@ pub const StructureTable = struct {
 };
 
 var structureTables: main.List(StructureTable) = undefined;
-var structureTablesById: std.StringHashMap(*StructureTable) = undefined;
+var structureTablesById: std.StringHashMap(StructureTable) = undefined;
 pub fn init() void {
 	structureTables = .init(main.globalAllocator);
 	structureTablesById = .init(main.globalAllocator.allocator);
 	for(structureTables.items) |structureTable| {
-		structureTablesById.put(structureTable.id, structureTable);
+		structureTablesById.put(structureTable.id, structureTable) catch unreachable;
 	}
+}
+
+pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
+	var structure_table: StructureTable = undefined;
+	structure_table.init(id, paletteId, zon);
+	structureTables.append(structure_table);
+}
+pub fn hasRegistered(id: []const u8) bool {
+	for(structureTables.items) |entry| {
+		if(std.mem.eql(u8, id, entry.id)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 pub fn getById(id: []const u8) *const StructureTable {
@@ -119,6 +142,9 @@ pub fn getById(id: []const u8) *const StructureTable {
 		std.log.err("Couldn't find structure table with id {s}. Replacing it with some other Structure table.", .{id});
 		return &structureTables[0];
 	};
+}
+pub fn getSlice() []StructureTable {
+	return structureTables.items;
 }
 
 pub fn deinit() void {

@@ -611,6 +611,7 @@ pub const World = struct { // MARK: World
 	itemPalette: *assets.Palette = undefined,
 	toolPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
+	structureTablePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
@@ -668,6 +669,7 @@ pub const World = struct { // MARK: World
 
 	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
 		// TODO: Consider using a per-world allocator.
+		self.structureTablePalette = try assets.Palette.init(main.globalAllocator, zon.getChild("structureTablePalette"), null);
 		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
 		self.biomePalette = try assets.Palette.init(main.globalAllocator, zon.getChild("biomePalette"), null);
@@ -680,7 +682,7 @@ pub const World = struct { // MARK: World
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.structureTablePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id}, .{});
 		Player.loadFrom(zon.getChild("player"));
