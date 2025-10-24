@@ -927,9 +927,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) blk: {
 				const fluidPlaceable = item != null and item.? == .baseItem and item.?.baseItem.hasTag(.fluidPlaceable);
-				for(block.blockTags()) |tag| {
-					if(tag == .fluid and !fluidPlaceable or tag == .air) break :blk; // TODO: Buckets could select fluids
-				}
+				const isHoldingSame = item != null and item.? == .baseItem and item.?.baseItem.block() == block.typ;
+				if(!isHoldingSame and (block.hasTag(.fluid) and !fluidPlaceable or block.hasTag(.air))) break :blk; // TODO: Buckets could select fluids
+
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 					if(intersection.distance <= closestDistance) {
@@ -1057,7 +1057,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				currentBlockProgress = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			if(block.hasTag(.fluid) or block.hasTag(.air)) {
+			const isHoldingSame = stack.item != null and stack.item.? == .baseItem and stack.item.?.baseItem.block() == block.typ;
+			// Fluid/gas blocks can only be broken when holding their corresponding item in creative mode
+			if((block.hasTag(.fluid) or block.hasTag(.air)) and !(isHoldingSame and game.Player.isCreative())) {
 				return;
 			}
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
