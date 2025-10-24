@@ -221,7 +221,6 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 		}
 		if(physicsState.eyePos != null) {
 			steppingHeight = @min(steppingHeight, physicsState.eyePos.?[2] - inputState.eyeBox.?.min[2]);
-
 		}
 
 		const slipLimit = 0.25*physicsState.currentFriction;
