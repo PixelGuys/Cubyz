@@ -418,6 +418,7 @@ pub const Player = struct { // MARK: Player
 	pub const inventorySize = 32;
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
+	pub const defaultBlockDamage: f32 = 1;
 
 	pub var selectionPosition1: ?Vec3i = null;
 	pub var selectionPosition2: ?Vec3i = null;
@@ -449,7 +450,6 @@ pub const Player = struct { // MARK: Player
 
 	fn loadFrom(zon: ZonElement) void {
 		super.loadFrom(zon);
-		inventory.loadFromZon(zon.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
