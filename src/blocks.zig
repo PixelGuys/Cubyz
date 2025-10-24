@@ -555,11 +555,17 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms);
+		if(!main.settings.launchConfig.headlessServer)
+			animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms);
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
-		ditherTexture = .initFromMipmapFiles("assets/cubyz/blocks/textures/dither/", 64, 0.5);
+		if(!main.settings.launchConfig.headlessServer) {
+			ditherTexture = .initFromMipmapFiles("assets/cubyz/blocks/textures/dither/", 64, 0.5);
+		} else {
+			ditherTexture = .init();
+		}
+
 		textureIDs = .init(main.globalAllocator);
 		animation = .init(main.globalAllocator);
 		blockTextures = .init(main.globalAllocator);
