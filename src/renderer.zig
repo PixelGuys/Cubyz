@@ -896,8 +896,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub var selectedBlockPos: ?Vec3i = null;
 	var lastSelectedBlockPos: Vec3i = undefined;
 	var currentBlockProgress: f32 = 0;
-	var currentSwingProgress: f32 = 0;
-	var currentSwingTime: f32 = 0;
+	pub var currentSwingProgress: f32 = 0;
+	pub var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var selectionFace: chunk.Neighbor = undefined;
@@ -1042,8 +1042,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
-		if(selectedBlockPos) |selectedPos| {
-			const stack = inventory.getStack(slot);
+		const stack = inventory.getStack(slot);
+		const isTool = stack.item != null and stack.item.? == .tool;
+		var selectedBlock: ?blocks.Block = null;
+		var isToolEffective = false;
+		if (selectedBlockPos) |selectedPos| {
 			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id(), "cubyz:selection_wand");
 			if(isSelectionWand) {
 				game.Player.selectionPosition1 = selectedPos;
@@ -1051,12 +1054,33 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				return;
 			}
 
+			selectedBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]);
+			if (isTool and selectedBlock != null) {
+				isToolEffective = stack.item.?.tool.isEffectiveOn(selectedBlock.?);
+			}
+		}
+
+		const swingTime = if(isTool and isToolEffective) 1.0/stack.item.?.tool.swingSpeed else 0.5;
+		if(currentSwingTime != swingTime) {
+			currentSwingProgress = 0;
+			currentSwingTime = swingTime;
+			main.itemdrop.ItemDisplayManager.resetAnimation();
+			main.itemdrop.ItemDisplayManager.setSwingData(swingTime);
+		}
+		currentSwingProgress += @floatCast(deltaTime);
+		if (currentSwingProgress > currentSwingTime and selectedBlockPos == null) {
+			currentSwingProgress = 0;
+		}
+
+		itemdrop.ItemDisplayManager.isSwinging = true;
+
+		if(selectedBlockPos) |selectedPos| {
 			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
 			}
-			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			const block = selectedBlock orelse return;
 			if(block.hasTag(.fluid) or block.hasTag(.air)) {
 				return;
 			}
@@ -1065,7 +1089,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isTool = stack.item != null and stack.item.? == .tool;
+
 				if(isTool) {
 					damage = stack.item.?.tool.getBlockDamage(block);
 				}
@@ -1075,12 +1099,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
-					const swingTime = if(isTool and stack.item.?.tool.isEffectiveOn(block)) 1.0/stack.item.?.tool.swingSpeed else 0.5;
-					if(currentSwingTime != swingTime) {
-						currentSwingProgress = 0;
-						currentSwingTime = swingTime;
-					}
-					currentSwingProgress += @floatCast(deltaTime);
 					while(currentSwingProgress > currentSwingTime) {
 						currentSwingProgress -= currentSwingTime;
 						currentBlockProgress += damage/block.blockHealth();

@@ -2166,3 +2166,8 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 		stack.deinit();
 	}
 }
+
+pub fn pauseBlockBreak() void {
+	main.itemdrop.ItemDisplayManager.isSwinging = false;
+	main.itemdrop.ItemDisplayManager.resetAnimation();
+}
