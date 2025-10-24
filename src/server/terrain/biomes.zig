@@ -9,72 +9,10 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
-
-pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
-	pub const GenerationMode = enum {
-		floor,
-		ceiling,
-		floor_and_ceiling,
-		air,
-		underground,
-		water_surface,
-	};
-	const VTable = struct {
-		loadModel: *const fn(arena: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
-		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
-		hashFunction: *const fn(self: *anyopaque) u64,
-		generationMode: GenerationMode,
-	};
-
-	vtable: VTable,
-	data: *anyopaque,
-	chance: f32,
-	priority: f32,
-	generationMode: GenerationMode,
-
-	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
-		const id = parameters.get([]const u8, "id", "");
-		const vtable = modelRegistry.get(id) orelse {
-			std.log.err("Couldn't find structure model with id {s}", .{id});
-			return null;
-		};
-		return SimpleStructureModel{
-			.vtable = vtable,
-			.data = vtable.loadModel(arenaAllocator.allocator(), parameters),
-			.chance = parameters.get(f32, "chance", 0.1),
-			.priority = parameters.get(f32, "priority", 1),
-			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
-		};
-	}
-
-	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
-		self.vtable.generate(self.data, self.generationMode, x, y, z, chunk, caveMap, biomeMap, seed, isCeiling);
-	}
-
-	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arenaAllocator: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
-
-	pub fn reset() void {
-		std.debug.assert(arenaAllocator.reset(.free_all));
-	}
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		var self: VTable = undefined;
-		self.loadModel = main.utils.castFunctionReturnToAnyopaque(Generator.loadModel);
-		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
-		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
-			fn hash(ptr: *Generator) u64 {
-				return hashGeneric(ptr.*);
-			}
-		}.hash);
-		self.generationMode = Generator.generationMode;
-		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
-
-	fn getHash(self: SimpleStructureModel) u64 {
-		return self.vtable.hashFunction(self.data);
-	}
-};
+const hash = main.utils.hash_zig;
+const structures_zig = @import("structures.zig");
+const SimpleStructureModel = structures_zig.SimpleStructureModel;
+const StructureTable = structures_zig.StructureTable;
 
 const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
@@ -139,80 +77,6 @@ const Stripe = struct { // MARK: Stripe
 		};
 	}
 };
-
-fn hashGeneric(input: anytype) u64 {
-	const T = @TypeOf(input);
-	return switch(@typeInfo(T)) {
-		.bool => hashCombine(hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
-		.@"enum" => hashCombine(hashInt(@as(u64, @intFromEnum(input))), 0x94d049bb133111eb),
-		.int, .float => blk: {
-			const value = @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input));
-			break :blk hashInt(@as(u64, value));
-		},
-		.@"struct" => blk: {
-			if(@hasDecl(T, "getHash")) {
-				break :blk input.getHash();
-			}
-			var result: u64 = hashGeneric(@typeName(T));
-			inline for(@typeInfo(T).@"struct".fields) |field| {
-				const keyHash = hashGeneric(@as([]const u8, field.name));
-				const valueHash = hashGeneric(@field(input, field.name));
-				const keyValueHash = hashCombine(keyHash, valueHash);
-				result = hashCombine(result, keyValueHash);
-			}
-			break :blk result;
-		},
-		.optional => if(input) |_input| hashGeneric(_input) else 0,
-		.pointer => switch(@typeInfo(T).pointer.size) {
-			.one => blk: {
-				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
-				if(@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
-				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
-				break :blk hashGeneric(input.*);
-			},
-			.slice => blk: {
-				var result: u64 = hashInt(input.len);
-				for(input) |val| {
-					const valueHash = hashGeneric(val);
-					result = hashCombine(result, valueHash);
-				}
-				break :blk result;
-			},
-			else => @compileError("Unsupported type " ++ @typeName(T)),
-		},
-		.array => blk: {
-			var result: u64 = 0xbf58476d1ce4e5b9;
-			for(input) |val| {
-				const valueHash = hashGeneric(val);
-				result = hashCombine(result, valueHash);
-			}
-			break :blk result;
-		},
-		.vector => blk: {
-			var result: u64 = 0x94d049bb133111eb;
-			inline for(0..@typeInfo(T).vector.len) |i| {
-				const valueHash = hashGeneric(input[i]);
-				result = hashCombine(result, valueHash);
-			}
-			break :blk result;
-		},
-		else => @compileError("Unsupported type " ++ @typeName(T)),
-	};
-}
-
-// https://stackoverflow.com/questions/5889238/why-is-xor-the-default-way-to-combine-hashes
-fn hashCombine(left: u64, right: u64) u64 {
-	return left ^ (right +% 0x517cc1b727220a95 +% (left << 6) +% (left >> 2));
-}
-
-// https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
-fn hashInt(input: u64) u64 {
-	var x = input;
-	x = (x ^ (x >> 30))*%0xbf58476d1ce4e5b9;
-	x = (x ^ (x >> 27))*%0x94d049bb133111eb;
-	x = x ^ (x >> 31);
-	return x;
-}
 
 pub const Interpolation = enum(u8) {
 	none,
@@ -420,7 +284,7 @@ pub const Biome = struct { // MARK: Biome
 	}
 
 	fn getCheckSum(self: *Biome) u64 {
-		return hashGeneric(self.*);
+		return hash.hashGeneric(self.*);
 	}
 };
 
@@ -680,7 +544,6 @@ pub fn deinit() void {
 	biomesById.deinit();
 	biomesByIndex.deinit(main.globalAllocator);
 	// TODO? byTypeBiomes.deinit(main.globalAllocator);
-	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
