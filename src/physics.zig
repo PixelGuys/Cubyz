@@ -12,9 +12,6 @@ const collision = main.game.collision;
 const Player = main.game.Player;
 const camera = main.game.camera;
 
-const gravity = 30.0;
-const airTerminalVelocity = 90.0;
-const playerDensity = 1.2;
 
 pub const PhysicsState = struct {
 	pos: Vec3d,
@@ -67,6 +64,9 @@ pub const InputState = struct {
 	hasCollision: bool = true,
 	boundingBox: collision.Box = collision.Box.point,
 	eyeBox: ?collision.Box = null,
+	gravity: f64 = 30.0,
+	airTerminalVelocity: f64 = 90.0,
+	density: f64 = 1.2,
 
 	pub fn fromPlayer() InputState {
 		return .{
@@ -83,10 +83,10 @@ pub const InputState = struct {
 
 pub fn calculateProperties(physicsState: *PhysicsState, inputState: InputState, comptime side: main.utils.Side) void {
 	if(side == .server or main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(physicsState.pos[0])), @intFromFloat(@floor(physicsState.pos[1])), @intFromFloat(@floor(physicsState.pos[2]))) != null) {
-		physicsState.volumeProperties = collision.calculateVolumeProperties(side, physicsState.pos, inputState.boundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
+		physicsState.volumeProperties = collision.calculateVolumeProperties(side, physicsState.pos, inputState.boundingBox, .{.density = 0.001, .terminalVelocity = inputState.airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
 
 		const groundFriction = if(!physicsState.onGround and !inputState.isFlying) 0 else collision.calculateSurfaceProperties(side, physicsState.pos, inputState.boundingBox, 20).friction;
-		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/physicsState.volumeProperties.terminalVelocity);
+		const volumeFrictionCoeffecient: f32 = @floatCast(inputState.gravity/physicsState.volumeProperties.terminalVelocity);
 		physicsState.currentFriction = if(inputState.isFlying) 20 else groundFriction + volumeFrictionCoeffecient;
 	}
 }
@@ -94,8 +94,8 @@ pub fn calculateProperties(physicsState: *PhysicsState, inputState: InputState, 
 pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputState, comptime side: main.utils.Side) void { // MARK: update()
 	var move: Vec3d = .{0, 0, 0};
 	if(side == .server or main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(physicsState.pos[0])), @intFromFloat(@floor(physicsState.pos[1])), @intFromFloat(@floor(physicsState.pos[2]))) != null) {
-		const effectiveGravity = gravity*(playerDensity - physicsState.volumeProperties.density)/playerDensity;
-		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/physicsState.volumeProperties.terminalVelocity);
+		const effectiveGravity = inputState.gravity*(inputState.density - physicsState.volumeProperties.density)/inputState.density;
+		const volumeFrictionCoeffecient: f32 = @floatCast(inputState.gravity/physicsState.volumeProperties.terminalVelocity);
 		var acc = inputState.movementForce;
 		if(!inputState.isFlying) {
 			acc[2] -= effectiveGravity;
@@ -112,7 +112,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
 			if(i == 2 and inputState.jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
-				const jumpVelocity = @sqrt(inputState.jumpHeight*gravity*2);
+				const jumpVelocity = @sqrt(inputState.jumpHeight*inputState.gravity*2);
 				physicsState.vel[i] = @max(jumpVelocity, physicsState.vel[i] + jumpVelocity);
 				frictionCoefficient = volumeFrictionCoeffecient;
 			}
@@ -217,7 +217,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 		const hitBox = inputState.boundingBox;
 		var steppingHeight = inputState.steppingHeight[2];
 		if(physicsState.vel[2] > 0) {
-			steppingHeight = physicsState.vel[2]*physicsState.vel[2]/gravity/2;
+			steppingHeight = physicsState.vel[2]*physicsState.vel[2]/inputState.gravity/2;
 		}
 		if(physicsState.eyePos != null) {
 			steppingHeight = @min(steppingHeight, physicsState.eyePos.?[2] - inputState.eyeBox.?.min[2]);
@@ -303,7 +303,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 				velocityChange = physicsState.vel[2];
 				physicsState.vel[2] = 0;
 			}
-			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
+			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*inputState.gravity) - 7, 0))/2);
 			if(damage > 0.01) {
 				physicsState.fallDamage += damage;
 			}
@@ -318,7 +318,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			// We add deltaTime because we subtract deltaTime at the bottom of update
 			physicsState.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			if(physicsState.eyePos != null) {
-				physicsState.eyeCoyote = @sqrt(2*inputState.steppingHeight[2]/gravity) + deltaTime;
+				physicsState.eyeCoyote = @sqrt(2*inputState.steppingHeight[2]/inputState.gravity) + deltaTime;
 				physicsState.eyePos.?[2] -= move[2];
 			}
 		} else if(physicsState.eyePos != null and physicsState.eyeCoyote.? > 0) {
