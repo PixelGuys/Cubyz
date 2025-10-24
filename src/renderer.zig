@@ -928,7 +928,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(block.typ != 0) blk: {
 				const fluidPlaceable = item != null and item.? == .baseItem and item.?.baseItem.hasTag(.fluidPlaceable);
 				const holdingTargetedBlock = item != null and item.? == .baseItem and item.?.baseItem.block() == block.typ;
-				if(block.hasTag(.air) and !holdingTargetedBlock) break: blk;
+				if(block.hasTag(.air) and !holdingTargetedBlock) break :blk;
 				if(block.hasTag(.fluid) and !fluidPlaceable and !holdingTargetedBlock) break :blk; // TODO: Buckets could select fluids
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
