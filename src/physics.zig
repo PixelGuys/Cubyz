@@ -12,7 +12,6 @@ const collision = main.game.collision;
 const Player = main.game.Player;
 const camera = main.game.camera;
 
-
 pub const PhysicsState = struct {
 	pos: Vec3d,
 	vel: Vec3d,
