@@ -13,7 +13,7 @@
 	.roughness = 5,
 	.hills = 14,
 	.validPlayerSpawn = true,
-	.ground_structure = .{
+	.groundStructure = .{
 		"1 cubyz:cold_grass",
 		"1 to 3 cubyz:permafrost",
 	},
@@ -78,7 +78,7 @@
 			.chance = 0.04,
 			.block = "cubyz:glacite",
 			.size = 3,
-			.size_variance = 3,
+			.sizeVariance = 3,
 		},
 		.{
 			.id = "cubyz:flower_patch",

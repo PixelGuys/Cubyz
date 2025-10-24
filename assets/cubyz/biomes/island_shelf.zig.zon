@@ -10,7 +10,7 @@
 
 	.radius = 64,
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"3 to 4 cubyz:slate",
 	},
 

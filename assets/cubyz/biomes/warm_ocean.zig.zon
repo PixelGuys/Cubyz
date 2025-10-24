@@ -14,7 +14,7 @@
 
 	.music = "cubyz:tides",
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"2 to 4 cubyz:sand",
 	},
 	.stoneBlock = "cubyz:sandstone",

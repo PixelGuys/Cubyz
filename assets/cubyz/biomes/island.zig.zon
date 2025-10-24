@@ -10,7 +10,7 @@
 
 	.radius = 24,
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
 	},
@@ -23,9 +23,9 @@
 			.chance = 0.016,
 			.type = .round,
 			.height = 12,
-			.height_variation = 10,
+			.heightVariation = 10,
 			.leafRadius = 5,
-			.leafRadius_variation = 6,
+			.leafRadiusVariation = 6,
 		},
 	},
 

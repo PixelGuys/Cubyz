@@ -15,7 +15,7 @@
 	.chance = 1.0,
 	.music = "cubyz:leaves",
 	.validPlayerSpawn = true,
-	.ground_structure = .{
+	.groundStructure = .{
 		"4 to 5 cubyz:mud",
 	},
 	.structures = .{
@@ -42,7 +42,7 @@
 			.block = "cubyz:fern",
 			.chance = 0.8,
 			.height = 1,
-			.height_variation = 0,
+			.heightVariation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",
@@ -79,9 +79,9 @@
 			.chance = 0.8,
 			.type = .round,
 			.height = 4,
-			.height_variation = 3,
+			.heightVariation = 3,
 			.leafRadius = 4.0,
-			.leafRadius_variation = 2.5,
+			.leafRadiusVariation = 2.5,
 			.leafElongation = 0.4,
 			.deltaLeafElongation = 0.125,
 		},

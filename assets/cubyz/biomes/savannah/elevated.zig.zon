@@ -11,7 +11,7 @@
 	.chance = 0,
 	.hills = 2,
 	.validPlayerSpawn = true,
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 	},
 	.stoneBlock = "cubyz:limestone",
@@ -30,7 +30,7 @@
 			.block = "cubyz:cactus",
 			.chance = 0.01,
 			.height = 1,
-			.height_variation = 3,
+			.heightVariation = 3,
 		},
 		.{
 			.id = "cubyz:ground_patch",

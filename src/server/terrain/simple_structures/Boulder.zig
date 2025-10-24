@@ -28,7 +28,7 @@ pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *Boulder 
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:slate")),
 		.size = parameters.get(f32, "size", 4),
-		.sizeVariation = parameters.get(f32, "size_variation", 1),
+		.sizeVariation = parameters.get(f32, "sizeVariation", 1),
 	};
 	return self;
 }

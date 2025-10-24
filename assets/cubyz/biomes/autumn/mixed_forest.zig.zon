@@ -14,7 +14,7 @@
 	.hills = 10,
 	.music = "cubyz:leaves",
 	.validPlayerSpawn = true,
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
 	},
@@ -51,9 +51,9 @@
 			.chance = 0.1,
 			.type = .round,
 			.height = 10,
-			.height_variation = 5,
+			.heightVariation = 5,
 			.leafRadius = 2.5,
-			.leafRadius_variation = 1.5,
+			.leafRadiusVariation = 1.5,
 			.leafElongation = 1.7,
 			.deltaLeafElongation = 0.2,
 		},
@@ -63,7 +63,7 @@
 			.top = "cubyz:oak_log",
 			.chance = 0.005,
 			.height = 6,
-			.height_variation = 3,
+			.heightVariation = 3,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
@@ -71,7 +71,7 @@
 			.top = "cubyz:birch_log",
 			.chance = 0.002,
 			.height = 6,
-			.height_variation = 3,
+			.heightVariation = 3,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -81,16 +81,16 @@
 			.chance = 0.1,
 			.type = .round,
 			.height = 8,
-			.height_variation = 5,
+			.heightVariation = 5,
 			.leafRadius = 3,
-			.leafRadius_variation = 1.5,
+			.leafRadiusVariation = 1.5,
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
 			.block = "cubyz:grass_vegetation",
 			.chance = 0.4,
 			.height = 1,
-			.height_variation = 0,
+			.heightVariation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",

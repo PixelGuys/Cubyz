@@ -36,7 +36,7 @@
 			.block = "cubyz:obsidian",
 			.chance = 0.48,
 			.size = 4,
-			.size_variation = 6,
+			.sizeVariation = 6,
 		},
 		.{
 			.id = "cubyz:ground_patch",

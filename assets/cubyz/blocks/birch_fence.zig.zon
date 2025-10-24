@@ -8,8 +8,8 @@
 	.rotation = "cubyz:fence",
 	.model = "cubyz:fence",
 	.texture = "cubyz:birch_fence",
-	.texture_top = "cubyz:birch_fence_top",
-	.texture_bottom = "cubyz:birch_fence_top",
+	.textureTop = "cubyz:birch_fence_top",
+	.textureBottom = "cubyz:birch_fence_top",
 	.item = .{
 		.texture = "fence/birch.png",
 	},

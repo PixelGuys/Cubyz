@@ -15,8 +15,8 @@
 		.side = "cubyz:bolete/shelf",
 	},
 	.texture = "cubyz:bolete_side",
-	.texture_top = "cubyz:bolete_top",
-	.texture_bottom = "cubyz:bolete_bottom",
+	.textureTop = "cubyz:bolete_top",
+	.textureBottom = "cubyz:bolete_bottom",
 	.item = .{
 		.texture = "bolete.png",
 	},

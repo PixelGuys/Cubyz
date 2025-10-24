@@ -11,8 +11,8 @@
 	.model = "cubyz:cactus_flower",
 	.rotation = "cubyz:direction",
 	.texture = "cubyz:cactus_flower",
-	.texture_top = "cubyz:cactus_flower_top",
-	.texture_bottom = "cubyz:cactus_flower_top",
+	.textureTop = "cubyz:cactus_flower_top",
+	.textureBottom = "cubyz:cactus_flower_top",
 	.item = .{
 		.texture = "cactus_flower.png",
 	},

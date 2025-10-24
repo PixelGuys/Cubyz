@@ -13,7 +13,7 @@
 
 	.rivers = true,
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",
 	},
@@ -26,7 +26,7 @@
 			.chance = 0.8,
 			.type = .round,
 			.height = 3,
-			.height_variation = 3,
+			.heightVariation = 3,
 		},
 	},
 }

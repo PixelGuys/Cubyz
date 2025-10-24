@@ -55,7 +55,7 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
 
 	var baseHeight = z;
-	if(mode != .water_surface) {
+	if(mode != .waterSurface) {
 		if(caveMap.isSolid(x, y, baseHeight)) {
 			baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) - 1;
 		} else {
@@ -73,7 +73,7 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 			if(dist <= 1) {
 				var startHeight = z;
 
-				if(mode == .water_surface) {
+				if(mode == .waterSurface) {
 					startHeight -%= 1;
 					startHeight &= ~chunk.super.voxelSizeMask;
 				} else {
@@ -84,7 +84,7 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 					}
 				}
 				var pz = chunk.startIndex(startHeight - self.depth + 1);
-				if(mode == .water_surface) {
+				if(mode == .waterSurface) {
 					const surfaceHeight = caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py);
 					pz = @max(pz, surfaceHeight -% chunk.super.pos.wz);
 				}

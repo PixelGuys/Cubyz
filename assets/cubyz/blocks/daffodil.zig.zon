@@ -11,8 +11,8 @@
 	.model = "cubyz:flower/height_8",
 	.rotation = "cubyz:planar",
 	.texture = "cubyz:daffodil",
-	.texture_top = "cubyz:daffodil_top",
-	.texture_bottom = "cubyz:daffodil_top",
+	.textureTop = "cubyz:daffodil_top",
+	.textureBottom = "cubyz:daffodil_top",
 	.item = .{
 		.texture = "daffodil.png",
 	},

@@ -11,8 +11,8 @@
 	.model = "cubyz:flower/height_10",
 	.rotation = "cubyz:planar",
 	.texture = "cubyz:castilleja",
-	.texture_top = "cubyz:castilleja_top",
-	.texture_bottom = "cubyz:castilleja_top",
+	.textureTop = "cubyz:castilleja_top",
+	.textureBottom = "cubyz:castilleja_top",
 	.item = .{
 		.texture = "castilleja.png",
 	},

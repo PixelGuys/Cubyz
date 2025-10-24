@@ -13,7 +13,7 @@
 	.chance = 0,
 	.music = "cubyz:leaves",
 	.validPlayerSpawn = true,
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:lush_grass",
 		"4 to 5 cubyz:mud",
 	},
@@ -32,7 +32,7 @@
 			.block = "cubyz:fern",
 			.chance = 0.8,
 			.height = 1,
-			.height_variation = 0,
+			.heightVariation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",

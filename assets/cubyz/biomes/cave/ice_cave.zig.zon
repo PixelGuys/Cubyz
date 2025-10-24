@@ -7,7 +7,7 @@
 	.fogDensity = 20,
 	.fogColor = 0xbabfbf,
 	.stoneBlock = "cubyz:glacite",
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:ice",
 		"7 to 8 cubyz:frost",
 	},
@@ -26,7 +26,7 @@
 			.block = "cubyz:ice",
 			.chance = 0.5,
 			.size = 2,
-			.size_variation = 8,
+			.sizeVariation = 8,
 		},
 		.{
 			.id = "cubyz:ground_patch",

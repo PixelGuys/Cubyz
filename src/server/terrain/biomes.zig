@@ -14,10 +14,10 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
 		floor,
 		ceiling,
-		floor_and_ceiling,
+		floorAndCeiling,
 		air,
 		underground,
-		water_surface,
+		waterSurface,
 	};
 	const VTable = struct {
 		loadModel: *const fn(arena: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
@@ -383,7 +383,7 @@ pub const Biome = struct { // MARK: Biome
 			unfinishedTransitionBiomes.put(main.globalAllocator.allocator, self.id, transitionBiomes) catch unreachable;
 		}
 
-		self.structure = BlockStructure.init(main.globalAllocator, zon.getChild("ground_structure"));
+		self.structure = BlockStructure.init(main.globalAllocator, zon.getChild("groundStructure"));
 
 		const structures = zon.getChild("structures");
 		var vegetation = main.ListUnmanaged(SimpleStructureModel){};

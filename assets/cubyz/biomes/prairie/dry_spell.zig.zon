@@ -9,7 +9,7 @@
 	.maxHeight = 40,
 	.roughness = 1,
 	.hills = 3,
-	.ground_structure = .{
+	.groundStructure = .{
 		"4 to 5 cubyz:limestone",
 	},
 	.parentBiomes = .{
@@ -51,7 +51,7 @@
 			.chance = 0.01,
 			.block = "cubyz:limestone",
 			.size = 3,
-			.size_variance = 9,
+			.sizeVariance = 9,
 		},
 		.{
 			.id = "cubyz:flower_patch",

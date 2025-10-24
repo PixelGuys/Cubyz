@@ -11,8 +11,8 @@
 	.model = "cubyz:flower/height_8",
 	.rotation = "cubyz:planar",
 	.texture = "cubyz:hibiscus",
-	.texture_top = "cubyz:hibiscus_top",
-	.texture_bottom = "cubyz:hibiscus_top",
+	.textureTop = "cubyz:hibiscus_top",
+	.textureBottom = "cubyz:hibiscus_top",
 	.item = .{
 		.texture = "hibiscus.png",
 	},

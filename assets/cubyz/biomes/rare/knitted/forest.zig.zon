@@ -12,7 +12,7 @@
 	.chance = 0.02,
 	.validPlayerSpawn = false,
 	.stoneBlock = "cubyz:cloth/block/grey",
-	.ground_structure = .{
+	.groundStructure = .{
 		"2 to 3 cubyz:cloth/block/brown",
 	},
 	.structures = .{
@@ -21,7 +21,7 @@
 			.chance = 0.01,
 			.block = "cubyz:cloth/block/grey",
 			.size = 5,
-			.size_variance = 1,
+			.sizeVariance = 1,
 		},
 		.{
 			.id = "cubyz:flower_patch",
@@ -49,7 +49,7 @@
 			.chance = 0.03,
 			.type = .round,
 			.height = 6,
-			.height_variation = 4,
+			.heightVariation = 4,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -59,7 +59,7 @@
 			.chance = 0.03,
 			.type = .round,
 			.height = 6,
-			.height_variation = 4,
+			.heightVariation = 4,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -69,7 +69,7 @@
 			.chance = 0.03,
 			.type = .round,
 			.height = 6,
-			.height_variation = 4,
+			.heightVariation = 4,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -79,9 +79,9 @@
 			.chance = 0.05,
 			.type = .round,
 			.height = 25,
-			.height_variation = 10,
+			.heightVariation = 10,
 			.leafRadius = 5,
-			.leafRadius_variation = 2,
+			.leafRadiusVariation = 2,
 			.leafElongation = 0.4,
 			.deltaLeafElongation = 0.15,
 		},

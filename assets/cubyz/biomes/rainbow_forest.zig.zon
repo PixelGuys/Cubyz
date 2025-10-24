@@ -17,7 +17,7 @@
 
 	.validPlayerSpawn = true,
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
 	},
@@ -30,7 +30,7 @@
 			.chance = 0.48,
 			.type = .round,
 			.height = 8,
-			.height_variation = 3,
+			.heightVariation = 3,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -40,9 +40,9 @@
 			.chance = 0.16,
 			.type = .round,
 			.height = 0,
-			.height_variation = 0,
+			.heightVariation = 0,
 			.leafRadius = 16,
-			.leafRadius_variation = 3,
+			.leafRadiusVariation = 3,
 			.priority = 0.1,
 		},
 		.{
@@ -53,9 +53,9 @@
 			.chance = 0.16,
 			.type = .round,
 			.height = 0,
-			.height_variation = 0,
+			.heightVariation = 0,
 			.leafRadius = 16,
-			.leafRadius_variation = 3,
+			.leafRadiusVariation = 3,
 			.priority = 0.1,
 		},
 		.{
@@ -66,9 +66,9 @@
 			.chance = 0.16,
 			.type = .round,
 			.height = 0,
-			.height_variation = 0,
+			.heightVariation = 0,
 			.leafRadius = 16,
-			.leafRadius_variation = 3,
+			.leafRadiusVariation = 3,
 			.priority = 0.1,
 		},
 		.{
@@ -79,9 +79,9 @@
 			.chance = 0.16,
 			.type = .round,
 			.height = 0,
-			.height_variation = 0,
+			.heightVariation = 0,
 			.leafRadius = 16,
-			.leafRadius_variation = 3,
+			.leafRadiusVariation = 3,
 			.priority = 0.1,
 		},
 		.{
@@ -92,9 +92,9 @@
 			.chance = 0.16,
 			.type = .round,
 			.height = 0,
-			.height_variation = 0,
+			.heightVariation = 0,
 			.leafRadius = 16,
-			.leafRadius_variation = 3,
+			.leafRadiusVariation = 3,
 			.priority = 0.1,
 		},
 		.{
@@ -105,9 +105,9 @@
 			.chance = 0.16,
 			.type = .round,
 			.height = 0,
-			.height_variation = 0,
+			.heightVariation = 0,
 			.leafRadius = 16,
-			.leafRadius_variation = 3,
+			.leafRadiusVariation = 3,
 			.priority = 0.1,
 		},
 	},
