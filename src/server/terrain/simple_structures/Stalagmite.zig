@@ -15,7 +15,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const id = "cubyz:stalagmite";
 
-pub const generationMode = .floor_and_ceiling;
+pub const generationMode = .floorAndCeiling;
 
 const Stalagmite = @This();
 
@@ -28,7 +28,7 @@ pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *Stalagmi
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite")),
 		.size = parameters.get(f32, "size", 12),
-		.sizeVariation = parameters.get(f32, "size_variation", 8),
+		.sizeVariation = parameters.get(f32, "sizeVariation", 8),
 	};
 	return self;
 }

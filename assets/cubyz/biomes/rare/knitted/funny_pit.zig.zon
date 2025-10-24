@@ -12,7 +12,7 @@
 	.hills = 8,
 	.validPlayerSpawn = false,
 	.stoneBlock = "cubyz:cloth/block/grey",
-	.ground_structure = .{
+	.groundStructure = .{
 		"1 cubyz:cloth/brown:0b111111",
 		"5 cubyz:air",
 	},

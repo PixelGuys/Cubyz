@@ -17,7 +17,7 @@
 
 	.soilCreep = 1.0,
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"3 to 6 cubyz:snow",
 		"1 to 3 cubyz:permafrost",
 	},
@@ -28,7 +28,7 @@
 			.block = "cubyz:ice",
 			.chance = 0.08,
 			.size = 3,
-			.size_variation = 5,
+			.sizeVariation = 5,
 		},
 	},
 }

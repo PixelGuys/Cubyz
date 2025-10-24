@@ -19,7 +19,7 @@
 
 	.stoneBlock = "cubyz:limestone",
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"1 cubyz:soil",
 	},
@@ -44,16 +44,16 @@
 			.chance = 0.08,
 			.type = .round,
 			.height = 1,
-			.height_variation = 1,
+			.heightVariation = 1,
 			.leafRadius = 1,
-			.leafRadius_variation = 1,
+			.leafRadiusVariation = 1,
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
 			.block = "cubyz:grass_vegetation",
 			.chance = 0.8,
 			.height = 1,
-			.height_variation = 0,
+			.heightVariation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",

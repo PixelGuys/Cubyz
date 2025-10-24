@@ -14,7 +14,7 @@
 	.hills = 20,
 	.validPlayerSpawn = false,
 	.music = "cubyz:EasternThought",
-	.ground_structure = .{
+	.groundStructure = .{
 		"3 to 4 cubyz:sand",
 	},
 	.structures = .{

@@ -15,8 +15,8 @@
 		.side = "cubyz:toadstool/shelf",
 	},
 	.texture = "cubyz:toadstool_side",
-	.texture_top = "cubyz:toadstool_top",
-	.texture_bottom = "cubyz:toadstool_bottom",
+	.textureTop = "cubyz:toadstool_top",
+	.textureBottom = "cubyz:toadstool_bottom",
 	.item = .{
 		.texture = "toadstool.png",
 	},

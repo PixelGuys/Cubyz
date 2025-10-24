@@ -4,5 +4,5 @@
 
 	.music = "cubyz:GymnopedieNo1",
 
-	.ground_structure = .{},
+	.groundStructure = .{},
 }

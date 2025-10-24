@@ -523,12 +523,12 @@ pub const meshes = struct { // MARK: meshes
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
-		names[Neighbor.dirDown.toInt()] = "texture_bottom";
-		names[Neighbor.dirUp.toInt()] = "texture_top";
-		names[Neighbor.dirPosX.toInt()] = "texture_right";
-		names[Neighbor.dirNegX.toInt()] = "texture_left";
-		names[Neighbor.dirPosY.toInt()] = "texture_front";
-		names[Neighbor.dirNegY.toInt()] = "texture_back";
+		names[Neighbor.dirDown.toInt()] = "textureBottom";
+		names[Neighbor.dirUp.toInt()] = "textureTop";
+		names[Neighbor.dirPosX.toInt()] = "textureRight";
+		names[Neighbor.dirNegX.toInt()] = "textureLeft";
+		names[Neighbor.dirPosY.toInt()] = "textureFront";
+		names[Neighbor.dirNegY.toInt()] = "textureBack";
 		break :blk names;
 	};
 

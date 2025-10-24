@@ -6,8 +6,8 @@
 	},
 	.model = "cubyz:chimney",
 	.texture = "cubyz:chimney/side",
-	.texture_top = "cubyz:chimney/top",
-	.texture_bottom = "cubyz:chimney/bottom",
+	.textureTop = "cubyz:chimney/top",
+	.textureBottom = "cubyz:chimney/bottom",
 	.item = .{
 		.texture = "chimney.png",
 	},

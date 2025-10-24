@@ -3,6 +3,6 @@
 	.model = "cubyz:cube",
 	.rotation = "cubyz:direction",
 	.texture = "cubyz:sbb/origin_side",
-	.texture_top = "cubyz:sbb/origin_top",
-	.texture_bottom = "cubyz:sbb/origin_bottom",
+	.textureTop = "cubyz:sbb/origin_top",
+	.textureBottom = "cubyz:sbb/origin_bottom",
 }

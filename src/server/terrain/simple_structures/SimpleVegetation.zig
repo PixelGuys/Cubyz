@@ -28,7 +28,7 @@ pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SimpleVe
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
 		.height0 = parameters.get(u31, "height", 1),
-		.deltaHeight = parameters.get(u31, "height_variation", 0),
+		.deltaHeight = parameters.get(u31, "heightVariation", 0),
 	};
 	return self;
 }

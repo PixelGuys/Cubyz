@@ -7,6 +7,6 @@
 	.rotation = "cubyz:direction",
 	.model = "cubyz:cube",
 	.texture = "cubyz:willow_log",
-	.texture_top = "cubyz:willow_log",
-	.texture_bottom = "cubyz:willow_log_top",
+	.textureTop = "cubyz:willow_log",
+	.textureBottom = "cubyz:willow_log_top",
 }

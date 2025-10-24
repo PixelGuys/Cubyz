@@ -3,7 +3,6 @@
 		.cold,
 		.ocean,
 	},
-	.type = .arctic_ocean,
 	.minHeight = -100,
 	.maxHeight = -22,
 	.maxHeightLimit = 7,
@@ -16,7 +15,7 @@
 
 	.music = "cubyz:under_the_water_sky",
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"1 to 2 cubyz:cobblestone",
 	},
 	.structures = .{

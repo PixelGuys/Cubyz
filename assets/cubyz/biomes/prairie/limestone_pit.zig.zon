@@ -23,7 +23,7 @@
 			.chance = 0.5,
 			.block = "cubyz:limestone",
 			.size = 2,
-			.size_variance = 9,
+			.sizeVariance = 9,
 		},
 	},
 }

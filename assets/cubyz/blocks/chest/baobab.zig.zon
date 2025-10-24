@@ -1,8 +1,8 @@
 .{
 	.texture = "cubyz:chest/baobab/back",
-	.texture_front = "cubyz:chest/baobab/front",
-	.texture_left = "cubyz:chest/baobab/side",
-	.texture_right = "cubyz:chest/baobab/side",
-	.texture_top = "cubyz:chest/baobab/top",
-	.texture_bottom = "cubyz:chest/baobab/bottom",
+	.textureFront = "cubyz:chest/baobab/front",
+	.textureLeft = "cubyz:chest/baobab/side",
+	.textureRight = "cubyz:chest/baobab/side",
+	.textureTop = "cubyz:chest/baobab/top",
+	.textureBottom = "cubyz:chest/baobab/bottom",
 }

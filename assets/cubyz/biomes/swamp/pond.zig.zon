@@ -11,14 +11,14 @@
 	.roughness = 4,
 	.hills = 3,
 	.music = "cubyz:leaves",
-	.ground_structure = .{
+	.groundStructure = .{
 		"4 to 5 cubyz:mud",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:lily_pad",
-			.generationMode = .water_surface,
+			.generationMode = .waterSurface,
 			.chance = 0.1,
 			.width = 6,
 			.variation = 6,

@@ -59,7 +59,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 							.seed = seed,
 							.model = model,
 						};
-						if(model.generationMode == .water_surface) {
+						if(model.generationMode == .waterSurface) {
 							if(wpz != 0) break;
 							data.wz = 0;
 						}
@@ -104,7 +104,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 							.seed = seed,
 							.model = model,
 						};
-						if(model.generationMode == .water_surface) data.wz = 0;
+						if(model.generationMode == .waterSurface) data.wz = 0;
 						map.addStructure(.{
 							.internal = .{
 								.data = @ptrCast(data),
@@ -154,7 +154,7 @@ const SimpleStructure = struct {
 				}
 				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
 			},
-			.floor_and_ceiling => {
+			.floorAndCeiling => {
 				if(random.nextInt(u1, &seed) != 0) {
 					if(caveMap.isSolid(px, py, relZ)) {
 						relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
@@ -179,7 +179,7 @@ const SimpleStructure = struct {
 				relZ += -16 + random.nextIntBounded(i32, &seed, 32);
 				if(!caveMap.isSolid(px, py, relZ)) return;
 			},
-			.water_surface => {
+			.waterSurface => {
 				if(biomeMap.getSurfaceHeight(self.wx, self.wy) >= 0) return;
 			},
 		}

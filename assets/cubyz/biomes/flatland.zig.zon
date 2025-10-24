@@ -6,7 +6,7 @@
 
 	.validPlayerSpawn = true,
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"2 cubyz:soil",
 	},

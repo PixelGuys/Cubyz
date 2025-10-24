@@ -16,7 +16,7 @@
 
 	.validPlayerSpawn = true,
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 	},
 	.stoneBlock = "cubyz:soil",
@@ -30,9 +30,9 @@
 			.chance = 0.36,
 			.type = .round,
 			.height = 6,
-			.height_variation = 10,
+			.heightVariation = 10,
 			.leafRadius = 3.5,
-			.leafRadius_variation = 1.5,
+			.leafRadiusVariation = 1.5,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -42,9 +42,9 @@
 			.chance = 0.2,
 			.type = .round,
 			.height = 1,
-			.height_variation = 0,
+			.heightVariation = 0,
 			.leafRadius = 2,
-			.leafRadius_variation = 2,
+			.leafRadiusVariation = 2,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -60,7 +60,7 @@
 			.block = "cubyz:grass_vegetation",
 			.chance = 0.4,
 			.height = 1,
-			.height_variation = 0,
+			.heightVariation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",

@@ -53,7 +53,7 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
 
 	var baseHeight = z;
-	if(mode != .water_surface) {
+	if(mode != .waterSurface) {
 		if(caveMap.isSolid(x, y, baseHeight)) {
 			baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) - 1;
 		} else {
@@ -72,7 +72,7 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				if((1 - distSqr)*self.density < random.nextFloat(seed)) continue;
 				var startHeight = z;
 
-				if(mode == .water_surface) {
+				if(mode == .waterSurface) {
 					if(caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py) >= 0) continue;
 					startHeight = z -% 1;
 				} else {

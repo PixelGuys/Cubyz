@@ -10,7 +10,7 @@
 	.music = "cubyz:leaves",
 
 	.stoneBlock = "cubyz:slate",
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
 	},
@@ -23,7 +23,7 @@
 			.chance = 0.32,
 			.type = .round,
 			.height = 4,
-			.height_variation = 2,
+			.heightVariation = 2,
 		},
 	},
 }

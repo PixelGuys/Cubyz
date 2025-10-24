@@ -16,8 +16,8 @@
 		.side = "cubyz:glimmergill/shelf",
 	},
 	.texture = "cubyz:glimmergill_side",
-	.texture_top = "cubyz:glimmergill_top",
-	.texture_bottom = "cubyz:glimmergill_bottom",
+	.textureTop = "cubyz:glimmergill_top",
+	.textureBottom = "cubyz:glimmergill_bottom",
 	.item = .{
 		.texture = "glimmergill.png",
 	},

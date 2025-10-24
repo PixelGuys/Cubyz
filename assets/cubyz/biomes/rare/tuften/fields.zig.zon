@@ -12,7 +12,7 @@
 	.chance = 0.02,
 	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
 	},
@@ -22,7 +22,7 @@
 			.chance = 0.00016,
 			.block = "cubyz:slate",
 			.size = 5,
-			.size_variance = 1,
+			.sizeVariance = 1,
 		},
 		.{
 			.id = "cubyz:flower_patch",

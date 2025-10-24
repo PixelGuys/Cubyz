@@ -12,7 +12,7 @@
 	.roughness = 10,
 	.mountains = 100,
 	.stoneBlock = "cubyz:limestone",
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:dry_grass",
 		"0 to 3 cubyz:dirt",
 	},
@@ -40,7 +40,7 @@
 			.chance = 0.075,
 			.type = .round,
 			.height = 3,
-			.height_variation = 3,
+			.heightVariation = 3,
 		},
 	},
 }

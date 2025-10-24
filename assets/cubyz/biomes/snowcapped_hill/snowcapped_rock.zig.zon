@@ -8,7 +8,7 @@
 	.roughness = 1,
 	.mountains = 70,
 	.hills = 20,
-	.ground_structure = .{
+	.groundStructure = .{
 		"2 to 4 cubyz:snow",
 	},
 	.stoneBlock = "cubyz:glacite",

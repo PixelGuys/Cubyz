@@ -15,7 +15,7 @@
 
 	.music = "cubyz:sunrise",
 
-	.ground_structure = .{
+	.groundStructure = .{
 		"cubyz:grass",
 		"2 cubyz:soil",
 	},
@@ -28,9 +28,9 @@
 			.chance = 0.16,
 			.type = .round,
 			.height = 1,
-			.height_variation = 1,
+			.heightVariation = 1,
 			.leafRadius = 2,
-			.leafRadius_variation = 1,
+			.leafRadiusVariation = 1,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -46,7 +46,7 @@
 			.block = "cubyz:grass_vegetation",
 			.chance = 0.8,
 			.height = 1,
-			.height_variation = 0,
+			.heightVariation = 0,
 		},
 	},
 }

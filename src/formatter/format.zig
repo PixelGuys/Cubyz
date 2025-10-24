@@ -41,6 +41,7 @@ fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
 	const data = try dir.readFileAlloc(globalAllocator, filePath, std.math.maxInt(usize));
 	defer globalAllocator.free(data);
 
+	const isZon = std.mem.endsWith(u8, filePath, ".zon");
 	var lineStart: bool = true;
 
 	for(data, 0..) |c, i| {
@@ -66,6 +67,20 @@ fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
 				lineStart = false;
 			},
 			'\t' => {},
+			'.' => {
+				var endIndex = i + 1;
+				if(isZon) {
+					while(endIndex < data.len) : (endIndex += 1) {
+						if(data[endIndex] == '_') {
+							printError("Zon entry names must be in camelCase format!", filePath, data, i + 1);
+						}
+						if(!std.ascii.isAlphanumeric(data[endIndex])) {
+							break;
+						}
+					}
+				}
+				lineStart = false;
+			},
 			else => {
 				lineStart = false;
 			},
@@ -84,7 +99,7 @@ fn checkDirectory(dir: std.fs.Dir) !void {
 			std.log.err("File name should end with .zig.zon so it gets syntax highlighting on github.", .{});
 			failed = true;
 		}
-		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".vert") or std.mem.endsWith(u8, child.basename, ".frag") or std.mem.endsWith(u8, child.basename, ".comp") or (std.mem.endsWith(u8, child.basename, ".zig") and !std.mem.eql(u8, child.basename, "fmt.zig")))) {
+		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".vert") or std.mem.endsWith(u8, child.basename, ".frag") or std.mem.endsWith(u8, child.basename, ".comp") or std.mem.endsWith(u8, child.basename, ".zon") or (std.mem.endsWith(u8, child.basename, ".zig") and !std.mem.eql(u8, child.basename, "fmt.zig")))) {
 			try checkFile(dir, child.path);
 		}
 	}

@@ -11,8 +11,8 @@
 	.model = "cubyz:flower/height_10",
 	.rotation = "cubyz:planar",
 	.texture = "cubyz:trumpet_lily",
-	.texture_top = "cubyz:trumpet_lily_top",
-	.texture_bottom = "cubyz:trumpet_lily_top",
+	.textureTop = "cubyz:trumpet_lily_top",
+	.textureBottom = "cubyz:trumpet_lily_top",
 	.item = .{
 		.texture = "trumpet_lily.png",
 	},

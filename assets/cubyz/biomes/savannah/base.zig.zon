@@ -13,7 +13,7 @@
 	.hills = 6,
 	.validPlayerSpawn = true,
 	.music = "cubyz:EasternThought",
-	.ground_structure = .{
+	.groundStructure = .{
 		"7 to 8 cubyz:limestone",
 	},
 	.structures = .{
@@ -61,7 +61,7 @@
 			.block = "cubyz:cactus",
 			.chance = 0.02,
 			.height = 1,
-			.height_variation = 3,
+			.heightVariation = 3,
 		},
 	},
 	.stoneBlock = "cubyz:sandstone",

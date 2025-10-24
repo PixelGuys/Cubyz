@@ -7,8 +7,8 @@
 	.rotation = "cubyz:fence",
 	.model = "cubyz:wall",
 	.texture = "cubyz:slate_wall",
-	.texture_top = "cubyz:slate_wall_top",
-	.texture_bottom = "cubyz:slate_wall_top",
+	.textureTop = "cubyz:slate_wall_top",
+	.textureBottom = "cubyz:slate_wall_top",
 	.item = .{
 		.texture = "wall/slate.png",
 	},

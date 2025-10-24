@@ -30,7 +30,7 @@ pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *FallenTr
 		.woodBlock = main.blocks.getTypeById(parameters.get([]const u8, "log", "cubyz:oak_log")),
 		.topWoodBlock = main.blocks.getTypeById(parameters.get([]const u8, "top", "cubyz:oak_top")),
 		.height0 = parameters.get(u32, "height", 6),
-		.deltaHeight = parameters.get(u31, "height_variation", 3),
+		.deltaHeight = parameters.get(u31, "heightVariation", 3),
 	};
 	return self;
 }
