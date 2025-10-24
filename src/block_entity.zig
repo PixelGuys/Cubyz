@@ -208,8 +208,7 @@ pub const BlockEntityTypes = struct {
 
 		fn onInventoryUpdateCallback(source: main.items.Inventory.Source) void {
 			const pos = source.blockInventory;
-			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
-			defer simChunk.decreaseRefCount();
+			const simChunk = main.server.world.?.getSimulationChunk(pos[0], pos[1], pos[2]) orelse return;
 			const ch = simChunk.getChunk() orelse return;
 			ch.mutex.lock();
 			defer ch.mutex.unlock();
