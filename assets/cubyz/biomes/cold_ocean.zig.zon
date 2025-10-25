@@ -41,13 +41,13 @@
 	},
 	.transitionBiomes = .{
 		.{
-			.id = "cubyz:beach",
+			.id = "cubyz:cold_beach",
 			.chance = 1,
 			.width = 1,
 			.properties = .{.land, .inland},
 		},
 		.{
-			.id = "cubyz:ocean_shelf",
+			.id = "cubyz:cold_ocean_shelf",
 			.chance = 1,
 			.width = 2,
 			.properties = .{.land, .inland},
