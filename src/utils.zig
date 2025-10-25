@@ -12,7 +12,6 @@ pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 pub const Hash = struct {
 	const Biome = main.server.terrain.biomes;
 	const Structures = main.server.terrain.structures;
-	const StructureTable = Structures.StructureTable;
 
 	pub fn hashGeneric(input: anytype) u64 {
 		const T = @TypeOf(input);
@@ -43,7 +42,6 @@ pub const Hash = struct {
 					if(@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
 					if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
 					if(@typeInfo(T).pointer.child == Structures) return hashGeneric(input.id);
-					if(@typeInfo(T).pointer.child == StructureTable) return hashGeneric(input.id);
 					break :blk hashGeneric(input.*);
 				},
 				.slice => blk: {
