@@ -9,7 +9,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
-const hash = main.utils.hash_zig;
 const structures_zig = @import("structures.zig");
 const SimpleStructureModel = structures_zig.SimpleStructureModel;
 const StructureTable = structures_zig.StructureTable;
@@ -284,7 +283,7 @@ pub const Biome = struct { // MARK: Biome
 	}
 
 	fn getCheckSum(self: *Biome) u64 {
-		return hash.hashGeneric(self.*);
+		return main.utils.Hash.hashGeneric(self.*);
 	}
 };
 

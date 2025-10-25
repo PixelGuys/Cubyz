@@ -6,7 +6,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ServerChunk = main.chunk.ServerChunk;
 const terrain = main.server.terrain;
 const Biome = main.server.terrain.biomes;
-const Hash = main.utils.hash_zig;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -62,7 +61,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
 		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {
-				return Hash.hashGeneric(ptr.*);
+				return main.utils.Hash.hashGeneric(ptr.*);
 			}
 		}.hash);
 		self.generationMode = Generator.generationMode;
