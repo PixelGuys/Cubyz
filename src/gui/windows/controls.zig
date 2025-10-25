@@ -12,6 +12,7 @@ const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 const ContinuousSlider = @import("../components/ContinuousSlider.zig");
+const Window = @import("../../graphics/Window.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 192},
@@ -105,16 +106,26 @@ pub fn onOpen() void {
 	if(!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
-	for(&main.KeyBoard.keys) |*key| {
-		const label = Label.init(.{0, 0}, 128, key.name, .left);
-		const button = if(key == selectedKey) (Button.initText(.{16, 0}, 128, "...", .{})) else (Button.initText(.{16, 0}, 128, if(editingKeyboard) key.getName() else key.getGamepadName(), .{.callback = if(editingKeyboard) &keyFunction else &gamepadFunction, .arg = @intFromPtr(key)}));
-		const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .{.callback = &unbindKey, .arg = @intFromPtr(key)});
-		const row = HorizontalList.init();
-		row.add(label);
-		row.add(button);
-		row.add(unbindBtn);
-		row.finish(.{0, 0}, .center);
-		list.add(row);
+
+	inline for (std.meta.fields(main.KeyGroup)) |keyGroupField| {
+		const groupKeys: []Window.Key = @field(main.KeyBoard.keys, keyGroupField.name);
+		const groupDisplayLabel = Label.init(.{0, 0}, 320, keyGroupField, .center);
+		groupDisplayLabel.alpha = 0.9;
+		const titleRow = HorizontalList.init();
+		titleRow.add(groupDisplayLabel);
+		list.add(titleRow);
+		
+		for(groupKeys) |key| {
+			const label = Label.init(.{0, 0}, 128, key.name, .left);
+			const button = if(key == selectedKey) (Button.initText(.{16, 0}, 128, "...", .{})) else (Button.initText(.{16, 0}, 128, if(editingKeyboard) key.getName() else key.getGamepadName(), .{.callback = if(editingKeyboard) &keyFunction else &gamepadFunction, .arg = @intFromPtr(key)}));
+			const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .{.callback = &unbindKey, .arg = @intFromPtr(key)});
+			const row = HorizontalList.init();
+			row.add(label);
+			row.add(button);
+			row.add(unbindBtn);
+			row.finish(.{0, 0}, .center);
+			list.add(row);
+		}
 	}
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
