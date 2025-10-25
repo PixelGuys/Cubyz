@@ -7,6 +7,7 @@ const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const biomes = terrain.biomes;
 const noise = terrain.noise;
+const structures = terrain.structures;
 const StructureMapFragment = terrain.StructureMap.StructureMapFragment;
 const SurfaceMap = terrain.SurfaceMap;
 const MapFragment = SurfaceMap.MapFragment;
@@ -123,7 +124,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 }
 
 const SimpleStructure = struct {
-	model: *const biomes.SimpleStructureModel,
+	model: *const structures.SimpleStructureModel,
 	seed: u64,
 	wx: i32,
 	wy: i32,

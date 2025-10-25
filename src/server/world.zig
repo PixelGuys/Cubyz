@@ -514,6 +514,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	itemPalette: *main.assets.Palette = undefined,
 	toolPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
+	structureTablePalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
 	gameTime: i64 = 0,
@@ -590,13 +591,15 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.toolPalette = try loadPalette(arena, path, "tool_palette", null);
 		errdefer self.toolPalette.deinit();
 
+		self.structureTablePalette = try loadPalette(arena, path, "structureTable_palette", null);
+		errdefer self.structureTablePalette.deinit();
 		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
 
 		errdefer main.assets.unloadAssets();
 
 		self.seed = try self.wio.loadWorldSeed();
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.structureTablePalette);
 		// Store the block palette now that everything is loaded.
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/palette.zig.zon", .{path}), self.blockPalette.storeToZon(arena));
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arena));
