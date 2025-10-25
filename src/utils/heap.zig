@@ -633,7 +633,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		if(newTime -% lastSyncPointTime > 20_000) {
 			if(!build_options.isTaggedRelease) {
 				std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
-				std.debug.dumpCurrentStackTrace(null);
+				std.debug.dumpCurrentStackTrace(.{});
 			}
 		}
 		for(&lists) |*list| {
@@ -669,7 +669,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		const newTime = std.time.milliTimestamp();
 		if(newTime -% lastSyncPointTime > 20_000) {
 			std.log.err("No sync point executed in {} ms. Did you forget to add a sync point in the thread's main loop", .{newTime -% lastSyncPointTime});
-			std.debug.dumpCurrentStackTrace(null);
+			std.debug.dumpCurrentStackTrace(.{});
 		}
 		lastSyncPointTime = newTime;
 
