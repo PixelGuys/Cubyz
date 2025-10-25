@@ -1,4 +1,5 @@
 const std = @import("std");
+const Atomic = std.atomic.Value;
 
 const main = @import("main");
 const ConnectionManager = main.network.ConnectionManager;
@@ -59,8 +60,10 @@ fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
-fn makePublic(public: bool) void {
-	main.server.connectionManager.allowNewConnections.store(public, .monotonic);
+fn toggleAtomicCallback(ctx: *anyopaque) void {
+	const theValue: *Atomic(bool) = @ptrCast(@alignCast(ctx));
+	const oldVal = theValue.load(.monotonic);
+	theValue.store(!oldVal, .monotonic);
 }
 
 pub fn onOpen() void {
@@ -74,7 +77,7 @@ pub fn onOpen() void {
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.callback = &invite}));
 	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
-	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.allowNewConnections.load(.monotonic), &makePublic));
+	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.allowNewConnections.load(.monotonic), &main.server.connectionManager.allowNewConnections, &toggleAtomicCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

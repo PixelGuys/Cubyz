@@ -84,14 +84,14 @@ fn lodDistanceCallback(newValue: f32) void {
 	settings.save();
 }
 
-fn bloomCallback(newValue: bool) void {
-	settings.bloom = newValue;
+fn toggleSettingCallback(ctx: *anyopaque) void {
+	const theValue: *bool = @ptrCast(@alignCast(ctx));
+	theValue.* = !theValue.*;
 	settings.save();
 }
 
-fn vsyncCallback(newValue: bool) void {
-	settings.vsync = newValue;
-	settings.save();
+fn toggleWindowSettingCallback(ctx: *anyopaque) void {
+	toggleSettingCallback(ctx);
 	main.Window.reloadSettings();
 }
 
@@ -109,12 +109,6 @@ fn resolutionScaleCallback(newValue: u16) void {
 	main.Window.GLFWCallbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
-fn vulkanTestingWindowCallback(newValue: bool) void {
-	settings.vulkanTestingWindow = newValue;
-	settings.save();
-	main.Window.reloadSettings();
-}
-
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 154), &fpsCapCallback, &fpsCapFormatter));
@@ -125,8 +119,8 @@ pub fn onOpen() void {
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLeaves Quality (TODO: requires reload): ", "{}", &leavesQualities, settings.leavesQuality - leavesQualities[0], &leavesQualityCallback));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 50.0, 400.0, settings.@"lod0.5Distance", &lodDistanceCallback, &lodDistanceFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
-	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
-	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
+	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &settings.bloom, &toggleSettingCallback));
+	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &settings.vsync, &toggleWindowSettingCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch(settings.anisotropicFiltering) {
 		1 => 0,
 		2 => 1,
@@ -136,7 +130,7 @@ pub fn onOpen() void {
 		else => 2,
 	}, &anisotropicFilteringCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @intFromFloat(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
-	list.add(CheckBox.init(.{0, 0}, 128, "Vulkan testing window (requires restart)", settings.vulkanTestingWindow, &vulkanTestingWindowCallback));
+	list.add(CheckBox.init(.{0, 0}, 128, "Vulkan testing window (requires restart)", settings.vulkanTestingWindow, &settings.vulkanTestingWindow, &toggleWindowSettingCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
