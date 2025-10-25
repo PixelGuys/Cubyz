@@ -655,13 +655,12 @@ pub fn main() void { // MARK: main()
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
-				server.kickPlayers("Server stopped.");
+				server.kickPlayers(.serverStopped);
 				world.deinit();
 				game.world = null;
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:cubyz");
-			gui.windowlist.disconnected.showDisconnectReason();
 		}
 	}
 

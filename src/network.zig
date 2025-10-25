@@ -438,7 +438,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn deinit(self: *ConnectionManager) void {
 		for(self.connections.items) |conn| {
-			conn.disconnect("Server stopped.");
+			conn.disconnect(.serverStopped);
 		}
 
 		self.running.store(false, .monotonic);
@@ -1840,6 +1840,15 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
+	pub const DisconnectReason = enum(u8) { // MARK: DisconnectReason
+		worldClosed = 0,
+		kicked = 1,
+		serverStopped = 2,
+		badPacket = 3,
+		alreadyConnected = 4,
+		timeout = 5,
+	};
+
 	const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
 		fast = 1,
@@ -1956,7 +1965,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect(null);
+		self.disconnect(.worldClosed);
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
 		self.lossyChannel.deinit();
 		self.fastChannel.deinit();
@@ -1977,7 +1986,7 @@ pub const Connection = struct { // MARK: Connection
 			else => comptime unreachable,
 		} catch {
 			std.log.err("Cannot send any more packets. Disconnecting", .{});
-			self.disconnect("Wrong channel");
+			self.disconnect(.badPacket);
 		};
 	}
 
@@ -2080,7 +2089,7 @@ pub const Connection = struct { // MARK: Connection
 				std.log.info("{f}", .{trace});
 			}
 			std.log.debug("Packet data: {any}", .{data});
-			self.disconnect();
+			self.disconnect(.badPacket);
 		};
 	}
 
@@ -2125,10 +2134,10 @@ pub const Connection = struct { // MARK: Connection
 					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) { // Reconnection attempt
 						if(self.user) |user| {
 							self.manager.removeConnection(self);
-							main.server.disconnect(user, "Reconnection failed");
+							main.server.disconnect(user);
 						} else {
 							std.log.err("Server reconnected?", .{});
-							self.disconnect("Reconnection failed");
+							self.disconnect(.alreadyConnected);
 						}
 						return;
 					}
@@ -2186,13 +2195,8 @@ pub const Connection = struct { // MARK: Connection
 			.init => unreachable,
 			.keepalive => {},
 			.disconnect => {
-				const reasonLen = try reader.readVarInt(u16);
-				if(reasonLen == 0) {
-					self.disconnect(null);
-				} else {
-					const reason = try reader.readSlice(reasonLen);
-					self.disconnect(reason);
-				}
+				const reason = try reader.readEnum(DisconnectReason);
+				self.disconnect(reason);
 			},
 		}
 		self.lastConnection = networkTimestamp();
@@ -2228,7 +2232,7 @@ pub const Connection = struct { // MARK: Connection
 			.connected => {
 				if(timestamp -% self.lastConnection -% settings.connectionTimeout > 0) {
 					std.log.info("timeout", .{});
-					self.disconnect("Timeout");
+					self.disconnect(.timeout);
 					return;
 				}
 			},
@@ -2273,19 +2277,12 @@ pub const Connection = struct { // MARK: Connection
 		}
 	}
 
-	pub fn disconnect(self: *Connection, reason: ?[]const u8) void {
+	pub fn disconnect(self: *Connection, reason: DisconnectReason) void {
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.mtuEstimate);
 		defer writer.deinit();
 		writer.writeEnum(ChannelId, .disconnect);
+		writer.writeEnum(DisconnectReason, reason);
 
-		if(reason) |r| {
-			const maxReasonLen = std.math.maxInt(u16);
-			const truncatedReason: []const u8 = if(r.len > maxReasonLen) r[0..maxReasonLen] else r;
-			writer.writeVarInt(u16, @intCast(truncatedReason.len));
-			writer.writeSlice(truncatedReason);
-		} else {
-			writer.writeVarInt(u16, 0);
-		}
 		self.manager.send(writer.data.items, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
@@ -2293,18 +2290,16 @@ pub const Connection = struct { // MARK: Connection
 		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
-			main.server.disconnect(user, reason);
+			main.server.disconnect(user);
 		} else {
 			self.handShakeWaiting.broadcast();
-			main.setKickReason(reason);
 			main.exitToMenu(undefined);
+			if(reason != .worldClosed) {
+				main.gui.windowlist.disconnected.setDisconnectedReason(reason);
+			}
+			main.gui.windowlist.disconnected.showDisconnectReason();
 		}
-
-		if(reason) |r| {
-			std.log.info("Disconnected, reason {s}", .{r});
-		} else {
-			std.log.info("Disconnected.", .{});
-		}
+		std.log.info("Disconnected, reason {s}", .{@tagName(reason)});
 	}
 };
 
