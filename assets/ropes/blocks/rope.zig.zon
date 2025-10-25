@@ -1,0 +1,15 @@
+.{
+	.tags = .{.cloth},
+	.blockHealth = 0.5,
+	.drops = .{
+		.{.items = .{.auto}}
+	},
+	.density = 0.998,
+	.terminalVelocity = 1,
+	.mobility = 0.6,
+	.rotation = "ropes:rope",
+	.model = "ropes:rope",
+	.texture = "ropes:rope_side",
+	.texture_top = "ropes:rope_top",
+	.texture_bottom = "ropes:rope_top",
+}
