@@ -1,0 +1,8 @@
+.{
+	.texture0 = "cubyz:log/palm/dot",
+	.texture1 = "cubyz:log/palm/line",
+	.texture2 = "cubyz:log/palm/bend",
+	.texture3 = "cubyz:log/palm/intersection",
+	.texture4 = "cubyz:log/palm/cross",
+	.texture5 = "cubyz:log/palm/top",
+}
