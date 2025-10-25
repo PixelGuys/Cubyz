@@ -1,0 +1,9 @@
+.{
+	.emittedLight = 0x70b5de,
+	.texture = "cubyz:lantern/sulfur/side",
+	.texture_top = "cubyz:lantern/sulfur/top",
+	.texture_bottom = "cubyz:lantern/sulfur/top",
+	.item = .{
+		.texture = "lantern/sulfur.png",
+	},
+}
