@@ -61,33 +61,35 @@ pub const RotationMode = struct { // MARK: RotationMode
 			const modelData = modelIndex.model();
 			const min: Vec3f = modelData.min;
 			const max: Vec3f = modelData.max;
-			const t1 = (min - relativePlayerPos)*invDir;
-			const t2 = (max - relativePlayerPos)*invDir;
-			const boxTMin = @reduce(.Max, @min(t1, t2));
-			const boxTMax = @reduce(.Min, @max(t1, t2));
-			if(boxTMin <= boxTMax and boxTMax > 0) {
-				var face: Neighbor = undefined;
-				if(boxTMin == t1[0]) {
-					face = Neighbor.dirNegX;
-				} else if(boxTMin == t1[1]) {
-					face = Neighbor.dirNegY;
-				} else if(boxTMin == t1[2]) {
-					face = Neighbor.dirDown;
-				} else if(boxTMin == t2[0]) {
-					face = Neighbor.dirPosX;
-				} else if(boxTMin == t2[1]) {
-					face = Neighbor.dirPosY;
-				} else if(boxTMin == t2[2]) {
-					face = Neighbor.dirUp;
-				} else {
-					unreachable;
+			for(modelData.collision) |box| {
+				const t1 = (box.min - relativePlayerPos)*invDir;
+				const t2 = (box.max - relativePlayerPos)*invDir;
+				const boxTMin = @reduce(.Max, @min(t1, t2));
+				const boxTMax = @reduce(.Min, @max(t1, t2));
+				if(boxTMin <= boxTMax and boxTMax > 0) {
+					var face: Neighbor = undefined;
+					if(boxTMin == t1[0]) {
+						face = Neighbor.dirNegX;
+					} else if(boxTMin == t1[1]) {
+						face = Neighbor.dirNegY;
+					} else if(boxTMin == t1[2]) {
+						face = Neighbor.dirDown;
+					} else if(boxTMin == t2[0]) {
+						face = Neighbor.dirPosX;
+					} else if(boxTMin == t2[1]) {
+						face = Neighbor.dirPosY;
+					} else if(boxTMin == t2[2]) {
+						face = Neighbor.dirUp;
+					} else {
+						unreachable;
+					}
+					return .{
+						.distance = boxTMin,
+						.min = min,
+						.max = max,
+						.face = face,
+					};
 				}
-				return .{
-					.distance = boxTMin,
-					.min = min,
-					.max = max,
-					.face = face,
-				};
 			}
 			return null;
 		}
