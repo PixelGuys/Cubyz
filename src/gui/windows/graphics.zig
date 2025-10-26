@@ -60,10 +60,9 @@ fn ambientMinimumBlueLightCallback(newValue: f32) void {
 	settings.save();
 }
 fn ambientMinimumBlueLightFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	const cap:u8 = @intFromFloat(value);
+	const cap: u8 = @intFromFloat(value);
 	return std.fmt.allocPrint(allocator.allocator, "#8888ffBlue#ffffff light: {d}", .{cap}) catch unreachable;
 }
-
 
 fn highestLodCallback(newValue: u16) void {
 	settings.highestLod = @intCast(@min(newValue, settings.highestSupportedLod));

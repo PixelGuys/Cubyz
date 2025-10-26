@@ -69,7 +69,6 @@ pub var controllerAxisDeadzone: f32 = 0.0;
 
 pub var ambientMinimumBlueLight: ?u8 = null;
 
-
 const settingsFile = if(builtin.mode == .Debug) "debug_settings.zig.zon" else "settings.zig.zon";
 
 pub fn init() void {

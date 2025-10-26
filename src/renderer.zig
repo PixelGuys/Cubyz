@@ -146,7 +146,7 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 
 		var ambientMinimumBlueLight: f32 = 0.0;
 		if(settings.ambientMinimumBlueLight) |ambLight| {
-			ambientMinimumBlueLight = @as(f32,@floatFromInt(ambLight))/255.0;
+			ambientMinimumBlueLight = @as(f32, @floatFromInt(ambLight))/255.0;
 		}
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
