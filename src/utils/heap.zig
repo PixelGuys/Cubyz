@@ -8,6 +8,45 @@ const main = @import("main");
 var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allocator);
 pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 
+pub const allocators = struct { // MARK: allocators
+	pub var globalGpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
+	pub var handledGpa = ErrorHandlingAllocator.init(globalGpa.allocator());
+	pub var globalArenaAllocator: NeverFailingArenaAllocator = .init(handledGpa.allocator());
+	pub var worldArenaAllocator: NeverFailingArenaAllocator = undefined;
+	var worldArenaOpenCount: usize = 0;
+	var worldArenaMutex: std.Thread.Mutex = .{};
+
+	pub fn deinit() void {
+		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.arena.queryCapacity() >> 20});
+		globalArenaAllocator.deinit();
+		globalArenaAllocator = undefined;
+		if(globalGpa.deinit() == .leak) {
+			std.log.err("Memory leak", .{});
+		}
+		globalGpa = undefined;
+	}
+
+	pub fn createWorldArena() void {
+		worldArenaMutex.lock();
+		defer worldArenaMutex.unlock();
+		if(worldArenaOpenCount == 0) {
+			worldArenaAllocator = .init(handledGpa.allocator());
+		}
+		worldArenaOpenCount += 1;
+	}
+
+	pub fn destroyWorldArena() void {
+		worldArenaMutex.lock();
+		defer worldArenaMutex.unlock();
+		worldArenaOpenCount -= 1;
+		if(worldArenaOpenCount == 0) {
+			std.log.info("Clearing world arena with {} MiB", .{worldArenaAllocator.arena.queryCapacity() >> 20});
+			worldArenaAllocator.deinit();
+			worldArenaAllocator = undefined;
+		}
+	}
+};
+
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
 pub const StackAllocator = struct { // MARK: StackAllocator

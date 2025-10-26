@@ -83,7 +83,6 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 /// A generator for the cave map.
 pub const CaveGenerator = struct { // MARK: CaveGenerator
 	init: *const fn(parameters: ZonElement) void,
-	deinit: *const fn() void,
 	generate: *const fn(map: *CaveMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
@@ -95,7 +94,6 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 	pub fn registerGenerator(comptime Generator: type) void {
 		const self = CaveGenerator{
 			.init = &Generator.init,
-			.deinit = &Generator.deinit,
 			.generate = &Generator.generate,
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,
