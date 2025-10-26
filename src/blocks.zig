@@ -25,9 +25,6 @@ const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 
-var arenaAllocator = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
-const arena = arenaAllocator.allocator();
-
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
 pub const BlockDrop = struct {
@@ -89,27 +86,21 @@ var _tickEvent: [maxBlockCount]?TickEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
-var reverseIndices = std.StringHashMap(u16).init(arena.allocator);
+var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
 var size: u32 = 0;
 
-pub var ores: main.List(Ore) = .init(arena);
-
-pub fn init() void {}
-
-pub fn deinit() void {
-	arenaAllocator.deinit();
-}
+pub var ores: main.ListUnmanaged(Ore) = .{};
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-	_id[size] = arena.dupe(u8, id);
-	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
+	_id[size] = main.worldArena.dupe(u8, id);
+	reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
 
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
-	_blockTags[size] = Tag.loadTagsFromZon(arena, zon.getChild("tags"));
+	_blockTags[size] = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	for(_blockTags[size]) |tag| {
 		if(tag == Tag.sbbChild) {
@@ -122,7 +113,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
-	_gui[size] = arena.dupe(u8, zon.get([]const u8, "gui", ""));
+	_gui[size] = main.worldArena.dupe(u8, zon.get([]const u8, "gui", ""));
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -152,7 +143,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
-		ores.append(Ore{
+		ores.append(main.worldArena, .{
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
 			.maxHeight = oreProperties.get(i32, "height", 0),
@@ -169,7 +160,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 	const drops = zon.getChild("drops").toSlice();
-	_blockDrops[typ] = arena.alloc(BlockDrop, drops.len);
+	_blockDrops[typ] = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for(drops, 0..) |blockDrop, i| {
 		_blockDrops[typ][i].chance = blockDrop.get(f32, "chance", 1);
@@ -198,7 +189,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
-		_blockDrops[typ][i].items = arena.dupe(items.ItemStack, resultItems.items);
+		_blockDrops[typ][i].items = main.worldArena.dupe(items.ItemStack, resultItems.items);
 	}
 }
 
@@ -233,10 +224,9 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 
 pub fn reset() void {
 	size = 0;
-	ores.clearAndFree();
+	ores = .{};
+	reverseIndices = .{};
 	meshes.reset();
-	_ = arenaAllocator.reset(.free_all);
-	reverseIndices = .init(arena.allocator);
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -507,19 +497,16 @@ pub const meshes = struct { // MARK: meshes
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 
-	var textureIDs: main.List([]const u8) = undefined;
-	var animation: main.List(AnimationData) = undefined;
-	var blockTextures: main.List(Image) = undefined;
-	var emissionTextures: main.List(Image) = undefined;
-	var reflectivityTextures: main.List(Image) = undefined;
-	var absorptionTextures: main.List(Image) = undefined;
-	var textureFogData: main.List(FogData) = undefined;
-	pub var textureOcclusionData: main.List(bool) = undefined;
+	var textureIDs: main.ListUnmanaged([]const u8) = .{};
+	var animation: main.ListUnmanaged(AnimationData) = .{};
+	var blockTextures: main.ListUnmanaged(Image) = .{};
+	var emissionTextures: main.ListUnmanaged(Image) = .{};
+	var reflectivityTextures: main.ListUnmanaged(Image) = .{};
+	var absorptionTextures: main.ListUnmanaged(Image) = .{};
+	var textureFogData: main.ListUnmanaged(FogData) = .{};
+	pub var textureOcclusionData: main.ListUnmanaged(bool) = .{};
 
-	var arenaAllocatorForWorld: main.heap.NeverFailingArenaAllocator = undefined;
-	var arenaForWorld: main.heap.NeverFailingAllocator = undefined;
-
-	pub var blockBreakingTextures: main.List(u16) = undefined;
+	pub var blockBreakingTextures: main.ListUnmanaged(u16) = .{};
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
@@ -560,17 +547,6 @@ pub const meshes = struct { // MARK: meshes
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
 		ditherTexture = .initFromMipmapFiles("assets/cubyz/blocks/textures/dither/", 64, 0.5);
-		textureIDs = .init(main.globalAllocator);
-		animation = .init(main.globalAllocator);
-		blockTextures = .init(main.globalAllocator);
-		emissionTextures = .init(main.globalAllocator);
-		reflectivityTextures = .init(main.globalAllocator);
-		absorptionTextures = .init(main.globalAllocator);
-		textureFogData = .init(main.globalAllocator);
-		textureOcclusionData = .init(main.globalAllocator);
-		arenaAllocatorForWorld = .init(main.globalAllocator);
-		arenaForWorld = arenaAllocatorForWorld.allocator();
-		blockBreakingTextures = .init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {
@@ -588,31 +564,20 @@ pub const meshes = struct { // MARK: meshes
 		emissionTextureArray.deinit();
 		reflectivityAndAbsorptionTextureArray.deinit();
 		ditherTexture.deinit();
-		textureIDs.deinit();
-		animation.deinit();
-		blockTextures.deinit();
-		emissionTextures.deinit();
-		reflectivityTextures.deinit();
-		absorptionTextures.deinit();
-		textureFogData.deinit();
-		textureOcclusionData.deinit();
-		arenaAllocatorForWorld.deinit();
-		blockBreakingTextures.deinit();
 	}
 
 	pub fn reset() void {
 		meshes.size = 0;
 		loadedMeshes = 0;
-		textureIDs.clearRetainingCapacity();
-		animation.clearRetainingCapacity();
-		blockTextures.clearRetainingCapacity();
-		emissionTextures.clearRetainingCapacity();
-		reflectivityTextures.clearRetainingCapacity();
-		absorptionTextures.clearRetainingCapacity();
-		textureFogData.clearRetainingCapacity();
-		textureOcclusionData.clearRetainingCapacity();
-		blockBreakingTextures.clearRetainingCapacity();
-		_ = arenaAllocatorForWorld.reset(.free_all);
+		textureIDs = .{};
+		animation = .{};
+		blockTextures = .{};
+		emissionTextures = .{};
+		reflectivityTextures = .{};
+		absorptionTextures = .{};
+		textureFogData = .{};
+		textureOcclusionData = .{};
+		blockBreakingTextures = .{};
 	}
 
 	pub inline fn model(block: Block) ModelIndex {
@@ -650,7 +615,7 @@ pub const meshes = struct { // MARK: meshes
 	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
 		const path = extendedPath(main.stackAllocator, _path, ending);
 		defer main.stackAllocator.free(path);
-		return Image.readFromFile(arenaForWorld, path) catch default;
+		return Image.readFromFile(main.worldArena, path) catch default;
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
@@ -673,22 +638,22 @@ pub const meshes = struct { // MARK: meshes
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
-		animation.append(.{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
+		animation.append(main.worldArena, .{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
 		const base = readTextureFile(path, ".png", Image.defaultImage);
 		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
 		const reflectivity = readTextureFile(path, "_reflectivity.png", Image.emptyImage);
 		const absorption = readTextureFile(path, "_absorption.png", Image.whiteEmptyImage);
 		for(0..animationFrames) |i| {
-			blockTextures.append(extractAnimationSlice(base, i, animationFrames));
-			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
-			reflectivityTextures.append(extractAnimationSlice(reflectivity, i, animationFrames));
-			absorptionTextures.append(extractAnimationSlice(absorption, i, animationFrames));
-			textureFogData.append(.{
+			blockTextures.append(main.worldArena, extractAnimationSlice(base, i, animationFrames));
+			emissionTextures.append(main.worldArena, extractAnimationSlice(emission, i, animationFrames));
+			reflectivityTextures.append(main.worldArena, extractAnimationSlice(reflectivity, i, animationFrames));
+			absorptionTextures.append(main.worldArena, extractAnimationSlice(absorption, i, animationFrames));
+			textureFogData.append(main.worldArena, .{
 				.fogDensity = textureInfoZon.get(f32, "fogDensity", 0.0),
 				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
 			});
 		}
-		textureOcclusionData.append(textureInfoZon.get(bool, "hasOcclusion", true));
+		textureOcclusionData.append(main.worldArena, textureInfoZon.get(bool, "hasOcclusion", true));
 	}
 
 	pub fn readTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
@@ -721,7 +686,7 @@ pub const meshes = struct { // MARK: meshes
 		// Otherwise read it into the list:
 		result = @intCast(textureIDs.items.len);
 
-		textureIDs.append(arenaForWorld.dupe(u8, path));
+		textureIDs.append(main.worldArena, main.worldArena.dupe(u8, path));
 		readTextureData(path);
 		return result;
 	}
@@ -761,7 +726,7 @@ pub const meshes = struct { // MARK: meshes
 
 			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
 			defer main.stackAllocator.free(id);
-			blockBreakingTextures.append(readTexture(id, assetFolder) catch break);
+			blockBreakingTextures.append(main.worldArena, readTexture(id, assetFolder) catch break);
 		}
 	}
 
@@ -778,8 +743,8 @@ pub const meshes = struct { // MARK: meshes
 		emissionTextures.clearRetainingCapacity();
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
-		textureFogData.clearAndFree();
-		textureOcclusionData.clearAndFree();
+		textureFogData.clearRetainingCapacity();
+		textureOcclusionData.clearRetainingCapacity();
 		for(textureIDs.items) |path| {
 			readTextureData(path);
 		}

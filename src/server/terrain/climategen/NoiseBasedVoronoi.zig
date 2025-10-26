@@ -25,8 +25,6 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {}
-
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	var seed: u64 = worldSeed;
 

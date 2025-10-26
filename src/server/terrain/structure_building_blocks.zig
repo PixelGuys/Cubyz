@@ -13,9 +13,6 @@ const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Assets = main.assets.Assets;
 
-var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
-const arenaAllocator = arena.allocator();
-
 var structureList: ListUnmanaged(StructureBuildingBlock) = .{};
 var structureMap: std.StringHashMapUnmanaged(StructureIndex) = .{};
 
@@ -144,7 +141,7 @@ const BlueprintEntry = struct {
 			std.log.err("[{s}] No origin block found.", .{stringId});
 			return error.NoOriginBlock;
 		}
-		self.childBlocks = arenaAllocator.dupe(StructureBlock, childBlocks.items);
+		self.childBlocks = main.worldArena.dupe(StructureBlock, childBlocks.items);
 
 		return self;
 	}
@@ -245,7 +242,7 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] Empty 'blueprints' list not allowed.", .{stringId});
 			return error.EmptyBlueprintsList;
 		}
-		const blueprintArray = arenaAllocator.alloc(Blueprints, zonBlueprintsList.array.items.len);
+		const blueprintArray = main.worldArena.alloc(Blueprints, zonBlueprintsList.array.items.len);
 		for(zonBlueprintsList.array.items, 0..) |zonBlueprintConfig, index| {
 			if(zonBlueprintConfig != .object) {
 				std.log.err("['{s}'->'{}'] Invalid blueprint configuration (object expected, got {s}).", .{stringId, index, @tagName(zonBlueprintConfig)});
@@ -282,8 +279,8 @@ pub const StructureBuildingBlock = struct {
 
 		const self = StructureBuildingBlock{
 			.id = stringId,
-			.children = arenaAllocator.alloc(?*StructureBuildingBlock, childBlockName.items.len),
-			.blueprints = .init(arenaAllocator, blueprintArray),
+			.children = main.worldArena.alloc(?*StructureBuildingBlock, childBlockName.items.len),
+			.blueprints = .init(main.worldArena, blueprintArray),
 			.rotation = rotation,
 		};
 		@memset(self.children, null);
@@ -345,8 +342,8 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	std.debug.assert(structureList.items.len == 0);
 	std.debug.assert(structureMap.capacity() == 0);
 
-	structureList.resize(arenaAllocator, structures.count());
-	structureMap.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
+	structureList.resize(main.worldArena, structures.count());
+	structureMap.ensureTotalCapacity(main.worldArena.allocator, structures.count()) catch unreachable;
 
 	childrenToResolve = .init(main.stackAllocator);
 	defer childrenToResolve.deinit();
@@ -361,8 +358,8 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 				continue;
 			};
 
-			const key = arenaAllocator.dupe(u8, entry.key_ptr.*);
-			structureMap.put(arenaAllocator.allocator, key, @enumFromInt(index)) catch unreachable;
+			const key = main.worldArena.dupe(u8, entry.key_ptr.*);
+			structureMap.put(main.worldArena.allocator, key, @enumFromInt(index)) catch unreachable;
 
 			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
 		}
@@ -383,22 +380,22 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	std.debug.assert(numericId != 0);
 
 	const index: u16 = @intCast(childBlockNumericIdMap.count());
-	childBlockNumericIdMap.put(arenaAllocator.allocator, numericId, @enumFromInt(index)) catch unreachable;
+	childBlockNumericIdMap.put(main.worldArena.allocator, numericId, @enumFromInt(index)) catch unreachable;
 	// Take only color name from the ID.
 	var iterator = std.mem.splitBackwardsScalar(u8, stringId, '/');
 	const colorName = iterator.first();
-	const colorNameDupe = arenaAllocator.dupe(u8, colorName);
-	childBlockName.append(arenaAllocator, colorNameDupe);
+	const colorNameDupe = main.worldArena.dupe(u8, colorName);
+	childBlockName.append(main.worldArena, colorNameDupe);
 
-	childBlockNameToLocalIndex.put(arenaAllocator.allocator, colorNameDupe, @enumFromInt(index)) catch unreachable;
+	childBlockNameToLocalIndex.put(main.worldArena.allocator, colorNameDupe, @enumFromInt(index)) catch unreachable;
 }
 
 pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 	std.debug.assert(blueprintList.items.len == 0);
 	std.debug.assert(blueprintMap.capacity() == 0);
 
-	blueprintList.resize(arenaAllocator, blueprints.count());
-	blueprintMap.ensureTotalCapacity(arenaAllocator.allocator, blueprints.count()) catch unreachable;
+	blueprintList.resize(main.worldArena, blueprints.count());
+	blueprintMap.ensureTotalCapacity(main.worldArena.allocator, blueprints.count()) catch unreachable;
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
 	std.debug.assert(originBlockNumericId != 0);
@@ -411,20 +408,20 @@ pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 		const stringId = entry.key_ptr.*;
 
 		// Rotated copies need to be made before initializing BlueprintEntry as to removes origin and child blocks.
-		const blueprint0 = Blueprint.load(arenaAllocator, entry.value_ptr.*) catch |err| {
+		const blueprint0 = Blueprint.load(main.worldArena, entry.value_ptr.*) catch |err| {
 			std.log.err("Could not load blueprint '{s}' ({s})", .{stringId, @errorName(err)});
 			continue;
 		};
-		const blueprint90 = blueprint0.rotateZ(arenaAllocator, .@"90");
-		const blueprint180 = blueprint0.rotateZ(arenaAllocator, .@"180");
-		const blueprint270 = blueprint0.rotateZ(arenaAllocator, .@"270");
+		const blueprint90 = blueprint0.rotateZ(main.worldArena, .@"90");
+		const blueprint180 = blueprint0.rotateZ(main.worldArena, .@"180");
+		const blueprint270 = blueprint0.rotateZ(main.worldArena, .@"270");
 
 		blueprintList.items[index][0] = BlueprintEntry.init(blueprint0, stringId) catch continue;
 		blueprintList.items[index][1] = BlueprintEntry.init(blueprint90, stringId) catch continue;
 		blueprintList.items[index][2] = BlueprintEntry.init(blueprint180, stringId) catch continue;
 		blueprintList.items[index][3] = BlueprintEntry.init(blueprint270, stringId) catch continue;
 
-		blueprintMap.put(arenaAllocator.allocator, arenaAllocator.dupe(u8, stringId), @enumFromInt(index)) catch unreachable;
+		blueprintMap.put(main.worldArena.allocator, main.worldArena.dupe(u8, stringId), @enumFromInt(index)) catch unreachable;
 		std.log.debug("Registered blueprint: '{s}'", .{stringId});
 	}
 }
@@ -444,6 +441,4 @@ pub fn reset() void {
 
 	blueprintList = .{};
 	blueprintMap = .{};
-
-	_ = arena.reset(.free_all);
 }

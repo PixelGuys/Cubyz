@@ -351,14 +351,13 @@ const ChunkManager = struct { // MARK: ChunkManager
 		return self;
 	}
 
-	pub fn deinit(self: ChunkManager) void {
+	pub fn deinit(_: ChunkManager) void {
 		for(0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
 		entityChunkHashMap.deinit();
 		server.terrain.deinit();
 		main.assets.unloadAssets();
-		self.terrainGenerationProfile.deinit();
 		storage.deinit();
 	}
 

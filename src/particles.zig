@@ -21,14 +21,11 @@ const Vec3i = vec.Vec3i;
 
 var seed: u64 = undefined;
 
-var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
-const arenaAllocator = arena.allocator();
-
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
-	var types: main.List(ParticleType) = undefined;
-	var textures: main.List(Image) = undefined;
-	var emissionTextures: main.List(Image) = undefined;
+	var types: main.ListUnmanaged(ParticleType) = .{};
+	var textures: main.ListUnmanaged(Image) = .{};
+	var emissionTextures: main.ListUnmanaged(Image) = .{};
 
 	var textureArray: TextureArray = undefined;
 	var emissionTextureArray: TextureArray = undefined;
@@ -37,9 +34,6 @@ pub const ParticleManager = struct {
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
 
 	pub fn init() void {
-		types = .init(arenaAllocator);
-		textures = .init(arenaAllocator);
-		emissionTextures = .init(arenaAllocator);
 		textureArray = .init();
 		emissionTextureArray = .init();
 		particleTypesSSBO = SSBO.init();
@@ -47,15 +41,18 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn deinit() void {
-		types.deinit();
-		textures.deinit();
-		emissionTextures.deinit();
 		textureArray.deinit();
 		emissionTextureArray.deinit();
-		particleTypeHashmap.deinit(arenaAllocator.allocator);
 		ParticleSystem.deinit();
 		particleTypesSSBO.deinit();
-		arena.deinit();
+	}
+
+	pub fn reset() void {
+		types = .{};
+		textures = .{};
+		emissionTextures = .{};
+		particleTypeHashmap = .{};
+		ParticleSystem.reset();
 	}
 
 	pub fn register(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
@@ -66,8 +63,8 @@ pub const ParticleManager = struct {
 
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
 
-		particleTypeHashmap.put(arenaAllocator.allocator, id, @intCast(types.items.len)) catch unreachable;
-		types.append(particleType);
+		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
+		types.append(main.worldArena, particleType);
 
 		std.log.debug("Registered particle type: {s}", .{id});
 	}
@@ -117,15 +114,15 @@ pub const ParticleManager = struct {
 		const worldAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/particles/textures/{s}{s}", .{assetsFolder, mod, id, suffix}) catch unreachable;
 		defer main.stackAllocator.free(worldAssetsPath);
 
-		return graphics.Image.readFromFile(arenaAllocator, worldAssetsPath) catch graphics.Image.readFromFile(arenaAllocator, gameAssetsPath) catch {
+		return graphics.Image.readFromFile(main.worldArena, worldAssetsPath) catch graphics.Image.readFromFile(main.worldArena, gameAssetsPath) catch {
 			if(status == .isMandatory) std.log.err("Particle texture not found in {s} and {s}.", .{worldAssetsPath, gameAssetsPath});
 			return default;
 		};
 	}
 
-	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image, isBroken: bool) void {
+	fn createAnimationFrames(container: *main.ListUnmanaged(Image), frameCount: usize, image: Image, isBroken: bool) void {
 		for(0..frameCount) |i| {
-			container.append(if(isBroken) image else extractAnimationSlice(image, i));
+			container.append(main.worldArena, if(isBroken) image else extractAnimationSlice(image, i));
 		}
 	}
 
@@ -158,7 +155,7 @@ pub const ParticleSystem = struct {
 	var previousPlayerPos: Vec3d = undefined;
 
 	var mutex: std.Thread.Mutex = .{};
-	var networkCreationQueue: main.List(struct {emitter: Emitter, pos: Vec3d, count: u32}) = undefined;
+	var networkCreationQueue: main.ListUnmanaged(struct {emitter: Emitter, pos: Vec3d, count: u32}) = .{};
 
 	var particlesSSBO: SSBO = undefined;
 
@@ -170,7 +167,7 @@ pub const ParticleSystem = struct {
 	};
 	var uniforms: UniformStruct = undefined;
 
-	pub fn init() void {
+	fn init() void {
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/particles/particles.vert",
 			"assets/cubyz/shaders/particles/particles.frag",
@@ -197,14 +194,15 @@ pub const ParticleSystem = struct {
 		particlesSSBO.bind(13);
 
 		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
-
-		networkCreationQueue = .init(arenaAllocator);
 	}
 
-	pub fn deinit() void {
+	fn deinit() void {
 		pipeline.deinit();
 		particlesSSBO.deinit();
-		networkCreationQueue.deinit();
+	}
+
+	fn reset() void {
+		networkCreationQueue = .{};
 	}
 
 	pub fn update(deltaTime: f32) void {
@@ -342,7 +340,7 @@ pub const ParticleSystem = struct {
 	pub fn addParticlesFromNetwork(emitter: Emitter, pos: Vec3d, count: u32) void {
 		mutex.lock();
 		defer mutex.unlock();
-		networkCreationQueue.append(.{.emitter = emitter, .pos = pos, .count = count});
+		networkCreationQueue.append(main.worldArena, .{.emitter = emitter, .pos = pos, .count = count});
 	}
 };
 

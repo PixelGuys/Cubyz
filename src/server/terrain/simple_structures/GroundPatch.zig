@@ -25,8 +25,8 @@ variation: f32,
 depth: i32,
 smoothness: f32,
 
-pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *GroundPatch {
-	const self = arena.create(GroundPatch);
+pub fn loadModel(parameters: ZonElement) *GroundPatch {
+	const self = main.worldArena.create(GroundPatch);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
 		.width = parameters.get(f32, "width", 5),

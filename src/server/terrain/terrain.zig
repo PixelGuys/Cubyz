@@ -25,7 +25,6 @@ pub const structure_building_blocks = @import("structure_building_blocks.zig");
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {
 	init: *const fn(parameters: ZonElement) void,
-	deinit: *const fn() void,
 	generate: *const fn(seed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
@@ -37,7 +36,6 @@ pub const BlockGenerator = struct {
 	pub fn registerGenerator(comptime GeneratorType: type) void {
 		const self = BlockGenerator{
 			.init = &GeneratorType.init,
-			.deinit = &GeneratorType.deinit,
 			.generate = &GeneratorType.generate,
 			.priority = GeneratorType.priority,
 			.generatorSeed = GeneratorType.generatorSeed,
@@ -90,16 +88,16 @@ pub const TerrainGenerationProfile = struct {
 		self.climateGenerator.init(generator);
 
 		generator = settings.getChild("caveBiomeGenerators");
-		self.caveBiomeGenerators = CaveBiomeMap.CaveBiomeGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.caveBiomeGenerators = CaveBiomeMap.CaveBiomeGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		generator = settings.getChild("caveGenerators");
-		self.caveGenerators = CaveMap.CaveGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.caveGenerators = CaveMap.CaveGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		generator = settings.getChild("structureMapGenerators");
-		self.structureMapGenerators = StructureMap.StructureMapGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.structureMapGenerators = StructureMap.StructureMapGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		generator = settings.getChild("generators");
-		self.generators = BlockGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.generators = BlockGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		const climateWavelengths = settings.getChild("climateWavelengths");
 		self.climateWavelengths[0] = climateWavelengths.get(f32, "hot_cold", 2400);
@@ -109,27 +107,6 @@ pub const TerrainGenerationProfile = struct {
 		self.climateWavelengths[4] = climateWavelengths.get(f32, "mountain", 500);
 
 		return self;
-	}
-
-	pub fn deinit(self: TerrainGenerationProfile) void {
-		self.mapFragmentGenerator.deinit();
-		self.climateGenerator.deinit();
-		for(self.caveBiomeGenerators) |generator| {
-			generator.deinit();
-		}
-		main.globalAllocator.free(self.caveBiomeGenerators);
-		for(self.caveGenerators) |generator| {
-			generator.deinit();
-		}
-		main.globalAllocator.free(self.caveGenerators);
-		for(self.structureMapGenerators) |generator| {
-			generator.deinit();
-		}
-		main.globalAllocator.free(self.structureMapGenerators);
-		for(self.generators) |generator| {
-			generator.deinit();
-		}
-		main.globalAllocator.free(self.generators);
 	}
 };
 
