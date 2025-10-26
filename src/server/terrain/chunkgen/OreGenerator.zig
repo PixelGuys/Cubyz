@@ -27,8 +27,6 @@ pub fn init(parameters: ZonElement) void {
 	ores = main.blocks.ores.items;
 }
 
-pub fn deinit() void {}
-
 // Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	_ = caveMap;

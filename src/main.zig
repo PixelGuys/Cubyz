@@ -46,9 +46,9 @@ const Vec3d = vec.Vec3d;
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
-var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
-var handled_gpa = heap.ErrorHandlingAllocator.init(global_gpa.allocator());
-pub const globalAllocator: heap.NeverFailingAllocator = handled_gpa.allocator();
+pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
+pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
+pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 
 pub fn initThreadLocals() void {
@@ -490,9 +490,7 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 }
 
 pub fn main() void { // MARK: main()
-	defer if(global_gpa.deinit() == .leak) {
-		std.log.err("Memory leak", .{});
-	};
+	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
@@ -556,11 +554,7 @@ pub fn main() void { // MARK: main()
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
-	tag.init();
-	defer tag.deinit();
-
 	assets.init();
-	defer assets.deinit();
 
 	blocks.meshes.init();
 	defer blocks.meshes.deinit();
