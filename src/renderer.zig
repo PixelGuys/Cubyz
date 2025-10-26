@@ -144,13 +144,9 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 		// TODO: Handle colors and sun position in the world.
 		var ambient: Vec3f = undefined;
 
-		var ambientMinimumBlueLight: f32 = 0.0;
-		if(settings.ambientMinimumBlueLight) |ambLight| {
-			ambientMinimumBlueLight = @as(f32, @floatFromInt(ambLight))/255.0;
-		}
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
-		ambient[2] = @max(ambientMinimumBlueLight, world.ambientLight);
+		ambient[2] = @max(@as(f32, @floatFromInt(settings.ambientMinimumBlueLight))/255.0, world.ambientLight);
 
 		itemdrop.ItemDisplayManager.update(deltaTime);
 		renderWorld(world, ambient, game.fog.skyColor, playerPosition);

@@ -61,7 +61,7 @@ fn ambientMinimumBlueLightCallback(newValue: f32) void {
 }
 fn ambientMinimumBlueLightFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	const cap: u8 = @intFromFloat(value);
-	return std.fmt.allocPrint(allocator.allocator, "#8888ffBlue#ffffff light: {d}", .{cap}) catch unreachable;
+	return std.fmt.allocPrint(allocator.allocator, "#8888ffBlue#fffffflight: {d}", .{cap}) catch unreachable;
 }
 
 fn highestLodCallback(newValue: u16) void {
@@ -128,7 +128,7 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 154), &fpsCapCallback, &fpsCapFormatter));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
-	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 255.5, @floatFromInt(settings.ambientMinimumBlueLight orelse 100), &ambientMinimumBlueLightCallback, &ambientMinimumBlueLightFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 255.5, @floatFromInt(settings.ambientMinimumBlueLight), &ambientMinimumBlueLightCallback, &ambientMinimumBlueLightFormatter));
 	if(main.game.world == null) {
 		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffHighest LOD: ", "{s}", &lodValues, @min(settings.highestLod, settings.highestSupportedLod), &highestLodCallback));
 	}
