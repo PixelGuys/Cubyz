@@ -77,34 +77,19 @@ fn createWorld(_: usize) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 
-	var num: usize = 1;
-	while(true) {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
-		defer main.stackAllocator.free(path);
-		if(!main.files.cubyzDir().hasDir(path)) break;
-		num += 1;
+	const headerTexts: [3][]const u8 = .{"Page 1", "Page 2", "Page 3"};
+	const page = 1;
+	{
+		const leftArrow = Button.initText(.{16, 0}, 24, "<", .{.callback = null});
+		const label = Label.init(.{0, 0}, 256 - 64, headerTexts[page], .center);
+		const rightArrow = Button.initText(.{16, 0}, 24, ">", .{.callback = null});
+		const header = HorizontalList.init();
+		header.add(leftArrow);
+		header.add(label);
+		header.add(rightArrow);
+		header.finish(.{0, 0}, .center);
+		list.add(header);
 	}
-	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
-	defer main.stackAllocator.free(name);
-	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
-	list.add(nameInput);
-
-	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
-	list.add(gamemodeInput);
-
-	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
-
-	if(!build_options.isTaggedRelease) {
-		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
-	}
-
-	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .left);
-	seedInput = TextInput.init(.{0, 0}, 128 - 48, 22, "", .{.callback = &createWorld}, .{});
-	const seedRow = HorizontalList.init();
-	seedRow.add(seedLabel);
-	seedRow.add(seedInput);
-	seedRow.finish(.{0, 0}, .center);
-	list.add(seedRow);
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 
