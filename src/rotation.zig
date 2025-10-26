@@ -92,7 +92,6 @@ pub const RotationMode = struct { // MARK: RotationMode
 				}
 			}
 			if(minimum != null) {
-
 				return .{
 					.distance = minimum.?,
 					.min = min,
