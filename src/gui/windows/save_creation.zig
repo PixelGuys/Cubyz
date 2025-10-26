@@ -34,6 +34,21 @@ var allowCheats: bool = true;
 
 var testingMode: bool = false;
 
+var needsUpdate: bool = false;
+
+var page: usize = 0;
+const numPages: usize = 3;
+
+fn prevPage(_: usize) void {
+	page = (page + numPages - 1) % numPages;
+	needsUpdate = true;
+}
+
+fn nextPage(_: usize) void {
+	page = (page + 1) % numPages;
+	needsUpdate = true;
+}
+
 fn gamemodeCallback(_: usize) void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(gamemode));
@@ -75,14 +90,13 @@ fn createWorld(_: usize) void {
 }
 
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
+	const list = VerticalList.init(.{padding, 16 + padding}, 500, 8);
 
-	const headerTexts: [3][]const u8 = .{"Page 1", "Page 2", "Page 3"};
-	const page = 1;
+	const headerTexts: [numPages][]const u8 = .{"Page 1", "Page 2", "Page 3"};
 	{
-		const leftArrow = Button.initText(.{16, 0}, 24, "<", .{.callback = null});
-		const label = Label.init(.{0, 0}, 256 - 64, headerTexts[page], .center);
-		const rightArrow = Button.initText(.{16, 0}, 24, ">", .{.callback = null});
+		const leftArrow = Button.initText(.{16, 0}, 24, "<", .{.callback = &prevPage});
+		const label = Label.init(.{0, 0}, 256 - 48, headerTexts[page], .center);
+		const rightArrow = Button.initText(.{16, 0}, 24, ">", .{.callback = &nextPage});
 		const header = HorizontalList.init();
 		header.add(leftArrow);
 		header.add(label);
@@ -90,6 +104,23 @@ pub fn onOpen() void {
 		header.finish(.{0, 0}, .center);
 		list.add(header);
 	}
+
+	const submenu = VerticalList.init(.{0, 0}, 384, 8);
+	switch (page) {
+		0 => {
+		submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the first page", .center));
+		},
+		1 => {
+		submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
+		},
+		2 => {
+		submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the third page", .center));
+		},
+		else => {
+			unreachable; 
+		}
+	}
+	list.add(submenu);
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 
@@ -102,5 +133,15 @@ pub fn onOpen() void {
 pub fn onClose() void {
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
+	}
+}
+
+pub fn render() void {
+	if(needsUpdate) {
+		needsUpdate = false;
+		const oldScroll = window.rootComponent.?.verticalList.children.items[1].verticalList.scrollBar.currentState;
+		onClose();
+		onOpen();
+		window.rootComponent.?.verticalList.children.items[1].verticalList.scrollBar.currentState = oldScroll;
 	}
 }
