@@ -146,7 +146,7 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
-		ambient[2] = @max(@as(f32, @floatFromInt(settings.ambientMinimumBlueLight))/255.0, world.ambientLight);
+		ambient[2] = @max(@as(f32, @floatFromInt(settings.ambientMinimumMoonLight))/255.0, world.ambientLight);
 
 		itemdrop.ItemDisplayManager.update(deltaTime);
 		renderWorld(world, ambient, game.fog.skyColor, playerPosition);

@@ -67,7 +67,7 @@ pub var developerGPUInfiniteLoopDetection: bool = false;
 
 pub var controllerAxisDeadzone: f32 = 0.0;
 
-pub var ambientMinimumBlueLight: u8 = 100;
+pub var ambientMinimumMoonLight: u8 = 100;
 
 const settingsFile = if(builtin.mode == .Debug) "debug_settings.zig.zon" else "settings.zig.zon";
 
