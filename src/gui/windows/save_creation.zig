@@ -48,11 +48,9 @@ fn testingModeCallback(enabled: bool) void {
 }
 
 fn getWorldSeed(seedStr: []const u8) u64 {
-	if(seedStr.len == 0)
-	{
+	if(seedStr.len == 0) {
 		return std.crypto.random.int(u64);
-	} else
-	{
+	} else {
 		return std.fmt.parseInt(u64, seedStr, 0) catch {
 			return std.hash.Wyhash.hash(0, seedStr);
 		};
