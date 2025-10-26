@@ -11,11 +11,14 @@ pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 pub const allocators = struct { // MARK: allocators
 	pub var globalGpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
 	pub var handledGpa = ErrorHandlingAllocator.init(globalGpa.allocator());
+	pub var globalArenaAllocator: NeverFailingArenaAllocator = .init(handledGpa.allocator());
 	pub var worldArenaAllocator: NeverFailingArenaAllocator = undefined;
 	var worldArenaOpenCount: usize = 0;
 	var worldArenaMutex: std.Thread.Mutex = .{};
 
 	pub fn deinit() void {
+		globalArenaAllocator.deinit();
+		globalArenaAllocator = undefined;
 		if(globalGpa.deinit() == .leak) {
 			std.log.err("Memory leak", .{});
 		}
