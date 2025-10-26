@@ -481,6 +481,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
+	main.Tag.initTags();
+
 	const worldArena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(worldArena);
 
