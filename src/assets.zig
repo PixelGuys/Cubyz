@@ -322,7 +322,6 @@ fn createAssetStringID(
 
 pub fn init() void {
 	biomes_zig.init();
-	blocks_zig.init();
 
 	commonAssetArena = main.globalAllocator.createArena();
 
@@ -687,5 +686,4 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 pub fn deinit() void {
 	main.globalAllocator.destroyArena(commonAssetArena);
 	biomes_zig.deinit();
-	blocks_zig.deinit();
 }
