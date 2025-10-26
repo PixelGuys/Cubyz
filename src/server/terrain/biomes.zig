@@ -63,7 +63,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			}
 		}.hash);
 		self.generationMode = Generator.generationMode;
-		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
+		modelRegistry.put(main.globalArena.allocator, Generator.id, self) catch unreachable;
 	}
 
 	fn getHash(self: SimpleStructureModel) u64 {
@@ -630,10 +630,6 @@ pub fn reset() void {
 	biomesById = .{};
 	biomesByIndex = .{};
 	byTypeBiomes = undefined;
-}
-
-pub fn deinit() void {
-	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {

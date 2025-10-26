@@ -15,7 +15,6 @@ const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 const files = main.files;
 
-var commonAssetArena: NeverFailingAllocator = undefined;
 var common: Assets = undefined;
 
 pub const Assets = struct {
@@ -323,10 +322,8 @@ fn createAssetStringID(
 pub fn init() void {
 	biomes_zig.init();
 
-	commonAssetArena = main.globalAllocator.createArena();
-
 	common = .init();
-	common.read(commonAssetArena, main.files.cwd(), "assets/");
+	common.read(main.globalArena, main.files.cwd(), "assets/");
 	common.log(.common);
 }
 
@@ -681,9 +678,4 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			main.utils.file_monitor.removePath(path);
 		}
 	}
-}
-
-pub fn deinit() void {
-	main.globalAllocator.destroyArena(commonAssetArena);
-	biomes_zig.deinit();
 }

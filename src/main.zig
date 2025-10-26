@@ -555,7 +555,6 @@ pub fn main() void { // MARK: main()
 	defer itemdrop.ItemDropRenderer.deinit();
 
 	assets.init();
-	defer assets.deinit();
 
 	blocks.meshes.init();
 	defer blocks.meshes.deinit();

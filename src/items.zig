@@ -1076,8 +1076,8 @@ var toolTypeList: ListUnmanaged(ToolType) = .{};
 var toolTypeIdToIndex: std.StringHashMapUnmanaged(ToolTypeIndex) = .{};
 
 var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};
-var modifiers: std.StringHashMap(*const Modifier.VTable) = undefined;
-var modifierRestrictions: std.StringHashMap(*const ModifierRestriction.VTable) = undefined;
+var modifiers: std.StringHashMapUnmanaged(*const Modifier.VTable) = .{};
+var modifierRestrictions: std.StringHashMapUnmanaged(*const ModifierRestriction.VTable) = .{};
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
@@ -1104,10 +1104,9 @@ pub fn globalInit() void {
 
 	recipeList = .init(main.worldArena);
 	itemListSize = 0;
-	modifiers = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(modifierList).@"struct".decls) |decl| {
 		const ModifierStruct = @field(modifierList, decl.name);
-		modifiers.put(decl.name, &.{
+		modifiers.put(main.globalArena.allocator, decl.name, &.{
 			.changeToolParameters = @ptrCast(&ModifierStruct.changeToolParameters),
 			.changeBlockDamage = @ptrCast(&ModifierStruct.changeBlockDamage),
 			.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
@@ -1116,10 +1115,9 @@ pub fn globalInit() void {
 			.priority = ModifierStruct.priority,
 		}) catch unreachable;
 	}
-	modifierRestrictions = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
 		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
-		modifierRestrictions.put(decl.name, &.{
+		modifierRestrictions.put(main.globalArena.allocator, decl.name, &.{
 			.satisfied = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
 			.loadFromZon = comptime main.utils.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
 			.printTooltip = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
@@ -1281,7 +1279,5 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
-	modifiers.deinit();
-	modifierRestrictions.deinit();
 	Inventory.Sync.ClientSide.deinit();
 }

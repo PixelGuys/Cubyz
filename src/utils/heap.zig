@@ -17,6 +17,7 @@ pub const allocators = struct { // MARK: allocators
 	var worldArenaMutex: std.Thread.Mutex = .{};
 
 	pub fn deinit() void {
+		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.arena.queryCapacity() >> 20});
 		globalArenaAllocator.deinit();
 		globalArenaAllocator = undefined;
 		if(globalGpa.deinit() == .leak) {
@@ -39,6 +40,7 @@ pub const allocators = struct { // MARK: allocators
 		defer worldArenaMutex.unlock();
 		worldArenaOpenCount -= 1;
 		if(worldArenaOpenCount == 0) {
+			std.log.info("Clearing world arena with {} MiB", .{worldArenaAllocator.arena.queryCapacity() >> 20});
 			worldArenaAllocator.deinit();
 			worldArenaAllocator = undefined;
 		}
