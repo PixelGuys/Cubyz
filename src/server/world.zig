@@ -30,6 +30,7 @@ pub const WorldSettings = struct {
 	gamemode: Gamemode = .creative,
 	allowCheats: bool = false,
 	testingMode: bool = false,
+	seed: u64 = 0,
 };
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
 	// Remove illegal ASCII characters:
@@ -93,8 +94,9 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void
 		defer worldInfo.deinit(main.stackAllocator);
 
 		worldInfo.put("name", worldName);
-		worldInfo.put("version", main.server.world_zig.worldDataVersion);
+		worldInfo.put("version", worldDataVersion);
 		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
+		worldInfo.put("seed", worldSettings.seed);
 
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
 	}
@@ -115,8 +117,6 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void
 		defer main.stackAllocator.free(assetsPath);
 		try main.files.cubyzDir().makePath(assetsPath);
 	}
-	// TODO: Make the seed configurable
-
 }
 
 pub const EntityChunk = struct {
