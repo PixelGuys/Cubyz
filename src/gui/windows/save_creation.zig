@@ -24,7 +24,8 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var textInput: *TextInput = undefined;
+var nameInput: *TextInput = undefined;
+var seedInput: *TextInput = undefined;
 
 var gamemode: main.game.Gamemode = .creative;
 var gamemodeInput: *Button = undefined;
@@ -82,7 +83,9 @@ fn findValidFolderName(allocator: NeverFailingAllocator, name: []const u8) []con
 }
 
 fn flawedCreateWorld() !void {
-	const worldName = textInput.currentString.items;
+	const worldName = nameInput.currentString.items;
+	const worldSeedStr = seedInput.currentString.items;
+	const worldSeed = if(worldSeedStr.len == 0) std.crypto.random.int(u64) else try std.fmt.parseInt(u64, worldSeedStr, 0);
 	const worldPath = findValidFolderName(main.stackAllocator, worldName);
 	defer main.stackAllocator.free(worldPath);
 	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
@@ -117,6 +120,7 @@ fn flawedCreateWorld() !void {
 		worldInfo.put("name", worldName);
 		worldInfo.put("version", main.server.world_zig.worldDataVersion);
 		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
+		worldInfo.put("seed", worldSeed);
 
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
 	}
@@ -155,8 +159,8 @@ pub fn onOpen() void {
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
 	defer main.stackAllocator.free(name);
-	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
-	list.add(textInput);
+	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
+	list.add(nameInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
 	list.add(gamemodeInput);
@@ -166,6 +170,14 @@ pub fn onOpen() void {
 	if(!build_options.isTaggedRelease) {
 		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
 	}
+
+	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .center);
+	seedInput = TextInput.init(.{0, 0}, 128 - 48, 22, "", .{.callback = &createWorld}, .{});
+	const seedRow = HorizontalList.init();
+	seedRow.add(seedLabel);
+	seedRow.add(seedInput);
+	seedRow.finish(.{0, 0}, .center);
+	list.add(seedRow);
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 
