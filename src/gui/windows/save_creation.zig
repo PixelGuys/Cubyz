@@ -141,7 +141,6 @@ fn flawedCreateWorld() !void {
 		defer main.stackAllocator.free(assetsPath);
 		try main.files.cubyzDir().makePath(assetsPath);
 	}
-	// TODO: Make the seed configurable
 	gui.closeWindowFromRef(&window);
 	gui.windowlist.save_selection.needsUpdate = true;
 	gui.openWindow("save_selection");
