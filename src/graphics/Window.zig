@@ -11,7 +11,8 @@ const vulkan = @import("vulkan.zig");
 
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
-	@cInclude("glad/vulkan.h");
+	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
+	@cInclude(if(builtin.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
 	@cInclude("GLFW/glfw3.h");
 });
 
@@ -670,6 +671,12 @@ pub fn setClipboardString(string: []const u8) void {
 
 pub fn init() void { // MARK: init()
 	_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
+
+	// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
+	// and GLFW's default attempt to load it dynamically would fail. Instead, tell GLFW where it can find the loader functions directly.
+	if(builtin.os.tag == .macos) {
+		c.glfwInitVulkanLoader(c.vkGetInstanceProcAddr);
+	}
 
 	if(c.glfwInit() == 0) {
 		@panic("Failed to initialize GLFW");

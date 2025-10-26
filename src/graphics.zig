@@ -1,6 +1,7 @@
 /// A collection of things that should make dealing with opengl easier.
 /// Also contains some basic 2d drawing stuff.
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const hbft = @cImport({
 	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
@@ -32,7 +33,8 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
-	@cInclude("glad/vulkan.h");
+	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
+	@cInclude(if(builtin.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
 });
 
 pub const stb_image = @cImport({

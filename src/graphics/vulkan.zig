@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const c = main.Window.c;
@@ -132,18 +133,25 @@ var presentQueue: c.VkQueue = undefined;
 // MARK: init
 
 pub fn init(window: ?*c.GLFWwindow) !void {
-	if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	// NOTE(blackedout): Again, glad currenctly not used on macOS
+	if(builtin.os.tag != .macos) {
+		if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	createInstance();
 	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
 	try pickPhysicalDevice();
-	if(c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	if(builtin.os.tag != .macos) {
+		if(c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	createLogicalDevice();
-	if(c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	if(builtin.os.tag != .macos) {
+		if(c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	SwapChain.init();
 }
@@ -195,21 +203,51 @@ pub fn createInstance() void {
 		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
 	}
 
+	// NOTE(blackedout): This array stuff is really ugly but I'm a zig noob :(
+	var extensions = glfwExtensions;
+	var extensionsArray: ?[][*c]const u8 = null;
+	var extensionCount = glfwExtensionCount;
+	var createFlags: c.VkInstanceCreateFlags = 0;
+	if(builtin.os.tag == .macos) {
+		// NOTE(blackedout): Null terminator not included in count but when allocating
+		extensionCount = glfwExtensionCount + 2;
+		var extensionsArrayLocal = main.stackAllocator.alloc([*c]const u8, glfwExtensionCount + 3);
+		
+		for (0..glfwExtensionCount) |i| {
+			extensionsArrayLocal[i] = glfwExtensions[i];
+		}
+		extensionsArrayLocal[glfwExtensionCount + 0] = c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
+		extensionsArrayLocal[glfwExtensionCount + 1] = c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
+		extensionsArrayLocal[glfwExtensionCount + 2] = 0;
+		extensions = extensionsArrayLocal.ptr;
+		extensionsArray = extensionsArrayLocal;
+
+		createFlags |= c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+	}
+
 	const createInfo = c.VkInstanceCreateInfo{
 		.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.flags = createFlags,
 		.pApplicationInfo = &appInfo,
-		.enabledExtensionCount = glfwExtensionCount,
-		.ppEnabledExtensionNames = glfwExtensions,
+		.enabledExtensionCount = extensionCount,
+		.ppEnabledExtensionNames = extensions,
 		.ppEnabledLayerNames = validationLayers.ptr,
 		.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
 	};
 	checkResult(c.vkCreateInstance(&createInfo, null, &instance));
+
+	// NOTE(blackedout): Defer would be better but how to defer one scope up? I don't know
+	if(builtin.os.tag == .macos) {
+		main.stackAllocator.free(extensionsArray.?);
+	}
 }
 
 // MARK: Physical Device
 
 const deviceExtensions = [_][*:0]const u8{
 	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	// NOTE(blackedout): Should use c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
+	if(builtin.os.tag == .macos) "VK_KHR_portability_subset"
 };
 
 const deviceFeatures: c.VkPhysicalDeviceFeatures = .{

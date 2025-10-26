@@ -24,4 +24,10 @@ fi
 echo "Cubyz successfully built!"
 echo "Launching Cubyz."
 
+# NOTE(blackedout): Tell the Vulkan loader where it can find the MoltenVK driver manifest file.
+# Documented at https://vulkan.lunarg.com/doc/view/latest/mac/LoaderDriverInterface.html (2025-10-26)
+if [ "$(uname)" = "Darwin" ]; then
+	export VK_DRIVER_FILES=./zig-out/bin/MoltenVK_icd.json
+fi
+
 ./zig-out/bin/Cubyz
