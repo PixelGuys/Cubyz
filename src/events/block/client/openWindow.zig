@@ -12,7 +12,7 @@ pub fn load(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
 		.windowName = main.worldArena.dupe(u8, zon.get(?[]const u8, "name", null) orelse {
-			std.log.err("openWindow event is missing \"name\" field.", .{});
+			std.log.err("Missing field \"name\" for openWindow event.", .{});
 			return null;
 		}),
 	};

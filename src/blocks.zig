@@ -22,6 +22,7 @@ const Entity = main.server.Entity;
 const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
 const ClientBlockEvent = main.events.ClientBlockEvent;
+const ServerBlockEvent = main.events.ServerBlockEvent;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
@@ -83,7 +84,7 @@ var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
-var _tickEvent: [maxBlockCount]?TickEvent = undefined;
+var _tickEvent: [maxBlockCount]ServerBlockEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
@@ -129,7 +130,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
+	_tickEvent[size] = blk: {break :blk ServerBlockEvent.init(zon.getChildOrNull("tickEvent") orelse break :blk .ignored) orelse {
+		std.log.err("Failed to load tick event for block {s}", .{id});
+		break :blk .ignored;
+	};};
 
 	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
 		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
@@ -421,7 +425,7 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub inline fn tickEvent(self: Block) ?TickEvent {
+	pub inline fn tickEvent(self: Block) ServerBlockEvent {
 		return _tickEvent[self.typ];
 	}
 
@@ -435,44 +439,6 @@ pub const Block = packed struct { // MARK: Block
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
-	}
-};
-
-// MARK: Tick
-pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
-pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
-pub const TickFunctions = struct {
-	pub fn replaceWithCobble(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
-		const cobblestone = parseBlock("cubyz:cobblestone");
-
-		const wx = _chunk.super.pos.wx + x;
-		const wy = _chunk.super.pos.wy + y;
-		const wz = _chunk.super.pos.wz + z;
-
-		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
-	}
-};
-
-pub const TickEvent = struct {
-	function: *const TickFunction,
-	chance: f32,
-
-	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
-		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
-
-		const function = tickFunctions.getFunctionPointer(functionName) orelse {
-			std.log.err("Could not find TickFunction {s}.", .{functionName});
-			return null;
-		};
-
-		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
-	}
-
-	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
-			self.function(block, _chunk, x, y, z);
-		}
 	}
 };
 
