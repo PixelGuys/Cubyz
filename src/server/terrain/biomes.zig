@@ -290,6 +290,7 @@ pub const Biome = struct { // MARK: Biome
 	mountains: f32,
 	keepOriginalTerrain: f32,
 	caves: f32,
+	zWeight: f32,
 	caveRadiusFactor: f32,
 	crystals: u32,
 	/// How much of the surface structure should be eroded depending on the slope.
@@ -341,6 +342,7 @@ pub const Biome = struct { // MARK: Biome
 			.interpolation = std.meta.stringToEnum(Interpolation, zon.get([]const u8, "interpolation", "square")) orelse .square,
 			.interpolationWeight = @max(zon.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
 			.caves = zon.get(f32, "caves", -0.375),
+			.zWeight = zon.get(f32, "zWeight", 0.0),
 			.caveRadiusFactor = @max(-2, @min(2, zon.get(f32, "caveRadiusFactor", 1))),
 			.crystals = zon.get(u32, "crystals", 0),
 			.soilCreep = zon.get(f32, "soilCreep", 0.5),
