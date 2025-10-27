@@ -327,7 +327,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	fn internalRemove(self: *ItemDropManager, i: u16) void {
 		self.size -= 1;
 		const ii = self.list.items(.reverseIndex)[i];
-		self.list.items(.itemStack)[i].clear();
+		self.list.items(.itemStack)[i].deinit();
+		self.list.items(.itemStack)[i] = .{};
 		self.indices[ii] = self.indices[self.size];
 		self.list.items(.reverseIndex)[self.indices[self.size]] = ii;
 	}
@@ -490,8 +491,8 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	pub fn deinit(self: *ClientItemDropManager) void {
 		std.debug.assert(instance != null); // Double deinit.
-		instance = null;
 		self.super.deinit();
+		instance = null;
 	}
 
 	pub fn readPosition(self: *ClientItemDropManager, time: i16, itemData: []ItemDropNetworkData) void {

@@ -54,7 +54,7 @@ pub const ClimateMapFragment = struct {
 		};
 	}
 
-	fn privateDeinit(self: *ClimateMapFragment, _: usize) void {
+	fn privateDeinit(self: *ClimateMapFragment) void {
 		memoryPool.destroy(self);
 	}
 
@@ -70,7 +70,6 @@ pub const ClimateMapFragment = struct {
 /// Generates the climate(aka Biome) map, which is a rough representation of the world.
 pub const ClimateMapGenerator = struct {
 	init: *const fn(parameters: ZonElement) void,
-	deinit: *const fn() void,
 	generateMapFragment: *const fn(fragment: *ClimateMapFragment, seed: u64) void,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(ClimateMapGenerator) = .{};
@@ -78,7 +77,6 @@ pub const ClimateMapGenerator = struct {
 	pub fn registerGenerator(comptime Generator: type) void {
 		const self = ClimateMapGenerator{
 			.init = &Generator.init,
-			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,
 		};
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;

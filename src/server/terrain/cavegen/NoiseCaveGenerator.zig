@@ -24,8 +24,6 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {}
-
 const scale = 64;
 const interpolatedPart = 4;
 
