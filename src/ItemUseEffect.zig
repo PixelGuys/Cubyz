@@ -30,7 +30,7 @@ const ItemUseEffectInner = blk: {
 			.value = i,
 		};
 	}
-	const _enum = @Type(.{
+	const enum_ = @Type(.{
 		.@"enum" = .{
 			.fields = &enumFields,
 			.decls = &.{},
@@ -43,7 +43,7 @@ const ItemUseEffectInner = blk: {
 			.fields = &unionFields,
 			.decls = &.{},
 			.layout = .auto,
-			.tag_type = _enum,
+			.tag_type = enum_,
 		},
 	});
 };
