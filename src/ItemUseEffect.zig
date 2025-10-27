@@ -49,7 +49,9 @@ const ItemUseEffectInner = blk: {
 };
 
 inner: ItemUseEffectInner,
-pub fn createByID(allocator: main.heap.NeverFailingAllocator, id: []const u8, zon: ZonElement) ?ItemUseEffect {
+
+pub fn parse(allocator: main.heap.NeverFailingAllocator, zon: ZonElement) ?ItemUseEffect {
+	const id = zon.get(?[]const u8, "id", null) orelse return null;
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		if(std.mem.eql(u8, decl.name, id)) {
 			const value = allocator.create(@field(list, decl.name));
@@ -58,11 +60,6 @@ pub fn createByID(allocator: main.heap.NeverFailingAllocator, id: []const u8, zo
 		}
 	}
 	return null;
-}
-
-pub fn parse(allocator: main.heap.NeverFailingAllocator, zon: ZonElement) ?ItemUseEffect {
-	const id = zon.get(?[]const u8, "id", null) orelse return null;
-	return createByID(allocator, id, zon);
 }
 
 pub fn apply(self: *const ItemUseEffect, world: *main.game.World) void {
