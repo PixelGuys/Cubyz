@@ -271,6 +271,7 @@ pub const GamepadAxis = struct {
 pub const Key = struct { // MARK: Key
 	name: []const u8,
 	pressed: bool = false,
+	isToggling: IsToggling = .never,
 	modsOnPress: Modifiers = .{},
 	value: f32 = 0.0,
 	key: c_int = c.GLFW_KEY_UNKNOWN,
@@ -284,6 +285,12 @@ pub const Key = struct { // MARK: Key
 	notifyRequirement: Requirement = .always,
 	grabbedOnPress: bool = false,
 	requiredModifiers: Modifiers = .{},
+
+	pub const IsToggling = enum {
+		never,
+		no,
+		yes,
+	};
 
 	pub const Modifiers = packed struct(u6) {
 		shift: bool = false,
@@ -428,6 +435,12 @@ pub const Key = struct { // MARK: Key
 	}
 
 	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
+		if(self.isToggling == .yes) {
+			if(newPressed) {
+				self.pressed = !self.pressed;
+			}
+			return;
+		}
 		if(newPressed != self.pressed) {
 			self.pressed = newPressed;
 			self.modsOnPress = mods;

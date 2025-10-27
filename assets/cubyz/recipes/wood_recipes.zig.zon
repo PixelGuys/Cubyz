@@ -1,239 +1,46 @@
 .{
 	.{
-		.inputs = .{"4 cubyz:birch_planks"},
+		.inputs = .{"4 {mod}:{type}_planks"},
 		.output = "cubyz:workbench",
 	},
 	.{
-		.inputs = .{"4 cubyz:baobab_planks"},
-		.output = "cubyz:workbench",
+		.inputs = .{"cubyz:log/{type}"},
+		.output = "4 cubyz:{type}_planks",
 	},
 	.{
-		.inputs = .{"4 cubyz:oak_planks"},
-		.output = "cubyz:workbench",
+		.inputs = .{"cubyz:log/{type}"},
+		.output = "2 cubyz:{type}_branch",
 	},
 	.{
-		.inputs = .{"4 cubyz:mahogany_planks"},
-		.output = "cubyz:workbench",
+		.inputs = .{"cubyz:{type}_branch"},
+		.output = "2 cubyz:{type}_planks",
 	},
 	.{
-		.inputs = .{"4 cubyz:pine_planks"},
-		.output = "cubyz:workbench",
+		.inputs = .{"cubyz:{type}_planks"},
+		.output = "2 cubyz:{type}_fence",
 	},
 	.{
-		.inputs = .{"4 cubyz:willow_planks"},
-		.output = "cubyz:workbench",
+		.inputs = .{"cubyz:{type}_planks"},
+		.output = "cubyz:sign/{type}",
 	},
 	.{
-		.inputs = .{"cubyz:log/birch"},
-		.output = "4 cubyz:birch_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/birch"},
-		.output = "2 cubyz:birch_branch",
-	},
-	.{
-		.inputs = .{"cubyz:birch_branch"},
-		.output = "2 cubyz:birch_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/baobab"},
-		.output = "4 cubyz:baobab_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/baobab"},
-		.output = "2 cubyz:baobab_branch",
-	},
-	.{
-		.inputs = .{"cubyz:baobab_branch"},
-		.output = "2 cubyz:baobab_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/oak"},
-		.output = "4 cubyz:oak_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/oak"},
-		.output = "2 cubyz:oak_branch",
-	},
-	.{
-		.inputs = .{"cubyz:oak_branch"},
-		.output = "2 cubyz:oak_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/mahogany"},
-		.output = "4 cubyz:mahogany_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/mahogany"},
-		.output = "2 cubyz:mahogany_branch",
-	},
-	.{
-		.inputs = .{"cubyz:mahogany_branch"},
-		.output = "2 cubyz:mahogany_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/pine"},
-		.output = "4 cubyz:pine_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/pine"},
-		.output = "2 cubyz:pine_branch",
-	},
-	.{
-		.inputs = .{"cubyz:pine_branch"},
-		.output = "2 cubyz:pine_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/willow"},
-		.output = "4 cubyz:willow_planks",
-	},
-	.{
-		.inputs = .{"cubyz:log/willow"},
-		.output = "2 cubyz:willow_branch",
-	},
-	.{
-		.inputs = .{"cubyz:willow_branch"},
-		.output = "2 cubyz:willow_planks",
-	},
-	.{
-		.inputs = .{"cubyz:birch_planks"},
-		.output = "2 cubyz:birch_fence",
-	},
-	.{
-		.inputs = .{"cubyz:baobab_planks"},
-		.output = "2 cubyz:baobab_fence",
-	},
-	.{
-		.inputs = .{"cubyz:oak_planks"},
-		.output = "2 cubyz:oak_fence",
-	},
-	.{
-		.inputs = .{"cubyz:mahogany_planks"},
-		.output = "2 cubyz:mahogany_fence",
-	},
-	.{
-		.inputs = .{"cubyz:pine_planks"},
-		.output = "2 cubyz:pine_fence",
-	},
-	.{
-		.inputs = .{"cubyz:willow_planks"},
-		.output = "2 cubyz:willow_fence",
-	},
-	.{
-		.inputs = .{"cubyz:birch_planks"},
-		.output = "cubyz:sign/birch",
-	},
-	.{
-		.inputs = .{"cubyz:baobab_planks"},
-		.output = "cubyz:sign/baobab",
-	},
-	.{
-		.inputs = .{"cubyz:oak_planks"},
-		.output = "cubyz:sign/oak",
-	},
-	.{
-		.inputs = .{"cubyz:mahogany_planks"},
-		.output = "cubyz:sign/mahogany",
-	},
-	.{
-		.inputs = .{"cubyz:pine_planks"},
-		.output = "cubyz:sign/pine",
-	},
-	.{
-		.inputs = .{"cubyz:willow_planks"},
-		.output = "cubyz:sign/willow",
-	},
-	.{
-		.inputs = .{"4 cubyz:birch_planks"},
-		.output = "cubyz:chest/birch",
-	},
-	.{
-		.inputs = .{"4 cubyz:baobab_planks"},
-		.output = "cubyz:chest/baobab",
-	},
-	.{
-		.inputs = .{"4 cubyz:oak_planks"},
-		.output = "cubyz:chest/oak",
-	},
-	.{
-		.inputs = .{"4 cubyz:mahogany_planks"},
-		.output = "cubyz:chest/mahogany",
-	},
-	.{
-		.inputs = .{"4 cubyz:pine_planks"},
-		.output = "cubyz:chest/pine",
-	},
-	.{
-		.inputs = .{"4 cubyz:willow_planks"},
-		.output = "cubyz:chest/willow",
+		.inputs = .{"4 cubyz:{type}_planks"},
+		.output = "cubyz:chest/{type}",
 	},
 	.{
 		.inputs = .{"cubyz:log/cactus"},
 		.output = "2 cubyz:cactus_arm",
 	},
 	.{
-		.inputs = .{"cubyz:log/bolete"},
-		.output = "2 cubyz:bolete_branch",
-	},
-	.{
-		.inputs = .{"cubyz:log/toadstool"},
-		.output = "2 cubyz:toadstool_branch",
-	},
-	.{
-		.inputs = .{"cubyz:log/glimmergill"},
-		.output = "2 cubyz:glimmergill_branch",
-	},
-	.{
 		.inputs = .{"cubyz:candy_cane/block"},
 		.output = "2 cubyz:candy_cane/branch",
 	},
-
 	.{
-		.inputs = .{"cubyz:birch_planks", "cubyz:coal_ore"},
+		.inputs = .{"{mod}:{type}_planks", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{"cubyz:baobab_planks", "cubyz:coal_ore"},
-		.output = "8 cubyz:torch",
-	},
-	.{
-		.inputs = .{"cubyz:oak_planks", "cubyz:coal_ore"},
-		.output = "8 cubyz:torch",
-	},
-	.{
-		.inputs = .{"cubyz:mahogany_planks", "cubyz:coal_ore"},
-		.output = "8 cubyz:torch",
-	},
-	.{
-		.inputs = .{"cubyz:pine_planks", "cubyz:coal_ore"},
-		.output = "8 cubyz:torch",
-	},
-	.{
-		.inputs = .{"cubyz:willow_planks", "cubyz:coal_ore"},
-		.output = "8 cubyz:torch",
-	},
-	.{
-		.inputs = .{"cubyz:birch_planks", "cubyz:sulfur_ore"},
-		.output = "8 cubyz:sulfur_torch",
-	},
-	.{
-		.inputs = .{"cubyz:baobab_planks", "cubyz:sulfur_ore"},
-		.output = "8 cubyz:sulfur_torch",
-	},
-	.{
-		.inputs = .{"cubyz:oak_planks", "cubyz:sulfur_ore"},
-		.output = "8 cubyz:sulfur_torch",
-	},
-	.{
-		.inputs = .{"cubyz:mahogany_planks", "cubyz:sulfur_ore"},
-		.output = "8 cubyz:sulfur_torch",
-	},
-	.{
-		.inputs = .{"cubyz:pine_planks", "cubyz:sulfur_ore"},
-		.output = "8 cubyz:sulfur_torch",
-	},
-	.{
-		.inputs = .{"cubyz:willow_planks", "cubyz:sulfur_ore"},
+		.inputs = .{"{mod}:{type}_planks", "cubyz:sulfur_ore"},
 		.output = "8 cubyz:sulfur_torch",
 	},
 }
