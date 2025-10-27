@@ -536,6 +536,8 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
+	events.init();
+
 	block_entity.init();
 	defer block_entity.deinit();
 
