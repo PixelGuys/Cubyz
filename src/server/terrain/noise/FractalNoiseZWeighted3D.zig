@@ -16,13 +16,15 @@ voxelShift: u5,
 scale: u31,
 worldSeed: u64,
 
-pub fn generateAligned(allocator: NeverFailingAllocator, wx: i32, wy: i32, wz: i32, voxelSize: u31, width: u31, height: u31, depth: u31, worldSeed: u64, scale: u31, zWeight: f32) Array3D(f32) {
+/// The map should start initialized with the zWeights.
+pub fn generateAligned(wx: i32, wy: i32, wz: i32, voxelSize: u31, worldSeed: u64, scale: u31, map: Array3D(f32)) void {
+	const width = map.width;
+	const height = map.height;
+	const depth = map.depth;
 	std.debug.assert(wx & scale - 1 == 0 and wy & scale - 1 == 0 and wz & scale - 1 == 0); // Alignment;
 	std.debug.assert(width - 1 & scale/voxelSize - 1 == 0 and height - 1 & scale/voxelSize - 1 == 0 and depth - 1 & scale/voxelSize - 1 == 0); // dimensions need to be of the form n*scale + 1 with n ∈ ℕ \ {0}
 	std.debug.assert(width > 1 and height > 1 and depth > 1); // dimensions need to be of the form n*scale + 1 with n ∈ ℕ \ {0}
-	const map = Array3D(f32).init(allocator, width, depth, height);
 
-	const offset = @as(f32, @floatFromInt(scale))*@sqrt(@abs(zWeight*0.25))*std.math.sign(zWeight)*0.5;
 	// Generate the corners:
 	const scaledScale = scale/voxelSize;
 	var x0: u31 = 0;
@@ -32,14 +34,14 @@ pub fn generateAligned(allocator: NeverFailingAllocator, wx: i32, wy: i32, wz: i
 			var z0: u31 = 0;
 			while(z0 < height) : (z0 += scaledScale) {
 				var seed = random.initSeed3D(worldSeed, .{wx +% x0*voxelSize, wy +% y0*voxelSize, wz +% z0*voxelSize});
+				const weight = map.get(x0, y0, z0);
+				const offset = @as(f32, @floatFromInt(scale))*@sqrt(@abs(weight*0.25))*std.math.sign(weight)*0.5;
 				map.ptr(x0, y0, z0).* = (random.nextFloat(&seed) - 0.5)*@as(f32, @floatFromInt(scale)) + offset;
 			}
 		}
 	}
 
-	generateInitializedFractalTerrain(wx, wy, wz, scaledScale, worldSeed, map, voxelSize, zWeight);
-
-	return map;
+	generateInitializedFractalTerrain(wx, wy, wz, scaledScale, worldSeed, map, voxelSize);
 }
 
 fn averageWithWeight(a: f32, b: f32, startingScale: u31, maxResolution: u31, res: u31, weight: f32) f32 {
@@ -49,7 +51,7 @@ fn averageWithWeight(a: f32, b: f32, startingScale: u31, maxResolution: u31, res
 	return a*(1.0 - localWeight) + b*localWeight;
 }
 
-fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u31, worldSeed: u64, bigMap: Array3D(f32), maxResolution: u31, zWeight: f32) void {
+fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u31, worldSeed: u64, bigMap: Array3D(f32), maxResolution: u31) void {
 	// Basically an extension to 3D of the FractalNoise algorithm.
 	var seed: u64 = undefined;
 	var res: u31 = startingScale/2;
@@ -62,6 +64,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 			while(y < bigMap.depth) : (y += 2*res) {
 				var z: u31 = res;
 				while(z + res < bigMap.height) : (z += 2*res) {
+					const zWeight = bigMap.get(x, y, z);
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = averageWithWeight(bigMap.get(x, y, z - res), bigMap.get(x, y, z + res), startingScale, maxResolution, res, zWeight);
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
@@ -101,6 +104,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 			while(y + res < bigMap.depth) : (y += 2*res) {
 				var z: u31 = res;
 				while(z + res < bigMap.height) : (z += 2*res) {
+					const zWeight = bigMap.get(x, y, z);
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z))/4 + averageWithWeight(bigMap.get(x, y, z - res), bigMap.get(x, y, z + res), startingScale, maxResolution, res, zWeight)/2;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
@@ -114,6 +118,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 			while(y < bigMap.depth) : (y += 2*res) {
 				var z: u31 = res;
 				while(z + res < bigMap.height) : (z += 2*res) {
+					const zWeight = bigMap.get(x, y, z);
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z))/4 + averageWithWeight(bigMap.get(x, y, z - res), bigMap.get(x, y, z + res), startingScale, maxResolution, res, zWeight)/2;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
@@ -140,6 +145,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 			while(y + res < bigMap.depth) : (y += 2*res) {
 				var z: u31 = res;
 				while(z + res < bigMap.height) : (z += 2*res) {
+					const zWeight = bigMap.get(x, y, z);
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution +% wx, y*maxResolution +% wy, z*maxResolution +% wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z) + bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z))/6 + averageWithWeight(bigMap.get(x, y, z - res), bigMap.get(x, y, z + res), startingScale, maxResolution, res, zWeight)/3;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
