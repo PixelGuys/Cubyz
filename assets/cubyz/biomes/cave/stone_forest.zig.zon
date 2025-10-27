@@ -5,6 +5,7 @@
 	.maxHeight = -50,
 	.minHeight = -48250,
 	.caves = -0.2,
+	.zWeight = -0.75,
 
 	.music = "cubyz:heart-of-the-beast",
 

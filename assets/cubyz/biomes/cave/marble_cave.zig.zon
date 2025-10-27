@@ -4,6 +4,8 @@
 	.minHeight = -512,
 	.chance = 0.2,
 
+	.zWeight = -0.75,
+
 	.fogDensity = 10,
 
 	.stoneBlock = "cubyz:marble",
