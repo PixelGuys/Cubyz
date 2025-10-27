@@ -4,7 +4,10 @@
 	.minHeight = 600,
 	.maxHeight = 600,
 
-	.interpolation = .smooth,
+	.waterBlock = "cubyz:lava",
+	.waterLevel = 630,
+
+	.interpolation = .none,
 	.chance = 0,
 
 	.music = "cubyz:out_of_breath",
@@ -19,7 +22,6 @@
 	.maxSubBiomeCount = 1,
 
 	.ground_structure = .{
-		"10 to 12 cubyz:lava",
 		"10 to 12 cubyz:magma",
 	},
 	.stoneBlock = "cubyz:basalt",
