@@ -1,9 +1,5 @@
 .{
 	.chance = 0,
-	.properties = .{
-		.wet,
-		.hot,
-	},
 	.minHeightLimit = 7,
 	.minHeight = 30,
 	.maxHeight = 50,

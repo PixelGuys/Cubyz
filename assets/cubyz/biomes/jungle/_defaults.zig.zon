@@ -4,4 +4,8 @@
 	.validPlayerSpawn = true,
 	.smoothBeaches = true,
 	.music = "cubyz:leaves",
+	.properties = .{
+		.wet,
+		.hot,
+	},
 }

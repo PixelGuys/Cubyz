@@ -5,6 +5,7 @@
 		.{.id = "cubyz:tree/mahogany/sapele/ancient/extender/2"},
 		.{.id = "cubyz:tree/mahogany/sapele/ancient/extender/3"},
 	},
+	.rotation = .inherit,
 	.children = .{
 		.white = "cubyz:tree/mahogany/sapele/ancient/top",
 		.green = "cubyz:tree/mahogany/sapele/ancient/branch",
