@@ -212,7 +212,6 @@ pub fn createInstance() void {
 		// NOTE(blackedout): Null terminator not included in count but when allocating
 		extensionCount = glfwExtensionCount + 2;
 		var extensionsArrayLocal = main.stackAllocator.alloc([*c]const u8, glfwExtensionCount + 3);
-		
 		for (0..glfwExtensionCount) |i| {
 			extensionsArrayLocal[i] = glfwExtensions[i];
 		}
