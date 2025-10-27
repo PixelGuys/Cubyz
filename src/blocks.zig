@@ -84,7 +84,7 @@ var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
-var _tickEvent: [maxBlockCount]ServerBlockEvent = undefined;
+var _onTick: [maxBlockCount]ServerBlockEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
@@ -130,8 +130,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_tickEvent[size] = blk: {break :blk ServerBlockEvent.init(zon.getChildOrNull("tickEvent") orelse break :blk .ignored) orelse {
-		std.log.err("Failed to load tick event for block {s}", .{id});
+	_onTick[size] = blk: {break :blk ServerBlockEvent.init(zon.getChildOrNull("onTick") orelse break :blk .ignored) orelse {
+		std.log.err("Failed to load onTick event for block {s}", .{id});
 		break :blk .ignored;
 	};};
 
@@ -425,8 +425,8 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub inline fn tickEvent(self: Block) ServerBlockEvent {
-		return _tickEvent[self.typ];
+	pub inline fn onTick(self: Block) ServerBlockEvent {
+		return _onTick[self.typ];
 	}
 
 	pub inline fn touchFunction(self: Block) ?*const TouchFunction {

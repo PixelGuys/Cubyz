@@ -1035,7 +1035,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			_chunk.mutex.lock();
 			const block = _chunk.getBlock(x, y, z);
 			_chunk.mutex.unlock();
-			_ = block.tickEvent().run(.{.block = block, .chunk = _chunk, .x = x, .y = y, .z = z});
+			_ = block.onTick().run(.{.block = block, .chunk = _chunk, .x = x, .y = y, .z = z});
 		}
 	}
 
