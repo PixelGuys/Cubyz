@@ -92,7 +92,26 @@ fn createWorld(_: usize) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 500, 8);
 
-	const headerTexts: [numPages][]const u8 = .{"Page 1", "Page 2", "Page 3"};
+	{
+		const label = Label.init(.{0, 0}, 96, "World Name:", .center);
+		var num: usize = 1;
+		while(true) {
+			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			if(!main.files.cubyzDir().hasDir(path)) break;
+			num += 1;
+		}
+		const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
+		defer main.stackAllocator.free(name);
+		const textInput = TextInput.init(.{0, 0}, 256 - 96, 22, "", .{.callback = null}, .{});
+		const nameRow = HorizontalList.init();
+		nameRow.add(label);
+		nameRow.add(textInput);
+		nameRow.finish(.{0, 0}, .center);
+		list.add(nameRow);
+	}
+
+	const headerTexts: [numPages][]const u8 = .{"Generation Settings", "Game Rules", "Addons"};
 	{
 		const leftArrow = Button.initText(.{16, 0}, 24, "<", .{.callback = &prevPage});
 		const label = Label.init(.{0, 0}, 256 - 48, headerTexts[page], .center);
@@ -108,13 +127,13 @@ pub fn onOpen() void {
 	const submenu = VerticalList.init(.{0, 0}, 384, 8);
 	switch (page) {
 		0 => {
-		submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the first page", .center));
+			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the first page", .center));
 		},
 		1 => {
-		submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
+			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
 		},
 		2 => {
-		submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the third page", .center));
+			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the third page", .center));
 		},
 		else => {
 			unreachable; 
@@ -139,9 +158,12 @@ pub fn onClose() void {
 pub fn render() void {
 	if(needsUpdate) {
 		needsUpdate = false;
-		const oldScroll = window.rootComponent.?.verticalList.children.items[1].verticalList.scrollBar.currentState;
+		var oldName = window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.currentString.items;
+		oldName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{oldName}) catch unreachable;
+		const oldScroll = window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState;
 		onClose();
 		onOpen();
-		window.rootComponent.?.verticalList.children.items[1].verticalList.scrollBar.currentState = oldScroll;
+		window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.setString(oldName);
+		window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState = oldScroll;
 	}
 }
