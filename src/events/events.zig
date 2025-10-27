@@ -5,12 +5,12 @@ const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-pub const BlockEvent = GenericEvent(struct {block: Block, pos: Vec3i}, @import("block/_list.zig"));
+pub const ClientBlockEvent = GenericEvent(struct {block: Block, pos: Vec3i}, @import("block/client/_list.zig"));
 
 pub const EventResult = enum {handled, ignored};
 
 pub fn init() void {
-	BlockEvent.globalInit();
+	ClientBlockEvent.globalInit();
 }
 
 fn GenericEvent(_Params: type, list: type) type {

@@ -19,7 +19,7 @@ pub fn load(zon: ZonElement) ?*@This() {
 	return result;
 }
 
-pub fn run(self: *@This(), _: main.events.BlockEvent.Params) main.events.EventResult {
+pub fn run(self: *@This(), _: main.events.ClientBlockEvent.Params) main.events.EventResult {
 	main.gui.openWindow(self.windowName);
 	main.Window.setMouseGrabbed(false);
 	return .handled;
