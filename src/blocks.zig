@@ -23,6 +23,7 @@ const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
 const ClientBlockEvent = main.events.ClientBlockEvent;
 const ServerBlockEvent = main.events.ServerBlockEvent;
+const BlockTouchEvent = main.events.BlockTouchEvent;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
@@ -85,7 +86,7 @@ var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 var _onTick: [maxBlockCount]ServerBlockEvent = undefined;
-var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
+var _onTouch: [maxBlockCount]BlockTouchEvent = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
 var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
@@ -134,14 +135,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		std.log.err("Failed to load onTick event for block {s}", .{id});
 		break :blk .ignored;
 	};};
-
-	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
-		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
-		if(_function == null) {
-			std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
-		}
-		break :blk _function;
-	} else null;
+	_onTouch[size] = blk: {break :blk BlockTouchEvent.init(zon.getChildOrNull("onTouch") orelse break :blk .ignored) orelse {
+		std.log.err("Failed to load onTouch event for block {s}", .{id});
+		break :blk .ignored;
+	};};
 
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
@@ -429,8 +426,8 @@ pub const Block = packed struct { // MARK: Block
 		return _onTick[self.typ];
 	}
 
-	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
-		return _touchFunction[self.typ];
+	pub inline fn onTouch(self: Block) BlockTouchEvent {
+		return _onTouch[self.typ];
 	}
 
 	pub fn blockEntity(self: Block) ?*BlockEntityType {
@@ -441,11 +438,6 @@ pub const Block = packed struct { // MARK: Block
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 };
-
-// MARK: Touch
-pub var touchFunctions: utils.NamedCallbacks(TouchFunctions, TouchFunction) = undefined;
-pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
-pub const TouchFunctions = struct {};
 
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {

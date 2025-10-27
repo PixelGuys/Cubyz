@@ -5,14 +5,17 @@ const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-pub const ClientBlockEvent = GenericEvent(struct {block: Block, pos: Vec3i}, @import("block/client/_list.zig"));
+pub const ClientBlockEvent = GenericEvent(struct {block: Block, blockPos: Vec3i}, @import("block/client/_list.zig"));
 pub const ServerBlockEvent = GenericEvent(struct {block: Block, chunk: *main.chunk.ServerChunk, x: i32, y: i32, z: i32}, @import("block/server/_list.zig"));
+
+pub const BlockTouchEvent = GenericEvent(struct {entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64}, @import("block/touch/_list.zig"));
 
 pub const EventResult = enum {handled, ignored};
 
 pub fn init() void {
 	ClientBlockEvent.globalInit();
 	ServerBlockEvent.globalInit();
+	BlockTouchEvent.globalInit();
 }
 
 fn GenericEvent(_Params: type, list: type) type {

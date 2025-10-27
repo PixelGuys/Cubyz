@@ -348,7 +348,7 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: main.server.Entity, hitBox: Box, side: main.utils.Side) void {
+	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, deltaTime: f64) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
@@ -373,13 +373,14 @@ pub const collision = struct {
 				while(posZ <= maxZ) : (posZ += 1) {
 					const block: ?Block =
 						if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
-					if(block == null or block.?.touchFunction() == null)
+					if(block == null or block.?.onTouch().runFunction == main.events.BlockTouchEvent.ignored.runFunction)
 						continue;
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
 					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
-					if(touchX or touchY or touchZ)
-						block.?.touchFunction().?(block.?, entity, posX, posY, posZ, touchX and touchY and touchZ);
+					if(touchX or touchY or touchZ) {
+						_ = block.?.onTouch().run(.{.entity = entity, .source = block.?, .blockPos = .{posX, posY, posZ}, .deltaTime = deltaTime});
+					}
 				}
 			}
 		}
@@ -392,12 +393,14 @@ pub const DamageType = enum(u8) {
 	heal = 0, // For when you are adding health
 	kill = 1,
 	fall = 2,
+	heat = 3,
 
 	pub fn sendMessage(self: DamageType, name: []const u8) void {
 		switch(self) {
 			.heal => main.server.sendMessage("{s}§#ffffff was healed", .{name}),
 			.kill => main.server.sendMessage("{s}§#ffffff was killed", .{name}),
 			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
+			.heat => main.server.sendMessage("{s}§#ffffff burned to death", .{name}),
 		}
 	}
 };
@@ -528,7 +531,7 @@ pub const Player = struct { // MARK: Player
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
 			const onInteract = block.onInteract();
 			if(!mods.shift) {
-				if(onInteract.run(.{.pos = blockPos, .block = block}) == .handled) return;
+				if(onInteract.run(.{.blockPos = blockPos, .block = block}) == .handled) return;
 			}
 		}
 
