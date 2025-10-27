@@ -116,10 +116,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
-	_onInteract[size] = blk: {break :blk ClientBlockEvent.init(zon.getChildOrNull("onInteract") orelse break :blk .ignored) orelse {
-		std.log.err("Failed to load onInteract event for block {s}", .{id});
-		break :blk .ignored;
-	};};
+	_onInteract[size] = blk: {
+		break :blk ClientBlockEvent.init(zon.getChildOrNull("onInteract") orelse break :blk .ignored) orelse {
+			std.log.err("Failed to load onInteract event for block {s}", .{id});
+			break :blk .ignored;
+		};
+	};
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -131,14 +133,18 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_onTick[size] = blk: {break :blk ServerBlockEvent.init(zon.getChildOrNull("onTick") orelse break :blk .ignored) orelse {
-		std.log.err("Failed to load onTick event for block {s}", .{id});
-		break :blk .ignored;
-	};};
-	_onTouch[size] = blk: {break :blk BlockTouchEvent.init(zon.getChildOrNull("onTouch") orelse break :blk .ignored) orelse {
-		std.log.err("Failed to load onTouch event for block {s}", .{id});
-		break :blk .ignored;
-	};};
+	_onTick[size] = blk: {
+		break :blk ServerBlockEvent.init(zon.getChildOrNull("onTick") orelse break :blk .ignored) orelse {
+			std.log.err("Failed to load onTick event for block {s}", .{id});
+			break :blk .ignored;
+		};
+	};
+	_onTouch[size] = blk: {
+		break :blk BlockTouchEvent.init(zon.getChildOrNull("onTouch") orelse break :blk .ignored) orelse {
+			std.log.err("Failed to load onTouch event for block {s}", .{id});
+			break :blk .ignored;
+		};
+	};
 
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
