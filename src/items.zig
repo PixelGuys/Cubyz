@@ -459,7 +459,6 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				sum += property.weights[i]*material.getProperty(property.source orelse break);
 				weight += property.weights[i];
 			}
-
 			if(weight == 0) continue;
 			switch(property.method) {
 				.sum => {},
