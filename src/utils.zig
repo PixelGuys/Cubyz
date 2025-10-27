@@ -1139,7 +1139,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			@memset(impl.data.data, .init(0));
 		}
 
-		fn privateDeinit(impl: *Impl, _: usize) void {
+		fn privateDeinit(impl: *Impl) void {
 			impl.data.deinit();
 			main.globalAllocator.free(impl.palette);
 			main.globalAllocator.free(impl.paletteOccupancy);
@@ -1719,6 +1719,11 @@ pub const BinaryReader = struct {
 		return std.meta.intToEnum(T, int);
 	}
 
+	pub fn readBool(self: *BinaryReader) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!bool {
+		const int = try self.readInt(u1);
+		return int != 0;
+	}
+
 	pub fn readUntilDelimiter(self: *BinaryReader, comptime delimiter: u8) ![:delimiter]const u8 {
 		const len = std.mem.indexOfScalar(u8, self.remaining, delimiter) orelse return error.OutOfBounds;
 		defer self.remaining = self.remaining[len + 1 ..];
@@ -1792,6 +1797,10 @@ pub const BinaryWriter = struct {
 
 	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {
 		self.writeInt(@typeInfo(T).@"enum".tag_type, @intFromEnum(value));
+	}
+
+	pub fn writeBool(self: *BinaryWriter, value: bool) void {
+		self.writeInt(u1, @intFromBool(value));
 	}
 
 	pub fn writeSlice(self: *BinaryWriter, slice: []const u8) void {
