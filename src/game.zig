@@ -418,6 +418,7 @@ pub const Player = struct { // MARK: Player
 	pub const inventorySize = 32;
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
+	pub const defaultBlockDamage: f32 = 1;
 
 	pub var selectionPosition1: ?Vec3i = null;
 	pub var selectionPosition2: ?Vec3i = null;
@@ -449,7 +450,6 @@ pub const Player = struct { // MARK: Player
 
 	fn loadFrom(zon: ZonElement) void {
 		super.loadFrom(zon);
-		inventory.loadFromZon(zon.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -615,6 +615,8 @@ pub const World = struct { // MARK: World
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+		main.heap.allocators.createWorldArena();
+		errdefer main.heap.allocators.destroyWorldArena();
 		self.* = .{
 			.conn = try Connection.init(manager, ip, null),
 			.manager = manager,
@@ -664,6 +666,7 @@ pub const World = struct { // MARK: World
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();
+		main.heap.allocators.destroyWorldArena();
 	}
 
 	pub fn finishHandshake(self: *World, zon: ZonElement) !void {

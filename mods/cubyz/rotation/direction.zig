@@ -59,7 +59,8 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 		}
 	};
 	if(data >= 6) return 0;
-	return rotationTable[@intFromEnum(angle)][data];
+	const runtimeTable = rotationTable;
+	return runtimeTable[@intFromEnum(angle)][data];
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
