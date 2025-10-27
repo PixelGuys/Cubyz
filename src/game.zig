@@ -394,6 +394,7 @@ pub const DamageType = enum(u8) {
 	kill = 1,
 	fall = 2,
 	heat = 3,
+	spiky = 4,
 
 	pub fn sendMessage(self: DamageType, name: []const u8) void {
 		switch(self) {
@@ -401,6 +402,7 @@ pub const DamageType = enum(u8) {
 			.kill => main.server.sendMessage("{s}§#ffffff was killed", .{name}),
 			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
 			.heat => main.server.sendMessage("{s}§#ffffff burned to death", .{name}),
+			.spiky => main.server.sendMessage("{s}§#ffffff experienced death by 1000 needles", .{name}),
 		}
 	}
 };

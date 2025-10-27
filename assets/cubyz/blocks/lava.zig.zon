@@ -13,7 +13,7 @@
 	.texture = "cubyz:lava",
 	.onTouch = .{
 		.type = .hurt,
-		.dps = 1.0,
+		.dps = 2.0,
 		.damageType = .heat,
 	},
 }
