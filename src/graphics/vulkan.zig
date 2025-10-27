@@ -212,7 +212,7 @@ pub fn createInstance() void {
 		// NOTE(blackedout): Null terminator not included in count but when allocating
 		extensionCount = glfwExtensionCount + 2;
 		var extensionsArrayLocal = main.stackAllocator.alloc([*c]const u8, glfwExtensionCount + 3);
-		for (0..glfwExtensionCount) |i| {
+		for(0..glfwExtensionCount) |i| {
 			extensionsArrayLocal[i] = glfwExtensions[i];
 		}
 		extensionsArrayLocal[glfwExtensionCount + 0] = c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
@@ -249,7 +249,7 @@ const baseDeviceExtensions = [_][*:0]const u8{
 
 const deviceExtensions = if(builtin.os.tag == .macos)
 	// NOTE(blackedout): Should use c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
-	baseDeviceExtensions ++ [_][*:0]const u8{ "VK_KHR_portability_subset" }
+	baseDeviceExtensions ++ [_][*:0]const u8{"VK_KHR_portability_subset"}
 else
 	baseDeviceExtensions;
 
