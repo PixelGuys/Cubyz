@@ -54,9 +54,14 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	// NOTE(blackedout): Copy MoltenVK binary and JSON manifest file from the dependencies to the executable
 	if(t.os.tag == .macos) {
 		const moltenvkLib = b.addInstallFile(libsDeps.path("lib/libMoltenVK.dylib"), "bin/libMoltenVK.dylib");
-		const moltenvkJSON = b.addInstallFile(libsDeps.path("lib/MoltenVK_icd.json"), "bin/MoltenVK_icd.json");
+		const moltenvkJson = b.addInstallFile(libsDeps.path("lib/MoltenVK_icd.json"), "bin/MoltenVK_icd.json");
 		exe.step.dependOn(&moltenvkLib.step);
-		exe.step.dependOn(&moltenvkJSON.step);
+		exe.step.dependOn(&moltenvkJson.step);
+
+		const validationLayerLib = b.addInstallFile(libsDeps.path("lib/libVkLayer_khronos_validation.dylib"), "bin/libVkLayer_khronos_validation.dylib");
+		const validationLayerJson = b.addInstallFile(libsDeps.path("lib/VkLayer_khronos_validation.json"), "bin/VkLayer_khronos_validation.json");
+		exe.step.dependOn(&validationLayerLib.step);
+		exe.step.dependOn(&validationLayerJson.step);
 	}
 
 	if(t.os.tag == .windows) {
