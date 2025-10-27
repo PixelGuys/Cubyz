@@ -101,10 +101,15 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		};
 	}
 
-	fn joinGetNew(self: ZonElement, other: ZonElement, allocator: NeverFailingAllocator) ZonElement {
+	pub const JoinPriority = enum { preferLeft, preferRight };
+
+	fn joinGetNew(self: ZonElement, other: ZonElement, priority: JoinPriority, allocator: NeverFailingAllocator) ZonElement {
 		switch(self) {
 			.int, .float, .string, .stringOwned, .bool, .null => {
-				return other.clone(allocator);
+				return switch (priority) {
+					.preferLeft => self,
+					.preferRight => other.clone(allocator),
+				};
 			},
 			.array => {
 				const out = self.clone(allocator);
@@ -116,7 +121,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			.object => {
 				const out = self.clone(allocator);
 
-				out.join(other);
+				out.join(other, priority);
 				return out;
 			},
 		}
@@ -124,7 +129,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return .null;
 	}
 
-	pub fn join(self: *const ZonElement, other: ZonElement) void {
+	pub fn join(self: *const ZonElement, other: ZonElement, priority: JoinPriority) void {
 		if(other == .null) {
 			return;
 		}
@@ -136,7 +141,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		var iter = other.object.iterator();
 		while(iter.next()) |entry| {
 			if(self.object.get(entry.key_ptr.*)) |val| {
-				self.put(entry.key_ptr.*, val.joinGetNew(entry.value_ptr.*, .{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+				self.put(entry.key_ptr.*, val.joinGetNew(entry.value_ptr.*, priority, .{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			} else {
 				self.put(entry.key_ptr.*, entry.value_ptr.clone(.{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			}
