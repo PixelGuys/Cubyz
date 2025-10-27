@@ -32,7 +32,7 @@
 	},
 	.transitionBiomes = .{
 		.{
-			.id = "cubyz:beach",
+			.id = "cubyz:beach/warm/base",
 			.chance = 1,
 			.width = 1,
 			.properties = .{.land, .inland},

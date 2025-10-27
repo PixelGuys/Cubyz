@@ -31,7 +31,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/palm/coconut",
 			.placeMode = .degradable,
-			.chance = 0.01,
+			.chance = 0.003,
 		},
 	},
 }
