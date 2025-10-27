@@ -142,7 +142,7 @@ pub fn onOpen() void {
 		}
 		const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
 		defer main.stackAllocator.free(name);
-		const textInput = TextInput.init(.{0, 0}, 256 - 96, 22, "", .{.callback = null}, .{});
+		const textInput = TextInput.init(.{0, 0}, 256 - 96, 22, name, .{.callback = null}, .{});
 		const nameRow = HorizontalList.init();
 		nameRow.add(label);
 		nameRow.add(textInput);
