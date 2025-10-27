@@ -236,7 +236,7 @@ pub const Sync = struct { // MARK: Sync
 					if(self.managed == .internallyManaged) {
 						if(self.inv.type.shouldDepositToUserOnClose()) {
 							const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv}}, null);
+							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
 						}
 						self.deinit();
 					}
@@ -1572,6 +1572,7 @@ pub const Command = struct { // MARK: Command
 	const DepositOrDrop = struct { // MARK: DepositOrDrop
 		dest: Inventory,
 		source: Inventory,
+		dropLocation: Vec3d,
 
 		pub fn run(self: DepositOrDrop, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
 			std.debug.assert(self.dest.type == .normal);
@@ -1604,8 +1605,8 @@ pub const Command = struct { // MARK: Command
 					}
 				}
 				if(side == .server) {
-					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-					main.server.world.?.drop(sourceStack.clone(), user.?.player.pos, direction, 20);
+					const direction = if(user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
+					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 20);
 				}
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
@@ -1625,6 +1626,7 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.dest = Sync.getInventory(destId, side, user) orelse return error.InventoryNotFound,
 				.source = Sync.getInventory(sourceId, side, user) orelse return error.InventoryNotFound,
+				.dropLocation = (user orelse return error.Invalid).player.pos,
 			};
 		}
 	};
@@ -2056,7 +2058,7 @@ fn update(self: Inventory) void {
 	defer if(self.callbacks.onUpdateCallback) |cb| cb(self.source);
 	if(self.type == .workbench) {
 		self._items[self._items.len - 1].deinit();
-		self._items[self._items.len - 1].clear();
+		self._items[self._items.len - 1] = .{};
 		var availableItems: [25]?BaseItemIndex = undefined;
 		const slotInfos = self.type.workbench.slotInfos();
 
@@ -2104,7 +2106,7 @@ pub fn distribute(carried: Inventory, destinationInventories: []const Inventory,
 }
 
 pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
-	Sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source}});
+	Sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source, .dropLocation = undefined}});
 }
 
 pub fn depositToAny(source: Inventory, sourceSlot: u32, dest: Inventory, amount: u16) void {
@@ -2173,25 +2175,6 @@ pub fn canHold(self: Inventory, sourceStack: ItemStack) bool {
 	return false;
 }
 
-// TODO: Remove after #480
-pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
-	for(self._items, 0..) |*stack, i| {
-		stack.clear();
-		var buf: [1024]u8 = undefined;
-		const stackZon = zon.getChild(buf[0..std.fmt.printInt(&buf, i, 10, .lower, .{})]);
-		if(stackZon == .object) {
-			stack.item = Item.init(stackZon) catch |err| {
-				const msg = stackZon.toStringEfficient(main.stackAllocator, "");
-				defer main.stackAllocator.free(msg);
-				std.log.err("Couldn't find item {s}: {s}", .{msg, @errorName(err)});
-				stack.clear();
-				continue;
-			};
-			stack.amount = stackZon.get(u16, "amount", 0);
-		}
-	}
-}
-
 pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {
 	writer.writeVarInt(u32, @intCast(self._items.len));
 	for(self._items) |stack| {
@@ -2203,13 +2186,13 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	var remainingCount = reader.readVarInt(u32) catch 0;
 	for(self._items) |*stack| {
 		if(remainingCount == 0) {
-			stack.clear();
+			stack.* = .{};
 			continue;
 		}
 		remainingCount -= 1;
 		stack.* = ItemStack.fromBytes(reader) catch |err| {
 			std.log.err("Failed to read item stack from bytes: {s}", .{@errorName(err)});
-			stack.clear();
+			stack.* = .{};
 			continue;
 		};
 	}
