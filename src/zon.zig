@@ -101,12 +101,12 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		};
 	}
 
-	pub const JoinPriority = enum { preferLeft, preferRight };
+	pub const JoinPriority = enum {preferLeft, preferRight};
 
 	fn joinGetNew(self: ZonElement, other: ZonElement, priority: JoinPriority, allocator: NeverFailingAllocator) ZonElement {
 		switch(self) {
 			.int, .float, .string, .stringOwned, .bool, .null => {
-				return switch (priority) {
+				return switch(priority) {
 					.preferLeft => self.clone(allocator),
 					.preferRight => other.clone(allocator),
 				};
