@@ -12,7 +12,6 @@ const Vec3d = main.vec.Vec3d;
 
 const structures_zig = @import("structures.zig");
 const SimpleStructureModel = structures_zig.SimpleStructureModel;
-const StructureTable = structures_zig.StructureTable;
 
 const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
