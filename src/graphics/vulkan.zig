@@ -244,11 +244,15 @@ pub fn createInstance() void {
 
 // MARK: Physical Device
 
-const deviceExtensions = [_][*:0]const u8{
+const baseDeviceExtensions = [_][*:0]const u8{
 	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-	// NOTE(blackedout): Should use c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
-	if(builtin.os.tag == .macos) "VK_KHR_portability_subset"
 };
+
+const deviceExtensions = if(builtin.os.tag == .macos)
+	// NOTE(blackedout): Should use c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
+	baseDeviceExtensions ++ [_][*:0]const u8{ "VK_KHR_portability_subset" }
+else
+	baseDeviceExtensions;
 
 const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
 	.multiDrawIndirect = c.VK_TRUE,
