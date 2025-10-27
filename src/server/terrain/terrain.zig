@@ -6,6 +6,8 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const biomes = @import("biomes.zig");
 pub const noise = @import("noise/noise.zig");
+pub const structures = @import("structures.zig");
+
 const Biome = biomes.Biome;
 
 pub const ClimateMap = @import("ClimateMap.zig");
