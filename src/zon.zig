@@ -939,7 +939,7 @@ test "merging" {
 	defer zon1.deinit(allocator);
 
 	const zon2 = ZonElement.parseFromString(allocator, null, ".{   .object5   =   1  \n,}");
-	zon2.join(zon1);
+	zon2.join(zon1, .preferRight);
 	try std.testing.expectEqual(.object, std.meta.activeTag(zon2));
 	try std.testing.expectEqual(.float, std.meta.activeTag(zon2.object.get("object3") orelse .null));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(zon2.object.get("object1") orelse .null));
@@ -949,10 +949,10 @@ test "merging" {
 	zon2.deinit(allocator);
 
 	const zon3 = ZonElement.parseFromString(allocator, null, "1");
-	zon3.join(zon1);
+	zon3.join(zon1, .preferRight);
 	zon3.deinit(allocator);
 
 	const zon4 = ZonElement.parseFromString(allocator, null, "true");
-	zon1.join(zon4);
+	zon1.join(zon4, .preferRight);
 	zon4.deinit(allocator);
 }
