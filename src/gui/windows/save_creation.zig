@@ -36,16 +36,55 @@ var testingMode: bool = false;
 
 var needsUpdate: bool = false;
 
-var page: usize = 0;
-const numPages: usize = 3;
+const Page = enum(u8) {
+	generationSettings = 0,
+	gameRules = 1,
+	addons = 2,
+
+	pub fn fillSubmenu(self: Page, submenu: *VerticalList) void {
+		switch(self) {
+			.generationSettings => {
+				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the first page", .center));
+			},
+			.gameRules => {
+				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
+			},
+			.addons => {
+				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the third page", .center));
+			},
+		}
+	}
+
+	pub fn label(self: Page) []const u8 {
+		switch(self) {
+			.generationSettings => {
+				return "Generation Settings";
+			},
+			.gameRules => {
+				return "Game Rules";
+			},
+			.addons => {
+				return "Addons";
+			},
+		}
+	}
+};
+
+var page: Page = .generationSettings;
+
+const numPages: usize = std.meta.fields(Page).len;
 
 fn prevPage(_: usize) void {
-	page = (page + numPages - 1) % numPages;
+	const oldPageInt = @intFromEnum(page);
+	const newPageInt = (oldPageInt -% 1);
+	page = std.meta.intToEnum(Page, newPageInt) catch .addons;
 	needsUpdate = true;
 }
 
 fn nextPage(_: usize) void {
-	page = (page + 1) % numPages;
+	const oldPageInt = @intFromEnum(page);
+	const newPageInt = (oldPageInt + 1);
+	page = std.meta.intToEnum(Page, newPageInt) catch .generationSettings;
 	needsUpdate = true;
 }
 
@@ -111,10 +150,9 @@ pub fn onOpen() void {
 		list.add(nameRow);
 	}
 
-	const headerTexts: [numPages][]const u8 = .{"Generation Settings", "Game Rules", "Addons"};
 	{
 		const leftArrow = Button.initText(.{0, 0}, 24, "<", .{.callback = &prevPage});
-		const label = Label.init(.{0, 0}, 224 - 48, headerTexts[page], .center);
+		const label = Label.init(.{0, 0}, 224 - 48, page.label(), .center);
 		const rightArrow = Button.initText(.{0, 0}, 24, ">", .{.callback = &nextPage});
 		const header = HorizontalList.init();
 		header.add(leftArrow);
@@ -125,20 +163,7 @@ pub fn onOpen() void {
 	}
 
 	const submenu = VerticalList.init(.{0, 0}, 384, 8);
-	switch (page) {
-		0 => { // Generation Settings
-			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the first page", .center));
-		},
-		1 => { // Game Rules
-			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
-		},
-		2 => { // Addons
-			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the third page", .center));
-		},
-		else => {
-			unreachable; 
-		}
-	}
+	page.fillSubmenu(submenu);
 	list.add(submenu);
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
@@ -152,7 +177,7 @@ pub fn onOpen() void {
 pub fn onClose() void {
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
-		page = 0;
+		page = .generationSettings;
 	}
 }
 
