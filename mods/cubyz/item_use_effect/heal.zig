@@ -11,6 +11,8 @@ pub fn init(_: main.heap.NeverFailingAllocator, zon: ZonElement) @This() {
 		.amount = zon.get(f32, "amount", 0),
 	};
 }
-pub fn apply(self: *const @This(), _: *main.game.World) void {
-	Inventory.Sync.addHealth(self.amount, .heal, .client, main.game.Player.id);
+pub fn apply(self: *const @This(), side: main.utils.Side, _: *main.game.World) void {
+	if(side == .server) {
+		Inventory.Sync.addHealth(self.amount, .heal, side, main.game.Player.id);
+	}
 }

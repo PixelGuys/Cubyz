@@ -542,7 +542,7 @@ pub const Player = struct { // MARK: Player
 		if(item != .baseItem) return;
 		const useEffects = item.baseItem.useEffects() orelse return;
 		for(useEffects) |useEffect| {
-			useEffect.apply(world.?);
+			useEffect.apply(.client, world.?);
 		}
 		inventory.removeOne(selectedSlot);
 	}

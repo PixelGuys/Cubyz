@@ -533,11 +533,11 @@ pub const Command = struct { // MARK: Command
 		drop = 5,
 		fillFromCreative = 6,
 		depositOrDrop = 7,
+		depositToAny = 11,
 		clear = 8,
+		removeItem = 12,
 		updateBlock = 9,
 		addHealth = 10,
-		depositToAny = 11,
-		removeItem = 12,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -548,11 +548,11 @@ pub const Command = struct { // MARK: Command
 		drop: Drop,
 		fillFromCreative: FillFromCreative,
 		depositOrDrop: DepositOrDrop,
+		depositToAny: DepositToAny,
 		clear: Clear,
+		removeItem: RemoveItem,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
-		depositToAny: DepositToAny,
-		removeItem: RemoveItem,
 	};
 
 	const BaseOperationType = enum(u8) {

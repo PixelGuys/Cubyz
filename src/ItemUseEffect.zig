@@ -62,8 +62,8 @@ pub fn parse(allocator: main.heap.NeverFailingAllocator, zon: ZonElement) ?ItemU
 	return null;
 }
 
-pub fn apply(self: *const ItemUseEffect, world: *main.game.World) void {
+pub fn apply(self: *const ItemUseEffect, side: main.utils.Side, world: *main.game.World) void {
 	switch(self.inner) {
-		inline else => |effect| effect.apply(world),
+		inline else => |effect| effect.apply(side, world),
 	}
 }
