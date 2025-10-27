@@ -526,11 +526,9 @@ pub const Player = struct { // MARK: Player
 				if(main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
 			}
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
-			const gui = block.gui();
-			if(gui.len != 0 and !mods.shift) {
-				main.gui.openWindow(gui);
-				main.Window.setMouseGrabbed(false);
-				return;
+			const onInteract = block.onInteract();
+			if(!mods.shift) {
+				if(onInteract.run(.{.pos = blockPos, .block = block}) == .handled) return;
 			}
 		}
 

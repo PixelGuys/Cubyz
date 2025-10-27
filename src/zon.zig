@@ -64,15 +64,21 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	}
 
 	pub fn getChild(self: *const ZonElement, key: []const u8) ZonElement {
-		if(self.* != .object) {
-			return .null;
-		} else {
+		if(self.* == .object) {
 			if(self.object.get(key)) |elem| {
 				return elem;
-			} else {
-				return .null;
 			}
 		}
+		return .null;
+	}
+
+	pub fn getChildOrNull(self: *const ZonElement, key: []const u8) ?ZonElement {
+		if(self.* == .object) {
+			if(self.object.get(key)) |elem| {
+				return elem;
+			}
+		}
+		return null;
 	}
 
 	pub fn clone(self: *const ZonElement, allocator: NeverFailingAllocator) ZonElement {

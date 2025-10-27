@@ -68,8 +68,8 @@ var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
-/// GUI that is opened on click.
-var _gui: [maxBlockCount][]u8 = undefined;
+
+var _onInteract: [maxBlockCount]main.events.BlockInteract = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
@@ -113,7 +113,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
-	_gui[size] = main.worldArena.dupe(u8, zon.get([]const u8, "gui", ""));
+	_onInteract[size] = blk: {break :blk main.events.BlockInteract.init(zon.getChildOrNull("onInteract") orelse break :blk .ignored) orelse {
+		std.log.err("Failed to load onInteract event for block {s}", .{id});
+		break :blk .ignored;
+	};};
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -369,9 +372,8 @@ pub const Block = packed struct { // MARK: Block
 		return _absorption[self.typ];
 	}
 
-	/// GUI that is opened on click.
-	pub inline fn gui(self: Block) []u8 {
-		return _gui[self.typ];
+	pub inline fn onInteract(self: Block) main.events.BlockInteract {
+		return _onInteract[self.typ];
 	}
 
 	pub inline fn mode(self: Block) *RotationMode {
