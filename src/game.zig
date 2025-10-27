@@ -520,14 +520,14 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn placeBlock() void {
+	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
 		if(main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
-			if(!main.KeyBoard.key("shift").pressed) {
+			if(!mods.shift) {
 				if(main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
 			}
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
 			const gui = block.gui();
-			if(gui.len != 0 and !main.KeyBoard.key("shift").pressed) {
+			if(gui.len != 0 and !mods.shift) {
 				main.gui.openWindow(gui);
 				main.Window.setMouseGrabbed(false);
 				return;
@@ -757,31 +757,31 @@ pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .densi
 var nextBlockPlaceTime: ?i64 = null;
 var nextBlockBreakTime: ?i64 = null;
 
-pub fn pressPlace() void {
+pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
 	const time = std.time.milliTimestamp();
 	nextBlockPlaceTime = time + main.settings.updateRepeatDelay;
-	Player.placeBlock();
+	Player.placeBlock(mods);
 }
 
-pub fn releasePlace() void {
+pub fn releasePlace(_: main.Window.Key.Modifiers) void {
 	nextBlockPlaceTime = null;
 }
 
-pub fn pressBreak() void {
+pub fn pressBreak(_: main.Window.Key.Modifiers) void {
 	const time = std.time.milliTimestamp();
 	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
 	Player.breakBlock(0);
 }
 
-pub fn releaseBreak() void {
+pub fn releaseBreak(_: main.Window.Key.Modifiers) void {
 	nextBlockBreakTime = null;
 }
 
-pub fn pressAcquireSelectedBlock() void {
+pub fn pressAcquireSelectedBlock(_: main.Window.Key.Modifiers) void {
 	Player.acquireSelectedBlock();
 }
 
-pub fn flyToggle() void {
+pub fn flyToggle(_: main.Window.Key.Modifiers) void {
 	if(!Player.isCreative()) return;
 
 	const newIsFlying = !Player.isActuallyFlying();
@@ -790,7 +790,7 @@ pub fn flyToggle() void {
 	Player.isGhost.store(false, .monotonic);
 }
 
-pub fn ghostToggle() void {
+pub fn ghostToggle(_: main.Window.Key.Modifiers) void {
 	if(!Player.isCreative()) return;
 
 	const newIsGhost = !Player.isGhost.load(.monotonic);
@@ -799,7 +799,7 @@ pub fn ghostToggle() void {
 	Player.isFlying.store(newIsGhost, .monotonic);
 }
 
-pub fn hyperSpeedToggle() void {
+pub fn hyperSpeedToggle(_: main.Window.Key.Modifiers) void {
 	if(!Player.isCreative()) return;
 
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
@@ -965,7 +965,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if(nextBlockPlaceTime) |*placeTime| {
 		if(time -% placeTime.* >= 0) {
 			placeTime.* += main.settings.updateRepeatSpeed;
-			Player.placeBlock();
+			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {

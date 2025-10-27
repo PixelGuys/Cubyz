@@ -252,8 +252,6 @@ pub const BlockEntityTypes = struct {
 		}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
-			if(main.KeyBoard.key("shift").pressed) return .ignored;
-
 			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 
 			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, .{});
@@ -370,8 +368,6 @@ pub const BlockEntityTypes = struct {
 			main.globalAllocator.free(entry.text);
 		}
 		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
-			if(main.KeyBoard.key("shift").pressed) return .ignored;
-
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 			const data = StorageClient.get(pos, chunk);
