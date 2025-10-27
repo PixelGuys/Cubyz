@@ -107,7 +107,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		switch(self) {
 			.int, .float, .string, .stringOwned, .bool, .null => {
 				return switch (priority) {
-					.preferLeft => self,
+					.preferLeft => self.clone(allocator),
 					.preferRight => other.clone(allocator),
 				};
 			},
