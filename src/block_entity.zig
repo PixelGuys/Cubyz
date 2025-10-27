@@ -36,7 +36,7 @@ pub const BlockEntityType = struct {
 		onUnloadServer: *const fn(dataIndex: BlockEntityIndex) void,
 		onStoreServerToDisk: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onStoreServerToClient: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
-		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) EventStatus,
+		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) main.events.EventResult,
 		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void,
 		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void,
 		getServerToClientData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
@@ -75,7 +75,7 @@ pub const BlockEntityType = struct {
 	pub inline fn onStoreServerToClient(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(dataIndex, writer);
 	}
-	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) EventStatus {
+	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) main.events.EventResult {
 		return self.vtable.onInteract(pos, chunk);
 	}
 	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
@@ -90,11 +90,6 @@ pub const BlockEntityType = struct {
 	pub inline fn getClientToServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getClientToServerData(pos, chunk, writer);
 	}
-};
-
-pub const EventStatus = enum {
-	handled,
-	ignored,
 };
 
 fn BlockEntityDataStorage(T: type) type {
@@ -251,7 +246,7 @@ pub const BlockEntityTypes = struct {
 			inv.toBytes(writer);
 		}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
-		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
+		pub fn onInteract(pos: Vec3i, _: *Chunk) main.events.EventResult {
 			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 
 			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, .{});
@@ -367,7 +362,7 @@ pub const BlockEntityTypes = struct {
 			const entry = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 			main.globalAllocator.free(entry.text);
 		}
-		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
+		pub fn onInteract(pos: Vec3i, chunk: *Chunk) main.events.EventResult {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 			const data = StorageClient.get(pos, chunk);

@@ -10,6 +10,7 @@ pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
+pub const events = @import("events/events.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
