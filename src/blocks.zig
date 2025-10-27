@@ -21,6 +21,7 @@ const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
 const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
+const BlockEvent = main.events.BlockEvent;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
@@ -69,7 +70,7 @@ var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
 
-var _onInteract: [maxBlockCount]main.events.BlockInteract = undefined;
+var _onInteract: [maxBlockCount]BlockEvent = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
@@ -113,7 +114,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
-	_onInteract[size] = blk: {break :blk main.events.BlockInteract.init(zon.getChildOrNull("onInteract") orelse break :blk .ignored) orelse {
+	_onInteract[size] = blk: {break :blk BlockEvent.init(zon.getChildOrNull("onInteract") orelse break :blk .ignored) orelse {
 		std.log.err("Failed to load onInteract event for block {s}", .{id});
 		break :blk .ignored;
 	};};
@@ -372,7 +373,7 @@ pub const Block = packed struct { // MARK: Block
 		return _absorption[self.typ];
 	}
 
-	pub inline fn onInteract(self: Block) main.events.BlockInteract {
+	pub inline fn onInteract(self: Block) BlockEvent {
 		return _onInteract[self.typ];
 	}
 
