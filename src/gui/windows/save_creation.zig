@@ -113,9 +113,9 @@ pub fn onOpen() void {
 
 	const headerTexts: [numPages][]const u8 = .{"Generation Settings", "Game Rules", "Addons"};
 	{
-		const leftArrow = Button.initText(.{16, 0}, 24, "<", .{.callback = &prevPage});
-		const label = Label.init(.{0, 0}, 256 - 48, headerTexts[page], .center);
-		const rightArrow = Button.initText(.{16, 0}, 24, ">", .{.callback = &nextPage});
+		const leftArrow = Button.initText(.{0, 0}, 24, "<", .{.callback = &prevPage});
+		const label = Label.init(.{0, 0}, 224 - 48, headerTexts[page], .center);
+		const rightArrow = Button.initText(.{0, 0}, 24, ">", .{.callback = &nextPage});
 		const header = HorizontalList.init();
 		header.add(leftArrow);
 		header.add(label);
@@ -126,13 +126,13 @@ pub fn onOpen() void {
 
 	const submenu = VerticalList.init(.{0, 0}, 384, 8);
 	switch (page) {
-		0 => {
+		0 => { // Generation Settings
 			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the first page", .center));
 		},
-		1 => {
+		1 => { // Game Rules
 			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
 		},
-		2 => {
+		2 => { // Addons
 			submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the third page", .center));
 		},
 		else => {
@@ -152,6 +152,7 @@ pub fn onOpen() void {
 pub fn onClose() void {
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
+		page = 0;
 	}
 }
 
@@ -160,8 +161,11 @@ pub fn render() void {
 		needsUpdate = false;
 		var oldName = window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.currentString.items;
 		oldName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{oldName}) catch unreachable;
+		defer main.stackAllocator.free(oldName);
 		const oldScroll = window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState;
+		const oldPage = page;
 		onClose();
+		page = oldPage;
 		onOpen();
 		window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.setString(oldName);
 		window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState = oldScroll;
