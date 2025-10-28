@@ -955,4 +955,25 @@ test "merging" {
 	const zon4 = ZonElement.parseFromString(allocator, null, "true");
 	zon1.join(.preferRight, zon4);
 	zon4.deinit(allocator);
+
+	const zon5 = ZonElement.parseFromString(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}");
+	defer zon5.deinit(allocator);
+
+	const zon6 = ZonElement.parseFromString(allocator, null, ".{   .object5   =   1  \n,}");
+	zon5.join(.preferLeft, zon6);
+	try std.testing.expectEqual(.object, std.meta.activeTag(zon5));
+	try std.testing.expectEqual(.float, std.meta.activeTag(zon5.object.get("object3") orelse .null));
+	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(zon5.object.get("object1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(zon5.object.get("\nobject1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(zon5.object.get("\tobject1θ") orelse .null));
+	try std.testing.expectEqual(.int, std.meta.activeTag(zon5.object.get("object5") orelse .null));
+	zon6.deinit(allocator);
+
+	const zon7 = ZonElement.parseFromString(allocator, null, "1");
+	zon5.join(.preferLeft, zon7);
+	zon7.deinit(allocator);
+
+	const zon8 = ZonElement.parseFromString(allocator, null, "true");
+	zon8.join(.preferLeft, zon5);
+	zon8.deinit(allocator);
 }
