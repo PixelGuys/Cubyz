@@ -20,6 +20,7 @@ jobs:
           version: ${{ env.VERSION }}
       - run: sudo apt install glslang-tools
       - run: wget -O ./Cubyz-fmt https://github.com/PixelGuys/Cubyz-formatter/releases/download/0.15.0-dev.1034%2Bbd97b6618/Cubyz-fmt-x86_64-linux
+      - run: chmod +x ./Cubyz-fmt
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build -Dtarget=aarch64-linux-gnu
