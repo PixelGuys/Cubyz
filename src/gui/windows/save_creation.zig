@@ -46,11 +46,11 @@ var addonList: main.ListUnmanaged(Addon) = .{};
 
 const Addon = struct {
 	name: []const u8,
-	directory: []const u8,
+	path: []const u8,
 
-	pub fn deinit(self: *const Addon, allocator: main.heap.NeverFailingAllocator) void {
+	pub fn deinit(self: *Addon, allocator: main.heap.NeverFailingAllocator) void {
+		allocator.free(self.path);
 		allocator.free(self.name);
-		allocator.free(self.directory);
 	}
 };
 
@@ -71,6 +71,7 @@ const Page = enum(u8) {
 				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
 			},
 			.addons => {
+				std.log.info("{d}", .{addonList.capacity});
 				for(addonList.items, 0..) |addon, i| {
 					const nameLabel = Label.init(.{0, 0}, 192 - 16, addon.name, .left);
 					const folderButton = Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i});
@@ -112,11 +113,18 @@ pub fn deinit() void {
 }
 
 fn openFolder(index: usize) void {
-	main.files.openDirInWindow(addonList.items[index].directory);
+	main.files.openDirInWindow(addonList.items[index].path);
 }
 
 fn addAddon(_: usize) void {
-	_=1;
+	const path = main.files.query(main.globalAllocator) catch return;
+
+	const lastSlash = std.mem.lastIndexOf(u8, path, "/");
+	const name = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}", .{path[(lastSlash.? + 1)..]}) catch unreachable;
+
+	addonList.append(main.globalAllocator, Addon { .name = name, .path = path });
+
+	needsUpdate = true;
 }
 
 fn prevPage(_: usize) void {
@@ -176,7 +184,7 @@ fn createWorld(_: usize) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 500, 8);
 
-	{
+	{ // name field
 		const label = Label.init(.{0, 0}, 96, "World Name:", .center);
 		var num: usize = 1;
 		while(true) {
@@ -195,7 +203,7 @@ pub fn onOpen() void {
 		list.add(nameRow);
 	}
 
-	{
+	{ // header
 		const leftArrow = Button.initText(.{0, 0}, 24, "<", .{.callback = &prevPage});
 		const label = Label.init(.{0, 0}, 224 - 48, page.label(), .center);
 		const rightArrow = Button.initText(.{0, 0}, 24, ">", .{.callback = &nextPage});
@@ -224,8 +232,11 @@ pub fn onClose() void {
 		comp.deinit();
 	}
 	page = .generation;
-	for(addonList.items) |addon| addon.deinit(main.globalAllocator);
-	addonList.deinit(main.globalAllocator);
+	
+	for(addonList.items) |*addon| {
+		addon.deinit(main.globalAllocator);
+	}
+	addonList = .{};
 }
 
 pub fn render() void {
@@ -238,16 +249,15 @@ pub fn render() void {
 		const oldScroll = window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState;
 		const oldPage = page;
 
-		var oldAddonList: main.ListUnmanaged(Addon) = .{};
-		for (addonList.items) |addon| {
-			oldAddonList.append(main.stackAllocator, addon);
+		var oldAddonArr = addonList.toOwnedSlice(main.globalAllocator);
+		while(addonList.items.len > 0) {
+			oldAddonList.append(main.globalAllocator, addonList.slice);
 		}
 
 		onClose();
 		page = oldPage;
-		addonList = .{};
-		for (oldAddonList.items) |oldAddon| {
-			oldAddonList.append(main.globalAllocator, oldAddon);
+		while(oldAddonList.items.len > 0) {
+			addonList.append(main.globalAllocator, oldAddonList.pop());
 		}
 
 		onOpen();
