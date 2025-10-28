@@ -1058,7 +1058,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const holdingTargetedBlock = stack.item != null and stack.item.? == .baseItem and stack.item.?.baseItem.block() == block.typ;
-			if((block.hasTag(.fluid) or block.hasTag(.air)) and !(holdingTargetedBlock and game.Player.isCreative())) return;
+			if((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
 
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
