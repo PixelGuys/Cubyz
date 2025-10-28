@@ -680,8 +680,8 @@ pub const inventory = struct { // MARK: inventory
 				}
 			}
 			return;
-		// Reset crafting acceleration if not hovering a slot
 		} else if(isCrafting) {
+			// Reset crafting acceleration if not hovering a slot
 			isCrafting = false;
 		}
 
