@@ -314,6 +314,7 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 }
 
 pub fn getBlockTags() ?[]Tag {
-	var tags: [1]Tag = .{.chiselable};
-	return &tags;
+	const tags = main.stackAllocator.alloc(Tag, 1);
+	tags[0] = Tag.find("chiselable");
+	return tags;
 }

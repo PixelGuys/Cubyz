@@ -10,7 +10,6 @@ pub const Tag = enum(u32) {
 	fluid = 1,
 	sbbChild = 2,
 	fluidPlaceable = 3,
-	chiselable = 4,
 	_,
 
 	pub fn initTags() void {
