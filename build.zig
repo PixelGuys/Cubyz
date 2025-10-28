@@ -216,9 +216,13 @@ pub fn build(b: *std.Build) !void {
 	const run_step = b.step("run", "Run the app");
 	run_step.dependOn(&run_cmd.step);
 
+	const dependencyWithTestRunner = b.lazyDependency("cubyz_test_runner", .{
+		.target = target,
+		.optimize = optimize,
+	}) orelse @panic("Couldn't find test runner dependency");
 	const exe_tests = b.addTest(.{
 		.root_module = mainModule,
-		.test_runner = .{.path = b.path("test/runner.zig"), .mode = .simple},
+		.test_runner = .{.path = dependencyWithTestRunner.path("lib/compiler/test_runner.zig"), .mode = .simple},
 	});
 	linkLibraries(b, exe_tests, useLocalDeps);
 	exe_tests.root_module.addOptions("build_options", options);
