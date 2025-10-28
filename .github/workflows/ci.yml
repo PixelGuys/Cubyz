@@ -19,8 +19,8 @@ jobs:
         with:
           version: ${{ env.VERSION }}
       - run: sudo apt install glslang-tools
-      - run: echo "zigPath=$(command -v zig | sed 's/.\{3\}$//')" >> $GITHUB_ENV
-      - run: wget -O $zigPath/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.15.0-dev.1034+bd97b6618/render.zig
+      - run: wget -O ./Cubyz-fmt https://github.com/PixelGuys/Cubyz-formatter/releases/download/0.15.0-dev.1034%2Bbd97b6618/Cubyz-fmt-x86_64-linux
+      - run: chmod +x ./Cubyz-fmt
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build -Dtarget=aarch64-linux-gnu
@@ -29,12 +29,12 @@ jobs:
       - run: zig build format --summary none
       - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
       - run: |
-          if zig build fmt -- *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
+          if ./Cubyz-fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi
       - run: |
-          if zig build fmt -- mods/*.zig mods/*/*.zig mods/*/*/*.zig mods/*/*/*/*.zig mods/*/*/*/*/*.zig mods/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
+          if ./Cubyz-fmt mods/*.zig mods/*/*.zig mods/*/*/*.zig mods/*/*/*/*.zig mods/*/*/*/*/*.zig mods/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi
@@ -44,7 +44,7 @@ jobs:
             zig ast-check $file
           done
       - run: |
-          if zig build fmt -- --zon *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon | grep -q . ; then
+          if ./Cubyz-fmt --zon *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi
