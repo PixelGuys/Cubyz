@@ -213,6 +213,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 		}
 	}.logFn,
 };
+pub const panic = std.debug.FullPanic(panicToLog);
 
 /// The maximum size a log message can have.
 const log_buffer_size = 64 << 10;
@@ -255,8 +256,6 @@ pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 	@breakpoint();
 	@trap();
 }
-
-pub const panic = std.debug.FullPanic(panicToLog);
 
 fn initLogging() void {
 	logFile = null;
