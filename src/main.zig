@@ -220,7 +220,7 @@ const log_buffer_size = 64 << 10;
 
 fn dumpStackTraceNoAnsi(writer: *std.Io.Writer, start_addr: ?usize) !void {
 	// TODO: update when cubyz' zig gets updated to b64535e, which
-	// added toggling stacktraces independently of strip
+	// added toggling stacktraces independently of strip (#2153)
 	if(builtin.strip_debug_info) {
 		try writer.writeAll("Unable to dump stack trace: debug info stripped\n");
 		return;
