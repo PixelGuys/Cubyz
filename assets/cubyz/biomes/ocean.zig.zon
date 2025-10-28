@@ -42,7 +42,7 @@
 		.{
 			.id = "cubyz:beach/warm/wide",
 			.chance = 0.2,
-			.width = 3,
+			.width = 2,
 			.properties = .{.land, .inland},
 		},
 		.{
@@ -54,7 +54,7 @@
 		.{
 			.id = "cubyz:ocean_shelf",
 			.chance = 1,
-			.width = 4,
+			.width = 3,
 			.properties = .{.land, .inland},
 		},
 	},
