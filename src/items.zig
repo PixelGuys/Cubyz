@@ -1214,12 +1214,10 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 			val.weights[i] = matrixZon.getAtIndex(f32, i, 0.0);
 		}
 		for(0..25) |i| {
-			if(val.weights[i] != 0x0) {
-				total_weight += val.weights[i];
-			}
+			total_weight += val.weights[i];
 		}
 		for(0..25) |i| {
-			if(val.method == .sum and val.weights[i] != 0x0) {
+			if(val.weights[i] != 0x0) {
 				val.weights[i] /= total_weight;
 			}
 		}
