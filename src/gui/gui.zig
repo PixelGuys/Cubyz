@@ -662,10 +662,9 @@ pub const inventory = struct { // MARK: inventory
 		// Hold left click to craft
 		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
 			if(mainGuiButton.pressed and (recipeItem != null or itemSlot.pressed)) {
-				if(recipeItem == null and itemSlot.inventory._items[itemSlot.itemSlot].item != null) {
-					recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
-				}
-				if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
+				const slot = itemSlot.inventory.getItem(itemSlot.itemSlot);
+				if(recipeItem == null and slot != null) recipeItem = slot.?.clone();
+				if(!std.meta.eql(slot, recipeItem)) return;
 				const time = std.time.milliTimestamp();
 				if(!isCrafting) {
 					isCrafting = true;
