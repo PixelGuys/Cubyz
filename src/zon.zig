@@ -103,25 +103,25 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub const JoinPriority = enum {preferLeft, preferRight};
 
-	fn joinGetNew(self: ZonElement, priority: JoinPriority, other: ZonElement, allocator: NeverFailingAllocator) ZonElement {
-		switch(self) {
+	fn joinGetNew(left: ZonElement, priority: JoinPriority, right: ZonElement, allocator: NeverFailingAllocator) ZonElement {
+		switch(left) {
 			.int, .float, .string, .stringOwned, .bool, .null => {
 				return switch(priority) {
-					.preferLeft => self.clone(allocator),
-					.preferRight => other.clone(allocator),
+					.preferLeft => left.clone(allocator),
+					.preferRight => right.clone(allocator),
 				};
 			},
 			.array => {
-				const out = self.clone(allocator);
-				for(other.array.items) |item| {
+				const out = left.clone(allocator);
+				for(right.array.items) |item| {
 					out.array.append(item.clone(allocator));
 				}
 				return out;
 			},
 			.object => {
-				const out = self.clone(allocator);
+				const out = left.clone(allocator);
 
-				out.join(priority, other);
+				out.join(priority, right);
 				return out;
 			},
 		}
@@ -129,21 +129,21 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return .null;
 	}
 
-	pub fn join(self: *const ZonElement, priority: JoinPriority, other: ZonElement) void {
-		if(other == .null) {
+	pub fn join(left: *const ZonElement, priority: JoinPriority, right: ZonElement) void {
+		if(right == .null) {
 			return;
 		}
-		if(self.* != .object or other != .object) {
+		if(left.* != .object or right != .object) {
 			if(!builtin.is_test) std.log.err("Trying to join zon that isn't an object.", .{}); // TODO: #1275
 			return;
 		}
 
-		var iter = other.object.iterator();
+		var iter = right.object.iterator();
 		while(iter.next()) |entry| {
-			if(self.object.get(entry.key_ptr.*)) |val| {
-				self.put(entry.key_ptr.*, val.joinGetNew(priority, entry.value_ptr.*, .{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			if(left.object.get(entry.key_ptr.*)) |val| {
+				left.put(entry.key_ptr.*, val.joinGetNew(priority, entry.value_ptr.*, .{.allocator = left.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			} else {
-				self.put(entry.key_ptr.*, entry.value_ptr.clone(.{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+				left.put(entry.key_ptr.*, entry.value_ptr.clone(.{.allocator = left.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			}
 		}
 	}
