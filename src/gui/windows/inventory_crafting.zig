@@ -123,6 +123,10 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 	return true;
 }
 
+fn verticalListDeinit(list: *VerticalList, _: usize) void {
+	list.deinit();
+}
+
 fn refresh() void {
 	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
@@ -132,7 +136,7 @@ fn refresh() void {
 		return;
 	}
 	if(window.rootComponent) |*comp| {
-		comp.deinit();
+		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.utils.castFunctionSelfToAnyopaque(verticalListDeinit)});
 	}
 	if(list.children.items.len == 0) {
 		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));
