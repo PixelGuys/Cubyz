@@ -5,7 +5,6 @@
 		.{.items = .{.auto}},
 	},
 	.viewThrough = true,
-	.alwaysViewThrough = true,
 	.rotation = "cubyz:sign",
 	.model = .{
 		.side = "cubyz:lantern/side",
