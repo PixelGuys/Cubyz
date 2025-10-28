@@ -24,8 +24,8 @@ width: f32,
 variation: f32,
 density: f32,
 
-pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *FlowerPatch {
-	const self = arena.create(FlowerPatch);
+pub fn loadModel(parameters: ZonElement) *FlowerPatch {
+	const self = main.worldArena.create(FlowerPatch);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
 		.width = parameters.get(f32, "width", 5),

@@ -27,8 +27,6 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {}
-
 pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 	const size = StructureMapFragment.size*map.pos.voxelSize;
 	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, size, 32);

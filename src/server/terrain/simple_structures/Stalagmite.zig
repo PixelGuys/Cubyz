@@ -23,8 +23,8 @@ block: main.blocks.Block,
 size: f32,
 sizeVariation: f32,
 
-pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *Stalagmite {
-	const self = arena.create(Stalagmite);
+pub fn loadModel(parameters: ZonElement) *Stalagmite {
+	const self = main.worldArena.create(Stalagmite);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite")),
 		.size = parameters.get(f32, "size", 12),
