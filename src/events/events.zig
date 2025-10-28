@@ -69,5 +69,9 @@ fn Event(_Params: type, list: type) type {
 		pub fn run(self: @This(), params: Params) main.events.EventResult {
 			return self.runFunction(self.data, params);
 		}
+
+		pub fn isNoop(self: @This()) bool {
+			return self.runFunction == &ignoredRun;
+		}
 	};
 }
