@@ -16,7 +16,7 @@ pub fn init(zon: main.ZonElement) ?*@This() {
 			std.log.err("Missing field \"damageType\" for hurt event", .{});
 			return null;
 		}) orelse {
-			std.log.err("Uknown damage type for hurt event", .{});
+			std.log.err("Unknown damage type for hurt event", .{});
 			return null;
 		},
 	};
