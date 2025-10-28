@@ -287,27 +287,27 @@ fn deinitLogging() void {
 	}
 }
 
-fn logToWriter(writer: *std.Io.Writer, comptime format: []const u8, args: anytype) std.Io.Writer.Error!void {
+fn logToWriter(writer: *std.Io.Writer, comptime format: []const u8, args: anytype) void {
 	var buf: [log_buffer_size]u8 = undefined;
 	const string = std.fmt.bufPrint(&buf, format, args) catch format;
-	try writer.writeAll(string);
+	writer.writeAll(string) catch {};
 }
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
 	{
 		var writer = (logFile orelse return).writerStreaming(&.{});
-		logToWriter(&writer.interface, format, args) catch {};
+		logToWriter(&writer.interface, format, args);
 	}
 	{
 		var writer = (logFileTs orelse return).writerStreaming(&.{});
-		logToWriter(&writer.interface, format, args) catch {};
+		logToWriter(&writer.interface, format, args);
 	}
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	const writer = std.debug.lockStderrWriter(&.{});
 	defer std.debug.unlockStderrWriter();
-	logToWriter(writer, format, args) catch {};
+	logToWriter(writer, format, args);
 }
 
 // MARK: Callbacks
