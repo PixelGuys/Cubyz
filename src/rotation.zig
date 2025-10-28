@@ -12,7 +12,7 @@ const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
-
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const list = @import("rotation");
 
 pub const RayIntersectionResult = struct {
@@ -125,7 +125,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			return .no;
 		}
-		pub fn getBlockTags() ?[]Tag {
+		pub fn getBlockTags(_: NeverFailingAllocator) ?[]Tag {
 			return null;
 		}
 	};
@@ -166,7 +166,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
 
-	getBlockTags: *const fn() ?[]Tag = DefaultFunctions.getBlockTags,
+	getBlockTags: *const fn(allocator: NeverFailingAllocator) ?[]Tag = DefaultFunctions.getBlockTags,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;

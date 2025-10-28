@@ -4,6 +4,7 @@ const main = @import("main");
 const blocks = main.blocks;
 const Block = blocks.Block;
 const Neighbor = main.chunk.Neighbor;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
 const Degrees = rotation.Degrees;
@@ -317,8 +318,8 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 	return .no;
 }
 
-pub fn getBlockTags() ?[]Tag {
-	const tags = main.stackAllocator.alloc(Tag, 1);
+pub fn getBlockTags(allocator: NeverFailingAllocator) ?[]Tag {
+	const tags = allocator.alloc(Tag, 1);
 	tags[0] = Tag.find(blockTag);
 	return tags;
 }

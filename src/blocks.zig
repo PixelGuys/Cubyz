@@ -99,7 +99,24 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
     _mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
     _blockHealth[size] = zon.get(f32, "blockHealth", 1);
     _blockResistance[size] = zon.get(f32, "blockResistance", 0);
-    _blockTags[size] = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
+    const block_tags: []Tag = Tag.loadTagsFromZon(arena, zon.getChild("tags"));
+    const rotation_tags: ?[]Tag = _mode[size].getBlockTags(arena);
+    var tags_len = block_tags.len;
+    if (rotation_tags) |tags| {
+        tags_len += tags.len;
+    }
+    var index: u32 = 0;
+    _blockTags[size] = arena.alloc(Tag, tags_len);
+    for (block_tags) |tag| {
+        _blockTags[size][index] = tag;
+        index += 1;
+    }
+    if (rotation_tags) |tags| {
+        for (tags) |tag| {
+            _blockTags[size][index] = tag;
+            index += 1;
+        }
+    }
     if (_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
     for (_blockTags[size]) |tag| {
         if (tag == Tag.sbbChild) {
@@ -112,7 +129,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
     _degradable[size] = zon.get(bool, "degradable", false);
     _selectable[size] = zon.get(bool, "selectable", true);
     _replacable[size] = zon.get(bool, "replacable", false);
-    _gui[size] = main.worldArena.dupe(u8, zon.get([]const u8, "gui", ""));
+    _gui[size] = arena.dupe(u8, zon.get([]const u8, "gui", ""));
     _transparent[size] = zon.get(bool, "transparent", false);
     _collide[size] = zon.get(bool, "collide", true);
     _alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
