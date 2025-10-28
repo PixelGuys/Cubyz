@@ -254,7 +254,7 @@ pub fn build(b: *std.Build) !void {
 
 	const formatter_cmd = b.addRunArtifact(formatter);
 	formatter_cmd.step.dependOn(&formatter_install.step);
-	if(b.args) |args| {
+	if (b.args) |args| {
 		formatter_cmd.addArgs(args);
 	}
 
