@@ -5,7 +5,7 @@ const main = @import("main");
 dps: f32,
 damageType: main.game.DamageType,
 
-pub fn load(zon: main.ZonElement) ?*@This() {
+pub fn init(zon: main.ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
 		.dps = zon.get(?f32, "dps", null) orelse {

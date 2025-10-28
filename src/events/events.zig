@@ -26,7 +26,7 @@ fn Event(_Params: type, list: type) type {
 		pub const Params = _Params;
 
 		const VTable = struct {
-			load: *const fn(zon: main.ZonElement) ?*anyopaque,
+			init: *const fn(zon: main.ZonElement) ?*anyopaque,
 			run: *const fn(self: *anyopaque, params: Params) main.events.EventResult,
 		};
 
@@ -36,7 +36,7 @@ fn Event(_Params: type, list: type) type {
 			inline for(@typeInfo(list).@"struct".decls) |decl| {
 				const EventStruct = @field(list, decl.name);
 				eventCreationMap.put(main.globalArena.allocator, decl.name, .{
-					.load = main.utils.castFunctionReturnToAnyopaque(EventStruct.load),
+					.init = main.utils.castFunctionReturnToAnyopaque(EventStruct.init),
 					.run = main.utils.castFunctionSelfToAnyopaque(EventStruct.run),
 				}) catch unreachable;
 			}
@@ -52,7 +52,7 @@ fn Event(_Params: type, list: type) type {
 				return null;
 			};
 			return .{
-				.data = vtable.load(zon) orelse return null,
+				.data = vtable.init(zon) orelse return null,
 				.runFunction = vtable.run,
 			};
 		}
