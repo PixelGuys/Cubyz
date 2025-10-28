@@ -280,8 +280,11 @@ pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: 
 	if(item) |_item| {
 		switch(_item) {
 			.tool => |tool| {
-				if(std.mem.eql(u8, tool.type.id(), "cubyz:chisel")) { // Select only one eighth of a block
-					return closestRay(.intersection, block, relativePlayerPos, playerDir);
+				const tags = tool.type.blockTags();
+				for(tags) |tag| {
+					if(std.mem.eql(u8, tag.getName(), blockTag)) {
+						return closestRay(.intersection, block, relativePlayerPos, playerDir);
+					}
 				}
 			},
 			else => {},
