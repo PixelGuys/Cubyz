@@ -65,7 +65,7 @@
 				0x0, 0x0, 0x0, 0x0, 0.1,
 			},
 			.factor = 1.0,
-			.method = .average
+			.method = .average,
 		},
 	},
 }
