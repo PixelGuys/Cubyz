@@ -178,7 +178,7 @@ pub fn save() void {
 	defer oldZonObject.deinit(main.stackAllocator);
 
 	if(oldZonObject == .object) {
-		zonObject.join(oldZonObject, .preferLeft);
+		zonObject.join(.preferLeft, oldZonObject);
 	}
 
 	main.files.cubyzDir().writeZon(settingsFile, zonObject) catch |err| {

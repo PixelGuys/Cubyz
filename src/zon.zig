@@ -103,7 +103,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub const JoinPriority = enum {preferLeft, preferRight};
 
-	fn joinGetNew(self: ZonElement, other: ZonElement, priority: JoinPriority, allocator: NeverFailingAllocator) ZonElement {
+	fn joinGetNew(self: ZonElement, priority: JoinPriority, other: ZonElement, allocator: NeverFailingAllocator) ZonElement {
 		switch(self) {
 			.int, .float, .string, .stringOwned, .bool, .null => {
 				return switch(priority) {
@@ -121,7 +121,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			.object => {
 				const out = self.clone(allocator);
 
-				out.join(other, priority);
+				out.join(priority, other);
 				return out;
 			},
 		}
@@ -129,7 +129,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return .null;
 	}
 
-	pub fn join(self: *const ZonElement, other: ZonElement, priority: JoinPriority) void {
+	pub fn join(self: *const ZonElement, priority: JoinPriority, other: ZonElement) void {
 		if(other == .null) {
 			return;
 		}
@@ -141,7 +141,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		var iter = other.object.iterator();
 		while(iter.next()) |entry| {
 			if(self.object.get(entry.key_ptr.*)) |val| {
-				self.put(entry.key_ptr.*, val.joinGetNew(entry.value_ptr.*, priority, .{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+				self.put(entry.key_ptr.*, val.joinGetNew(priority, entry.value_ptr.*, .{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			} else {
 				self.put(entry.key_ptr.*, entry.value_ptr.clone(.{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			}
@@ -939,7 +939,7 @@ test "merging" {
 	defer zon1.deinit(allocator);
 
 	const zon2 = ZonElement.parseFromString(allocator, null, ".{   .object5   =   1  \n,}");
-	zon2.join(zon1, .preferRight);
+	zon2.join(.preferRight, zon1);
 	try std.testing.expectEqual(.object, std.meta.activeTag(zon2));
 	try std.testing.expectEqual(.float, std.meta.activeTag(zon2.object.get("object3") orelse .null));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(zon2.object.get("object1") orelse .null));
@@ -949,10 +949,10 @@ test "merging" {
 	zon2.deinit(allocator);
 
 	const zon3 = ZonElement.parseFromString(allocator, null, "1");
-	zon3.join(zon1, .preferRight);
+	zon3.join(.preferRight, zon1);
 	zon3.deinit(allocator);
 
 	const zon4 = ZonElement.parseFromString(allocator, null, "true");
-	zon1.join(zon4, .preferRight);
+	zon1.join(.preferRight, zon4);
 	zon4.deinit(allocator);
 }

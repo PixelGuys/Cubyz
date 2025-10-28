@@ -227,7 +227,7 @@ pub fn save() void { // MARK: save()
 	defer oldZon.deinit(main.stackAllocator);
 
 	if(oldZon == .object) {
-		guiZon.join(oldZon, .preferLeft);
+		guiZon.join(.preferLeft, oldZon);
 	}
 
 	main.files.cubyzDir().writeZon("gui_layout.zig.zon", guiZon) catch |err| {
