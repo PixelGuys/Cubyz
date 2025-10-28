@@ -219,7 +219,10 @@ pub fn build(b: *std.Build) !void {
 	const dependencyWithTestRunner = b.lazyDependency("cubyz_test_runner", .{
 		.target = target,
 		.optimize = optimize,
-	}) orelse @panic("Couldn't find test runner dependency");
+	}) orelse {
+		std.log.info("Downloading cubyz_test_runner dependency.", .{});
+		return;
+	};
 	const exe_tests = b.addTest(.{
 		.root_module = mainModule,
 		.test_runner = .{.path = dependencyWithTestRunner.path("lib/compiler/test_runner.zig"), .mode = .simple},
