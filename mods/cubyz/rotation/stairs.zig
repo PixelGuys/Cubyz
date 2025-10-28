@@ -11,6 +11,7 @@ const RayIntersectionResult = rotation.RayIntersectionResult;
 const RotationMode = rotation.RotationMode;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
+const Tag = main.Tag;
 const Vec2f = vec.Vec2f;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
@@ -310,4 +311,9 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 		return .{.yes_costsDurability = 1};
 	}
 	return .no;
+}
+
+pub fn getBlockTags() ?[]Tag {
+	var tags: [1]Tag = .{.chiselable};
+	return &tags;
 }
