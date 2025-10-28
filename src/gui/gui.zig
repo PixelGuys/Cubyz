@@ -659,26 +659,24 @@ pub const inventory = struct { // MARK: inventory
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
-		// Hold left click to craft
-		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
-			if(mainGuiButton.pressed and (recipeItem != null or itemSlot.pressed)) {
-				const slot = itemSlot.inventory.getItem(itemSlot.itemSlot);
-				if(recipeItem == null and slot != null) recipeItem = slot.?.clone();
-				if(!std.meta.eql(slot, recipeItem)) return;
-				const time = std.time.milliTimestamp();
-				if(!isCrafting) {
-					isCrafting = true;
-					craftingCooldown = maxCraftingCooldown;
-					nextCraftingAction = time;
-				}
-				while(time -% nextCraftingAction >= 0) {
-					nextCraftingAction +%= craftingCooldown;
-					craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
-					if(mainGuiButton.modsOnPress.shift) {
-						itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-					} else {
-						itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
-					}
+		// Hold left click button to craft
+		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != null or itemSlot.pressed)) {
+			const slot = itemSlot.inventory.getItem(itemSlot.itemSlot);
+			if(recipeItem == null and slot != null) recipeItem = slot.?.clone();
+			if(!std.meta.eql(slot, recipeItem)) return;
+			const time = std.time.milliTimestamp();
+			if(!isCrafting) {
+				isCrafting = true;
+				craftingCooldown = maxCraftingCooldown;
+				nextCraftingAction = time;
+			}
+			while(time -% nextCraftingAction >= 0) {
+				nextCraftingAction +%= craftingCooldown;
+				craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
+				if(mainGuiButton.modsOnPress.shift) {
+					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+				} else {
+					itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
 				}
 			}
 			return;
@@ -687,9 +685,7 @@ pub const inventory = struct { // MARK: inventory
 			isCrafting = false;
 		}
 
-		if(recipeItem != null) return; // Don't attempt to spread items when holding something from crafting
-		// Don't do any special item movements on non normal inventories
-		// TODO: This is partially the reason shift-clicking from the creative inventory doesn't work
+		if(recipeItem != null) return;
 		if(itemSlot.mode != .normal) return;
 
 		// Shift clicking between inventories
@@ -708,25 +704,18 @@ pub const inventory = struct { // MARK: inventory
 			return;
 		}
 
-		if(carried.getAmount(0) == 0) return; // Can't split/deposit if nothing is carried
-
-		// Track left click slots for stack splitting
+		// Stack splitting & single depositing
+		if(carried.getAmount(0) == 0) return;
 		if(mainGuiButton.pressed) {
 			for(leftClickSlots.items) |deliveredSlot| {
-				if(itemSlot == deliveredSlot) {
-					return;
-				}
+				if(itemSlot == deliveredSlot) return;
 			}
 			if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null) {
 				leftClickSlots.append(itemSlot);
 			}
-		
-		// Track right click slots for single depositing
 		} else if(secondaryGuiButton.pressed) {
 			for(rightClickSlots.items) |deliveredSlot| {
-				if(itemSlot == deliveredSlot) {
-					return;
-				}
+				if(itemSlot == deliveredSlot) return;
 			}
 			itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
 			rightClickSlots.append(itemSlot);
