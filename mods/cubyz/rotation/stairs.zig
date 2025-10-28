@@ -18,6 +18,7 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
 var modelIndex: ?ModelIndex = null;
+const blockTag = "chiselable";
 
 fn subBlockMask(x: u1, y: u1, z: u1) u8 {
 	return @as(u8, 1) << ((@as(u3, x)*2 + @as(u3, y))*2 + z);
@@ -292,10 +293,13 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 	if(item) |_item| {
 		switch(_item) {
 			.tool => |tool| {
-				if(std.mem.eql(u8, tool.type.id(), "cubyz:chisel")) { // Break only one eigth of a block
-					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
-					if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
-					return;
+				const tags = tool.type.blockTags();
+				for(tags) |tag| {
+					if(std.mem.eql(u8, tag.getName(), blockTag)) {
+						currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
+						if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
+						return;
+					}
 				}
 			},
 			else => {},
@@ -315,6 +319,6 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 
 pub fn getBlockTags() ?[]Tag {
 	const tags = main.stackAllocator.alloc(Tag, 1);
-	tags[0] = Tag.find("chiselable");
+	tags[0] = Tag.find(blockTag);
 	return tags;
 }
