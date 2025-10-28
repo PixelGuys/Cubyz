@@ -2,11 +2,14 @@ const std = @import("std");
 
 const build_options = @import("build_options");
 
-const main = @import("main");
+//const main = @import("main");
+const main = @import("../../main.zig");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Texture = main.graphics.Texture;
+const assets = main.assets;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
@@ -36,29 +39,57 @@ var testingMode: bool = false;
 
 var needsUpdate: bool = false;
 
+var deleteIcon: Texture = undefined;
+var fileExplorerIcon: Texture = undefined;
+
+var addonList: main.ListUnmanaged(Addon) = .{};
+
+const Addon = struct {
+	name: []const u8,
+	directory: []const u8,
+
+	pub fn deinit(self: *const Addon, allocator: main.heap.NeverFailingAllocator) void {
+		allocator.free(self.name);
+		allocator.free(self.directory);
+	}
+};
+
+var page: Page = .generation;
+const numPages: usize = std.meta.fields(Page).len;
+
 const Page = enum(u8) {
-	generationSettings = 0,
+	generation = 0,
 	gameRules = 1,
 	addons = 2,
 
 	pub fn fillSubmenu(self: Page, submenu: *VerticalList) void {
 		switch(self) {
-			.generationSettings => {
+			.generation => {
 				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the first page", .center));
 			},
 			.gameRules => {
 				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
 			},
 			.addons => {
-				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the third page", .center));
+				for(addonList.items, 0..) |addon, i| {
+					const nameLabel = Label.init(.{0, 0}, 192 - 16, addon.name, .left);
+					const folderButton = Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i});
+					const row = HorizontalList.init();
+					row.add(nameLabel);
+					row.add(folderButton);
+					row.finish(.{0, 0}, .center);
+					submenu.add(row);
+				}
+				
+				submenu.add(Button.initText(.{0, 0}, 128, "Add Addon", .{.callback = &addAddon}));
 			},
 		}
 	}
 
 	pub fn label(self: Page) []const u8 {
 		switch(self) {
-			.generationSettings => {
-				return "Generation Settings";
+			.generation => {
+				return "Generation";
 			},
 			.gameRules => {
 				return "Game Rules";
@@ -70,9 +101,23 @@ const Page = enum(u8) {
 	}
 };
 
-var page: Page = .generationSettings;
+pub fn init() void {
+	deleteIcon = Texture.initFromFile("assets/cubyz/ui/delete_icon.png");
+	fileExplorerIcon = Texture.initFromFile("assets/cubyz/ui/file_explorer_icon.png");
+}
 
-const numPages: usize = std.meta.fields(Page).len;
+pub fn deinit() void {
+	deleteIcon.deinit();
+	fileExplorerIcon.deinit();
+}
+
+fn openFolder(index: usize) void {
+	main.files.openDirInWindow(addonList.items[index].directory);
+}
+
+fn addAddon(_: usize) void {
+	_=1;
+}
 
 fn prevPage(_: usize) void {
 	const oldPageInt = @intFromEnum(page);
@@ -84,7 +129,7 @@ fn prevPage(_: usize) void {
 fn nextPage(_: usize) void {
 	const oldPageInt = @intFromEnum(page);
 	const newPageInt = (oldPageInt + 1);
-	page = std.meta.intToEnum(Page, newPageInt) catch .generationSettings;
+	page = std.meta.intToEnum(Page, newPageInt) catch .generation;
 	needsUpdate = true;
 }
 
@@ -177,22 +222,36 @@ pub fn onOpen() void {
 pub fn onClose() void {
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
-		page = .generationSettings;
 	}
+	page = .generation;
+	for(addonList.items) |addon| addon.deinit(main.globalAllocator);
+	addonList.deinit(main.globalAllocator);
 }
 
 pub fn render() void {
 	if(needsUpdate) {
 		needsUpdate = false;
-		var oldName = window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.currentString.items;
-		oldName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{oldName}) catch unreachable;
-		defer main.stackAllocator.free(oldName);
+		var oldWorldName = window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.currentString.items;
+		oldWorldName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{oldWorldName}) catch unreachable;
+		defer main.stackAllocator.free(oldWorldName);
+
 		const oldScroll = window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState;
 		const oldPage = page;
+
+		var oldAddonList: main.ListUnmanaged(Addon) = .{};
+		for (addonList.items) |addon| {
+			oldAddonList.append(main.stackAllocator, addon);
+		}
+
 		onClose();
 		page = oldPage;
+		addonList = .{};
+		for (oldAddonList.items) |oldAddon| {
+			oldAddonList.append(main.globalAllocator, oldAddon);
+		}
+
 		onOpen();
-		window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.setString(oldName);
+		window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.setString(oldWorldName);
 		window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState = oldScroll;
 	}
 }
