@@ -129,7 +129,7 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
-
+var isTakingBackgroundImage: bool = false;
 pub fn updateFov(fov: f32) void {
 	lastFov = fov;
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
@@ -186,6 +186,9 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
+	if(!isTakingBackgroundImage and lastFov != main.settings.fov) {
+		updateFov(main.settings.fov);
+	}
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
@@ -300,9 +303,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
-	if(lastFov != main.settings.fov) {
-		updateFov(main.settings.fov);
-	}
 	if(!blocks.meshes.hasFog(playerBlock)) {
 		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
@@ -611,6 +611,8 @@ pub const MenuBackGround = struct {
 	}
 
 	pub fn takeBackgroundImage() void {
+		isTakingBackgroundImage = true;
+		defer isTakingBackgroundImage = false;
 		const size: usize = 1024; // Use a power of 2 here, to reduce video memory waste.
 		const pixels: []u32 = main.stackAllocator.alloc(u32, size*size);
 		defer main.stackAllocator.free(pixels);
