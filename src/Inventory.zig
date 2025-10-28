@@ -535,6 +535,7 @@ pub const Command = struct { // MARK: Command
 		depositOrDrop = 7,
 		depositToAny = 11,
 		clear = 8,
+		removeItem = 12,
 		updateBlock = 9,
 		addHealth = 10,
 	};
@@ -549,6 +550,7 @@ pub const Command = struct { // MARK: Command
 		depositOrDrop: DepositOrDrop,
 		depositToAny: DepositToAny,
 		clear: Clear,
+		removeItem: RemoveItem,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
 	};
@@ -1936,6 +1938,34 @@ pub const Command = struct { // MARK: Command
 			return result;
 		}
 	};
+
+	const RemoveItem = struct {
+		source: InventoryAndSlot,
+		desiredAmount: u16 = 1,
+
+		fn run(self: RemoveItem, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			if(self.source.inv.type != .normal) return;
+			const amount = @min(self.source.ref().amount, self.desiredAmount);
+			cmd.executeBaseOperation(allocator, .{.delete = .{
+				.source = self.source,
+				.amount = amount,
+			}}, side);
+		}
+
+		fn serialize(self: RemoveItem, writer: *utils.BinaryWriter) void {
+			self.source.write(writer);
+			if(self.desiredAmount != 1) {
+				writer.writeInt(u16, self.desiredAmount);
+			}
+		}
+
+		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !RemoveItem {
+			return .{
+				.source = try InventoryAndSlot.read(reader, side, user),
+				.desiredAmount = reader.readInt(u16) catch 1,
+			};
+		}
+	};
 };
 
 const SourceType = enum(u8) {
@@ -2089,6 +2119,14 @@ pub fn dropStack(source: Inventory, sourceSlot: u32) void {
 
 pub fn dropOne(source: Inventory, sourceSlot: u32) void {
 	Sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source, .slot = sourceSlot}, .desiredAmount = 1}});
+}
+
+pub fn removeOne(source: Inventory, sourceSlot: u32) void {
+	Sync.ClientSide.executeCommand(.{.removeItem = .{.source = .{.inv = source, .slot = sourceSlot}}});
+}
+
+pub fn removeMany(source: Inventory, sourceSlot: u32, amount: u16) void {
+	Sync.ClientSide.executeCommand(.{.removeItem = .{.source = .{.inv = source, .slot = sourceSlot}, .desiredAmount = amount}});
 }
 
 pub fn fillFromCreative(dest: Inventory, destSlot: u32, item: ?Item) void {
