@@ -610,14 +610,14 @@ pub const inventory = struct { // MARK: inventory
 	const maxCraftingCooldown = 400;
 	var nextCraftingAction: i64 = undefined;
 	var craftingCooldown: u63 = undefined;
-	var startedCrafting: bool = false;
+	var isCrafting: bool = false;
 
 	pub fn init() void {
 		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
-		startedCrafting = false;
+		isCrafting = false;
 	}
 
 	pub fn deinit() void {
@@ -652,69 +652,85 @@ pub const inventory = struct { // MARK: inventory
 
 	fn update() void {
 		if(!initialized) return;
-		if(hoveredItemSlot) |itemSlot| {
-			const mainGuiButton = main.KeyBoard.key("mainGuiButton");
-			const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
-			if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
-				if(mainGuiButton.pressed) {
-					if(recipeItem == null and itemSlot.inventory._items[itemSlot.itemSlot].item != null) {
-						recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
+		const itemSlot = hoveredItemSlot orelse {
+			isCrafting = false;
+			return;
+		};
+		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
+		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
+
+		// Hold left click to craft
+		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
+			if(mainGuiButton.pressed and (recipeItem != null or itemSlot.pressed)) {
+				if(recipeItem == null and itemSlot.inventory._items[itemSlot.itemSlot].item != null) {
+					recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
+				}
+				if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
+				const time = std.time.milliTimestamp();
+				if(!isCrafting) {
+					isCrafting = true;
+					craftingCooldown = maxCraftingCooldown;
+					nextCraftingAction = time;
+				}
+				while(time -% nextCraftingAction >= 0) {
+					nextCraftingAction +%= craftingCooldown;
+					craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
+					if(mainGuiButton.modsOnPress.shift) {
+						itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+					} else {
+						itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
 					}
-					if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
-					const time = std.time.milliTimestamp();
-					if(!startedCrafting) {
-						startedCrafting = true;
-						craftingCooldown = maxCraftingCooldown;
-						nextCraftingAction = time;
+				}
+			}
+			return;
+		// Reset crafting acceleration if not hovering a slot
+		} else if(isCrafting) {
+			isCrafting = false;
+		}
+
+		if(recipeItem != null) return; // Don't attempt to spread items when holding something from crafting
+		// Don't do any special item movements on non normal inventories
+		// TODO: This is partially the reason shift-clicking from the creative inventory doesn't work
+		if(itemSlot.mode != .normal) return;
+
+		// Shift clicking between inventories
+		if(mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
+			if(itemSlot.inventory.id == main.game.Player.inventory.id) {
+				var iterator = std.mem.reverseIterator(openWindows.items);
+				while(iterator.next()) |window| {
+					if(window.shiftClickableInventory) |inv| {
+						itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+						break;
 					}
-					while(time -% nextCraftingAction >= 0) {
-						nextCraftingAction +%= craftingCooldown;
-						craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
-						if(mainGuiButton.modsOnPress.shift) {
-							itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-						} else {
-							itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
-						}
-					}
+				}
+			} else {
+				itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+			}
+			return;
+		}
+
+		if(carried.getAmount(0) == 0) return; // Can't split/deposit if nothing is carried
+
+		// Track left click slots for stack splitting
+		if(mainGuiButton.pressed) {
+			for(leftClickSlots.items) |deliveredSlot| {
+				if(itemSlot == deliveredSlot) {
 					return;
 				}
 			}
-			if(itemSlot.mode != .normal) return;
-
-			if(mainGuiButton.pressed) {
-				if(mainGuiButton.modsOnPress.shift) {
-					if(itemSlot.inventory.id == main.game.Player.inventory.id) {
-						var iterator = std.mem.reverseIterator(openWindows.items);
-						while(iterator.next()) |window| {
-							if(window.shiftClickableInventory) |inv| {
-								itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-								break;
-							}
-						}
-					} else {
-						itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-					}
-				} else {
-					if(carried.getAmount(0) == 0) return;
-					for(leftClickSlots.items) |deliveredSlot| {
-						if(itemSlot == deliveredSlot) {
-							return;
-						}
-					}
-					if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null) {
-						leftClickSlots.append(itemSlot);
-					}
-				}
-			} else if(secondaryGuiButton.pressed) {
-				if(carried.getAmount(0) == 0) return;
-				for(rightClickSlots.items) |deliveredSlot| {
-					if(itemSlot == deliveredSlot) {
-						return;
-					}
-				}
-				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
-				rightClickSlots.append(itemSlot);
+			if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null) {
+				leftClickSlots.append(itemSlot);
 			}
+		
+		// Track right click slots for single depositing
+		} else if(secondaryGuiButton.pressed) {
+			for(rightClickSlots.items) |deliveredSlot| {
+				if(itemSlot == deliveredSlot) {
+					return;
+				}
+			}
+			itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
+			rightClickSlots.append(itemSlot);
 		}
 	}
 
@@ -722,10 +738,9 @@ pub const inventory = struct { // MARK: inventory
 		if(!initialized) return;
 		if(main.game.world == null) return;
 		if(leftClick) {
-			if(startedCrafting) {
-				startedCrafting = false;
-				return;
-			}
+			if(recipeItem) |item| item.deinit();
+			recipeItem = null;
+			isCrafting = false;
 			if(leftClickSlots.items.len != 0) {
 				const targetInventories = main.stackAllocator.alloc(Inventory, leftClickSlots.items.len);
 				defer main.stackAllocator.free(targetInventories);
@@ -738,6 +753,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
+				if(hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
 			} else if(!hoveredAWindow) {
 				carried.dropStack(0);
@@ -746,6 +762,7 @@ pub const inventory = struct { // MARK: inventory
 			if(rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
+				if(hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
 				if(hovered.inventory.type == .creative) {
 					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
 				} else {
@@ -755,8 +772,6 @@ pub const inventory = struct { // MARK: inventory
 				carried.dropOne(0);
 			}
 		}
-		if(recipeItem) |item| item.deinit();
-		recipeItem = null;
 	}
 
 	fn render(mousePos: Vec2f) void {
