@@ -638,6 +638,11 @@ pub fn main() void { // MARK: main()
 		}
 
 		if(!isHidden) {
+			if(game.world) |_| {
+				renderer.updateFov(settings.fov);
+			} else {
+				renderer.updateFov(70.0);
+			}
 			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);

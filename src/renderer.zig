@@ -129,7 +129,6 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
-var isTakingBackgroundImage: bool = false;
 pub fn updateFov(fov: f32) void {
 	if(lastFov != fov) {
 		lastFov = fov;
@@ -188,9 +187,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
-	if(!isTakingBackgroundImage) {
-		updateFov(main.settings.fov);
-	}
+
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
@@ -600,7 +597,6 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		pipeline.bind(null);
-		updateFov(70.0);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 
@@ -611,8 +607,6 @@ pub const MenuBackGround = struct {
 	}
 
 	pub fn takeBackgroundImage() void {
-		isTakingBackgroundImage = true;
-		defer isTakingBackgroundImage = false;
 		const size: usize = 1024; // Use a power of 2 here, to reduce video memory waste.
 		const pixels: []u32 = main.stackAllocator.alloc(u32, size*size);
 		defer main.stackAllocator.free(pixels);
@@ -623,6 +617,7 @@ pub const MenuBackGround = struct {
 		main.settings.resolutionScale = 1;
 		updateViewport(size, size);
 		updateFov(90.0);
+		defer updateFov(main.settings.fov);
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height);
 
