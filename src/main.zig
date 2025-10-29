@@ -292,7 +292,6 @@ fn initLogging() void {
 fn deinitLogging() void {
 	if(logFile) |_logFile| {
 		logFileWriter.interface.flush() catch {};
-		logFileBuffer = undefined;
 		logFileWriter = undefined;
 		_logFile.close();
 		logFile = null;
@@ -300,7 +299,6 @@ fn deinitLogging() void {
 
 	if(logFileTs) |_logFileTs| {
 		logFileTsWriter.interface.flush() catch {};
-		logFileTsBuffer = undefined;
 		logFileTsWriter = undefined;
 		_logFileTs.close();
 		logFileTs = null;
