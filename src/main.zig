@@ -74,6 +74,7 @@ fn cacheString(comptime str: []const u8) []const u8 {
 }
 
 const log_buffer_size = 64 << 10;
+var logMutex: std.Thread.Mutex = .{};
 var logFile: ?std.fs.File = null;
 var logFileBuffer: [log_buffer_size]u8 = undefined;
 var logFileWriter: std.fs.File.Writer = undefined;
@@ -241,6 +242,9 @@ pub fn dumpStackTraceToLog(first_trace_address: ?usize) void {
 	};
 	std.debug.captureStackTrace(first_trace_address, &stack_trace);
 
+	logMutex.lock();
+	defer logMutex.unlock();
+
 	std.debug.writeStackTrace(stack_trace, &logFileWriter.interface, debug_info, .no_color) catch {};
 	logFileWriter.interface.flush() catch {};
 
@@ -264,6 +268,9 @@ pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 }
 
 fn initLogging() void {
+	std.debug.assert(logMutex.tryLock()); // not thread-safe
+	defer logMutex.unlock();
+
 	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
@@ -289,6 +296,10 @@ fn initLogging() void {
 }
 
 fn deinitLogging() void {
+	std.debug.assert(logMutex.tryLock()); // not thread-safe
+	defer logMutex = undefined;
+	defer logMutex.unlock();
+
 	if(logFile) |_logFile| {
 		logFileWriter.interface.flush() catch {};
 		logFileWriter = undefined;
@@ -310,6 +321,9 @@ fn logToWriter(writer: *std.Io.Writer, comptime format: []const u8, args: anytyp
 }
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
+	logMutex.lock();
+	defer logMutex.unlock();
+
 	if(logFile) |_| {
 		logToWriter(&logFileWriter.interface, format, args);
 	}
