@@ -331,8 +331,12 @@ pub const ParticleSystem = struct {
 
 		c.glBindVertexArray(chunk_meshing.vao);
 
-		for(0..std.math.divCeil(u32, particleCount, chunk_meshing.maxQuadsInIndexBuffer) catch unreachable) |_| {
-			c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCount*6), c.GL_UNSIGNED_INT, null);
+		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
+		const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;
+		for(0..count) |i| {
+			const particleOffset = (maxQuads*4)*i;
+			const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(particleCurrentCount*6), c.GL_UNSIGNED_INT, null, @intCast(particleOffset));
 		}
 	}
 
