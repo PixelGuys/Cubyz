@@ -976,4 +976,24 @@ test "merging" {
 	const zon8 = ZonElement.parseFromString(allocator, null, "true");
 	zon8.join(.preferLeft, zon5);
 	zon8.deinit(allocator);
+
+	const zon9 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
+	defer zon9.deinit(allocator);
+	const zon10 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
+	defer zon10.deinit(allocator);
+	zon9.join(.preferLeft, zon10);
+	try std.testing.expectEqual(zon9.get(?i32, "a", null), 1);
+	try std.testing.expectEqualSlices(u8, zon9.get(?[]const u8, "c", null).?, "foo");
+	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "a", null), 2);
+	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "b", null), 3);
+
+	const zon11 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
+	defer zon11.deinit(allocator);
+	const zon12 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
+	defer zon12.deinit(allocator);
+	zon11.join(.preferRight, zon12);
+	try std.testing.expectEqual(zon11.get(?i32, "a", null), 1);
+	try std.testing.expectEqualSlices(u8, zon11.get(?[]const u8, "c", null).?, "foo");
+	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get(?[]const u8, "a", null).?, "bar");
+	try std.testing.expectEqual(zon11.getChild("b").get(?i32, "b", null), 3);
 }
