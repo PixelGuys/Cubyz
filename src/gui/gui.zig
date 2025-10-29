@@ -659,7 +659,6 @@ pub const inventory = struct { // MARK: inventory
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
-		// Hold left click button to craft
 		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != null or itemSlot.pressed)) {
 			const slot = itemSlot.inventory.getItem(itemSlot.itemSlot);
 			if(recipeItem == null and slot != null) recipeItem = slot.?.clone();
@@ -681,14 +680,12 @@ pub const inventory = struct { // MARK: inventory
 			}
 			return;
 		} else if(isCrafting) {
-			// Reset crafting acceleration if not hovering a slot
 			isCrafting = false;
 		}
 
 		if(recipeItem != null) return;
 		if(itemSlot.mode != .normal) return;
 
-		// Shift clicking between inventories
 		if(mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
 			if(itemSlot.inventory.id == main.game.Player.inventory.id) {
 				var iterator = std.mem.reverseIterator(openWindows.items);
@@ -704,7 +701,6 @@ pub const inventory = struct { // MARK: inventory
 			return;
 		}
 
-		// Stack splitting & single depositing
 		if(carried.getAmount(0) == 0) return;
 		if(mainGuiButton.pressed) {
 			for(leftClickSlots.items) |deliveredSlot| {
