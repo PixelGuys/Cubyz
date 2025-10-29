@@ -716,7 +716,7 @@ pub const inventory = struct { // MARK: inventory
 						return;
 					}
 				}
-				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 1);
+				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
 				rightClickSlots.append(itemSlot);
 			}
 		}
@@ -751,7 +751,7 @@ pub const inventory = struct { // MARK: inventory
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
 				if(hovered.inventory.type == .creative) {
-					hovered.inventory.depositToAny(hovered.itemSlot, carried, 1);
+					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
 				} else {
 					hovered.inventory.takeHalf(hovered.itemSlot, carried);
 				}
