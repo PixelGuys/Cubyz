@@ -227,14 +227,10 @@ pub fn save() void { // MARK: save()
 	defer oldZon.deinit(main.stackAllocator);
 
 	if(oldZon == .object) {
-		oldZon.join(guiZon);
-	} else {
-		oldZon.deinit(main.stackAllocator);
-		oldZon = guiZon;
-		guiZon = .null;
+		guiZon.join(.preferLeft, oldZon);
 	}
 
-	main.files.cubyzDir().writeZon("gui_layout.zig.zon", oldZon) catch |err| {
+	main.files.cubyzDir().writeZon("gui_layout.zig.zon", guiZon) catch |err| {
 		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
 	};
 }
