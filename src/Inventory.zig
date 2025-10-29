@@ -740,18 +740,11 @@ pub const Command = struct { // MARK: Command
 
 			switch(typ) {
 				.create => {
-					var out: SyncOperation = .{.create = .{
+					const out: SyncOperation = .{.create = .{
 						.inv = try InventoryAndSlot.read(reader, .client, null),
 						.amount = try reader.readInt(u16),
-						.item = null,
+						.item = try Item.fromBytes(reader),
 					}};
-
-					if(reader.remaining.len != 0) {
-						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-						defer zon.deinit(main.stackAllocator);
-						out.create.item = try Item.init(zon);
-					}
-
 					return out;
 				},
 				.delete => {
@@ -797,13 +790,9 @@ pub const Command = struct { // MARK: Command
 				.create => |create| {
 					create.inv.write(&writer);
 					writer.writeInt(u16, create.amount);
-					if(create.item) |item| {
-						const zon = ZonElement.initObject(main.stackAllocator);
-						defer zon.deinit(main.stackAllocator);
-						item.insertIntoZon(main.stackAllocator, zon);
-						const string = zon.toStringEfficient(main.stackAllocator, &.{});
-						defer main.stackAllocator.free(string);
-						writer.writeSlice(string);
+					if(create.item) |item|{
+					    item.toBytes(&writer);
+					    writer.writeInt(u16, create.amount);
 					}
 				},
 				.delete => |delete| {
