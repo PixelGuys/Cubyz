@@ -935,10 +935,10 @@ test "merging" {
 	var wrap = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	const allocator = wrap.allocator();
 
-	const zon1 = ZonElement.parseFromString(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}");
+	const zon1 = ZonElement.parseFromString(allocator, null, ".{.object1 = \"\", .object2 = .{}, .object3 = 1.0e4, @\"\nobject1\" = .{}, @\"\tobject1θ\" = .{}}");
 	defer zon1.deinit(allocator);
 
-	const zon2 = ZonElement.parseFromString(allocator, null, ".{   .object5   =   1  \n,}");
+	const zon2 = ZonElement.parseFromString(allocator, null, ".{.object5 = 1}");
 	zon2.join(.preferRight, zon1);
 	try std.testing.expectEqual(.object, std.meta.activeTag(zon2));
 	try std.testing.expectEqual(.float, std.meta.activeTag(zon2.object.get("object3") orelse .null));
@@ -956,10 +956,10 @@ test "merging" {
 	zon1.join(.preferRight, zon4);
 	zon4.deinit(allocator);
 
-	const zon5 = ZonElement.parseFromString(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}");
+	const zon5 = ZonElement.parseFromString(allocator, null, ".{.object1 = \"\", .object2 = .{}, .object3 = 1.0e4, @\"\nobject1\" = .{}, @\"\tobject1θ\" = .{}}");
 	defer zon5.deinit(allocator);
 
-	const zon6 = ZonElement.parseFromString(allocator, null, ".{   .object5   =   1  \n,}");
+	const zon6 = ZonElement.parseFromString(allocator, null, ".{.object5 = 1}");
 	zon5.join(.preferLeft, zon6);
 	try std.testing.expectEqual(.object, std.meta.activeTag(zon5));
 	try std.testing.expectEqual(.float, std.meta.activeTag(zon5.object.get("object3") orelse .null));
