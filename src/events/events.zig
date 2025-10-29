@@ -57,12 +57,12 @@ fn Event(_Params: type, list: type) type {
 			};
 		}
 
-		pub const ignored: @This() = .{
+		pub const noop: @This() = .{
 			.data = undefined,
-			.runFunction = &ignoredRun,
+			.runFunction = &noopCallback,
 		};
 
-		fn ignoredRun(_: *anyopaque, _: Params) EventResult {
+		fn noopCallback(_: *anyopaque, _: Params) EventResult {
 			return .ignored;
 		}
 
@@ -71,7 +71,7 @@ fn Event(_Params: type, list: type) type {
 		}
 
 		pub fn isNoop(self: @This()) bool {
-			return self.runFunction == &ignoredRun;
+			return self.runFunction == &noopCallback;
 		}
 	};
 }
