@@ -66,11 +66,13 @@ const Page = enum(u8) {
 					const addonName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{addonPath[(lastSlash + 1)..]}) catch unreachable;
 					defer main.stackAllocator.free(addonName);
 
-					const nameLabel = Label.init(.{0, 0}, 192 - 16, addonName, .left);
+					const nameLabel = Label.init(.{0, 0}, 192 - 26 - 8 - 26, addonName, .left);
 					const folderButton = Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i});
+					const deleteButton = Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &removeAddon, .arg = i});
 					const row = HorizontalList.init();
 					row.add(nameLabel);
 					row.add(folderButton);
+					row.add(deleteButton);
 					row.finish(.{0, 0}, .center);
 					submenu.add(row);
 				}
@@ -109,10 +111,25 @@ fn openFolder(index: usize) void {
 	main.files.openDirInWindow(addonPathList.items[index]);
 }
 
-fn addAddon(_: usize) void {
-	const path = main.files.query(main.globalAllocator) catch return;
-	addonPathList.append(main.globalAllocator, path);
+fn removeAddon(index: usize) void {
+	main.globalAllocator.free(addonPathList.orderedRemove(index));
 	needsUpdate = true;
+}
+
+fn addAddon(_: usize) void {
+	const newAddonPathOptional = main.files.query(main.globalAllocator) catch return;
+	if(newAddonPathOptional) |newAddonPath| {
+
+		for(addonPathList.items) |addonPath|{
+			if(std.mem.eql(u8, addonPath, newAddonPath)) {
+				main.globalAllocator.free(newAddonPath);
+				return;
+			}
+		}
+
+		addonPathList.append(main.globalAllocator, newAddonPath);
+		needsUpdate = true;
+	}
 }
 
 fn prevPage(_: usize) void {
@@ -191,7 +208,7 @@ pub fn onOpen() void {
 		list.add(nameRow);
 	}
 
-	{ // header
+	{ // page title and switch buttons
 		const leftArrow = Button.initText(.{0, 0}, 24, "<", .{.callback = &prevPage});
 		const label = Label.init(.{0, 0}, 224 - 48, page.label(), .center);
 		const rightArrow = Button.initText(.{0, 0}, 24, ">", .{.callback = &nextPage});
@@ -203,11 +220,11 @@ pub fn onOpen() void {
 		list.add(header);
 	}
 
-	const submenu = VerticalList.init(.{0, 0}, 384, 8);
+	const submenu = VerticalList.init(.{0, 8}, 384, 8);
 	page.fillSubmenu(submenu);
 	list.add(submenu);
 
-	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
+	list.add(Button.initText(.{0, 8}, 128, "Create World", .{.callback = &createWorld}));
 
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
