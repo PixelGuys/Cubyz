@@ -1,0 +1,22 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/palm/coconut/trunk/straight/5"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/straight/6"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/straight/6a"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/straight/7"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/straight/8"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/straight/8a"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/tilt/6"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/tilt/6a"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/tilt/7"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/tilt/7a"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/tilt/8"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/tilt/9"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/leaning/7"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/leaning/8"},
+		.{.id = "cubyz:tree/palm/coconut/trunk/leaning/9"},
+	},
+	.children = .{
+		.lime = "cubyz:tree/palm/coconut/fronds",
+	},
+}
