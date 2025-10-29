@@ -67,7 +67,7 @@ pub const StructureMapFragment = struct {
 		@memset(self.tempData.lists, .{});
 	}
 
-	fn privateDeinit(self: *StructureMapFragment, _: usize) void {
+	fn privateDeinit(self: *StructureMapFragment) void {
 		self.arena.deinit();
 		memoryPool.destroy(self);
 	}
@@ -123,7 +123,6 @@ pub const StructureMapFragment = struct {
 /// A generator for the cave map.
 pub const StructureMapGenerator = struct {
 	init: *const fn(parameters: ZonElement) void,
-	deinit: *const fn() void,
 	generate: *const fn(map: *StructureMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
@@ -135,7 +134,6 @@ pub const StructureMapGenerator = struct {
 	pub fn registerGenerator(comptime Generator: type) void {
 		const self = StructureMapGenerator{
 			.init = &Generator.init,
-			.deinit = &Generator.deinit,
 			.generate = &Generator.generate,
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,

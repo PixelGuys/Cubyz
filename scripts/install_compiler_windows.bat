@@ -36,8 +36,6 @@ if not "%version%" == "%currVersion%" (
 	C:\Windows\System32\tar.exe -xf compiler\archive.zip --directory compiler
 	ren compiler\%version% zig
 	del compiler\archive.zip
-	echo Patching lib/std/zig/render.zig...
-	powershell -Command $ProgressPreference = 'SilentlyContinue'; "Invoke-WebRequest -uri https://github.com/PixelGuys/Cubyz-std-lib/releases/download/%baseVersion%/render.zig -OutFile compiler\zig\lib\std\zig\render.zig"
 	echo %version%> compiler\version.txt
 	echo Done updating Zig.
 ) ELSE (
