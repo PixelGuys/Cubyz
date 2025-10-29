@@ -261,12 +261,61 @@ pub fn build(b: *std.Build) !void {
 	const formatter_step = b.step("format", "Check the formatting of the code");
 	formatter_step.dependOn(&formatter_cmd.step);
 
-	const checkStep = b.step("check", "Runs compiler checks without producing output files");
-	var modules = b.modules.iterator();
-	while(modules.next()) |*modEntry| {
-		checkStep.dependOn(&b.addExecutable(.{
-			.name = b.fmt("{s}-check", .{modEntry.key_ptr.*}),
-			.root_module = modEntry.value_ptr.*,
-		}).step);
+	var checkStep: CheckStep = .init(b);
+	defer checkStep.deinit();
+	var iter = b.top_level_steps.iterator();
+	while(iter.next()) |*modEntry| {
+		checkStep.collectCheckables(&modEntry.value_ptr.*.step);
 	}
+	checkStep.addCheckSteps();
 }
+
+const CheckStep = struct {
+	step: *std.Build.Step,
+	b: *std.Build,
+	compiles: std.ArrayListUnmanaged(*std.Build.Step.Compile),
+	fn init(b: *std.Build) CheckStep {
+		return .{
+			.step = b.step("check", "Runs compiler checks without producing output files"),
+			.b = b,
+			.compiles = .{},
+		};
+	}
+	fn deinit(self: *CheckStep) void {
+		self.compiles.deinit(self.b.allocator);
+	}
+	fn addCheckSteps(self: *CheckStep) void {
+		for(self.compiles.items) |compile| {
+			if(compile.kind.isTest()) {
+				self.step.dependOn(&self.b.addTest(.{
+					.name = self.b.fmt("{s}-check", .{compile.name}),
+					.root_module = compile.root_module,
+					.emit_object = true,
+				}).step);
+			} else {
+				self.step.dependOn(&self.b.addLibrary(.{
+					.name = self.b.fmt("{s}-check", .{compile.name}),
+					.root_module = compile.root_module,
+				}).step);
+			}
+		}
+	}
+	fn collectCheckables(self: *CheckStep, step: *std.Build.Step) void {
+		if(step.cast(std.Build.Step.Compile)) |compile| {
+			const exists = blk: {
+				for(self.compiles.items) |existing| {
+					if(existing.kind.isTest() == compile.kind.isTest() and existing.root_module == compile.root_module) {
+						break :blk true;
+					}
+				}
+				break :blk false;
+			};
+			if(!exists) {
+				self.compiles.append(self.b.allocator, compile) catch @panic("OOM");
+			}
+		}
+		for(step.dependencies.items) |dep| {
+			self.collectCheckables(dep);
+		}
+	}
+};
