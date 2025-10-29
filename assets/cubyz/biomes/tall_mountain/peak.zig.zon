@@ -8,6 +8,8 @@
 	.mountains = 30,
 	.chance = 0,
 
+	.soilCreep = 1.5,
+
 	.music = "cubyz:out_of_breath",
 
 	.parentBiomes = .{

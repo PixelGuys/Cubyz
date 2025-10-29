@@ -1,0 +1,18 @@
+.{
+	.tags = .{.cuttable},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:plane",
+	.rotation = "cubyz:carpet",
+	.texture = "cubyz:osier",
+	.item = .{
+		.texture = "osier.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

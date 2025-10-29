@@ -1,0 +1,45 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 100,
+	.blockResistance = 9,
+	.item = .{
+		.texture = "ruby.png",
+		.material = .{
+			.durability = 300,
+			.massDamage = 0.9,
+			.hardnessDamage = 8.5,
+			.swingSpeed = 4.5,
+			.textureRoughness = 0.1,
+			.colors = .{
+				0xff9b2129, 0xffbd2936, 0xffda2f2f, 0xfffb4845, 0xffff7261,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.45,
+					.restriction = .{
+						.id = .not,
+						.child = .{
+							.id = .encased,
+							.tag = .precious,
+							.amount = 4,
+						},
+					},
+				},
+			},
+		},
+	},
+	.ore = .{
+		.veins = 4.5,
+		.size = 3,
+		.height = -5000,
+		.minHeight = -15000,
+		.density = 0.05,
+	},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:ore",
+	.model = "cubyz:cube",
+	.texture = "cubyz:ruby_ore",
+}

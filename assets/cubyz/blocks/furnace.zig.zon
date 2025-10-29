@@ -1,0 +1,15 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 20,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:planar",
+	.model = "cubyz:cube",
+	.texture = "cubyz:furnace/back",
+	.texture_front = "cubyz:furnace/front",
+	.texture_left = "cubyz:furnace/side",
+	.texture_right = "cubyz:furnace/side",
+	.texture_top = "cubyz:furnace/top",
+	.texture_bottom = "cubyz:furnace/bottom",
+}

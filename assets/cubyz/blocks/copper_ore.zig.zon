@@ -1,0 +1,21 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 35,
+	.blockResistance = 2,
+	.ore = .{
+		.veins = 5,
+		.size = 15,
+		.height = 20,
+		.minHeight = -400,
+		.density = 0.25,
+	},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:ore",
+	.model = "cubyz:cube",
+	.texture = "cubyz:copper_ore",
+	.item = .{
+		.texture = "raw_copper.png",
+	},
+}

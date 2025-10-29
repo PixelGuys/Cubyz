@@ -1,5 +1,5 @@
 .{
-	.tags = .{.leaf},
+	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -9,7 +9,7 @@
 	.absorbedLight = 0x000000,
 	.collide = false,
 	.model = "cubyz:flower/height_8",
-	.rotation = .planar,
+	.rotation = "cubyz:planar",
 	.texture = "cubyz:hibiscus",
 	.texture_top = "cubyz:hibiscus_top",
 	.texture_bottom = "cubyz:hibiscus_top",

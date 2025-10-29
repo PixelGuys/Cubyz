@@ -1,0 +1,14 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:mushroom/small/toadstool/variant/0"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/1"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/2"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/3"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/4"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/5"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/6"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/7"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/8"},
+		.{.id = "cubyz:mushroom/small/toadstool/variant/9"},
+	},
+}

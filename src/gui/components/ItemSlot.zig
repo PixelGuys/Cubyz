@@ -16,6 +16,8 @@ const ItemSlot = @This();
 
 const border: f32 = 2;
 
+pub const sizeWithBorder = 32 + 2*border;
+
 const Mode = enum {
 	normal,
 	takeOnly,
@@ -23,7 +25,7 @@ const Mode = enum {
 };
 
 pos: Vec2f,
-size: Vec2f = .{32 + 2*border, 32 + 2*border},
+size: Vec2f = @splat(sizeWithBorder),
 inventory: Inventory,
 itemSlot: u32,
 lastItemAmount: u16 = 0,
@@ -139,8 +141,25 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)) + Vec2f{1.0, 1.0}, self.size - @as(Vec2f, @splat(2*border)));
 		draw.setColor(0xffffffff);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
-		if(self.inventory.getAmount(self.itemSlot) != 1) {
+		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
+		if(shouldRenderStackSizeText) {
 			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
+		}
+		if(item == .tool) {
+			const tool = item.tool;
+			const durabilityPercentage = @as(f32, @floatFromInt(tool.durability))/tool.maxDurability;
+
+			if(durabilityPercentage < 1) {
+				const width = durabilityPercentage*(self.size[0] - 2*border);
+				draw.setColor(0xff000000);
+				draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{self.size[0] - 2*border, (self.size[1] - 2*border)/16.0});
+
+				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
+				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
+
+				draw.setColor(0xff000000 | (@as(u32, @intCast(red)) << 16) | (@as(u32, @intCast(green)) << 8));
+				draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{width, (self.size[1] - 2*border)/16.0});
+			}
 		}
 	}
 	if(self.mode != .immutable) {

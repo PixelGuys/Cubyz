@@ -1,0 +1,9 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 8,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:log",
+	.model = "cubyz:cube",
+}

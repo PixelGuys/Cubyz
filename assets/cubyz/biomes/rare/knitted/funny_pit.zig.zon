@@ -1,0 +1,36 @@
+.{
+	.properties = .{},
+	.radius = 16,
+	.minHeightLimit = 7,
+	.minHeight = 22,
+	.maxHeight = 40,
+	.chance = 0,
+	.maxHeightLimit = 50,
+	.keepOriginalTerrain = 1,
+	.smoothBeaches = true,
+	.roughness = 1,
+	.hills = 8,
+	.validPlayerSpawn = false,
+	.stoneBlock = "cubyz:cloth/block/grey",
+	.ground_structure = .{
+		"1 cubyz:cloth/brown:0b111111",
+		"5 cubyz:air",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:cloth/green",
+			.chance = 0.5,
+			.width = 10,
+			.variation = 6,
+			.density = 10,
+			.priority = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/knitted/forest",
+			.chance = 6,
+		},
+	},
+}

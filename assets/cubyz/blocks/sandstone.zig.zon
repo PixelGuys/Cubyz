@@ -1,16 +1,15 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.stone, .mineable, .sandstone},
 	.blockHealth = 20,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.item = .{
 		.material = .{
-			.density = 2.0,
-			.strength = 1.0,
-			.elasticity = 0.25,
-			.grip = 6.0,
-			.hardness = 6.5,
+			.durability = 10,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.0,
+			.swingSpeed = 3.0,
 			.textureRoughness = 3.0,
 			.colors = .{
 				0xffAF8354, 0xffC89965, 0xffE6B776, 0xffEEC589, 0xffEDD0AD,
@@ -19,12 +18,30 @@
 				.{
 					.id = "fragile",
 					.strength = 0.20,
+					.restriction = .{
+						.id = .not,
+						.child = .{
+							.id = .encased,
+							.tag = .precious,
+							.amount = 2,
+						},
+					},
+				},
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .sandstone,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
 				},
 			},
 		},
 	},
 	.allowOres = true,
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
 	.texture = "cubyz:sandstone",
 }

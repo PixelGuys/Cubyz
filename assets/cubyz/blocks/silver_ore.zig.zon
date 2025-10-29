@@ -1,0 +1,20 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 60,
+	.blockResistance = 7.0,
+	.ore = .{
+		.veins = 3,
+		.size = 15,
+		.height = -500,
+		.density = 0.25,
+	},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:ore",
+	.model = "cubyz:cube",
+	.texture = "cubyz:silver_ore",
+	.item = .{
+		.texture = "raw_silver.png",
+	},
+}

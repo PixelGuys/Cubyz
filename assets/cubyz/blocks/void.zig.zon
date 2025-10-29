@@ -1,0 +1,15 @@
+.{
+	.tags = .{.void},
+
+	.transparent = true,
+	.absorbedLight = 0x000000,
+	.viewThrough = true,
+	.hasBackFace = true,
+	.rotation = "cubyz:no_rotation",
+	.degradable = false,
+	.collide = false,
+	.texture = "cubyz:void",
+
+	.drops = .{},
+	.model = "cubyz:cube",
+}

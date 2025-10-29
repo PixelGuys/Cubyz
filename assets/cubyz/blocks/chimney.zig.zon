@@ -1,0 +1,14 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 10,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:chimney",
+	.texture = "cubyz:chimney/side",
+	.texture_top = "cubyz:chimney/top",
+	.texture_bottom = "cubyz:chimney/bottom",
+	.item = .{
+		.texture = "chimney.png",
+	},
+}

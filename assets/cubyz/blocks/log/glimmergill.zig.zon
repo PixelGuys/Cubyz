@@ -1,0 +1,9 @@
+.{
+	.tags = .{.cuttable, .mushroom},
+	.texture0 = "cubyz:log/glimmergill/dot",
+	.texture1 = "cubyz:log/glimmergill/line",
+	.texture2 = "cubyz:log/glimmergill/bend",
+	.texture3 = "cubyz:log/glimmergill/intersection",
+	.texture4 = "cubyz:log/glimmergill/cross",
+	.texture5 = "cubyz:log/glimmergill/top",
+}

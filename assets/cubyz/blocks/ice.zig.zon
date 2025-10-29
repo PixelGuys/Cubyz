@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.mineable},
 	.blockHealth = 7,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -9,6 +9,5 @@
 	.absorbedLight = 0xe95825,
 	.model = "cubyz:cube",
 	.texture = "cubyz:ice",
-	.blockEntity = "cubyz.modding.base.MeltableBlockEntity",
 	.friction = 1,
 }

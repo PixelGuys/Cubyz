@@ -1,17 +1,18 @@
 .{
 	.{
-		.inputs = .{"cubyz:birch_planks", "cubyz:iron_ingot"},
+		.inputs = .{"{mod}:{type}_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:oak_planks", "cubyz:iron_ingot"},
-		.output = "cubyz:chisel",
+		.inputs = .{"cubyz:coal_ore", "{mod}:{type}_ore"},
+		.output = "{mod}:{type}_ingot",
 	},
 	.{
-		.inputs = .{"cubyz:mahogany_planks", "cubyz:iron_ingot"},
-		.output = "cubyz:chisel",
+		.inputs = .{"cubyz:coal_ore", "8 cubyz:clay"},
+		.output = "8 cubyz:terracotta",
 	},
 	.{
+<<<<<<< HEAD
 		.inputs = .{"cubyz:pine_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
@@ -42,18 +43,50 @@
 	.{
 		.inputs = .{"cubyz:coal", "cubyz:clay"},
 		.output = "cubyz:terracotta",
+=======
+		.inputs = .{"cubyz:coal_ore", "8 cubyz:sand"},
+		.output = "8 cubyz:glass/white",
+>>>>>>> 9311240585e807b0413a4ff8106575e44a483727
 	},
 	.{
 		.inputs = .{"1 cubyz:torch", "2 cubyz:iron_ingot"},
 		.output = "cubyz:lamp",
 	},
 	.{
-		.inputs = .{"4 cubyz:coal"},
+		.inputs = .{"1 cubyz:sulfur_torch", "2 cubyz:iron_ingot"},
+		.output = "cubyz:sulfur_lamp",
+	},
+	.{
+		.inputs = .{"2 cubyz:torch", "1 cubyz:iron_ingot"},
+		.output = "2 cubyz:lantern/coal",
+	},
+	.{
+		.inputs = .{"2 cubyz:sulfur_torch", "1 cubyz:iron_ingot"},
+		.output = "2 cubyz:lantern/sulfur",
+	},
+	.{
+		.inputs = .{"4 cubyz:resin"},
+		.output = "cubyz:resin_block",
+	},
+	.{
+		.inputs = .{"4 cubyz:coal_ore"},
 		.output = "cubyz:coal_block",
+	},
+	.{
+		.inputs = .{"4 cubyz:sulfur_ore"},
+		.output = "cubyz:sulfur_block",
+	},
+	.{
+		.inputs = .{"4 cubyz:copper_ingot"},
+		.output = "cubyz:copper_block",
 	},
 	.{
 		.inputs = .{"4 cubyz:iron_ingot"},
 		.output = "cubyz:iron_block",
+	},
+	.{
+		.inputs = .{"4 cubyz:silver_ingot"},
+		.output = "cubyz:silver_block",
 	},
 	.{
 		.inputs = .{"4 cubyz:gold_ingot"},
@@ -72,7 +105,7 @@
 		.output = "8 cubyz:glass/uranium",
 	},
 	.{
-		.inputs = .{"4 cubyz:diamond"},
+		.inputs = .{"4 cubyz:diamond_ore"},
 		.output = "cubyz:diamond_block",
 	},
 	.{
@@ -80,12 +113,44 @@
 		.output = "cubyz:cut_diamond_block",
 	},
 	.{
+		.inputs = .{"4 cubyz:amber_ore"},
+		.output = "cubyz:amber_block",
+	},
+	.{
+		.inputs = .{"cubyz:amber_block"},
+		.output = "cubyz:cut_amber_block",
+	},
+	.{
+		.inputs = .{"4 cubyz:ruby_ore"},
+		.output = "cubyz:ruby_block",
+	},
+	.{
+		.inputs = .{"cubyz:ruby_block"},
+		.output = "cubyz:cut_ruby_block",
+	},
+	.{
+		.inputs = .{"cubyz:resin_block"},
+		.output = "4 cubyz:resin",
+	},
+	.{
 		.inputs = .{"cubyz:coal_block"},
-		.output = "4 cubyz:coal",
+		.output = "4 cubyz:coal_ore",
+	},
+	.{
+		.inputs = .{"cubyz:sulfur_block"},
+		.output = "4 cubyz:sulfur_ore",
+	},
+	.{
+		.inputs = .{"cubyz:copper_block"},
+		.output = "4 cubyz:copper_ingot",
 	},
 	.{
 		.inputs = .{"cubyz:iron_block"},
 		.output = "4 cubyz:iron_ingot",
+	},
+	.{
+		.inputs = .{"cubyz:silver_block"},
+		.output = "4 cubyz:silver_ingot",
 	},
 	.{
 		.inputs = .{"cubyz:gold_block"},
@@ -97,14 +162,31 @@
 	},
 	.{
 		.inputs = .{"cubyz:diamond_block"},
-		.output = "4 cubyz:diamond",
+		.output = "4 cubyz:diamond_ore",
 	},
 	.{
 		.inputs = .{"cubyz:cut_diamond_block"},
-		.output = "4 cubyz:diamond",
+		.output = "4 cubyz:diamond_ore",
+	},
+	.{
+		.inputs = .{"cubyz:amber_block"},
+		.output = "4 cubyz:amber_ore",
+	},
+	.{
+		.inputs = .{"cubyz:cut_amber_block"},
+		.output = "4 cubyz:amber_ore",
+	},
+	.{
+		.inputs = .{"cubyz:ruby_block"},
+		.output = "4 cubyz:ruby_ore",
+	},
+	.{
+		.inputs = .{"cubyz:cut_ruby_block"},
+		.output = "4 cubyz:ruby_ore",
 	},
 	.{
 		.inputs = .{"cubyz:gravel"},
 		.output = "4 cubyz:pebbles",
+		.reversible = true,
 	},
 }

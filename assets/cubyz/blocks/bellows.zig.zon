@@ -1,0 +1,18 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:planar",
+	.model = "cubyz:bellows",
+	.texture = "cubyz:bellows/side",
+	.texture_front = "cubyz:bellows/nozzle",
+	.texture_left = "cubyz:bellows/nozzle",
+	.texture_right = "cubyz:bellows/side",
+	.texture_top = "cubyz:bellows/top",
+	.texture_bottom = "cubyz:bellows/bottom",
+	.item = .{
+		.texture = "bellows.png",
+	},
+}

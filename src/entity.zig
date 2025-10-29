@@ -18,6 +18,13 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
 
+pub const EntityNetworkData = struct {
+	id: u32,
+	pos: Vec3d,
+	vel: Vec3d,
+	rot: Vec3f,
+};
+
 pub const ClientEntity = struct {
 	interpolatedValues: utils.GenericInterpolation(6) = undefined,
 	_interpolationPos: [6]f64 = undefined,
@@ -80,25 +87,31 @@ pub const ClientEntityManager = struct {
 	var uniforms: struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
-		texture_sampler: c_int,
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
-		directionalLight: c_int,
 	} = undefined;
 	var modelBuffer: main.graphics.SSBO = undefined;
 	var modelSize: c_int = 0;
 	var modelTexture: main.graphics.Texture = undefined;
-	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
+	var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	pub var entities: main.utils.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = .{};
 
 	pub fn init() void {
 		entities = .init();
-		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/entity_vertex.vert",
+			"assets/cubyz/shaders/entity_fragment.frag",
+			"",
+			&uniforms,
+			.{},
+			.{.depthTest = true},
+			.{.attachments = &.{.alphaBlending}},
+		);
 
-		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snail_player.png");
-		const modelFile = main.files.read(main.stackAllocator, "assets/cubyz/entity/models/snail_player.obj") catch |err| blk: {
+		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snale.png");
+		const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/snale.obj") catch |err| blk: {
 			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
 			break :blk &.{};
 		};
@@ -115,10 +128,13 @@ pub const ClientEntityManager = struct {
 			ent.deinit(main.globalAllocator);
 		}
 		entities.deinit();
-		shader.deinit();
+		pipeline.deinit();
 	}
 
 	pub fn clear() void {
+		for(entities.items()) |ent| {
+			ent.deinit(main.globalAllocator);
+		}
 		entities.clearRetainingCapacity();
 		timeDifference = utils.TimeDifference{};
 	}
@@ -154,24 +170,22 @@ pub const ClientEntityManager = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
 			graphics.draw.setColor(0xff000000);
-			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0}, false, .center);
+			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
 			defer buf.deinit();
 			const size = buf.calculateLineBreaks(32, 1024);
 			buf.render(xCenter - size[0]/2, yCenter - size[1], 32);
 		}
 	}
 
-	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, directionalLight: Vec3f, playerPos: Vec3d) void {
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
 		update();
-		shader.bind();
+		pipeline.bind(null);
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		modelTexture.bindTo(0);
-		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for(entities.items()) |ent| {
@@ -195,10 +209,7 @@ pub const ClientEntityManager = struct {
 					@floatCast(pos[1]),
 					@floatCast(pos[2] - 1.0 + 0.09375),
 				}))
-				.mul(Mat4f.rotationZ(-ent.rot[2]))
-				//.mul(Mat4f.rotationY(-ent.rot[1]))
-				//.mul(Mat4f.rotationX(-ent.rot[0]))
-			);
+				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			c.glDrawElements(c.GL_TRIANGLES, 6*modelSize, c.GL_UNSIGNED_INT, null);
@@ -228,31 +239,30 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn serverUpdate(time: i16, reader: *BinaryReader) !void {
+	pub fn serverUpdate(time: i16, entityData: []EntityNetworkData) void {
 		mutex.lock();
 		defer mutex.unlock();
 		timeDifference.addDataPoint(time);
 
-		while(reader.remaining.len != 0) {
-			const id = try reader.readInt(u32);
+		for(entityData) |data| {
 			const pos = [_]f64{
-				try reader.readFloat(f64),
-				try reader.readFloat(f64),
-				try reader.readFloat(f64),
-				@floatCast(try reader.readFloat(f32)),
-				@floatCast(try reader.readFloat(f32)),
-				@floatCast(try reader.readFloat(f32)),
+				data.pos[0],
+				data.pos[1],
+				data.pos[2],
+				@floatCast(data.rot[0]),
+				@floatCast(data.rot[1]),
+				@floatCast(data.rot[2]),
 			};
 			const vel = [_]f64{
-				try reader.readFloat(f64),
-				try reader.readFloat(f64),
-				try reader.readFloat(f64),
+				data.vel[0],
+				data.vel[1],
+				data.vel[2],
 				0,
 				0,
 				0,
 			};
 			for(entities.items()) |*ent| {
-				if(ent.id == id) {
+				if(ent.id == data.id) {
 					ent.updatePosition(&pos, &vel, time);
 					break;
 				}

@@ -1,15 +1,16 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.cuttable, .mushroom},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.solid = false,
+	.replacable = true,
+	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.emittedLight = 0x392862,
 	.collide = false,
-	.rotation = .torch,
+	.rotation = "cubyz:torch",
 	.model = .{
 		.base = "cubyz:glimmergill/floor",
 		.side = "cubyz:glimmergill/shelf",

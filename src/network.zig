@@ -6,6 +6,7 @@ const assets = @import("assets.zig");
 const Block = @import("blocks.zig").Block;
 const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
+const particles = @import("particles.zig");
 const items = @import("items.zig");
 const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
@@ -20,10 +21,14 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const BlockUpdate = renderer.mesh_storage.BlockUpdate;
 
-pub const networkEndian: std.builtin.Endian = .big;
+// TODO: Might want to use SSL or something similar to encode the message
 
-//TODO: Might want to use SSL or something similar to encode the message
+const ms = 1_000;
+inline fn networkTimestamp() i64 {
+	return std.time.microTimestamp();
+}
 
 const Socket = struct {
 	const posix = std.posix;
@@ -60,10 +65,22 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-			std.log.info("Got error while sending to {}: {s}", .{destination, @errorName(err)});
-			return;
-		});
+		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
+			const sendto = struct {
+				extern "c" fn sendto(sockfd: posix.system.fd_t, buf: *const anyopaque, len: usize, flags: u32, dest_addr: ?*const posix.system.sockaddr, addrlen: posix.system.socklen_t) c_int;
+			}.sendto;
+			const result = sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			if(result < 0) {
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())});
+			} else {
+				std.debug.assert(@as(usize, @intCast(result)) == data.len);
+			}
+		} else {
+			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
+				return;
+			});
+		}
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
@@ -81,7 +98,7 @@ const Socket = struct {
 					else => |err| return std.os.windows.unexpectedWSAError(err),
 				}
 			} else if(length == 0) {
-				std.time.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
+				std.Thread.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
 			}
 		} else {
@@ -133,7 +150,9 @@ pub const Address = struct {
 	port: u16,
 	isSymmetricNAT: bool = false,
 
-	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+	pub const localHost = 0x0100007f;
+
+	pub fn format(self: Address, writer: anytype) !void {
 		if(self.isSymmetricNAT) {
 			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
 		} else {
@@ -289,7 +308,7 @@ const STUN = struct { // MARK: STUN
 					continue;
 				};
 				if(oldAddress) |other| {
-					std.log.info("{}", .{result});
+					std.log.info("{f}", .{result});
 					if(other.ip == result.ip and other.port == result.port) {
 						return result;
 					} else {
@@ -370,9 +389,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	mutex: std.Thread.Mutex = .{},
 	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
-	newConnectionCallback: Atomic(?*const fn(Address) void) = .init(null),
+	allowNewConnections: Atomic(bool) = .init(false),
 
-	receiveBuffer: [Connection.maxPacketSize]u8 = undefined,
+	receiveBuffer: [Connection.maxMtu]u8 = undefined,
 
 	world: ?*game.World = null,
 
@@ -406,7 +425,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				break :blk socket;
 			} else return err;
 		};
-		errdefer Socket.deinit(result.socket);
+		errdefer result.socket.deinit();
 		if(localPort == 0) result.localPort = try result.socket.getPort();
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
@@ -424,7 +443,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		self.running.store(false, .monotonic);
 		self.thread.join();
-		Socket.deinit(self.socket);
+		self.socket.deinit();
 		self.connections.deinit();
 		for(self.requests.items) |request| {
 			request.requestNotifier.signal();
@@ -548,11 +567,19 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if(self.newConnectionCallback.load(.monotonic)) |callback| {
-			callback(source);
+		if(self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
+			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
+				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
+				defer main.stackAllocator.free(ip);
+				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
+					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});
+					return;
+				};
+				user.decreaseRefCount();
+			}
 		} else {
 			// TODO: Reduce the number of false alarms in the short period after a disconnect.
-			std.log.warn("Unknown connection from address: {}", .{source});
+			std.log.warn("Unknown connection from address: {f}", .{source});
 			std.log.debug("Message: {any}", .{data});
 		}
 	}
@@ -562,8 +589,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
 
-		var lastTime: i64 = @truncate(std.time.nanoTimestamp());
+		var lastTime: i64 = networkTimestamp();
 		while(self.running.load(.monotonic)) {
+			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
 			if(self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
@@ -578,7 +606,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 					@panic("Network failed.");
 				}
 			}
-			const curTime: i64 = @truncate(std.time.nanoTimestamp());
+			const curTime: i64 = networkTimestamp();
 			{
 				self.mutex.lock();
 				defer self.mutex.unlock();
@@ -589,29 +617,18 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				}
 			}
 
-			// Send a keep-alive packet roughly every 100 ms:
-			if(curTime -% lastTime > 100_000_000) {
+			// Send packets roughly every 1 ms:
+			if(curTime -% lastTime > 1*ms) {
 				lastTime = curTime;
 				var i: u32 = 0;
 				self.mutex.lock();
 				defer self.mutex.unlock();
 				while(i < self.connections.items.len) {
 					var conn = self.connections.items[i];
-					if(lastTime -% conn.lastConnection > settings.connectionTimeout and conn.isConnected()) {
-						std.log.info("timeout", .{});
-						// Timeout a connection if it was connect at some point. New connections are not timed out because that could annoy players(having to restart the connection several times).
-						self.mutex.unlock();
-						conn.disconnect();
-						if(conn.user) |user| {
-							main.server.disconnect(user);
-						}
-						self.mutex.lock();
-					} else {
-						self.mutex.unlock();
-						conn.sendKeepAlive();
-						self.mutex.lock();
-						i += 1;
-					}
+					self.mutex.unlock();
+					conn.processNextPackets();
+					self.mutex.lock();
+					i += 1;
 				}
 				if(self.connections.items.len == 0 and self.online.load(.acquire)) {
 					// Send a message to external ip, to keep the port open:
@@ -630,29 +647,24 @@ const UnconfirmedPacket = struct {
 };
 
 // MARK: Protocols
-pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
-pub var packetsReceived: [256]Atomic(usize) = @splat(.init(0));
 pub const Protocols = struct {
 	pub var list: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
 	pub var isAsynchronous: [256]bool = @splat(false);
+	pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
+	pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
 
 	pub const keepAlive: u8 = 0;
 	pub const important: u8 = 0xff;
 	pub const handShake = struct {
 		pub const id: u8 = 1;
 		pub const asynchronous = false;
-		const stepStart: u8 = 0;
-		const stepUserData: u8 = 1;
-		const stepAssets: u8 = 2;
-		const stepServerData: u8 = 3;
-		pub const stepComplete: u8 = 255;
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const newState = try reader.readInt(u8);
-			if(conn.handShakeState.load(.monotonic) < newState) {
+			const newState = try reader.readEnum(Connection.HandShakeState);
+			if(@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 				conn.handShakeState.store(newState, .monotonic);
 				switch(newState) {
-					stepUserData => {
+					.userData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
@@ -661,18 +673,23 @@ pub const Protocols = struct {
 							return error.Invalid;
 						}
 						const version = zon.get([]const u8, "version", "unknown");
-						std.log.info("User {s} joined using version {s}.", .{name, version});
+						std.log.info("User {s} joined using version {s}", .{name, version});
+
+						if(!try main.settings.version.isCompatibleClientVersion(version)) {
+							std.log.warn("Version incompatible with server version {s}", .{main.settings.version.version});
+							return error.IncompatibleVersion;
+						}
 
 						{
-							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.name}) catch unreachable;
+							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 							defer main.stackAllocator.free(path);
-							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
+							var dir = try main.files.cubyzDir().openIterableDir(path);
 							defer dir.close();
 							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
-							arrayList.append(stepAssets);
+							arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
 							try utils.Compression.pack(dir, arrayList.writer());
-							conn.sendImportant(id, arrayList.items);
+							conn.send(.fast, id, arrayList.items);
 						}
 
 						conn.user.?.initPlayer(name);
@@ -683,35 +700,30 @@ pub const Protocols = struct {
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 						zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
+						zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
 
-						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
+						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
 						defer main.stackAllocator.free(outData);
-						conn.sendImportant(id, outData);
-						conn.mutex.lock();
-						conn.flush();
-						conn.mutex.unlock();
-						conn.handShakeState.store(stepServerData, .monotonic);
+						conn.send(.fast, id, outData);
+						conn.handShakeState.store(.serverData, .monotonic);
 						main.server.connect(conn.user.?);
 					},
-					stepAssets => {
+					.assets => {
 						std.log.info("Received assets.", .{});
-						std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
-						var dir = try std.fs.cwd().makeOpenPath("serverAssets", .{});
+						main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
+						var dir = try main.files.cubyzDir().openDir("serverAssets");
 						defer dir.close();
 						try utils.Compression.unpack(dir, reader.remaining);
 					},
-					stepServerData => {
+					.serverData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 						defer zon.deinit(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(zon);
-						conn.handShakeState.store(stepComplete, .monotonic);
+						conn.handShakeState.store(.complete, .monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					},
-					stepComplete => {},
-					else => {
-						std.log.err("Unknown state in HandShakeProtocol {}", .{newState});
-					},
+					.start, .complete => {},
 				}
 			} else {
 				// Ignore packages that refer to an unexpected state. Normally those might be packages that were resent by the other side.
@@ -719,22 +731,22 @@ pub const Protocols = struct {
 		}
 
 		pub fn serverSide(conn: *Connection) void {
-			conn.handShakeState.store(stepStart, .monotonic);
+			conn.handShakeState.store(.start, .monotonic);
 		}
 
-		pub fn clientSide(conn: *Connection, name: []const u8) void {
+		pub fn clientSide(conn: *Connection, name: []const u8) !void {
 			const zonObject = ZonElement.initObject(main.stackAllocator);
 			defer zonObject.deinit(main.stackAllocator);
-			zonObject.putOwnedString("version", settings.version);
+			zonObject.putOwnedString("version", settings.version.version);
 			zonObject.putOwnedString("name", name);
-			const prefix = [1]u8{stepUserData};
+			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 			defer main.stackAllocator.free(data);
-			conn.sendImportant(id, data);
+			conn.send(.fast, id, data);
 
 			conn.mutex.lock();
-			conn.flush();
 			conn.handShakeWaiting.wait(&conn.mutex);
+			if(conn.connectionState.load(.monotonic) == .disconnectDesired) return error.DisconnectedByServer;
 			conn.mutex.unlock();
 		}
 	};
@@ -742,11 +754,7 @@ pub const Protocols = struct {
 		pub const id: u8 = 2;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const basePosition = Vec3i{
-				try reader.readInt(i32),
-				try reader.readInt(i32),
-				try reader.readInt(i32),
-			};
+			const basePosition = try reader.readVec(Vec3i);
 			conn.user.?.clientUpdatePos = basePosition;
 			conn.user.?.renderDistance = try reader.readInt(u16);
 			while(reader.remaining.len >= 4) {
@@ -769,11 +777,9 @@ pub const Protocols = struct {
 		}
 		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
 			if(requests.len == 0) return;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 14 + 4*requests.len);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 14 + 4*requests.len);
 			defer writer.deinit();
-			writer.writeInt(i32, basePosition[0]);
-			writer.writeInt(i32, basePosition[1]);
-			writer.writeInt(i32, basePosition[2]);
+			writer.writeVec(Vec3i, basePosition);
 			writer.writeInt(u16, renderDistance);
 			for(requests) |req| {
 				const voxelSizeShift: u5 = std.math.log2_int(u31, req.voxelSize);
@@ -783,7 +789,7 @@ pub const Protocols = struct {
 				writer.writeInt(i8, @intCast((req.wz -% (basePosition[2] & positionMask)) >> voxelSizeShift + chunk.chunkShift));
 				writer.writeInt(u5, voxelSizeShift);
 			}
-			conn.sendImportant(id, writer.data.items);
+			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
 		}
 	};
 	pub const chunkTransmission = struct {
@@ -797,35 +803,25 @@ pub const Protocols = struct {
 				.voxelSize = try reader.readInt(u31),
 			};
 			const ch = chunk.Chunk.init(pos);
-			try main.server.storage.ChunkCompression.decompressChunk(ch, reader.remaining);
+			try main.server.storage.ChunkCompression.loadChunk(ch, .client, reader.remaining);
 			renderer.mesh_storage.updateChunkMesh(ch);
 		}
 		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
 			ch.mutex.lock();
-			const chunkData = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &ch.super, ch.super.pos.voxelSize != 1);
+			const chunkData = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &ch.super, .toClient, ch.super.pos.voxelSize != 1);
 			ch.mutex.unlock();
 			defer main.stackAllocator.free(chunkData);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, chunkData.len + 16);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, chunkData.len + 16);
 			defer writer.deinit();
 			writer.writeInt(i32, ch.super.pos.wx);
 			writer.writeInt(i32, ch.super.pos.wy);
 			writer.writeInt(i32, ch.super.pos.wz);
 			writer.writeInt(u31, ch.super.pos.voxelSize);
 			writer.writeSlice(chunkData);
-			conn.sendImportant(id, writer.data.items);
-		}
-		fn sendChunkLocally(ch: *chunk.ServerChunk) void {
-			const chunkCopy = chunk.Chunk.init(ch.super.pos);
-			chunkCopy.data.deinit();
-			chunkCopy.data.initCopy(&ch.super.data);
-			renderer.mesh_storage.updateChunkMesh(chunkCopy);
+			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
 		}
 		pub fn sendChunk(conn: *Connection, ch: *chunk.ServerChunk) void {
-			if(conn.user.?.isLocal) {
-				sendChunkLocally(ch);
-			} else {
-				sendChunkOverTheNetwork(conn, ch);
-			}
+			sendChunkOverTheNetwork(conn, ch);
 		}
 	};
 	pub const playerPosition = struct {
@@ -840,7 +836,7 @@ pub const Protocols = struct {
 				return; // Only send at most once every 50 ms.
 			}
 			lastPositionSent = time;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 62);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 62);
 			defer writer.deinit();
 			writer.writeInt(u64, @bitCast(playerPos[0]));
 			writer.writeInt(u64, @bitCast(playerPos[1]));
@@ -852,23 +848,7 @@ pub const Protocols = struct {
 			writer.writeInt(u32, @bitCast(game.camera.rotation[1]));
 			writer.writeInt(u32, @bitCast(game.camera.rotation[2]));
 			writer.writeInt(u16, time);
-			conn.sendUnimportant(id, writer.data.items);
-		}
-	};
-	pub const disconnect = struct {
-		pub const id: u8 = 5;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, _: *utils.BinaryReader) !void {
-			conn.disconnect();
-			if(conn.user) |user| {
-				main.server.disconnect(user);
-			} else {
-				main.exitToMenu(undefined);
-			}
-		}
-		pub fn disconnect(conn: *Connection) void {
-			const noData = [0]u8{};
-			conn.sendUnimportant(id, &noData);
+			conn.send(.lossy, id, writer.data.items);
 		}
 	};
 	pub const entityPosition = struct {
@@ -876,59 +856,125 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		const type_entity: u8 = 0;
 		const type_item: u8 = 1;
+		const Type = enum(u8) {
+			noVelocityEntity = 0,
+			f16VelocityEntity = 1,
+			f32VelocityEntity = 2,
+			noVelocityItem = 3,
+			f16VelocityItem = 4,
+			f32VelocityItem = 5,
+		};
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			if(conn.isServerSide()) return error.InvalidSide;
 			if(conn.manager.world) |world| {
-				const typ = try reader.readInt(u8);
 				const time = try reader.readInt(i16);
-				if(typ == type_entity) {
-					try main.entity.ClientEntityManager.serverUpdate(time, reader);
-				} else if(typ == type_item) {
-					try world.itemDrops.readPosition(reader, time);
+				const playerPos = try reader.readVec(Vec3d);
+				var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+				defer entityData.deinit();
+				var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
+				defer itemData.deinit();
+				while(reader.remaining.len != 0) {
+					const typ = try reader.readEnum(Type);
+					switch(typ) {
+						.noVelocityEntity, .f16VelocityEntity, .f32VelocityEntity => {
+							entityData.append(.{
+								.vel = switch(typ) {
+									.noVelocityEntity => @splat(0),
+									.f16VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f16))),
+									.f32VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f32))),
+									else => unreachable,
+								},
+								.id = try reader.readInt(u32),
+								.pos = playerPos + try reader.readVec(Vec3f),
+								.rot = try reader.readVec(Vec3f),
+							});
+						},
+						.noVelocityItem, .f16VelocityItem, .f32VelocityItem => {
+							itemData.append(.{
+								.vel = switch(typ) {
+									.noVelocityItem => @splat(0),
+									.f16VelocityItem => @floatCast(try reader.readVec(@Vector(3, f16))),
+									.f32VelocityItem => @floatCast(try reader.readVec(Vec3f)),
+									else => unreachable,
+								},
+								.index = try reader.readInt(u16),
+								.pos = playerPos + try reader.readVec(Vec3f),
+							});
+						},
+					}
 				}
+				main.entity.ClientEntityManager.serverUpdate(time, entityData.items);
+				world.itemDrops.readPosition(time, itemData.items);
 			}
 		}
-		pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) void {
-			if(entityData.len != 0) {
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, entityData.len + 3);
-				defer writer.deinit();
-				writer.writeInt(u8, type_entity);
-				writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
-				writer.writeSlice(entityData);
-				conn.sendUnimportant(id, writer.data.items);
-			}
+		pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
 
-			if(itemData.len != 0) {
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, itemData.len + 3);
-				defer writer.deinit();
-				writer.writeInt(u8, type_item);
-				writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
-				writer.writeSlice(itemData);
-				conn.sendUnimportant(id, writer.data.items);
+			writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
+			writer.writeVec(Vec3d, playerPos);
+			for(entityData) |data| {
+				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
+				if(velocityMagnitudeSqr < 1e-6*1e-6) {
+					writer.writeEnum(Type, .noVelocityEntity);
+				} else if(velocityMagnitudeSqr > 1000*1000) {
+					writer.writeEnum(Type, .f32VelocityEntity);
+					writer.writeVec(Vec3f, @floatCast(data.vel));
+				} else {
+					writer.writeEnum(Type, .f16VelocityEntity);
+					writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
+				}
+				writer.writeInt(u32, data.id);
+				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
+				writer.writeVec(Vec3f, data.rot);
 			}
+			for(itemData) |data| {
+				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
+				if(velocityMagnitudeSqr < 1e-6*1e-6) {
+					writer.writeEnum(Type, .noVelocityItem);
+				} else if(velocityMagnitudeSqr > 1000*1000) {
+					writer.writeEnum(Type, .f32VelocityItem);
+					writer.writeVec(Vec3f, @floatCast(data.vel));
+				} else {
+					writer.writeEnum(Type, .f16VelocityItem);
+					writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
+				}
+				writer.writeInt(u16, data.index);
+				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
+			}
+			conn.send(.lossy, id, writer.data.items);
 		}
 	};
 	pub const blockUpdate = struct {
 		pub const id: u8 = 7;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const x = try reader.readInt(i32);
-			const y = try reader.readInt(i32);
-			const z = try reader.readInt(i32);
-			const newBlock = Block.fromInt(try reader.readInt(u32));
-			if(conn.user != null) {
+			if(conn.isServerSide()) {
 				return error.InvalidPacket;
-			} else {
-				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
+			}
+			while(reader.remaining.len != 0) {
+				renderer.mesh_storage.updateBlock(.{
+					.x = try reader.readInt(i32),
+					.y = try reader.readInt(i32),
+					.z = try reader.readInt(i32),
+					.newBlock = Block.fromInt(try reader.readInt(u32)),
+					.blockEntityData = try reader.readSlice(try reader.readInt(usize)),
+				});
 			}
 		}
-		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 16);
+		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
 			defer writer.deinit();
-			writer.writeInt(i32, x);
-			writer.writeInt(i32, y);
-			writer.writeInt(i32, z);
-			writer.writeInt(u32, newBlock.toInt());
-			conn.sendImportant(id, writer.data.items);
+
+			for(updates) |update| {
+				writer.writeInt(i32, update.x);
+				writer.writeInt(i32, update.y);
+				writer.writeInt(i32, update.z);
+				writer.writeInt(u32, update.newBlock.toInt());
+				writer.writeInt(usize, update.blockEntityData.len);
+				writer.writeSlice(update.blockEntityData);
+			}
+			conn.send(.fast, id, writer.data.items);
 		}
 	};
 	pub const entity = struct {
@@ -968,21 +1014,21 @@ pub const Protocols = struct {
 			}
 		}
 		pub fn send(conn: *Connection, msg: []const u8) void {
-			conn.sendImportant(id, msg);
+			conn.send(.fast, id, msg);
 		}
 	};
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
 		pub const asynchronous = false;
-		const type_gamemode: u8 = 0;
-		const type_teleport: u8 = 1;
-		const type_cure: u8 = 2;
-		const type_worldEditPos: u8 = 3;
-		const type_reserved3: u8 = 4;
-		const type_reserved4: u8 = 5;
-		const type_reserved5: u8 = 6;
-		const type_reserved6: u8 = 7;
-		const type_timeAndBiome: u8 = 8;
+
+		const UpdateType = enum(u8) {
+			gamemode = 0,
+			teleport = 1,
+			worldEditPos = 2,
+			time = 3,
+			biome = 4,
+			particles = 5,
+		};
 
 		const WorldEditPosition = enum(u2) {
 			selectedPos1 = 0,
@@ -991,51 +1037,45 @@ pub const Protocols = struct {
 		};
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			switch(try reader.readInt(u8)) {
-				type_gamemode => {
-					if(conn.user != null) return error.InvalidPacket;
+			switch(try reader.readEnum(UpdateType)) {
+				.gamemode => {
+					if(conn.isServerSide()) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
-				type_teleport => {
-					game.Player.setPosBlocking(Vec3d{
-						@bitCast(try reader.readInt(u64)),
-						@bitCast(try reader.readInt(u64)),
-						@bitCast(try reader.readInt(u64)),
-					});
+				.teleport => {
+					if(conn.isServerSide()) return error.InvalidPacket;
+					game.Player.setPosBlocking(try reader.readVec(Vec3d));
 				},
-				type_cure => {
-					// TODO: health and hunger
-				},
-				type_worldEditPos => {
+				.worldEditPos => {
 					const typ = try reader.readEnum(WorldEditPosition);
-					switch(typ) {
-						.selectedPos1, .selectedPos2 => {
-							const pos = Vec3i{
-								try reader.readInt(i32),
-								try reader.readInt(i32),
-								try reader.readInt(i32),
-							};
-							switch(typ) {
-								.selectedPos1 => game.Player.selectionPosition1 = pos,
-								.selectedPos2 => game.Player.selectionPosition2 = pos,
-								else => unreachable,
-							}
-						},
-						.clear => {
-							game.Player.selectionPosition1 = null;
-							game.Player.selectionPosition2 = null;
-						},
+					const pos: ?Vec3i = switch(typ) {
+						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
+						.clear => null,
+					};
+					if(conn.isServerSide()) {
+						switch(typ) {
+							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
+							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
+							.clear => {
+								conn.user.?.worldEditData.selectionPosition1 = null;
+								conn.user.?.worldEditData.selectionPosition2 = null;
+							},
+						}
+					} else {
+						switch(typ) {
+							.selectedPos1 => game.Player.selectionPosition1 = pos,
+							.selectedPos2 => game.Player.selectionPosition2 = pos,
+							.clear => {
+								game.Player.selectionPosition1 = null;
+								game.Player.selectionPosition2 = null;
+							},
+						}
 					}
 				},
-				type_reserved3 => {},
-				type_reserved4 => {},
-				type_reserved5 => {},
-				type_reserved6 => {},
-				type_timeAndBiome => {
+				.time => {
 					if(conn.manager.world) |world| {
-						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-						defer zon.deinit(main.stackAllocator);
-						const expectedTime = zon.get(i64, "time", 0);
+						const expectedTime = try reader.readInt(i64);
+
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
 							world.gameTime.store(expectedTime, .monotonic);
@@ -1048,78 +1088,94 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
-						const newBiome = main.server.terrain.biomes.getById(zon.get([]const u8, "biome", ""));
+					}
+				},
+				.biome => {
+					if(conn.manager.world) |world| {
+						const biomeId = try reader.readInt(u32);
+
+						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
 						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
 						if(oldBiome != newBiome) {
 							main.audio.setMusic(newBiome.preferredMusic);
 						}
 					}
 				},
-				else => |unrecognizedType| {
-					std.log.err("Unrecognized type for genericUpdateProtocol: {}. Data: {any}", .{unrecognizedType, reader.remaining});
-					return error.Invalid;
+				.particles => {
+					if(conn.manager.world) |_| {
+						const sliceSize = try reader.readInt(u16);
+						const particleId = try reader.readSlice(sliceSize);
+						const pos = try reader.readVec(Vec3d);
+						const collides = try reader.readBool();
+						const count = try reader.readInt(u32);
+
+						const emitter: particles.Emitter = .init(particleId, collides);
+						particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
+					}
 				},
 			}
 		}
 
-		fn addHeaderAndSendImportant(conn: *Connection, header: u8, data: []const u8) void {
-			const headeredData = main.stackAllocator.alloc(u8, data.len + 1);
-			defer main.stackAllocator.free(headeredData);
-			headeredData[0] = header;
-			@memcpy(headeredData[1..], data);
-			conn.sendImportant(id, headeredData);
-		}
-
-		fn addHeaderAndSendUnimportant(conn: *Connection, header: u8, data: []const u8) void {
-			const headeredData = main.stackAllocator.alloc(u8, data.len + 1);
-			defer main.stackAllocator.free(headeredData);
-			headeredData[0] = header;
-			@memcpy(headeredData[1..], data);
-			conn.sendUnimportant(id, headeredData);
-		}
-
 		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
-			conn.sendImportant(id, &.{type_gamemode, @intFromEnum(gamemode)});
+			conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
 			defer writer.deinit();
-			writer.writeInt(u8, type_teleport);
-			writer.writeInt(u64, @bitCast(pos[0]));
-			writer.writeInt(u64, @bitCast(pos[1]));
-			writer.writeInt(u64, @bitCast(pos[2]));
-			conn.sendImportant(id, writer.data.items);
-		}
 
-		pub fn sendCure(conn: *Connection) void {
-			var data: [1]u8 = undefined;
-			data[0] = type_cure;
-			conn.sendImportant(id, &data);
+			writer.writeEnum(UpdateType, .teleport);
+			writer.writeVec(Vec3d, pos);
+
+			conn.send(.fast, id, writer.data.items);
 		}
 
 		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
 			defer writer.deinit();
-			writer.writeInt(u8, type_worldEditPos);
+
+			writer.writeEnum(UpdateType, .worldEditPos);
 			writer.writeEnum(WorldEditPosition, posType);
 			if(maybePos) |pos| {
-				writer.writeInt(i32, pos[0]);
-				writer.writeInt(i32, pos[1]);
-				writer.writeInt(i32, pos[2]);
+				writer.writeVec(Vec3i, pos);
 			}
-			conn.sendImportant(id, writer.data.items);
+
+			conn.send(.fast, id, writer.data.items);
 		}
 
-		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
-			const zon = ZonElement.initObject(main.stackAllocator);
-			defer zon.deinit(main.stackAllocator);
-			zon.put("time", world.gameTime);
-			const pos = conn.user.?.player.pos;
-			zon.put("biome", (world.getBiome(@intFromFloat(pos[0]), @intFromFloat(pos[1]), @intFromFloat(pos[2]))).id);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			addHeaderAndSendUnimportant(conn, type_timeAndBiome, string);
+		pub fn sendBiome(conn: *Connection, biomeIndex: u32) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .biome);
+			writer.writeInt(u32, biomeIndex);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
+			const bufferSize = particleId.len*8 + 32;
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .particles);
+			writer.writeInt(u16, @intCast(particleId.len));
+			writer.writeSlice(particleId);
+			writer.writeVec(Vec3d, pos);
+			writer.writeBool(collides);
+			writer.writeInt(u32, count);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendTime(conn: *Connection, world: *const main.server.ServerWorld) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .time);
+			writer.writeInt(i64, world.gameTime);
+
+			conn.send(.fast, id, writer.data.items);
 		}
 	};
 	pub const chat = struct {
@@ -1139,7 +1195,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn send(conn: *Connection, msg: []const u8) void {
-			conn.sendImportant(id, msg);
+			conn.send(.lossy, id, msg);
 		}
 	};
 	pub const lightMapRequest = struct {
@@ -1164,14 +1220,14 @@ pub const Protocols = struct {
 		}
 		pub fn sendRequest(conn: *Connection, requests: []main.server.terrain.SurfaceMap.MapFragmentPosition) void {
 			if(requests.len == 0) return;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 9*requests.len);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9*requests.len);
 			defer writer.deinit();
 			for(requests) |req| {
 				writer.writeInt(i32, req.wx);
 				writer.writeInt(i32, req.wy);
 				writer.writeInt(u8, req.voxelSizeShift);
 			}
-			conn.sendImportant(id, writer.data.items);
+			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
 		}
 	};
 	pub const lightMapTransmission = struct {
@@ -1194,30 +1250,29 @@ pub const Protocols = struct {
 				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, reader.remaining, _inflatedData[0.._inflatedLen]});
 				return error.Invalid;
 			}
-			var ligthMapReader = utils.BinaryReader.init(_inflatedData, networkEndian);
+			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
 			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
 			map.init(pos.wx, pos.wy, pos.voxelSize);
-			_ = map.refCount.fetchAdd(1, .monotonic);
 			for(&map.startHeight) |*val| {
 				val.* = try ligthMapReader.readInt(i16);
 			}
 			renderer.mesh_storage.updateLightMap(map);
 		}
 		pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) void {
-			var ligthMapWriter = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, @sizeOf(@TypeOf(map.startHeight)));
+			var ligthMapWriter = utils.BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(@TypeOf(map.startHeight)));
 			defer ligthMapWriter.deinit();
 			for(&map.startHeight) |val| {
 				ligthMapWriter.writeInt(i16, val);
 			}
 			const compressedData = utils.Compression.deflate(main.stackAllocator, ligthMapWriter.data.items, .default);
 			defer main.stackAllocator.free(compressedData);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 9 + compressedData.len);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9 + compressedData.len);
 			defer writer.deinit();
 			writer.writeInt(i32, map.pos.wx);
 			writer.writeInt(i32, map.pos.wy);
 			writer.writeInt(u8, map.pos.voxelSizeShift);
 			writer.writeSlice(compressedData);
-			conn.sendImportant(id, writer.data.items);
+			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
 		}
 	};
 	pub const inventory = struct {
@@ -1226,7 +1281,10 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			if(conn.user) |user| {
 				if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-				try items.Inventory.Sync.ServerSide.receiveCommand(user, reader);
+				items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
+					if(err != error.InventoryNotFound) return err;
+					sendFailure(conn);
+				};
 			} else {
 				const typ = try reader.readInt(u8);
 				if(typ == 0xff) { // Confirmation
@@ -1240,49 +1298,581 @@ pub const Protocols = struct {
 		}
 		pub fn sendCommand(conn: *Connection, payloadType: items.Inventory.Command.PayloadType, _data: []const u8) void {
 			std.debug.assert(conn.user == null);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, _data.len + 1);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeEnum(items.Inventory.Command.PayloadType, payloadType);
 			std.debug.assert(writer.data.items[0] != 0xff);
 			writer.writeSlice(_data);
-			conn.sendImportant(id, writer.data.items);
+			conn.send(.fast, id, writer.data.items);
 		}
 		pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.user != null);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, _data.len + 1);
+			std.debug.assert(conn.isServerSide());
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0xff);
 			writer.writeSlice(_data);
-			conn.sendImportant(id, writer.data.items);
+			conn.send(.fast, id, writer.data.items);
 		}
 		pub fn sendFailure(conn: *Connection) void {
-			std.debug.assert(conn.user != null);
-			conn.sendImportant(id, &.{0xfe});
+			std.debug.assert(conn.isServerSide());
+			conn.send(.fast, id, &.{0xfe});
 		}
 		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.user != null);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, _data.len + 1);
+			std.debug.assert(conn.isServerSide());
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0);
 			writer.writeSlice(_data);
-			conn.sendImportant(id, writer.data.items);
+			conn.send(.fast, id, writer.data.items);
+		}
+	};
+	pub const blockEntityUpdate = struct {
+		pub const id: u8 = 14;
+		pub const asynchronous = false;
+		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			if(!conn.isServerSide()) return error.Invalid;
+
+			const pos = try reader.readVec(Vec3i);
+			const blockType = try reader.readInt(u16);
+			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			defer simChunk.decreaseRefCount();
+			const ch = simChunk.chunk.load(.unordered) orelse return;
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
+			if(block.typ != blockType) return;
+			const blockEntity = block.blockEntity() orelse return;
+			try blockEntity.updateServerData(pos, &ch.super, .{.update = reader});
+			ch.setChanged();
+
+			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
+		}
+
+		pub fn sendClientDataUpdateToServer(conn: *Connection, pos: Vec3i) void {
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
+			mesh.mutex.lock();
+			defer mesh.mutex.unlock();
+			const index = mesh.chunk.getLocalBlockIndex(pos);
+			const block = mesh.chunk.data.getValue(index);
+			const blockEntity = block.blockEntity() orelse return;
+
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
+			writer.writeVec(Vec3i, pos);
+			writer.writeInt(u16, block.typ);
+			blockEntity.getClientToServerData(pos, mesh.chunk, &writer);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *main.block_entity.BlockEntityType) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
+			blockEntity.getServerToClientData(pos, ch, &writer);
+
+			const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
+
+			for(users) |user| {
+				blockUpdate.send(user.conn, &.{.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = writer.data.items}});
+			}
+		}
+
+		pub fn sendServerDataUpdateToClients(pos: Vec3i) void {
+			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			defer simChunk.decreaseRefCount();
+			const ch = simChunk.chunk.load(.unordered) orelse return;
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
+			const blockEntity = block.blockEntity() orelse return;
+
+			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
 		}
 	};
 };
 
 pub const Connection = struct { // MARK: Connection
-	const maxPacketSize: u32 = 65507; // max udp packet size
+	const maxMtu: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
-	const maxImportantPacketSize: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
+	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
 	const congestionControl_historySize = 16;
 	const congestionControl_historyMask = congestionControl_historySize - 1;
 	const minimumBandWidth = 10_000;
-	const timeUnit = 100_000_000;
+
+	const receiveBufferSize = 8 << 20;
 
 	// Statistics:
 	pub var packetsSent: Atomic(u32) = .init(0);
 	pub var packetsResent: Atomic(u32) = .init(0);
+	pub var internalMessageOverhead: Atomic(usize) = .init(0);
+	pub var internalHeaderOverhead: Atomic(usize) = .init(0);
+	pub var externalHeaderOverhead: Atomic(usize) = .init(0);
+
+	const SequenceIndex = i32;
+
+	const LossStatus = enum {
+		noLoss,
+		singleLoss,
+		doubleLoss,
+	};
+
+	const RangeBuffer = struct { // MARK: RangeBuffer
+		const Range = struct {
+			start: SequenceIndex,
+			len: SequenceIndex,
+
+			fn end(self: Range) SequenceIndex {
+				return self.start +% self.len;
+			}
+		};
+		ranges: main.ListUnmanaged(Range),
+
+		pub fn init() RangeBuffer {
+			return .{
+				.ranges = .{},
+			};
+		}
+
+		pub fn clear(self: *RangeBuffer) void {
+			self.ranges.clearRetainingCapacity();
+		}
+
+		pub fn deinit(self: RangeBuffer, allocator: NeverFailingAllocator) void {
+			self.ranges.deinit(allocator);
+		}
+
+		pub fn addRange(self: *RangeBuffer, allocator: NeverFailingAllocator, range: Range) void {
+			if(self.hasRange(range)) return;
+			var startRange: ?Range = null;
+			var endRange: ?Range = null;
+			var i: usize = 0;
+			while(i < self.ranges.items.len) {
+				const other = self.ranges.items[i];
+				if(range.start -% other.start <= 0 and range.end() -% other.end() >= 0) {
+					_ = self.ranges.swapRemove(i);
+					continue;
+				}
+				if(range.start -% other.end() <= 0 and range.start -% other.start >= 0) {
+					_ = self.ranges.swapRemove(i);
+					startRange = other;
+					continue;
+				}
+				if(range.end() -% other.start >= 0 and range.end() -% other.end() <= 0) {
+					_ = self.ranges.swapRemove(i);
+					endRange = other;
+					continue;
+				}
+				i += 1;
+			}
+			var mergedRange = range;
+			if(startRange) |start| {
+				mergedRange.start = start.start;
+				mergedRange.len = range.end() -% mergedRange.start;
+			}
+			if(endRange) |end| {
+				mergedRange.len = end.end() -% mergedRange.start;
+			}
+			self.ranges.append(allocator, mergedRange);
+		}
+
+		pub fn hasRange(self: *RangeBuffer, range: Range) bool {
+			for(self.ranges.items) |other| {
+				if(range.start -% other.start >= 0 and range.end() -% other.end() <= 0) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		pub fn extractFirstRange(self: *RangeBuffer) ?Range {
+			if(self.ranges.items.len == 0) return null;
+			var firstRange = self.ranges.items[0];
+			var index: usize = 0;
+			for(self.ranges.items[1..], 1..) |range, i| {
+				if(range.start -% firstRange.start < 0) {
+					firstRange = range;
+					index = i;
+				}
+			}
+			_ = self.ranges.swapRemove(index);
+			return firstRange;
+		}
+	};
+
+	const ReceiveBuffer = struct { // MARK: ReceiveBuffer
+		const Range = struct {
+			start: SequenceIndex,
+			len: SequenceIndex,
+		};
+		const Header = struct {
+			protocolIndex: u8,
+			size: u32,
+		};
+		ranges: RangeBuffer,
+		availablePosition: SequenceIndex = undefined,
+		currentReadPosition: SequenceIndex = undefined,
+		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
+		header: ?Header = null,
+		protocolBuffer: main.ListUnmanaged(u8) = .{},
+
+		pub fn init() ReceiveBuffer {
+			return .{
+				.ranges = .init(),
+				.buffer = .init(main.globalAllocator),
+			};
+		}
+
+		pub fn deinit(self: ReceiveBuffer) void {
+			self.ranges.deinit(main.globalAllocator);
+			self.protocolBuffer.deinit(main.globalAllocator);
+			self.buffer.deinit(main.globalAllocator);
+		}
+
+		fn applyRanges(self: *ReceiveBuffer) void {
+			const range = self.ranges.extractFirstRange() orelse unreachable;
+			std.debug.assert(range.start == self.availablePosition);
+			self.availablePosition = range.end();
+		}
+
+		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
+			if(self.currentReadPosition == self.availablePosition) return null;
+			var header: Header = .{
+				.protocolIndex = self.buffer.getAtOffset(0) orelse unreachable,
+				.size = 0,
+			};
+			var i: u8 = 1;
+			while(true) : (i += 1) {
+				if(self.currentReadPosition +% i == self.availablePosition) return null;
+				const nextByte = self.buffer.getAtOffset(i) orelse unreachable;
+				header.size = header.size << 7 | (nextByte & 0x7f);
+				if(nextByte & 0x80 == 0) break;
+				if(header.size > std.math.maxInt(@TypeOf(header.size)) >> 7) return error.Invalid;
+			}
+			self.buffer.discardElementsFront(i + 1);
+			self.currentReadPosition +%= @intCast(i + 1);
+			return header;
+		}
+
+		fn collectRangesAndExecuteProtocols(self: *ReceiveBuffer, conn: *Connection) !void {
+			self.applyRanges();
+			while(true) {
+				if(self.header == null) {
+					self.header = try self.getHeaderInformation() orelse return;
+					self.protocolBuffer.ensureCapacity(main.globalAllocator, self.header.?.size);
+				}
+				const amount = @min(@as(usize, @intCast(self.availablePosition -% self.currentReadPosition)), self.header.?.size - self.protocolBuffer.items.len);
+				if(self.availablePosition -% self.currentReadPosition == 0) return;
+
+				self.buffer.popSliceFront(self.protocolBuffer.addManyAssumeCapacity(amount)) catch unreachable;
+				self.currentReadPosition +%= @intCast(amount);
+				if(self.protocolBuffer.items.len != self.header.?.size) return;
+
+				const protocolIndex = self.header.?.protocolIndex;
+				self.header = null;
+				const protocolReceive = Protocols.list[protocolIndex] orelse return error.Invalid;
+
+				if(Protocols.isAsynchronous[protocolIndex]) {
+					ProtocolTask.schedule(conn, protocolIndex, self.protocolBuffer.items);
+				} else {
+					var reader = utils.BinaryReader.init(self.protocolBuffer.items);
+					protocolReceive(conn, &reader) catch |err| {
+						std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, self.protocolBuffer.items});
+						return err;
+					};
+				}
+
+				_ = Protocols.bytesReceived[protocolIndex].fetchAdd(self.protocolBuffer.items.len, .monotonic);
+				self.protocolBuffer.clearRetainingCapacity();
+				if(self.protocolBuffer.items.len > 1 << 24) {
+					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
+				}
+			}
+		}
+
+		const ReceiveStatus = enum {
+			accepted,
+			rejected,
+		};
+
+		pub fn receive(self: *ReceiveBuffer, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveStatus {
+			const len: SequenceIndex = @intCast(data.len);
+			if(start -% self.availablePosition < 0) return .accepted; // We accepted it in the past.
+			const offset: usize = @intCast(start -% self.currentReadPosition);
+			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
+			self.ranges.addRange(main.globalAllocator, .{.start = start, .len = len});
+			if(start == self.availablePosition) {
+				try self.collectRangesAndExecuteProtocols(conn);
+			}
+			return .accepted;
+		}
+	};
+
+	const SendBuffer = struct { // MARK: SendBuffer
+		const Range = struct {
+			start: SequenceIndex,
+			len: SequenceIndex,
+			timestamp: i64,
+			wasResent: bool = false,
+			wasResentAsFirstPacket: bool = false,
+			considerForCongestionControl: bool,
+
+			fn compareTime(_: void, a: Range, b: Range) std.math.Order {
+				if(a.timestamp == b.timestamp) return .eq;
+				if(a.timestamp -% b.timestamp > 0) return .gt;
+				return .lt;
+			}
+		};
+		unconfirmedRanges: std.PriorityQueue(Range, void, Range.compareTime),
+		lostRanges: main.utils.CircularBufferQueue(Range),
+		buffer: main.utils.CircularBufferQueue(u8),
+		fullyConfirmedIndex: SequenceIndex,
+		highestSentIndex: SequenceIndex,
+		nextIndex: SequenceIndex,
+		lastUnsentTime: i64,
+
+		pub fn init(index: SequenceIndex) SendBuffer {
+			return .{
+				.unconfirmedRanges = .init(main.globalAllocator.allocator, {}),
+				.lostRanges = .init(main.globalAllocator, 1 << 10),
+				.buffer = .init(main.globalAllocator, 1 << 20),
+				.fullyConfirmedIndex = index,
+				.highestSentIndex = index,
+				.nextIndex = index,
+				.lastUnsentTime = networkTimestamp(),
+			};
+		}
+
+		pub fn deinit(self: SendBuffer) void {
+			self.unconfirmedRanges.deinit();
+			self.lostRanges.deinit();
+			self.buffer.deinit();
+		}
+
+		pub fn insertMessage(self: *SendBuffer, protocolIndex: u8, data: []const u8, time: i64) !void {
+			if(self.highestSentIndex == self.fullyConfirmedIndex) {
+				self.lastUnsentTime = time;
+			}
+			if(data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
+			self.buffer.pushBack(protocolIndex);
+			self.nextIndex +%= 1;
+			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
+			const bits = 1 + if(data.len == 0) 0 else std.math.log2_int(usize, data.len);
+			const bytes = std.math.divCeil(usize, bits, 7) catch unreachable;
+			for(0..bytes) |i| {
+				const shift = 7*(bytes - i - 1);
+				const byte = (data.len >> @intCast(shift) & 0x7f) | if(i == bytes - 1) @as(u8, 0) else 0x80;
+				self.buffer.pushBack(@intCast(byte));
+				self.nextIndex +%= 1;
+				_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
+			}
+			self.buffer.pushBackSlice(data);
+			self.nextIndex +%= @intCast(data.len);
+		}
+
+		const ReceiveConfirmationResult = struct {
+			timestamp: i64,
+			packetLen: SequenceIndex,
+			considerForCongestionControl: bool,
+		};
+
+		pub fn receiveConfirmationAndGetTimestamp(self: *SendBuffer, start: SequenceIndex) ?ReceiveConfirmationResult {
+			var result: ?ReceiveConfirmationResult = null;
+			for(self.unconfirmedRanges.items, 0..) |range, i| {
+				if(range.start == start) {
+					result = .{
+						.timestamp = range.timestamp,
+						.considerForCongestionControl = range.considerForCongestionControl,
+						.packetLen = range.len,
+					};
+					_ = self.unconfirmedRanges.removeIndex(i);
+					break;
+				}
+			}
+			var smallestUnconfirmed = self.highestSentIndex;
+			for(self.unconfirmedRanges.items) |range| {
+				if(smallestUnconfirmed -% range.start > 0) {
+					smallestUnconfirmed = range.start;
+				}
+			}
+			for(0..self.lostRanges.len) |i| {
+				const range = self.lostRanges.getAtOffset(i) catch unreachable;
+				if(smallestUnconfirmed -% range.start > 0) {
+					smallestUnconfirmed = range.start;
+				}
+			}
+			self.buffer.discardFront(@intCast(smallestUnconfirmed -% self.fullyConfirmedIndex)) catch unreachable;
+			self.fullyConfirmedIndex = smallestUnconfirmed;
+			return result;
+		}
+
+		pub fn checkForLosses(self: *SendBuffer, time: i64, retransmissionTimeout: i64) LossStatus {
+			var hadLoss: bool = false;
+			var hadDoubleLoss: bool = false;
+			while(true) {
+				var range = self.unconfirmedRanges.peek() orelse break;
+				if(range.timestamp +% retransmissionTimeout -% time >= 0) break;
+				_ = self.unconfirmedRanges.remove();
+				if(self.fullyConfirmedIndex == range.start) {
+					// In TCP effectively only the second loss of the lowest unconfirmed packet is counted for congestion control
+					// This decreases the chance of triggering congestion control from random packet loss
+					if(range.wasResentAsFirstPacket) hadDoubleLoss = true;
+					hadLoss = true;
+					range.wasResentAsFirstPacket = true;
+				}
+				range.wasResent = true;
+				self.lostRanges.pushBack(range);
+				_ = packetsResent.fetchAdd(1, .monotonic);
+			}
+			if(hadDoubleLoss) return .doubleLoss;
+			if(hadLoss) return .singleLoss;
+			return .noLoss;
+		}
+
+		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, allowedDelay: i64) ?usize {
+			self.unconfirmedRanges.ensureUnusedCapacity(1) catch unreachable;
+			// Resend old packet:
+			if(self.lostRanges.popFront()) |_range| {
+				var range = _range;
+				if(range.len > buf.len) { // MTU changed → split the data
+					self.lostRanges.pushFront(.{
+						.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
+						.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
+						.timestamp = range.timestamp,
+						.considerForCongestionControl = range.considerForCongestionControl,
+					});
+					range.len = @intCast(buf.len);
+				}
+
+				self.buffer.getSliceAtOffset(@intCast(range.start -% self.fullyConfirmedIndex), buf[0..@intCast(range.len)]) catch unreachable;
+				range.timestamp = time;
+				byteIndex.* = range.start;
+				self.unconfirmedRanges.add(range) catch unreachable;
+				return @intCast(range.len);
+			}
+
+			if(self.highestSentIndex == self.nextIndex) return null;
+			if(self.highestSentIndex +% @as(i32, @intCast(buf.len)) -% self.fullyConfirmedIndex > receiveBufferSize) return null;
+			// Send new packet:
+			const len: SequenceIndex = @min(self.nextIndex -% self.highestSentIndex, @as(i32, @intCast(buf.len)));
+			if(len < buf.len and time -% self.lastUnsentTime < allowedDelay) return null;
+
+			self.buffer.getSliceAtOffset(@intCast(self.highestSentIndex -% self.fullyConfirmedIndex), buf[0..@intCast(len)]) catch unreachable;
+			byteIndex.* = self.highestSentIndex;
+			self.unconfirmedRanges.add(.{
+				.start = self.highestSentIndex,
+				.len = len,
+				.timestamp = time,
+				.considerForCongestionControl = considerForCongestionControl,
+			}) catch unreachable;
+			self.highestSentIndex +%= len;
+			return @intCast(len);
+		}
+	};
+
+	const Channel = struct { // MARK: Channel
+		receiveBuffer: ReceiveBuffer,
+		sendBuffer: SendBuffer,
+		allowedDelay: i64,
+		channelId: ChannelId,
+
+		pub fn init(sequenceIndex: SequenceIndex, delay: i64, id: ChannelId) Channel {
+			return .{
+				.receiveBuffer = .init(),
+				.sendBuffer = .init(sequenceIndex),
+				.allowedDelay = delay,
+				.channelId = id,
+			};
+		}
+
+		pub fn deinit(self: *Channel) void {
+			self.receiveBuffer.deinit();
+			self.sendBuffer.deinit();
+		}
+
+		pub fn connect(self: *Channel, remoteStart: SequenceIndex) void {
+			std.debug.assert(self.receiveBuffer.buffer.len == 0);
+			self.receiveBuffer.availablePosition = remoteStart;
+			self.receiveBuffer.currentReadPosition = remoteStart;
+		}
+
+		pub fn receive(self: *Channel, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveBuffer.ReceiveStatus {
+			return self.receiveBuffer.receive(conn, start, data);
+		}
+
+		pub fn send(self: *Channel, protocolIndex: u8, data: []const u8, time: i64) !void {
+			return self.sendBuffer.insertMessage(protocolIndex, data, time);
+		}
+
+		pub fn receiveConfirmationAndGetTimestamp(self: *Channel, start: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			return self.sendBuffer.receiveConfirmationAndGetTimestamp(start);
+		}
+
+		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
+			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
+			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
+		}
+
+		pub fn sendNextPacketAndGetSize(self: *Channel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuEstimate);
+			defer writer.deinit();
+
+			writer.writeEnum(ChannelId, self.channelId);
+
+			var byteIndex: SequenceIndex = undefined;
+			const packetLen = self.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, self.allowedDelay) orelse return null;
+			writer.writeInt(SequenceIndex, byteIndex);
+			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
+			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
+			writer.data.items.len += packetLen;
+
+			_ = packetsSent.fetchAdd(1, .monotonic);
+			conn.manager.send(writer.data.items, conn.remoteAddress, null);
+			return writer.data.items.len;
+		}
+
+		pub fn getStatistics(self: *Channel, unconfirmed: *usize, queued: *usize) void {
+			for(self.sendBuffer.unconfirmedRanges.items) |range| {
+				unconfirmed.* += @intCast(range.len);
+			}
+			queued.* = @intCast(self.sendBuffer.nextIndex -% self.sendBuffer.highestSentIndex);
+		}
+	};
+
+	const ChannelId = enum(u8) { // MARK: ChannelId
+		lossy = 0,
+		fast = 1,
+		slow = 2,
+		confirmation = 3,
+		init = 4,
+		keepalive = 5,
+		disconnect = 6,
+	};
+
+	const ConfirmationData = struct {
+		channel: ChannelId,
+		start: SequenceIndex,
+		receiveTimeStamp: i64,
+	};
+
+	const ConnectionState = enum(u8) {
+		awaitingClientConnection,
+		awaitingServerResponse,
+		awaitingClientAcknowledgement,
+		connected,
+		disconnectDesired,
+	};
+
+	const HandShakeState = enum(u8) {
+		start = 0,
+		userData = 1,
+		assets = 2,
+		serverData = 3,
+		complete = 255,
+	};
+
+	// MARK: fields
 
 	manager: *ConnectionManager,
 	user: ?*main.server.User,
@@ -1291,36 +1881,32 @@ pub const Connection = struct { // MARK: Connection
 	bruteforcingPort: bool = false,
 	bruteForcedPortRange: u16 = 0,
 
-	streamBuffer: [maxImportantPacketSize]u8 = undefined,
-	streamPosition: u32 = importantHeaderSize,
-	messageID: u32 = 0,
-	packetQueue: main.utils.CircularBufferQueue(UnconfirmedPacket) = undefined,
-	unconfirmedPackets: main.List(UnconfirmedPacket) = undefined,
-	receivedPackets: [3]main.List(u32) = undefined,
-	__lastReceivedPackets: [65536]?[]const u8 = @splat(null), // TODO: Wait for #12215 fix.
-	lastReceivedPackets: []?[]const u8, // TODO: Wait for #12215 fix.
-	packetMemory: *[65536][maxImportantPacketSize]u8 = undefined,
-	lastIndex: u32 = 0,
+	lossyChannel: Channel, // TODO: Actually allow it to be lossy
+	fastChannel: Channel,
+	slowChannel: Channel,
 
-	lastIncompletePacket: u32 = 0,
+	hasRttEstimate: bool = false,
+	rttEstimate: f32 = 1000*ms,
+	rttUncertainty: f32 = 0.0,
+	lastRttSampleTime: i64,
+	nextPacketTimestamp: i64,
+	nextConfirmationTimestamp: i64,
+	queuedConfirmations: main.utils.CircularBufferQueue(ConfirmationData),
+	mtuEstimate: u16 = minMtu,
 
-	lastKeepAliveSent: u32 = 0,
-	lastKeepAliveReceived: u32 = 0,
-	otherKeepAliveReceived: u32 = 0,
+	bandwidthEstimateInBytesPerRtt: f32 = minMtu,
+	slowStart: bool = true,
+	relativeSendTime: i64 = 0,
+	relativeIdleTime: i64 = 0,
 
-	congestionControl_bandWidthSentHistory: [congestionControl_historySize]usize = @splat(0),
-	congestionControl_bandWidthReceivedHistory: [congestionControl_historySize]usize = @splat(0),
-	congestionControl_bandWidthEstimate: usize = minimumBandWidth,
-	congestionControl_inversebandWidth: f32 = timeUnit/minimumBandWidth,
-	congestionControl_lastSendTime: i64,
-	congestionControl_sendTimeLimit: i64,
-	congestionControl_bandWidthUsed: usize = 0,
-	congestionControl_curPosition: usize = 0,
-
-	disconnected: Atomic(bool) = .init(false),
-	handShakeState: Atomic(u8) = .init(Protocols.handShake.stepStart),
+	connectionState: Atomic(ConnectionState),
+	handShakeState: Atomic(HandShakeState) = .init(.start),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
+
+	// To distinguish different connections from the same computer to avoid multiple reconnects
+	connectionIdentifier: i64,
+	remoteConnectionIdentifier: i64,
 
 	mutex: std.Thread.Mutex = .{},
 
@@ -1331,25 +1917,26 @@ pub const Connection = struct { // MARK: Connection
 			.manager = manager,
 			.user = user,
 			.remoteAddress = undefined,
-			.lastConnection = @truncate(std.time.nanoTimestamp()),
-			.lastReceivedPackets = &result.__lastReceivedPackets, // TODO: Wait for #12215 fix.
-			.packetMemory = main.globalAllocator.create([65536][maxImportantPacketSize]u8),
-			.congestionControl_lastSendTime = @truncate(std.time.nanoTimestamp()),
-			.congestionControl_sendTimeLimit = @as(i64, @truncate(std.time.nanoTimestamp())) +% timeUnit*21/20,
+			.connectionState = .init(if(user != null) .awaitingClientConnection else .awaitingServerResponse),
+			.lastConnection = networkTimestamp(),
+			.nextPacketTimestamp = networkTimestamp(),
+			.nextConfirmationTimestamp = networkTimestamp(),
+			.lastRttSampleTime = networkTimestamp() -% 10_000*ms,
+			.queuedConfirmations = .init(main.globalAllocator, 1024),
+			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1*ms, .lossy),
+			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .fast),
+			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100*ms, .slow),
+			.connectionIdentifier = networkTimestamp(),
+			.remoteConnectionIdentifier = 0,
 		};
-		errdefer main.globalAllocator.free(result.packetMemory);
-		result.unconfirmedPackets = .init(main.globalAllocator);
-		errdefer result.unconfirmedPackets.deinit();
-		result.packetQueue = .init(main.globalAllocator, 1024);
-		errdefer result.packetQueue.deinit();
-		result.receivedPackets = [3]main.List(u32){
-			.init(main.globalAllocator),
-			.init(main.globalAllocator),
-			.init(main.globalAllocator),
-		};
-		errdefer for(&result.receivedPackets) |*list| {
-			list.deinit();
-		};
+		errdefer {
+			result.lossyChannel.deinit();
+			result.fastChannel.deinit();
+			result.slowChannel.deinit();
+			result.queuedConfirmations.deinit();
+		}
+		if(result.connectionIdentifier == 0) result.connectionIdentifier = 1;
+
 		var splitter = std.mem.splitScalar(u8, ipPort, ':');
 		const ip = splitter.first();
 		result.remoteAddress.ip = try Socket.resolveIP(ip);
@@ -1368,443 +1955,331 @@ pub const Connection = struct { // MARK: Connection
 		return result;
 	}
 
-	fn reinitialize(self: *Connection) void {
-		main.utils.assertLocked(&self.mutex);
-		self.streamPosition = importantHeaderSize;
-		self.messageID = 0;
-		while(self.packetQueue.dequeue()) |packet| {
-			main.globalAllocator.free(packet.data);
-		}
-		for(self.unconfirmedPackets.items) |packet| {
-			main.globalAllocator.free(packet.data);
-		}
-		self.unconfirmedPackets.clearRetainingCapacity();
-		self.receivedPackets[0].clearRetainingCapacity();
-		self.receivedPackets[1].clearRetainingCapacity();
-		self.receivedPackets[2].clearRetainingCapacity();
-		self.lastIndex = 0;
-		self.lastIncompletePacket = 0;
-		self.handShakeState = .init(Protocols.handShake.stepStart);
-	}
-
 	pub fn deinit(self: *Connection) void {
 		self.disconnect();
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
-		for(self.unconfirmedPackets.items) |packet| {
-			main.globalAllocator.free(packet.data);
-		}
-		self.unconfirmedPackets.deinit();
-		while(self.packetQueue.dequeue()) |packet| {
-			main.globalAllocator.free(packet.data);
-		}
-		self.packetQueue.deinit();
-		self.receivedPackets[0].deinit();
-		self.receivedPackets[1].deinit();
-		self.receivedPackets[2].deinit();
-		main.globalAllocator.destroy(self.packetMemory);
+		self.lossyChannel.deinit();
+		self.fastChannel.deinit();
+		self.slowChannel.deinit();
+		self.queuedConfirmations.deinit();
 		main.globalAllocator.destroy(self);
 	}
 
-	fn trySendingPacket(self: *Connection, data: []const u8) bool {
-		std.debug.assert(data[0] == Protocols.important);
-		const curTime: i64 = @truncate(std.time.nanoTimestamp());
-		if(curTime -% self.congestionControl_lastSendTime > 0) {
-			self.congestionControl_lastSendTime = curTime;
-		}
-		const shouldSend = self.congestionControl_bandWidthUsed < self.congestionControl_bandWidthEstimate and self.congestionControl_lastSendTime -% self.congestionControl_sendTimeLimit < 0;
-		if(shouldSend) {
-			_ = packetsSent.fetchAdd(1, .monotonic);
-			self.manager.send(data, self.remoteAddress, self.congestionControl_lastSendTime);
-			const packetSize = data.len + headerOverhead;
-			self.congestionControl_lastSendTime +%= @intFromFloat(@as(f32, @floatFromInt(packetSize))*self.congestionControl_inversebandWidth);
-			self.congestionControl_bandWidthUsed += packetSize;
-		}
-		return shouldSend;
-	}
+	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
+		_ = Protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
+		self.mutex.lock();
+		defer self.mutex.unlock();
 
-	fn flush(self: *Connection) void {
-		main.utils.assertLocked(&self.mutex);
-		if(self.streamPosition == importantHeaderSize) return; // Don't send empty packets.
-		// Fill the header:
-		self.streamBuffer[0] = Protocols.important;
-		const id = self.messageID;
-		self.messageID += 1;
-		std.mem.writeInt(u32, self.streamBuffer[1..5], id, .big); // TODO: Use little endian for better hardware support. Currently the aim is interoperability with the java version which uses big endian.
-
-		const packet = UnconfirmedPacket{
-			.data = main.globalAllocator.dupe(u8, self.streamBuffer[0..self.streamPosition]),
-			.lastKeepAliveSentBefore = self.lastKeepAliveSent,
-			.id = id,
+		_ = switch(channel) {
+			.lossy => self.lossyChannel.send(protocolIndex, data, networkTimestamp()),
+			.fast => self.fastChannel.send(protocolIndex, data, networkTimestamp()),
+			.slow => self.slowChannel.send(protocolIndex, data, networkTimestamp()),
+			else => comptime unreachable,
+		} catch {
+			std.log.err("Cannot send any more packets. Disconnecting", .{});
+			self.disconnect();
 		};
-		if(self.trySendingPacket(packet.data)) {
-			self.unconfirmedPackets.append(packet);
-		} else {
-			self.packetQueue.enqueue(packet);
-		}
-		self.streamPosition = importantHeaderSize;
-	}
-
-	fn writeByteToStream(self: *Connection, data: u8) void {
-		self.streamBuffer[self.streamPosition] = data;
-		self.streamPosition += 1;
-		if(self.streamPosition == self.streamBuffer.len) {
-			self.flush();
-		}
-	}
-
-	pub fn sendImportant(self: *Connection, id: u8, data: []const u8) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
-
-		if(self.disconnected.load(.unordered)) return;
-		self.writeByteToStream(id);
-		var processedLength = data.len;
-		while(processedLength > 0x7f) {
-			self.writeByteToStream(@as(u8, @intCast(processedLength & 0x7f)) | 0x80);
-			processedLength >>= 7;
-		}
-		self.writeByteToStream(@intCast(processedLength & 0x7f));
-
-		var remaining: []const u8 = data;
-		while(remaining.len != 0) {
-			const copyableSize = @min(remaining.len, self.streamBuffer.len - self.streamPosition);
-			@memcpy(self.streamBuffer[self.streamPosition..][0..copyableSize], remaining[0..copyableSize]);
-			remaining = remaining[copyableSize..];
-			self.streamPosition += @intCast(copyableSize);
-			if(self.streamPosition == self.streamBuffer.len) {
-				self.flush();
-			}
-		}
-	}
-
-	pub fn sendUnimportant(self: *Connection, id: u8, data: []const u8) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
-
-		if(self.disconnected.load(.unordered)) return;
-		std.debug.assert(data.len + 1 < maxPacketSize);
-		const fullData = main.stackAllocator.alloc(u8, data.len + 1);
-		defer main.stackAllocator.free(fullData);
-		fullData[0] = id;
-		@memcpy(fullData[1..], data);
-		self.manager.send(fullData, self.remoteAddress, null);
-	}
-
-	fn receiveKeepAlive(self: *Connection, data: []const u8) void {
-		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
-		if(data.len == 0) return; // This is sent when brute forcing the port.
-		self.mutex.lock();
-		defer self.mutex.unlock();
-
-		self.otherKeepAliveReceived = std.mem.readInt(u32, data[0..4], .big);
-		self.lastKeepAliveReceived = std.mem.readInt(u32, data[4..8], .big);
-		var remaining: []const u8 = data[8..];
-		while(remaining.len >= 8) {
-			const start = std.mem.readInt(u32, remaining[0..4], .big);
-			const len = std.mem.readInt(u32, remaining[4..8], .big);
-			remaining = remaining[8..];
-			var j: usize = 0;
-			while(j < self.unconfirmedPackets.items.len) {
-				const diff = self.unconfirmedPackets.items[j].id -% start;
-				if(diff < len) {
-					const index = self.unconfirmedPackets.items[j].lastKeepAliveSentBefore & congestionControl_historyMask;
-					self.congestionControl_bandWidthReceivedHistory[index] += self.unconfirmedPackets.items[j].data.len + headerOverhead;
-					main.globalAllocator.free(self.unconfirmedPackets.items[j].data);
-					_ = self.unconfirmedPackets.swapRemove(j);
-				} else {
-					j += 1;
-				}
-			}
-		}
-	}
-
-	fn sendKeepAlive(self: *Connection) void {
-		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
-		self.mutex.lock();
-		defer self.mutex.unlock();
-
-		var runLengthEncodingStarts = main.List(u32).init(main.stackAllocator);
-		defer runLengthEncodingStarts.deinit();
-		var runLengthEncodingLengths = main.List(u32).init(main.stackAllocator);
-		defer runLengthEncodingLengths.deinit();
-
-		for(self.receivedPackets) |list| {
-			for(list.items) |packetID| {
-				var leftRegion: ?u32 = null;
-				var rightRegion: ?u32 = null;
-				for(runLengthEncodingStarts.items, runLengthEncodingLengths.items, 0..) |start, length, reg| {
-					const diff = packetID -% start;
-					if(diff < length) continue;
-					if(diff == length) {
-						leftRegion = @intCast(reg);
-					}
-					if(diff == std.math.maxInt(u32)) {
-						rightRegion = @intCast(reg);
-					}
-				}
-				if(leftRegion) |left| {
-					if(rightRegion) |right| {
-						// Needs to combine the regions:
-						runLengthEncodingLengths.items[left] += runLengthEncodingLengths.items[right] + 1;
-						_ = runLengthEncodingStarts.swapRemove(right);
-						_ = runLengthEncodingLengths.swapRemove(right);
-					} else {
-						runLengthEncodingLengths.items[left] += 1;
-					}
-				} else if(rightRegion) |right| {
-					runLengthEncodingStarts.items[right] -= 1;
-					runLengthEncodingLengths.items[right] += 1;
-				} else {
-					runLengthEncodingStarts.append(packetID);
-					runLengthEncodingLengths.append(1);
-				}
-			}
-		}
-		{ // Cycle the receivedPackets lists:
-			const putBackToFront: main.List(u32) = self.receivedPackets[self.receivedPackets.len - 1];
-			var i: u32 = self.receivedPackets.len - 1;
-			while(i >= 1) : (i -= 1) {
-				self.receivedPackets[i] = self.receivedPackets[i - 1];
-			}
-			self.receivedPackets[0] = putBackToFront;
-			self.receivedPackets[0].clearRetainingCapacity();
-		}
-		const output = main.stackAllocator.alloc(u8, runLengthEncodingStarts.items.len*8 + 9);
-		defer main.stackAllocator.free(output);
-		output[0] = Protocols.keepAlive;
-		std.mem.writeInt(u32, output[1..5], self.lastKeepAliveSent, .big);
-		std.mem.writeInt(u32, output[5..9], self.otherKeepAliveReceived, .big);
-		var remaining: []u8 = output[9..];
-		for(runLengthEncodingStarts.items, 0..) |_, i| {
-			std.mem.writeInt(u32, remaining[0..4], runLengthEncodingStarts.items[i], .big);
-			std.mem.writeInt(u32, remaining[4..8], runLengthEncodingLengths.items[i], .big);
-			remaining = remaining[8..];
-		}
-		self.manager.send(output, self.remoteAddress, null);
-
-		// Congestion control:
-		self.congestionControl_bandWidthSentHistory[self.lastKeepAliveSent & congestionControl_historyMask] = self.congestionControl_bandWidthUsed;
-		self.lastKeepAliveSent += 1;
-		self.congestionControl_bandWidthReceivedHistory[self.lastKeepAliveSent & congestionControl_historyMask] = 0;
-		//self.congestionControl_bandWidthUsed = 0;
-		var maxBandWidth: usize = minimumBandWidth;
-		var dataSentAtMaxBandWidth: usize = minimumBandWidth;
-		var maxDataSent: usize = 0;
-		{
-			var i: usize = self.lastKeepAliveReceived -% 1 & congestionControl_historyMask;
-			while(i != self.lastKeepAliveReceived -% 1 & congestionControl_historyMask) : (i = i -% 1 & congestionControl_historyMask) {
-				const dataSent: usize = self.congestionControl_bandWidthSentHistory[i];
-				const dataReceived: usize = self.congestionControl_bandWidthReceivedHistory[i];
-				if(dataReceived > maxBandWidth) {
-					maxBandWidth = dataReceived;
-					dataSentAtMaxBandWidth = dataSent;
-				}
-				maxDataSent = @max(maxDataSent, dataSent);
-				if(dataSent > dataReceived + dataReceived/64) { // Only look into the history until a packet loss occured to react fast to sudden bandwidth reductions.
-					break;
-				}
-			}
-		}
-		for(0..congestionControl_historySize) |i| {
-			if(self.congestionControl_bandWidthReceivedHistory[i] > maxBandWidth) {
-				maxBandWidth = self.congestionControl_bandWidthReceivedHistory[i];
-				dataSentAtMaxBandWidth = self.congestionControl_bandWidthSentHistory[i];
-			}
-			maxDataSent = @max(maxDataSent, self.congestionControl_bandWidthSentHistory[i]);
-		}
-
-		if(maxBandWidth == dataSentAtMaxBandWidth and maxDataSent < maxBandWidth + maxBandWidth/64) { // Startup phase → Try to ramp up fast
-			self.congestionControl_bandWidthEstimate = maxBandWidth*2;
-		} else {
-			self.congestionControl_bandWidthEstimate = maxBandWidth + maxBandWidth/64;
-			if(dataSentAtMaxBandWidth < maxBandWidth + maxBandWidth/128) { // Ramp up faster
-				self.congestionControl_bandWidthEstimate += maxBandWidth/16;
-			}
-		}
-		self.congestionControl_inversebandWidth = timeUnit/@as(f32, @floatFromInt(self.congestionControl_bandWidthEstimate));
-		self.congestionControl_bandWidthUsed = 0;
-		self.congestionControl_sendTimeLimit = @as(i64, @truncate(std.time.nanoTimestamp())) + timeUnit*21/20;
-
-		// Resend packets that didn't receive confirmation within the last 2 keep-alive signals.
-		for(self.unconfirmedPackets.items) |*packet| {
-			if(self.lastKeepAliveReceived -% @as(i33, packet.lastKeepAliveSentBefore) >= 2) {
-				if(self.trySendingPacket(packet.data)) {
-					_ = packetsResent.fetchAdd(1, .monotonic);
-					packet.lastKeepAliveSentBefore = self.lastKeepAliveSent;
-				} else break;
-			}
-		}
-		while(true) {
-			if(self.packetQueue.peek()) |_packet| {
-				if(self.trySendingPacket(_packet.data)) {
-					std.debug.assert(std.meta.eql(self.packetQueue.dequeue(), _packet)); // Remove it from the queue
-					var packet = _packet;
-					packet.lastKeepAliveSentBefore = self.lastKeepAliveSent;
-					self.unconfirmedPackets.append(packet);
-				} else break;
-			} else break;
-		}
-		self.flush();
-		if(self.bruteforcingPort) {
-			// This is called every 100 ms, so if I send 10 requests it shouldn't be too bad.
-			for(0..5) |_| {
-				const data = [1]u8{0};
-				if(self.remoteAddress.port +% self.bruteForcedPortRange != 0) {
-					self.manager.send(&data, Address{.ip = self.remoteAddress.ip, .port = self.remoteAddress.port +% self.bruteForcedPortRange}, null);
-				}
-				if(self.remoteAddress.port - self.bruteForcedPortRange != 0) {
-					self.manager.send(&data, Address{.ip = self.remoteAddress.ip, .port = self.remoteAddress.port -% self.bruteForcedPortRange}, null);
-				}
-				self.bruteForcedPortRange +%= 1;
-			}
-		}
 	}
 
 	pub fn isConnected(self: *Connection) bool {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		return self.otherKeepAliveReceived != 0;
+		return self.connectionState.load(.unordered) == .connected;
 	}
 
-	fn collectPackets(self: *Connection) !void {
-		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
-		while(true) {
-			var id = self.lastIncompletePacket;
-			var receivedPacket = self.lastReceivedPackets[id & 65535] orelse return;
-			var newIndex = self.lastIndex;
-			const protocol = receivedPacket[newIndex];
-			newIndex += 1;
-			if(self.manager.world == null and self.user == null and protocol != Protocols.handShake.id)
-				return;
+	fn isServerSide(conn: *Connection) bool {
+		return conn.user != null;
+	}
 
-			// Determine the next packet length:
-			var len: u32 = 0;
-			var shift: u5 = 0;
-			while(true) {
-				if(newIndex == receivedPacket.len) {
-					newIndex = 0;
-					id += 1;
-					receivedPacket = self.lastReceivedPackets[id & 65535] orelse return;
-				}
-				const nextByte = receivedPacket[newIndex];
-				newIndex += 1;
-				len |= @as(u32, @intCast(nextByte & 0x7f)) << shift;
-				if(nextByte & 0x80 != 0) {
-					shift += 7;
-				} else {
-					break;
-				}
-			}
+	fn handlePacketLoss(self: *Connection, loss: LossStatus) void {
+		if(loss == .noLoss) return;
+		self.slowStart = false;
+		if(loss == .doubleLoss) {
+			self.rttEstimate *= 1.5;
+			self.bandwidthEstimateInBytesPerRtt /= 2;
+			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
+		}
+	}
 
-			// Check if there is enough data available to fill the packets needs:
-			var dataAvailable = receivedPacket.len - newIndex;
-			var idd = id + 1;
-			while(dataAvailable < len) : (idd += 1) {
-				const otherPacket = self.lastReceivedPackets[idd & 65535] orelse return;
-				dataAvailable += otherPacket.len;
-			}
+	fn increaseCongestionBandwidth(self: *Connection, packetLen: SequenceIndex) void {
+		const fullPacketLen: f32 = @floatFromInt(packetLen + headerOverhead);
+		if(self.slowStart) {
+			self.bandwidthEstimateInBytesPerRtt += fullPacketLen;
+		} else {
+			self.bandwidthEstimateInBytesPerRtt += fullPacketLen/self.bandwidthEstimateInBytesPerRtt*@as(f32, @floatFromInt(self.mtuEstimate)) + fullPacketLen/100.0;
+		}
+	}
 
-			// Copy the data to an array:
-			const data = main.stackAllocator.alloc(u8, len);
-			defer main.stackAllocator.free(data);
-			var remaining = data[0..];
-			while(remaining.len != 0) {
-				dataAvailable = @min(self.lastReceivedPackets[id & 65535].?.len - newIndex, remaining.len);
-				@memcpy(remaining[0..dataAvailable], self.lastReceivedPackets[id & 65535].?[newIndex .. newIndex + dataAvailable]);
-				newIndex += @intCast(dataAvailable);
-				remaining = remaining[dataAvailable..];
-				if(newIndex == self.lastReceivedPackets[id & 65535].?.len) {
-					id += 1;
-					newIndex = 0;
-				}
+	fn receiveConfirmationPacket(self: *Connection, reader: *utils.BinaryReader, timestamp: i64) !void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
+		var minRtt: f32 = std.math.floatMax(f32);
+		var maxRtt: f32 = 1000;
+		var sumRtt: f32 = 0;
+		var numRtt: f32 = 0;
+		while(reader.remaining.len != 0) {
+			const channel = try reader.readEnum(ChannelId);
+			const timeOffset = 2*@as(i64, try reader.readInt(u16));
+			const start = try reader.readInt(SequenceIndex);
+			const confirmationResult = switch(channel) {
+				.lossy => self.lossyChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
+				.fast => self.fastChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
+				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
+				else => return error.Invalid,
+			};
+			const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
+			numRtt += 1;
+			sumRtt += rtt;
+			minRtt = @min(minRtt, rtt);
+			maxRtt = @max(maxRtt, rtt);
+			if(confirmationResult.considerForCongestionControl) {
+				self.increaseCongestionBandwidth(confirmationResult.packetLen);
 			}
-			while(self.lastIncompletePacket != id) : (self.lastIncompletePacket += 1) {
-				self.lastReceivedPackets[self.lastIncompletePacket & 65535] = null;
-			}
-			self.lastIndex = newIndex;
-			_ = bytesReceived[protocol].fetchAdd(data.len + 1 + (7 + std.math.log2_int(usize, 1 + data.len))/7, .monotonic);
-			if(Protocols.list[protocol]) |prot| {
-				if(Protocols.isAsynchronous[protocol]) {
-					ProtocolTask.schedule(self, protocol, data);
-				} else {
-					var reader = utils.BinaryReader.init(data, networkEndian);
-					try prot(self, &reader);
-				}
-			} else {
-				std.log.err("Received unknown important protocol with id {}", .{protocol});
+		}
+		if(numRtt > 0) {
+			// Taken mostly from RFC 6298 with some minor changes
+			const averageRtt = sumRtt/numRtt;
+			const largestDifference = @max(maxRtt - averageRtt, averageRtt - minRtt, @abs(maxRtt - self.rttEstimate), @abs(self.rttEstimate - minRtt));
+			const timeDifference: f32 = @floatFromInt(timestamp -% self.lastRttSampleTime);
+			const alpha = 1.0 - std.math.pow(f32, 7.0/8.0, timeDifference/self.rttEstimate);
+			const beta = 1.0 - std.math.pow(f32, 3.0/4.0, timeDifference/self.rttEstimate);
+			self.rttEstimate = (1 - alpha)*self.rttEstimate + alpha*averageRtt;
+			self.rttUncertainty = (1 - beta)*self.rttUncertainty + beta*largestDifference;
+			self.lastRttSampleTime = timestamp;
+			if(!self.hasRttEstimate) { // Kill the 1 second delay caused by the first packet
+				self.nextPacketTimestamp = timestamp;
+				self.hasRttEstimate = true;
 			}
 		}
 	}
 
+	fn sendConfirmationPacket(self: *Connection, timestamp: i64) void {
+		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.mtuEstimate);
+		defer writer.deinit();
+
+		writer.writeEnum(ChannelId, .confirmation);
+
+		while(self.queuedConfirmations.popFront()) |confirmation| {
+			writer.writeEnum(ChannelId, confirmation.channel);
+			writer.writeInt(u16, std.math.lossyCast(u16, @divTrunc(timestamp -% confirmation.receiveTimeStamp, 2)));
+			writer.writeInt(SequenceIndex, confirmation.start);
+			if(writer.data.capacity - writer.data.items.len < @sizeOf(ChannelId) + @sizeOf(u16) + @sizeOf(SequenceIndex)) break;
+		}
+
+		_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
+		self.manager.send(writer.data.items, self.remoteAddress, null);
+	}
+
 	pub fn receive(self: *Connection, data: []const u8) void {
-		self.flawedReceive(data) catch |err| {
+		self.tryReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
 			if(@errorReturnTrace()) |trace| {
-				std.log.info("{}", .{trace});
+				std.log.info("{f}", .{trace});
 			}
+			std.log.debug("Packet data: {any}", .{data});
 			self.disconnect();
 		};
 	}
 
-	pub fn flawedReceive(self: *Connection, data: []const u8) !void {
+	fn tryReceive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
-		const protocol = data[0];
-		if(self.handShakeState.load(.monotonic) != Protocols.handShake.stepComplete and protocol != Protocols.handShake.id and protocol != Protocols.keepAlive and protocol != Protocols.important) {
-			return; // Reject all non-handshake packets until the handshake is done.
-		}
-		self.lastConnection = @truncate(std.time.nanoTimestamp());
-		_ = bytesReceived[protocol].fetchAdd(data.len + 20 + 8, .monotonic); // Including IP header and udp header;
-		_ = packetsReceived[protocol].fetchAdd(1, .monotonic);
-		if(protocol == Protocols.important) {
-			const id = std.mem.readInt(u32, data[1..5], .big);
-			if(self.handShakeState.load(.monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
-				if(self.user) |user| {
-					user.reinitialize();
-					self.mutex.lock();
-					defer self.mutex.unlock();
-					self.reinitialize();
-				} else {
-					std.log.err("Server reconnected?", .{});
-					self.disconnect();
+		var reader = utils.BinaryReader.init(data);
+		const channel = try reader.readEnum(ChannelId);
+		if(channel == .init) {
+			const remoteConnectionIdentifier = try reader.readInt(i64);
+			const isAcknowledgement = reader.remaining.len == 0;
+			if(isAcknowledgement) {
+				switch(self.connectionState.load(.monotonic)) {
+					.awaitingClientAcknowledgement => {
+						if(self.remoteConnectionIdentifier == remoteConnectionIdentifier) {
+							_ = self.connectionState.cmpxchgStrong(.awaitingClientAcknowledgement, .connected, .monotonic, .monotonic);
+						}
+					},
+					else => {},
 				}
-			}
-			if(id - @as(i33, self.lastIncompletePacket) >= 65536) {
-				std.log.warn("Many incomplete packets. Cannot process any more packets for now.", .{});
 				return;
 			}
-			self.receivedPackets[0].append(id);
-			if(id < self.lastIncompletePacket or self.lastReceivedPackets[id & 65535] != null) {
-				return; // Already received the package in the past.
+			const lossyStart = try reader.readInt(SequenceIndex);
+			const fastStart = try reader.readInt(SequenceIndex);
+			const slowStart = try reader.readInt(SequenceIndex);
+			switch(self.connectionState.load(.monotonic)) {
+				.awaitingClientConnection => {
+					self.lossyChannel.connect(lossyStart);
+					self.fastChannel.connect(fastStart);
+					self.slowChannel.connect(slowStart);
+					_ = self.connectionState.cmpxchgStrong(.awaitingClientConnection, .awaitingClientAcknowledgement, .monotonic, .monotonic);
+					self.remoteConnectionIdentifier = remoteConnectionIdentifier;
+				},
+				.awaitingServerResponse => {
+					self.lossyChannel.connect(lossyStart);
+					self.fastChannel.connect(fastStart);
+					self.slowChannel.connect(slowStart);
+					_ = self.connectionState.cmpxchgStrong(.awaitingServerResponse, .connected, .monotonic, .monotonic);
+					self.remoteConnectionIdentifier = remoteConnectionIdentifier;
+				},
+				.awaitingClientAcknowledgement => {},
+				.connected => {
+					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) { // Reconnection attempt
+						if(self.user) |user| {
+							self.manager.removeConnection(self);
+							main.server.disconnect(user);
+						} else {
+							std.log.err("Server reconnected?", .{});
+							self.disconnect();
+						}
+						return;
+					}
+				},
+				.disconnectDesired => {},
 			}
-			const temporaryMemory: []u8 = (&self.packetMemory[id & 65535])[0 .. data.len - importantHeaderSize];
-			@memcpy(temporaryMemory, data[importantHeaderSize..]);
-			self.lastReceivedPackets[id & 65535] = temporaryMemory;
-			// Check if a message got completed:
-			try self.collectPackets();
-		} else if(protocol == Protocols.keepAlive) {
-			self.receiveKeepAlive(data[1..]);
-		} else {
-			if(Protocols.list[protocol]) |prot| {
-				var reader = utils.BinaryReader.init(data[1..], networkEndian);
-				try prot(self, &reader);
-			} else {
-				std.log.err("Received unknown protocol with id {}", .{protocol});
-				return error.Invalid;
+			// Acknowledge the packet on the client:
+			if(self.user == null) {
+				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 1 + @sizeOf(i64));
+				defer writer.deinit();
+
+				writer.writeEnum(ChannelId, .init);
+				writer.writeInt(i64, self.connectionIdentifier);
+
+				_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
+				self.manager.send(writer.data.items, self.remoteAddress, null);
 			}
+			return;
+		}
+		if(self.connectionState.load(.monotonic) != .connected) return; // Reject all non-handshake packets until the handshake is done.
+		switch(channel) {
+			.lossy => {
+				const start = try reader.readInt(SequenceIndex);
+				if(try self.lossyChannel.receive(self, start, reader.remaining) == .accepted) {
+					self.queuedConfirmations.pushBack(.{
+						.channel = channel,
+						.start = start,
+						.receiveTimeStamp = networkTimestamp(),
+					});
+				}
+			},
+			.fast => {
+				const start = try reader.readInt(SequenceIndex);
+				if(try self.fastChannel.receive(self, start, reader.remaining) == .accepted) {
+					self.queuedConfirmations.pushBack(.{
+						.channel = channel,
+						.start = start,
+						.receiveTimeStamp = networkTimestamp(),
+					});
+				}
+			},
+			.slow => {
+				const start = try reader.readInt(SequenceIndex);
+				if(try self.slowChannel.receive(self, start, reader.remaining) == .accepted) {
+					self.queuedConfirmations.pushBack(.{
+						.channel = channel,
+						.start = start,
+						.receiveTimeStamp = networkTimestamp(),
+					});
+				}
+			},
+			.confirmation => {
+				try self.receiveConfirmationPacket(&reader, networkTimestamp());
+			},
+			.init => unreachable,
+			.keepalive => {},
+			.disconnect => {
+				self.disconnect();
+			},
+		}
+		self.lastConnection = networkTimestamp();
+
+		// TODO: Packet statistics
+	}
+
+	pub fn processNextPackets(self: *Connection) void {
+		const timestamp = networkTimestamp();
+
+		switch(self.connectionState.load(.monotonic)) {
+			.awaitingClientConnection => {
+				if(timestamp -% self.nextPacketTimestamp < 0) return;
+				self.nextPacketTimestamp = timestamp +% 100*ms;
+				self.manager.send(&.{@intFromEnum(ChannelId.keepalive)}, self.remoteAddress, null);
+			},
+			.awaitingServerResponse, .awaitingClientAcknowledgement => {
+				// Send the initial packet once every 100 ms.
+				if(timestamp -% self.nextPacketTimestamp < 0) return;
+				self.nextPacketTimestamp = timestamp +% 100*ms;
+				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 1 + @sizeOf(i64) + 3*@sizeOf(SequenceIndex));
+				defer writer.deinit();
+
+				writer.writeEnum(ChannelId, .init);
+				writer.writeInt(i64, self.connectionIdentifier);
+				writer.writeInt(SequenceIndex, self.lossyChannel.sendBuffer.fullyConfirmedIndex);
+				writer.writeInt(SequenceIndex, self.fastChannel.sendBuffer.fullyConfirmedIndex);
+				writer.writeInt(SequenceIndex, self.slowChannel.sendBuffer.fullyConfirmedIndex);
+				_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
+				self.manager.send(writer.data.items, self.remoteAddress, null);
+				return;
+			},
+			.connected => {
+				if(timestamp -% self.lastConnection -% settings.connectionTimeout > 0) {
+					std.log.info("timeout", .{});
+					self.disconnect();
+					return;
+				}
+			},
+			.disconnectDesired => return,
+		}
+
+		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));
+		self.handlePacketLoss(self.fastChannel.checkForLosses(self, timestamp));
+		self.handlePacketLoss(self.slowChannel.checkForLosses(self, timestamp));
+
+		// We don't want to send too many packets at once if there was a period of no traffic.
+		if(timestamp -% 10*ms -% self.nextPacketTimestamp > 0) {
+			self.relativeIdleTime += timestamp -% 10*ms -% self.nextPacketTimestamp;
+			self.nextPacketTimestamp = timestamp -% 10*ms;
+		}
+
+		if(self.relativeIdleTime + self.relativeSendTime > @as(i64, @intFromFloat(self.rttEstimate))) {
+			self.relativeIdleTime >>= 1;
+			self.relativeSendTime >>= 1;
+		}
+
+		while(timestamp -% self.nextConfirmationTimestamp > 0 and !self.queuedConfirmations.isEmpty()) {
+			self.sendConfirmationPacket(timestamp);
+		}
+
+		while(timestamp -% self.nextPacketTimestamp > 0) {
+			// Only attempt to increase the congestion bandwidth if we actual use the bandwidth, to prevent unbounded growth
+			const considerForCongestionControl = @divFloor(self.relativeSendTime, 2) > self.relativeIdleTime;
+			const dataLen = blk: {
+				self.mutex.lock();
+				defer self.mutex.unlock();
+				if(self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+				if(self.fastChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+				if(self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+
+				break;
+			};
+			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
+			const packetTime: i64 = @intFromFloat(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
+			self.nextPacketTimestamp +%= packetTime;
+			self.relativeSendTime += packetTime;
 		}
 	}
 
 	pub fn disconnect(self: *Connection) void {
-		// Send 3 disconnect packages to the other side, just to be sure.
-		// If all of them don't get through then there is probably a network issue anyways which would lead to a timeout.
-		Protocols.disconnect.disconnect(self);
-		std.time.sleep(10000000);
-		Protocols.disconnect.disconnect(self);
-		std.time.sleep(10000000);
-		Protocols.disconnect.disconnect(self);
-		self.disconnected.store(true, .unordered);
+		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
+		self.connectionState.store(.disconnectDesired, .unordered);
+		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
+			std.Thread.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+		}
 		self.manager.removeConnection(self);
+		if(self.user) |user| {
+			main.server.disconnect(user);
+		} else {
+			self.handShakeWaiting.broadcast();
+			main.exitToMenu(undefined);
+		}
 		std.log.info("Disconnected", .{});
 	}
 };
@@ -1842,7 +2317,7 @@ const ProtocolTask = struct {
 
 	pub fn run(self: *ProtocolTask) void {
 		defer self.clean();
-		var reader = utils.BinaryReader.init(self.data, networkEndian);
+		var reader = utils.BinaryReader.init(self.data);
 		Protocols.list[self.protocol].?(self.conn, &reader) catch |err| {
 			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
 		};

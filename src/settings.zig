@@ -3,15 +3,18 @@ const builtin = @import("builtin");
 
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const Window = @import("graphics/Window.zig");
+
+pub const version = @import("utils/version.zig");
 
 pub const defaultPort: u16 = 47649;
-pub const connectionTimeout = 60_000_000_000;
+pub const connectionTimeout = 60_000_000;
 
 pub const entityLookback: i16 = 100;
 
-pub const version = "Cubyz α 0.12.0";
-
 pub const highestSupportedLod: u3 = 5;
+
+pub var lastVersionString: []const u8 = "";
 
 pub var simulationDistance: u16 = 4;
 
@@ -23,8 +26,12 @@ pub var fpsCap: ?u32 = null;
 
 pub var fov: f32 = 70;
 
+pub var vulkanTestingWindow: bool = false;
+
 pub var mouseSensitivity: f32 = 1;
 pub var controllerSensitivity: f32 = 1;
+
+pub var invertMouseY: bool = false;
 
 pub var renderDistance: u16 = 7;
 
@@ -98,6 +105,9 @@ pub fn init() void {
 		key.key = keyZon.get(c_int, "key", key.key);
 		key.mouseButton = keyZon.get(c_int, "mouseButton", key.mouseButton);
 		key.scancode = keyZon.get(c_int, "scancode", key.scancode);
+		if(key.isToggling != .never) {
+			key.isToggling = std.meta.stringToEnum(Window.Key.IsToggling, keyZon.get([]const u8, "isToggling", "")) orelse key.isToggling;
+		}
 	}
 }
 
@@ -122,10 +132,14 @@ pub fn deinit() void {
 }
 
 pub fn save() void {
-	const zonObject = ZonElement.initObject(main.stackAllocator);
+	var zonObject = ZonElement.initObject(main.stackAllocator);
 	defer zonObject.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		if(comptime std.mem.eql(u8, decl.name, "lastVersionString")) {
+			zonObject.put(decl.name, version.version);
+			continue;
+		}
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
@@ -147,12 +161,45 @@ pub fn save() void {
 		keyZon.put("key", key.key);
 		keyZon.put("mouseButton", key.mouseButton);
 		keyZon.put("scancode", key.scancode);
+		if(key.isToggling != .never) {
+			keyZon.put("isToggling", @tagName(key.isToggling));
+		}
 		keyboard.put(key.name, keyZon);
 	}
 	zonObject.put("keyboard", keyboard);
 
-	// Write to file:
+	// Merge with the old settings file to preserve unknown settings.
+	var oldZonObject: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
+		if(err != error.FileNotFound) {
+			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
+		}
+		break :blk .null;
+	};
+	defer oldZonObject.deinit(main.stackAllocator);
+
+	if(oldZonObject == .object) {
+		zonObject.join(.preferLeft, oldZonObject);
+	}
+
 	main.files.cubyzDir().writeZon(settingsFile, zonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }
+
+pub const launchConfig = struct {
+	pub var cubyzDir: []const u8 = "";
+
+	pub fn init() void {
+		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
+			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
+			break :blk .null;
+		};
+		defer zon.deinit(main.stackAllocator);
+
+		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+	}
+
+	pub fn deinit() void {
+		main.globalAllocator.free(cubyzDir);
+	}
+};

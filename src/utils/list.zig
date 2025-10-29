@@ -213,7 +213,7 @@ pub fn List(comptime T: type) type {
 			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
 				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
 		else
-			std.io.Writer(*@This(), error{}, appendWrite);
+			std.Io.GenericWriter(*@This(), error{}, appendWrite);
 
 		pub fn writer(self: *@This()) Writer {
 			return .{.context = self};
@@ -272,7 +272,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 			self.capacity = newAllocation.len;
 		}
 
-		fn ensureFreeCapacity(self: *@This(), allocator: NeverFailingAllocator, freeCapacity: usize) void {
+		pub fn ensureFreeCapacity(self: *@This(), allocator: NeverFailingAllocator, freeCapacity: usize) void {
 			if(freeCapacity + self.items.len <= self.capacity) return;
 			self.ensureCapacity(allocator, growCapacity(self.capacity, freeCapacity + self.items.len));
 		}

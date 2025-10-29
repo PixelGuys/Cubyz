@@ -1,18 +1,18 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.mineable},
 	.blockHealth = 40,
-	.blockResistance = 10,
+	.blockResistance = 17.5,
 	.ore = .{
 		.veins = 1.5,
 		.size = 15,
-		.height = -400,
+		.height = -1500,
 		.density = 0.4,
 	},
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.emittedLight = 0x214200,
-	.rotation = .ore,
+	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
 	.texture = "cubyz:uranium_ore",
 	.item = .{

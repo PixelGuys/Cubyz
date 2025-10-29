@@ -20,8 +20,6 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {}
-
 const chunkShift = 5;
 const chunkSize = 1 << chunkShift;
 const range = 8*chunkSize;

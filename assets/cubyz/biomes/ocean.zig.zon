@@ -5,6 +5,8 @@
 	.radius = 500,
 	.minHeight = -100,
 	.maxHeight = -22,
+	.maxHeightLimit = 7,
+	.smoothBeaches = true,
 
 	.roughness = 15,
 	.hills = 15,
@@ -19,7 +21,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mossy_cobblestone",
+			.block = "cubyz:moss:cubyz:cobblestone",
 			.chance = 0.064,
 			.width = 6,
 			.variation = 2,
@@ -38,7 +40,13 @@
 	},
 	.transitionBiomes = .{
 		.{
-			.id = "cubyz:beach",
+			.id = "cubyz:beach/warm/wide",
+			.chance = 0.2,
+			.width = 2,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:beach/warm/base",
 			.chance = 1,
 			.width = 1,
 			.properties = .{.land, .inland},
@@ -46,7 +54,7 @@
 		.{
 			.id = "cubyz:ocean_shelf",
 			.chance = 1,
-			.width = 2,
+			.width = 3,
 			.properties = .{.land, .inland},
 		},
 	},

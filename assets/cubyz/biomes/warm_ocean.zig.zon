@@ -6,6 +6,8 @@
 	.radius = 500,
 	.minHeight = -100,
 	.maxHeight = -22,
+	.maxHeightLimit = 7,
+	.smoothBeaches = true,
 
 	.roughness = 10,
 	.hills = 20,
@@ -30,7 +32,13 @@
 	},
 	.transitionBiomes = .{
 		.{
-			.id = "cubyz:beach",
+			.id = "cubyz:beach/warm/wide",
+			.chance = 0.2,
+			.width = 2,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:beach/warm/base",
 			.chance = 1,
 			.width = 1,
 			.properties = .{.land, .inland},
@@ -38,7 +46,7 @@
 		.{
 			.id = "cubyz:ocean_shelf",
 			.chance = 1,
-			.width = 2,
+			.width = 3,
 			.properties = .{.land, .inland},
 		},
 	},

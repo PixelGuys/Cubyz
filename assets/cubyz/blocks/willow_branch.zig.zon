@@ -1,11 +1,11 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .wood},
 	.blockHealth = 4,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.absorbedLight = 0x202830,
-	.rotation = .branch,
+	.rotation = "cubyz:branch",
 	.model = .{
 		.radius = 4,
 	},
@@ -17,11 +17,10 @@
 	.texture5 = "cubyz:branch/willow/cross",
 	.item = .{
 		.material = .{
-			.density = 0.5,
-			.strength = 1.1,
-			.elasticity = 3,
-			.grip = 9.5,
-			.hardness = 2.9,
+			.durability = 20,
+			.massDamage = 0.5,
+			.hardnessDamage = 0.45,
+			.swingSpeed = 7.2,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff2a2521, 0xff332d28, 0xff413930, 0xff4f453a, 0xff413930,

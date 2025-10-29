@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const build_options = @import("build_options");
+
 const main = @import("main");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
@@ -29,6 +31,8 @@ var gamemodeInput: *Button = undefined;
 
 var allowCheats: bool = true;
 
+var testingMode: bool = false;
+
 fn gamemodeCallback(_: usize) void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(gamemode));
@@ -38,59 +42,16 @@ fn allowCheatsCallback(allow: bool) void {
 	allowCheats = allow;
 }
 
-fn createWorld(_: usize) void {
-	flawedCreateWorld() catch |err| {
-		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
-	};
+fn testingModeCallback(enabled: bool) void {
+	testingMode = enabled;
 }
 
-fn flawedCreateWorld() !void {
+fn createWorld(_: usize) void {
 	const worldName = textInput.currentString.items;
-	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldName}) catch unreachable;
-	defer main.stackAllocator.free(saveFolder);
-	if(std.fs.cwd().openDir(saveFolder, .{})) |_dir| {
-		var dir = _dir;
-		dir.close();
-		return error.AlreadyExists;
-	} else |_| {}
-	try main.files.makeDir(saveFolder);
-	{
-		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldName}) catch unreachable;
-		defer main.stackAllocator.free(generatorSettingsPath);
-		const generatorSettings = main.ZonElement.initObject(main.stackAllocator);
-		defer generatorSettings.deinit(main.stackAllocator);
-		const climateGenerator = main.ZonElement.initObject(main.stackAllocator);
-		climateGenerator.put("id", "cubyz:noise_based_voronoi"); // TODO: Make this configurable
-		generatorSettings.put("climateGenerator", climateGenerator);
-		const mapGenerator = main.ZonElement.initObject(main.stackAllocator);
-		mapGenerator.put("id", "cubyz:mapgen_v1"); // TODO: Make this configurable
-		generatorSettings.put("mapGenerator", mapGenerator);
-		const climateWavelengths = main.ZonElement.initObject(main.stackAllocator);
-		climateWavelengths.put("hot_cold", 2400);
-		climateWavelengths.put("land_ocean", 3200);
-		climateWavelengths.put("wet_dry", 1800);
-		climateWavelengths.put("vegetation", 1600);
-		climateWavelengths.put("mountain", 512);
-		generatorSettings.put("climateWavelengths", climateWavelengths);
-		try main.files.writeZon(generatorSettingsPath, generatorSettings);
-	}
-	{
-		const gamerulePath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{worldName}) catch unreachable;
-		defer main.stackAllocator.free(gamerulePath);
-		const gamerules = main.ZonElement.initObject(main.stackAllocator);
-		defer gamerules.deinit(main.stackAllocator);
-
-		gamerules.put("default_gamemode", @tagName(gamemode));
-		gamerules.put("cheats", allowCheats);
-
-		try main.files.writeZon(gamerulePath, gamerules);
-	}
-	{ // Make assets subfolder
-		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldName}) catch unreachable;
-		defer main.stackAllocator.free(assetsPath);
-		try main.files.makeDir(assetsPath);
-	}
-	// TODO: Make the seed configurable
+	const worldSettings: main.server.world_zig.WorldSettings = .{.gamemode = gamemode, .allowCheats = allowCheats, .testingMode = testingMode};
+	main.server.world_zig.tryCreateWorld(worldName, worldSettings) catch |err| {
+		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
+	};
 	gui.closeWindowFromRef(&window);
 	gui.windowlist.save_selection.needsUpdate = true;
 	gui.openWindow("save_selection");
@@ -100,20 +61,25 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 
 	var num: usize = 1;
-	var buf: [32]u8 = undefined;
 	while(true) {
-		var dir = std.fs.cwd().openDir(std.fmt.bufPrint(&buf, "saves/Save{}", .{num}) catch unreachable, .{}) catch break;
-		dir.close();
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		if(!main.files.cubyzDir().hasDir(path)) break;
 		num += 1;
 	}
-	const name = std.fmt.bufPrint(&buf, "Save{}", .{num}) catch unreachable;
-	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld});
+	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
+	defer main.stackAllocator.free(name);
+	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
 	list.add(textInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
 	list.add(gamemodeInput);
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
+
+	if(!build_options.isTaggedRelease) {
+		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
+	}
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 

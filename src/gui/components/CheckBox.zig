@@ -3,7 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
 const random = main.random;
@@ -112,7 +111,7 @@ pub fn render(self: *CheckBox, mousePosition: Vec2f) void {
 			textureEmptyNormal.bindTo(0);
 		}
 	}
-	Button.shader.bind();
+	Button.pipeline.bind(draw.getScissor());
 	self.hovered = false;
 	draw.customShadedRect(Button.buttonUniforms, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
 	const textPos = self.pos + Vec2f{boxSize/2, 0} + self.size/@as(Vec2f, @splat(2.0)) - self.label.size/@as(Vec2f, @splat(2.0));

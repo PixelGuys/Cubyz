@@ -25,7 +25,6 @@ pub const structure_building_blocks = @import("structure_building_blocks.zig");
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {
 	init: *const fn(parameters: ZonElement) void,
-	deinit: *const fn() void,
 	generate: *const fn(seed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
@@ -37,7 +36,6 @@ pub const BlockGenerator = struct {
 	pub fn registerGenerator(comptime GeneratorType: type) void {
 		const self = BlockGenerator{
 			.init = &GeneratorType.init,
-			.deinit = &GeneratorType.deinit,
 			.generate = &GeneratorType.generate,
 			.priority = GeneratorType.priority,
 			.generatorSeed = GeneratorType.generatorSeed,
@@ -90,16 +88,16 @@ pub const TerrainGenerationProfile = struct {
 		self.climateGenerator.init(generator);
 
 		generator = settings.getChild("caveBiomeGenerators");
-		self.caveBiomeGenerators = CaveBiomeMap.CaveBiomeGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.caveBiomeGenerators = CaveBiomeMap.CaveBiomeGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		generator = settings.getChild("caveGenerators");
-		self.caveGenerators = CaveMap.CaveGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.caveGenerators = CaveMap.CaveGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		generator = settings.getChild("structureMapGenerators");
-		self.structureMapGenerators = StructureMap.StructureMapGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.structureMapGenerators = StructureMap.StructureMapGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		generator = settings.getChild("generators");
-		self.generators = BlockGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.generators = BlockGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		const climateWavelengths = settings.getChild("climateWavelengths");
 		self.climateWavelengths[0] = climateWavelengths.get(f32, "hot_cold", 2400);
@@ -110,35 +108,14 @@ pub const TerrainGenerationProfile = struct {
 
 		return self;
 	}
-
-	pub fn deinit(self: TerrainGenerationProfile) void {
-		self.mapFragmentGenerator.deinit();
-		self.climateGenerator.deinit();
-		for(self.caveBiomeGenerators) |generator| {
-			generator.deinit();
-		}
-		main.globalAllocator.free(self.caveBiomeGenerators);
-		for(self.caveGenerators) |generator| {
-			generator.deinit();
-		}
-		main.globalAllocator.free(self.caveGenerators);
-		for(self.structureMapGenerators) |generator| {
-			generator.deinit();
-		}
-		main.globalAllocator.free(self.structureMapGenerators);
-		for(self.generators) |generator| {
-			generator.deinit();
-		}
-		main.globalAllocator.free(self.generators);
-	}
 };
 
-pub fn initGenerators() void {
-	SurfaceMap.initGenerators();
-	ClimateMap.initGenerators();
-	CaveBiomeMap.initGenerators();
-	CaveMap.initGenerators();
-	StructureMap.initGenerators();
+pub fn globalInit() void {
+	SurfaceMap.globalInit();
+	ClimateMap.globalInit();
+	CaveBiomeMap.globalInit();
+	CaveMap.globalInit();
+	StructureMap.globalInit();
 	const list = @import("chunkgen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		BlockGenerator.registerGenerator(@field(list, decl.name));
@@ -148,12 +125,12 @@ pub fn initGenerators() void {
 	std.log.info("Blue noise took {} ms to load", .{std.time.milliTimestamp() -% t1});
 }
 
-pub fn deinitGenerators() void {
-	SurfaceMap.deinitGenerators();
-	ClimateMap.deinitGenerators();
-	CaveBiomeMap.deinitGenerators();
-	CaveMap.deinitGenerators();
-	StructureMap.deinitGenerators();
+pub fn globalDeinit() void {
+	CaveBiomeMap.globalDeinit();
+	CaveMap.globalDeinit();
+	StructureMap.globalDeinit();
+	ClimateMap.globalDeinit();
+	SurfaceMap.globalDeinit();
 	BlockGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 

@@ -1,0 +1,14 @@
+.{
+	.{.old = "cave/void_cavern", .new = "cave/void/void_cavern"},
+	.{.old = "cave/void_roots", .new = "cave/void/void_roots"},
+	.{.old = "clearing", .new = "forest/clearing"},
+	.{.old = "desert", .new = "desert/base"},
+	.{.old = "forest", .new = "forest/base"},
+	.{.old = "jungle(TODO)", .new = "jungle"},
+	.{.old = "swamp", .new = "swamp/base"},
+	.{.old = "taiga", .new = "taiga/base"},
+	.{.old = "tundra", .new = "tundra/base"},
+	.{.old = "forest/base", .new = "forest/mixed/oak_birch"},
+	.{.old = "forest/clearing", .new = "forest/mixed/oak_birch_clearing"},
+	.{.old = "beach", .new = "beach/warm/base"},
+}

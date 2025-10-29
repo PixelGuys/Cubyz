@@ -1,5 +1,5 @@
 .{
-	.tags = .{.leaf},
+	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -9,7 +9,7 @@
 	.absorbedLight = 0x000000,
 	.collide = false,
 	.model = "cubyz:flower/height_10",
-	.rotation = .planar,
+	.rotation = "cubyz:planar",
 	.texture = "cubyz:trumpet_lily",
 	.texture_top = "cubyz:trumpet_lily_top",
 	.texture_bottom = "cubyz:trumpet_lily_top",

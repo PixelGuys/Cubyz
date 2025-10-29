@@ -1,0 +1,11 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 35,
+	.blockResistance = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:stairs",
+	.model = "cubyz:cube",
+	.texture = "cubyz:copper_block",
+}

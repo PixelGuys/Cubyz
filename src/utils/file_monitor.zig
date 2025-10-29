@@ -87,7 +87,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 
 	fn addWatchDescriptorsRecursive(info: *DirectoryInfo, path: []const u8) void {
 		main.utils.assertLocked(&mutex);
-		var iterableDir = std.fs.cwd().openDir(path, .{.iterate = true}) catch |err| {
+		var iterableDir = main.files.cwd().openIterableDir(path) catch |err| {
 			std.log.err("Error while opening dirs {s}: {s}", .{path, @errorName(err)});
 			return;
 		};
@@ -98,7 +98,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 			return;
 		}) |entry| {
 			if(entry.kind == .directory) {
-				const subPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}/{s}", .{path, entry.name}) catch unreachable;
+				const subPath = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/{s}", .{path, entry.name}, 0) catch unreachable;
 				defer main.stackAllocator.free(subPath);
 				addWatchDescriptor(info, subPath);
 				addWatchDescriptorsRecursive(info, subPath);

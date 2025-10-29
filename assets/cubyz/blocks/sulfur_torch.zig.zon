@@ -1,0 +1,22 @@
+.{
+	.tags = .{.choppable},
+	.blockHealth = 0.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.replacable = true,
+	.emittedLight = 0x2b81b2,
+	.viewThrough = true,
+	.absorbedLight = 0x010101,
+	.collide = false,
+	.rotation = "cubyz:torch",
+	.model = .{
+		.base = "cubyz:torch",
+		.side = "cubyz:torch_side",
+	},
+	.texture = "cubyz:sulfur_torch",
+	.item = .{
+		.texture = "sulfur_torch.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

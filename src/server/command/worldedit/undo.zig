@@ -20,7 +20,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			action.position[1] + @as(i32, @intCast(action.blueprint.blocks.depth)) - 1,
 			action.position[2] + @as(i32, @intCast(action.blueprint.blocks.height)) - 1,
 		});
-		action.blueprint.paste(action.position);
+		action.blueprint.paste(action.position, .{.preserveVoid = true});
 
 		switch(redo) {
 			.success => |blueprint| {

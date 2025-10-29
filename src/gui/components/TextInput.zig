@@ -18,6 +18,7 @@ const TextInput = @This();
 const scrollBarWidth = 5;
 const border: f32 = 3;
 const fontSize: f32 = 16;
+const blinkDurationMs: i64 = 500;
 
 var texture: Texture = undefined;
 
@@ -33,6 +34,9 @@ maxHeight: f32,
 textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
+optional: OptionalCallbacks,
+lastBlinkTime: i64 = 0,
+showCusor: bool = true,
 
 pub fn __init() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -42,7 +46,12 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback) *TextInput {
+const OptionalCallbacks = struct {
+	onUp: ?gui.Callback = null,
+	onDown: ?gui.Callback = null,
+};
+
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(TextInput);
 	self.* = TextInput{
@@ -54,6 +63,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
 		.onNewline = onNewline,
+		.optional = optional,
 	};
 	self.currentString.appendSlice(text);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
@@ -61,6 +71,10 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 }
 
 pub fn deinit(self: *const TextInput) void {
+	if(gui.selectedTextInput == self) {
+		gui.setSelectedTextInput(null);
+	}
+
 	self.textBuffer.deinit();
 	self.currentString.deinit();
 	self.scrollBar.deinit();
@@ -110,6 +124,7 @@ pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) void {
 	}
 	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	self.pressed = true;
+	self.ensureCursorVisibility();
 }
 
 pub fn mainButtonReleased(self: *TextInput, mousePosition: Vec2f) void {
@@ -157,12 +172,12 @@ fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		if(self.cursor.? == 0) return;
 		self.cursor.? -= 1;
 		// Find end of previous "word":
-		while(!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isASCII(text[self.cursor.?])) {
+		while(!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
 			if(self.cursor.? == 0) return;
 			self.cursor.? -= 1;
 		}
 		// Find the start of the previous "word":
-		while(std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isASCII(text[self.cursor.?])) {
+		while(std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
 			if(self.cursor.? == 0) return;
 			self.cursor.? -= 1;
 		}
@@ -202,12 +217,12 @@ fn moveCursorRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		if(mods.control) {
 			const text = self.currentString.items;
 			// Find start of next "word":
-			while(!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isASCII(text[self.cursor.?])) {
+			while(!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
 				self.cursor.? += 1;
 				if(self.cursor.? >= self.currentString.items.len) return;
 			}
 			// Find the end of the next "word":
-			while(std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isASCII(text[self.cursor.?])) {
+			while(std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
 				self.cursor.? += 1;
 				if(self.cursor.? >= self.currentString.items.len) return;
 			}
@@ -239,8 +254,13 @@ pub fn right(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-fn moveCursorVertically(self: *TextInput, relativeLines: f32) void {
-	self.cursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.currentString.items.len);
+fn moveCursorVertically(self: *TextInput, relativeLines: f32) enum {changed, same} {
+	const newCursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.currentString.items.len);
+	self.cursor = newCursor;
+	if(self.cursor != newCursor) {
+		return .changed;
+	}
+	return .same;
 }
 
 pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
@@ -249,7 +269,7 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 			if(self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
-			self.moveCursorVertically(1);
+			_ = self.moveCursorVertically(1);
 			if(self.selectionStart == self.cursor) {
 				self.selectionStart = null;
 			}
@@ -258,7 +278,9 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @max(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				self.moveCursorVertically(1);
+				if(self.moveCursorVertically(1) == .same) {
+					if(self.optional.onDown) |cb| cb.run();
+				}
 			}
 		}
 		self.ensureCursorVisibility();
@@ -271,7 +293,7 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 			if(self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
-			self.moveCursorVertically(-1);
+			_ = self.moveCursorVertically(-1);
 			if(self.selectionStart == self.cursor) {
 				self.selectionStart = null;
 			}
@@ -280,7 +302,9 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @min(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				self.moveCursorVertically(-1);
+				if(self.moveCursorVertically(-1) == .same) {
+					if(self.optional.onUp) |cb| cb.run();
+				}
 			}
 		}
 		self.ensureCursorVisibility();
@@ -393,6 +417,14 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 	}
 }
 
+pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
+	self.clear();
+	self.currentString.insertSlice(0, utf8EncodedString);
+	self.reloadText();
+	if(self.cursor != null) self.cursor = @intCast(utf8EncodedString.len);
+	self.ensureCursorVisibility();
+}
+
 pub fn selectAll(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		self.selectionStart = 0;
@@ -444,6 +476,8 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn ensureCursorVisibility(self: *TextInput) void {
+	self.showCusor = true;
+	self.lastBlinkTime = std.time.milliTimestamp();
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		var y: f32 = 0;
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
@@ -461,7 +495,7 @@ fn ensureCursorVisibility(self: *TextInput) void {
 
 pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	texture.bindTo(0);
-	Button.shader.bind();
+	Button.pipeline.bind(draw.getScissor());
 	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 	const oldTranslation = draw.setTranslation(self.pos);
@@ -486,7 +520,17 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			draw.setColor(0x440000ff);
 			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
-		draw.setColor(0xff000000);
-		draw.line(cursorPos, cursorPos + Vec2f{0, 16});
+
+		const milliTime = std.time.milliTimestamp();
+		if(milliTime -% self.lastBlinkTime > blinkDurationMs) {
+			self.lastBlinkTime = milliTime;
+			self.showCusor = !self.showCusor;
+		}
+
+		if(self.showCusor) {
+			draw.setColor(0xff000000);
+			const thickness = @min(@ceil(fontSize/8), 1);
+			draw.rect(cursorPos, Vec2f{thickness, fontSize});
+		}
 	}
 }

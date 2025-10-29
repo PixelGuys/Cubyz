@@ -1,0 +1,9 @@
+.{
+	.tags = .{.cuttable, .mushroom},
+	.texture0 = "cubyz:log/toadstool/dot",
+	.texture1 = "cubyz:log/toadstool/line",
+	.texture2 = "cubyz:log/toadstool/bend",
+	.texture3 = "cubyz:log/toadstool/intersection",
+	.texture4 = "cubyz:log/toadstool/cross",
+	.texture5 = "cubyz:log/toadstool/top",
+}

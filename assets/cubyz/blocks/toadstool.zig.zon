@@ -1,14 +1,15 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.cuttable, .mushroom},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.solid = false,
+	.replacable = true,
+	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.collide = false,
-	.rotation = .torch,
+	.rotation = "cubyz:torch",
 	.model = .{
 		.base = "cubyz:toadstool/floor",
 		.side = "cubyz:toadstool/shelf",

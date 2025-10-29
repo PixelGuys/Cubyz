@@ -1,0 +1,10 @@
+.{
+	.tags = .{.stone, .mineable, .slate},
+	.blockHealth = 25,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:stairs",
+	.model = "cubyz:cube",
+	.texture = "cubyz:slate_bricks",
+}

@@ -14,22 +14,37 @@ jobs:
     name: Compilation Check
     steps:
       - uses: actions/checkout@v3
-      - uses: mlugg/setup-zig@v1
+      - run: echo "VERSION=$(cat .zigversion)" >> $GITHUB_ENV
+      - uses: mlugg/setup-zig@v2
         with:
-          version: 0.14.0
-      - run: sudo apt install libgl-dev libasound2-dev libx11-dev
-      - run: wget -O /opt/hostedtoolcache/zig/0.14.0/x64/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.14.0/render.zig
+          version: ${{ env.VERSION }}
+      - run: sudo apt install glslang-tools
+      - run: wget -O ./Cubyz-fmt https://github.com/PixelGuys/Cubyz-formatter/releases/download/0.15.0-dev.1034%2Bbd97b6618/Cubyz-fmt-x86_64-linux
+      - run: chmod +x ./Cubyz-fmt
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
+      - run: zig build -Dtarget=aarch64-linux-gnu
+      - run: zig build -Dtarget=aarch64-windows-gnu
       - run: zig build test
       - run: zig build format --summary none
+      - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
       - run: |
-          if zig build fmt -- *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
+          if ./Cubyz-fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi
       - run: |
-          if zig build fmt -- --zon *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon | grep -q . ; then
+          if ./Cubyz-fmt mods/*.zig mods/*/*.zig mods/*/*/*.zig mods/*/*/*/*.zig mods/*/*/*/*/*.zig mods/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*/*.zig mods/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
+            git diff --color=always;
+            exit 1;
+          fi
+      - run: |
+          shopt -s nullglob
+          for file in *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon ; do
+            zig ast-check $file
+          done
+      - run: |
+          if ./Cubyz-fmt --zon *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi

@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/birch/stub/1", .chance = 0.1},
+		.{.id = "cubyz:tree/birch/stub/2", .chance = 0.1},
+		.{.id = "cubyz:tree/birch/stub/3", .chance = 0.1},
+		.{.id = "cubyz:tree/birch/stub/4", .chance = 0.1},
+		.{.id = null, .chance = 0.6},
+	},
+}

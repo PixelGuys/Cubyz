@@ -16,6 +16,7 @@ const HorizontalList = @import("../components/HorizontalList.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
+	.closeIfMouseIsGrabbed = true,
 };
 
 const padding: f32 = 8;
@@ -40,7 +41,7 @@ pub fn onOpen() void {
 				row.add(Label.init(.{0, 0}, 200, connection.user.?.name, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Kick", .{.callback = @ptrCast(&kick), .arg = @intFromPtr(connection)}));
 			} else {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{connection.remoteAddress}) catch unreachable;
+				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.remoteAddress}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				row.add(Label.init(.{0, 0}, 200, ip, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Cancel", .{.callback = @ptrCast(&kick), .arg = @intFromPtr(connection)}));

@@ -1,0 +1,9 @@
+.{
+	.tags = .{.cuttable, .mushroom},
+	.texture0 = "cubyz:log/bolete/dot",
+	.texture1 = "cubyz:log/bolete/line",
+	.texture2 = "cubyz:log/bolete/bend",
+	.texture3 = "cubyz:log/bolete/intersection",
+	.texture4 = "cubyz:log/bolete/cross",
+	.texture5 = "cubyz:log/bolete/top",
+}

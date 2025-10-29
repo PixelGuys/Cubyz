@@ -6,6 +6,8 @@ const BaseItem = items.BaseItem;
 const Inventory = items.Inventory;
 const Item = items.Item;
 const Tool = items.Tool;
+const ToolType = items.ToolType;
+const ToolTypeIndex = items.ToolTypeIndex;
 const Player = main.game.Player;
 const Texture = main.graphics.Texture;
 const Vec2f = main.vec.Vec2f;
@@ -35,11 +37,9 @@ const padding: f32 = 8;
 
 var inv: Inventory = undefined;
 
-var craftingResult: *ItemSlot = undefined;
-
 var itemSlots: [25]*ItemSlot = undefined;
 
-var toolTypes: main.ListUnmanaged(*const main.items.ToolType) = .{};
+var toolTypes: main.ListUnmanaged(ToolTypeIndex) = undefined;
 var currentToolType: usize = 0;
 
 var toolButton: *Button = undefined;
@@ -49,12 +49,12 @@ var needsUpdate: bool = false;
 fn toggleTool(_: usize) void {
 	currentToolType += 1;
 	currentToolType %= toolTypes.items.len;
-	toolButton.child.label.updateText(toolTypes.items[currentToolType].id);
+	toolButton.child.label.updateText(toolTypes.items[currentToolType].id());
 	needsUpdate = true;
 }
 
 fn openInventory() void {
-	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other);
+	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -63,7 +63,7 @@ fn openInventory() void {
 			const row = HorizontalList.init();
 			for(0..5) |x| {
 				const index = x + y*5;
-				const slotInfo = toolTypes.items[currentToolType].slotInfos[index];
+				const slotInfo = toolTypes.items[currentToolType].slotInfos()[index];
 				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), if(slotInfo.disabled) .invisible else if(slotInfo.optional) .immutable else .default, if(slotInfo.disabled) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
@@ -74,7 +74,7 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentToolType].id, .{.callback = &toggleTool});
+	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentToolType].id(), .{.callback = &toggleTool});
 	verticalThing.add(toolButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
@@ -92,7 +92,6 @@ fn openInventory() void {
 }
 
 fn closeInventory() void {
-	main.game.Player.inventory.depositOrDrop(inv);
 	inv.deinit(main.globalAllocator);
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
@@ -108,17 +107,31 @@ pub fn update() void {
 	}
 }
 
+pub fn render() void {
+	const currentResult = inv._items[25].item orelse return;
+
+	const offsetX = 5*ItemSlot.sizeWithBorder + 20;
+	const offsetY = 4*ItemSlot.sizeWithBorder;
+	const fontSize = 16;
+
+	main.graphics.draw.print("{s}{} durability", .{if(currentResult.tool.maxDurability != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.tool.maxDurability))}, offsetX, offsetY, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.tool.swingSpeed}, offsetX, offsetY + fontSize, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.tool.damage}, offsetX, offsetY + 2*fontSize, fontSize, .left);
+}
+
 pub fn onOpen() void {
 	currentToolType = 0;
-	var iterator = main.items.toolTypeIterator();
 
+	toolTypes = .{};
+	var iterator = ToolTypeIndex.iterator();
 	while(iterator.next()) |toolType| {
 		toolTypes.append(main.globalAllocator, toolType);
 	}
+
 	openInventory();
 }
 
 pub fn onClose() void {
+	toolTypes.deinit(main.globalAllocator);
 	closeInventory();
-	toolTypes.clearAndFree(main.globalAllocator);
 }

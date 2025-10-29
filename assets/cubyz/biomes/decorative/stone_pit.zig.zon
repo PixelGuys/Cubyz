@@ -6,7 +6,7 @@
 	.maxHeight = -1000,
 	.keepOriginalTerrain = 0.99,
 	.roughness = 1,
-	.stoneBlock = "cubyz:stone",
+	.stoneBlock = "cubyz:slate",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:grassland",
@@ -29,11 +29,15 @@
 			.chance = 16,
 		},
 		.{
-			.id = "cubyz:taiga",
+			.id = "cubyz:taiga/base",
 			.chance = 6,
 		},
 		.{
-			.id = "cubyz:forest/base",
+			.id = "cubyz:forest/mixed/oak_birch",
+			.chance = 6,
+		},
+		.{
+			.id = "cubyz:forest/mixed/oak_pine",
 			.chance = 6,
 		},
 		.{

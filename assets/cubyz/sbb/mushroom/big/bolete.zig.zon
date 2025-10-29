@@ -1,0 +1,12 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:mushroom/big/bolete/base/0", .chance = 1},
+		.{.id = "cubyz:mushroom/big/bolete/base/1", .chance = 1},
+		.{.id = "cubyz:mushroom/big/bolete/base/2", .chance = 1},
+		.{.id = "cubyz:mushroom/big/bolete/base/3", .chance = 1},
+		.{.id = "cubyz:mushroom/big/bolete/base/4", .chance = 0.05},
+	},
+	.children = .{
+		.white = "cubyz:mushroom/big/bolete/cap",
+	},
+}

@@ -1,0 +1,18 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.viewThrough = true,
+	.alwaysViewThrough = true,
+	.collide = false,
+	.rotation = "cubyz:sign",
+	.model = .{
+		.side = "cubyz:sign/side",
+		.ceiling = "cubyz:sign/ceiling",
+		.floor = "cubyz:sign/floor",
+	},
+	.blockEntity = .sign,
+	.lodReplacement = "cubyz:air",
+}

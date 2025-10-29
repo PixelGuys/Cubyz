@@ -1,0 +1,10 @@
+.{
+	.tags = .{.choppable, .cuttable, .mushroom},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{"cubyz:log/toadstool"}},
+	},
+	.rotation = "cubyz:direction",
+	.model = "cubyz:cube",
+	.texture = "cubyz:toadstool_stem",
+}

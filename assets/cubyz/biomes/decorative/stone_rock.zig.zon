@@ -8,7 +8,7 @@
 	.roughness = 1,
 	.mountains = 50,
 	.hills = 20,
-	.stoneBlock = "cubyz:stone",
+	.stoneBlock = "cubyz:slate",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:autumn/forest",
@@ -31,11 +31,15 @@
 			.chance = 24,
 		},
 		.{
-			.id = "cubyz:taiga",
+			.id = "cubyz:taiga/base",
 			.chance = 4,
 		},
 		.{
-			.id = "cubyz:forest/base",
+			.id = "cubyz:forest/mixed/oak_birch",
+			.chance = 4,
+		},
+		.{
+			.id = "cubyz:forest/mixed/oak_pine",
 			.chance = 4,
 		},
 		.{
@@ -49,6 +53,10 @@
 		.{
 			.id = "cubyz:tundra/patchy",
 			.chance = 6,
+		},
+		.{
+			.id = "cubyz:rare/tuften/fields",
+			.chance = 3,
 		},
 	},
 }

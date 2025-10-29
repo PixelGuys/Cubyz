@@ -1,9 +1,9 @@
 const std = @import("std");
 
 const main = @import("main");
+const utils = main.utils;
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Shader = graphics.Shader;
 const Texture = graphics.Texture;
 const settings = main.settings;
 const vec = main.vec;
@@ -63,6 +63,8 @@ closeIfMouseIsGrabbed: bool = false,
 closeable: bool = true,
 isHud: bool = false,
 
+shiftClickableInventory: ?main.items.Inventory = null,
+
 /// Called every frame.
 renderFn: *const fn() void = &defaultFunction,
 /// Called every frame before rendering.
@@ -86,18 +88,15 @@ var titleTexture: Texture = undefined;
 var closeTexture: Texture = undefined;
 var zoomInTexture: Texture = undefined;
 var zoomOutTexture: Texture = undefined;
-var shader: Shader = undefined;
+var pipeline: graphics.Pipeline = undefined;
 var windowUniforms: struct {
 	screen: c_int,
 	start: c_int,
 	size: c_int,
 	color: c_int,
 	scale: c_int,
-
-	image: c_int,
-	randomOffset: c_int,
 } = undefined;
-pub var borderShader: Shader = undefined;
+pub var borderPipeline: graphics.Pipeline = undefined;
 pub var borderUniforms: struct {
 	screen: c_int,
 	start: c_int,
@@ -108,11 +107,24 @@ pub var borderUniforms: struct {
 } = undefined;
 
 pub fn __init() void {
-	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", "", &windowUniforms);
-	shader.bind();
-	graphics.c.glUniform1i(windowUniforms.image, 0);
-	borderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", "", &borderUniforms);
-	borderShader.bind();
+	pipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/ui/button.vert",
+		"assets/cubyz/shaders/ui/button.frag",
+		"",
+		&windowUniforms,
+		.{.cullMode = .none},
+		.{.depthTest = false, .depthWrite = false},
+		.{.attachments = &.{.alphaBlending}},
+	);
+	borderPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/ui/window_border.vert",
+		"assets/cubyz/shaders/ui/window_border.frag",
+		"",
+		&borderUniforms,
+		.{.cullMode = .none},
+		.{.depthTest = false, .depthWrite = false},
+		.{.attachments = &.{.alphaBlending}},
+	);
 
 	backgroundTexture = Texture.initFromFile("assets/cubyz/ui/window_background.png");
 	titleTexture = Texture.initFromFile("assets/cubyz/ui/window_title.png");
@@ -122,7 +134,7 @@ pub fn __init() void {
 }
 
 pub fn __deinit() void {
-	shader.deinit();
+	pipeline.deinit();
 	backgroundTexture.deinit();
 	titleTexture.deinit();
 }
@@ -153,39 +165,41 @@ pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
 	const zoomInPos = zoomOutPos - iconWidth*self.scale;
 	return .{closePos, zoomOutPos, zoomInPos};
 }
+
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
-	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
-		if(self.showTitleBar or gui.reorderWindows) {
-			const btnPos = self.getButtonPositions();
-			const closePos = btnPos[0];
-			const zoomOutPos = btnPos[1];
-			const zoomInPos = btnPos[2];
-			if(mousePosition[0] - self.pos[0] > zoomInPos) {
-				if(mousePosition[0] - self.pos[0] > zoomOutPos) {
-					if(mousePosition[0] - self.pos[0] > closePos) {
-						// Close
-						if(self.closeable) gui.closeWindowFromRef(self);
-					} else {
-						// Zoom out
-						if(self.scale > 1) {
-							self.scale -= 0.5;
-						} else {
-							self.scale -= 0.25;
-						}
-						self.scale = @max(self.scale, 0.25);
-						gui.updateWindowPositions();
-						gui.save();
-					}
+	if(grabPosition != null and grabbedWindow == self and (self.showTitleBar or gui.reorderWindows)) {
+		const btnPos = self.getButtonPositions();
+		const closePos = btnPos[0];
+		const zoomOutPos = btnPos[1];
+		const zoomInPos = btnPos[2];
+		const mousePositionRelative = mousePosition - self.pos;
+		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
+
+		if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
+			if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
+				// Zoom in
+				if(self.scale >= 1) {
+					self.scale += 0.5;
 				} else {
-					// Zoom in
-					if(self.scale >= 1) {
-						self.scale += 0.5;
-					} else {
-						self.scale += 0.25;
-					}
-					gui.updateWindowPositions();
-					gui.save();
+					self.scale += 0.25;
 				}
+				gui.updateWindowPositions();
+				gui.save();
+			}
+			if(mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] <= closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] <= closePos) {
+				// Zoom out
+				if(self.scale > 1) {
+					self.scale -= 0.5;
+				} else {
+					self.scale -= 0.25;
+				}
+				self.scale = @max(self.scale, 0.25);
+				gui.updateWindowPositions();
+				gui.save();
+			}
+			if(mousePositionRelative[0] > closePos and grabPositionRelative[0] > closePos) {
+				// Close
+				if(self.closeable) gui.closeWindowFromRef(self);
 			}
 		}
 	}
@@ -221,7 +235,7 @@ fn detectCycles(self: *GuiWindow, other: *GuiWindow) bool {
 }
 
 fn snapToOtherWindow(self: *GuiWindow) void {
-	for(&self.relativePosition, 0..) |*relPos, i| {
+	inline for(&self.relativePosition, 0..) |*relPos, i| {
 		var minDist: f32 = snapDistance;
 		var minWindow: ?*GuiWindow = null;
 		var selfAttachment: AttachmentPoint = undefined;
@@ -256,7 +270,7 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 
 fn positionRelativeToFrame(self: *GuiWindow) void {
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(&self.relativePosition, 0..) |*relPos, i| {
+	inline for(&self.relativePosition, 0..) |*relPos, i| {
 		// Snap to the center:
 		if(@abs(self.pos[i] + self.size[i] - windowSize[i]/2) <= snapDistance) {
 			relPos.* = .{.attachedToFrame = .{
@@ -285,7 +299,7 @@ fn positionRelativeToFrame(self: *GuiWindow) void {
 	}
 }
 
-fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usize) void {
+fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, comptime i: usize) void {
 	const otherSize = other.size;
 	const relPos = &self.relativePosition[i];
 	// Snap to the center:
@@ -377,7 +391,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 	}
 	self.size = self.contentSize*@as(Vec2f, @splat(self.scale));
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(self.relativePosition, 0..) |relPos, i| {
+	inline for(self.relativePosition, 0..) |relPos, i| {
 		switch(relPos) {
 			.ratio => |ratio| {
 				self.pos[i] = windowSize[i]*ratio - self.size[i]/2;
@@ -425,10 +439,10 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 fn drawOrientationLines(self: *const GuiWindow) void {
 	draw.setColor(0x80000000);
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(self.relativePosition, 0..) |relPos, i| {
+	inline for(self.relativePosition, 0..) |relPos, i| _continue: {
 		switch(relPos) {
 			.ratio, .relativeToWindow => {
-				continue;
+				break :_continue;
 			},
 			.attachedToFrame => |attachedToFrame| {
 				const pos = switch(attachedToFrame.otherAttachmentPoint) {
@@ -481,7 +495,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const oldScale = draw.setScale(self.scale);
 	if(self.hasBackground) {
 		draw.setColor(0xff000000);
-		shader.bind();
+		pipeline.bind(draw.getScissor());
 		backgroundTexture.bindTo(0);
 		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 	}
@@ -490,7 +504,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 	if(self.showTitleBar or gui.reorderWindows) {
-		shader.bind();
+		pipeline.bind(draw.getScissor());
 		titleTexture.bindTo(0);
 		draw.setColor(0xff000000);
 		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});

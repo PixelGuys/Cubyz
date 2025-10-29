@@ -126,8 +126,8 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:forest/base",
-			.chance = 0.5,
+			.id = "cubyz:forest/mixed/oak_birch",
+			.chance = 0.01,
 		},
 	},
 }

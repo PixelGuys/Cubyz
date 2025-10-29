@@ -1,0 +1,13 @@
+.{
+	.tags = .{.choppable},
+	.blockHealth = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.transparent = true,
+	.hasBackFace = true,
+	.model = "cubyz:cube",
+	.absorbedLight = 0x30a8cc,
+	.texture = "cubyz:resin_block",
+	.friction = 30,
+}

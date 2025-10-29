@@ -1,0 +1,17 @@
+.{
+	.tags = .{.cuttable},
+	.blockHealth = 0.3,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x000000,
+	.collide = false,
+	.model = .{
+		.top = "cubyz:cross",
+		.bottom = "cubyz:cross_with_texture_1",
+	},
+	.rotation = "cubyz:hanging",
+	.lodReplacement = "cubyz:air",
+}

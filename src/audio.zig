@@ -4,15 +4,15 @@ const main = @import("main");
 const utils = main.utils;
 
 const c = @cImport({
-	@cInclude("portaudio.h");
+	@cInclude("miniaudio.h");
 	@cDefine("STB_VORBIS_HEADER_ONLY", "");
 	@cInclude("stb/stb_vorbis.h");
 });
 
-fn handleError(paError: c_int) !void {
-	if(paError != c.paNoError) {
-		std.log.err("PortAudio error: {s}", .{c.Pa_GetErrorText(paError)});
-		return error.paError;
+fn handleError(miniaudioError: c.ma_result) !void {
+	if(miniaudioError != c.MA_SUCCESS) {
+		std.log.err("miniaudio error: {s}", .{c.ma_result_description(miniaudioError)});
+		return error.miniaudioError;
 	}
 }
 
@@ -27,11 +27,11 @@ const AudioData = struct {
 		};
 		const addon = id[0..colonIndex];
 		const fileName = id[colonIndex + 1 ..];
-		const path1 = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}) catch unreachable;
+		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if(c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		const path2 = std.fmt.allocPrintZ(main.stackAllocator.allocator, "serverAssets/{s}/music/{s}.ogg", .{addon, fileName}) catch unreachable;
+		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/music/{s}.ogg", .{main.files.cubyzDirStr(), addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if(c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
 		std.log.err("Couldn't find music with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{id, path1, path2});
@@ -175,37 +175,31 @@ const MusicLoadTask = struct {
 
 // TODO: Proper sound and music system
 
-var stream: ?*c.PaStream = null;
+var device: c.ma_device = undefined;
 
 var sampleRate: f32 = 0;
 
-pub fn init() error{paError}!void {
-	try handleError(c.Pa_Initialize());
-	errdefer handleError(c.Pa_Terminate()) catch {};
+pub fn init() error{miniaudioError}!void {
+	var config = c.ma_device_config_init(c.ma_device_type_playback);
+	config.playback.format = c.ma_format_f32;
+	config.playback.channels = 2;
+	config.sampleRate = 44100;
+	config.dataCallback = &miniaudioCallback;
+	config.pUserData = undefined;
 
-	const device = c.Pa_GetDeviceInfo(c.Pa_GetDefaultOutputDevice());
-	sampleRate = @floatCast(device.*.defaultSampleRate);
+	try handleError(c.ma_device_init(null, &config, &device));
 
-	try handleError(c.Pa_OpenDefaultStream(
-		&stream,
-		0, // input channels
-		2, // stereo output
-		c.paFloat32,
-		sampleRate,
-		c.paFramesPerBufferUnspecified,
-		&patestCallback,
-		null,
-	));
-	errdefer handleError(c.Pa_CloseStream(stream)) catch {};
+	try handleError(c.ma_device_start(&device));
 
-	try handleError(c.Pa_StartStream(stream));
+	sampleRate = 44100;
 	lastTime = std.time.milliTimestamp();
 }
 
 pub fn deinit() void {
-	handleError(c.Pa_StopStream(stream)) catch {};
-	handleError(c.Pa_CloseStream(stream)) catch {};
-	handleError(c.Pa_Terminate()) catch {};
+	handleError(c.ma_device_stop(&device)) catch {};
+	c.ma_device_uninit(&device);
+	mutex.lock();
+	defer mutex.unlock();
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
 	activeTasks.deinit(main.globalAllocator);
@@ -310,24 +304,16 @@ fn addMusic(buffer: []f32) void {
 	}
 }
 
-fn patestCallback(
-	inputBuffer: ?*const anyopaque,
-	outputBuffer: ?*anyopaque,
-	framesPerBuffer: c_ulong,
-	timeInfo: ?*const c.PaStreamCallbackTimeInfo,
-	statusFlags: c.PaStreamCallbackFlags,
-	userData: ?*anyopaque,
-) callconv(.C) c_int {
-	// This routine will be called by the PortAudio engine when audio is needed.
-	// It may called at interrupt level on some machines so don't do anything
-	// that could mess up the system like calling malloc() or free().
-	_ = inputBuffer;
-	_ = timeInfo; // TODO: Synchronize this to the rest of the world
-	_ = statusFlags;
-	_ = userData;
-	const valuesPerBuffer = 2*framesPerBuffer; // Stereo
-	const buffer = @as([*]f32, @ptrCast(@alignCast(outputBuffer)))[0..valuesPerBuffer];
+fn miniaudioCallback(
+	maDevice: ?*anyopaque,
+	output: ?*anyopaque,
+	input: ?*const anyopaque,
+	frameCount: u32,
+) callconv(.c) void {
+	_ = input;
+	_ = maDevice;
+	const valuesPerBuffer = 2*frameCount; // Stereo
+	const buffer = @as([*]f32, @ptrCast(@alignCast(output)))[0..valuesPerBuffer];
 	@memset(buffer, 0);
 	addMusic(buffer);
-	return 0;
 }

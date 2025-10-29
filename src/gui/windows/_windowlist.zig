@@ -1,6 +1,7 @@
 pub const advanced_controls = @import("advanced_controls.zig");
 pub const change_name = @import("change_name.zig");
 pub const chat = @import("chat.zig");
+pub const chest = @import("chest.zig");
 pub const controls = @import("controls.zig");
 pub const creative_inventory = @import("creative_inventory.zig");
 pub const crosshair = @import("crosshair.zig");
@@ -28,6 +29,6 @@ pub const performance_graph = @import("performance_graph.zig");
 pub const save_creation = @import("save_creation.zig");
 pub const save_selection = @import("save_selection.zig");
 pub const settings = @import("settings.zig");
-pub const shared_inventory_testing = @import("shared_inventory_testing.zig");
+pub const sign_editor = @import("sign_editor.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");

@@ -1,16 +1,21 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .wood},
 	.blockHealth = 6,
 	.item = .{
 		.material = .{
-			.density = 0.75,
-			.strength = 1.1,
-			.elasticity = 2.875,
-			.grip = 7.34,
-			.hardness = 2.125,
+			.durability = 20,
+			.massDamage = 1.0,
+			.hardnessDamage = 0.95,
+			.swingSpeed = 4.8,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff35281b, 0xff493523, 0xff60462e, 0xff6f5133, 0xff815d39,
+			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 0.4,
+				},
 			},
 		},
 	},
@@ -19,6 +24,6 @@
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 	.texture = "cubyz:willow_planks",
 }

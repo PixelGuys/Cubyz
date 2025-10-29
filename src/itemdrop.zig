@@ -35,6 +35,12 @@ const ItemDrop = struct { // MARK: ItemDrop
 	reverseIndex: u16,
 };
 
+pub const ItemDropNetworkData = struct {
+	index: u16,
+	pos: Vec3d,
+	vel: Vec3d,
+};
+
 pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
 	pub const radius: f64 = 0.1;
@@ -94,6 +100,38 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 	}
 
+	pub fn loadFromBytes(self: *ItemDropManager, reader: *main.utils.BinaryReader) !void {
+		const version = try reader.readInt(u8);
+		if(version != 0) return error.UnsupportedVersion;
+		var i: u16 = 0;
+		while(reader.remaining.len != 0) : (i += 1) {
+			try self.addFromBytes(reader, i);
+		}
+	}
+
+	pub fn storeToBytes(self: *ItemDropManager, writer: *main.utils.BinaryWriter) void {
+		const version = 0;
+		writer.writeInt(u8, version);
+		for(self.indices[0..self.size]) |i| {
+			storeSingleToBytes(writer, self.list.get(i));
+		}
+	}
+
+	fn addFromBytes(self: *ItemDropManager, reader: *main.utils.BinaryReader, i: u16) !void {
+		const despawnTime = try reader.readInt(i32);
+		const pos = try reader.readVec(Vec3d);
+		const vel = try reader.readVec(Vec3d);
+		const itemStack = try items.ItemStack.fromBytes(reader);
+		self.addWithIndex(i, pos, vel, random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)), itemStack, despawnTime, 0);
+	}
+
+	fn storeSingleToBytes(writer: *main.utils.BinaryWriter, itemdrop: ItemDrop) void {
+		writer.writeInt(i32, itemdrop.despawnTime);
+		writer.writeVec(Vec3d, itemdrop.pos);
+		writer.writeVec(Vec3d, itemdrop.vel);
+		itemdrop.itemStack.toBytes(writer);
+	}
+
 	fn addFromZon(self: *ItemDropManager, zon: ZonElement) void {
 		const item = items.Item.init(zon) catch |err| {
 			const msg = zon.toStringEfficient(main.stackAllocator, "");
@@ -116,18 +154,16 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 	}
 
-	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []u8 {
-		var writer = utils.BinaryWriter.initCapacity(allocator, main.network.networkEndian, self.size*50);
-		for(self.indices[0..self.size]) |i| {
-			writer.writeInt(u16, i);
-			writer.writeFloat(f64, self.list.items(.pos)[i][0]);
-			writer.writeFloat(f64, self.list.items(.pos)[i][1]);
-			writer.writeFloat(f64, self.list.items(.pos)[i][2]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][0]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][1]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][2]);
+	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []ItemDropNetworkData {
+		const result = allocator.alloc(ItemDropNetworkData, self.size);
+		for(self.indices[0..self.size], result) |i, *res| {
+			res.* = .{
+				.index = i,
+				.pos = self.list.items(.pos)[i],
+				.vel = self.list.items(.vel)[i],
+			};
 		}
-		return writer.data.toOwnedSlice();
+		return result;
 	}
 
 	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
@@ -197,12 +233,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.emptyMutex.lock();
 		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
 			self.emptyMutex.unlock();
-			const zon = itemStack.store(main.stackAllocator);
-			defer zon.deinit(main.stackAllocator);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
 			if(itemStack.item) |item| {
+				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {}×{s}", .{itemStack.amount, item.id()});
 				item.deinit();
 			}
 			return;
@@ -233,7 +265,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 
 		self.emptyMutex.unlock();
-		self.changeQueue.enqueue(.{.add = .{i, drop}});
+		self.changeQueue.pushBack(.{.add = .{i, drop}});
 	}
 
 	fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
@@ -265,11 +297,11 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 
 		self.emptyMutex.unlock();
-		self.changeQueue.enqueue(.{.add = .{i, drop}});
+		self.changeQueue.pushBack(.{.add = .{i, drop}});
 	}
 
 	fn processChanges(self: *ItemDropManager) void {
-		while(self.changeQueue.dequeue()) |data| {
+		while(self.changeQueue.popFront()) |data| {
 			switch(data) {
 				.add => |addData| {
 					self.internalAdd(addData[0], addData[1]);
@@ -295,7 +327,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	fn internalRemove(self: *ItemDropManager, i: u16) void {
 		self.size -= 1;
 		const ii = self.list.items(.reverseIndex)[i];
-		self.list.items(.itemStack)[i].clear();
+		self.list.items(.itemStack)[i].deinit();
+		self.list.items(.itemStack)[i] = .{};
 		self.indices[ii] = self.indices[self.size];
 		self.list.items(.reverseIndex)[self.indices[self.size]] = ii;
 	}
@@ -458,22 +491,17 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	pub fn deinit(self: *ClientItemDropManager) void {
 		std.debug.assert(instance != null); // Double deinit.
-		instance = null;
 		self.super.deinit();
+		instance = null;
 	}
 
-	pub fn readPosition(self: *ClientItemDropManager, reader: *BinaryReader, time: i16) !void {
+	pub fn readPosition(self: *ClientItemDropManager, time: i16, itemData: []ItemDropNetworkData) void {
 		self.timeDifference.addDataPoint(time);
 		var pos: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		var vel: [ItemDropManager.maxCapacity]Vec3d = undefined;
-		while(reader.remaining.len != 0) {
-			const i = try reader.readInt(u16);
-			pos[i][0] = try reader.readFloat(f64);
-			pos[i][1] = try reader.readFloat(f64);
-			pos[i][2] = try reader.readFloat(f64);
-			vel[i][0] = try reader.readFloat(f64);
-			vel[i][1] = try reader.readFloat(f64);
-			vel[i][2] = try reader.readFloat(f64);
+		for(itemData) |data| {
+			pos[data.index] = data.pos;
+			vel[data.index] = data.vel;
 		}
 		mutex.lock();
 		defer mutex.unlock();
@@ -507,7 +535,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.super.emptyMutex.lock();
 		self.super.isEmpty.set(i);
 		self.super.emptyMutex.unlock();
-		self.super.changeQueue.enqueue(.{.remove = i});
+		self.super.changeQueue.pushBack(.{.remove = i});
 	}
 
 	pub fn loadFrom(self: *ClientItemDropManager, zon: ZonElement) void {
@@ -543,21 +571,17 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 };
 
 pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
-	var itemShader: graphics.Shader = undefined;
+	var itemPipeline: graphics.Pipeline = undefined;
 	var itemUniforms: struct {
 		projectionMatrix: c_int,
 		modelMatrix: c_int,
 		viewMatrix: c_int,
-		modelPosition: c_int,
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,
-		texture_sampler: c_int,
-		emissionSampler: c_int,
-		reflectivityAndAbsorptionSampler: c_int,
-		reflectionMap: c_int,
 		reflectionMapSize: c_int,
 		contrast: c_int,
+		glDepthRange: c_int,
 	} = undefined;
 
 	var itemModelSSBO: graphics.SSBO = undefined;
@@ -588,22 +612,22 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			self.* = ItemVoxelModel{
 				.item = template.item,
 			};
-			if(self.item == .baseItem and self.item.baseItem.block != null and self.item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+			if(self.item == .baseItem and self.item.baseItem.block() != null and self.item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				var block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0};
+				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
 				block.data = block.mode().naturalStandard;
 				const model = blocks.meshes.model(block).model();
 				var data = main.List(u32).init(main.stackAllocator);
 				defer data.deinit();
 				for(model.internalQuads) |quad| {
 					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-					data.append(@as(u32, quad.index) << 16 | textureIndex); // modelAndTexture
+					data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
 					data.append(0); // offsetByNormal
 				}
 				for(model.neighborFacingQuads) |list| {
 					for(list) |quad| {
 						const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-						data.append(@as(u32, quad.index) << 16 | textureIndex); // modelAndTexture
+						data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
 						data.append(1); // offsetByNormal
 					}
 				}
@@ -653,7 +677,15 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	};
 
 	pub fn init() void {
-		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
+		itemPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/item_drop.vert",
+			"assets/cubyz/shaders/item_drop.frag",
+			"",
+			&itemUniforms,
+			.{},
+			.{.depthTest = true},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
@@ -663,7 +695,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn deinit() void {
-		itemShader.deinit();
+		itemPipeline.deinit();
 		itemModelSSBO.deinit();
 		modelData.deinit();
 		voxelModels.clear();
@@ -681,16 +713,15 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
-		itemShader.bind();
-		c.glUniform1i(itemUniforms.texture_sampler, 0);
-		c.glUniform1i(itemUniforms.emissionSampler, 1);
-		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
-		c.glUniform1i(itemUniforms.reflectionMap, 4);
+		itemPipeline.bind(null);
 		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
+		var depthRange: [2]f32 = undefined;
+		c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
+		c.glUniform2fv(itemUniforms.glDepthRange, 1, &depthRange);
 	}
 
 	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f) void {
@@ -730,8 +761,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 				var scale: f32 = 0.3;
 				var blockType: u16 = 0;
-				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-					blockType = item.baseItem.block.?;
+				if(item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+					blockType = item.baseItem.block().?;
 					vertices = model.len/2*6;
 				} else {
 					scale = 0.5;
@@ -773,9 +804,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 
-			const lightPos = @as(Vec3f, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
+			const lightPos = @as(Vec3d, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
 			const blockPos: Vec3i = @intFromFloat(@floor(lightPos));
-			const localBlockPos = lightPos - @as(Vec3f, @floatFromInt(blockPos));
+			const localBlockPos: Vec3f = @floatCast(lightPos - @as(Vec3d, @floatFromInt(blockPos)));
 
 			var samples: [8][6]f32 = @splat(@splat(0));
 			inline for(0..2) |z| {
@@ -815,11 +846,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			const model = getModel(item);
 			var vertices: u31 = 36;
 
-			const isBlock: bool = item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
+			const isBlock: bool = item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
 			var scale: f32 = 0;
 			var blockType: u16 = 0;
 			if(isBlock) {
-				blockType = item.baseItem.block.?;
+				blockType = item.baseItem.block().?;
 				vertices = model.len/2*6;
 				scale = 0.3;
 				pos = Vec3d{0.4, 0.55, -0.32};

@@ -5,24 +5,27 @@ pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
+pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
-pub const entity_data = @import("entity_data.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
-pub const JsonElement = @import("json.zig").JsonElement;
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
+pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+pub const particles = @import("particles.zig");
+const tag = @import("tag.zig");
+pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
@@ -43,19 +46,21 @@ const Vec3d = vec.Vec3d;
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
-var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
-var handled_gpa = heap.ErrorHandlingAllocator.init(global_gpa.allocator());
-pub const globalAllocator: heap.NeverFailingAllocator = handled_gpa.allocator();
+pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
+pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
+pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 
 pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
+	heap.GarbageCollection.addThread();
 }
 
 pub fn deinitThreadLocals() void {
 	stackAllocatorBase.deinit();
+	heap.GarbageCollection.removeThread();
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -209,7 +214,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 
 fn initLogging() void {
 	logFile = null;
-	std.fs.cwd().makePath("logs") catch |err| {
+	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
@@ -228,7 +233,7 @@ fn initLogging() void {
 		return;
 	};
 
-	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
+	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
@@ -261,13 +266,15 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	defer allocator.free(string);
-	nosuspend std.io.getStdErr().writeAll(string) catch {};
+	const writer = std.debug.lockStderrWriter(&.{});
+	defer std.debug.unlockStderrWriter();
+	nosuspend writer.writeAll(string) catch {};
 }
 
 // MARK: Callbacks
 fn escape() void {
 	if(gui.selectedTextInput != null) {
-		gui.selectedTextInput = null;
+		gui.setSelectedTextInput(null);
 		return;
 	}
 	if(game.world == null) return;
@@ -289,11 +296,6 @@ fn openCreativeInventory() void {
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
-fn openSharedInventoryTesting() void {
-	if(game.world == null) return;
-	ungrabMouse();
-	gui.openWindow("shared_inventory_testing");
-}
 fn openChat() void {
 	if(game.world == null) return;
 	ungrabMouse();
@@ -301,6 +303,7 @@ fn openChat() void {
 	gui.windowlist.chat.input.select();
 }
 fn openCommand() void {
+	if(game.world == null) return;
 	openChat();
 	gui.windowlist.chat.input.clear();
 	gui.windowlist.chat.input.inputCharacter('/');
@@ -356,7 +359,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
 		.{.name = "backward", .key = c.GLFW_KEY_S, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
 		.{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
-		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
+		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB, .isToggling = .no},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
 		.{.name = "crouch", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
@@ -395,10 +398,10 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
 		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
 		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll},
-		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
-		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
-		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
+		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = .{.control = true}},
+		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = .{.control = true}},
+		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = .{.control = true}},
+		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = .{.control = true}},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
 		// Hotbar shortcuts:
@@ -428,18 +431,35 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
-
-		.{.name = "shared_inventory_testing", .key = c.GLFW_KEY_O, .pressAction = &openSharedInventoryTesting},
 	};
 
-	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
+	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
 		for(&keys) |*_key| {
 			if(std.mem.eql(u8, name, _key.name)) {
 				return _key;
 			}
 		}
-		std.log.err("Couldn't find keyboard key with name {s}", .{name});
-		return &.{.name = ""};
+		return null;
+	}
+	pub fn key(name: []const u8) *const Window.Key {
+		return findKey(name) orelse {
+			std.log.err("Couldn't find keyboard key with name {s}", .{name});
+			return &.{.name = ""};
+		};
+	}
+	pub fn setIsToggling(name: []const u8, value: bool) void {
+		if(findKey(name)) |theKey| {
+			if(theKey.isToggling == .never) {
+				std.log.err("Tried setting toggling on non-toggling key with name {s}", .{name});
+				return;
+			}
+			theKey.isToggling = if(value) .yes else .no;
+			if(!value) {
+				theKey.pressed = false;
+			}
+		} else {
+			std.log.err("Couldn't find keyboard key to toggle with name {s}", .{name});
+		}
 	}
 };
 
@@ -451,15 +471,6 @@ pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
 pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
-}
-
-fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
-	if(str.len == 0) return false;
-	if(!std.ascii.isAlphabetic(str[0]) and str[0] != '_') return false;
-	for(str[1..]) |c| {
-		if(!std.ascii.isAlphanumeric(c) and c != '_') return false;
-	}
-	return true;
 }
 
 fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
@@ -477,101 +488,23 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	}
 	return false;
 }
-pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
-	if(isHiddenOrParentHiddenPosix(jsonPath)) {
-		std.log.info("NOT converting {s}.", .{jsonPath});
-		return;
-	}
-	std.log.info("Converting {s}:", .{jsonPath});
-	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
-		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
-		return;
-	};
-	defer stackAllocator.free(jsonString);
-	var zonString = List(u8).init(stackAllocator);
-	defer zonString.deinit();
-	std.log.debug("{s}", .{jsonString});
-
-	var i: usize = 0;
-	while(i < jsonString.len) : (i += 1) {
-		switch(jsonString[i]) {
-			'\"' => {
-				var j = i + 1;
-				while(j < jsonString.len and jsonString[j] != '"') : (j += 1) {}
-				const string = jsonString[i + 1 .. j];
-				if(isValidIdentifierName(string)) {
-					zonString.append('.');
-					zonString.appendSlice(string);
-				} else {
-					zonString.append('"');
-					zonString.appendSlice(string);
-					zonString.append('"');
-				}
-				i = j;
-			},
-			'[', '{' => {
-				zonString.append('.');
-				zonString.append('{');
-			},
-			']', '}' => {
-				zonString.append('}');
-			},
-			':' => {
-				zonString.append('=');
-			},
-			else => |c| {
-				zonString.append(c);
-			},
-		}
-	}
-	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0 .. std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
-	defer stackAllocator.free(zonPath);
-	std.log.info("Outputting to {s}:", .{zonPath});
-	std.log.debug("{s}", .{zonString.items});
-	files.write(zonPath, zonString.items) catch |err| {
-		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
-		return;
-	};
-	std.log.info("Deleting file {s}", .{jsonPath});
-	std.fs.cwd().deleteFile(jsonPath) catch |err| {
-		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
-		return;
-	};
-}
 
 pub fn main() void { // MARK: main()
-	defer if(global_gpa.deinit() == .leak) {
-		std.log.err("Memory leak", .{});
-	};
+	defer heap.allocators.deinit();
+	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
 
 	initLogging();
 	defer deinitLogging();
 
-	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
-		file.close();
-		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
-		var dir = std.fs.cwd().openDir(".", .{.iterate = true}) catch |err| {
-			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
-			break :blk;
-		};
-		defer dir.close();
-
-		var walker = dir.walk(stackAllocator.allocator) catch unreachable;
-		defer walker.deinit();
-		while(walker.next() catch |err| {
-			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
-			break :blk;
-		}) |entry| {
-			if(entry.kind == .file and (std.ascii.endsWithIgnoreCase(entry.basename, ".json") or std.mem.eql(u8, entry.basename, "world.dat")) and !std.ascii.startsWithIgnoreCase(entry.path, "compiler") and !std.ascii.startsWithIgnoreCase(entry.path, ".zig-cache") and !std.ascii.startsWithIgnoreCase(entry.path, ".vscode")) {
-				convertJsonToZon(entry.path);
-			}
-		}
-	} else |_| {}
+	std.log.info("Starting game client with version {s}", .{settings.version.version});
 
 	gui.initWindowList();
 	defer gui.deinitWindowList();
+
+	settings.launchConfig.init();
+	defer settings.launchConfig.deinit();
 
 	files.init();
 	defer files.deinit();
@@ -603,11 +536,14 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
-	entity_data.init();
-	defer entity_data.deinit();
+	block_entity.init();
+	defer block_entity.deinit();
 
-	blocks.TouchFunctions.init();
-	defer blocks.TouchFunctions.deinit();
+	blocks.tickFunctions = .init();
+	defer blocks.tickFunctions.deinit();
+
+	blocks.touchFunctions = .init();
+	defer blocks.touchFunctions.deinit();
 
 	models.init();
 	defer models.deinit();
@@ -619,7 +555,6 @@ pub fn main() void { // MARK: main()
 	defer itemdrop.ItemDropRenderer.deinit();
 
 	assets.init();
-	defer assets.deinit();
 
 	blocks.meshes.init();
 	defer blocks.meshes.deinit();
@@ -635,22 +570,20 @@ pub fn main() void { // MARK: main()
 	gui.init();
 	defer gui.deinit();
 
+	particles.ParticleManager.init();
+	defer particles.ParticleManager.deinit();
+
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
 	}
 
-	server.terrain.initGenerators();
-	defer server.terrain.deinitGenerators();
+	server.terrain.globalInit();
+	defer server.terrain.globalDeinit();
 
 	const c = Window.c;
 
-	c.glCullFace(c.GL_BACK);
-	c.glEnable(c.GL_BLEND);
-	c.glEnable(c.GL_DEPTH_CLAMP);
-	c.glDepthFunc(c.GL_LESS);
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = std.time.nanoTimestamp();
 
@@ -662,16 +595,20 @@ pub fn main() void { // MARK: main()
 	audio.setMusic("cubyz:cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		heap.GarbageCollection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
 			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+			c.glDepthFunc(c.GL_LESS);
+			c.glDepthMask(c.GL_TRUE);
+			c.glDisable(c.GL_SCISSOR_TEST);
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		} else {
-			std.time.sleep(16_000_000);
+			std.Thread.sleep(16_000_000);
 		}
 
 		const endRendering = std.time.nanoTimestamp();
@@ -685,7 +622,7 @@ pub fn main() void { // MARK: main()
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-			std.time.sleep(sleep);
+			std.Thread.sleep(sleep);
 		}
 		const begin = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
@@ -701,19 +638,16 @@ pub fn main() void { // MARK: main()
 		}
 
 		if(!isHidden) {
-			c.glEnable(c.GL_CULL_FACE);
-			c.glEnable(c.GL_DEPTH_TEST);
 			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
-			c.glDisable(c.GL_CULL_FACE);
-			c.glDisable(c.GL_DEPTH_TEST);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
 
 		if(shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
+			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
 				world.deinit();
 				game.world = null;
@@ -736,6 +670,8 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 		if(comptime std.mem.eql(u8, decl.name, "c")) continue;
 		if(comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
 		if(comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		// TODO: Remove this after Zig removes Managed hashmap PixelGuys/Cubyz#308
+		if(comptime std.mem.eql(u8, decl.name, "Managed")) continue;
 		if(@TypeOf(@field(T, decl.name)) == type) {
 			switch(@typeInfo(@field(T, decl.name))) {
 				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),
@@ -749,6 +685,5 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
-	_ = @import("json.zig");
 	_ = @import("zon.zig");
 }

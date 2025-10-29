@@ -1,0 +1,17 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:mushroom/big/toadstool/base/0"},
+		.{.id = "cubyz:mushroom/big/toadstool/base/1"},
+		.{.id = "cubyz:mushroom/big/toadstool/base/2"},
+		.{.id = "cubyz:mushroom/big/toadstool/base/3"},
+		.{.id = "cubyz:mushroom/big/toadstool/base/4"},
+		.{.id = "cubyz:mushroom/big/toadstool/base/5"},
+	},
+	.children = .{
+		.white = "cubyz:mushroom/big/toadstool/large_cap",
+		.grey = "cubyz:mushroom/big/toadstool/small_cap",
+		.crimson = "cubyz:mushroom/big/toadstool/branch/red",
+		.green = "cubyz:mushroom/big/toadstool/branch/green",
+		.blue = "cubyz:mushroom/big/toadstool/branch/blue",
+	},
+}

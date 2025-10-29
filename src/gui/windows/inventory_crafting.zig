@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const items = main.items;
-const BaseItem = items.BaseItem;
+const BaseItemIndex = items.BaseItemIndex;
 const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
 const Player = main.game.Player;
@@ -13,6 +13,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = GuiComponent.Button;
+const Label = GuiComponent.Label;
 const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const Icon = GuiComponent.Icon;
@@ -31,7 +32,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var availableItems: main.List(*BaseItem) = undefined;
+var availableItems: main.List(BaseItemIndex) = undefined;
 var itemAmount: main.List(u32) = undefined;
 var inventories: main.List(Inventory) = undefined;
 
@@ -93,7 +94,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		}
 		// All ingredients found: Add it to the list.
 		if(recipe.cachedInventory == null) {
-			recipe.cachedInventory = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .{.recipe = recipe});
+			recipe.cachedInventory = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .{.recipe = recipe}, .{});
 		}
 		const inv = recipe.cachedInventory.?;
 		inventories.append(inv);
@@ -125,12 +126,16 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 fn refresh() void {
 	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
-	if(!findAvailableRecipes(list)) {
+	const recipesChanged = findAvailableRecipes(list);
+	if(!recipesChanged and window.rootComponent != null) {
 		list.deinit();
 		return;
 	}
 	if(window.rootComponent) |*comp| {
-		comp.deinit();
+		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.utils.castFunctionSelfToAnyopaque(VerticalList.deinit)});
+	}
+	if(list.children.items.len == 0) {
+		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));
 	}
 	list.finish(.center);
 	list.scrollBar.currentState = oldScrollState;

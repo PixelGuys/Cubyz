@@ -3,6 +3,7 @@ pub const gamemode = @import("gamemode.zig");
 pub const help = @import("help.zig");
 pub const invite = @import("invite.zig");
 pub const kill = @import("kill.zig");
+pub const particles = @import("particles.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
 
@@ -15,3 +16,6 @@ pub const copy = @import("worldedit/copy.zig");
 pub const paste = @import("worldedit/paste.zig");
 pub const blueprint = @import("worldedit/blueprint.zig");
 pub const rotate = @import("worldedit/rotate.zig");
+pub const set = @import("worldedit/set.zig");
+pub const mask = @import("worldedit/mask.zig");
+pub const replace = @import("worldedit/replace.zig");

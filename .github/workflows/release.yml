@@ -1,0 +1,48 @@
+name: Create release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "VERSION=$(cat .zigversion)" >> $GITHUB_ENV
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.VERSION }}
+
+      - run: zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+      - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz
+
+      - run: zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+      - run: tar -czf Linux-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz
+
+      - run: zig build -Dtarget=x86_64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+      - run: tar -czf Windows-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz.exe
+      - run: tar -xf Windows-x86_64.tar.gz && zip -r Windows-x86_64.zip Cubyz && rm -r Cubyz
+
+      - run: zig build -Dtarget=aarch64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+      - run: tar -czf Windows-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz.exe
+      - run: tar -xf Windows-aarch64.tar.gz && zip -r Windows-aarch64.zip Cubyz && rm -r Cubyz
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+        run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
+              Linux-x86_64.tar.gz \
+              Linux-aarch64.tar.gz \
+              Windows-x86_64.zip \
+              Windows-aarch64.zip
+          gh release

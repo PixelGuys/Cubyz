@@ -1,5 +1,5 @@
 .{
-	.tags = .{.leaf},
+	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -8,10 +8,11 @@
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
 	.model = "cubyz:plane",
-	.rotation = .planar,
+	.rotation = "cubyz:planar",
 	.texture = "cubyz:lily_pad",
 	.item = .{
 		.texture = "lily_pad.png",
+		.tags = .{.fluidPlaceable},
 	},
 	.lodReplacement = "cubyz:air",
 }
