@@ -790,9 +790,9 @@ pub const Command = struct { // MARK: Command
 				.create => |create| {
 					create.inv.write(&writer);
 					writer.writeInt(u16, create.amount);
-					if(create.item) |item|{
-					    item.toBytes(&writer);
-					    writer.writeInt(u16, create.amount);
+					if(create.item) |item| {
+						item.toBytes(&writer);
+						writer.writeInt(u16, create.amount);
 					}
 				},
 				.delete => |delete| {
