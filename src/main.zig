@@ -72,8 +72,14 @@ fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
+
+const log_buffer_size = 64 << 10;
 var logFile: ?std.fs.File = undefined;
+var logFileBuffer: [log_buffer_size]u8 = undefined;
+var logFileWriter: std.fs.File.Writer = undefined;
 var logFileTs: ?std.fs.File = undefined;
+var logFileTsBuffer: [log_buffer_size]u8 = undefined;
+var logFileTsWriter: std.fs.File.Writer = undefined;
 var supportsANSIColors: bool = undefined;
 var openingErrorWindow: bool = false;
 // overwrite the log function:
@@ -215,9 +221,6 @@ pub const std_options: std.Options = .{ // MARK: std_options
 };
 pub const panic = std.debug.FullPanic(panicToLog);
 
-/// The maximum size a log message can have.
-const log_buffer_size = 64 << 10;
-
 fn dumpStackTraceNoAnsi(writer: *std.Io.Writer, start_addr: ?usize) !void {
 	// TODO: update when cubyz' zig gets updated to b64535e, which
 	// added toggling stacktraces independently of strip (#2153)
@@ -261,6 +264,7 @@ fn initLogging() void {
 		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
 		return;
 	};
+	logFileWriter = logFile.?.writer(&logFileBuffer);
 
 	const _timestamp = std.time.timestamp();
 
@@ -271,36 +275,40 @@ fn initLogging() void {
 		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
 		return;
 	};
+	logFileTsWriter = logFileTs.?.writer(&logFileTsBuffer);
 
 	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
 	if(logFile) |_logFile| {
+		logFileWriter.interface.flush() catch {};
+		logFileBuffer = undefined;
+		logFileWriter = undefined;
 		_logFile.close();
 		logFile = null;
 	}
 
 	if(logFileTs) |_logFileTs| {
+		logFileTsWriter.interface.flush() catch {};
+		logFileTsBuffer = undefined;
+		logFileTsWriter = undefined;
 		_logFileTs.close();
 		logFileTs = null;
 	}
 }
 
 fn logToWriter(writer: *std.Io.Writer, comptime format: []const u8, args: anytype) void {
-	var buf: [log_buffer_size]u8 = undefined;
-	const string = std.fmt.bufPrint(&buf, format, args) catch format;
-	writer.writeAll(string) catch {};
+	writer.print(format, args) catch {};
+	writer.flush() catch {};
 }
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
-	{
-		var writer = (logFile orelse return).writerStreaming(&.{});
-		logToWriter(&writer.interface, format, args);
+	if(logFile) |_| {
+		logToWriter(&logFileWriter.interface, format, args);
 	}
-	{
-		var writer = (logFileTs orelse return).writerStreaming(&.{});
-		logToWriter(&writer.interface, format, args);
+	if(logFileTs) |_| {
+		logToWriter(&logFileTsWriter.interface, format, args);
 	}
 }
 
