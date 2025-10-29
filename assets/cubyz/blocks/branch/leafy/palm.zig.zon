@@ -1,0 +1,20 @@
+.{
+	.model = .{
+		.radius = 4,
+		.shellModel = "cubyz:cube_hanging_planes",
+		.textureSlotOffset = 6,
+	},
+	.drops = .{
+		.{.items = .{"cubyz:palm_leaves", "cubyz:palm_branch"}},
+	},
+	.texture = "cubyz:palm_leaves",
+	.texture12 = "cubyz:palm_leaves_hanging",
+	.texture6 = "cubyz:branch/palm/dot",
+	.texture7 = "cubyz:branch/palm/half_line",
+	.texture8 = "cubyz:branch/palm/line",
+	.texture9 = "cubyz:branch/palm/bend",
+	.texture10 = "cubyz:branch/palm/intersection",
+	.texture11 = "cubyz:branch/palm/cross",
+	.lodReplacement = "cubyz:palm_leaves_opaque",
+	.opaqueVariant = "cubyz:palm_leaves_opaque",
+}

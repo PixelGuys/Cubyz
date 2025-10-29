@@ -216,9 +216,16 @@ pub fn build(b: *std.Build) !void {
 	const run_step = b.step("run", "Run the app");
 	run_step.dependOn(&run_cmd.step);
 
+	const dependencyWithTestRunner = b.lazyDependency("cubyz_test_runner", .{
+		.target = target,
+		.optimize = optimize,
+	}) orelse {
+		std.log.info("Downloading cubyz_test_runner dependency.", .{});
+		return;
+	};
 	const exe_tests = b.addTest(.{
 		.root_module = mainModule,
-		.test_runner = .{.path = b.path("test/runner.zig"), .mode = .simple},
+		.test_runner = .{.path = dependencyWithTestRunner.path("lib/compiler/test_runner.zig"), .mode = .simple},
 	});
 	linkLibraries(b, exe_tests, useLocalDeps);
 	exe_tests.root_module.addOptions("build_options", options);
@@ -253,27 +260,4 @@ pub fn build(b: *std.Build) !void {
 
 	const formatter_step = b.step("format", "Check the formatting of the code");
 	formatter_step.dependOn(&formatter_cmd.step);
-
-	const zig_fmt = b.addExecutable(.{
-		.name = "zig_fmt",
-		.root_module = b.addModule("fmt", .{
-			.root_source_file = b.path("src/formatter/fmt.zig"),
-			.target = target,
-			.optimize = optimize,
-		}),
-	});
-	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
-	zig_fmt.root_module.addOptions("build_options", options);
-	zig_fmt.root_module.addImport("main", mainModule);
-
-	const zig_fmt_install = b.addInstallArtifact(zig_fmt, .{});
-
-	const zig_fmt_cmd = b.addRunArtifact(zig_fmt);
-	zig_fmt_cmd.step.dependOn(&zig_fmt_install.step);
-	if(b.args) |args| {
-		zig_fmt_cmd.addArgs(args);
-	}
-
-	const zig_fmt_step = b.step("fmt", "Run the (modified) zig fmt on the code");
-	zig_fmt_step.dependOn(&zig_fmt_cmd.step);
 }

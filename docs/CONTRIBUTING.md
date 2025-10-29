@@ -27,7 +27,7 @@ Because of that, if you use the the default Zig formatter it will reformat all y
 
 To fix this you need to disable zig's formatter (In VSCode you can disable this in the Zig extension settings).
 
-To run the formatter locally on a specific file, you can use `./compiler/zig/zig build fmt -- fileName.zig`.
+The formatter has the same command line arguments as `zig fmt` and you can download it [here](https://github.com/PixelGuys/Cubyz-formatter/releases).
 
 # Select something to work on
 
@@ -61,13 +61,15 @@ Not all errors can happen. Specifically in Cubyz the `error.OutOfMemory` cannot 
 
 ## Choose the right allocator for the job
 
-Cubyz has two main allocators.
-- The `main.stackAllocator` is a thread-local allocator that is optimized for local allocations. Use for anything that you free at the end of the scope. An example use-case would be a local `List`.
-- The `main.globalAllocator` is intended to be used for general purpose use cases that don't need to or can't be particularly optimized.
+Cubyz has four main allocators, choose them based on lifetime:
+- global lifetime, things that are used until the end of the game (e.g. mod registry data) → `main.globalArena`
+- world lifetime, things that are used until the player exits the world (e.g. assets/addons) → `main.worldArena`
+- local lifetime, things that are freed at the end of the scope (including local data structures such as lists) → `main.stackAllocator`
+- other lifetime → `main.globalAllocator`
 
-Sometimes it might also make sense to use an arena allocator `utils.NeverFailingArenaAllocator` (when you have many small allocations that share the same lifetime, e.g. assets), or a `MemoryPool` (if you have many items of the same type that get freed and allocated many times throughout the game).
+Sometimes it might also make sense to use another arena allocator `allocator.create-/destroyArena()` (when you have many small allocations that share the same lifetime, e.g. dynamic structure data in the structure map), or a `MemoryPool` (if you have many items of the same type that get freed and allocated many times throughout the game).
 
-Sometimes it may be useful to use stack buffers when the maximum size is known (e.g. bufPrint), however the stack allocator is usually fast enough, so this should only be done when there is a clear performance benefit. Otherwise it may just cause future problems when the underlying sizes change.
+Avoid the use of large stack buffers, the stack allocator is usually fast enough and provides protection against stack overflow. Stack buffers should only be used when there is a clear performance benefit.
 
 Also it is important to note that Cubyz uses a different allocator interface `utils.NeverFailingAllocator` which cannot return `error.OutOfMemory`. Along with it come some data structures like `main.List` and more in `utils` which should be preferred over the standard library data structures because they simplify the code.
 
@@ -111,7 +113,7 @@ Otherwise you may just end up with a more complicated and slower thing.
 Most of the syntax is handled by a modified version of zig fmt and checked by the CI (see the formatting section above).
 
 There are a few more things not covered by the formatter:
-- **Naming conventions:** camelCase for variables, constants (no all-caps constants please!) and functions; CapitalCamelCase for types; snake_case for files and namespaces. Abbreviations are treated as one word, e.g. zon/ZonElement instead of ZON/ZONElement. 
+- **Naming conventions:** camelCase for variables, constants (no all-caps constants please!) and functions; CapitalCamelCase for types; snake_case for files and namespaces. Abbreviations are treated as one word, e.g. zon/ZonElement instead of ZON/ZONElement.
 - **Line limit:** There is no line limit (I hate seeing code that gets wrapped over by 1 word, because of an arbitrary line limit), but of course try to be reasonable. If you need 200 characters, then you should probably consider splitting it or adding some well-named helper variables.
 - **Comments:** Don't write comments, unless there is something non-obvious going on that needs to be explained.<br>
   But in either case it's better to write readable code with descriptive names, instead of writing long comments, since comments will naturally degrade over time as the surrounding code changes.<br>
