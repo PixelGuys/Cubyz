@@ -1349,23 +1349,20 @@ pub const Command = struct { // MARK: Command
 		amount: u16,
 
 		fn run(self: Deposit, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
-			std.debug.assert(self.source.inv.type == .normal or (self.source.inv.type == .creative and self.dest.inv.type == .normal));
-			if(self.source.inv.type == .creative) {
-				if(self.source.ref().item) |item| {
-					var amount: u16 = self.amount;
-					if(self.dest.ref().item) |carried| {
-						if(std.meta.eql(carried, item)) {
-							amount = @min(self.dest.ref().amount + self.amount, item.stackSize());
-						}
-					}
-					try FillFromCreative.run(.{.dest = self.dest, .item = item, .amount = amount}, allocator, cmd, side, user, gamemode);
-				}
-				return;
-			}
 			if(self.dest.inv.type == .crafting) return;
 			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
 			if(self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item orelse return;
+			if(self.source.inv.type == .creative) {
+				var amount: u16 = self.amount;
+				if(self.dest.ref().item) |carried| {
+					if(std.meta.eql(carried, itemSource)) {
+						amount = @min(self.dest.ref().amount + self.amount, itemSource.stackSize());
+					}
+				}
+				try FillFromCreative.run(.{.dest = self.dest, .item = itemSource, .amount = amount}, allocator, cmd, side, user, gamemode);
+				return;
+			}
 			if(self.dest.ref().item) |itemDest| {
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest.ref().amount >= itemDest.stackSize()) return;
