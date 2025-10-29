@@ -34,6 +34,41 @@ pub fn openDirInWindow(path: []const u8) void {
 	}
 }
 
+pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
+	const command = switch(builtin.os.tag) {
+		.windows => .{"explorer"},
+		.macos => .{"open"},
+		else => .{"zenity", "--file-selection", "--directory"},
+	};
+	const result = std.process.Child.run(.{
+		.allocator = allocator.allocator,
+		.argv = &command,
+	}) catch |err| {
+		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
+		return err;
+	};
+	defer {
+		allocator.free(result.stderr);
+		allocator.free(result.stdout);
+	}
+
+	if (result.stdout.len == 0) {
+		return error.Test;
+	}
+
+	const output = std.fmt.allocPrint(allocator.allocator, "{s}", .{result.stdout[0..(result.stdout.len - 1)]}) catch unreachable;
+	
+	if(output.len == 0) {
+		allocator.free(output);
+		return null;
+	}
+	
+	if(builtin.os.tag == .windows) {
+		std.mem.replaceScalar(u8, output, '/', '\\');
+	}
+	return output;
+}
+
 pub fn cwd() Dir {
 	return Dir{
 		.dir = std.fs.cwd(),
