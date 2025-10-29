@@ -12,6 +12,7 @@ const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 const ContinuousSlider = @import("../components/ContinuousSlider.zig");
+const Window = @import("../../graphics/Window.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 192},
@@ -57,12 +58,14 @@ fn updateSensitivity(sensitivity: f32) void {
 	main.settings.save();
 }
 
-fn invertMouseYCallback(newValue: bool) void {
-	main.settings.invertMouseY = newValue;
+fn toggleSettingCallback(ctx: *anyopaque) void {
+	const theValue: *bool = @ptrCast(@alignCast(ctx));
+	theValue.* = !theValue.*;
 	main.settings.save();
 }
-fn sprintIsToggleCallback(newValue: bool) void {
-	main.KeyBoard.setIsToggling("sprint", newValue);
+fn toggleKeyIsTogglingCallback(ctx: *anyopaque) void {
+	const theValue: *Window.Key = @ptrCast(@alignCast(ctx));
+	theValue.toggleIsToggling();
 	main.settings.save();
 }
 
@@ -99,8 +102,7 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
 	list.add(Button.initText(.{0, 0}, 128, if(editingKeyboard) "Gamepad" else "Keyboard", .{.callback = &toggleKeyboard}));
 	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if(editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
-	list.add(CheckBox.init(.{0, 0}, 256, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
-	list.add(CheckBox.init(.{0, 0}, 256, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
+	list.add(CheckBox.init(.{0, 0}, 256, "Invert mouse Y", main.settings.invertMouseY, &main.settings.invertMouseY, &toggleSettingCallback));
 
 	if(!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
@@ -113,6 +115,12 @@ pub fn onOpen() void {
 		row.add(label);
 		row.add(button);
 		row.add(unbindBtn);
+		if(key.isToggling != .never) {
+			row.add(CheckBox.init(.{16, 0}, 96, "Toggling", key.isToggling == .yes, key, &toggleKeyIsTogglingCallback));
+		} else {
+			const padder = Label.init(.{16, 0}, 96, "", .left);
+			row.add(padder);
+		}
 		row.finish(.{0, 0}, .center);
 		list.add(row);
 	}
