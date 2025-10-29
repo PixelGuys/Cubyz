@@ -74,13 +74,13 @@ fn cacheString(comptime str: []const u8) []const u8 {
 }
 
 const log_buffer_size = 64 << 10;
-var logFile: ?std.fs.File = undefined;
+var logFile: ?std.fs.File = null;
 var logFileBuffer: [log_buffer_size]u8 = undefined;
 var logFileWriter: std.fs.File.Writer = undefined;
-var logFileTs: ?std.fs.File = undefined;
+var logFileTs: ?std.fs.File = null;
 var logFileTsBuffer: [log_buffer_size]u8 = undefined;
 var logFileTsWriter: std.fs.File.Writer = undefined;
-var supportsANSIColors: bool = undefined;
+var supportsANSIColors: bool = false;
 var openingErrorWindow: bool = false;
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
@@ -264,7 +264,6 @@ pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 }
 
 fn initLogging() void {
-	logFile = null;
 	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
