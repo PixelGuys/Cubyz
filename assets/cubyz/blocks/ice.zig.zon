@@ -8,7 +8,6 @@
 	.hasBackFace = true,
 	.absorbedLight = 0xe95825,
 	.model = "cubyz:cube",
-	.rotation = "cubyz:stairs",
 	.texture = "cubyz:ice",
 	.friction = 1,
 }
