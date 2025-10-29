@@ -35,10 +35,6 @@ pub fn openDirInWindow(path: []const u8) void {
 }
 
 pub fn query(allocator: main.heap.NeverFailingAllocator) ![]const u8 {
-	//if(builtin.os.tag == .windows) {
-		//std.mem.replaceScalar(u8, newPath, '/', '\\');
-	//}
-
 	const command = switch(builtin.os.tag) {
 		.windows => .{"explorer"},
 		.macos => .{"open"},
@@ -60,7 +56,10 @@ pub fn query(allocator: main.heap.NeverFailingAllocator) ![]const u8 {
 		return error.Test;
 	}
 
-	const output = std.fmt.allocPrint(allocator.allocator, "{s}", .{result.stdout[0..result.stdout.len-1]}) catch unreachable;
+	const output = std.fmt.allocPrint(allocator.allocator, "{s}", .{result.stdout[0..(result.stdout.len - 1)]}) catch unreachable;
+	if(builtin.os.tag == .windows) {
+		std.mem.replaceScalar(u8, output, '/', '\\');
+	}
 	return output;
 }
 
