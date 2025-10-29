@@ -15,7 +15,6 @@ const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 const files = main.files;
 
-var commonAssetArena: NeverFailingAllocator = undefined;
 var common: Assets = undefined;
 
 pub const Assets = struct {
@@ -101,8 +100,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum {common, world}) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks ({} migrations), {} items ({} migrations), {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks, {} blueprints and {} particles",
-			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.itemMigrations.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} recipes, {} structure building blocks, {} blueprints and {} particles",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
 		);
 	}
 
@@ -220,7 +219,7 @@ pub const Assets = struct {
 					continue;
 				};
 				if(hasDefaults) {
-					zon.join(defaultsStorage.get(main.files.Dir.init(entry.dir), entry.path[0 .. entry.path.len - entry.basename.len]));
+					zon.join(.preferLeft, defaultsStorage.get(main.files.Dir.init(entry.dir), entry.path[0 .. entry.path.len - entry.basename.len]));
 				}
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}
@@ -322,13 +321,9 @@ fn createAssetStringID(
 
 pub fn init() void {
 	biomes_zig.init();
-	blocks_zig.init();
-	migrations_zig.init();
-
-	commonAssetArena = main.globalAllocator.createArena();
 
 	common = .init();
-	common.read(commonAssetArena, main.files.cwd(), "assets/");
+	common.read(main.globalArena, main.files.cwd(), "assets/");
 	common.log(.common);
 }
 
@@ -481,6 +476,8 @@ var loadedAssets: bool = false;
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
+
+	main.Tag.initTags();
 
 	const worldArena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(worldArena);
@@ -658,6 +655,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	biomes_zig.reset();
 	migrations_zig.reset();
 	main.models.reset();
+	main.particles.ParticleManager.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
 
@@ -680,11 +678,4 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			main.utils.file_monitor.removePath(path);
 		}
 	}
-}
-
-pub fn deinit() void {
-	main.globalAllocator.destroyArena(commonAssetArena);
-	biomes_zig.deinit();
-	blocks_zig.deinit();
-	migrations_zig.deinit();
 }

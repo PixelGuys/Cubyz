@@ -20,6 +20,18 @@
 		.output = "cubyz:lamp",
 	},
 	.{
+		.inputs = .{"1 cubyz:sulfur_torch", "2 cubyz:iron_ingot"},
+		.output = "cubyz:sulfur_lamp",
+	},
+	.{
+		.inputs = .{"2 cubyz:torch", "1 cubyz:iron_ingot"},
+		.output = "2 cubyz:lantern/coal",
+	},
+	.{
+		.inputs = .{"2 cubyz:sulfur_torch", "1 cubyz:iron_ingot"},
+		.output = "2 cubyz:lantern/sulfur",
+	},
+	.{
 		.inputs = .{"4 cubyz:resin"},
 		.output = "cubyz:resin_block",
 	},

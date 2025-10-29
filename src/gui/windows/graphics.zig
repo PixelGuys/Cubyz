@@ -68,7 +68,6 @@ fn leavesQualityCallback(newValue: u16) void {
 fn fovCallback(newValue: f32) void {
 	settings.fov = newValue;
 	settings.save();
-	main.Window.GLFWCallbacks.framebufferSize(undefined, main.Window.width, main.Window.height);
 }
 
 fn fovFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
