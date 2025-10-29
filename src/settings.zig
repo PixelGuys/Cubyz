@@ -171,14 +171,10 @@ pub fn save() void {
 	defer oldZonObject.deinit(main.stackAllocator);
 
 	if(oldZonObject == .object) {
-		oldZonObject.join(zonObject);
-	} else {
-		oldZonObject.deinit(main.stackAllocator);
-		oldZonObject = zonObject;
-		zonObject = .null;
+		zonObject.join(.preferLeft, oldZonObject);
 	}
 
-	main.files.cubyzDir().writeZon(settingsFile, oldZonObject) catch |err| {
+	main.files.cubyzDir().writeZon(settingsFile, zonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }
