@@ -164,7 +164,6 @@ pub const ParticleSystem = struct {
 		projectionAndViewMatrix: c_int,
 		billboardMatrix: c_int,
 		ambientLight: c_int,
-		particleOffset: c_int,
 	};
 	var uniforms: UniformStruct = undefined;
 
@@ -332,10 +331,9 @@ pub const ParticleSystem = struct {
 		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
 		const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;
 		for(0..count) |i| {
-			const particleOffset = maxQuads*i;
+			const particleOffset = (maxQuads*4)*i;
 			const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
-			c.glUniform1ui(uniforms.particleOffset, @intCast(particleOffset));
-			c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCurrentCount*6), c.GL_UNSIGNED_INT, null);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(particleCurrentCount*6), c.GL_UNSIGNED_INT, null, @intCast(particleOffset));
 		}
 	}
 

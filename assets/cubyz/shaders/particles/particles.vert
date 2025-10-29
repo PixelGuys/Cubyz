@@ -6,7 +6,6 @@ layout(location = 1) flat out vec3 light;
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionAndViewMatrix;
 layout(location = 2) uniform mat4 billboardMatrix;
-layout(location = 3) uniform uint particleOffset;
 
 struct ParticleData {
 	vec3 pos;
@@ -49,7 +48,7 @@ const vec3 facePositions[4] = vec3[4]
 void main() {
 	uint particleID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
-	ParticleData particle = particleData[particleID + particleOffset];
+	ParticleData particle = particleData[particleID];
 	ParticleTypeData particleType = particleTypeData[particle.type];
 
 	uint fullLight = particle.light;
