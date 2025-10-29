@@ -221,34 +221,43 @@ pub const std_options: std.Options = .{ // MARK: std_options
 };
 pub const panic = std.debug.FullPanic(panicToLog);
 
-fn dumpStackTraceNoAnsi(writer: *std.Io.Writer, start_addr: ?usize) !void {
+pub fn dumpStackTraceToLog(first_trace_address: ?usize) void {
 	// TODO: update when cubyz' zig gets updated to b64535e, which
 	// added toggling stacktraces independently of strip (#2153)
 	if(builtin.strip_debug_info) {
-		try writer.writeAll("Unable to dump stack trace: debug info stripped\n");
+		std.log.err("Unable to dump stack trace: debug info stripped");
 		return;
 	}
+
 	const debug_info = std.debug.getSelfDebugInfo() catch |err| {
-		try writer.print("Unable to dump stack trace: Unable to open debug info: {s}\n", .{@errorName(err)});
+		std.log.err("Unable to dump stack trace: Unable to open debug info: {s}\n", .{@errorName(err)});
 		return;
 	};
-	std.debug.writeCurrentStackTrace(writer, debug_info, .no_color, start_addr) catch |err| {
-		try writer.print("Unable to dump stack trace: {s}\n", .{@errorName(err)});
-		return;
+
+	var stack_trace_addresses: [128]usize = undefined;
+	var stack_trace: std.builtin.StackTrace = .{
+		.index = 0,
+		.instruction_addresses = &stack_trace_addresses,
 	};
+	std.debug.captureStackTrace(first_trace_address, &stack_trace);
+
+	std.debug.writeStackTrace(stack_trace, &logFileWriter.interface, debug_info, .no_color) catch {};
+	logFileWriter.interface.flush() catch {};
+
+	std.debug.writeStackTrace(stack_trace, &logFileTsWriter.interface, debug_info, .no_color) catch {};
+	logFileTsWriter.interface.flush() catch {};
+
+	std.debug.dumpStackTrace(stack_trace);
 }
 
 pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
 	const addr = first_trace_address orelse @returnAddress();
-	std.log.err("This is probably a bug. If you think so, please make an issue and upload the entire log: <https://github.com/pixelguys/cubyz/issues/new?template=bug.yml>\npanic: {s}\nerror return trace: {?f}", .{
+	std.log.err("This is probably a bug. If you think so, please make an issue and upload the entire log: <https://github.com/pixelguys/cubyz/issues/new?template=bug.yml>\npanic: {s}\nerror return trace: {?f}\nstack trace:", .{
 		msg,
 		@errorReturnTrace(),
 	});
 
-	var trace_buf: [log_buffer_size - "stack trace: ".len]u8 = undefined;
-	var fbw = std.io.Writer.fixed(&trace_buf);
-	dumpStackTraceNoAnsi(&fbw, addr) catch {};
-	std.log.err("stack trace: {s}", .{fbw.buffered()});
+	dumpStackTraceToLog(addr);
 
 	@breakpoint();
 	@trap();
