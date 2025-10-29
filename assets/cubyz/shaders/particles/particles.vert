@@ -46,7 +46,7 @@ const vec3 facePositions[4] = vec3[4]
 );
 
 void main() {
-	uint particleID = gl_VertexID >> 2;
+	int particleID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
 	ParticleData particle = particleData[particleID];
 	ParticleTypeData particleType = particleTypeData[particle.type];
