@@ -131,8 +131,10 @@ pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 var isTakingBackgroundImage: bool = false;
 pub fn updateFov(fov: f32) void {
-	lastFov = fov;
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+	if(lastFov != fov) {
+		lastFov = fov;
+		game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+	}
 }
 pub fn updateViewport(width: u31, height: u31) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
@@ -186,7 +188,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
-	if(!isTakingBackgroundImage and lastFov != main.settings.fov) {
+	if(!isTakingBackgroundImage) {
 		updateFov(main.settings.fov);
 	}
 	gpu_performance_measuring.startQuery(.clear);
@@ -598,9 +600,7 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		pipeline.bind(null);
-		if(lastFov != 70.0) {
-			updateFov(70.0);
-		}
+		updateFov(70.0);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 
