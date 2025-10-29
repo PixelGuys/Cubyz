@@ -638,7 +638,7 @@ pub fn main() void { // MARK: main()
 		}
 
 		if(!isHidden) {
-			if(game.world) |_| {
+			if(game.world != null) {
 				renderer.updateFov(settings.fov);
 			} else {
 				renderer.updateFov(70.0);
