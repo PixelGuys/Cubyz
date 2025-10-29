@@ -54,6 +54,7 @@ pub var buttonUniforms: struct {
 
 pos: Vec2f,
 size: Vec2f,
+disabled: bool = false,
 pressed: bool = false,
 hovered: bool = false,
 onAction: gui.Callback,
@@ -127,20 +128,22 @@ pub fn mainButtonPressed(self: *Button, _: Vec2f) void {
 pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	if(self.pressed) {
 		self.pressed = false;
-		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
+		if(!self.disabled and GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			self.onAction.run();
 		}
 	}
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	const textures = if(self.pressed)
+	const textures = if(self.disabled)
+		normalTextures
+	else if(self.pressed)
 		pressedTextures
 	else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
 		hoveredTextures
 	else
 		normalTextures;
-	draw.setColor(0xff000000);
+	draw.setColor(if(self.disabled) 0xa0000000 else 0xff000000);
 	textures.texture.bindTo(0);
 	pipeline.bind(draw.getScissor());
 	self.hovered = false;
@@ -151,7 +154,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		const lowerTexture = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2}/textures.outlineTextureSize;
 		const upperTexture = (textures.outlineTextureSize + Vec2f{1, 1})/Vec2f{2, 2}/textures.outlineTextureSize;
 		textures.outlineTexture.bindTo(0);
-		draw.setColor(0xffffffff);
+		draw.setColor(if(self.disabled) 0xffa0a0a0 else 0xffffffff);
 		// Corners:
 		graphics.draw.boundSubImage(self.pos + Vec2f{0, 0}, cornerSize, .{0, 0}, cornerSizeUV);
 		graphics.draw.boundSubImage(self.pos + Vec2f{self.size[0], 0} - Vec2f{cornerSize[0], 0}, cornerSize, .{upperTexture[0], 0}, cornerSizeUV);
