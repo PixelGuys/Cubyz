@@ -42,17 +42,7 @@ var needsUpdate: bool = false;
 var deleteIcon: Texture = undefined;
 var fileExplorerIcon: Texture = undefined;
 
-var addonList: main.ListUnmanaged(Addon) = .{};
-
-const Addon = struct {
-	name: []const u8,
-	path: []const u8,
-
-	pub fn deinit(self: *Addon, allocator: main.heap.NeverFailingAllocator) void {
-		allocator.free(self.path);
-		allocator.free(self.name);
-	}
-};
+var addonPathList: main.ListUnmanaged([]const u8) = .{};
 
 var page: Page = .generation;
 const numPages: usize = std.meta.fields(Page).len;
@@ -71,9 +61,12 @@ const Page = enum(u8) {
 				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
 			},
 			.addons => {
-				std.log.info("{d}", .{addonList.capacity});
-				for(addonList.items, 0..) |addon, i| {
-					const nameLabel = Label.init(.{0, 0}, 192 - 16, addon.name, .left);
+				for(addonPathList.items, 0..) |addonPath, i| {
+					const lastSlash = std.mem.lastIndexOf(u8, addonPath, "/").?;
+					const addonName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{addonPath[(lastSlash + 1)..]}) catch unreachable;
+					defer main.stackAllocator.free(addonName);
+
+					const nameLabel = Label.init(.{0, 0}, 192 - 16, addonName, .left);
 					const folderButton = Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i});
 					const row = HorizontalList.init();
 					row.add(nameLabel);
@@ -113,17 +106,12 @@ pub fn deinit() void {
 }
 
 fn openFolder(index: usize) void {
-	main.files.openDirInWindow(addonList.items[index].path);
+	main.files.openDirInWindow(addonPathList.items[index]);
 }
 
 fn addAddon(_: usize) void {
 	const path = main.files.query(main.globalAllocator) catch return;
-
-	const lastSlash = std.mem.lastIndexOf(u8, path, "/");
-	const name = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}", .{path[(lastSlash.? + 1)..]}) catch unreachable;
-
-	addonList.append(main.globalAllocator, Addon { .name = name, .path = path });
-
+	addonPathList.append(main.globalAllocator, path);
 	needsUpdate = true;
 }
 
@@ -233,10 +221,10 @@ pub fn onClose() void {
 	}
 	page = .generation;
 	
-	for(addonList.items) |*addon| {
-		addon.deinit(main.globalAllocator);
+	for (addonPathList.items) |addonPath| {
+		main.globalAllocator.free(addonPath);
 	}
-	addonList = .{};
+	addonPathList.clearAndFree(main.globalAllocator);
 }
 
 pub fn render() void {
@@ -248,16 +236,17 @@ pub fn render() void {
 
 		const oldScroll = window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState;
 		const oldPage = page;
-
-		var oldAddonArr = addonList.toOwnedSlice(main.globalAllocator);
-		while(addonList.items.len > 0) {
-			oldAddonList.append(main.globalAllocator, addonList.slice);
+		var oldAddonPathList: main.ListUnmanaged([]const u8) = .{};
+		defer oldAddonPathList.clearAndFree(main.stackAllocator);
+		
+		for (addonPathList.items) |path| {
+			oldAddonPathList.append(main.stackAllocator, main.globalAllocator.dupe(u8, path));
 		}
 
 		onClose();
 		page = oldPage;
-		while(oldAddonList.items.len > 0) {
-			addonList.append(main.globalAllocator, oldAddonList.pop());
+		for (oldAddonPathList.items) |oldPath| {
+			addonPathList.append(main.globalAllocator, oldPath);
 		}
 
 		onOpen();
