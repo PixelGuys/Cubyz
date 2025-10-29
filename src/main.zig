@@ -640,10 +640,11 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			if(game.world != null) {
 				renderer.updateFov(settings.fov);
+				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			} else {
 				renderer.updateFov(70.0);
+				renderer.MenuBackGround.render();
 			}
-			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();

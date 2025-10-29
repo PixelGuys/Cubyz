@@ -144,21 +144,17 @@ pub fn updateViewport(width: u31, height: u31) void {
 
 pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	// TODO: player bobbing
-	if(game.world) |world| {
-		// TODO: Handle colors and sun position in the world.
-		var ambient: Vec3f = undefined;
-		ambient[0] = @max(0.1, world.ambientLight);
-		ambient[1] = @max(0.1, world.ambientLight);
-		ambient[2] = @max(0.1, world.ambientLight);
+	// TODO: Handle colors and sun position in the world.
+	std.debug.assert(game.world != null);
+	var ambient: Vec3f = undefined;
+	ambient[0] = @max(0.1, game.world.?.ambientLight);
+	ambient[1] = @max(0.1, game.world.?.ambientLight);
+	ambient[2] = @max(0.1, game.world.?.ambientLight);
 
-		itemdrop.ItemDisplayManager.update(deltaTime);
-		renderWorld(world, ambient, game.fog.skyColor, playerPosition);
-		const startTime = std.time.milliTimestamp();
-		mesh_storage.updateMeshes(startTime + maximumMeshTime);
-	} else {
-		c.glViewport(0, 0, main.Window.width, main.Window.height);
-		MenuBackGround.render();
-	}
+	itemdrop.ItemDisplayManager.update(deltaTime);
+	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
+	const startTime = std.time.milliTimestamp();
+	mesh_storage.updateMeshes(startTime + maximumMeshTime);
 }
 
 pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Vec3f {
@@ -588,6 +584,7 @@ pub const MenuBackGround = struct {
 	}
 
 	pub fn render() void {
+		c.glViewport(0, 0, main.Window.width, main.Window.height);
 		if(texture.textureID == 0) return;
 
 		// Use a simple rotation around the z axis, with a steadily increasing angle.
