@@ -1350,13 +1350,22 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		fn run(self: Deposit, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
-			std.debug.assert(self.source.inv.type == .normal);
-			if(self.dest.inv.type == .creative) return;
+		fn run(self: Deposit, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+			if(self.source.inv.type != .normal and (self.source.inv.type != .creative or self.dest.inv.type != .normal)) return error.serverFailure;
 			if(self.dest.inv.type == .crafting) return;
 			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
 			if(self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item orelse return;
+			if(self.source.inv.type == .creative) {
+				var amount: u16 = self.amount;
+				if(self.dest.ref().item) |carried| {
+					if(std.meta.eql(carried, itemSource)) {
+						amount = @min(self.dest.ref().amount + self.amount, itemSource.stackSize());
+					}
+				}
+				try FillFromCreative.run(.{.dest = self.dest, .item = itemSource, .amount = amount}, allocator, cmd, side, user, gamemode);
+				return;
+			}
 			if(self.dest.ref().item) |itemDest| {
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest.ref().amount >= itemDest.stackSize()) return;
@@ -2059,8 +2068,8 @@ pub fn depositOrSwap(dest: Inventory, destSlot: u32, carried: Inventory) void {
 	Sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = carried, .slot = 0}}});
 }
 
-pub fn deposit(dest: Inventory, destSlot: u32, carried: Inventory, amount: u16) void {
-	Sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = carried, .slot = 0}, .amount = amount}});
+pub fn deposit(dest: Inventory, destSlot: u32, source: Inventory, sourceSlot: u32, amount: u16) void {
+	Sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = source, .slot = sourceSlot}, .amount = amount}});
 }
 
 pub fn takeHalf(source: Inventory, sourceSlot: u32, carried: Inventory) void {
@@ -2071,7 +2080,7 @@ pub fn distribute(carried: Inventory, destinationInventories: []const Inventory,
 	const amount = carried._items[0].amount/destinationInventories.len;
 	if(amount == 0) return;
 	for(0..destinationInventories.len) |i| {
-		destinationInventories[i].deposit(destinationSlots[i], carried, @intCast(amount));
+		destinationInventories[i].deposit(destinationSlots[i], carried, 0, @intCast(amount));
 	}
 }
 

@@ -712,7 +712,7 @@ pub const inventory = struct { // MARK: inventory
 						return;
 					}
 				}
-				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 1);
+				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
 				rightClickSlots.append(itemSlot);
 			}
 		}
@@ -746,7 +746,11 @@ pub const inventory = struct { // MARK: inventory
 			if(rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
-				hovered.inventory.takeHalf(hovered.itemSlot, carried);
+				if(hovered.inventory.type == .creative) {
+					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
+				} else {
+					hovered.inventory.takeHalf(hovered.itemSlot, carried);
+				}
 			} else if(!hoveredAWindow) {
 				carried.dropOne(0);
 			}
