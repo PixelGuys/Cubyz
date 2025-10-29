@@ -34,7 +34,7 @@ pub fn openDirInWindow(path: []const u8) void {
 	}
 }
 
-pub fn query(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
+pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 	const command = switch(builtin.os.tag) {
 		.windows => .{"explorer"},
 		.macos => .{"open"},

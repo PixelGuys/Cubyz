@@ -61,23 +61,40 @@ const Page = enum(u8) {
 				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
 			},
 			.addons => {
-				for(addonPathList.items, 0..) |addonPath, i| {
-					const lastSlash = std.mem.lastIndexOf(u8, addonPath, "/").?;
-					const addonName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{addonPath[(lastSlash + 1)..]}) catch unreachable;
-					defer main.stackAllocator.free(addonName);
+				if(addonPathList.items.len > 0) {
+					const addonsList = VerticalList.init(.{0, 0}, 256, padding);
+					for(addonPathList.items, 0..) |addonPath, i| {
+						const addonName = nameFromPath(main.stackAllocator, addonPath) catch unreachable;
+						defer main.stackAllocator.free(addonName);
 
-					const nameLabel = Label.init(.{0, 0}, 192 - 26 - 8 - 26, addonName, .left);
-					const folderButton = Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i});
-					const deleteButton = Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &removeAddon, .arg = i});
-					const row = HorizontalList.init();
-					row.add(nameLabel);
-					row.add(folderButton);
-					row.add(deleteButton);
-					row.finish(.{0, 0}, .center);
-					submenu.add(row);
+						const nameLabel = Label.init(.{0, 0}, 192 - 8 - 26 - 8 - 26, addonName, .left);
+						const folderButton = Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i});
+						const deleteButton = Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &removeAddon, .arg = i});
+						const row = HorizontalList.init();
+						row.add(nameLabel);
+						row.add(folderButton);
+						row.add(deleteButton);
+						row.finish(.{0, 0}, .center);
+						addonsList.add(row);
+					}
+					addonsList.finish(.center);
+					submenu.add(addonsList);
+				} else {
+					submenu.add(Label.init(.{0, 0}, 192, "*No addons yet*", .center));
 				}
-				
-				submenu.add(Button.initText(.{0, 0}, 128, "Add Addon", .{.callback = &addAddon}));
+
+				const buttonRow = HorizontalList.init();
+				if(addonPathList.items.len > 0)
+				{
+					buttonRow.add(Label.init(.{0, 0}, 192 - 120, "", .left));
+					buttonRow.add(Button.initText(.{0, 0}, 120, "Add More...", .{.callback = &addAddon}));
+				} else {
+					buttonRow.add(Button.initText(.{0, 0}, 80, "Add...", .{.callback = &addAddon}));
+				}
+				buttonRow.finish(.{0, 0}, .center);
+				submenu.add(buttonRow);
+
+				// TODO: add global addons folder button and information dialog explaining what global addons are
 			},
 		}
 	}
@@ -117,11 +134,17 @@ fn removeAddon(index: usize) void {
 }
 
 fn addAddon(_: usize) void {
-	const newAddonPathOptional = main.files.query(main.globalAllocator) catch return;
+	const newAddonPathOptional = main.files.folderQuery(main.globalAllocator) catch return;
 	if(newAddonPathOptional) |newAddonPath| {
 
 		for(addonPathList.items) |addonPath|{
-			if(std.mem.eql(u8, addonPath, newAddonPath)) {
+			const addonName = nameFromPath(main.stackAllocator, addonPath) catch unreachable;
+			const newAddonName = nameFromPath(main.stackAllocator, newAddonPath) catch unreachable;
+			defer {
+				main.stackAllocator.free(addonName);
+				main.stackAllocator.free(newAddonName);
+			}
+			if(std.mem.eql(u8, addonName, newAddonName)) {
 				main.globalAllocator.free(newAddonPath);
 				return;
 			}
@@ -129,6 +152,15 @@ fn addAddon(_: usize) void {
 
 		addonPathList.append(main.globalAllocator, newAddonPath);
 		needsUpdate = true;
+	}
+}
+
+fn nameFromPath(allocator: main.heap.NeverFailingAllocator, path: []const u8) ![]const u8 {
+	if(std.mem.lastIndexOf(u8, path, "/")) |lastSlash| {
+		return std.fmt.allocPrint(allocator.allocator, "{s}", .{path[(lastSlash + 1)..]}) catch unreachable;
+	} else {
+		std.log.err("Could not find / in {s}", .{path});
+		return error.NeedleNotFound;
 	}
 }
 
@@ -222,6 +254,7 @@ pub fn onOpen() void {
 
 	const submenu = VerticalList.init(.{0, 8}, 384, 8);
 	page.fillSubmenu(submenu);
+	submenu.finish(.center);
 	list.add(submenu);
 
 	list.add(Button.initText(.{0, 8}, 128, "Create World", .{.callback = &createWorld}));
