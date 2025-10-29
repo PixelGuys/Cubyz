@@ -234,8 +234,8 @@ pub const ParticleSystem = struct {
 				continue;
 			}
 
-			var posAndRotation = particle.posAndRotationVec();
-			var rot = posAndRotation[3];
+			var pos: Vec3f = particle.pos;
+			var rot = particle.rot;
 			const rotVel = particleLocal.velAndRotationVel[3];
 			rot += rotVel*deltaTime;
 
@@ -246,7 +246,7 @@ pub const ParticleSystem = struct {
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
-				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{posAndRotation[0], posAndRotation[1], posAndRotation[2]} + prevPlayerPosDifference));
+				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
 				v3Pos[0] += posDelta[0];
 				if(game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					v3Pos[0] = if(posDelta[0] < 0)
@@ -268,17 +268,17 @@ pub const ParticleSystem = struct {
 					else
 						box.min[2] - hitBox.max[2];
 				}
-				posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos - playerPos)), 0);
+				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
-				posAndRotation += posDelta + vec.combine(prevPlayerPosDifference, 0);
+				pos += Vec3f{posDelta[0], posDelta[1], posDelta[2]} + prevPlayerPosDifference;
 			}
 
-			particle.posAndRotation = posAndRotation;
-			particle.posAndRotation[3] = rot;
+			particle.pos = pos;
+			particle.rot = rot;
 			particleLocal.velAndRotationVel[3] = rotVel;
 
-			const positionf64 = @as(Vec4d, @floatCast(posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
-			const intPos: vec.Vec4i = @intFromFloat(@floor(positionf64));
+			const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
+			const intPos: vec.Vec3i = @intFromFloat(@floor(positionf64));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			const compressedLight =
 				@as(u32, light[0] >> 3) << 25 |
@@ -299,7 +299,8 @@ pub const ParticleSystem = struct {
 		const rot = if(properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.pi*2 else 0;
 
 		particles[particleCount] = Particle{
-			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
+			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
+			.rot = rot,
 			.typ = typ,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
@@ -460,15 +461,12 @@ pub const ParticleType = struct {
 };
 
 pub const Particle = extern struct {
-	posAndRotation: [4]f32 align(16),
+	pos: [3]f32 align(16),
+	rot: f32 = 0,
 	lifeRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
 	// 4 bytes left for use
-
-	pub fn posAndRotationVec(self: Particle) Vec4f {
-		return self.posAndRotation;
-	}
 };
 
 pub const ParticleLocal = struct {
