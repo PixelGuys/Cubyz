@@ -63,8 +63,6 @@ if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
 	echo "Extracting tar file..."
 	tar --xz -xf compiler/archive.tar.xz --directory compiler/zig --strip-components 1
 	rm compiler/archive.tar.xz
-	echo "Patching lib/std/zig/render.zig..."
-	download compiler/zig/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/$BASE_VERSION/render.zig
 	echo "$VERSION" > compiler/version.txt
 	echo "Done updating Zig."
 else
