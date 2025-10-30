@@ -383,8 +383,7 @@ const SwapChain = struct { // MARK: SwapChain
 					return format;
 				}
 			}
-			std.log.err("Couldn't find swapchain format BGRA8, choosing any instead", .{});
-			return self.formats[0];
+			@panic("Couldn't find swapchain format BGRA8 SRGB");
 		}
 
 		fn chooseSwapPresentMode(self: SupportDetails) c.VkPresentModeKHR {
