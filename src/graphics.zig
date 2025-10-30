@@ -2292,11 +2292,7 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn init() Texture {
 		var self: Texture = undefined;
-		if(!main.settings.launchConfig.headlessServer) {
-			c.glGenTextures(1, &self.textureID);
-		} else {
-			self.textureID = 0;
-		}
+		c.glGenTextures(1, &self.textureID);
 		return self;
 	}
 
