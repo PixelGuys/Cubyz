@@ -510,11 +510,14 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
-	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected}!void {
+	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected, IpBanned}!void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		for(self.connections.items) |other| {
 			if(other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
+		}
+		if(std.mem.containsAtLeastScalar(u32, main.server.settings.?.ipBanList.items, 1, conn.remoteAddress.ip)) {
+			return error.IpBanned;
 		}
 		self.connections.append(conn);
 	}
