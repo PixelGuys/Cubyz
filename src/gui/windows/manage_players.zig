@@ -30,13 +30,14 @@ fn kick(conn: *main.network.Connection) void {
 
 fn ipBan(conn: *main.network.Connection) void {
 	const ip = conn.remoteAddress.ip;
-	main.server.settings.ipBanList.append(ip);
+	main.server.settings.?.ipBanList.append(ip);
 	conn.disconnect();
 	needsUpdate = true;
 }
 
+// "very real pointer"
 fn unBan(ip_: usize) void {
-	const bannedIps = main.server.settings.?.ipBanList;
+	var bannedIps = main.server.settings.?.ipBanList;
 	const ip: u32 = @intCast(ip_);
 	const removed = bannedIps.swapRemove(std.mem.indexOfScalar(u32, bannedIps.items, ip).?);
 	std.debug.assert(removed == ip);
@@ -44,7 +45,7 @@ fn unBan(ip_: usize) void {
 }
 
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	{
 		main.server.connectionManager.mutex.lock();
 		defer main.server.connectionManager.mutex.unlock();
@@ -70,8 +71,10 @@ pub fn onOpen() void {
 		if(bannedIps.len > 0) {
 			list.add(Label.init(.{0, 0}, 200, "Banned IPs", .left));
 			for(bannedIps) |ip| {
+				const ipText = std.fmt.allocPrint(main.stackAllocator.allocator, "{}.{}.{}.{}", .{ip & 255, ip >> 8 & 255, ip >> 16 & 255, ip >> 24}) catch unreachable;
+				defer main.stackAllocator.free(ipText);
 				const row = HorizontalList.init();
-				row.add(Label.init(.{0, 0}, 200, ip, .left));
+				row.add(Label.init(.{0, 0}, 200, ipText, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Unban", .{.callback = @ptrCast(&unBan), .arg = @intCast(ip)}));
 				list.add(row);
 			}
@@ -98,7 +101,7 @@ pub fn update() void {
 	main.server.connectionManager.mutex.lock();
 	const serverListLen = main.server.connectionManager.connections.items.len;
 	main.server.connectionManager.mutex.unlock();
-	if(userList.len != serverListLen || needsUpdate) {
+	if(needsUpdate or userList.len != serverListLen) {
 		onClose();
 		onOpen();
 	}

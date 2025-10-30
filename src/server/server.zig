@@ -293,17 +293,25 @@ pub const Settings = struct {
 
 	fn toZon(self: @This()) ZonElement {
 		const data = ZonElement.initObject(main.stackAllocator);
-		data.put("ipBanList", &self.ipBanList);
+		var zonArray = main.List(ZonElement).initCapacity(main.stackAllocator, self.ipBanList.items.len);
+		for(self.ipBanList.items) |ip| {
+			zonArray.append(ZonElement {.int = @intCast(ip)});
+		}
+		data.put("ipBanList", ZonElement {.array = &zonArray});
 		return data;
 	}
+
 	fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement) @This() {
-		const array = zon.get([]const u32, "ipBanList");
+		const arrayZon = zon.getChild("ipBanList").toSlice();
 		const self: @This() = .{
-			.ipBanList = .initCapacity(allocator, array.len),
+			.ipBanList = .initCapacity(allocator, arrayZon.len),
 		};
-		@memcpy(self.ipBanList.items, array);
+		for(0.., arrayZon) |i, elem| {
+			self.ipBanList.items[i] = elem.as(u32, 0);
+		}
 		return self;
 	}
+
 	fn deinit(self: *@This()) void {
 		self.ipBanList.deinit();
 		self.* = undefined;
@@ -348,12 +356,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Can't create world.");
 	};
 
-	const settingsZon = world.?.wio.dir.readToZon("server.zig.zon") catch |err| {
-		std.log.err("Failed to create world: {s}", .{@errorName(err)});
-		@panic("Can't create world.");
-	};
+	const settingsZon = world.?.wio.dir.readToZon(main.stackAllocator, "server.zig.zon") catch .null;
+	defer settingsZon.deinit(main.stackAllocator);
 
-	settings = Settings.fromZon(main.globalAllocator, settingsZon);
+	settings = Settings.fromZon(main.stackAllocator, settingsZon);
 
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
@@ -384,11 +390,13 @@ fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
 
-	if(world) |_world| {
+	if(world) |world_| {
 		const zon = settings.?.toZon();
 		settings.?.deinit();
-		_world.wio.dir.writeZon("server.zig.zon", zon);
-		_world.deinit();
+		world_.wio.dir.writeZon("server.zig.zon", zon) catch |err| {
+			std.log.err("Error while saving the server settings: {s}", .{@errorName(err)});
+		};
+		world_.deinit();
 	}
 	world = null;
 	settings = null;
