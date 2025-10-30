@@ -501,8 +501,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	while(modelIterator.next()) |entry| {
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
-	if(!main.settings.launchConfig.headlessServer)
-		blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
+
+	if(!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
