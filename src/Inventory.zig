@@ -743,7 +743,7 @@ pub const Command = struct { // MARK: Command
 					const out: SyncOperation = .{.create = .{
 						.inv = try InventoryAndSlot.read(reader, .client, null),
 						.amount = try reader.readInt(u16),
-						.item = try Item.fromBytes(reader),
+						.item = if(reader.remaining.len > 0) try Item.fromBytes(reader) else null,
 					}};
 					return out;
 				},
@@ -792,7 +792,6 @@ pub const Command = struct { // MARK: Command
 					writer.writeInt(u16, create.amount);
 					if(create.item) |item| {
 						item.toBytes(&writer);
-						writer.writeInt(u16, create.amount);
 					}
 				},
 				.delete => |delete| {
