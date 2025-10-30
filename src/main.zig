@@ -636,7 +636,6 @@ pub fn main() void { // MARK: main()
 		}
 
 		const c = Window.c;
-
 		Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 		var lastBeginRendering = std.time.nanoTimestamp();
 
