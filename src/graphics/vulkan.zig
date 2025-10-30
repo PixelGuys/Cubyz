@@ -116,6 +116,10 @@ pub fn getPhysicalDeviceSurfaceFormatsKHR(allocator: NeverFailingAllocator, dev:
 	return allocEnumerationGeneric(c.vkGetPhysicalDeviceSurfaceFormatsKHR, allocator, .{dev, surface});
 }
 
+pub fn getPhysicalDeviceSurfacePresentModesKHR(allocator: NeverFailingAllocator, dev: c.VkPhysicalDevice) []c.VkPresentModeKHR {
+	return allocEnumerationGeneric(c.vkGetPhysicalDeviceSurfacePresentModesKHR, allocator, .{dev, surface});
+}
+
 // MARK: globals
 
 var instance: c.VkInstance = undefined;
@@ -141,9 +145,11 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 	if(c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
 		@panic("GLAD failed to load Vulkan functions");
 	}
+	SwapChain.init();
 }
 
 pub fn deinit() void {
+	SwapChain.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
@@ -345,3 +351,138 @@ fn createLogicalDevice() void {
 	c.vkGetDeviceQueue(device, indices.graphicsFamily.?, 0, &graphicsQueue);
 	c.vkGetDeviceQueue(device, indices.presentFamily.?, 0, &presentQueue);
 }
+
+const SwapChain = struct { // MARK: SwapChain
+	var swapChain: c.VkSwapchainKHR = null;
+	var images: []c.VkImage = undefined;
+	var imageViews: []c.VkImageView = undefined;
+	var imageFormat: c.VkFormat = undefined;
+	var extent: c.VkExtent2D = undefined;
+
+	const SupportDetails = struct {
+		capabilities: c.VkSurfaceCapabilitiesKHR,
+		formats: []const c.VkSurfaceFormatKHR,
+		presentModes: []const c.VkPresentModeKHR,
+
+		fn init(allocator: NeverFailingAllocator, physical: c.VkPhysicalDevice) SupportDetails {
+			var result: SupportDetails = undefined;
+			checkResult(c.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &result.capabilities));
+			result.formats = getPhysicalDeviceSurfaceFormatsKHR(allocator, physical);
+			result.presentModes = getPhysicalDeviceSurfacePresentModesKHR(allocator, physical);
+			return result;
+		}
+
+		fn deinit(self: SupportDetails, allocator: NeverFailingAllocator) void {
+			allocator.free(self.formats);
+			allocator.free(self.presentModes);
+		}
+
+		fn chooseFormat(self: SupportDetails) c.VkSurfaceFormatKHR {
+			for(self.formats) |format| {
+				if(format.format == c.VK_FORMAT_B8G8R8A8_SRGB and format.colorSpace == c.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+					return format;
+				}
+			}
+			@panic("Couldn't find swapchain format BGRA8 SRGB");
+		}
+
+		fn chooseSwapPresentMode(self: SupportDetails) c.VkPresentModeKHR {
+			_ = self; // TODO: Use MAILBOX if vsync is disabled
+			return c.VK_PRESENT_MODE_FIFO_KHR;
+		}
+
+		fn chooseSwapExtent(self: SupportDetails) c.VkExtent2D {
+			if(self.capabilities.currentExtent.width != std.math.maxInt(u32)) {
+				return self.capabilities.currentExtent;
+			}
+			var width: i32 = undefined;
+			var height: i32 = undefined;
+			c.glfwGetFramebufferSize(main.Window.vulkanWindow, &width, &height);
+			return .{
+				.width = @min(self.capabilities.maxImageExtent.width, @max(self.capabilities.minImageExtent.width, @max(0, width))),
+				.height = @min(self.capabilities.maxImageExtent.height, @max(self.capabilities.minImageExtent.height, @max(0, height))),
+			};
+		}
+	};
+
+	fn createImageView(image: c.VkImage) c.VkImageView {
+		const createInfo: c.VkImageViewCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = image,
+			.viewType = c.VK_IMAGE_VIEW_TYPE_2D,
+			.format = imageFormat,
+			.components = .{
+				.a = c.VK_COMPONENT_SWIZZLE_IDENTITY,
+				.r = c.VK_COMPONENT_SWIZZLE_IDENTITY,
+				.g = c.VK_COMPONENT_SWIZZLE_IDENTITY,
+				.b = c.VK_COMPONENT_SWIZZLE_IDENTITY,
+			},
+			.subresourceRange = .{
+				.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		};
+		var result: c.VkImageView = undefined;
+		checkResult(c.vkCreateImageView(device, &createInfo, null, &result));
+		return result;
+	}
+
+	fn init() void {
+		const support = SupportDetails.init(main.stackAllocator, physicalDevice);
+		defer support.deinit(main.stackAllocator);
+
+		const surfaceFormat = support.chooseFormat();
+		imageFormat = surfaceFormat.format;
+		const presentMode = support.chooseSwapPresentMode();
+		extent = support.chooseSwapExtent();
+		const imageCount = @min(support.capabilities.minImageCount + 1, support.capabilities.maxImageCount -% 1 +| 1);
+
+		var createInfo: c.VkSwapchainCreateInfoKHR = .{
+			.sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+			.surface = surface,
+			.minImageCount = imageCount,
+			.imageFormat = surfaceFormat.format,
+			.imageColorSpace = surfaceFormat.colorSpace,
+			.imageExtent = extent,
+			.imageArrayLayers = 1,
+			.imageUsage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			.preTransform = support.capabilities.currentTransform,
+			.compositeAlpha = c.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+			.presentMode = presentMode,
+			.clipped = c.VK_TRUE,
+			.oldSwapchain = null,
+		};
+		const queueFamilies = findQueueFamilies(physicalDevice);
+		if(queueFamilies.graphicsFamily.? != queueFamilies.presentFamily.?) {
+			const queueFamilyIndices = [_]u32{queueFamilies.graphicsFamily.?, queueFamilies.presentFamily.?};
+			createInfo.imageSharingMode = c.VK_SHARING_MODE_CONCURRENT;
+			createInfo.queueFamilyIndexCount = @intCast(queueFamilyIndices.len);
+			createInfo.pQueueFamilyIndices = &queueFamilyIndices;
+		} else {
+			createInfo.imageSharingMode = c.VK_SHARING_MODE_EXCLUSIVE;
+		}
+
+		checkResult(c.vkCreateSwapchainKHR(device, &createInfo, null, &swapChain));
+		images = main.globalAllocator.alloc(c.VkImage, imageCount);
+		var newImageCount = imageCount;
+		checkResult(c.vkGetSwapchainImagesKHR(device, swapChain, &newImageCount, images.ptr));
+		std.debug.assert(newImageCount == imageCount);
+
+		imageViews = main.globalAllocator.alloc(c.VkImageView, imageCount);
+		for(0..images.len) |i| {
+			imageViews[i] = createImageView(images[i]);
+		}
+	}
+
+	fn deinit() void {
+		for(imageViews) |imageView| {
+			c.vkDestroyImageView(device, imageView, null);
+		}
+		main.globalAllocator.free(imageViews);
+		main.globalAllocator.free(images);
+		c.vkDestroySwapchainKHR(device, swapChain, null);
+	}
+};

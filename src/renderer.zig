@@ -129,32 +129,32 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
-pub fn updateViewport(width: u31, height: u31, fov: f32) void {
+pub fn updateFov(fov: f32) void {
+	if(lastFov != fov) {
+		lastFov = fov;
+		game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+	}
+}
+pub fn updateViewport(width: u31, height: u31) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
-	lastFov = fov;
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
 
 pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	// TODO: player bobbing
-	if(game.world) |world| {
-		// TODO: Handle colors and sun position in the world.
-		var ambient: Vec3f = undefined;
-		ambient[0] = @max(0.1, world.ambientLight);
-		ambient[1] = @max(0.1, world.ambientLight);
-		ambient[2] = @max(0.1, world.ambientLight);
+	// TODO: Handle colors and sun position in the world.
+	std.debug.assert(game.world != null);
+	var ambient: Vec3f = undefined;
+	ambient[0] = @max(0.1, game.world.?.ambientLight);
+	ambient[1] = @max(0.1, game.world.?.ambientLight);
+	ambient[2] = @max(0.1, game.world.?.ambientLight);
 
-		itemdrop.ItemDisplayManager.update(deltaTime);
-		renderWorld(world, ambient, game.fog.skyColor, playerPosition);
-		const startTime = std.time.milliTimestamp();
-		mesh_storage.updateMeshes(startTime + maximumMeshTime);
-	} else {
-		c.glViewport(0, 0, main.Window.width, main.Window.height);
-		MenuBackGround.render();
-	}
+	itemdrop.ItemDisplayManager.update(deltaTime);
+	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
+	const startTime = std.time.milliTimestamp();
+	mesh_storage.updateMeshes(startTime + maximumMeshTime);
 }
 
 pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Vec3f {
@@ -584,6 +584,7 @@ pub const MenuBackGround = struct {
 	}
 
 	pub fn render() void {
+		c.glViewport(0, 0, main.Window.width, main.Window.height);
 		if(texture.textureID == 0) return;
 
 		// Use a simple rotation around the z axis, with a steadily increasing angle.
@@ -592,9 +593,6 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		pipeline.bind(null);
-		updateViewport(main.Window.width, main.Window.height, 70.0);
-		defer updateViewport(Window.width, Window.height, settings.fov);
-
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 
@@ -613,9 +611,11 @@ pub const MenuBackGround = struct {
 
 		const oldResolutionScale = main.settings.resolutionScale;
 		main.settings.resolutionScale = 1;
-		updateViewport(size, size, 90.0);
+		updateViewport(size, size);
+		updateFov(90.0);
+		defer updateFov(main.settings.fov);
 		main.settings.resolutionScale = oldResolutionScale;
-		defer updateViewport(Window.width, Window.height, settings.fov);
+		defer updateViewport(Window.width, Window.height);
 
 		var buffer: graphics.FrameBuffer = undefined;
 		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);

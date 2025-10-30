@@ -257,17 +257,6 @@ pub const BaseItem = struct { // MARK: BaseItem
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	var unobtainable = BaseItem{
-		.image = graphics.Image.defaultImage,
-		.texture = null,
-		.id = "unobtainable",
-		.name = "unobtainable",
-		.stackSize = 0,
-		.material = null,
-		.block = null,
-		.foodValue = 0,
-	};
-
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
 		if(texturePath.len == 0) {
@@ -444,7 +433,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 	}
 };
 
-/// Determines the physical properties of a tool to caclulate in-game parameters such as durability and speed.
+/// Determines the physical properties of a tool to calculate in-game parameters such as durability and speed.
 const ToolPhysics = struct { // MARK: ToolPhysics
 	/// Determines all the basic properties of the tool.
 	pub fn evaluateTool(tool: *Tool) void {
@@ -458,8 +447,8 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			var weight: f32 = 0;
 			for(0..25) |i| {
 				const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
-				sum += property.weigths[i]*material.getProperty(property.source orelse break);
-				weight += property.weigths[i];
+				sum += property.weights[i]*material.getProperty(property.source orelse break);
+				weight += property.weights[i];
 			}
 			if(weight == 0) continue;
 			switch(property.method) {
@@ -551,7 +540,7 @@ const SlotInfo = packed struct { // MARK: SlotInfo
 const PropertyMatrix = struct { // MARK: PropertyMatrix
 	source: ?MaterialProperty,
 	destination: ?ToolProperty,
-	weigths: [25]f32,
+	weights: [25]f32,
 	resultScale: f32,
 	method: Method,
 
@@ -1072,15 +1061,12 @@ pub const Recipe = struct { // MARK: Recipe
 	cachedInventory: ?Inventory = null,
 };
 
-var arenaAllocator: main.heap.NeverFailingArenaAllocator = undefined;
-var arena: main.heap.NeverFailingAllocator = undefined;
+var toolTypeList: ListUnmanaged(ToolType) = .{};
+var toolTypeIdToIndex: std.StringHashMapUnmanaged(ToolTypeIndex) = .{};
 
-var toolTypeList: ListUnmanaged(ToolType) = undefined;
-var toolTypeIdToIndex: std.StringHashMapUnmanaged(ToolTypeIndex) = undefined;
-
-var reverseIndices: std.StringHashMap(BaseItemIndex) = undefined;
-var modifiers: std.StringHashMap(*const Modifier.VTable) = undefined;
-var modifierRestrictions: std.StringHashMap(*const ModifierRestriction.VTable) = undefined;
+var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};
+var modifiers: std.StringHashMapUnmanaged(*const Modifier.VTable) = .{};
+var modifierRestrictions: std.StringHashMapUnmanaged(*const ModifierRestriction.VTable) = .{};
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
@@ -1103,19 +1089,13 @@ pub fn recipes() []Recipe {
 }
 
 pub fn globalInit() void {
-	arenaAllocator = .init(main.globalAllocator);
-	arena = arenaAllocator.allocator();
-
-	toolTypeList = .{};
 	toolTypeIdToIndex = .{};
 
-	reverseIndices = .init(arena.allocator);
-	recipeList = .init(arena);
+	recipeList = .init(main.worldArena);
 	itemListSize = 0;
-	modifiers = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(modifierList).@"struct".decls) |decl| {
 		const ModifierStruct = @field(modifierList, decl.name);
-		modifiers.put(decl.name, &.{
+		modifiers.put(main.globalArena.allocator, decl.name, &.{
 			.changeToolParameters = @ptrCast(&ModifierStruct.changeToolParameters),
 			.changeBlockDamage = @ptrCast(&ModifierStruct.changeBlockDamage),
 			.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
@@ -1124,10 +1104,9 @@ pub fn globalInit() void {
 			.priority = ModifierStruct.priority,
 		}) catch unreachable;
 	}
-	modifierRestrictions = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
 		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
-		modifierRestrictions.put(decl.name, &.{
+		modifierRestrictions.put(main.globalArena.allocator, decl.name, &.{
 			.satisfied = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
 			.loadFromZon = comptime main.utils.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
 			.printTooltip = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
@@ -1140,8 +1119,8 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
-	newItem.init(arena, texturePath, replacementTexturePath, id, zon);
-	reverseIndices.put(newItem.id, @enumFromInt(itemListSize)) catch unreachable;
+	newItem.init(main.worldArena, texturePath, replacementTexturePath, id, zon);
+	reverseIndices.put(main.worldArena.allocator, newItem.id, @enumFromInt(itemListSize)) catch unreachable;
 
 	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
 	return newItem;
@@ -1198,7 +1177,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		}
 		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
 	}
-	var parameterMatrices: main.List(PropertyMatrix) = .init(arena);
+	var parameterMatrices: main.List(PropertyMatrix) = .init(main.worldArena);
 	for(zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne();
 		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
@@ -1206,8 +1185,17 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		val.resultScale = paramZon.get(f32, "factor", 1.0);
 		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
+		var total_weight: f32 = 0.0;
 		for(0..25) |i| {
-			val.weigths[i] = matrixZon.getAtIndex(f32, i, 0.0);
+			val.weights[i] = matrixZon.getAtIndex(f32, i, 0.0);
+		}
+		for(0..25) |i| {
+			total_weight += val.weights[i];
+		}
+		for(0..25) |i| {
+			if(val.weights[i] != 0x0) {
+				val.weights[i] /= total_weight;
+			}
 		}
 	}
 	var pixelSources: [16][16]u8 = undefined;
@@ -1215,16 +1203,16 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	var pixelSourcesOverlay: [16][16]u8 = undefined;
 	loadPixelSources(assetFolder, id, "_overlay", &pixelSourcesOverlay);
 
-	const idDupe = arena.dupe(u8, id);
-	toolTypeList.append(arena, .{
+	const idDupe = main.worldArena.dupe(u8, id);
+	toolTypeList.append(main.worldArena, .{
 		.id = idDupe,
-		.blockTags = Tag.loadTagsFromZon(arena, zon.getChild("blockTags")),
+		.blockTags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("blockTags")),
 		.slotInfos = slotInfos,
 		.properties = parameterMatrices.toOwnedSlice(),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
-	toolTypeIdToIndex.put(arena.allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
+	toolTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
 
 	std.log.debug("Registered tool: '{s}'", .{id});
 }
@@ -1246,15 +1234,11 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 	const inputs = zon.getChild("inputs").toSlice();
 	const output = try parseRecipeItem(zon.getChild("output"));
 	const recipe = Recipe{
-		.sourceItems = arena.alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = arena.alloc(u16, inputs.len),
+		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
+		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
 		.resultItem = output.item.?.baseItem,
 		.resultAmount = output.amount,
 	};
-	errdefer {
-		arena.free(recipe.sourceAmounts);
-		arena.free(recipe.sourceItems);
-	}
 	for(inputs, 0..) |inputZon, i| {
 		const input = try parseRecipeItem(inputZon);
 		recipe.sourceItems[i] = input.item.?.baseItem;
@@ -1285,21 +1269,13 @@ pub fn clearRecipeCachedInventories() void {
 }
 
 pub fn reset() void {
-	toolTypeList.clearAndFree(arena);
-	toolTypeIdToIndex.clearAndFree(arena.allocator);
-	reverseIndices.clearAndFree();
+	toolTypeList = .{};
+	toolTypeIdToIndex = .{};
+	reverseIndices = .{};
 	recipeList.clearAndFree();
 	itemListSize = 0;
-	_ = arenaAllocator.reset(.free_all);
 }
 
 pub fn deinit() void {
-	toolTypeList.deinit(arena);
-	toolTypeIdToIndex.deinit(arena.allocator);
-	reverseIndices.clearAndFree();
-	recipeList.clearAndFree();
-	modifiers.deinit();
-	modifierRestrictions.deinit();
-	arenaAllocator.deinit();
 	Inventory.Sync.ClientSide.deinit();
 }

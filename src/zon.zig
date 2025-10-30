@@ -101,22 +101,27 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		};
 	}
 
-	fn joinGetNew(self: ZonElement, other: ZonElement, allocator: NeverFailingAllocator) ZonElement {
-		switch(self) {
+	pub const JoinPriority = enum {preferLeft, preferRight};
+
+	fn joinGetNew(left: ZonElement, priority: JoinPriority, right: ZonElement, allocator: NeverFailingAllocator) ZonElement {
+		switch(left) {
 			.int, .float, .string, .stringOwned, .bool, .null => {
-				return self.clone(allocator);
+				return switch(priority) {
+					.preferLeft => left.clone(allocator),
+					.preferRight => right.clone(allocator),
+				};
 			},
 			.array => {
-				const out = self.clone(allocator);
-				for(other.array.items) |item| {
+				const out = left.clone(allocator);
+				for(right.array.items) |item| {
 					out.array.append(item.clone(allocator));
 				}
 				return out;
 			},
 			.object => {
-				const out = self.clone(allocator);
+				const out = left.clone(allocator);
 
-				out.join(other);
+				out.join(priority, right);
 				return out;
 			},
 		}
@@ -124,21 +129,21 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return .null;
 	}
 
-	pub fn join(self: *const ZonElement, other: ZonElement) void {
-		if(other == .null) {
+	pub fn join(left: *const ZonElement, priority: JoinPriority, right: ZonElement) void {
+		if(right == .null) {
 			return;
 		}
-		if(self.* != .object or other != .object) {
+		if(left.* != .object or right != .object) {
 			if(!builtin.is_test) std.log.err("Trying to join zon that isn't an object.", .{}); // TODO: #1275
 			return;
 		}
 
-		var iter = other.object.iterator();
+		var iter = right.object.iterator();
 		while(iter.next()) |entry| {
-			if(self.object.get(entry.key_ptr.*)) |val| {
-				self.put(entry.key_ptr.*, entry.value_ptr.joinGetNew(val, .{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			if(left.object.get(entry.key_ptr.*)) |val| {
+				left.put(entry.key_ptr.*, val.joinGetNew(priority, entry.value_ptr.*, .{.allocator = left.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			} else {
-				self.put(entry.key_ptr.*, entry.value_ptr.clone(.{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+				left.put(entry.key_ptr.*, entry.value_ptr.clone(.{.allocator = left.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			}
 		}
 	}
@@ -930,11 +935,11 @@ test "merging" {
 	var wrap = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	const allocator = wrap.allocator();
 
-	const zon1 = ZonElement.parseFromString(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}");
+	const zon1 = ZonElement.parseFromString(allocator, null, ".{.object1 = \"\", .object2 = .{}, .object3 = 1.0e4, @\"\nobject1\" = .{}, @\"\tobject1θ\" = .{}}");
 	defer zon1.deinit(allocator);
 
-	const zon2 = ZonElement.parseFromString(allocator, null, ".{   .object5   =   1  \n,}");
-	zon2.join(zon1);
+	const zon2 = ZonElement.parseFromString(allocator, null, ".{.object5 = 1}");
+	zon2.join(.preferRight, zon1);
 	try std.testing.expectEqual(.object, std.meta.activeTag(zon2));
 	try std.testing.expectEqual(.float, std.meta.activeTag(zon2.object.get("object3") orelse .null));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(zon2.object.get("object1") orelse .null));
@@ -944,10 +949,51 @@ test "merging" {
 	zon2.deinit(allocator);
 
 	const zon3 = ZonElement.parseFromString(allocator, null, "1");
-	zon3.join(zon1);
+	zon3.join(.preferRight, zon1);
 	zon3.deinit(allocator);
 
 	const zon4 = ZonElement.parseFromString(allocator, null, "true");
-	zon1.join(zon4);
+	zon1.join(.preferRight, zon4);
 	zon4.deinit(allocator);
+
+	const zon5 = ZonElement.parseFromString(allocator, null, ".{.object1 = \"\", .object2 = .{}, .object3 = 1.0e4, @\"\nobject1\" = .{}, @\"\tobject1θ\" = .{}}");
+	defer zon5.deinit(allocator);
+
+	const zon6 = ZonElement.parseFromString(allocator, null, ".{.object5 = 1}");
+	zon5.join(.preferLeft, zon6);
+	try std.testing.expectEqual(.object, std.meta.activeTag(zon5));
+	try std.testing.expectEqual(.float, std.meta.activeTag(zon5.object.get("object3") orelse .null));
+	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(zon5.object.get("object1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(zon5.object.get("\nobject1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(zon5.object.get("\tobject1θ") orelse .null));
+	try std.testing.expectEqual(.int, std.meta.activeTag(zon5.object.get("object5") orelse .null));
+	zon6.deinit(allocator);
+
+	const zon7 = ZonElement.parseFromString(allocator, null, "1");
+	zon5.join(.preferLeft, zon7);
+	zon7.deinit(allocator);
+
+	const zon8 = ZonElement.parseFromString(allocator, null, "true");
+	zon8.join(.preferLeft, zon5);
+	zon8.deinit(allocator);
+
+	const zon9 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
+	defer zon9.deinit(allocator);
+	const zon10 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
+	defer zon10.deinit(allocator);
+	zon9.join(.preferLeft, zon10);
+	try std.testing.expectEqual(zon9.get(?i32, "a", null), 1);
+	try std.testing.expectEqualSlices(u8, zon9.get(?[]const u8, "c", null).?, "foo");
+	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "a", null), 2);
+	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "b", null), 3);
+
+	const zon11 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
+	defer zon11.deinit(allocator);
+	const zon12 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
+	defer zon12.deinit(allocator);
+	zon11.join(.preferRight, zon12);
+	try std.testing.expectEqual(zon11.get(?i32, "a", null), 1);
+	try std.testing.expectEqualSlices(u8, zon11.get(?[]const u8, "c", null).?, "foo");
+	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get(?[]const u8, "a", null).?, "bar");
+	try std.testing.expectEqual(zon11.getChild("b").get(?i32, "b", null), 3);
 }
