@@ -53,15 +53,15 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 
 	// NOTE(blackedout): Copy MoltenVK binary and JSON manifest file from the dependencies to the executable
 	if(t.os.tag == .macos) {
-		const moltenvkLib = b.addInstallFile(libsDeps.path("lib/libMoltenVK.dylib"), "bin/libMoltenVK.dylib");
-		const moltenvkJson = b.addInstallFile(libsDeps.path("lib/MoltenVK_icd.json"), "bin/MoltenVK_icd.json");
-		exe.step.dependOn(&moltenvkLib.step);
-		exe.step.dependOn(&moltenvkJson.step);
+		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/libMoltenVK.dylib");
+		const moltenVkJsonInstall = b.addInstallFile(subPath.path(b, "MoltenVK_icd.json"), "bin/MoltenVK_icd.json");
+		exe.step.dependOn(&moltenVkLibInstall.step);
+		exe.step.dependOn(&moltenVkJsonInstall.step);
 
-		const validationLayerLib = b.addInstallFile(libsDeps.path("lib/libVkLayer_khronos_validation.dylib"), "bin/libVkLayer_khronos_validation.dylib");
-		const validationLayerJson = b.addInstallFile(libsDeps.path("lib/VkLayer_khronos_validation.json"), "bin/VkLayer_khronos_validation.json");
-		exe.step.dependOn(&validationLayerLib.step);
-		exe.step.dependOn(&validationLayerJson.step);
+		const validationLayerLibInstall = b.addInstallFile(subPath.path(b, "libVkLayer_khronos_validation.dylib"), "bin/libVkLayer_khronos_validation.dylib");
+		const validationLayerJsonInstall = b.addInstallFile(subPath.path(b, "VkLayer_khronos_validation.json"), "bin/VkLayer_khronos_validation.json");
+		exe.step.dependOn(&validationLayerLibInstall.step);
+		exe.step.dependOn(&validationLayerJsonInstall.step);
 	}
 
 	if(t.os.tag == .windows) {
