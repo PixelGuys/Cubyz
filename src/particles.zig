@@ -68,7 +68,7 @@ pub const ParticleManager = struct {
 		const particleTypeLocal = ParticleTypeLocal{
 			.drag = zon.get(Vec2f, "drag", .{0.1, 0.2}),
 			.density = zon.get(Vec2f, "density", .{2, 3}),
-			.rotVel = zon.get(Vec2f, "rotationVelocity", .{20, 60}),
+			.rotVel = zon.get(Vec2f, "rotationVelocity", .{20, 60})*@as(Vec2f, @splat(std.math.pi/180.0)),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -286,8 +286,6 @@ pub const ParticleSystem = struct {
 				@as(u32, light[5] >> 3);
 			particle.light = compressedLight;
 
-			particle.light = compressedLight;
-
 			i += 1;
 		}
 		previousPlayerPos = playerPos;
@@ -298,7 +296,7 @@ pub const ParticleSystem = struct {
 		const drag = particleType.drag[0] + (particleType.drag[1] - particleType.drag[0])*random.nextFloat(&seed);
 		const density = particleType.density[0] + (particleType.density[1] - particleType.density[0])*random.nextFloat(&seed);
 		const rot = if(properties.randomizeRotation) random.nextFloat(&seed)*std.math.pi*2 else 0;
-		const rotVel = (particleType.rotVel[0] + (particleType.rotVel[1] - particleType.rotVel[0])*random.nextFloatSigned(&seed))*(std.math.pi/180.0);
+		const rotVel = (particleType.rotVel[0] + (particleType.rotVel[1] - particleType.rotVel[0])*random.nextFloatSigned(&seed));
 
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
