@@ -193,10 +193,17 @@ pub const Blueprint = struct {
 		defer main.stackAllocator.free(decompressedData);
 		var decompressedReader = BinaryReader.init(decompressedData);
 
-		const palette = try loadBlockPalette(main.stackAllocator, paletteBlockCount, &decompressedReader);
-		defer main.stackAllocator.free(palette);
+		const palette_in = try loadBlockPalette(main.stackAllocator, paletteBlockCount, &decompressedReader);
+		var palette_temp_list: main.List([]const u8) = .init(main.stackAllocator);
+		for(palette_in) |item| {
+			palette_temp_list.append(item);
+		}
+		var palette: main.assets.Palette = .{
+			.palette = palette_temp_list,
+		};
+		main.migrations.apply(.block, &palette);
 
-		const blueprintIdToGameIdMap = makeBlueprintIdToGameIdMap(main.stackAllocator, palette);
+		const blueprintIdToGameIdMap = makeBlueprintIdToGameIdMap(main.stackAllocator, palette_in);
 		defer main.stackAllocator.free(blueprintIdToGameIdMap);
 
 		for(self.blocks.mem) |*block| {
