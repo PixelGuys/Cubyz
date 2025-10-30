@@ -5,20 +5,20 @@ const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-pub const ClientBlockEvent = Event(struct {block: Block, blockPos: Vec3i}, @import("block/client/_list.zig"));
-pub const ServerBlockEvent = Event(struct {block: Block, chunk: *main.chunk.ServerChunk, x: i32, y: i32, z: i32}, @import("block/server/_list.zig"));
+pub const ClientBlockCallback = Callback(struct {block: Block, blockPos: Vec3i}, @import("block/client/_list.zig"));
+pub const ServerBlockCallback = Callback(struct {block: Block, chunk: *main.chunk.ServerChunk, x: i32, y: i32, z: i32}, @import("block/server/_list.zig"));
 
-pub const BlockTouchEvent = Event(struct {entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64}, @import("block/touch/_list.zig"));
+pub const BlockTouchCallback = Callback(struct {entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64}, @import("block/touch/_list.zig"));
 
 pub const EventResult = enum {handled, ignored};
 
 pub fn init() void {
-	ClientBlockEvent.globalInit();
-	ServerBlockEvent.globalInit();
-	BlockTouchEvent.globalInit();
+	ClientBlockCallback.globalInit();
+	ServerBlockCallback.globalInit();
+	BlockTouchCallback.globalInit();
 }
 
-fn Event(_Params: type, list: type) type {
+fn Callback(_Params: type, list: type) type {
 	return struct {
 		data: *anyopaque,
 		runFunction: *const fn(self: *anyopaque, params: Params) main.events.EventResult,
@@ -34,10 +34,10 @@ fn Event(_Params: type, list: type) type {
 
 		fn globalInit() void {
 			inline for(@typeInfo(list).@"struct".decls) |decl| {
-				const EventStruct = @field(list, decl.name);
+				const CallbackStruct = @field(list, decl.name);
 				eventCreationMap.put(main.globalArena.allocator, decl.name, .{
-					.init = main.utils.castFunctionReturnToAnyopaque(EventStruct.init),
-					.run = main.utils.castFunctionSelfToAnyopaque(EventStruct.run),
+					.init = main.utils.castFunctionReturnToAnyopaque(CallbackStruct.init),
+					.run = main.utils.castFunctionSelfToAnyopaque(CallbackStruct.run),
 				}) catch unreachable;
 			}
 		}

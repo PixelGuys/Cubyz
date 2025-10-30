@@ -23,7 +23,7 @@ pub fn init(zon: main.ZonElement) ?*@This() {
 	return result;
 }
 
-pub fn run(self: *@This(), params: main.events.BlockTouchEvent.Params) main.events.EventResult {
+pub fn run(self: *@This(), params: main.events.BlockTouchCallback.Params) main.events.EventResult {
 	std.debug.assert(params.entity == &main.game.Player.super); // TODO: Implement on the server side
 	const damage = self.dps*@as(f32, @floatCast(params.deltaTime));
 	main.items.Inventory.Sync.addHealth(-damage, self.damageType, .client, main.game.Player.id);

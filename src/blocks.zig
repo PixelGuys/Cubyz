@@ -21,9 +21,9 @@ const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
 const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
-const ClientBlockEvent = main.events.ClientBlockEvent;
-const ServerBlockEvent = main.events.ServerBlockEvent;
-const BlockTouchEvent = main.events.BlockTouchEvent;
+const ClientBlockCallback = main.events.ClientBlockCallback;
+const ServerBlockCallback = main.events.ServerBlockCallback;
+const BlockTouchCallback = main.events.BlockTouchCallback;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
@@ -72,7 +72,7 @@ var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
 
-var _onInteract: [maxBlockCount]ClientBlockEvent = undefined;
+var _onInteract: [maxBlockCount]ClientBlockCallback = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
@@ -85,8 +85,8 @@ var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
-var _onTick: [maxBlockCount]ServerBlockEvent = undefined;
-var _onTouch: [maxBlockCount]BlockTouchEvent = undefined;
+var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
+var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
 var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
@@ -117,7 +117,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
 	_onInteract[size] = blk: {
-		break :blk ClientBlockEvent.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
+		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
 			std.log.err("Failed to load onInteract event for block {s}", .{id});
 			break :blk .noop;
 		};
@@ -134,13 +134,13 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_onTick[size] = blk: {
-		break :blk ServerBlockEvent.init(zon.getChildOrNull("onTick") orelse break :blk .noop) orelse {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop) orelse {
 			std.log.err("Failed to load onTick event for block {s}", .{id});
 			break :blk .noop;
 		};
 	};
 	_onTouch[size] = blk: {
-		break :blk BlockTouchEvent.init(zon.getChildOrNull("onTouch") orelse break :blk .noop) orelse {
+		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop) orelse {
 			std.log.err("Failed to load onTouch event for block {s}", .{id});
 			break :blk .noop;
 		};
@@ -380,7 +380,7 @@ pub const Block = packed struct { // MARK: Block
 		return _absorption[self.typ];
 	}
 
-	pub inline fn onInteract(self: Block) ClientBlockEvent {
+	pub inline fn onInteract(self: Block) ClientBlockCallback {
 		return _onInteract[self.typ];
 	}
 
@@ -428,11 +428,11 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub inline fn onTick(self: Block) ServerBlockEvent {
+	pub inline fn onTick(self: Block) ServerBlockCallback {
 		return _onTick[self.typ];
 	}
 
-	pub inline fn onTouch(self: Block) BlockTouchEvent {
+	pub inline fn onTouch(self: Block) BlockTouchCallback {
 		return _onTouch[self.typ];
 	}
 
