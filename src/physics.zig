@@ -13,7 +13,7 @@ const Player = main.game.Player;
 const collision = main.game.collision;
 const camera = main.game.camera;
 
-const gravity = 30.0;
+pub const gravity = 30.0;
 const airTerminalVelocity = 90.0;
 const playerDensity = 1.2;
 
@@ -239,13 +239,14 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 
 			// EXAMPLE CODE!! WILL BE REMOVED BEFORE MERGING
 			if(damage > 0.000001) {
-				const spawnType = particles.Emitter.SpawnType{.cube = .{.mode = .scatter, .size = .{0.3, 0.3, 0}}};
+				const spawnShape = particles.Emitter.SpawnShape{.cube = .{.size = .{0.3, 0.3, 0}}};
+				const dirMode = particles.DirectionMode.scatter;
 				const emitterProps = particles.EmitterProperties{
 					.velocity = .{2, 3},
 					.lifeTime = .{0.4, 0.7},
 					.randomizeRotation = true,
 				};
-				const emitter = particles.Emitter.init("cubyz:poof", true, spawnType, emitterProps);
+				const emitter = particles.Emitter.init("cubyz:poof", true, spawnShape, emitterProps, dirMode);
 				emitter.spawnParticles(Player.super.pos - Vec3d{0, 0, Player.outerBoundingBoxExtent[2] - 0.2}, 20);
 			}
 
