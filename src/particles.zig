@@ -34,9 +34,6 @@ pub const ParticleManager = struct {
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
 
 	pub fn init() void {
-		types = .init();
-		textures = .init();
-		emissionTextures = .init();
 		if(!main.settings.launchConfig.headlessServer) {
 			textureArray = .init();
 			emissionTextureArray = .init();
