@@ -14,7 +14,7 @@ pub const usage =
 	\\tip: use "~" to apply current player position coordinate in <x> <y> <z> fields.
 	\\zon example:
 	\\.{
-	\\  .type = .sphere,
+	\\  .shape = .sphere,
 	\\  .radius = 5,
 	\\  .mode = .scatter,
 	\\  .velocity = .{0.5, 10},
