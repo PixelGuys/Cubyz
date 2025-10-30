@@ -1,3 +1,5 @@
 .{
 	.texture = "cubyz:sparkle2",
+	.density = .{0, 0},
+	.drag = .{0.25, 0.5},
 }
