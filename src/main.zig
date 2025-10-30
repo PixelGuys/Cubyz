@@ -500,6 +500,11 @@ pub fn main() void { // MARK: main()
 
 	settings.launchConfig.init();
 	defer settings.launchConfig.deinit();
+	const headless: bool = settings.launchConfig.headlessServer;
+	std.log.info("Starting game {s} with version {s}", .{if(headless) "server" else "client", settings.version.version});
+
+	if(!headless) gui.initWindowList();
+	defer if(!headless) gui.deinitWindowList();
 
 	files.init();
 	defer files.deinit();
@@ -542,19 +547,9 @@ pub fn main() void { // MARK: main()
 	defer server.terrain.globalDeinit();
 
 	if(settings.launchConfig.headlessServer) {
-		blocks.meshes.init();
-		defer blocks.meshes.deinit();
-
-		itemdrop.ItemDropRenderer.init();
-		defer itemdrop.ItemDropRenderer.deinit();
-
 		block_entity.init();
 		defer block_entity.deinit();
 
-		particles.ParticleManager.init();
-		defer particles.ParticleManager.deinit();
-
-		std.log.info("Starting game server with version {s}", .{settings.version.version});
 		settings.playerName = "serverDummy";
 		const allocator = std.heap.page_allocator;
 		const world_dir_result = std.fs.path.join(
@@ -594,11 +589,6 @@ pub fn main() void { // MARK: main()
 		_ = std.fs.cwd().makePath(assetsDir) catch {};
 		server.start(settings.launchConfig.headlessServerWorldName, null);
 	} else {
-		std.log.info("Starting game client with version {s}", .{settings.version.version});
-
-		gui.initWindowList();
-		defer gui.deinitWindowList();
-
 		Window.init();
 		defer Window.deinit();
 

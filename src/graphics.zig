@@ -1824,9 +1824,7 @@ pub const SSBO = struct { // MARK: SSBO
 	bufferID: c_uint,
 	pub fn init() SSBO {
 		var self = SSBO{.bufferID = undefined};
-		if(!main.settings.launchConfig.headlessServer) {
-			c.glGenBuffers(1, &self.bufferID);
-		}
+		c.glGenBuffers(1, &self.bufferID);
 		return self;
 	}
 
@@ -2147,19 +2145,16 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 	pub fn init() TextureArray {
 		var self: TextureArray = undefined;
-		if(!main.settings.launchConfig.headlessServer)
-			c.glGenTextures(1, &self.textureID);
+		c.glGenTextures(1, &self.textureID);
 		return self;
 	}
 
 	pub fn deinit(self: TextureArray) void {
-		if(!main.settings.launchConfig.headlessServer)
-			c.glDeleteTextures(1, &self.textureID);
+		c.glDeleteTextures(1, &self.textureID);
 	}
 
 	pub fn bind(self: TextureArray) void {
-		if(!main.settings.launchConfig.headlessServer)
-			c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
+		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
 	}
 
 	fn lodColorInterpolation(colors: [4]Color, alphaCorrection: bool) Color {

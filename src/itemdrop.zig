@@ -677,20 +677,18 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	};
 
 	pub fn init() void {
-		if(!main.settings.launchConfig.headlessServer) {
-			itemPipeline = graphics.Pipeline.init(
-				"assets/cubyz/shaders/item_drop.vert",
-				"assets/cubyz/shaders/item_drop.frag",
-				"",
-				&itemUniforms,
-				.{},
-				.{.depthTest = true},
-				.{.attachments = &.{.alphaBlending}},
-			);
-			itemModelSSBO = .init();
-			itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
-			itemModelSSBO.bind(2);
-		}
+		itemPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/item_drop.vert",
+			"assets/cubyz/shaders/item_drop.frag",
+			"",
+			&itemUniforms,
+			.{},
+			.{.depthTest = true},
+			.{.attachments = &.{.alphaBlending}},
+		);
+		itemModelSSBO = .init();
+		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
+		itemModelSSBO.bind(2);
 
 		modelData = .init(main.globalAllocator);
 		freeSlots = .init(main.globalAllocator);
