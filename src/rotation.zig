@@ -125,8 +125,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			return .no;
 		}
-		pub fn getBlockTags(_: NeverFailingAllocator) ?[]Tag {
-			return null;
+		pub fn getBlockTags() []const Tag {
+			return &.{};
 		}
 	};
 
@@ -166,7 +166,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
 
-	getBlockTags: *const fn(allocator: NeverFailingAllocator) ?[]Tag = DefaultFunctions.getBlockTags,
+	getBlockTags: *const fn() []const Tag = DefaultFunctions.getBlockTags,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;

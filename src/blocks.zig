@@ -99,24 +99,11 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
-	const block_tags: []Tag = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
-	const rotation_tags: ?[]Tag = _mode[size].getBlockTags(main.worldArena);
-	var tags_len = block_tags.len;
-	if(rotation_tags) |tags| {
-		tags_len += tags.len;
-	}
-	var index: u32 = 0;
-	_blockTags[size] = main.worldArena.alloc(Tag, tags_len);
-	for(block_tags) |tag| {
-		_blockTags[size][index] = tag;
-		index += 1;
-	}
-	if(rotation_tags) |tags| {
-		for(tags) |tag| {
-			_blockTags[size][index] = tag;
-			index += 1;
-		}
-	}
+	const rotation_tags = _mode[size].getBlockTags();
+	const block_tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
+
+	_blockTags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
+
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	for(_blockTags[size]) |tag| {
 		if(tag == Tag.sbbChild) {
