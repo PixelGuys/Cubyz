@@ -15,7 +15,7 @@ pub fn init(zon: main.ZonElement) ?*@This() {
 	return result;
 }
 
-pub fn run(self: *@This(), params: main.events.ServerBlockCallback.Params) main.events.EventResult {
+pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
 	const wx = params.chunk.super.pos.wx + params.x;
 	const wy = params.chunk.super.pos.wy + params.y;
 	const wz = params.chunk.super.pos.wz + params.z;

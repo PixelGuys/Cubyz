@@ -10,7 +10,7 @@ pub const ServerBlockCallback = Callback(struct {block: Block, chunk: *main.chun
 
 pub const BlockTouchCallback = Callback(struct {entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64}, @import("block/touch/_list.zig"));
 
-pub const EventResult = enum {handled, ignored};
+pub const Result = enum {handled, ignored};
 
 pub fn init() void {
 	ClientBlockCallback.globalInit();
@@ -21,13 +21,13 @@ pub fn init() void {
 fn Callback(_Params: type, list: type) type {
 	return struct {
 		data: *anyopaque,
-		runFunction: *const fn(self: *anyopaque, params: Params) main.events.EventResult,
+		runFunction: *const fn(self: *anyopaque, params: Params) Result,
 
 		pub const Params = _Params;
 
 		const VTable = struct {
 			init: *const fn(zon: main.ZonElement) ?*anyopaque,
-			run: *const fn(self: *anyopaque, params: Params) main.events.EventResult,
+			run: *const fn(self: *anyopaque, params: Params) Result,
 		};
 
 		var eventCreationMap: std.StringHashMapUnmanaged(VTable) = .{};
@@ -62,11 +62,11 @@ fn Callback(_Params: type, list: type) type {
 			.runFunction = &noopCallback,
 		};
 
-		fn noopCallback(_: *anyopaque, _: Params) EventResult {
+		fn noopCallback(_: *anyopaque, _: Params) Result {
 			return .ignored;
 		}
 
-		pub fn run(self: @This(), params: Params) main.events.EventResult {
+		pub fn run(self: @This(), params: Params) Result {
 			return self.runFunction(self.data, params);
 		}
 
