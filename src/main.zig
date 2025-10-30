@@ -554,7 +554,7 @@ pub fn main() void { // MARK: main()
 		const allocator = std.heap.page_allocator;
 		const world_dir_result = std.fs.path.join(
 			allocator,
-			&.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.headlessServerWorldName},
+			&.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.autoEnterWorld},
 		) catch |err| {
 			std.log.err("Could not join path: {s}", .{@errorName(err)});
 			return;
@@ -567,12 +567,7 @@ pub fn main() void { // MARK: main()
 			else => return,
 		};
 		if(!world_found) {
-			const worldSettings: server.world_zig.WorldSettings = .{
-				.gamemode = settings.launchConfig.headlessGamemode,
-				.allowCheats = settings.launchConfig.headlessAllowCheats,
-				.testingMode = false,
-			};
-			server.world_zig.tryCreateWorld(settings.launchConfig.headlessServerWorldName, worldSettings) catch |e| switch(e) {
+			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.autoCreateWorldConfig) catch |e| switch(e) {
 				else => return,
 			};
 		}
@@ -582,12 +577,12 @@ pub fn main() void { // MARK: main()
 		defer allocator.free(savesDir);
 		_ = std.fs.cwd().makeDir(savesDir) catch {};
 
-		const assetsDir = std.fs.path.join(allocator, &.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.headlessServerWorldName, "assets"}) catch |e| switch(e) {
+		const assetsDir = std.fs.path.join(allocator, &.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.autoEnterWorld, "assets"}) catch |e| switch(e) {
 			else => return,
 		};
 		defer allocator.free(assetsDir);
 		_ = std.fs.cwd().makePath(assetsDir) catch {};
-		server.start(settings.launchConfig.headlessServerWorldName, null);
+		server.start(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		Window.init();
 		defer Window.deinit();
