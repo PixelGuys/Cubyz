@@ -784,15 +784,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				defer self.mutex.lock();
 				updateRequest.ch.save(self);
 				updateRequest.ch.decreaseRefCount();
+				main.heap.GarbageCollection.syncPoint();
 			}
 			while(self.regionUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.region.store();
 				updateRequest.region.decreaseRefCount();
+				main.heap.GarbageCollection.syncPoint();
 			}
 			self.mutex.unlock();
 			std.Thread.sleep(1_000_000);
+			main.heap.GarbageCollection.syncPoint();
 			self.mutex.lock();
 			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
 		}
