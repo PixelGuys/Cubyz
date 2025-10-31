@@ -363,7 +363,7 @@ pub const MemoryTrackingAllocator = struct { // MARK: MemoryTrackingAllocator
 			.index = 0,
 			.instruction_addresses = &trace,
 		};
-        std.debug.captureStackTrace(ret_addr, &thing);
+		std.debug.captureStackTrace(ret_addr, &thing);
 
 		self.mutex.lock();
 		var ptr: *usize = undefined;
