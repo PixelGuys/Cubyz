@@ -46,5 +46,10 @@
 			.url = "git+https://github.com/PixelGuys/Cubyz-Assets/#e0ea686f86c008b29cd109e1bdd757ce6574eaf3",
 			.hash = "N-V-__8AAAxDUATPdad1MQC8jeiFsoXRet_SvG6acW5Dmxdh",
 		},
+		.cubyz_test_runner = .{
+			.url = "https://github.com/PixelGuys/Cubyz-std-lib/archive/refs/tags/0.15.0-dev.1034+bd97b6618+runner.tar.gz",
+			.hash = "zig-0.0.0-Fp4XJJEKDQ2urXaG5g99lcuW2Llqpnk9pl9EFqxn6xXN",
+			.lazy = true,
+		},
 	},
 }

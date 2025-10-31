@@ -1,0 +1,15 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 0.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.viewThrough = true,
+	.rotation = "cubyz:sign",
+	.model = .{
+		.side = "cubyz:lantern/side",
+		.ceiling = "cubyz:lantern/ceiling",
+		.floor = "cubyz:lantern/floor",
+	},
+	.lodReplacement = "cubyz:air",
+}
