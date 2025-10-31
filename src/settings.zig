@@ -187,6 +187,7 @@ pub fn save() void {
 pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
+
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
 			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
