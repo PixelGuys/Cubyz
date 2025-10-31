@@ -303,7 +303,7 @@ pub const Settings = struct {
 
 	fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement) @This() {
 		const arrayZon = zon.getChild("ipBanList").toSlice();
-		const self: @This() = .{
+		var self: @This() = .{
 			.ipBanList = .initCapacity(allocator, arrayZon.len),
 		};
 		for(arrayZon) |elem| {
