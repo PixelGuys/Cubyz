@@ -350,6 +350,12 @@ fn setHotbarSlot(i: comptime_int) *const fn() void {
 		}
 	}.set;
 }
+fn showPlayerList() void {
+	gui.openWindow("player_list");
+}
+fn hidePlayerList() void {
+	gui.closeWindow("player_list");
+}
 
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
@@ -373,6 +379,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
+		.{.name = "showPlayerList", .key = c.GLFW_KEY_TAB, .pressAction = &showPlayerList, .releaseAction = &hidePlayerList, .notifyRequirement = .inGame},
 
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B},

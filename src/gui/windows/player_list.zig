@@ -32,12 +32,11 @@ pub fn render() void {
 	var y: f32 = 0;
 	const dy = 8;
 
-	for(main.entity.ClientEntityManager.entities.items()) |ent| {
-		if(ent.name.len == 0) continue;
-		if(main.server.world.?.allowPlayerList) {
+	if(main.server.world.?.allowPlayerList) {
+		draw.print("__Player List__", .{}, 0, y, dy, .left);
+		for(main.entity.ClientEntityManager.entities.items()) |ent| {
 			draw.print("{s}", .{ent.name}, 0, y, dy, .left);
 			y += dy;
 		}
 	}
-	
 }
