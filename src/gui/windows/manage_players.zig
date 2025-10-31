@@ -35,9 +35,9 @@ fn ipBan(conn: *main.network.Connection) void {
 	needsUpdate = true;
 }
 
-// "very real pointer"
+// u32 in a pointer costume
 fn unBan(ip_: usize) void {
-	var bannedIps = main.server.settings.?.ipBanList;
+	var bannedIps = &main.server.settings.?.ipBanList;
 	const ip: u32 = @intCast(ip_);
 	const removed = bannedIps.swapRemove(std.mem.indexOfScalar(u32, bannedIps.items, ip).?);
 	std.debug.assert(removed == ip);
