@@ -292,11 +292,12 @@ pub const Settings = struct {
 	ipBanList: main.List(u32),
 
 	fn toZon(self: @This()) ZonElement {
-		const data = ZonElement.initArray(main.stackAllocator);
+		const data = ZonElement.initObject(main.stackAllocator);
+		const arr = ZonElement.initArray(main.stackAllocator);
 		for(self.ipBanList.items) |ip| {
-			data.append(ip);
+			arr.append(ip);
 		}
-		data.put("ipBanList", data);
+		data.put("ipBanList", arr);
 		return data;
 	}
 
@@ -305,8 +306,8 @@ pub const Settings = struct {
 		const self: @This() = .{
 			.ipBanList = .initCapacity(allocator, arrayZon.len),
 		};
-		for(0.., arrayZon) |i, elem| {
-			self.ipBanList.items[i] = elem.as(u32, 0);
+		for(arrayZon) |elem| {
+			self.ipBanList.append(elem.as(u32, 0));
 		}
 		return self;
 	}
