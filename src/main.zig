@@ -587,9 +587,9 @@ pub fn main() void { // MARK: main()
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = std.time.nanoTimestamp();
 
-	if(settings.developerAutoEnterWorld.len != 0) {
+	if(settings.launchConfig.autoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
+		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
 	audio.setMusic("cubyz:cubyz");
