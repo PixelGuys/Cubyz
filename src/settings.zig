@@ -68,7 +68,7 @@ pub var developerGPUInfiniteLoopDetection: bool = false;
 pub var controllerAxisDeadzone: f32 = 0.0;
 
 pub var verticalHotbar: bool = true;
-
+//example
 const settingsFile = if(builtin.mode == .Debug) "debug_settings.zig.zon" else "settings.zig.zon";
 
 pub fn init() void {
