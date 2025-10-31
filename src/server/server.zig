@@ -392,6 +392,7 @@ fn deinit() void {
 
 	if(world) |world_| {
 		const zon = settings.?.toZon();
+		defer zon.deinit(main.stackAllocator);
 		settings.?.deinit();
 		world_.wio.dir.writeZon("server.zig.zon", zon) catch |err| {
 			std.log.err("Error while saving the server settings: {s}", .{@errorName(err)});
