@@ -510,7 +510,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
-	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected, IpBanned}!void {
+	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected}!void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		for(self.connections.items) |other| {
