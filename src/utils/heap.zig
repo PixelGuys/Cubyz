@@ -284,7 +284,6 @@ pub const MemoryTrackingAllocator = struct { // MARK: MemoryTrackingAllocator
 	backingAllocator: std.mem.Allocator,
 	mutex: std.Thread.Mutex = .{},
 	allocationSize: std.AutoHashMapUnmanaged([stackTraceLength]usize, *usize) = .{},
-	allocationTrace: std.AutoHashMapUnmanaged(*anyopaque, *usize) = .{},
 
 	pub fn init(backingAllocator: std.mem.Allocator) MemoryTrackingAllocator {
 		return .{
@@ -298,7 +297,6 @@ pub const MemoryTrackingAllocator = struct { // MARK: MemoryTrackingAllocator
 			self.backingAllocator.destroy(elem.value_ptr.*);
 		}
 		self.allocationSize.deinit(self.backingAllocator);
-		self.allocationTrace.deinit(self.backingAllocator);
 	}
 
 	pub fn allocator(self: *MemoryTrackingAllocator) std.mem.Allocator {
@@ -358,7 +356,7 @@ pub const MemoryTrackingAllocator = struct { // MARK: MemoryTrackingAllocator
 
 	fn alloc(ctx: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		const self: *MemoryTrackingAllocator = @ptrCast(@alignCast(ctx));
-		const result = self.backingAllocator.rawAlloc(len, alignment, ret_addr) orelse return null;
+		const result = self.backingAllocator.rawAlloc(len + 8, alignment, ret_addr) orelse return null;
 
 		var trace: [stackTraceLength]usize = @splat(0);
 		var thing: std.builtin.StackTrace = .{
@@ -377,8 +375,8 @@ pub const MemoryTrackingAllocator = struct { // MARK: MemoryTrackingAllocator
 			self.allocationSize.put(self.backingAllocator, trace, ptr) catch @panic("AHHH OUT OF MEMORY");
 		}
 		ptr.* += len;
-		self.allocationTrace.put(self.backingAllocator, result, ptr) catch @panic("AHHH OUT OF MEMORY");
 		self.mutex.unlock();
+		result[len..][0..8].* = @as([8]u8, @bitCast(@intFromPtr(ptr)));
 		return result;
 	}
 
@@ -390,11 +388,13 @@ pub const MemoryTrackingAllocator = struct { // MARK: MemoryTrackingAllocator
 		return null;
 	}
 
-	fn free(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
+	fn free(ctx: *anyopaque, _memory: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
 		const self: *MemoryTrackingAllocator = @ptrCast(@alignCast(ctx));
+		var memory = _memory;
+		memory.len += 8;
 		self.mutex.lock();
-		const ptr = self.allocationTrace.fetchRemove(memory.ptr) orelse unreachable;
-		ptr.value.* -= memory.len;
+		const ptr = @as(*usize, @ptrFromInt(@as(usize, @bitCast(memory[_memory.len..][0..8].*))));
+		ptr.* -= _memory.len;
 		self.mutex.unlock();
 		self.backingAllocator.rawFree(memory, alignment, ret_addr);
 	}
