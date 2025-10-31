@@ -10,6 +10,7 @@ const noise = terrain.noise;
 const StructureMapFragment = terrain.StructureMap.StructureMapFragment;
 const SurfaceMap = terrain.SurfaceMap;
 const MapFragment = SurfaceMap.MapFragment;
+const CaveMapView = terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const ServerChunk = main.chunk.ServerChunk;
 const vec = main.vec;
@@ -25,6 +26,64 @@ pub const generatorSeed = 0x7568492764892;
 
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
+}
+
+fn adjustToCaveMap(biomeMap: CaveBiomeMapView, caveMap: CaveMapView, wx: i32, wy: i32, wz: i32, model: *const biomes.SimpleStructureModel, seed: *u64) ?struct {relZ: i32, isCeiling: bool} {
+	const relX = wx - caveMap.pos.wx;
+	const relY = wy - caveMap.pos.wy;
+	var relZ = wz - caveMap.pos.wz;
+	var isCeiling = false;
+	switch(model.generationMode) {
+		.floor => {
+			if(caveMap.isSolid(relX, relY, relZ)) {
+				relZ = caveMap.findTerrainChangeAbove(relX, relY, relZ);
+			} else {
+				relZ = caveMap.findTerrainChangeBelow(relX, relY, relZ) + caveMap.pos.voxelSize;
+			}
+			if(relZ & ~@as(i32, 31) != wz -% caveMap.pos.wz & ~@as(i32, 31)) return null; // Too far from the surface.
+		},
+		.ceiling => {
+			isCeiling = true;
+			if(caveMap.isSolid(relX, relY, relZ)) {
+				relZ = caveMap.findTerrainChangeBelow(relX, relY, relZ) - caveMap.pos.voxelSize;
+			} else {
+				relZ = caveMap.findTerrainChangeAbove(relX, relY, relZ);
+			}
+			if(relZ & ~@as(i32, 31) != wz -% caveMap.pos.wz & ~@as(i32, 31)) return null; // Too far from the surface.
+		},
+		.floor_and_ceiling => {
+			if(random.nextInt(u1, seed) != 0) {
+				if(caveMap.isSolid(relX, relY, relZ)) {
+					relZ = caveMap.findTerrainChangeAbove(relX, relY, relZ);
+				} else {
+					relZ = caveMap.findTerrainChangeBelow(relX, relY, relZ) + caveMap.pos.voxelSize;
+				}
+			} else {
+				isCeiling = true;
+				if(caveMap.isSolid(relX, relY, relZ)) {
+					relZ = caveMap.findTerrainChangeBelow(relX, relY, relZ) - caveMap.pos.voxelSize;
+				} else {
+					relZ = caveMap.findTerrainChangeAbove(relX, relY, relZ);
+				}
+			}
+			if(relZ & ~@as(i32, 31) != wz -% caveMap.pos.wz & ~@as(i32, 31)) return null; // Too far from the surface.
+		},
+		.air => {
+			relZ += -16 + random.nextIntBounded(i32, seed, 32);
+			if(caveMap.isSolid(relX, relY, relZ)) return null;
+		},
+		.underground => {
+			relZ += -16 + random.nextIntBounded(i32, seed, 32);
+			if(!caveMap.isSolid(relX, relY, relZ)) return null;
+		},
+		.water_surface => {
+			if(biomeMap.getSurfaceHeight(wx, wy) >= 0) return null;
+		},
+	}
+	return .{
+		.relZ = relZ,
+		.isCeiling = isCeiling,
+	};
 }
 
 pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
@@ -130,57 +189,9 @@ const SimpleStructure = struct {
 	pub fn generate(_self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
 		const self: *const SimpleStructure = @ptrCast(@alignCast(_self));
 		var seed = self.seed;
-		const px = self.wx - chunk.super.pos.wx;
-		const py = self.wy - chunk.super.pos.wy;
-		var relZ = self.wz -% chunk.super.pos.wz;
-		var isCeiling: bool = false;
-		switch(self.model.generationMode) {
-			.floor => {
-				if(caveMap.isSolid(px, py, relZ)) {
-					relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
-				} else {
-					relZ = caveMap.findTerrainChangeBelow(px, py, relZ) + chunk.super.pos.voxelSize;
-				}
-				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
-			},
-			.ceiling => {
-				isCeiling = true;
-				if(caveMap.isSolid(px, py, relZ)) {
-					relZ = caveMap.findTerrainChangeBelow(px, py, relZ) - chunk.super.pos.voxelSize;
-				} else {
-					relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
-				}
-				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
-			},
-			.floor_and_ceiling => {
-				if(random.nextInt(u1, &seed) != 0) {
-					if(caveMap.isSolid(px, py, relZ)) {
-						relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
-					} else {
-						relZ = caveMap.findTerrainChangeBelow(px, py, relZ) + chunk.super.pos.voxelSize;
-					}
-				} else {
-					isCeiling = true;
-					if(caveMap.isSolid(px, py, relZ)) {
-						relZ = caveMap.findTerrainChangeBelow(px, py, relZ) - chunk.super.pos.voxelSize;
-					} else {
-						relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
-					}
-				}
-				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
-			},
-			.air => {
-				relZ += -16 + random.nextIntBounded(i32, &seed, 32);
-				if(caveMap.isSolid(px, py, relZ)) return;
-			},
-			.underground => {
-				relZ += -16 + random.nextIntBounded(i32, &seed, 32);
-				if(!caveMap.isSolid(px, py, relZ)) return;
-			},
-			.water_surface => {
-				if(biomeMap.getSurfaceHeight(self.wx, self.wy) >= 0) return;
-			},
-		}
-		self.model.generate(px, py, relZ, chunk, caveMap, biomeMap, &seed, isCeiling);
+		const result = adjustToCaveMap(biomeMap, caveMap, self.wx, self.wy, self.wz, self.model, &seed) orelse return;
+		const relX = self.wx - chunk.super.pos.wx;
+		const relY = self.wy - chunk.super.pos.wy;
+		self.model.generate(relX, relY, result.relZ, chunk, caveMap, biomeMap, &seed, result.isCeiling);
 	}
 };
