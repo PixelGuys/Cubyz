@@ -516,9 +516,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		for(self.connections.items) |other| {
 			if(other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
 		}
-		if(std.mem.containsAtLeastScalar(u32, main.server.settings.?.ipBanList.items, 1, conn.remoteAddress.ip)) {
-			return error.IpBanned;
-		}
 		self.connections.append(conn);
 	}
 
@@ -572,6 +569,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		if(self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
 			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
+				if(std.mem.containsAtLeastScalar(u32, main.server.settings.?.ipBanList.items, 1, source.ip)) {
+					return;
+				}
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
