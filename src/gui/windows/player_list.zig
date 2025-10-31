@@ -11,6 +11,8 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
+const ClientEntityManager = main.entity.ClientEntityManager;
+
 pub fn onOpen() void {
 	main.threadPool.performance.clear();
 }
@@ -32,9 +34,10 @@ pub fn render() void {
 	var y: f32 = 0;
 	const dy = 8;
 
-	if(main.server.world.?.allowPlayerList) {
+	if(main.server.world.?.allowPlayerList and ClientEntityManager.entities.items().len > 0) {
 		draw.print("__Player List__", .{}, 0, y, dy, .left);
-		for(main.entity.ClientEntityManager.entities.items()) |ent| {
+		y += dy;
+		for(ClientEntityManager.entities.items()) |ent| {
 			draw.print("{s}", .{ent.name}, 0, y, dy, .left);
 			y += dy;
 		}
