@@ -225,6 +225,10 @@ fn u32ToVec3(color: u32) Vec3f {
 
 /// A climate region with special ground, plants and structures.
 pub const Biome = struct { // MARK: Biome
+	pub const WaterProperties = struct {
+		waterLevel: i32,
+		waterBlock: main.blocks.Block,
+	};
 	pub const GenerationProperties = packed struct(u15) {
 		// pairs of opposite properties. In-between values are allowed.
 		hot: bool = false,
@@ -309,6 +313,7 @@ pub const Biome = struct { // MARK: Biome
 	subBiomeTotalChance: f32 = 0,
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
 	isValidPlayerSpawn: bool,
+	waterProperties: WaterProperties,
 	chance: f32,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
@@ -349,6 +354,10 @@ pub const Biome = struct { // MARK: Biome
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
+			.waterProperties = .{
+				.waterLevel = zon.get(i32, "waterLevel", 0),
+				.waterBlock = blocks.parseBlock(zon.get([]const u8, "waterBlock", "cubyz:water")),
+			},
 		};
 		if(self.minHeight > self.maxHeight) {
 			std.log.err("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
