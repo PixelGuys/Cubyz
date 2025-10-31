@@ -469,6 +469,13 @@ const Parser = struct { // MARK: Parser
 				index.* += @intCast(whitespace.len);
 				continue :outerLoop;
 			}
+			if(chars[index.*] == '/' and chars[index.* + 1] == '/') {
+				while(chars[index.*] != '\n') {
+					index.* += 1;
+				}
+				index.* += 1;
+				continue :outerLoop;
+			}
 			// Next character is no whitespace.
 			return;
 		}
@@ -789,20 +796,6 @@ const Parser = struct { // MARK: Parser
 					return parseObject(allocator, filePath, chars, index);
 				} else {
 					return parseArray(allocator, filePath, chars, index);
-				}
-			},
-			'/' => {
-				if(chars[index.* + 1] == '/') {
-					// Ignore line, it's a comment.
-					while(chars[index.*] != '\n') {
-						index.* += 1;
-					}
-					index.* += 1;
-					return .null;
-				} else {
-					printError(filePath, chars, index.*, "Possibly a malformed comment, but interpreting as null.");
-					index.* += 1;
-					return .null;
 				}
 			},
 			else => {
