@@ -24,8 +24,8 @@ topWoodBlock: u16,
 height0: u32,
 deltaHeight: u31,
 
-pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *FallenTree {
-	const self = arena.create(FallenTree);
+pub fn loadModel(parameters: ZonElement) *FallenTree {
+	const self = main.worldArena.create(FallenTree);
 	self.* = .{
 		.woodBlock = main.blocks.getTypeById(parameters.get([]const u8, "log", "cubyz:oak_log")),
 		.topWoodBlock = main.blocks.getTypeById(parameters.get([]const u8, "top", "cubyz:oak_top")),
