@@ -90,6 +90,8 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 	const size = StructureMapFragment.size*map.pos.voxelSize;
 	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, size, 32);
 	defer biomeMap.deinit();
+	const caveMap = CaveMapView.init(main.stackAllocator, map.pos, size, 32);
+	defer caveMap.deinit(main.stackAllocator);
 	const margin = 16;
 	if(map.pos.voxelSize <= 4) {
 		const blueNoise = noise.BlueNoise.getRegionData(main.stackAllocator, map.pos.wx -% margin, map.pos.wy -% margin, size + 2*margin, size + 2*margin);
@@ -108,13 +110,15 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 				var randomValue = random.nextFloat(&seed);
 				for(biome.vegetationModels) |*model| { // TODO: Could probably use an alias table here.
 					if(randomValue < model.chance) {
+						const heightFinalized = adjustToCaveMap(biomeMap, caveMap, wpx, wpy, map.pos.wz +% relZ, model, &seed) orelse break;
 						const data = map.allocator.create(SimpleStructure);
 						data.* = .{
 							.wx = wpx,
 							.wy = wpy,
-							.wz = map.pos.wz +% relZ,
+							.wz = map.pos.wz +% heightFinalized.relZ,
 							.seed = seed,
 							.model = model,
+							.isCeiling = heightFinalized.isCeiling,
 						};
 						if(model.generationMode == .water_surface) {
 							if(wpz != 0) break;
@@ -126,7 +130,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 								.generateFn = &SimpleStructure.generate,
 							},
 							.priority = model.priority,
-						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% margin -% 15}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% margin +% 15});
+						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% margin}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% margin});
 						break;
 					} else {
 						randomValue -= model.chance;
@@ -153,13 +157,15 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 					// Increase chance if there are less spawn points considered. Messes up positions, but at that distance density matters more.
 					adaptedChance = 1 - std.math.pow(f32, 1 - adaptedChance, @as(f32, @floatFromInt(map.pos.voxelSize*map.pos.voxelSize)));
 					if(randomValue < adaptedChance) {
+						const heightFinalized = adjustToCaveMap(biomeMap, caveMap, wpx, wpy, map.pos.wz +% relZ, model, &seed) orelse break;
 						const data = map.allocator.create(SimpleStructure);
 						data.* = .{
 							.wx = wpx,
 							.wy = wpy,
-							.wz = map.pos.wz +% relZ,
+							.wz = map.pos.wz +% heightFinalized.relZ,
 							.seed = seed,
 							.model = model,
+							.isCeiling = heightFinalized.isCeiling,
 						};
 						if(model.generationMode == .water_surface) data.wz = 0;
 						map.addStructure(.{
@@ -168,7 +174,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 								.generateFn = &SimpleStructure.generate,
 							},
 							.priority = model.priority,
-						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% margin -% 15}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% margin +% 15});
+						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% margin}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% margin});
 						break;
 					} else {
 						randomValue -= adaptedChance;
@@ -185,13 +191,14 @@ const SimpleStructure = struct {
 	wx: i32,
 	wy: i32,
 	wz: i32,
+	isCeiling: bool,
 
 	pub fn generate(_self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
 		const self: *const SimpleStructure = @ptrCast(@alignCast(_self));
 		var seed = self.seed;
-		const result = adjustToCaveMap(biomeMap, caveMap, self.wx, self.wy, self.wz, self.model, &seed) orelse return;
 		const relX = self.wx - chunk.super.pos.wx;
 		const relY = self.wy - chunk.super.pos.wy;
-		self.model.generate(relX, relY, result.relZ, chunk, caveMap, biomeMap, &seed, result.isCeiling);
+		const relZ = self.wz - chunk.super.pos.wz;
+		self.model.generate(relX, relY, relZ, chunk, caveMap, biomeMap, &seed, self.isCeiling);
 	}
 };
