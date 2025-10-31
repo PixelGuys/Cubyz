@@ -102,6 +102,7 @@ pub fn update() void {
 	const serverListLen = main.server.connectionManager.connections.items.len;
 	main.server.connectionManager.mutex.unlock();
 	if(needsUpdate or userList.len != serverListLen) {
+		needsUpdate = false;
 		onClose();
 		onOpen();
 	}
