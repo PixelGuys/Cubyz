@@ -105,16 +105,23 @@ pub fn onOpen() void {
 	if(!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
-	for(&main.KeyBoard.keys) |*key| {
-		const label = Label.init(.{0, 0}, 128, key.name, .left);
-		const button = if(key == selectedKey) (Button.initText(.{16, 0}, 128, "...", .{})) else (Button.initText(.{16, 0}, 128, if(editingKeyboard) key.getName() else key.getGamepadName(), .{.callback = if(editingKeyboard) &keyFunction else &gamepadFunction, .arg = @intFromPtr(key)}));
-		const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .{.callback = &unbindKey, .arg = @intFromPtr(key)});
-		const row = HorizontalList.init();
-		row.add(label);
-		row.add(button);
-		row.add(unbindBtn);
-		row.finish(.{0, 0}, .center);
-		list.add(row);
+	for(&main.KeyBoard.keys) |*entry| {
+		if(entry.* == .heading) {
+			const header = Label.init(.{0, 0}, 192, entry.heading, .center);
+			header.setFontSize(16);
+			list.add(header);
+		}
+		if(entry.* == .binding) {
+			const label = Label.init(.{0, 0}, 128, entry.binding.name, .left);
+			const button = if(&entry.binding == selectedKey) (Button.initText(.{16, 0}, 128, "...", .{})) else (Button.initText(.{16, 0}, 128, if(editingKeyboard) entry.binding.getName() else entry.binding.getGamepadName(), .{.callback = if(editingKeyboard) &keyFunction else &gamepadFunction, .arg = @intFromPtr(&entry.binding)}));
+			const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .{.callback = &unbindKey, .arg = @intFromPtr(&entry.binding)});
+			const row = HorizontalList.init();
+			row.add(label);
+			row.add(button);
+			row.add(unbindBtn);
+			row.finish(.{0, 0}, .center);
+			list.add(row);
+		}
 	}
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
