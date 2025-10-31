@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const build_options = @import("build_options");
+
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
 
@@ -350,6 +352,11 @@ fn setHotbarSlot(i: comptime_int) *const fn() void {
 		}
 	}.set;
 }
+fn dumpMemoryTraces() void {
+	if(!build_options.isTaggedRelease) {
+		heap.allocators.trackingGpa.printAllTraces();
+	}
+}
 
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
@@ -431,6 +438,8 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
+
+		.{.name = "dumpMemoryTraces", .key = c.GLFW_KEY_F12, .pressAction = &dumpMemoryTraces},
 	};
 
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
