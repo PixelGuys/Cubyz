@@ -64,6 +64,7 @@ closeable: bool = true,
 isHud: bool = false,
 
 shiftClickableInventory: ?main.items.Inventory = null,
+clickThrough: bool = false,
 
 /// Called every frame.
 renderFn: *const fn() void = &defaultFunction,
