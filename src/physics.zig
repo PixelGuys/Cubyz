@@ -8,11 +8,12 @@ const Vec2f = vec.Vec2f;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const settings = @import("settings.zig");
+const particles = @import("particles.zig");
 const Player = main.game.Player;
 const collision = main.game.collision;
 const camera = main.game.camera;
 
-const gravity = 30.0;
+pub const gravity = 30.0;
 const airTerminalVelocity = 90.0;
 const playerDensity = 1.2;
 
@@ -234,6 +235,19 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
 			if(damage > 0.01) {
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+			}
+
+			// EXAMPLE CODE!! WILL BE REMOVED BEFORE MERGING
+			if(damage > 0.000001) {
+				const spawnShape = particles.Emitter.SpawnShape{.cube = .{.size = .{0.3, 0.3, 0}}};
+				const dirMode = particles.DirectionMode.scatter;
+				const emitterProps = particles.EmitterProperties{
+					.velocity = .{2, 3},
+					.lifeTime = .{0.4, 0.7},
+					.randomizeRotation = true,
+				};
+				const emitter = particles.Emitter.init("cubyz:poof", true, spawnShape, emitterProps, dirMode);
+				emitter.spawnParticles(Player.super.pos - Vec3d{0, 0, Player.outerBoundingBoxExtent[2] - 0.2}, 20);
 			}
 
 			// Always unstuck upwards for now
