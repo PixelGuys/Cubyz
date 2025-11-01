@@ -625,7 +625,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				defer self.mutex.unlock();
 				while(i < self.connections.items.len) {
 					var conn = self.connections.items[i];
-					if(conn.hasRttEstimate and networkTimestamp() - conn.lastConnection > 5_000_000) {
+					if(conn.hasRttEstimate and networkTimestamp() - conn.lastConnection > conn.timeoutPeriod) {
 						self.mutex.unlock();
 						conn.disconnect();
 						self.mutex.lock();
@@ -1399,6 +1399,7 @@ pub const Protocols = struct {
 };
 
 pub const Connection = struct { // MARK: Connection
+
 	const maxMtu: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
@@ -1909,6 +1910,7 @@ pub const Connection = struct { // MARK: Connection
 	handShakeState: Atomic(HandShakeState) = .init(.start),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
+	timeoutPeriod: i64 = 5_000_000,
 
 	// To distinguish different connections from the same computer to avoid multiple reconnects
 	connectionIdentifier: i64,
