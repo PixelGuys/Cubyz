@@ -5,4 +5,8 @@
 	.texture_right = "cubyz:chest/pine/side",
 	.texture_top = "cubyz:chest/pine/top",
 	.texture_bottom = "cubyz:chest/pine/bottom",
+	.texture6 = "cubyz:chest/pine/inside_body",
+	.texture7 = "cubyz:chest/pine/inside_lid",
+	.texture8 = "cubyz:chest/pine/front_open",
+	.texture9 = "cubyz:chest/pine/latch",
 }

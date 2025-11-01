@@ -5,4 +5,8 @@
 	.texture_right = "cubyz:chest/mahogany/side",
 	.texture_top = "cubyz:chest/mahogany/top",
 	.texture_bottom = "cubyz:chest/mahogany/bottom",
+	.texture6 = "cubyz:chest/mahogany/inside_body",
+	.texture7 = "cubyz:chest/mahogany/inside_lid",
+	.texture8 = "cubyz:chest/mahogany/front_open",
+	.texture9 = "cubyz:chest/mahogany/latch",
 }

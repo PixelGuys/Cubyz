@@ -1219,7 +1219,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		baseChunk.mutex.lock();
 		defer baseChunk.mutex.unlock();
 
-		if(currentBlock != _newBlock) {
+		if(currentBlock.typ != _newBlock.typ) {
 			if(currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
 				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
 			};
