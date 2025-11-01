@@ -625,6 +625,11 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				defer self.mutex.unlock();
 				while(i < self.connections.items.len) {
 					var conn = self.connections.items[i];
+					if(conn.hasRttEstimate and networkTimestamp() - conn.lastConnection > conn.timeoutPeriod) {
+						self.mutex.unlock();
+						conn.disconnect();
+						self.mutex.lock();
+					}
 					self.mutex.unlock();
 					conn.processNextPackets();
 					self.mutex.lock();
@@ -1903,6 +1908,7 @@ pub const Connection = struct { // MARK: Connection
 	handShakeState: Atomic(HandShakeState) = .init(.start),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
+	timeoutPeriod: i64 = 5_000_000,
 
 	// To distinguish different connections from the same computer to avoid multiple reconnects
 	connectionIdentifier: i64,
