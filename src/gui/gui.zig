@@ -701,7 +701,8 @@ pub const inventory = struct { // MARK: inventory
 							return;
 						}
 					}
-					if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null or std.meta.eql(itemSlot.inventory.getItem(itemSlot.itemSlot), carried.getItem(0))) {
+					const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
+					if(item == null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.?.stackSize()) {
 						leftClickSlots.append(itemSlot);
 					}
 				}
