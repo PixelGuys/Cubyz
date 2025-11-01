@@ -651,6 +651,7 @@ pub fn main() void { // MARK: main()
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
+				server.kickPlayers(.serverStopped);
 				world.deinit();
 				game.world = null;
 			}
