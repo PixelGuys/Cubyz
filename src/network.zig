@@ -630,7 +630,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 						conn.disconnect();
 						self.mutex.lock();
 					}
-
 					self.mutex.unlock();
 					conn.processNextPackets();
 					self.mutex.lock();
@@ -1399,7 +1398,6 @@ pub const Protocols = struct {
 };
 
 pub const Connection = struct { // MARK: Connection
-
 	const maxMtu: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
