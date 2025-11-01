@@ -280,11 +280,8 @@ pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: 
 			.tool => |tool| {
 				const tags = tool.type.blockTags();
 				for(tags) |tag| {
-					switch(tag) {
-						.chiselable => {
-							return closestRay(.intersection, block, relativePlayerPos, playerDir);
-						},
-						else => {},
+					if(tag == .chiselable) {
+						return closestRay(.intersection, block, relativePlayerPos, playerDir);
 					}
 				}
 			},
@@ -299,13 +296,10 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 		switch(_item) {
 			.tool => |tool| {
 				for(tool.type.blockTags()) |tag| {
-					switch(tag) {
-						.chiselable => {
-							currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
-							if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
-							return;
-						},
-						else => {},
+					if(tag == .chiselable) {
+						currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
+						if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
+						return;
 					}
 				}
 			},
@@ -325,5 +319,5 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 }
 
 pub fn getBlockTags() []const Tag {
-	return &.{Tag.chiselable};
+	return &.{.chiselable};
 }
