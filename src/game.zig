@@ -403,11 +403,26 @@ pub const DamageType = enum(u8) {
 };
 
 pub const Player = struct { // MARK: Player
+	pub const EyeData = struct {
+		pos: Vec3d,
+		vel: Vec3d,
+		coyote: f64,
+		step: @Vector(3, bool),
+		box: collision.Box,
+		desiredPos: Vec3d,
+	};
 	pub var super: main.server.Entity = .{};
-	pub var eyePos: Vec3d = .{0, 0, 0};
-	pub var eyeVel: Vec3d = .{0, 0, 0};
-	pub var eyeCoyote: f64 = 0;
-	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
+	pub var eyeData: EyeData = .{
+		.pos = .{0, 0, 0},
+		.vel = .{0, 0, 0},
+		.coyote = 0,
+		.step = .{false, false, false},
+		.box = .{
+			.min = -Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.6},
+			.max = Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
+		},
+		.desiredPos = .{0, 0, 1.7 - standingBoundingBoxExtent[2]},
+	};
 	pub var crouching: bool = false;
 	pub var id: u32 = 0;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
@@ -441,11 +456,6 @@ pub const Player = struct { // MARK: Player
 		.min = -standingBoundingBoxExtent,
 		.max = standingBoundingBoxExtent,
 	};
-	pub var eyeBox: collision.Box = .{
-		.min = -Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.6},
-		.max = Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
-	};
-	pub var desiredEyePos: Vec3d = .{0, 0, 1.7 - standingBoundingBoxExtent[2]};
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) void {
@@ -473,19 +483,19 @@ pub const Player = struct { // MARK: Player
 	pub fn getEyePosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return eyePos + super.pos + desiredEyePos;
+		return eyeData.pos + super.pos + eyeData.desiredPos;
 	}
 
 	pub fn getEyeVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return eyeVel;
+		return eyeData.vel;
 	}
 
 	pub fn getEyeCoyoteBlocking() f64 {
 		mutex.lock();
 		defer mutex.unlock();
-		return eyeCoyote;
+		return eyeData.coyote;
 	}
 
 	pub fn getJumpCoyoteBlocking() f64 {
@@ -544,11 +554,11 @@ pub const Player = struct { // MARK: Player
 		Player.super.health = Player.super.maxHealth;
 		Player.super.energy = Player.super.maxEnergy;
 
-		Player.eyePos = .{0, 0, 0};
-		Player.eyeVel = .{0, 0, 0};
-		Player.eyeCoyote = 0;
+		Player.eyeData.pos = .{0, 0, 0};
+		Player.eyeData.vel = .{0, 0, 0};
+		Player.eyeData.coyote = 0;
+		Player.eyeData.step = .{false, false, false};
 		Player.jumpCoyote = 0;
-		Player.eyeStep = .{false, false, false};
 	}
 
 	pub fn breakBlock(deltaTime: f64) void {
@@ -875,7 +885,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				jumping = true;
 				Player.jumpCooldown = Player.jumpCooldownConstant;
 				if(!Player.onGround) {
-					Player.eyeCoyote = 0;
+					Player.eyeData.coyote = 0;
 				}
 				Player.jumpCoyote = 0;
 			} else if(!KeyBoard.key("fall").pressed) {
@@ -952,11 +962,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			.min = -Player.outerBoundingBoxExtent,
 			.max = Player.outerBoundingBoxExtent,
 		};
-		Player.eyeBox = .{
+		Player.eyeData.box = .{
 			.min = -Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.2},
 			.max = Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.05},
 		};
-		Player.desiredEyePos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
+		Player.eyeData.desiredPos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 	}
 
 	physics.update(deltaTime, acc, jumping);
