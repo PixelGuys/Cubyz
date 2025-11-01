@@ -6,6 +6,7 @@
 	.chance = 0.04,
 
 	.caves = -0.015,
+	.zWeight = -0.75,
 
 	.music = "cubyz:la_kubisa_caverna",
 	.ground_structure = .{
