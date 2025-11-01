@@ -260,7 +260,6 @@ pub const BlockEntityTypes = struct {
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
-			main.gui.openWindow("inventory");
 			main.Window.setMouseGrabbed(false);
 
 			return .handled;

@@ -289,7 +289,6 @@ fn ungrabMouse() void {
 fn openInventory() void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
-	gui.openWindow("inventory");
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;

@@ -129,7 +129,6 @@ pub fn onOpen() void {
 	}
 
 	openInventory();
-	main.gui.openWindow("inventory");
 }
 
 pub fn onClose() void {
