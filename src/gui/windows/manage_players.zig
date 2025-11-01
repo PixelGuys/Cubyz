@@ -22,12 +22,30 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
 
+pub var needsUpdate: bool = false;
+
 fn kick(conn: *main.network.Connection) void {
 	conn.disconnect();
 }
 
+fn ipBan(conn: *main.network.Connection) void {
+	const ip = conn.remoteAddress.ip;
+	main.server.settings.?.ipBanList.append(ip);
+	conn.disconnect();
+	needsUpdate = true;
+}
+
+// u32 in a pointer costume
+fn unBan(ip_: usize) void {
+	var bannedIps = &main.server.settings.?.ipBanList;
+	const ip: u32 = @intCast(ip_);
+	const removed = bannedIps.swapRemove(std.mem.indexOfScalar(u32, bannedIps.items, ip).?);
+	std.debug.assert(removed == ip);
+	needsUpdate = true;
+}
+
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	{
 		main.server.connectionManager.mutex.lock();
 		defer main.server.connectionManager.mutex.unlock();
@@ -46,7 +64,20 @@ pub fn onOpen() void {
 				row.add(Label.init(.{0, 0}, 200, ip, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Cancel", .{.callback = @ptrCast(&kick), .arg = @intFromPtr(connection)}));
 			}
+			row.add(Button.initText(.{0, 0}, 100, "Ip Ban", .{.callback = @ptrCast(&ipBan), .arg = @intFromPtr(connection)}));
 			list.add(row);
+		}
+		const bannedIps = main.server.settings.?.ipBanList.items;
+		if(bannedIps.len > 0) {
+			list.add(Label.init(.{0, 0}, 200, "Banned IPs", .left));
+			for(bannedIps) |ip| {
+				const ipText = std.fmt.allocPrint(main.stackAllocator.allocator, "{}.{}.{}.{}", .{ip & 255, ip >> 8 & 255, ip >> 16 & 255, ip >> 24}) catch unreachable;
+				defer main.stackAllocator.free(ipText);
+				const row = HorizontalList.init();
+				row.add(Label.init(.{0, 0}, 200, ipText, .left));
+				row.add(Button.initText(.{0, 0}, 100, "Unban", .{.callback = @ptrCast(&unBan), .arg = @intCast(ip)}));
+				list.add(row);
+			}
 		}
 	}
 	list.finish(.center);
@@ -70,7 +101,8 @@ pub fn update() void {
 	main.server.connectionManager.mutex.lock();
 	const serverListLen = main.server.connectionManager.connections.items.len;
 	main.server.connectionManager.mutex.unlock();
-	if(userList.len != serverListLen) {
+	if(needsUpdate or userList.len != serverListLen) {
+		needsUpdate = false;
 		onClose();
 		onOpen();
 	}

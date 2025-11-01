@@ -18,6 +18,7 @@ const Blueprint = main.blueprint.Blueprint;
 const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
+const ZonElement = main.ZonElement;
 
 pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
@@ -287,10 +288,41 @@ pub const User = struct { // MARK: User
 	}
 };
 
+pub const Settings = struct {
+	ipBanList: main.List(u32),
+
+	fn toZon(self: @This()) ZonElement {
+		const data = ZonElement.initObject(main.stackAllocator);
+		const arr = ZonElement.initArray(main.stackAllocator);
+		for(self.ipBanList.items) |ip| {
+			arr.append(ip);
+		}
+		data.put("ipBanList", arr);
+		return data;
+	}
+
+	fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement) @This() {
+		const arrayZon = zon.getChild("ipBanList").toSlice();
+		var self: @This() = .{
+			.ipBanList = .initCapacity(allocator, arrayZon.len),
+		};
+		for(arrayZon) |elem| {
+			self.ipBanList.append(elem.as(u32, 0));
+		}
+		return self;
+	}
+
+	fn deinit(self: *@This()) void {
+		self.ipBanList.deinit();
+		self.* = undefined;
+	}
+};
+
 pub const updatesPerSec: u32 = 20;
 const updateNanoTime: u32 = 1000000000/20;
 
 pub var world: ?*ServerWorld = null;
+pub var settings: ?Settings = null;
 var userMutex: std.Thread.Mutex = .{};
 var users: main.List(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
@@ -306,6 +338,7 @@ pub var thread: ?std.Thread = null;
 fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
+	std.debug.assert(settings == null);
 	command.init();
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
@@ -322,6 +355,12 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
+
+	const settingsZon = world.?.wio.dir.readToZon(main.stackAllocator, "server.zig.zon") catch .null;
+	defer settingsZon.deinit(main.stackAllocator);
+
+	settings = Settings.fromZon(main.stackAllocator, settingsZon);
+
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
@@ -351,10 +390,17 @@ fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
 
-	if(world) |_world| {
-		_world.deinit();
+	if(world) |world_| {
+		const zon = settings.?.toZon();
+		defer zon.deinit(main.stackAllocator);
+		settings.?.deinit();
+		world_.wio.dir.writeZon("server.zig.zon", zon) catch |err| {
+			std.log.err("Error while saving the server settings: {s}", .{@errorName(err)});
+		};
+		world_.deinit();
 	}
 	world = null;
+	settings = null;
 
 	main.items.Inventory.Sync.ServerSide.deinit();
 
@@ -382,7 +428,7 @@ pub fn freeUserListAndDecreaseRefCount(allocator: main.heap.NeverFailingAllocato
 fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 	// Send the entity updates:
 	var initialList: []const u8 = undefined;
-	const list = main.ZonElement.initArray(main.stackAllocator);
+	const list = ZonElement.initArray(main.stackAllocator);
 	defer list.deinit(main.stackAllocator);
 	list.array.append(.null);
 	const itemDropList = world.?.itemDropManager.getInitialList(main.stackAllocator);
@@ -490,7 +536,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.
-	const zonArray = main.ZonElement.initArray(main.stackAllocator);
+	const zonArray = ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
 	zonArray.array.append(.{.int = user.id});
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -521,9 +567,9 @@ pub fn connectInternal(user: *User) void {
 	}
 	// Let the other clients know about this new one.
 	{
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		const entityZon = main.ZonElement.initObject(main.stackAllocator);
+		const entityZon = ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", user.id);
 		entityZon.put("name", user.name);
 		zonArray.array.append(entityZon);
@@ -534,10 +580,10 @@ pub fn connectInternal(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		for(userList) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
+			const entityZon = ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
 			entityZon.put("name", other.name);
 			zonArray.array.append(entityZon);
