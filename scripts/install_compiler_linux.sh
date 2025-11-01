@@ -40,13 +40,21 @@ touch compiler/version.txt
 
 CURRENT_VERSION=$(< compiler/version.txt)
 
+download () {
+	if [ "$OS" = macos ]; then
+		curl -o $1 -f -L $2
+	else
+		wget -O $1 $2
+	fi
+}
+
 if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
 	echo "Your Zig is the wrong version."
 	echo "Deleting current Zig installation..."
 	rm -r compiler/zig
 	mkdir compiler/zig
 	echo "Downloading $VERSION..."
-	wget -O compiler/archive.tar.xz https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/$BASE_VERSION/"$VERSION".tar.xz
+	download compiler/archive.tar.xz https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/$BASE_VERSION/"$VERSION".tar.xz
 	if [ $? != 0 ]
 	then
 		echo "Failed to download the Zig compiler."

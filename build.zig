@@ -51,6 +51,19 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
 
+	// NOTE(blackedout): Copy MoltenVK binary and JSON manifest file from the dependencies to the executable
+	if(t.os.tag == .macos) {
+		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/libMoltenVK.dylib");
+		const moltenVkJsonInstall = b.addInstallFile(subPath.path(b, "MoltenVK_icd.json"), "bin/MoltenVK_icd.json");
+		exe.step.dependOn(&moltenVkLibInstall.step);
+		exe.step.dependOn(&moltenVkJsonInstall.step);
+
+		const validationLayerLibInstall = b.addInstallFile(subPath.path(b, "libVkLayer_khronos_validation.dylib"), "bin/libVkLayer_khronos_validation.dylib");
+		const validationLayerJsonInstall = b.addInstallFile(subPath.path(b, "VkLayer_khronos_validation.json"), "bin/VkLayer_khronos_validation.json");
+		exe.step.dependOn(&validationLayerLibInstall.step);
+		exe.step.dependOn(&validationLayerJsonInstall.step);
+	}
+
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("crypt32");
 		exe.linkSystemLibrary("gdi32");
