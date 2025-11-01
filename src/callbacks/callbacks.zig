@@ -21,7 +21,7 @@ pub fn init() void {
 fn Callback(_Params: type, list: type) type {
 	return struct {
 		data: *anyopaque,
-		runFunction: *const fn(self: *anyopaque, params: Params) Result,
+		inner: *const fn(self: *anyopaque, params: Params) Result,
 
 		pub const Params = _Params;
 
@@ -53,13 +53,13 @@ fn Callback(_Params: type, list: type) type {
 			};
 			return .{
 				.data = vtable.init(zon) orelse return null,
-				.runFunction = vtable.run,
+				.inner = vtable.run,
 			};
 		}
 
 		pub const noop: @This() = .{
 			.data = undefined,
-			.runFunction = &noopCallback,
+			.inner = &noopCallback,
 		};
 
 		fn noopCallback(_: *anyopaque, _: Params) Result {
@@ -67,11 +67,11 @@ fn Callback(_Params: type, list: type) type {
 		}
 
 		pub fn run(self: @This(), params: Params) Result {
-			return self.runFunction(self.data, params);
+			return self.inner(self.data, params);
 		}
 
 		pub fn isNoop(self: @This()) bool {
-			return self.runFunction == &noopCallback;
+			return self.inner == &noopCallback;
 		}
 	};
 }
