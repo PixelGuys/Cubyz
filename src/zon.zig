@@ -449,7 +449,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn parseFromString(allocator: NeverFailingAllocator, filePath: ?[]const u8, string: []const u8) ZonElement {
 		var index: u32 = 0;
-		Parser.skipWhitespaces(string, &index);
+		Parser.skipWhitespaceAndComments(string, &index);
 		return Parser.parseElement(allocator, filePath, string, &index);
 	}
 };
@@ -458,7 +458,7 @@ const Parser = struct { // MARK: Parser
 	/// All whitespaces from unicode 14.
 	const whitespaces = [_][]const u8{"\u{0009}", "\u{000A}", "\u{000B}", "\u{000C}", "\u{000D}", "\u{0020}", "\u{0085}", "\u{00A0}", "\u{1680}", "\u{2000}", "\u{2001}", "\u{2002}", "\u{2003}", "\u{2004}", "\u{2005}", "\u{2006}", "\u{2007}", "\u{2008}", "\u{2009}", "\u{200A}", "\u{2028}", "\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}"};
 
-	fn skipWhitespaces(chars: []const u8, index: *u32) void {
+	fn skipWhitespaceAndComments(chars: []const u8, index: *u32) void {
 		outerLoop: while(index.* < chars.len) {
 			whitespaceLoop: for(whitespaces) |whitespace| {
 				for(whitespace, 0..) |char, i| {
@@ -467,6 +467,13 @@ const Parser = struct { // MARK: Parser
 					}
 				}
 				index.* += @intCast(whitespace.len);
+				continue :outerLoop;
+			}
+			if(chars[index.*] == '/' and chars[index.* + 1] == '/') {
+				while(chars[index.*] != '\n') {
+					index.* += 1;
+				}
+				index.* += 1;
 				continue :outerLoop;
 			}
 			// Next character is no whitespace.
@@ -615,14 +622,14 @@ const Parser = struct { // MARK: Parser
 		const list = allocator.create(List(ZonElement));
 		list.* = .init(allocator);
 		while(index.* < chars.len) {
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			if(index.* >= chars.len) break;
 			if(chars[index.*] == '}') {
 				index.* += 1;
 				return .{.array = list};
 			}
 			list.append(parseElement(allocator, filePath, chars, index));
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			if(index.* < chars.len and chars[index.*] == ',') {
 				index.* += 1;
 			}
@@ -635,7 +642,7 @@ const Parser = struct { // MARK: Parser
 		const map = allocator.create(std.StringHashMap(ZonElement));
 		map.* = .init(allocator.allocator);
 		while(index.* < chars.len) {
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			if(index.* >= chars.len) break;
 			if(chars[index.*] == '}') {
 				index.* += 1;
@@ -644,20 +651,20 @@ const Parser = struct { // MARK: Parser
 			if(chars[index.*] == '.') index.* += 1; // Just ignoring the dot in front of identifiers, the file might as well not have for all I care.
 			const keyIndex = index.*;
 			const key: []const u8 = parseIdentifierOrStringOrEnumLiteral(allocator, chars, index);
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			while(index.* < chars.len and chars[index.*] != '=') {
 				printError(filePath, chars, index.*, "Unexpected character in object parsing, expected '='.");
 				index.* += 1;
 			}
 			index.* += 1;
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			const value: ZonElement = parseElement(allocator, filePath, chars, index);
 			if(map.fetchPut(key, value) catch unreachable) |old| {
 				printError(filePath, chars, keyIndex, "Duplicate key.");
 				allocator.free(old.key);
 				old.value.deinit(allocator);
 			}
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			if(index.* < chars.len and chars[index.*] == ',') {
 				index.* += 1;
 			}
@@ -767,7 +774,7 @@ const Parser = struct { // MARK: Parser
 			},
 			'{' => {
 				index.* += 1;
-				skipWhitespaces(chars, index);
+				skipWhitespaceAndComments(chars, index);
 				var foundEqualSign: bool = false;
 				var i: usize = index.*;
 				while(i < chars.len) : (i += 1) {
@@ -804,31 +811,35 @@ const Parser = struct { // MARK: Parser
 // MARK: Testing
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
-test "skipWhitespaces" {
+test "skipWhitespaceAndComments" {
 	var index: u32 = 0;
 	var testString: []const u8 = "  fbdn  ";
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 2);
 	testString = "\nĦŊ@Λħŋ";
 	index = 0;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 1);
 	testString = "\tβρδ→øβν";
 	index = 0;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 1);
 	testString = "\t  \n \t  a lot of whitespaces";
 	index = 0;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 8);
 	testString = " unicode whitespace";
 	index = 0;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 3);
 	testString = "starting     in the middle";
 	index = 8;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 13);
+	testString = "// this should all get skipped\nBut Not this";
+	index = 0;
+	Parser.skipWhitespaceAndComments(testString, &index);
+	try std.testing.expectEqual(index, 31);
 }
 
 test "number parsing" {

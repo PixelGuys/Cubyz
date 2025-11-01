@@ -527,6 +527,9 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
+	block_entity.init();
+	defer block_entity.deinit();
+
 	blocks.tickFunctions = .init();
 	defer blocks.tickFunctions.deinit();
 
@@ -547,41 +550,6 @@ pub fn main() void { // MARK: main()
 	defer server.terrain.globalDeinit();
 
 	if(settings.launchConfig.headlessServer) {
-		block_entity.init();
-		defer block_entity.deinit();
-
-		settings.playerName = "serverDummy";
-		const allocator = std.heap.page_allocator;
-		const world_dir_result = std.fs.path.join(
-			allocator,
-			&.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.autoEnterWorld},
-		) catch |err| {
-			std.log.err("Could not join path: {s}", .{@errorName(err)});
-			return;
-		};
-		const world_dir = world_dir_result;
-		defer allocator.free(world_dir);
-		var world_found = true;
-		std.fs.cwd().access(world_dir, .{}) catch |e| switch(e) {
-			error.FileNotFound => world_found = false,
-			else => return,
-		};
-		if(!world_found) {
-			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.autoCreateWorldConfig) catch |e| switch(e) {
-				else => return,
-			};
-		}
-		const savesDir = std.fs.path.join(allocator, &.{settings.launchConfig.cubyzDir, "saves"}) catch |e| switch(e) {
-			else => return,
-		};
-		defer allocator.free(savesDir);
-		_ = std.fs.cwd().makeDir(savesDir) catch {};
-
-		const assetsDir = std.fs.path.join(allocator, &.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.autoEnterWorld, "assets"}) catch |e| switch(e) {
-			else => return,
-		};
-		defer allocator.free(assetsDir);
-		_ = std.fs.cwd().makePath(assetsDir) catch {};
 		server.start(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		Window.init();
@@ -611,9 +579,6 @@ pub fn main() void { // MARK: main()
 		particles.ParticleManager.init();
 		defer particles.ParticleManager.deinit();
 
-		block_entity.init();
-		defer block_entity.deinit();
-
 		if(settings.playerName.len == 0) {
 			gui.openWindow("change_name");
 		} else {
@@ -624,9 +589,9 @@ pub fn main() void { // MARK: main()
 		Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 		var lastBeginRendering = std.time.nanoTimestamp();
 
-		if(settings.developerAutoEnterWorld.len != 0) {
+		if(settings.launchConfig.autoEnterWorld.len != 0) {
 			// Speed up the dev process by entering the world directly.
-			gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
+			gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 		}
 
 		audio.setMusic("cubyz:cubyz");
