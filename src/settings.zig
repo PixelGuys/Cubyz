@@ -100,13 +100,15 @@ pub fn init() void {
 
 	// keyboard settings:
 	const keyboard = zon.getChild("keyboard");
-	for(&main.KeyBoard.keys) |*key| {
-		const keyZon = keyboard.getChild(key.name);
-		key.key = keyZon.get(c_int, "key", key.key);
-		key.mouseButton = keyZon.get(c_int, "mouseButton", key.mouseButton);
-		key.scancode = keyZon.get(c_int, "scancode", key.scancode);
-		if(key.isToggling != .never) {
-			key.isToggling = std.meta.stringToEnum(Window.Key.IsToggling, keyZon.get([]const u8, "isToggling", "")) orelse key.isToggling;
+	for(&main.KeyBoard.keys) |*entry| {
+		if(entry.* == .binding) {
+			const keyZon = keyboard.getChild(entry.binding.name);
+			entry.binding.key = keyZon.get(c_int, "key", entry.binding.key);
+			entry.binding.mouseButton = keyZon.get(c_int, "mouseButton", entry.binding.mouseButton);
+			entry.binding.scancode = keyZon.get(c_int, "scancode", entry.binding.scancode);
+			if(entry.binding.isToggling != .never) {
+				entry.binding.isToggling = std.meta.stringToEnum(Window.Key.IsToggling, keyZon.get([]const u8, "isToggling", "")) orelse entry.binding.isToggling;
+			}
 		}
 	}
 }
@@ -156,15 +158,17 @@ pub fn save() void {
 
 	// keyboard settings:
 	const keyboard = ZonElement.initObject(main.stackAllocator);
-	for(&main.KeyBoard.keys) |key| {
-		const keyZon = ZonElement.initObject(main.stackAllocator);
-		keyZon.put("key", key.key);
-		keyZon.put("mouseButton", key.mouseButton);
-		keyZon.put("scancode", key.scancode);
-		if(key.isToggling != .never) {
-			keyZon.put("isToggling", @tagName(key.isToggling));
+	for(&main.KeyBoard.keys) |entry| {
+		if(entry == .binding) {
+			const keyZon = ZonElement.initObject(main.stackAllocator);
+			keyZon.put("key", entry.binding.key);
+			keyZon.put("mouseButton", entry.binding.mouseButton);
+			keyZon.put("scancode", entry.binding.scancode);
+			if(entry.binding.isToggling != .never) {
+				keyZon.put("isToggling", @tagName(entry.binding.isToggling));
+			}
+			keyboard.put(entry.binding.name, keyZon);
 		}
-		keyboard.put(key.name, keyZon);
 	}
 	zonObject.put("keyboard", keyboard);
 

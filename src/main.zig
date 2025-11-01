@@ -353,90 +353,102 @@ fn setHotbarSlot(i: comptime_int) *const fn() void {
 
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
-	pub var keys = [_]Window.Key{
-		// Gameplay:
-		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
-		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
-		.{.name = "backward", .key = c.GLFW_KEY_S, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
-		.{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
-		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB, .isToggling = .no},
-		.{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
-		.{.name = "crouch", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
-		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
-		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
-		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
-		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
-		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
-		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
-		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
-		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
 
-		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
-		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
-
-		// Gui:
-		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B},
-		.{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &openInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
-		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .pressAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
-		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
-		.{.name = "openCommand", .key = c.GLFW_KEY_SLASH, .releaseAction = &openCommand},
-		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A, .notifyRequirement = .inMenu},
-		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y, .notifyRequirement = .inMenu},
-		// gamepad gui.
-		.{.name = "scrollUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = false}},
-		.{.name = "scrollDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
-		.{.name = "uiUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
-		.{.name = "uiLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
-		.{.name = "uiDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
-		.{.name = "uiRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
-		// text:
-		.{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
-		.{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
-		.{.name = "textCursorDown", .key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down},
-		.{.name = "textCursorUp", .key = c.GLFW_KEY_UP, .repeatAction = &gui.textCallbacks.up},
-		.{.name = "textGotoStart", .key = c.GLFW_KEY_HOME, .repeatAction = &gui.textCallbacks.gotoStart},
-		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
-		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
-		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = .{.control = true}},
-		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = .{.control = true}},
-		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = .{.control = true}},
-		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = .{.control = true}},
-		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
-
-		// Hotbar shortcuts:
-		.{.name = "Hotbar 1", .key = c.GLFW_KEY_1, .pressAction = setHotbarSlot(1)},
-		.{.name = "Hotbar 2", .key = c.GLFW_KEY_2, .pressAction = setHotbarSlot(2)},
-		.{.name = "Hotbar 3", .key = c.GLFW_KEY_3, .pressAction = setHotbarSlot(3)},
-		.{.name = "Hotbar 4", .key = c.GLFW_KEY_4, .pressAction = setHotbarSlot(4)},
-		.{.name = "Hotbar 5", .key = c.GLFW_KEY_5, .pressAction = setHotbarSlot(5)},
-		.{.name = "Hotbar 6", .key = c.GLFW_KEY_6, .pressAction = setHotbarSlot(6)},
-		.{.name = "Hotbar 7", .key = c.GLFW_KEY_7, .pressAction = setHotbarSlot(7)},
-		.{.name = "Hotbar 8", .key = c.GLFW_KEY_8, .pressAction = setHotbarSlot(8)},
-		.{.name = "Hotbar 9", .key = c.GLFW_KEY_9, .pressAction = setHotbarSlot(9)},
-		.{.name = "Hotbar 10", .key = c.GLFW_KEY_0, .pressAction = setHotbarSlot(10)},
-		.{.name = "Hotbar 11", .key = c.GLFW_KEY_MINUS, .pressAction = setHotbarSlot(11)},
-		.{.name = "Hotbar 12", .key = c.GLFW_KEY_EQUAL, .pressAction = setHotbarSlot(12)},
-		.{.name = "Hotbar left", .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_BUMPER, .pressAction = cycleHotbarSlot(-1)},
-		.{.name = "Hotbar right", .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, .pressAction = cycleHotbarSlot(1)},
-		.{.name = "cameraLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_X, .positive = false}},
-		.{.name = "cameraRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_X, .positive = true}},
-		.{.name = "cameraUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = false}},
-		.{.name = "cameraDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
-		// debug:
-		.{.name = "hideMenu", .key = c.GLFW_KEY_F1, .pressAction = &toggleHideGui},
-		.{.name = "hideDisplayItem", .key = c.GLFW_KEY_F2, .pressAction = &toggleHideDisplayItem},
-		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .pressAction = &toggleDebugOverlay},
-		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .pressAction = &togglePerformanceOverlay},
-		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
-		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
-		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
+	const MenuEntry = union(enum) {
+		heading: []const u8,
+		binding: Window.Key,
 	};
 
-	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
-		for(&keys) |*_key| {
-			if(std.mem.eql(u8, name, _key.name)) {
-				return _key;
+	pub var keys = [_]MenuEntry {
+		.{.heading = "Display"},
+		.{.binding = .{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen}},
+		.{.binding = .{.name = "hideGui", .key = c.GLFW_KEY_F1, .pressAction = &toggleHideGui}},
+		.{.binding = .{.name = "hideDisplayItem", .key = c.GLFW_KEY_F2, .pressAction = &toggleHideDisplayItem}},
+		.{.binding = .{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn}},
+
+		.{.heading = "Gameplay"},
+		.{.binding = .{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}}},
+		.{.binding = .{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}}},
+		.{.binding = .{.name = "backward", .key = c.GLFW_KEY_S, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}}},
+		.{.binding = .{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}}},
+		.{.binding = .{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A}},
+		.{.binding = .{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB, .isToggling = .no}},
+		.{.binding = .{.name = "crouch", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB}},
+		.{.binding = .{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame}},
+		.{.binding = .{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame}},
+		.{.binding = .{.name = "cameraUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = false}}},
+		.{.binding = .{.name = "cameraDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}}},
+		.{.binding = .{.name = "cameraLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_X, .positive = false}}},
+		.{.binding = .{.name = "cameraRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_X, .positive = true}}},
+
+		.{.heading = "Creative"},
+		.{.binding = .{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle}},
+		.{.binding = .{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle}},
+		.{.binding = .{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle}},
+		.{.binding = .{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB}},
+		.{.binding = .{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB}},
+		.{.binding = .{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame}},
+
+		.{.heading = "Hotbar"},
+		.{.binding = .{.name = "Hotbar 1", .key = c.GLFW_KEY_1, .pressAction = setHotbarSlot(1)}},
+		.{.binding = .{.name = "Hotbar 2", .key = c.GLFW_KEY_2, .pressAction = setHotbarSlot(2)}},
+		.{.binding = .{.name = "Hotbar 3", .key = c.GLFW_KEY_3, .pressAction = setHotbarSlot(3)}},
+		.{.binding = .{.name = "Hotbar 4", .key = c.GLFW_KEY_4, .pressAction = setHotbarSlot(4)}},
+		.{.binding = .{.name = "Hotbar 5", .key = c.GLFW_KEY_5, .pressAction = setHotbarSlot(5)}},
+		.{.binding = .{.name = "Hotbar 6", .key = c.GLFW_KEY_6, .pressAction = setHotbarSlot(6)}},
+		.{.binding = .{.name = "Hotbar 7", .key = c.GLFW_KEY_7, .pressAction = setHotbarSlot(7)}},
+		.{.binding = .{.name = "Hotbar 8", .key = c.GLFW_KEY_8, .pressAction = setHotbarSlot(8)}},
+		.{.binding = .{.name = "Hotbar 9", .key = c.GLFW_KEY_9, .pressAction = setHotbarSlot(9)}},
+		.{.binding = .{.name = "Hotbar 10", .key = c.GLFW_KEY_0, .pressAction = setHotbarSlot(10)}},
+		.{.binding = .{.name = "Hotbar 11", .key = c.GLFW_KEY_MINUS, .pressAction = setHotbarSlot(11)}},
+		.{.binding = .{.name = "Hotbar 12", .key = c.GLFW_KEY_EQUAL, .pressAction = setHotbarSlot(12)}},
+		.{.binding = .{.name = "Hotbar left", .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_BUMPER, .pressAction = cycleHotbarSlot(-1)}},
+		.{.binding = .{.name = "Hotbar right", .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, .pressAction = cycleHotbarSlot(1)}},
+
+		.{.heading = "GUI"},
+		.{.binding = .{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B}},
+		.{.binding = .{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &openInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X}},
+		.{.binding = .{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .pressAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y}},
+		.{.binding = .{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat}},
+		.{.binding = .{.name = "openCommand", .key = c.GLFW_KEY_SLASH, .releaseAction = &openCommand}},
+		.{.binding = .{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A, .notifyRequirement = .inMenu}},
+		.{.binding = .{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y, .notifyRequirement = .inMenu}},
+		.{.binding = .{.name = "scrollUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = false}}},
+		.{.binding = .{.name = "scrollDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}}},
+		.{.binding = .{.name = "uiUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}}},
+		.{.binding = .{.name = "uiDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}}},
+		.{.binding = .{.name = "uiLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}}},
+		.{.binding = .{.name = "uiRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}}},
+
+		.{.heading = "Text"},
+		.{.binding = .{.name = "textCursorUp", .key = c.GLFW_KEY_UP, .repeatAction = &gui.textCallbacks.up}},
+		.{.binding = .{.name = "textCursorDown", .key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down}},
+		.{.binding = .{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left}},
+		.{.binding = .{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right}},
+		.{.binding = .{.name = "textGotoStart", .key = c.GLFW_KEY_HOME, .repeatAction = &gui.textCallbacks.gotoStart}},
+		.{.binding = .{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd}},
+		.{.binding = .{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft}},
+		.{.binding = .{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight}},
+		.{.binding = .{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = .{.control = true}}},
+		.{.binding = .{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = .{.control = true}}},
+		.{.binding = .{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = .{.control = true}}},
+		.{.binding = .{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = .{.control = true}}},
+		.{.binding = .{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline}},
+
+		.{.heading = "Debug"},
+		.{.binding = .{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .pressAction = &toggleDebugOverlay}},
+		.{.binding = .{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .pressAction = &togglePerformanceOverlay}},
+		.{.binding = .{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay}},
+		.{.binding = .{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay}},
+		.{.binding = .{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay}},
+	};
+
+	fn findKey(name: []const u8) ?*Window.Key {
+		for(&keys) |*_entry| {
+			if(_entry.* == .binding) {
+				if(std.mem.eql(u8, name, _entry.binding.name)) {
+					return &_entry.binding;
+				}
 			}
 		}
 		return null;

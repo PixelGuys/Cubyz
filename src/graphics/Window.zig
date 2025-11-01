@@ -79,33 +79,36 @@ pub const Gamepad = struct {
 				}
 			}
 			const isGrabbed = grabbed;
-			for(&main.KeyBoard.keys) |*key| {
-				if(key.gamepadAxis == null) {
-					if(key.gamepadButton >= 0) {
-						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
-						const newPressed = newState.buttons[@intCast(key.gamepadButton)] != 0;
-						if(oldPressed != newPressed) {
-							key.setPressed(newPressed, isGrabbed, .{}, false);
+			for(&main.KeyBoard.keys) |*entry| {
+				if(entry.* == .binding) {
+					var binding = entry.binding;
+					if(binding.gamepadAxis == null) {
+						if(binding.gamepadButton >= 0) {
+							const oldPressed = oldState.buttons[@intCast(binding.gamepadButton)] != 0;
+							const newPressed = newState.buttons[@intCast(binding.gamepadButton)] != 0;
+							if(oldPressed != newPressed) {
+								binding.setPressed(newPressed, isGrabbed, .{}, false);
+							}
 						}
-					}
-				} else {
-					const axis = key.gamepadAxis.?.axis;
-					const positive = key.gamepadAxis.?.positive;
-					var newAxis = applyDeadzone(newState.axes[@intCast(axis)]);
-					var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
-					if(!positive) {
-						newAxis *= -1.0;
-						oldAxis *= -1.0;
-					}
-					newAxis = @max(newAxis, 0.0);
-					oldAxis = @max(oldAxis, 0.0);
-					const oldPressed = oldAxis > 0.5;
-					const newPressed = newAxis > 0.5;
-					if(oldPressed != newPressed) {
-						key.setPressed(newPressed, isGrabbed, .{}, false);
-					}
-					if(newAxis != oldAxis) {
-						key.value = newAxis;
+					} else {
+						const axis = binding.gamepadAxis.?.axis;
+						const positive = binding.gamepadAxis.?.positive;
+						var newAxis = applyDeadzone(newState.axes[@intCast(axis)]);
+						var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
+						if(!positive) {
+							newAxis *= -1.0;
+							oldAxis *= -1.0;
+						}
+						newAxis = @max(newAxis, 0.0);
+						oldAxis = @max(oldAxis, 0.0);
+						const oldPressed = oldAxis > 0.5;
+						const newPressed = newAxis > 0.5;
+						if(oldPressed != newPressed) {
+							binding.setPressed(newPressed, isGrabbed, .{}, false);
+						}
+						if(newAxis != oldAxis) {
+							binding.value = newAxis;
+						}
 					}
 				}
 			}
@@ -476,10 +479,12 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const textKeyPressedInTextField = main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null;
 		const isGrabbed = grabbed;
 		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
-			for(&main.KeyBoard.keys) |*key| {
-				if(glfw_key == key.key) {
-					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
+			for(&main.KeyBoard.keys) |*entry| {
+				if(entry.* == .binding) {
+					if(glfw_key == entry.binding.key) {
+						if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == entry.binding.scancode) {
+							entry.binding.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
+						}
 					}
 				}
 			}
@@ -490,10 +495,12 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 				}
 			}
 		} else if(action == c.GLFW_REPEAT) {
-			for(&main.KeyBoard.keys) |*key| {
-				if(glfw_key == key.key) {
-					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.action(.repeat, isGrabbed, mods, textKeyPressedInTextField);
+			for(&main.KeyBoard.keys) |*entry| {
+				if(entry.* == .binding) {
+					if(glfw_key == entry.binding.key) {
+						if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == entry.binding.scancode) {
+							entry.binding.action(.repeat, isGrabbed, mods, textKeyPressedInTextField);
+						}
 					}
 				}
 			}
@@ -547,9 +554,11 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		const isGrabbed = grabbed;
 		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
-			for(&main.KeyBoard.keys) |*key| {
-				if(button == key.mouseButton) {
-					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
+			for(&main.KeyBoard.keys) |*entry| {
+				if(entry.* == .binding) {
+					if(button == entry.binding.mouseButton) {
+						entry.binding.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
+					}
 				}
 			}
 			if(action == c.GLFW_PRESS) {
@@ -629,11 +638,13 @@ fn updateCursor() void {
 
 fn releaseButtonsOnGrabChange(grab: bool) void {
 	const state: Key.Requirement = if(grab) .inMenu else .inGame;
-	for(&main.KeyBoard.keys) |*key| {
-		if(key.notifyRequirement == state and key.pressed) {
-			key.pressed = false;
-			key.modsOnPress = .{};
-			if(key.releaseAction) |rel| rel();
+	for(&main.KeyBoard.keys) |*entry| {
+		if(entry.* == .binding) {
+			if(entry.binding.notifyRequirement == state and entry.binding.pressed) {
+				entry.binding.pressed = false;
+				entry.binding.modsOnPress = .{};
+				if(entry.binding.releaseAction) |rel| rel();
+			}
 		}
 	}
 }
