@@ -311,9 +311,13 @@ fn openCommand(mods: Window.Key.Modifiers) void {
 }
 fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
+	const hideGui = gui.hideGui;
+	gui.hideGui = true;
 	const showItem = itemdrop.ItemDisplayManager.showItem;
 	itemdrop.ItemDisplayManager.showItem = false;
 	renderer.MenuBackGround.takeBackgroundImage();
+	toggleHideGui();
+	gui.hideGui = hideGui;
 	itemdrop.ItemDisplayManager.showItem = showItem;
 }
 fn toggleHideGui(_: Window.Key.Modifiers) void {
