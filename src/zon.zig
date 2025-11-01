@@ -353,10 +353,10 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch(zon) {
 			.int => |value| {
-				list.writer().print("{d}", .{value}) catch unreachable;
+				list.print("{d}", .{value});
 			},
 			.float => |value| {
-				list.writer().print("{e}", .{value}) catch unreachable;
+				list.print("{e}", .{value});
 			},
 			.bool => |value| {
 				if(value) {

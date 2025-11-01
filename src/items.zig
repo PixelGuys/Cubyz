@@ -813,7 +813,7 @@ pub const Tool = struct { // MARK: Tool
 
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
-		self.tooltip.writer().print(
+		self.tooltip.print(
 			\\{s}
 			\\{d:.2} swings/s
 			\\Damage: {d:.2}
@@ -824,7 +824,7 @@ pub const Tool = struct { // MARK: Tool
 			self.damage,
 			self.durability,
 			std.math.lossyCast(u32, self.maxDurability),
-		}) catch unreachable;
+		});
 		if(self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
 			for(self.modifiers) |modifier| {
