@@ -624,7 +624,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				self.mutex.lock();
 				defer self.mutex.unlock();
 				while(i < self.connections.items.len) {
-					var conn: *Connection = self.connections.items[i];
+					var conn = self.connections.items[i];
 					if(conn.hasRttEstimate and networkTimestamp() - conn.lastConnection > 5_000_000) {
 						self.mutex.unlock();
 						conn.disconnect();
