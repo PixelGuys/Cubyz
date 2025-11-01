@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
@@ -71,9 +72,16 @@ fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
-var logFile: ?std.fs.File = undefined;
-var logFileTs: ?std.fs.File = undefined;
-var supportsANSIColors: bool = undefined;
+
+const log_buffer_size = 64 << 10;
+var logMutex: std.Thread.Mutex = .{};
+var logFile: ?std.fs.File = null;
+var logFileBuffer: [log_buffer_size]u8 = undefined;
+var logFileWriter: std.fs.File.Writer = undefined;
+var logFileTs: ?std.fs.File = null;
+var logFileTsBuffer: [log_buffer_size]u8 = undefined;
+var logFileTsWriter: std.fs.File.Writer = undefined;
+var supportsANSIColors: bool = false;
 var openingErrorWindow: bool = false;
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
@@ -212,9 +220,57 @@ pub const std_options: std.Options = .{ // MARK: std_options
 		}
 	}.logFn,
 };
+pub const panic = std.debug.FullPanic(panicToLog);
+
+pub fn dumpStackTraceToLog(first_trace_address: ?usize) void {
+	// TODO: update when cubyz' zig gets updated to b64535e, which
+	// added toggling stacktraces independently of strip (#2153)
+	if(builtin.strip_debug_info) {
+		std.log.err("Unable to dump stack trace: debug info stripped");
+		return;
+	}
+
+	const debug_info = std.debug.getSelfDebugInfo() catch |err| {
+		std.log.err("Unable to dump stack trace: Unable to open debug info: {s}\n", .{@errorName(err)});
+		return;
+	};
+
+	var stack_trace_addresses: [128]usize = undefined;
+	var stack_trace: std.builtin.StackTrace = .{
+		.index = 0,
+		.instruction_addresses = &stack_trace_addresses,
+	};
+	std.debug.captureStackTrace(first_trace_address, &stack_trace);
+
+	logMutex.lock();
+	defer logMutex.unlock();
+
+	std.debug.writeStackTrace(stack_trace, &logFileWriter.interface, debug_info, .no_color) catch {};
+	logFileWriter.interface.flush() catch {};
+
+	std.debug.writeStackTrace(stack_trace, &logFileTsWriter.interface, debug_info, .no_color) catch {};
+	logFileTsWriter.interface.flush() catch {};
+
+	std.debug.dumpStackTrace(stack_trace);
+}
+
+pub fn panicToLog(msg: []const u8, first_trace_address: ?usize) noreturn {
+	const addr = first_trace_address orelse @returnAddress();
+	std.log.err("This is probably a bug. If you think so, please make an issue and upload the entire log: <https://github.com/pixelguys/cubyz/issues/new?template=bug.yml>\npanic: {s}\nerror return trace: {?f}\nstack trace:", .{
+		msg,
+		@errorReturnTrace(),
+	});
+
+	dumpStackTraceToLog(addr);
+
+	@breakpoint();
+	@trap();
+}
 
 fn initLogging() void {
-	logFile = null;
+	std.debug.assert(logMutex.tryLock()); // not thread-safe
+	defer logMutex.unlock();
+
 	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
@@ -223,6 +279,7 @@ fn initLogging() void {
 		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
 		return;
 	};
+	logFileWriter = logFile.?.writer(&logFileBuffer);
 
 	const _timestamp = std.time.timestamp();
 
@@ -233,43 +290,52 @@ fn initLogging() void {
 		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
 		return;
 	};
+	logFileTsWriter = logFileTs.?.writer(&logFileTsBuffer);
 
 	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
+	std.debug.assert(logMutex.tryLock()); // not thread-safe
+	defer logMutex = undefined;
+	defer logMutex.unlock();
+
 	if(logFile) |_logFile| {
+		logFileWriter.interface.flush() catch {};
+		logFileWriter = undefined;
 		_logFile.close();
 		logFile = null;
 	}
 
 	if(logFileTs) |_logFileTs| {
+		logFileTsWriter.interface.flush() catch {};
+		logFileTsWriter = undefined;
 		_logFileTs.close();
 		logFileTs = null;
 	}
 }
 
-fn logToFile(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
+fn logToWriter(writer: *std.Io.Writer, comptime format: []const u8, args: anytype) void {
+	writer.print(format, args) catch {};
+	writer.flush() catch {};
+}
 
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
-	(logFile orelse return).writeAll(string) catch {};
-	(logFileTs orelse return).writeAll(string) catch {};
+fn logToFile(comptime format: []const u8, args: anytype) void {
+	logMutex.lock();
+	defer logMutex.unlock();
+
+	if(logFile) |_| {
+		logToWriter(&logFileWriter.interface, format, args);
+	}
+	if(logFileTs) |_| {
+		logToWriter(&logFileTsWriter.interface, format, args);
+	}
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	const writer = std.debug.lockStderrWriter(&.{});
 	defer std.debug.unlockStderrWriter();
-	nosuspend writer.writeAll(string) catch {};
+	logToWriter(writer, format, args);
 }
 
 // MARK: Callbacks
