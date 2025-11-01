@@ -927,9 +927,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) blk: {
 				const fluidPlaceable = item != null and item.? == .baseItem and item.?.baseItem.hasTag(.fluidPlaceable);
-				for(block.blockTags()) |tag| {
-					if(tag == .fluid and !fluidPlaceable or tag == .air) break :blk; // TODO: Buckets could select fluids
-				}
+				const holdingTargetedBlock = item != null and item.? == .baseItem and item.?.baseItem.block() == block.typ;
+				if(block.hasTag(.air) and !holdingTargetedBlock) break :blk;
+				if(block.hasTag(.fluid) and !fluidPlaceable and !holdingTargetedBlock) break :blk; // TODO: Buckets could select fluids
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 					if(intersection.distance <= closestDistance) {
@@ -1057,9 +1057,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				currentBlockProgress = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			if(block.hasTag(.fluid) or block.hasTag(.air)) {
-				return;
-			}
+			const holdingTargetedBlock = stack.item != null and stack.item.? == .baseItem and stack.item.?.baseItem.block() == block.typ;
+			if((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
+
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
