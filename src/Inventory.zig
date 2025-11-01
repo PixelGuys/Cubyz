@@ -1645,7 +1645,7 @@ pub const Command = struct { // MARK: Command
 
 			var remainingAmount = self.amount;
 			for(self.dest._items, 0..) |*destStack, destSlot| {
-				if(std.meta.eql(destStack.item, sourceStack.item) or destStack.item == null) {
+				if(std.meta.eql(destStack.item, sourceStack.item)) {
 					const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
 					if(amount == 0) continue;
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1655,6 +1655,20 @@ pub const Command = struct { // MARK: Command
 					}}, side);
 					remainingAmount -= amount;
 					if(remainingAmount == 0) break;
+				}
+			}
+			if(remainingAmount > 0) {
+				for(self.dest._items, 0..) |*destStack, destSlot| {
+					if(destStack.item == null) {
+						const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
+						cmd.executeBaseOperation(allocator, .{.move = .{
+							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
+							.source = self.source,
+							.amount = amount,
+						}}, side);
+						remainingAmount -= amount;
+						if(remainingAmount == 0) break;
+					}
 				}
 			}
 		}
