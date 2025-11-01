@@ -10,7 +10,8 @@ pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 
 pub const allocators = struct { // MARK: allocators
 	pub var globalGpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
-	pub var handledGpa = ErrorHandlingAllocator.init(globalGpa.allocator());
+	pub var trackingGpa = MemoryTrackingAllocator.init(globalGpa.allocator());
+	pub var handledGpa = ErrorHandlingAllocator.init(if(build_options.isTaggedRelease) globalGpa.allocator() else trackingGpa.allocator());
 	pub var globalArenaAllocator: NeverFailingArenaAllocator = .init(handledGpa.allocator());
 	pub var worldArenaAllocator: NeverFailingArenaAllocator = undefined;
 	var worldArenaOpenCount: usize = 0;
@@ -20,6 +21,9 @@ pub const allocators = struct { // MARK: allocators
 		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.arena.queryCapacity() >> 20});
 		globalArenaAllocator.deinit();
 		globalArenaAllocator = undefined;
+		if(!build_options.isTaggedRelease) {
+			trackingGpa.deinit();
+		}
 		if(globalGpa.deinit() == .leak) {
 			std.log.err("Memory leak", .{});
 		}
@@ -269,6 +273,129 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 	/// has been provided.
 	fn free(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
+		self.backingAllocator.rawFree(memory, alignment, ret_addr);
+	}
+};
+
+/// Tracks traces for all memory allocations and prints them on demand using the printAllTraces function.
+pub const MemoryTrackingAllocator = struct { // MARK: MemoryTrackingAllocator
+	const stackTraceLength = 10;
+
+	backingAllocator: std.mem.Allocator,
+	mutex: std.Thread.Mutex = .{},
+	allocationSize: std.AutoHashMapUnmanaged([stackTraceLength]usize, *usize) = .{},
+
+	pub fn init(backingAllocator: std.mem.Allocator) MemoryTrackingAllocator {
+		return .{
+			.backingAllocator = backingAllocator,
+		};
+	}
+
+	pub fn deinit(self: *MemoryTrackingAllocator) void {
+		var iterator = self.allocationSize.iterator();
+		while(iterator.next()) |elem| {
+			self.backingAllocator.destroy(elem.value_ptr.*);
+		}
+		self.allocationSize.deinit(self.backingAllocator);
+	}
+
+	pub fn allocator(self: *MemoryTrackingAllocator) std.mem.Allocator {
+		return .{
+			.vtable = &.{
+				.alloc = &alloc,
+				.resize = &resize,
+				.remap = &remap,
+				.free = &free,
+			},
+			.ptr = self,
+		};
+	}
+
+	pub fn printAllTraces(self: *MemoryTrackingAllocator) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
+		const T = struct {usize, [stackTraceLength]usize};
+
+		var traces: std.ArrayListUnmanaged(T) = .{};
+		defer traces.deinit(self.backingAllocator);
+
+		var iterator = self.allocationSize.iterator();
+		while(iterator.next()) |elem| {
+			traces.append(self.backingAllocator, .{elem.value_ptr.*.*, elem.key_ptr.*}) catch @panic("AHHH OUT OF MEMORY");
+		}
+
+		std.sort.insertion(T, traces.items, {}, struct{fn lessThanFn(_: void, lhs: T, rhs: T) bool {
+			return lhs[0] > rhs[0];
+		}}.lessThanFn);
+
+		var skippedCount: usize = 0;
+		for(traces.items) |item| {
+			if(item[0] >= 1 << 20) {
+				std.log.info("Allocation of size {} MiB", .{item[0] >> 20});
+			} else {
+				skippedCount += item[0];
+				continue;
+			}
+			dumpStackTrace(item[1]);
+		}
+		std.log.info("Skipped smaller allocation of {} MiB", .{skippedCount >> 20});
+	}
+
+	fn dumpStackTrace(stack_addresses: [stackTraceLength]usize) void {
+		var len: usize = 0;
+		while (len < 10 and stack_addresses[len] != 0) {
+			len += 1;
+		}
+		var copy = stack_addresses;
+		std.debug.dumpStackTrace(.{
+			.instruction_addresses = &copy,
+			.index = len,
+		});
+	}
+
+	fn alloc(ctx: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
+		const self: *MemoryTrackingAllocator = @ptrCast(@alignCast(ctx));
+		const result = self.backingAllocator.rawAlloc(len + 8, alignment, ret_addr) orelse return null;
+
+		var trace: [stackTraceLength]usize = @splat(0);
+		var thing: std.builtin.StackTrace = .{
+			.index = 0,
+			.instruction_addresses = &trace,
+		};
+		std.debug.captureStackTrace(ret_addr, &thing);
+
+		self.mutex.lock();
+		var ptr: *usize = undefined;
+		if(self.allocationSize.get(trace)) |_ptr| {
+			ptr = _ptr;
+		} else {
+			ptr = self.backingAllocator.create(usize) catch @panic("AHHH OUT OF MEMORY");
+			ptr.* = 0;
+			self.allocationSize.put(self.backingAllocator, trace, ptr) catch @panic("AHHH OUT OF MEMORY");
+		}
+		ptr.* += len;
+		self.mutex.unlock();
+		result[len..][0..8].* = @as([8]u8, @bitCast(@intFromPtr(ptr)));
+		return result;
+	}
+
+	fn resize(_: *anyopaque, _: []u8, _: std.mem.Alignment, _: usize, _: usize) bool {
+		return false;
+	}
+
+	fn remap(_: *anyopaque, _: []u8, _: std.mem.Alignment, _: usize, _: usize) ?[*]u8 {
+		return null;
+	}
+
+	fn free(ctx: *anyopaque, _memory: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
+		const self: *MemoryTrackingAllocator = @ptrCast(@alignCast(ctx));
+		var memory = _memory;
+		memory.len += 8;
+		self.mutex.lock();
+		const ptr = @as(*usize, @ptrFromInt(@as(usize, @bitCast(memory[_memory.len..][0..8].*))));
+		ptr.* -= _memory.len;
+		self.mutex.unlock();
 		self.backingAllocator.rawFree(memory, alignment, ret_addr);
 	}
 };
