@@ -101,22 +101,27 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		};
 	}
 
-	fn joinGetNew(self: ZonElement, other: ZonElement, allocator: NeverFailingAllocator) ZonElement {
-		switch(self) {
+	pub const JoinPriority = enum {preferLeft, preferRight};
+
+	fn joinGetNew(left: ZonElement, priority: JoinPriority, right: ZonElement, allocator: NeverFailingAllocator) ZonElement {
+		switch(left) {
 			.int, .float, .string, .stringOwned, .bool, .null => {
-				return self.clone(allocator);
+				return switch(priority) {
+					.preferLeft => left.clone(allocator),
+					.preferRight => right.clone(allocator),
+				};
 			},
 			.array => {
-				const out = self.clone(allocator);
-				for(other.array.items) |item| {
+				const out = left.clone(allocator);
+				for(right.array.items) |item| {
 					out.array.append(item.clone(allocator));
 				}
 				return out;
 			},
 			.object => {
-				const out = self.clone(allocator);
+				const out = left.clone(allocator);
 
-				out.join(other);
+				out.join(priority, right);
 				return out;
 			},
 		}
@@ -124,21 +129,21 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return .null;
 	}
 
-	pub fn join(self: *const ZonElement, other: ZonElement) void {
-		if(other == .null) {
+	pub fn join(left: *const ZonElement, priority: JoinPriority, right: ZonElement) void {
+		if(right == .null) {
 			return;
 		}
-		if(self.* != .object or other != .object) {
+		if(left.* != .object or right != .object) {
 			if(!builtin.is_test) std.log.err("Trying to join zon that isn't an object.", .{}); // TODO: #1275
 			return;
 		}
 
-		var iter = other.object.iterator();
+		var iter = right.object.iterator();
 		while(iter.next()) |entry| {
-			if(self.object.get(entry.key_ptr.*)) |val| {
-				self.put(entry.key_ptr.*, entry.value_ptr.joinGetNew(val, .{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			if(left.object.get(entry.key_ptr.*)) |val| {
+				left.put(entry.key_ptr.*, val.joinGetNew(priority, entry.value_ptr.*, .{.allocator = left.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			} else {
-				self.put(entry.key_ptr.*, entry.value_ptr.clone(.{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+				left.put(entry.key_ptr.*, entry.value_ptr.clone(.{.allocator = left.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			}
 		}
 	}
@@ -444,7 +449,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn parseFromString(allocator: NeverFailingAllocator, filePath: ?[]const u8, string: []const u8) ZonElement {
 		var index: u32 = 0;
-		Parser.skipWhitespaces(string, &index);
+		Parser.skipWhitespaceAndComments(string, &index);
 		return Parser.parseElement(allocator, filePath, string, &index);
 	}
 };
@@ -453,7 +458,7 @@ const Parser = struct { // MARK: Parser
 	/// All whitespaces from unicode 14.
 	const whitespaces = [_][]const u8{"\u{0009}", "\u{000A}", "\u{000B}", "\u{000C}", "\u{000D}", "\u{0020}", "\u{0085}", "\u{00A0}", "\u{1680}", "\u{2000}", "\u{2001}", "\u{2002}", "\u{2003}", "\u{2004}", "\u{2005}", "\u{2006}", "\u{2007}", "\u{2008}", "\u{2009}", "\u{200A}", "\u{2028}", "\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}"};
 
-	fn skipWhitespaces(chars: []const u8, index: *u32) void {
+	fn skipWhitespaceAndComments(chars: []const u8, index: *u32) void {
 		outerLoop: while(index.* < chars.len) {
 			whitespaceLoop: for(whitespaces) |whitespace| {
 				for(whitespace, 0..) |char, i| {
@@ -462,6 +467,13 @@ const Parser = struct { // MARK: Parser
 					}
 				}
 				index.* += @intCast(whitespace.len);
+				continue :outerLoop;
+			}
+			if(chars[index.*] == '/' and chars[index.* + 1] == '/') {
+				while(chars[index.*] != '\n') {
+					index.* += 1;
+				}
+				index.* += 1;
 				continue :outerLoop;
 			}
 			// Next character is no whitespace.
@@ -610,14 +622,14 @@ const Parser = struct { // MARK: Parser
 		const list = allocator.create(List(ZonElement));
 		list.* = .init(allocator);
 		while(index.* < chars.len) {
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			if(index.* >= chars.len) break;
 			if(chars[index.*] == '}') {
 				index.* += 1;
 				return .{.array = list};
 			}
 			list.append(parseElement(allocator, filePath, chars, index));
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			if(index.* < chars.len and chars[index.*] == ',') {
 				index.* += 1;
 			}
@@ -630,7 +642,7 @@ const Parser = struct { // MARK: Parser
 		const map = allocator.create(std.StringHashMap(ZonElement));
 		map.* = .init(allocator.allocator);
 		while(index.* < chars.len) {
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			if(index.* >= chars.len) break;
 			if(chars[index.*] == '}') {
 				index.* += 1;
@@ -639,20 +651,20 @@ const Parser = struct { // MARK: Parser
 			if(chars[index.*] == '.') index.* += 1; // Just ignoring the dot in front of identifiers, the file might as well not have for all I care.
 			const keyIndex = index.*;
 			const key: []const u8 = parseIdentifierOrStringOrEnumLiteral(allocator, chars, index);
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			while(index.* < chars.len and chars[index.*] != '=') {
 				printError(filePath, chars, index.*, "Unexpected character in object parsing, expected '='.");
 				index.* += 1;
 			}
 			index.* += 1;
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			const value: ZonElement = parseElement(allocator, filePath, chars, index);
 			if(map.fetchPut(key, value) catch unreachable) |old| {
 				printError(filePath, chars, keyIndex, "Duplicate key.");
 				allocator.free(old.key);
 				old.value.deinit(allocator);
 			}
-			skipWhitespaces(chars, index);
+			skipWhitespaceAndComments(chars, index);
 			if(index.* < chars.len and chars[index.*] == ',') {
 				index.* += 1;
 			}
@@ -762,7 +774,7 @@ const Parser = struct { // MARK: Parser
 			},
 			'{' => {
 				index.* += 1;
-				skipWhitespaces(chars, index);
+				skipWhitespaceAndComments(chars, index);
 				var foundEqualSign: bool = false;
 				var i: usize = index.*;
 				while(i < chars.len) : (i += 1) {
@@ -799,31 +811,35 @@ const Parser = struct { // MARK: Parser
 // MARK: Testing
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
-test "skipWhitespaces" {
+test "skipWhitespaceAndComments" {
 	var index: u32 = 0;
 	var testString: []const u8 = "  fbdn  ";
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 2);
 	testString = "\nĦŊ@Λħŋ";
 	index = 0;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 1);
 	testString = "\tβρδ→øβν";
 	index = 0;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 1);
 	testString = "\t  \n \t  a lot of whitespaces";
 	index = 0;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 8);
 	testString = " unicode whitespace";
 	index = 0;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 3);
 	testString = "starting     in the middle";
 	index = 8;
-	Parser.skipWhitespaces(testString, &index);
+	Parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 13);
+	testString = "// this should all get skipped\nBut Not this";
+	index = 0;
+	Parser.skipWhitespaceAndComments(testString, &index);
+	try std.testing.expectEqual(index, 31);
 }
 
 test "number parsing" {
@@ -930,11 +946,11 @@ test "merging" {
 	var wrap = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	const allocator = wrap.allocator();
 
-	const zon1 = ZonElement.parseFromString(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}");
+	const zon1 = ZonElement.parseFromString(allocator, null, ".{.object1 = \"\", .object2 = .{}, .object3 = 1.0e4, @\"\nobject1\" = .{}, @\"\tobject1θ\" = .{}}");
 	defer zon1.deinit(allocator);
 
-	const zon2 = ZonElement.parseFromString(allocator, null, ".{   .object5   =   1  \n,}");
-	zon2.join(zon1);
+	const zon2 = ZonElement.parseFromString(allocator, null, ".{.object5 = 1}");
+	zon2.join(.preferRight, zon1);
 	try std.testing.expectEqual(.object, std.meta.activeTag(zon2));
 	try std.testing.expectEqual(.float, std.meta.activeTag(zon2.object.get("object3") orelse .null));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(zon2.object.get("object1") orelse .null));
@@ -944,10 +960,51 @@ test "merging" {
 	zon2.deinit(allocator);
 
 	const zon3 = ZonElement.parseFromString(allocator, null, "1");
-	zon3.join(zon1);
+	zon3.join(.preferRight, zon1);
 	zon3.deinit(allocator);
 
 	const zon4 = ZonElement.parseFromString(allocator, null, "true");
-	zon1.join(zon4);
+	zon1.join(.preferRight, zon4);
 	zon4.deinit(allocator);
+
+	const zon5 = ZonElement.parseFromString(allocator, null, ".{.object1 = \"\", .object2 = .{}, .object3 = 1.0e4, @\"\nobject1\" = .{}, @\"\tobject1θ\" = .{}}");
+	defer zon5.deinit(allocator);
+
+	const zon6 = ZonElement.parseFromString(allocator, null, ".{.object5 = 1}");
+	zon5.join(.preferLeft, zon6);
+	try std.testing.expectEqual(.object, std.meta.activeTag(zon5));
+	try std.testing.expectEqual(.float, std.meta.activeTag(zon5.object.get("object3") orelse .null));
+	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(zon5.object.get("object1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(zon5.object.get("\nobject1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(zon5.object.get("\tobject1θ") orelse .null));
+	try std.testing.expectEqual(.int, std.meta.activeTag(zon5.object.get("object5") orelse .null));
+	zon6.deinit(allocator);
+
+	const zon7 = ZonElement.parseFromString(allocator, null, "1");
+	zon5.join(.preferLeft, zon7);
+	zon7.deinit(allocator);
+
+	const zon8 = ZonElement.parseFromString(allocator, null, "true");
+	zon8.join(.preferLeft, zon5);
+	zon8.deinit(allocator);
+
+	const zon9 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
+	defer zon9.deinit(allocator);
+	const zon10 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
+	defer zon10.deinit(allocator);
+	zon9.join(.preferLeft, zon10);
+	try std.testing.expectEqual(zon9.get(?i32, "a", null), 1);
+	try std.testing.expectEqualSlices(u8, zon9.get(?[]const u8, "c", null).?, "foo");
+	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "a", null), 2);
+	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "b", null), 3);
+
+	const zon11 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
+	defer zon11.deinit(allocator);
+	const zon12 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
+	defer zon12.deinit(allocator);
+	zon11.join(.preferRight, zon12);
+	try std.testing.expectEqual(zon11.get(?i32, "a", null), 1);
+	try std.testing.expectEqualSlices(u8, zon11.get(?[]const u8, "c", null).?, "foo");
+	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get(?[]const u8, "a", null).?, "bar");
+	try std.testing.expectEqual(zon11.getChild("b").get(?i32, "b", null), 3);
 }
