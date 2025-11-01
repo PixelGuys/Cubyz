@@ -1642,7 +1642,6 @@ pub const Command = struct { // MARK: Command
 			const sourceStack = self.source.ref();
 			if(sourceStack.item == null) return;
 			if(self.amount > sourceStack.amount) return;
-			if(!self.dest.canHold(.{.item = sourceStack.item, .amount = self.amount})) return;
 
 			var remainingAmount = self.amount;
 			for(self.dest._items, 0..) |*destStack, destSlot| {
