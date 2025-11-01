@@ -100,7 +100,7 @@ pub fn init() void {
 
 	// keyboard settings:
 	const keyboard = zon.getChild("keyboard");
-	for(&main.KeyBoard.keys) |*key| {
+	for(main.KeyBoard.allKeys()) |*key| {
 		const keyZon = keyboard.getChild(key.name);
 		key.key = keyZon.get(c_int, "key", key.key);
 		key.mouseButton = keyZon.get(c_int, "mouseButton", key.mouseButton);
@@ -156,7 +156,7 @@ pub fn save() void {
 
 	// keyboard settings:
 	const keyboard = ZonElement.initObject(main.stackAllocator);
-	for(&main.KeyBoard.keys) |key| {
+	for(main.KeyBoard.allKeys()) |key| {
 		const keyZon = ZonElement.initObject(main.stackAllocator);
 		keyZon.put("key", key.key);
 		keyZon.put("mouseButton", key.mouseButton);
