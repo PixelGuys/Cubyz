@@ -14,6 +14,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 const files = main.files;
+const structures_zig = main.server.terrain.structures;
 
 var common: Assets = undefined;
 
@@ -29,6 +30,8 @@ pub const Assets = struct {
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
+	structureTables: ZonHashMap,
+	structureTableMigrations: AddonNameToZonMap,
 	recipes: ZonHashMap,
 	models: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
@@ -44,6 +47,8 @@ pub const Assets = struct {
 			.tools = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
+			.structureTables = .{},
+			.structureTableMigrations = .{},
 			.recipes = .{},
 			.models = .{},
 			.structureBuildingBlocks = .{},
@@ -59,6 +64,8 @@ pub const Assets = struct {
 		self.tools.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
+		self.structureTables.deinit(allocator.allocator);
+		self.structureTableMigrations.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.models.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
@@ -74,6 +81,8 @@ pub const Assets = struct {
 			.tools = self.tools.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
+			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
+			.structureTableMigrations = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.models = self.models.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
@@ -90,6 +99,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
+			addon.readAllZon(allocator, "structure_tables", true, &self.structureTables, &self.structureTableMigrations);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
@@ -100,8 +110,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum {common, world}) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} recipes, {} structure building blocks, {} blueprints and {} particles",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints and {} particles",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
 		);
 	}
 
@@ -320,6 +330,7 @@ fn createAssetStringID(
 }
 
 pub fn init() void {
+	structures_zig.init();
 	biomes_zig.init();
 
 	common = .init();
@@ -365,6 +376,10 @@ fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
 	biomes_zig.register(stringId, numericId, zon);
 }
 
+fn registerStructureTable(numericId: u32, stringId: []const u8, zon: ZonElement) void {
+	if(zon == .null) std.log.err("Missing StructureTable: {s}. Will not replace.", .{stringId});
+	structures_zig.register(stringId, numericId, zon);
+}
 fn registerRecipesFromZon(zon: ZonElement) void {
 	items_zig.registerRecipes(zon);
 }
@@ -473,7 +488,7 @@ pub const Palette = struct { // MARK: Palette
 
 var loadedAssets: bool = false;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, structureTablePalette: *Palette) !void { // MARK: loadWorldAssets()
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -604,6 +619,20 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	iterator = worldAssets.particles.iterator();
 	while(iterator.next()) |entry| {
 		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	}
+	
+	// StructureTables:
+	var nextStructureTableNumericId: u32 = 0;
+	for(structureTablePalette.palette.items) |id| {
+		registerStructureTable(nextStructureTableNumericId, id, worldAssets.structureTables.get(id) orelse .null);
+		nextStructureTableNumericId += 1;
+	}
+	iterator = worldAssets.structureTables.iterator();
+	while(iterator.next()) |entry| {
+		if(structures_zig.hasRegistered(entry.key_ptr.*)) continue;
+		registerStructureTable(nextStructureTableNumericId, entry.key_ptr.*, entry.value_ptr.*);
+		structureTablePalette.add(entry.key_ptr.*);
+		nextStructureTableNumericId += 1;
 	}
 
 	// Biomes:
