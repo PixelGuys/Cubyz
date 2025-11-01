@@ -29,6 +29,7 @@ const Gamemode = main.game.Gamemode;
 pub const WorldSettings = struct {
 	gamemode: Gamemode = .creative,
 	allowCheats: bool = false,
+	allowPlayerList: bool = true,
 	testingMode: bool = false,
 };
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
@@ -106,6 +107,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void
 
 		gamerules.put("default_gamemode", @tagName(worldSettings.gamemode));
 		gamerules.put("cheats", worldSettings.allowCheats);
+		gamerules.put("playerList", worldSettings.allowPlayerList);
 		gamerules.put("testingMode", worldSettings.testingMode);
 
 		try main.files.cubyzDir().writeZon(gamerulePath, gamerules);
@@ -525,6 +527,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
+	allowPlayerList: bool = undefined,
 	testingMode: bool = undefined,
 
 	seed: u64,
@@ -606,6 +609,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
+		self.allowPlayerList = gamerules.get(bool, "playerList", true);
 		self.testingMode = gamerules.get(bool, "testingMode", false);
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
