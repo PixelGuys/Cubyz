@@ -30,14 +30,14 @@ fn kick(conn: *main.network.Connection) void {
 
 fn ipBan(conn: *main.network.Connection) void {
 	const ip = conn.remoteAddress.ip;
-	main.server.settings.?.ipBanList.append(ip);
+	main.server.Settings.ipBanList.append(ip);
 	conn.disconnect();
 	needsUpdate = true;
 }
 
 // u32 in a pointer costume
 fn unBan(ip_: usize) void {
-	var bannedIps = &main.server.settings.?.ipBanList;
+	var bannedIps = &main.server.Settings.ipBanList;
 	const ip: u32 = @intCast(ip_);
 	const removed = bannedIps.swapRemove(std.mem.indexOfScalar(u32, bannedIps.items, ip).?);
 	std.debug.assert(removed == ip);
@@ -67,7 +67,7 @@ pub fn onOpen() void {
 			row.add(Button.initText(.{0, 0}, 100, "Ip Ban", .{.callback = @ptrCast(&ipBan), .arg = @intFromPtr(connection)}));
 			list.add(row);
 		}
-		const bannedIps = main.server.settings.?.ipBanList.items;
+		const bannedIps = main.server.Settings.ipBanList.items;
 		if(bannedIps.len > 0) {
 			list.add(Label.init(.{0, 0}, 200, "Banned IPs", .left));
 			for(bannedIps) |ip| {

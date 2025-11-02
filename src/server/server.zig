@@ -289,7 +289,7 @@ pub const User = struct { // MARK: User
 };
 
 pub const Settings = struct {
-	ipBanList: main.List(u32),
+	pub var ipBanList: main.List(u32) = undefined;
 
 	fn toZon(self: @This()) ZonElement {
 		const data = ZonElement.initObject(main.stackAllocator);
@@ -301,7 +301,7 @@ pub const Settings = struct {
 		return data;
 	}
 
-	fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement) @This() {
+	fn loadFrom(allocator: NeverFailingAllocator, zon: ZonElement) void {
 		const arrayZon = zon.getChild("ipBanList").toSlice();
 		var self: @This() = .{
 			.ipBanList = .initCapacity(allocator, arrayZon.len),
@@ -314,7 +314,6 @@ pub const Settings = struct {
 
 	fn deinit(self: *@This()) void {
 		self.ipBanList.deinit();
-		self.* = undefined;
 	}
 };
 
@@ -322,7 +321,6 @@ pub const updatesPerSec: u32 = 20;
 const updateNanoTime: u32 = 1000000000/20;
 
 pub var world: ?*ServerWorld = null;
-pub var settings: ?Settings = null;
 var userMutex: std.Thread.Mutex = .{};
 var users: main.List(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
@@ -338,7 +336,6 @@ pub var thread: ?std.Thread = null;
 fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
-	std.debug.assert(settings == null);
 	command.init();
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
@@ -356,10 +353,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Can't create world.");
 	};
 
-	const settingsZon = world.?.wio.dir.readToZon(main.stackAllocator, "server.zig.zon") catch .null;
+	const settingsZon = main.files.cubyzDir().readToZon(main.stackAllocator, "server.zig.zon") catch .null;
 	defer settingsZon.deinit(main.stackAllocator);
 
-	settings = Settings.fromZon(main.stackAllocator, settingsZon);
+	Settings.loadFrom(main.stackAllocator, settingsZon);
 
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
@@ -391,16 +388,15 @@ fn deinit() void {
 	connectionManager = undefined;
 
 	if(world) |world_| {
-		const zon = settings.?.toZon();
+		const zon = Settings.toZon();
 		defer zon.deinit(main.stackAllocator);
-		settings.?.deinit();
-		world_.wio.dir.writeZon("server.zig.zon", zon) catch |err| {
+		Settings.deinit();
+		main.files.cubyzDir().writeZon("server.zig.zon", zon) catch |err| {
 			std.log.err("Error while saving the server settings: {s}", .{@errorName(err)});
 		};
 		world_.deinit();
 	}
 	world = null;
-	settings = null;
 
 	main.items.Inventory.Sync.ServerSide.deinit();
 
