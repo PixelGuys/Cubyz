@@ -20,7 +20,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		water_surface,
 	};
 	const VTable = struct {
-		loadModel: *const fn(parameters: ZonElement) *anyopaque,
+		loadModel: *const fn(parameters: ZonElement) ?*anyopaque,
 		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
@@ -34,13 +34,18 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
 		const id = parameters.get([]const u8, "id", "");
+		const structure = parameters.get([]const u8, "structure", "");
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
 		};
+		const vtableModel = vtable.loadModel(parameters) orelse {
+			std.log.err("Couldn't find blueprint with id '{s}'. Dropping model from biome.", .{structure});
+			return null;
+		};
 		return SimpleStructureModel{
 			.vtable = vtable,
-			.data = vtable.loadModel(parameters),
+			.data = vtableModel,
 			.chance = parameters.get(f32, "chance", 0.1),
 			.priority = parameters.get(f32, "priority", 1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
