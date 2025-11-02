@@ -412,7 +412,7 @@ pub const Player = struct { // MARK: Player
 		desiredPos: Vec3d,
 	};
 	pub var super: main.server.Entity = .{};
-	pub var eyeData: EyeData = .{
+	pub var eye: EyeData = .{
 		.pos = .{0, 0, 0},
 		.vel = .{0, 0, 0},
 		.coyote = 0,
@@ -483,19 +483,19 @@ pub const Player = struct { // MARK: Player
 	pub fn getEyePosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return eyeData.pos + super.pos + eyeData.desiredPos;
+		return eye.pos + super.pos + eye.desiredPos;
 	}
 
 	pub fn getEyeVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return eyeData.vel;
+		return eye.vel;
 	}
 
 	pub fn getEyeCoyoteBlocking() f64 {
 		mutex.lock();
 		defer mutex.unlock();
-		return eyeData.coyote;
+		return eye.coyote;
 	}
 
 	pub fn getJumpCoyoteBlocking() f64 {
@@ -554,10 +554,10 @@ pub const Player = struct { // MARK: Player
 		Player.super.health = Player.super.maxHealth;
 		Player.super.energy = Player.super.maxEnergy;
 
-		Player.eyeData.pos = .{0, 0, 0};
-		Player.eyeData.vel = .{0, 0, 0};
-		Player.eyeData.coyote = 0;
-		Player.eyeData.step = .{false, false, false};
+		Player.eye.pos = .{0, 0, 0};
+		Player.eye.vel = .{0, 0, 0};
+		Player.eye.coyote = 0;
+		Player.eye.step = .{false, false, false};
 		Player.jumpCoyote = 0;
 	}
 
@@ -885,7 +885,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				jumping = true;
 				Player.jumpCooldown = Player.jumpCooldownConstant;
 				if(!Player.onGround) {
-					Player.eyeData.coyote = 0;
+					Player.eye.coyote = 0;
 				}
 				Player.jumpCoyote = 0;
 			} else if(!KeyBoard.key("fall").pressed) {
@@ -962,11 +962,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			.min = -Player.outerBoundingBoxExtent,
 			.max = Player.outerBoundingBoxExtent,
 		};
-		Player.eyeData.box = .{
+		Player.eye.box = .{
 			.min = -Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.2},
 			.max = Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.05},
 		};
-		Player.eyeData.desiredPos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
+		Player.eye.desiredPos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 	}
 
 	physics.update(deltaTime, acc, jumping);
