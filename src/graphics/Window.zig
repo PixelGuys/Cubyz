@@ -14,7 +14,7 @@ pub const c = @cImport({
 
 	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
 	// stdlib.h is used to set the Vulkan environment variables on macOS
-	if(builtin.os.tag == .macos) {
+	if(builtin.target.os.tag == .macos) {
 		@cInclude("vulkan/vulkan.h");
 		@cInclude("vulkan/vulkan_beta.h");
 		@cInclude("stdlib.h");
@@ -687,7 +687,7 @@ pub fn init() void { // MARK: init()
 	// the MoltenVK driver manifest file by setting the environment variables `VK_ADD_LAYER_PATH` and `VK_DRIVER_FILES`.
 	// Documented at https://vulkan.lunarg.com/doc/view/latest/mac/layer_configuration.html (2025-11-02)
 	// and at https://vulkan.lunarg.com/doc/view/latest/mac/LoaderDriverInterface.html (2025-11-02)
-	if(builtin.os.tag == .macos) {
+	if(builtin.target.os.tag == .macos) {
 		c.glfwInitVulkanLoader(c.vkGetInstanceProcAddr);
 
 		if(c.setenv("VK_ADD_LAYER_PATH", "./zig-out/bin", 1) != 0) {
