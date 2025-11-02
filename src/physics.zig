@@ -84,10 +84,10 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				30,
 				30,
 			};
-			const strength = (-Player.eyePos)/(Player.eyeBox.max - Player.eyeBox.min);
+			const strength = (-Player.eye.pos)/(Player.eye.box.max - Player.eye.box.min);
 			const force = strength*forceMultipliers;
 			const friction = frictionMultipliers;
-			springConstants += forceMultipliers/(Player.eyeBox.max - Player.eyeBox.min);
+			springConstants += forceMultipliers/(Player.eye.box.max - Player.eye.box.min);
 			directionalFrictionCoefficients += @floatCast(friction);
 			acc += force;
 		}
@@ -97,21 +97,21 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 		// dx/dt = v
 		// Where a is the acceleration, k is the spring constant and λ is the friction coefficient
 		inline for(0..3) |i| blk: {
-			if(Player.eyeStep[i]) {
-				const oldPos = Player.eyePos[i];
-				const newPos = oldPos + Player.eyeVel[i]*deltaTime;
-				if(newPos*std.math.sign(Player.eyeVel[i]) <= -0.1) {
-					Player.eyePos[i] = newPos;
+			if(Player.eye.step[i]) {
+				const oldPos = Player.eye.pos[i];
+				const newPos = oldPos + Player.eye.vel[i]*deltaTime;
+				if(newPos*std.math.sign(Player.eye.vel[i]) <= -0.1) {
+					Player.eye.pos[i] = newPos;
 					break :blk;
 				} else {
-					Player.eyeStep[i] = false;
+					Player.eye.step[i] = false;
 				}
 			}
-			if(i == 2 and Player.eyeCoyote > 0) {
+			if(i == 2 and Player.eye.coyote > 0) {
 				break :blk;
 			}
 			const frictionCoefficient = directionalFrictionCoefficients[i];
-			const v_0 = Player.eyeVel[i];
+			const v_0 = Player.eye.vel[i];
 			const k = springConstants[i];
 			const a = acc[i];
 			// here we need to solve the full equation:
@@ -141,8 +141,8 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			// x(t) = a/k + c_1 e^(1/2 t (-c_3 - λ)) + c_2 e^(1/2 t (c_3 - λ))
 			const firstTerm = c_1.mul((c_3.negate().subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
 			const secondTerm = c_2.mul((c_3.subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
-			Player.eyeVel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
-			Player.eyePos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
+			Player.eye.vel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
+			Player.eye.pos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
 		}
 	}
 
@@ -155,7 +155,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 		if(Player.super.vel[2] > 0) {
 			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
 		}
-		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
+		steppingHeight = @min(steppingHeight, Player.eye.pos[2] - Player.eye.box.min[2]);
 
 		const slipLimit = 0.25*Player.currentFriction;
 
@@ -186,17 +186,17 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 
 		const stepAmount = xMovement[2] + yMovement[2];
 		if(stepAmount > 0) {
-			if(Player.eyeCoyote <= 0) {
-				Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
-				Player.eyeStep[2] = true;
+			if(Player.eye.coyote <= 0) {
+				Player.eye.vel[2] = @max(1.5*vec.length(Player.super.vel), Player.eye.vel[2], 4);
+				Player.eye.step[2] = true;
 				if(Player.super.vel[2] > 0) {
-					Player.eyeVel[2] = Player.super.vel[2];
-					Player.eyeStep[2] = false;
+					Player.eye.vel[2] = Player.super.vel[2];
+					Player.eye.step[2] = false;
 				}
 			} else {
-				Player.eyeCoyote = 0;
+				Player.eye.coyote = 0;
 			}
-			Player.eyePos[2] -= stepAmount;
+			Player.eye.pos[2] -= stepAmount;
 			move[2] = -0.01;
 			Player.onGround = true;
 		}
@@ -207,12 +207,12 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 		if(collision.collides(.client, .z, -move[2], Player.super.pos, hitBox)) |box| {
 			if(move[2] < 0) {
 				if(!wasOnGround) {
-					Player.eyeVel[2] = Player.super.vel[2];
-					Player.eyePos[2] -= (box.max[2] - hitBox.min[2] - Player.super.pos[2]);
+					Player.eye.vel[2] = Player.super.vel[2];
+					Player.eye.pos[2] -= (box.max[2] - hitBox.min[2] - Player.super.pos[2]);
 				}
 				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
-				Player.eyeCoyote = 0;
+				Player.eye.coyote = 0;
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
@@ -226,7 +226,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
 				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
 				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
-				Player.eyeVel[2] *= 2;
+				Player.eye.vel[2] *= 2;
 			} else {
 				velocityChange = Player.super.vel[2];
 				Player.super.vel[2] = 0;
@@ -244,19 +244,19 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
 			// This calculates how long the player has to fall until we know they're not walking over a small gap.
 			// We add deltaTime because we subtract deltaTime at the bottom of update
-			Player.eyeCoyote = @sqrt(2*Player.steppingHeight()[2]/gravity) + deltaTime;
+			Player.eye.coyote = @sqrt(2*Player.steppingHeight()[2]/gravity) + deltaTime;
 			Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
-			Player.eyePos[2] -= move[2];
-		} else if(Player.eyeCoyote > 0) {
-			Player.eyePos[2] -= move[2];
+			Player.eye.pos[2] -= move[2];
+		} else if(Player.eye.coyote > 0) {
+			Player.eye.pos[2] -= move[2];
 		}
 		collision.touchBlocks(&Player.super, hitBox, .client, deltaTime);
 	} else {
 		Player.super.pos += move;
 	}
 
-	// Clamp the eyePosition and subtract eye coyote time.
-	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
-	Player.eyeCoyote -= deltaTime;
+	// Clamp the eye.position and subtract eye coyote time.
+	Player.eye.pos = @max(Player.eye.box.min, @min(Player.eye.pos, Player.eye.box.max));
+	Player.eye.coyote -= deltaTime;
 	Player.jumpCoyote -= deltaTime;
 }
