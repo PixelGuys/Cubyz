@@ -518,6 +518,15 @@ pub fn main() void { // MARK: main()
 	file_monitor.init();
 	defer file_monitor.deinit();
 
+	if(!headless) Window.init();
+	defer if(!headless) Window.deinit();
+
+	if(!headless) graphics.init();
+	defer if(!headless) graphics.deinit();
+
+	if(!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
+	defer if(!headless) audio.deinit();
+
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
@@ -538,47 +547,38 @@ pub fn main() void { // MARK: main()
 	items.globalInit();
 	defer items.deinit();
 
+	if(!headless) itemdrop.ItemDropRenderer.init();
+	defer if(!headless) itemdrop.ItemDropRenderer.deinit();
+
 	assets.init();
 
+	if(!headless) blocks.meshes.init();
+	defer if(!headless) blocks.meshes.deinit();
+
+	if(!headless) renderer.init();
+	defer if(!headless) renderer.deinit();
+
 	network.init();
+
+	if(!headless) entity.ClientEntityManager.init();
+	defer if(!headless) entity.ClientEntityManager.deinit();
+
+	if(!headless) gui.init();
+	defer if(!headless) gui.deinit();
+
+	if(!headless) particles.ParticleManager.init();
+	defer if(!headless) particles.ParticleManager.deinit();
 
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 
-	if(settings.launchConfig.headlessServer) {
+	if(headless) {
 		server.start(settings.launchConfig.autoEnterWorld, null);
 	} else {
-		Window.init();
-		defer Window.deinit();
-
-		graphics.init();
-		defer graphics.deinit();
-
-		audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
-		defer audio.deinit();
-
-		itemdrop.ItemDropRenderer.init();
-		defer itemdrop.ItemDropRenderer.deinit();
-
-		blocks.meshes.init();
-		defer blocks.meshes.deinit();
-
-		renderer.init();
-		defer renderer.deinit();
-
-		entity.ClientEntityManager.init();
-		defer entity.ClientEntityManager.deinit();
-
-		gui.init();
-		defer gui.deinit();
-
-		particles.ParticleManager.init();
-		defer particles.ParticleManager.deinit();
-
 		if(settings.playerName.len == 0) {
 			gui.openWindow("change_name");
 		} else {
-			std.Thread.sleep(16_000_000);
+			gui.openWindow("main");
 		}
 
 		const c = Window.c;
@@ -636,7 +636,13 @@ pub fn main() void { // MARK: main()
 			}
 
 			if(!isHidden) {
-				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+				if(game.world != null) {
+					renderer.updateFov(settings.fov);
+					renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+				} else {
+					renderer.updateFov(70.0);
+					renderer.MenuBackGround.render();
+				}
 				// Render the GUI
 				gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 				gui.updateAndRenderGui();
