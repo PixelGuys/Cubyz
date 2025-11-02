@@ -180,7 +180,7 @@ pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
 	return block;
 }
 
-pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) EventStatus {
+pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) main.callbacks.Result {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	const mesh = node.mesh.load(.acquire) orelse return .ignored;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
