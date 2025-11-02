@@ -208,7 +208,7 @@ pub fn createInstance() void {
 	}
 
 	// NOTE(blackedout): Add additional extensions to the glfwExtensions and use different flags depending on the target.
-	// Since for macOS Vulkan headers with a version > 1.0 are used, the extension names and flag must not be exposed to other targets.
+	// Since for macOS, Vulkan headers with a version > 1.0 are used, the extension names and flag must not be exposed to other targets.
 	const additionalExtensions = if(builtin.target.os.tag == .macos)
 		[_][*:0]const u8{
 			c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
