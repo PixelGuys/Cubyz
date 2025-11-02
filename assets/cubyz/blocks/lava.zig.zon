@@ -9,7 +9,7 @@
 	.collide = false,
 	.absorbedLight = 0x0084ff,
 	.emittedLight = 0xff7b00,
-	.density = 0.998,
+	.density = 1.5,
 	.terminalVelocity = 1,
 	.mobility = 0.08,
 	.model = "cubyz:cube",
