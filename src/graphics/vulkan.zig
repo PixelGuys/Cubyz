@@ -134,7 +134,7 @@ var presentQueue: c.VkQueue = undefined;
 
 pub fn init(window: ?*c.GLFWwindow) !void {
 	// NOTE(blackedout): glad is currently not used on macOS
-	if(builtin.os.tag != .macos) {
+	if(builtin.target.os.tag != .macos) {
 		if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
 			@panic("GLAD failed to load Vulkan functions");
 		}
@@ -142,13 +142,13 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 	createInstance();
 	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
 	try pickPhysicalDevice();
-	if(builtin.os.tag != .macos) {
+	if(builtin.target.os.tag != .macos) {
 		if(c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
 			@panic("GLAD failed to load Vulkan functions");
 		}
 	}
 	createLogicalDevice();
-	if(builtin.os.tag != .macos) {
+	if(builtin.target.os.tag != .macos) {
 		if(c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
 			@panic("GLAD failed to load Vulkan functions");
 		}
@@ -207,20 +207,25 @@ pub fn createInstance() void {
 		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
 	}
 
-	// NOTE(blackedout): Add these two extensions to the glfwExtensions and use different create flags if on macOS
-	const extensionsMacOs = [_][*:0]const u8{
-		c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
-		c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-	};
-	const extensionCount = glfwExtensionCount + if(builtin.os.tag == .macos) extensionsMacOs.len else 0;
-	var extensions = std.ArrayList([*c]const u8).initCapacity(main.stackAllocator.allocator, extensionCount) catch unreachable;
+	// NOTE(blackedout): Add additional extensions to the glfwExtensions and use different flags depending on the target.
+	// Since for macOS Vulkan headers with a version > 1.0 are used, the extension names and flag must not be exposed to other targets.
+	const additionalExtensions = if(builtin.target.os.tag == .macos)
+		[_][*:0]const u8{
+			c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+			c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+		}
+	else
+		[_][*:0]const u8{};
+
+	const createFlags = if(builtin.target.os.tag == .macos)
+		c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+	else
+		0;
+
+	var extensions = std.ArrayList([*c]const u8).initCapacity(main.stackAllocator.allocator, glfwExtensionCount + additionalExtensions.len) catch unreachable;
 	defer extensions.deinit();
 	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]) catch unreachable;
-	var createFlags: c.VkInstanceCreateFlags = 0;
-	if(builtin.os.tag == .macos) {
-		extensions.appendSlice(&extensionsMacOs) catch unreachable;
-		createFlags |= c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-	}
+	extensions.appendSlice(&additionalExtensions) catch unreachable;
 
 	const createInfo = c.VkInstanceCreateInfo{
 		.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -240,7 +245,7 @@ const baseDeviceExtensions = [_][*:0]const u8{
 	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-const deviceExtensions = if(builtin.os.tag == .macos)
+const deviceExtensions = if(builtin.target.os.tag == .macos)
 	baseDeviceExtensions ++ [_][*:0]const u8{c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME}
 else
 	baseDeviceExtensions;
