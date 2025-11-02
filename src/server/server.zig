@@ -291,10 +291,10 @@ pub const User = struct { // MARK: User
 pub const Settings = struct {
 	pub var ipBanList: main.List(u32) = undefined;
 
-	fn toZon(self: @This()) ZonElement {
+	fn toZon() ZonElement {
 		const data = ZonElement.initObject(main.stackAllocator);
 		const arr = ZonElement.initArray(main.stackAllocator);
-		for(self.ipBanList.items) |ip| {
+		for(ipBanList.items) |ip| {
 			arr.append(ip);
 		}
 		data.put("ipBanList", arr);
@@ -303,17 +303,14 @@ pub const Settings = struct {
 
 	fn loadFrom(allocator: NeverFailingAllocator, zon: ZonElement) void {
 		const arrayZon = zon.getChild("ipBanList").toSlice();
-		var self: @This() = .{
-			.ipBanList = .initCapacity(allocator, arrayZon.len),
-		};
+		ipBanList = .initCapacity(allocator, arrayZon.len);
 		for(arrayZon) |elem| {
-			self.ipBanList.append(elem.as(u32, 0));
+			ipBanList.append(elem.as(u32, 0));
 		}
-		return self;
 	}
 
-	fn deinit(self: *@This()) void {
-		self.ipBanList.deinit();
+	fn deinit() void {
+		ipBanList.deinit();
 	}
 };
 
