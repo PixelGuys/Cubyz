@@ -10,8 +10,8 @@
 	.absorbedLight = 0x0084ff,
 	.emittedLight = 0xff7b00,
 	.density = 0.998,
-	.terminalVelocity = 2,
-	.mobility = 0.12,
+	.terminalVelocity = 1,
+	.mobility = 0.08,
 	.model = "cubyz:cube",
 	.texture = "cubyz:lava",
 }
