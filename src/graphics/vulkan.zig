@@ -133,7 +133,7 @@ var presentQueue: c.VkQueue = undefined;
 // MARK: init
 
 pub fn init(window: ?*c.GLFWwindow) !void {
-	// NOTE(blackedout): Again, glad currenctly not used on macOS
+	// NOTE(blackedout): glad is currently not used on macOS
 	if(builtin.os.tag != .macos) {
 		if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
 			@panic("GLAD failed to load Vulkan functions");
@@ -195,6 +195,10 @@ pub fn createInstance() void {
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	if(glfwExtensions == null) {
+		@panic("glfwGetRequiredInstanceExtensions returned a null pointer. If you're on macOS, please make sure to call the " ++
+			"executable with the working directory being the root of the repository.");
+	}
 
 	const availableExtensions = enumerateInstanceExtensionProperties(main.stackAllocator, null);
 	defer main.stackAllocator.free(availableExtensions);
@@ -203,24 +207,18 @@ pub fn createInstance() void {
 		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
 	}
 
-	// NOTE(blackedout): This array stuff is really ugly but I'm a zig noob :(
-	var extensions = glfwExtensions;
-	var extensionsArray: ?[][*c]const u8 = null;
-	var extensionCount = glfwExtensionCount;
+	// NOTE(blackedout): Add these two extensions to the glfwExtensions and use different create flags if on macOS
+	const extensionsMacOs = [_][*:0]const u8{
+		c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+		c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+	};
+	const extensionCount = glfwExtensionCount + if(builtin.os.tag == .macos) extensionsMacOs.len else 0;
+	var extensions = std.ArrayList([*c]const u8).initCapacity(main.stackAllocator.allocator, extensionCount) catch unreachable;
+	defer extensions.deinit();
+	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]) catch unreachable;
 	var createFlags: c.VkInstanceCreateFlags = 0;
 	if(builtin.os.tag == .macos) {
-		// NOTE(blackedout): Null terminator not included in count but when allocating
-		extensionCount = glfwExtensionCount + 2;
-		var extensionsArrayLocal = main.stackAllocator.alloc([*c]const u8, glfwExtensionCount + 3);
-		for(0..glfwExtensionCount) |i| {
-			extensionsArrayLocal[i] = glfwExtensions[i];
-		}
-		extensionsArrayLocal[glfwExtensionCount + 0] = c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
-		extensionsArrayLocal[glfwExtensionCount + 1] = c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
-		extensionsArrayLocal[glfwExtensionCount + 2] = 0;
-		extensions = extensionsArrayLocal.ptr;
-		extensionsArray = extensionsArrayLocal;
-
+		extensions.appendSlice(&extensionsMacOs) catch unreachable;
 		createFlags |= c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 	}
 
@@ -228,17 +226,12 @@ pub fn createInstance() void {
 		.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 		.flags = createFlags,
 		.pApplicationInfo = &appInfo,
-		.enabledExtensionCount = extensionCount,
-		.ppEnabledExtensionNames = extensions,
+		.enabledExtensionCount = @intCast(extensions.items.len),
+		.ppEnabledExtensionNames = extensions.items.ptr,
 		.ppEnabledLayerNames = validationLayers.ptr,
 		.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
 	};
 	checkResult(c.vkCreateInstance(&createInfo, null, &instance));
-
-	// NOTE(blackedout): Defer would be better but how to defer one scope up? I don't know
-	if(builtin.os.tag == .macos) {
-		main.stackAllocator.free(extensionsArray.?);
-	}
 }
 
 // MARK: Physical Device
@@ -248,8 +241,7 @@ const baseDeviceExtensions = [_][*:0]const u8{
 };
 
 const deviceExtensions = if(builtin.os.tag == .macos)
-	// NOTE(blackedout): Should use c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
-	baseDeviceExtensions ++ [_][*:0]const u8{"VK_KHR_portability_subset"}
+	baseDeviceExtensions ++ [_][*:0]const u8{c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME}
 else
 	baseDeviceExtensions;
 

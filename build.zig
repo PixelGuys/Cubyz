@@ -70,17 +70,12 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
 	} else if(t.os.tag == .macos) {
-		exe.linkFramework("AudioUnit");
-		exe.linkFramework("AudioToolbox");
-		exe.linkFramework("CoreAudio");
-		exe.linkFramework("CoreServices");
-		exe.linkFramework("Foundation");
-		exe.linkFramework("IOKit");
+		// NOTE(blackedout): miniaudio loads its frameworks dynamically at runtime, so no need to link against them.
+		// The following ones are for GLFW and found in the src/CMakeLists.txt of that repository
 		exe.linkFramework("Cocoa");
+		exe.linkFramework("CoreFoundation");
+		exe.linkFramework("IOKit");
 		exe.linkFramework("QuartzCore");
-		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
-		exe.root_module.addRPathSpecial("@executable_path/../Library");
-		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
 	} else if(t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
