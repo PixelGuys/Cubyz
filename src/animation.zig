@@ -29,32 +29,88 @@ pub fn loadGltf() void {
     // }
     
     // const result = c.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
-    const result = c.cgltf_parse_file(&options, "assets/cubyz/entity/models/snale_right_hand.glb", @ptrCast(&data));
+    var result = c.cgltf_parse_file(&options, "assets/cubyz/entity/models/snale_right_hand.glb", @ptrCast(&data));
     
     const name = switch (result) {
-            0 => "cgltf_result_success",
-            1 => "cgltf_result_data_too_short",
-            2 => "cgltf_result_unknown_format",
-            3 => "cgltf_result_invalid_json",
-            4 => "cgltf_result_invalid_gltf",
-            5 => "cgltf_result_invalid_options",
-            6 => "cgltf_result_file_not_found",
-            7 => "cgltf_result_io_error",
-            8 => "cgltf_result_out_of_memory",
-            9 => "cgltf_result_legacy_gltf",
-            10 => "cgltf_result_max_enum",
+            0 =>  "result_success",
+            1 =>  "result_data_too_short",
+            2 =>  "result_unknown_format",
+            3 =>  "result_invalid_json",
+            4 =>  "result_invalid_gltf",
+            5 =>  "result_invalid_options",
+            6 =>  "result_file_not_found",
+            7 =>  "result_io_error",
+            8 =>  "result_out_of_memory",
+            9 =>  "result_legacy_gltf",
+            10 => "result_max_enum",
             else => unreachable,
         };
     std.debug.print("yuppii!!!!!!!!!!!!!!! size: {s}\n", .{name});
-    if (result == c.cgltf_result_success) {
-        std.debug.print("count: {d}\n", .{data.animations_count});
-        for (data.animations) |anim| {
-            std.debug.print("name: {s}\n", .{anim.name});
-
-        }
-        std.debug.print("free!!\n", .{});
-        c.cgltf_free(@ptrCast(data));
+    if (result != c.cgltf_result_success) {
+        return;
     }
+    result = c.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
+    std.debug.print("yuppii>>>>>>>>> size: {s}\n", .{name});
+    if (result != c.cgltf_result_success) {
+        c.cgltf_free(@ptrCast(data));
+        return;
+    }
+    std.debug.print("count: {d}\n", .{data.animations_count});
+    for (data.animations, 0..data.animations_count) |anim, _| {
+        std.debug.print("ANIM name: \"{s}\" samplerCount: {d} channelCount: {d}\n", .{anim.name, anim.samplers_count, anim.channels_count});
+        
+        for (anim.channels, 0..anim.channels_count) |channel, _| {
+            const t = switch (channel.target_path) {
+                0 => "animation_path_type_invalid",
+                1 => "animation_path_type_translation",
+                2 => "animation_path_type_rotation",
+                3 => "animation_path_type_scale",
+                4 => "animation_path_type_weights",
+                5 => "animation_path_type_max_enum",
+                else => unreachable,
+            };
+            std.debug.print("node: {s} target: {s}\n", .{channel.target_node[0].name, t});
+            // for (channel.extras) |value| {}
+            const sampler = channel.sampler.*;
+            const l = switch (sampler.interpolation) {
+                0 => "interpolation_type_linear",
+                1 => "interpolation_type_step",
+                2 => "interpolation_type_cubic_spline",
+                3 => "interpolation_type_max_enum",
+                else => unreachable,
+            };
+            const bv = sampler.output[0].buffer_view[0];
+            std.debug.print("      lerp: \"{s}\"   data size: {d}\n", .{l, bv.buffer[0].size});
+            std.debug.print("      offset: {d}   size: {d}   stride: {d}\n", .{bv.offset, bv.size, sampler.output.*.stride});
+            var d: []u8 = undefined;
+            if (bv.buffer[0].data) |da| {
+                d = @as([]u8, @ptrCast(da));
+                d.len = bv.buffer[0].size;
+                d = d[bv.offset..bv.offset+bv.size];
+                switch (channel.target_path) {
+                    c.cgltf_animation_path_type_rotation => {
+                        var rotations: []const [4]f32 = @alignCast(@ptrCast(d));   
+                        rotations.len = @divFloor(bv.size, @sizeOf(f32) * 4);
+                        for (rotations) |v| {
+                            std.debug.print("         rot: {any}\n", .{v});
+                        }
+                    },
+                    c.cgltf_animation_path_type_translation => {
+                        var positions: []const [3]f32 = @alignCast(@ptrCast(d));   
+                        positions.len = @divFloor(bv.size, @sizeOf(f32) * 3);
+                        for (positions) |v| {
+                            std.debug.print("         pos: {any}\n", .{v});
+                        }
+                    },
+                    else => unreachable,
+                }
+            }
+            
+        }
+
+    }
+    std.debug.print("free!!\n", .{});
+    c.cgltf_free(@ptrCast(data));
 }
 
 pub const Animation = struct {
