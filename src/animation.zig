@@ -1,10 +1,61 @@
 const std = @import("std");
-
+const main = @import("main.zig");
 const vec = @import("vec.zig");
-
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+
+const c = @cImport({
+    @cInclude("cgltf.h");
+});
+
+// pub fn cglfw_alloc(user: *anyopaque, data: []anyopaque) void {
+
+// }
+
+pub fn loadGltf() void {
+    var options: c.cgltf_options = .{
+        .type = c.cgltf_file_type_glb,
+    };
+    var data: *c.cgltf_data = undefined;
+    // var file = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/Untitled.gltf") catch |err| blk: {
+    //         std.log.err("Error while reading player model: {s}", .{@errorName(err)});
+    //         break :blk &.{};
+    //     };
+    // defer main.stackAllocator.free(file);
+
+    // for (file) |i| {
+    //     std.debug.print("{c}", .{i});
+    // }
+    
+    // const result = c.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
+    const result = c.cgltf_parse_file(&options, "assets/cubyz/entity/models/snale_right_hand.glb", @ptrCast(&data));
+    
+    const name = switch (result) {
+            0 => "cgltf_result_success",
+            1 => "cgltf_result_data_too_short",
+            2 => "cgltf_result_unknown_format",
+            3 => "cgltf_result_invalid_json",
+            4 => "cgltf_result_invalid_gltf",
+            5 => "cgltf_result_invalid_options",
+            6 => "cgltf_result_file_not_found",
+            7 => "cgltf_result_io_error",
+            8 => "cgltf_result_out_of_memory",
+            9 => "cgltf_result_legacy_gltf",
+            10 => "cgltf_result_max_enum",
+            else => unreachable,
+        };
+    std.debug.print("yuppii!!!!!!!!!!!!!!! size: {s}\n", .{name});
+    if (result == c.cgltf_result_success) {
+        std.debug.print("count: {d}\n", .{data.animations_count});
+        for (data.animations) |anim| {
+            std.debug.print("name: {s}\n", .{anim.name});
+
+        }
+        std.debug.print("free!!\n", .{});
+        c.cgltf_free(@ptrCast(data));
+    }
+}
 
 pub const Animation = struct {
 	const Frame = struct {

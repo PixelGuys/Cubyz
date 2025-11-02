@@ -565,6 +565,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	pub var anim = animation.Animation{};
 
 	pub fn init() void {
+		animation.loadGltf();
 		anim.init();
 	}
 
