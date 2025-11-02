@@ -34,7 +34,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
 	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
-	@cInclude(if(builtin.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
+	@cInclude(if(builtin.target.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
 });
 
 pub const stb_image = @cImport({
