@@ -1,9 +1,5 @@
 .{
 	.{
-		.inputs = .{"{mod}:{type}_planks", "cubyz:iron_ingot"},
-		.output = "cubyz:chisel",
-	},
-	.{
 		.inputs = .{"cubyz:coal_ore", "{mod}:{type}_ore"},
 		.output = "{mod}:{type}_ingot",
 	},
@@ -18,6 +14,18 @@
 	.{
 		.inputs = .{"1 cubyz:torch", "2 cubyz:iron_ingot"},
 		.output = "cubyz:lamp",
+	},
+	.{
+		.inputs = .{"1 cubyz:sulfur_torch", "2 cubyz:iron_ingot"},
+		.output = "cubyz:sulfur_lamp",
+	},
+	.{
+		.inputs = .{"2 cubyz:torch", "1 cubyz:iron_ingot"},
+		.output = "2 cubyz:lantern/coal",
+	},
+	.{
+		.inputs = .{"2 cubyz:sulfur_torch", "1 cubyz:iron_ingot"},
+		.output = "2 cubyz:lantern/sulfur",
 	},
 	.{
 		.inputs = .{"4 cubyz:resin"},

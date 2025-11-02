@@ -351,14 +351,13 @@ const ChunkManager = struct { // MARK: ChunkManager
 		return self;
 	}
 
-	pub fn deinit(self: ChunkManager) void {
+	pub fn deinit(_: ChunkManager) void {
 		for(0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
 		entityChunkHashMap.deinit();
 		server.terrain.deinit();
 		main.assets.unloadAssets();
-		self.terrainGenerationProfile.deinit();
 		storage.deinit();
 	}
 
@@ -1036,9 +1035,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			_chunk.mutex.lock();
 			const block = _chunk.getBlock(x, y, z);
 			_chunk.mutex.unlock();
-			if(block.tickEvent()) |event| {
-				event.tryRandomTick(block, _chunk, x, y, z);
-			}
+			_ = block.onTick().run(.{.block = block, .chunk = _chunk, .x = x, .y = y, .z = z});
 		}
 	}
 

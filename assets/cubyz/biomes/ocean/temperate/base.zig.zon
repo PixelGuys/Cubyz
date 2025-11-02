@@ -1,0 +1,61 @@
+.{
+	.properties = .{
+		.ocean,
+	},
+	.radius = 500,
+	.minHeight = -100,
+	.maxHeight = -22,
+	.maxHeightLimit = 7,
+	.smoothBeaches = true,
+
+	.roughness = 15,
+	.hills = 15,
+
+	.rivers = true,
+
+	.music = "cubyz:under_the_water_sky",
+
+	.ground_structure = .{
+		"2 to 3 cubyz:gravel",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:moss:cubyz:cobblestone",
+			.chance = 0.064,
+			.width = 6,
+			.variation = 2,
+			.depth = 2,
+			.smoothness = 0.2,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:sand",
+			.chance = 0.032,
+			.width = 6,
+			.variation = 2,
+			.depth = 2,
+			.smoothness = 0.2,
+		},
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:beach/warm/wide",
+			.chance = 0.2,
+			.width = 2,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:beach/warm/base",
+			.chance = 1,
+			.width = 1,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:ocean/temperate/shelf",
+			.chance = 1,
+			.width = 3,
+			.properties = .{.land, .inland},
+		},
+	},
+}

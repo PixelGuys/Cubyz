@@ -68,7 +68,6 @@ fn leavesQualityCallback(newValue: u16) void {
 fn fovCallback(newValue: f32) void {
 	settings.fov = newValue;
 	settings.save();
-	main.Window.GLFWCallbacks.framebufferSize(undefined, main.Window.width, main.Window.height);
 }
 
 fn fovFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
@@ -81,6 +80,15 @@ fn lodDistanceFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) 
 
 fn lodDistanceCallback(newValue: f32) void {
 	settings.@"lod0.5Distance" = @round(newValue);
+	settings.save();
+}
+
+fn contrastFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffBlock Contrast: {d:.0}%", .{@round(value*100)}) catch unreachable;
+}
+
+fn contrastCallback(newValue: f32) void {
+	settings.blockContrast = @round(newValue*100)/100;
 	settings.save();
 }
 
@@ -124,6 +132,7 @@ pub fn onOpen() void {
 	}
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLeaves Quality (TODO: requires reload): ", "{}", &leavesQualities, settings.leavesQuality - leavesQualities[0], &leavesQualityCallback));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 50.0, 400.0, settings.@"lod0.5Distance", &lodDistanceCallback, &lodDistanceFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 0.0, 0.5, settings.blockContrast, &contrastCallback, &contrastFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));

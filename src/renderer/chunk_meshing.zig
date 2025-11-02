@@ -184,7 +184,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
-	c.glUniform1f(locations.contrast, 0);
+	c.glUniform1f(locations.contrast, main.settings.blockContrast);
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
 
@@ -703,7 +703,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return self;
 	}
 
-	fn privateDeinit(self: *ChunkMesh, _: usize) void {
+	fn privateDeinit(self: *ChunkMesh) void {
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();

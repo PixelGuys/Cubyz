@@ -279,8 +279,8 @@ pub const Key = struct { // MARK: Key
 	gamepadButton: c_int = -1,
 	mouseButton: c_int = -1,
 	scancode: c_int = 0,
-	releaseAction: ?*const fn() void = null,
-	pressAction: ?*const fn() void = null,
+	releaseAction: ?*const fn(Modifiers) void = null,
+	pressAction: ?*const fn(Modifiers) void = null,
 	repeatAction: ?*const fn(Modifiers) void = null,
 	notifyRequirement: Requirement = .always,
 	grabbedOnPress: bool = false,
@@ -460,8 +460,8 @@ pub const Key = struct { // MARK: Key
 		if(!self.requiredModifiers.satisfiedBy(mods)) return;
 		if(textKeyPressedInTextField and self.requiredModifiers.isEmpty()) return; // Don't send events for keys that are used in writing letters.
 		switch(typ) {
-			.press => if(self.pressAction) |a| a(),
-			.release => if(self.releaseAction) |a| a(),
+			.press => if(self.pressAction) |a| a(mods),
+			.release => if(self.releaseAction) |a| a(mods),
 			.repeat => if(self.repeatAction) |a| a(mods),
 		}
 	}
@@ -509,7 +509,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
 		height = @intCast(newHeight);
-		main.renderer.updateViewport(width, height, main.settings.fov);
+		main.renderer.updateViewport(width, height);
 		main.gui.updateGuiScale();
 		main.gui.updateWindowPositions();
 	}
@@ -632,8 +632,8 @@ fn releaseButtonsOnGrabChange(grab: bool) void {
 	for(&main.KeyBoard.keys) |*key| {
 		if(key.notifyRequirement == state and key.pressed) {
 			key.pressed = false;
+			if(key.releaseAction) |rel| rel(key.modsOnPress);
 			key.modsOnPress = .{};
-			if(key.releaseAction) |rel| rel();
 		}
 	}
 }
@@ -753,7 +753,7 @@ var oldX: c_int = 0;
 var oldY: c_int = 0;
 var oldWidth: c_int = 0;
 var oldHeight: c_int = 0;
-pub fn toggleFullscreen() void {
+pub fn toggleFullscreen(_: Key.Modifiers) void {
 	isFullscreen = !isFullscreen;
 	if(isFullscreen) {
 		c.glfwGetWindowPos(window, &oldX, &oldY);
