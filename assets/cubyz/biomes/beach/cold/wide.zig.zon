@@ -1,0 +1,67 @@
+.{
+	.properties = .{
+		.ocean,
+	},
+	.radius = 500,
+	.minHeight = 5,
+	.maxHeight = 7,
+	.chance = 0,
+
+	.interpolation = .linear,
+
+	.hills = 5,
+
+	.music = "cubyz:tides",
+
+	.ground_structure = .{
+		"2 to 4 cubyz:gravel",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:amber_ore:cubyz:gravel",
+			.chance = 0.002,
+			.width = 1,
+			.variation = 2,
+			.depth = 1,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.03,
+			.block = "cubyz:slate",
+			.size = 5,
+			.size_variance = 4,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.01,
+			.block = "cubyz:moss:cubyz:slate",
+			.size = 5,
+			.size_variance = 4,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.07,
+			.block = "cubyz:cobblestone",
+			.size = 3,
+			.size_variance = 2,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.02,
+			.block = "cubyz:moss:cubyz:cobblestone",
+			.size = 3,
+			.size_variance = 2,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:moss:cubyz:gravel",
+			.chance = 0.064,
+			.width = 3,
+			.variation = 2,
+			.depth = 2,
+			.smoothness = 0.05,
+		},
+	},
+}

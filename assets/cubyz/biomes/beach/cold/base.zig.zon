@@ -1,0 +1,30 @@
+.{
+	.properties = .{
+		.ocean,
+	},
+	.radius = 500,
+	.minHeight = 5,
+	.maxHeight = 7,
+	.chance = 0,
+
+	.interpolation = .linear,
+
+	.hills = 5,
+
+	.music = "cubyz:tides",
+
+	.ground_structure = .{
+		"2 to 4 cubyz:gravel",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:amber_ore:cubyz:gravel",
+			.chance = 0.001,
+			.width = 1,
+			.variation = 2,
+			.depth = 1,
+			.smoothness = 0.1,
+		},
+	},
+}
