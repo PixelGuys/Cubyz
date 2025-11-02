@@ -498,10 +498,12 @@ pub fn main() void { // MARK: main()
 	initLogging();
 	defer deinitLogging();
 
+	std.log.info("Starting game with version {s}", .{settings.version.version});
+
 	settings.launchConfig.init();
 	defer settings.launchConfig.deinit();
-	const headless: bool = settings.launchConfig.headlessServer;
-	std.log.info("Starting game {s} with version {s}", .{if(headless) "server" else "client", settings.version.version});
+
+	const headless = settings.launchConfig.headlessServer;
 
 	if(!headless) gui.initWindowList();
 	defer if(!headless) gui.deinitWindowList();
