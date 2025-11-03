@@ -252,7 +252,7 @@ pub const BlockEntityTypes = struct {
 			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, .{});
 
 			main.gui.getWindow("cubyz:chest").setInventory(inventory);
-			main.gui.openWindow("chest");
+			main.gui.openWindow("cubyz:chest");
 			main.Window.setMouseGrabbed(false);
 
 			return .handled;

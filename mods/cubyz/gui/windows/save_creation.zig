@@ -54,7 +54,7 @@ fn createWorld(_: usize) void {
 	};
 	gui.closeWindowFromRef(&window);
 	gui.getWindow("cubyz:save_selection").needsUpdate = true;
-	gui.openWindow("save_selection");
+	gui.openWindow("cubyz:save_selection");
 }
 
 pub fn onOpen() void {

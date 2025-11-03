@@ -32,7 +32,7 @@ fn apply(_: usize) void {
 
 	gui.closeWindowFromRef(&window);
 	if(oldName.len == 0) {
-		gui.openWindow("main");
+		gui.openWindow("cubyz:main");
 	}
 }
 

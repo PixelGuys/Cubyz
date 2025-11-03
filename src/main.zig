@@ -208,7 +208,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 			logToStdErr(formatString, resultArgs);
 			if(level == .err and !openingErrorWindow) {
 				openingErrorWindow = true;
-				gui.openWindow("error_prompt");
+				gui.openWindow("cubyz:error_prompt");
 				openingErrorWindow = false;
 			}
 		}
@@ -291,18 +291,18 @@ fn ungrabMouse(_: Window.Key.Modifiers) void {
 fn openInventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
-	gui.openWindow("inventory");
+	gui.openWindow("cubyz:inventory");
 }
 fn openCreativeInventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
-	gui.openWindow("creative_inventory");
+	gui.openWindow("cubyz:creative_inventory");
 }
 fn openChat(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	ungrabMouse(mods);
-	gui.openWindow("chat");
+	gui.openWindow("cubyz:chat");
 	gui.getWindow("cubyz:chat").input.select();
 }
 fn openCommand(mods: Window.Key.Modifiers) void {
@@ -572,9 +572,9 @@ pub fn main() void { // MARK: main()
 	defer particles.ParticleManager.deinit();
 
 	if(settings.playerName.len == 0) {
-		gui.openWindow("change_name");
+		gui.openWindow("cubyz:change_name");
 	} else {
-		gui.openWindow("main");
+		gui.openWindow("cubyz:main");
 	}
 
 	server.terrain.globalInit();
@@ -656,7 +656,7 @@ pub fn main() void { // MARK: main()
 				world.deinit();
 				game.world = null;
 			}
-			gui.openWindow("main");
+			gui.openWindow("cubyz:main");
 			audio.setMusic("cubyz:cubyz");
 		}
 	}

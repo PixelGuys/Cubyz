@@ -30,7 +30,7 @@ fn setNotificationText(newText: []const u8) void {
 pub fn raiseNotification(notifText: []const u8) void {
 	main.gui.closeWindow("notification");
 	setNotificationText(notifText);
-	main.gui.openWindow("notification");
+	main.gui.openWindow("cubyz:notification");
 }
 
 fn ack(_: usize) void {

@@ -153,7 +153,7 @@ pub const Gamepad = struct {
 			};
 			main.threadPool.addTask(task, &vtable);
 			// Don't attempt to open the window before the GUI is initialized.
-			main.gui.openWindow("download_controller_mappings");
+			main.gui.openWindow("cubyz:download_controller_mappings");
 		}
 
 		pub fn getPriority(_: *ControllerMappingDownloadTask) f32 {
