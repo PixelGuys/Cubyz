@@ -325,19 +325,19 @@ fn toggleHideDisplayItem(_: Window.Key.Modifiers) void {
 	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
 }
 fn toggleDebugOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("debug");
+	gui.toggleWindow("cubyz:debug");
 }
 fn togglePerformanceOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("performance_graph");
+	gui.toggleWindow("cubyz:performance_graph");
 }
 fn toggleGPUPerformanceOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("gpu_performance_measuring");
+	gui.toggleWindow("cubyz:gpu_performance_measuring");
 }
 fn toggleNetworkDebugOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("debug_network");
+	gui.toggleWindow("cubyz:debug_network");
 }
 fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("debug_network_advanced");
+	gui.toggleWindow("cubyz:debug_network_advanced");
 }
 fn cycleHotbarSlot(i: comptime_int) *const fn(Window.Key.Modifiers) void {
 	return &struct {
