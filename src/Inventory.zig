@@ -1648,6 +1648,7 @@ pub const Command = struct { // MARK: Command
 			for(self.dest._items, 0..) |*destStack, destSlot| {
 				if(std.meta.eql(destStack.item, sourceStack.item) or destStack.item == null) {
 					const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
+					if(amount == 0) continue;
 					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
 						.source = self.source,
