@@ -18,6 +18,7 @@ const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
 const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
+const Tooltip = @import("components/Tooltip.zig");
 pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
@@ -155,6 +156,7 @@ pub fn init() void { // MARK: init()
 	ContinuousSlider.__init();
 	DiscreteSlider.__init();
 	TextInput.__init();
+	Tooltip.__init();
 	load();
 	GamepadCursor.init();
 }
@@ -768,31 +770,30 @@ pub const inventory = struct { // MARK: inventory
 		if(carried.getAmount(0) == 0) if(hoveredItemSlot) |hovered| {
 			if(hovered.inventory.getItem(hovered.itemSlot)) |item| {
 				const tooltip = item.getTooltip();
-				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
-				defer textBuffer.deinit();
-				const fontSize = 16;
-				var size = textBuffer.calculateLineBreaks(fontSize, 300);
+
+				var label = GuiComponent.Label.init(Vec2f{0, 0}, 300, tooltip, .left);
+				var size = label.text.calculateLineBreaks(GuiComponent.Label.fontSize, 300);
 				size[0] = 0;
-				for(textBuffer.lineBreaks.items) |lineBreak| {
+				for(label.text.lineBreaks.items) |lineBreak| {
 					size[0] = @max(size[0], lineBreak.width);
 				}
+				label.size = size;
+
 				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
-				const xOffset = 18;
-				const padding: f32 = 1;
-				const border: f32 = padding + 1;
+				const sliceOffset = GuiComponent.Tooltip.cornerVec2Size[0] * 2;
 				var pos = mousePos;
-				if(pos[0] + size[0] + border + xOffset >= windowSize[0]) {
-					pos[0] -= size[0] + xOffset;
+				if(pos[0] + size[0] + sliceOffset >= windowSize[0]) {
+					pos[0] -= size[0] + sliceOffset;
 				} else {
-					pos[0] += xOffset;
+					pos[0] += sliceOffset;
 				}
-				pos[1] = @min(pos[1] - fontSize, windowSize[1] - size[1] - border);
-				pos = @max(pos, Vec2f{border, border});
-				draw.setColor(0xffffff00);
-				draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
-				draw.setColor(0xff000000);
-				draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
-				textBuffer.render(pos[0], pos[1], fontSize);
+				pos[1] = @min(pos[1] - GuiComponent.Label.fontSize, windowSize[1] - size[1] - sliceOffset);
+
+				var tooltipElement = GuiComponent.Tooltip.init();
+				defer tooltipElement.deinit();
+				tooltipElement.components.add(label);
+				tooltipElement.components.finish(.left);
+				tooltipElement.render(pos);
 			}
 		};
 	}
