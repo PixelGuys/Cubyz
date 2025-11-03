@@ -116,7 +116,7 @@ pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
 	try std.fs.cwd().writeFile(.{.data = featureList.items, .sub_path = file_path});
 }
 
-pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8, options: *std.Build.Step.Options) !void {
+pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
 	const filename = try b.allocator.dupe(u8, name);
 	std.mem.replaceScalar(u8, filename, '/', '_');
 	const module = b.createModule(.{
@@ -124,12 +124,11 @@ pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []
 		.target = exe.root_module.resolved_target,
 		.optimize = exe.root_module.optimize,
 	});
-	module.addOptions("build_options", options);
 	module.addImport("main", exe.root_module);
 	exe.root_module.addImport(name, module);
 }
 
-fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile, options: *std.Build.Step.Options) !void {
+fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	const step = try b.allocator.create(std.Build.Step);
 	step.* = std.Build.Step.init(.{
 		.id = .custom,
@@ -139,8 +138,8 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile, options: *std.Bui
 	});
 	exe.step.dependOn(step);
 
-	try addModFeatureModule(b, exe, "rotation", options);
-	try addModFeatureModule(b, exe, "gui/windows", options);
+	try addModFeatureModule(b, exe, "rotation");
+	try addModFeatureModule(b, exe, "gui/windows");
 }
 
 pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
@@ -204,7 +203,7 @@ pub fn build(b: *std.Build) !void {
 	});
 	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);
-	try addModFeatures(b, exe, options);
+	try addModFeatures(b, exe);
 
 	if(isRelease and target.result.os.tag == .windows) {
 		exe.subsystem = .Windows;
@@ -237,7 +236,7 @@ pub fn build(b: *std.Build) !void {
 	linkLibraries(b, exe_tests, useLocalDeps);
 	exe_tests.root_module.addOptions("build_options", options);
 	exe_tests.root_module.addImport("main", mainModule);
-	try addModFeatures(b, exe_tests, options);
+	try addModFeatures(b, exe_tests);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
 
 	const test_step = b.step("test", "Run unit tests");
