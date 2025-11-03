@@ -348,7 +348,7 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: main.server.Entity, hitBox: Box, side: main.utils.Side) void {
+	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, deltaTime: f64) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
@@ -373,13 +373,14 @@ pub const collision = struct {
 				while(posZ <= maxZ) : (posZ += 1) {
 					const block: ?Block =
 						if(side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
-					if(block == null or block.?.touchFunction() == null)
+					if(block == null or block.?.onTouch().isNoop())
 						continue;
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
 					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
-					if(touchX or touchY or touchZ)
-						block.?.touchFunction().?(block.?, entity, posX, posY, posZ, touchX and touchY and touchZ);
+					if(touchX or touchY or touchZ) {
+						_ = block.?.onTouch().run(.{.entity = entity, .source = block.?, .blockPos = .{posX, posY, posZ}, .deltaTime = deltaTime});
+					}
 				}
 			}
 		}
@@ -392,12 +393,16 @@ pub const DamageType = enum(u8) {
 	heal = 0, // For when you are adding health
 	kill = 1,
 	fall = 2,
+	heat = 3,
+	spiky = 4,
 
 	pub fn sendMessage(self: DamageType, name: []const u8) void {
 		switch(self) {
 			.heal => main.server.sendMessage("{s}§#ffffff was healed", .{name}),
 			.kill => main.server.sendMessage("{s}§#ffffff was killed", .{name}),
 			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
+			.heat => main.server.sendMessage("{s}§#ffffff burned to death", .{name}),
+			.spiky => main.server.sendMessage("{s}§#ffffff experienced death by 1000 needles", .{name}),
 		}
 	}
 };
@@ -450,7 +455,6 @@ pub const Player = struct { // MARK: Player
 
 	fn loadFrom(zon: ZonElement) void {
 		super.loadFrom(zon);
-		inventory.loadFromZon(zon.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -521,17 +525,15 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn placeBlock() void {
+	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
 		if(main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
-			if(!main.KeyBoard.key("shift").pressed) {
+			if(!mods.shift) {
 				if(main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
 			}
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
-			const gui = block.gui();
-			if(gui.len != 0 and !main.KeyBoard.key("shift").pressed) {
-				main.gui.openWindow(gui);
-				main.Window.setMouseGrabbed(false);
-				return;
+			const onInteract = block.onInteract();
+			if(!mods.shift) {
+				if(onInteract.run(.{.blockPos = blockPos, .block = block}) == .handled) return;
 			}
 		}
 
@@ -616,6 +618,8 @@ pub const World = struct { // MARK: World
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+		main.heap.allocators.createWorldArena();
+		errdefer main.heap.allocators.destroyWorldArena();
 		self.* = .{
 			.conn = try Connection.init(manager, ip, null),
 			.manager = manager,
@@ -665,6 +669,7 @@ pub const World = struct { // MARK: World
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();
+		main.heap.allocators.destroyWorldArena();
 	}
 
 	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
@@ -755,31 +760,31 @@ pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .densi
 var nextBlockPlaceTime: ?i64 = null;
 var nextBlockBreakTime: ?i64 = null;
 
-pub fn pressPlace() void {
+pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
 	const time = std.time.milliTimestamp();
 	nextBlockPlaceTime = time + main.settings.updateRepeatDelay;
-	Player.placeBlock();
+	Player.placeBlock(mods);
 }
 
-pub fn releasePlace() void {
+pub fn releasePlace(_: main.Window.Key.Modifiers) void {
 	nextBlockPlaceTime = null;
 }
 
-pub fn pressBreak() void {
+pub fn pressBreak(_: main.Window.Key.Modifiers) void {
 	const time = std.time.milliTimestamp();
 	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
 	Player.breakBlock(0);
 }
 
-pub fn releaseBreak() void {
+pub fn releaseBreak(_: main.Window.Key.Modifiers) void {
 	nextBlockBreakTime = null;
 }
 
-pub fn pressAcquireSelectedBlock() void {
+pub fn pressAcquireSelectedBlock(_: main.Window.Key.Modifiers) void {
 	Player.acquireSelectedBlock();
 }
 
-pub fn flyToggle() void {
+pub fn flyToggle(_: main.Window.Key.Modifiers) void {
 	if(!Player.isCreative()) return;
 
 	const newIsFlying = !Player.isActuallyFlying();
@@ -788,7 +793,7 @@ pub fn flyToggle() void {
 	Player.isGhost.store(false, .monotonic);
 }
 
-pub fn ghostToggle() void {
+pub fn ghostToggle(_: main.Window.Key.Modifiers) void {
 	if(!Player.isCreative()) return;
 
 	const newIsGhost = !Player.isGhost.load(.monotonic);
@@ -797,7 +802,7 @@ pub fn ghostToggle() void {
 	Player.isFlying.store(newIsGhost, .monotonic);
 }
 
-pub fn hyperSpeedToggle() void {
+pub fn hyperSpeedToggle(_: main.Window.Key.Modifiers) void {
 	if(!Player.isCreative()) return;
 
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
@@ -963,7 +968,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if(nextBlockPlaceTime) |*placeTime| {
 		if(time -% placeTime.* >= 0) {
 			placeTime.* += main.settings.updateRepeatSpeed;
-			Player.placeBlock();
+			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {

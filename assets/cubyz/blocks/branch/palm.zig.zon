@@ -1,0 +1,37 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = "cubyz:branch",
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/palm/dot",
+	.texture1 = "cubyz:branch/palm/half_line",
+	.texture2 = "cubyz:branch/palm/line",
+	.texture3 = "cubyz:branch/palm/bend",
+	.texture4 = "cubyz:branch/palm/intersection",
+	.texture5 = "cubyz:branch/palm/cross",
+	.item = .{
+		.material = .{
+			.durability = 22,
+			.massDamage = 0.4,
+			.hardnessDamage = 0.4,
+			.swingSpeed = 7.4,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff6d4f33, 0xff865f3d, 0xff9f6c46, 0xffb47f51, 0xff9f6c46,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.10,
+				},
+			},
+		},
+		.texture = "branch/palm.png",
+	},
+}

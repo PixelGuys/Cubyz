@@ -271,6 +271,7 @@ pub const GamepadAxis = struct {
 pub const Key = struct { // MARK: Key
 	name: []const u8,
 	pressed: bool = false,
+	isToggling: IsToggling = .never,
 	modsOnPress: Modifiers = .{},
 	value: f32 = 0.0,
 	key: c_int = c.GLFW_KEY_UNKNOWN,
@@ -278,12 +279,18 @@ pub const Key = struct { // MARK: Key
 	gamepadButton: c_int = -1,
 	mouseButton: c_int = -1,
 	scancode: c_int = 0,
-	releaseAction: ?*const fn() void = null,
-	pressAction: ?*const fn() void = null,
+	releaseAction: ?*const fn(Modifiers) void = null,
+	pressAction: ?*const fn(Modifiers) void = null,
 	repeatAction: ?*const fn(Modifiers) void = null,
 	notifyRequirement: Requirement = .always,
 	grabbedOnPress: bool = false,
 	requiredModifiers: Modifiers = .{},
+
+	pub const IsToggling = enum {
+		never,
+		no,
+		yes,
+	};
 
 	pub const Modifiers = packed struct(u6) {
 		shift: bool = false,
@@ -428,6 +435,12 @@ pub const Key = struct { // MARK: Key
 	}
 
 	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
+		if(self.isToggling == .yes) {
+			if(newPressed) {
+				self.pressed = !self.pressed;
+			}
+			return;
+		}
 		if(newPressed != self.pressed) {
 			self.pressed = newPressed;
 			self.modsOnPress = mods;
@@ -447,8 +460,8 @@ pub const Key = struct { // MARK: Key
 		if(!self.requiredModifiers.satisfiedBy(mods)) return;
 		if(textKeyPressedInTextField and self.requiredModifiers.isEmpty()) return; // Don't send events for keys that are used in writing letters.
 		switch(typ) {
-			.press => if(self.pressAction) |a| a(),
-			.release => if(self.releaseAction) |a| a(),
+			.press => if(self.pressAction) |a| a(mods),
+			.release => if(self.releaseAction) |a| a(mods),
 			.repeat => if(self.repeatAction) |a| a(mods),
 		}
 	}
@@ -496,7 +509,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
 		height = @intCast(newHeight);
-		main.renderer.updateViewport(width, height, main.settings.fov);
+		main.renderer.updateViewport(width, height);
 		main.gui.updateGuiScale();
 		main.gui.updateWindowPositions();
 	}
@@ -619,8 +632,8 @@ fn releaseButtonsOnGrabChange(grab: bool) void {
 	for(&main.KeyBoard.keys) |*key| {
 		if(key.notifyRequirement == state and key.pressed) {
 			key.pressed = false;
+			if(key.releaseAction) |rel| rel(key.modsOnPress);
 			key.modsOnPress = .{};
-			if(key.releaseAction) |rel| rel();
 		}
 	}
 }
@@ -740,7 +753,7 @@ var oldX: c_int = 0;
 var oldY: c_int = 0;
 var oldWidth: c_int = 0;
 var oldHeight: c_int = 0;
-pub fn toggleFullscreen() void {
+pub fn toggleFullscreen(_: Key.Modifiers) void {
 	isFullscreen = !isFullscreen;
 	if(isFullscreen) {
 		c.glfwGetWindowPos(window, &oldX, &oldY);

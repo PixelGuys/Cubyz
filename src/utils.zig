@@ -1139,7 +1139,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			@memset(impl.data.data, .init(0));
 		}
 
-		fn privateDeinit(impl: *Impl, _: usize) void {
+		fn privateDeinit(impl: *Impl) void {
 			impl.data.deinit();
 			main.globalAllocator.free(impl.palette);
 			main.globalAllocator.free(impl.paletteOccupancy);
@@ -1719,6 +1719,11 @@ pub const BinaryReader = struct {
 		return std.meta.intToEnum(T, int);
 	}
 
+	pub fn readBool(self: *BinaryReader) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!bool {
+		const int = try self.readInt(u1);
+		return int != 0;
+	}
+
 	pub fn readUntilDelimiter(self: *BinaryReader, comptime delimiter: u8) ![:delimiter]const u8 {
 		const len = std.mem.indexOfScalar(u8, self.remaining, delimiter) orelse return error.OutOfBounds;
 		defer self.remaining = self.remaining[len + 1 ..];
@@ -1792,6 +1797,10 @@ pub const BinaryWriter = struct {
 
 	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {
 		self.writeInt(@typeInfo(T).@"enum".tag_type, @intFromEnum(value));
+	}
+
+	pub fn writeBool(self: *BinaryWriter, value: bool) void {
+		self.writeInt(u1, @intFromBool(value));
 	}
 
 	pub fn writeSlice(self: *BinaryWriter, slice: []const u8) void {
@@ -2228,57 +2237,6 @@ fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
 /// Turns the return parameter into a anyopaque*
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
-}
-
-// MARK: Callback
-pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
-	return struct {
-		const Self = @This();
-
-		hashMap: std.StringHashMap(*const Function) = undefined,
-
-		pub fn init() Self {
-			var self = Self{.hashMap = .init(main.globalAllocator.allocator)};
-			inline for(@typeInfo(Child).@"struct".decls) |declaration| {
-				if(@TypeOf(@field(Child, declaration.name)) == Function) {
-					std.log.debug("Registered Callback '{s}'", .{declaration.name});
-					self.hashMap.putNoClobber(declaration.name, &@field(Child, declaration.name)) catch unreachable;
-				}
-			}
-			return self;
-		}
-
-		pub fn deinit(self: *Self) void {
-			self.hashMap.deinit();
-		}
-
-		pub fn getFunctionPointer(self: *Self, id: []const u8) ?*const Function {
-			return self.hashMap.get(id);
-		}
-	};
-}
-
-test "NamedCallbacks registers functions" {
-	const TestFunction = fn(_: i32) void;
-	const TestFunctions = struct {
-		// Callback should register this
-		pub fn testFunction(_: i32) void {}
-		pub fn otherTestFunction(_: i32) void {}
-		// Callback should ignore this
-		pub fn wrongSignatureFunction(_: i32, _: bool) void {}
-	};
-	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
-
-	testFunctions = .init();
-	defer testFunctions.deinit();
-
-	try std.testing.expectEqual(2, testFunctions.hashMap.count());
-
-	try std.testing.expectEqual(&TestFunctions.testFunction, testFunctions.getFunctionPointer("testFunction").?);
-	try std.testing.expectEqual(&TestFunctions.otherTestFunction, testFunctions.getFunctionPointer("otherTestFunction").?);
-
-	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("functionTest"));
-	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
 }
 
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
