@@ -1060,7 +1060,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 		}
 
-		const swingTime = if(isTool and isToolEffective) 1.0/stack.item.?.tool.swingSpeed else 0.5;
+		const swingTime = 5 * if(isTool and isToolEffective) 1.0/stack.item.?.tool.swingSpeed else 0.5;
 		if(currentSwingTime != swingTime) {
 			currentSwingProgress = 0;
 			currentSwingTime = swingTime;

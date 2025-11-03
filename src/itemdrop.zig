@@ -558,7 +558,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	pub var isSwinging: bool = false;
 	var isCloseEnough: bool = true;
 	var currentPos: Vec3d = @splat(0);
-	var currentRot: Vec3d = @splat(0);
+	var currentRot: Vec4f = @splat(0);
 
     pub var handPos: Vec3d = @splat(0);
 
@@ -566,7 +566,8 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 
 	pub fn init() void {
 		animation.loadGltf();
-		anim.init();
+		const animIndex = animation.animationHashMap.get("swing_axe") orelse 0;
+		anim = animation.animationTypes.items[animIndex];
 	}
 
 	pub fn deinit() void {
@@ -588,14 +589,14 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		if (isSwinging) {
 			anim.update(deltaTime);
 			
-			const animPos = anim.currentPosition;
-			const animRot = anim.currentRotation;
+			const animPos = anim.getPosition();
+			const animRot = anim.getRotation();
 			// if (vec.lengthSquare())
-			currentPos = std.math.lerp(currentPos, animPos, @as(Vec3d, @splat(0.15)));
-			currentRot = std.math.lerp(currentPos, animRot, @as(Vec3d, @splat(0.5)));
+			currentPos = animPos;//std.math.lerp(currentPos, animPos, @as(Vec3d, @splat(0.15)));
+			currentRot = animRot;//std.math.lerp(currentRot, animRot, @as(Vec3d, @splat(0.5)));
 		} else {
 			currentPos = std.math.lerp(currentPos, Vec3d{0, 0, 0}, @as(Vec3d, @splat(0.2)));
-			currentRot = std.math.lerp(currentPos, Vec3d{0, 0, 0}, @as(Vec3d, @splat(0.75)));
+			currentRot = vec.slerp(currentRot, Vec4f{0, 0, 0, 1}, 0.75);
 		}
 
 		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
@@ -606,7 +607,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	}
 
 	pub fn setSwingData(swingTime: f64) void {
-		anim.speed = anim.length / swingTime;
+		anim.speed = anim.length / @as(f32, @floatCast(swingTime));
 	}
 };
 
@@ -903,7 +904,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			bindModelUniforms(model.index, blockType);
 			pos += ItemDisplayManager.currentPos;
 		
-			const animatedRotation: Vec3f = @floatCast(ItemDisplayManager.currentRot);
+			// const animatedRotation: Vec4f = ItemDisplayManager.currentRot;
 
 			var modelMatrix = Mat4f.rotationZ(-cameraRot[2]);
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-cameraRot[1]));
@@ -919,9 +920,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			} else {
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.2));
 			}
-			modelMatrix = modelMatrix.mul(Mat4f.rotationX(animatedRotation[0]));
-			modelMatrix = modelMatrix.mul(Mat4f.rotationY(animatedRotation[1]));
-			modelMatrix = modelMatrix.mul(Mat4f.rotationZ(animatedRotation[2]));
+			// modelMatrix = modelMatrix.mul(Mat4f.rotationQuat(animatedRotation));
+			// modelMatrix = modelMatrix.mul(Mat4f.rotationX(animatedRotation[0]));
+			// modelMatrix = modelMatrix.mul(Mat4f.rotationY(animatedRotation[1]));
+			// modelMatrix = modelMatrix.mul(Mat4f.rotationZ(animatedRotation[2]));
 
 			modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
@@ -945,7 +947,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
         scale = 1;
 
-        pos = Vec3d{0.4, 0.6, -0.2};
+        pos = Vec3d{0.4, 1.5, -0.2};
         var yRot: f32 = -std.math.pi*0.35;
         if(selectedItem) |item| {
             const isBlock: bool = item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
@@ -962,7 +964,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
         // var newCoolPos = ItemDisplayManager.handPos;
         pos += ItemDisplayManager.currentPos;
 
-        const animatedRotation: Vec3f = @floatCast(ItemDisplayManager.currentRot);
+        const animatedRotation: Vec4f = ItemDisplayManager.currentRot;
         var modelMatrix = Mat4f.rotationZ(-cameraRot[2]);
         modelMatrix = modelMatrix.mul(Mat4f.rotationY(-cameraRot[1]));
         modelMatrix = modelMatrix.mul(Mat4f.rotationX(-cameraRot[0]));
@@ -971,11 +973,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
         modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
         modelMatrix = modelMatrix.mul(Mat4f.rotationY(yRot));
 
-        // modelMatrix = modelMatrix.mul(Mat4f.rotationX(std.math.degreesToRadians(90)));
-        // modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.degreesToRadians()));
-        modelMatrix = modelMatrix.mul(Mat4f.rotationX(animatedRotation[0]));
-        modelMatrix = modelMatrix.mul(Mat4f.rotationY(animatedRotation[1]));
-        modelMatrix = modelMatrix.mul(Mat4f.rotationZ(animatedRotation[2]));
+		modelMatrix = modelMatrix.mul(Mat4f.rotationQuat(animatedRotation));
+        // modelMatrix = modelMatrix.mul(Mat4f.rotationX(animatedRotation[0]));
+        // modelMatrix = modelMatrix.mul(Mat4f.rotationY(animatedRotation[1]));
+        // modelMatrix = modelMatrix.mul(Mat4f.rotationZ(animatedRotation[2]));
 
         modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 

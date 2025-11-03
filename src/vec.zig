@@ -101,6 +101,14 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 	} + center;
 }
 
+pub fn lerpAnim(a: anytype, b: @TypeOf(a), t: @typeInfo(@TypeOf(a)).vector.child) @TypeOf(a) {
+	if (@typeInfo(@TypeOf(a)).vector.len == 4) {
+		return slerp(a, b, t);
+	}
+
+	return std.math.lerp(a, b, @as(@TypeOf(a), @splat(t)));
+}
+
 pub fn slerp(qa: anytype, qb: @TypeOf(qa), t: @typeInfo(@TypeOf(qa)).vector.child) @TypeOf(qa) {
 	const vecFloatType = @typeInfo(@TypeOf(qa)).vector.child;
 	const vecType = @TypeOf(qa);
@@ -228,14 +236,21 @@ pub const Mat4f = struct { // MARK: Mat4f
 		tmp2 = q[0]*q[3];
 		const m21 = 2.0 * (tmp1 + tmp2)*invs;
 		const m12 = 2.0 * (tmp1 - tmp2)*invs;
-		return Mat4f{
-			.rows = [4]Vec4f{
-				Vec4f{m00, m01, m02, 0},
-				Vec4f{m10, m11, m12, 0},
-				Vec4f{m20, m21, m22, 0},
-				Vec4f{0,   0,   0,   1},
-			},
-		};  
+        const m = Mat4f{
+            .rows = [4]Vec4f{
+                Vec4f{m00, m01, m02, 0},
+                Vec4f{m10, m11, m12, 0},
+                Vec4f{m20, m21, m22, 0},
+                Vec4f{0,   0,   0,   1},
+            },
+            // .rows = [4]Vec4f{
+            //     Vec4f{m00, m10, m20, 0},
+            //     Vec4f{m01, m11, m21, 0},
+            //     Vec4f{m02, m12, m22, 0},
+            //     Vec4f{0,   0,   0,   1},
+            // },
+		};
+		return m;  
 	} // zig fmt: on
 
 	pub fn perspective(fovY: f32, aspect: f32, near: f32, far: f32) Mat4f { // zig fmt: off

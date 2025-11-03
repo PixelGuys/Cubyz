@@ -112,7 +112,7 @@ pub fn loadGltf() void {
                         defer main.stackAllocator.free(quats);
                         for (quats, 0..) |*v, i| {
                             const r = rotations[i];
-                            v.* = .{r[0], r[1], r[2], r[3]};
+                            v.* = .{-r[1], -r[2], -r[3], r[0]};
                             std.debug.print("         time: {d}    rot: {d}\n", .{timestamps[i], v.*});
                         }
                         anim.rotationTimeline = .init(timestamps, quats);
@@ -124,7 +124,7 @@ pub fn loadGltf() void {
                         defer main.stackAllocator.free(posits);
                         for (posits, 0..) |*v, i| {
                             const r = positions[i];
-                            v.* = @floatCast(Vec3f{r[0], r[1], r[2]});
+                            v.* = @floatCast(Vec3f{-r[0], r[2], r[1]});
                             std.debug.print("         time: {d}    rot: {d}\n", .{timestamps[i], v.*});
                         }
                         anim.positionTimeline = .init(timestamps, posits);
@@ -171,56 +171,44 @@ pub const Animation = struct {
             pub fn deinit(self: *@This()) void {
                 main.globalArena.free(self.frames);
             }
+
+            pub fn update(self: *@This(), time: f32) void {
+                if (self.frames.len == 0) return;
+
+                while (self.current < self.frames.len and self.frames[self.current].timestamp <= time) {
+                    self.current += 1;
+                    std.debug.print("i: {d}\n", .{self.current});
+                }
+
+                if (self.current >= self.frames.len-1) {
+                    self.currentVal = self.frames[self.frames.len-1].value;
+                    return;
+                }
+
+                const cur = self.frames[self.current]; 
+                const next = self.frames[self.current+1];
+
+                const t = (time - cur.timestamp) / (next.timestamp - cur.timestamp);
+                self.currentVal = vec.lerpAnim(cur.value, next.value, t);
+            }
+
+            pub fn reset(self: *@This()) void {
+                if (self.frames.len == 0) return;
+
+                self.current = 0;
+                self.currentVal = self.frames[0].value;
+            }
         };
     }
 
-    const Framea = struct {
-		duration: f64,
-		position: Vec3d,
-		rotation: Vec3d,
-	};
-
-    length: f64 = 0,
-    speed: f64 = 1,
+    length: f32 = 0,
+    speed: f32 = 1,
 	loop: bool = true,
-	playTime: f64 = 0,
-	currentFrame: u32 = 0,
-    currentPosition: Vec3d = .{0, 0, 0},
-    currentRotation: Vec3d = .{0, 0, 0},
+	playTime: f32 = 0,
 
     // later move data somewhere else so that we can reuse animations
     positionTimeline: Timeline(Vec3d) = undefined,
     rotationTimeline: Timeline(Vec4f) = undefined,
-
-    frames: [3]Framea = .{
-        .{
-            .duration = 0.65,
-            .position = .{0, 0, 0},
-            .rotation = .{0, 0, 0},
-        },
-        .{
-            .duration = 0.35,
-            .position = .{0.2, -0.1, 0.15},
-            .rotation = .{0, 30, 0},
-        },
-        .{
-            .duration = 0,
-            .position = .{-0.2, 1, -0.2},
-            .rotation = .{0, -120, 15},
-        },
-        // .{
-        //     .duration = 0,
-        //     .position = .{0, 0, 0},
-        //     .rotation = .{0, 0, 0},
-        // },
-    },
-
-    pub fn init(self: *Animation) void {
-        for (&self.frames) |*frame| {
-            self.length += frame.duration;
-            // frame.rotation = std.math.degreesToRadians(frame.rotation);
-        }
-    }
 
     pub fn deinit(self: *Animation) void {
         self.reset();
@@ -229,51 +217,47 @@ pub const Animation = struct {
     }
 
 	pub fn update(self: *Animation, deltaTime: f64) void {
-		self.playTime += deltaTime * self.speed;
+		self.playTime += @as(f32, @floatCast(deltaTime)) * self.speed;
 
-        if(self.frames[self.currentFrame].duration <= self.playTime) {
-			self.currentFrame += 1;
-            self.playTime = 0;
-		}
-        
-        if(self.loop and self.currentFrame >= self.frames.len-1) {
-            self.currentFrame = 0;
+        self.positionTimeline.update(self.playTime);
+        self.rotationTimeline.update(self.playTime);
+
+        if(self.loop and self.playTime >= self.length) {
+            self.reset();
         }
-
-        self.currentPosition = self.getPosition();
-        self.currentRotation = self.getRotation();
 	}
 
     pub fn reset(self: *Animation) void {
         self.playTime = 0;
-        self.currentFrame = 0;
-        self.currentPosition = self.frames[0].position;
-        self.currentRotation = self.frames[0].rotation;
+        self.positionTimeline.reset();
+        self.rotationTimeline.reset();
     }
 
 	pub fn getPosition(self: *Animation) Vec3d {
-		const current = self.currentFrame;
-		return std.math.lerp(
-			self.frames[current].position, 
-			self.frames[current+1].position, 
-			@as(Vec3d, @splat(easeInOut(self.playTime/self.frames[current].duration))),
-			);
+        return self.positionTimeline.currentVal;
+		// const current = self.currentFrame;
+		// return std.math.lerp(
+        // self.frames[current].position, 
+        // self.frames[current+1].position, 
+        // @as(Vec3d, @splat(easeInOut(self.playTime/self.frames[current].duration))),
+        // );
 	}
 
-	pub fn getRotation(self: *Animation) Vec3d {
-		const current = self.currentFrame;
-		return std.math.lerp(
-			self.frames[current].rotation, 
-			self.frames[current+1].rotation, 
-			@as(Vec3d, @splat(easeInOut(self.playTime/self.frames[current].duration))),
-			);
+	pub fn getRotation(self: *Animation) Vec4f {
+        return self.rotationTimeline.currentVal;
+        // const current = self.currentFrame;
+        // return std.math.lerp(
+        //     self.frames[current].rotation, 
+        //     self.frames[current+1].rotation, 
+        //     @as(Vec3d, @splat(easeInOut(self.playTime/self.frames[current].duration))),
+        //     );
 	}
 
-	pub inline fn easeInOut(x: f64) f64 {
-		return -(@cos(std.math.pi*x) - 1)*0.5;
-	}
+    // pub inline fn easeInOut(x: f64) f64 {
+    //     return -(@cos(std.math.pi*x) - 1)*0.5;
+    // }
 
-	pub inline fn easeIn(x: f64) f64 {
-		return 1 - @cos(std.math.pi*x*0.5);
-	}
+    // pub inline fn easeIn(x: f64) f64 {
+    //     return 1 - @cos(std.math.pi*x*0.5);
+    // }
 };
