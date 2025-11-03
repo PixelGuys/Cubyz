@@ -17,11 +17,11 @@ const Tooltip = @This();
 // pre-Set SLICE values
 pub const cornerVec2Size = Vec2f{4, 4};
 
-var tooltipTexture : Texture = undefined;
+var tooltipTexture: Texture = undefined;
 
-pos : Vec2f,
-size : Vec2f,
-components : *VerticalList,
+pos: Vec2f,
+size: Vec2f,
+components: *VerticalList,
 
 pub fn __init() void {
 	tooltipTexture = Texture.initFromFile("assets/cubyz/ui/tooltip_frame.png");
