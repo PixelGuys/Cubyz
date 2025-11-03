@@ -570,7 +570,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	}
 
 	pub fn deinit() void {
-
+		anim.deinit();
 	}
 
 	pub fn update(deltaTime: f64) void {

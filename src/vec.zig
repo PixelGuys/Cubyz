@@ -101,6 +101,34 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 	} + center;
 }
 
+pub fn slerp(qa: anytype, qb: @TypeOf(qa), t: @typeInfo(@TypeOf(qa)).vector.child) @TypeOf(qa) {
+	const vecFloatType = @typeInfo(@TypeOf(qa)).vector.child;
+	const vecType = @TypeOf(qa);
+
+	var qbm = qb;
+	var cosHalfTheta: vecFloatType = @reduce(.Add, qa * qb);
+	// if qa=qbm or qa=-qbm then theta = 0 and we can return qa
+	if (@abs(cosHalfTheta) >= 1.0){
+		return qa;
+	}
+	if (cosHalfTheta < 0) {
+		qbm = -qb;
+		cosHalfTheta = -cosHalfTheta;
+	}
+	// Calculate temporary values.
+	const halfTheta: vecFloatType = std.math.acos(cosHalfTheta);
+	const sinHalfTheta: vecFloatType = @sqrt(1.0 - cosHalfTheta*cosHalfTheta);
+	// if theta = 180 degrees then result is not fully defined
+	// we could rotate around any axis normal to qa or qbm
+	if (@abs(sinHalfTheta) < 0.001){
+		return (qa * @as(vecType, @splat(0.5)) + qbm * @as(vecType, @splat(0.5)));
+	}
+	const ratioA: vecFloatType = @sin((1 - t) * halfTheta) / sinHalfTheta;
+	const ratioB: vecFloatType = @sin(t * halfTheta) / sinHalfTheta; 
+	//calculate Quaternion.
+	return (qa * @as(vecType, @splat(ratioA)) + qbm * @as(vecType, @splat(ratioB)));
+}
+
 pub const Mat4f = struct { // MARK: Mat4f
 	rows: [4]Vec4f,
 	pub fn identity() Mat4f {
@@ -174,6 +202,41 @@ pub const Mat4f = struct { // MARK: Mat4f
 			},
 		};
 	}
+
+	pub fn rotationQuat(q: Vec4f) Mat4f { // zig fmt: off
+		const sqw: f32 = q[3]*q[3];
+		const sqx: f32 = q[0]*q[0];
+		const sqy: f32 = q[1]*q[1];
+		const sqz: f32 = q[2]*q[2];
+
+		// invs (inverse square length) is only required if quaternion is not already normalised
+		const invs: f32 = 1 / (sqx + sqy + sqz + sqw);
+		const m00 = ( sqx - sqy - sqz + sqw)*invs; // since sqw + sqx + sqy + sqz =1/invs*invs
+		const m11 = (-sqx + sqy - sqz + sqw)*invs;
+		const m22 = (-sqx - sqy + sqz + sqw)*invs;
+		
+		var tmp1: f32 = q[0]*q[1];
+		var tmp2: f32 = q[2]*q[3];
+		const m10 = 2.0 * (tmp1 + tmp2)*invs;
+		const m01 = 2.0 * (tmp1 - tmp2)*invs;
+		
+		tmp1 = q[0]*q[2];
+		tmp2 = q[1]*q[3];
+		const m20 = 2.0 * (tmp1 - tmp2)*invs;
+		const m02 = 2.0 * (tmp1 + tmp2)*invs;
+		tmp1 = q[1]*q[2];
+		tmp2 = q[0]*q[3];
+		const m21 = 2.0 * (tmp1 + tmp2)*invs;
+		const m12 = 2.0 * (tmp1 - tmp2)*invs;
+		return Mat4f{
+			.rows = [4]Vec4f{
+				Vec4f{m00, m01, m02, 0},
+				Vec4f{m10, m11, m12, 0},
+				Vec4f{m20, m21, m22, 0},
+				Vec4f{0,   0,   0,   1},
+			},
+		};  
+	} // zig fmt: on
 
 	pub fn perspective(fovY: f32, aspect: f32, near: f32, far: f32) Mat4f { // zig fmt: off
 		const tanY = std.math.tan(fovY*0.5);

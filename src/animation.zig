@@ -4,6 +4,7 @@ const vec = @import("vec.zig");
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const Vec4f = vec.Vec4f;
 
 const c = @cImport({
     @cInclude("cgltf.h");
@@ -13,6 +14,11 @@ const c = @cImport({
 
 // }
 
+const AnimationIndex = u16;
+pub var animationHashMap: std.StringHashMapUnmanaged(AnimationIndex) = .{};
+pub var animationTypes: main.ListUnmanaged(Animation) = .{};
+
+// TODO: move this function into asset loading
 pub fn loadGltf() void {
     var options: c.cgltf_options = .{
         .type = c.cgltf_file_type_glb,
@@ -56,10 +62,11 @@ pub fn loadGltf() void {
         return;
     }
     std.debug.print("count: {d}\n", .{data.animations_count});
-    for (data.animations, 0..data.animations_count) |anim, _| {
-        std.debug.print("ANIM name: \"{s}\" samplerCount: {d} channelCount: {d}\n", .{anim.name, anim.samplers_count, anim.channels_count});
+    for (data.animations, 0..data.animations_count) |animData, _| {
+        std.debug.print("ANIM name: \"{s}\" samplerCount: {d} channelCount: {d}\n", .{animData.name, animData.samplers_count, animData.channels_count});
         
-        for (anim.channels, 0..anim.channels_count) |channel, _| {
+        var anim: Animation = .{};
+        for (animData.channels, 0..animData.channels_count) |channel, _| {
             const t = switch (channel.target_path) {
                 0 => "animation_path_type_invalid",
                 1 => "animation_path_type_translation",
@@ -79,42 +86,95 @@ pub fn loadGltf() void {
                 3 => "interpolation_type_max_enum",
                 else => unreachable,
             };
-            const bv = sampler.output[0].buffer_view[0];
-            std.debug.print("      lerp: \"{s}\"   data size: {d}\n", .{l, bv.buffer[0].size});
-            std.debug.print("      offset: {d}   size: {d}   stride: {d}\n", .{bv.offset, bv.size, sampler.output.*.stride});
-            var d: []u8 = undefined;
-            if (bv.buffer[0].data) |da| {
-                d = @as([]u8, @ptrCast(da));
-                d.len = bv.buffer[0].size;
-                d = d[bv.offset..bv.offset+bv.size];
+
+            anim.length = @max(anim.length, sampler.input.*.max[0]);
+            const timestampsBV = sampler.input[0].buffer_view[0];
+            const valuesBV = sampler.output[0].buffer_view[0];
+            
+            std.debug.print("      lerp: \"{s}\"   data size: {d}\n", .{l, valuesBV.buffer[0].size});
+            std.debug.print("      vals - offset: {d}   size: {d}   stride: {d}\n", .{valuesBV.offset, valuesBV.size, sampler.output.*.stride});
+            var kfTimestamps: []u8 = undefined;
+            var kfValues: []u8 = undefined;
+            if (valuesBV.buffer[0].data) |da| {
+                kfValues = @as([]u8, @ptrCast(da));
+                kfValues.len = valuesBV.buffer[0].size;
+                kfValues = kfValues[valuesBV.offset..valuesBV.offset+valuesBV.size];
+
+                kfTimestamps = @as([]u8, @ptrCast(da));
+                kfTimestamps.len = timestampsBV.buffer[0].size;
+                kfTimestamps = kfTimestamps[timestampsBV.offset..timestampsBV.offset+timestampsBV.size];
+                const timestamps: []f32 = @alignCast(@ptrCast(kfTimestamps));
                 switch (channel.target_path) {
                     c.cgltf_animation_path_type_rotation => {
-                        var rotations: []const [4]f32 = @alignCast(@ptrCast(d));   
-                        rotations.len = @divFloor(bv.size, @sizeOf(f32) * 4);
-                        for (rotations) |v| {
-                            std.debug.print("         rot: {any}\n", .{v});
+                        var rotations: [][4]f32 = @alignCast(@ptrCast(kfValues));
+                        rotations.len = @divFloor(valuesBV.size, @sizeOf(f32) * 4);
+                        const quats = main.stackAllocator.alloc(Vec4f, rotations.len);
+                        defer main.stackAllocator.free(quats);
+                        for (quats, 0..) |*v, i| {
+                            const r = rotations[i];
+                            v.* = .{r[0], r[1], r[2], r[3]};
+                            std.debug.print("         time: {d}    rot: {d}\n", .{timestamps[i], v.*});
                         }
+                        anim.rotationTimeline = .init(timestamps, quats);
                     },
                     c.cgltf_animation_path_type_translation => {
-                        var positions: []const [3]f32 = @alignCast(@ptrCast(d));   
-                        positions.len = @divFloor(bv.size, @sizeOf(f32) * 3);
-                        for (positions) |v| {
-                            std.debug.print("         pos: {any}\n", .{v});
+                        var positions: []const [3]f32 = @alignCast(@ptrCast(kfValues));   
+                        positions.len = @divFloor(valuesBV.size, @sizeOf(f32) * 3);
+                        const posits = main.stackAllocator.alloc(Vec3d, positions.len);
+                        defer main.stackAllocator.free(posits);
+                        for (posits, 0..) |*v, i| {
+                            const r = positions[i];
+                            v.* = @floatCast(Vec3f{r[0], r[1], r[2]});
+                            std.debug.print("         time: {d}    rot: {d}\n", .{timestamps[i], v.*});
                         }
+                        anim.positionTimeline = .init(timestamps, posits);
                     },
                     else => unreachable,
                 }
             }
-            
+            animationHashMap.put(main.globalArena.allocator, std.mem.span(animData.name), @intCast(animationTypes.items.len)) catch unreachable;
+            animationTypes.append(main.globalArena, anim);
         }
-
     }
     std.debug.print("free!!\n", .{});
     c.cgltf_free(@ptrCast(data));
 }
 
 pub const Animation = struct {
-	const Frame = struct {
+	pub fn Frame(comptime T: type) type {
+        return struct {
+            value: T,
+            timestamp: f32,
+        };
+    }
+
+    pub fn Timeline(comptime T: type) type {
+        return struct {
+            frames: []Frame(T) = &.{},
+            current: u32 = 0,
+            currentVal: T = undefined,
+
+            pub fn init(timestamps: []f32, values: []T) @This() {
+                // it gives me a segfault because i read gltf data before the arena is created
+                const frames = main.globalArena.alloc(Frame(T), values.len);
+                for (frames, 0..) |*f, i| {
+                    f.timestamp = timestamps[i];
+                    f.value = values[i];
+                }
+
+                return .{
+                    .frames = frames,
+                    .currentVal = values[0],
+                };
+            }
+
+            pub fn deinit(self: *@This()) void {
+                main.globalArena.free(self.frames);
+            }
+        };
+    }
+
+    const Framea = struct {
 		duration: f64,
 		position: Vec3d,
 		rotation: Vec3d,
@@ -128,7 +188,11 @@ pub const Animation = struct {
     currentPosition: Vec3d = .{0, 0, 0},
     currentRotation: Vec3d = .{0, 0, 0},
 
-    frames: [3]Frame = .{
+    // later move data somewhere else so that we can reuse animations
+    positionTimeline: Timeline(Vec3d) = undefined,
+    rotationTimeline: Timeline(Vec4f) = undefined,
+
+    frames: [3]Framea = .{
         .{
             .duration = 0.65,
             .position = .{0, 0, 0},
@@ -154,8 +218,14 @@ pub const Animation = struct {
     pub fn init(self: *Animation) void {
         for (&self.frames) |*frame| {
             self.length += frame.duration;
-            frame.rotation = std.math.degreesToRadians(frame.rotation);
+            // frame.rotation = std.math.degreesToRadians(frame.rotation);
         }
+    }
+
+    pub fn deinit(self: *Animation) void {
+        self.reset();
+        self.positionTimeline.deinit();
+        self.rotationTimeline.deinit();
     }
 
 	pub fn update(self: *Animation, deltaTime: f64) void {
