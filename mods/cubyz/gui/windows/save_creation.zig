@@ -53,7 +53,7 @@ fn createWorld(_: usize) void {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 	};
 	gui.closeWindowFromRef(&window);
-	gui.windowlist.save_selection.needsUpdate = true;
+	gui.getWindow("cubyz:save_selection").needsUpdate = true;
 	gui.openWindow("save_selection");
 }
 

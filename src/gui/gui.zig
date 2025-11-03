@@ -18,6 +18,7 @@ pub const ScrollBar = @import("components/ScrollBar.zig");
 pub const ContinuousSlider = @import("components/ContinuousSlider.zig");
 pub const DiscreteSlider = @import("components/DiscreteSlider.zig");
 pub const TextInput = @import("components/TextInput.zig");
+pub const HorizontalList = @import("components/HorizontalList.zig");
 pub const VerticalList = @import("components/VerticalList.zig");
 pub const Label = @import("components/Label.zig");
 pub const GuiComponent = @import("gui_component.zig").GuiComponent;

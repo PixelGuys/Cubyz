@@ -62,7 +62,7 @@ fn join(_: usize) void {
 			const formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "Encountered error while opening world: {s}", .{@errorName(err)}) catch unreachable;
 			defer main.stackAllocator.free(formattedError);
 			std.log.err("{s}", .{formattedError});
-			main.gui.windowlist.notification.raiseNotification(formattedError);
+			main.gui.getWindow("cubyz:notification").raiseNotification(formattedError);
 			main.game.world = null;
 			_connection.world = null;
 			return;
@@ -73,7 +73,7 @@ fn join(_: usize) void {
 		connection = null;
 	} else {
 		std.log.err("No connection found. Cannot connect.", .{});
-		main.gui.windowlist.notification.raiseNotification("No connection found. Cannot connect.");
+		main.gui.getWindow("cubyz:notification").raiseNotification("No connection found. Cannot connect.");
 	}
 	for(gui.openWindows.items) |openWindow| {
 		gui.closeWindowFromRef(openWindow);

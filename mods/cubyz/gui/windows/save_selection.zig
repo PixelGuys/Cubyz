@@ -83,7 +83,7 @@ fn openWorldWrap(index: usize) void { // TODO: Improve this situation. Maybe it 
 
 fn deleteWorld(index: usize) void {
 	main.gui.closeWindow("delete_world_confirmation");
-	main.gui.windowlist.delete_world_confirmation.setDeleteWorldName(worldList.items[index].fileName);
+	main.gui.getWindow("cubyz:delete_world_confirmation").setDeleteWorldName(worldList.items[index].fileName);
 	main.gui.openWindow("delete_world_confirmation");
 }
 
