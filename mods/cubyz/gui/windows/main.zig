@@ -21,9 +21,9 @@ fn exitGame(_: usize) void {
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Button.initText(.{0, 0}, 128, "Singleplayer", gui.openWindowCallback("save_selection")));
-	list.add(Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("multiplayer")));
-	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
+	list.add(Button.initText(.{0, 0}, 128, "Singleplayer", gui.openWindowCallback("cubyz:save_selection")));
+	list.add(Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("cubyz:multiplayer")));
+	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("cubyz:settings")));
 	list.add(Button.initText(.{0, 0}, 128, "Touch Grass", .{.callback = &exitGame}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

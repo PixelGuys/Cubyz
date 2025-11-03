@@ -50,7 +50,7 @@ pub fn deinit() void {
 }
 
 pub fn onOpen() void {
-	const button = Button.initIcon(.{0, 0}, .{64, 64}, pauseIcon, true, gui.openWindowCallback("pause"));
+	const button = Button.initIcon(.{0, 0}, .{64, 64}, pauseIcon, true, gui.openWindowCallback("cubyz:pause"));
 	window.contentSize = button.size;
 	window.rootComponent = button.toComponent();
 }

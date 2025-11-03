@@ -18,11 +18,11 @@ const padding: f32 = 8;
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Button.initText(.{0, 0}, 128, "Graphics", gui.openWindowCallback("graphics")));
-	list.add(Button.initText(.{0, 0}, 128, "Sound", gui.openWindowCallback("sound")));
-	list.add(Button.initText(.{0, 0}, 128, "Controls", gui.openWindowCallback("controls")));
-	list.add(Button.initText(.{0, 0}, 128, "Advanced Controls", gui.openWindowCallback("advanced_controls")));
-	list.add(Button.initText(.{0, 0}, 128, "Change Name", gui.openWindowCallback("change_name")));
+	list.add(Button.initText(.{0, 0}, 128, "Graphics", gui.openWindowCallback("cubyz:graphics")));
+	list.add(Button.initText(.{0, 0}, 128, "Sound", gui.openWindowCallback("cubyz:sound")));
+	list.add(Button.initText(.{0, 0}, 128, "Controls", gui.openWindowCallback("cubyz:controls")));
+	list.add(Button.initText(.{0, 0}, 128, "Advanced Controls", gui.openWindowCallback("cubyz:advanced_controls")));
+	list.add(Button.initText(.{0, 0}, 128, "Change Name", gui.openWindowCallback("cubyz:change_name")));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

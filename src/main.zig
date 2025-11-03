@@ -1,5 +1,7 @@
 const std = @import("std");
 
+pub const build_options = @import("build_options");
+
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
 

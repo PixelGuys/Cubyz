@@ -73,7 +73,7 @@ pub fn onOpen() void {
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &invite}, .{});
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.callback = &invite}));
-	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
+	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("cubyz:manage_players")));
 	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.allowNewConnections.load(.monotonic), &makePublic));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

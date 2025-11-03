@@ -106,7 +106,7 @@ pub fn onOpen() void {
 	buttonNameArena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
-	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("save_creation")));
+	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("cubyz:save_creation")));
 	readingSaves: {
 		var dir = main.files.cubyzDir().openIterableDir("saves") catch |err| {
 			list.add(Label.init(.{0, 0}, 128, "Encountered error while trying to open saves folder:", .center));
