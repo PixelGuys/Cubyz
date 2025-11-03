@@ -780,7 +780,7 @@ pub const inventory = struct { // MARK: inventory
 				label.size = size;
 
 				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
-				const sliceOffset = GuiComponent.Tooltip.cornerVec2Size[0] * 2;
+				const sliceOffset = GuiComponent.Tooltip.cornerVec2Size[0]*2;
 				var pos = mousePos;
 				if(pos[0] + size[0] + sliceOffset >= windowSize[0]) {
 					pos[0] -= size[0] + sliceOffset;
