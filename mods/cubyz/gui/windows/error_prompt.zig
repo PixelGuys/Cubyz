@@ -6,11 +6,11 @@ const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 const Texture = main.graphics.Texture;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiWindow = gui.GuiWindow;
-const Label = @import("../components/Label.zig");
-const VerticalList = @import("../components/VerticalList.zig");
-const Button = @import("../components/Button.zig");
+const Label = gui.Label;
+const VerticalList = gui.VerticalList;
+const Button = gui.Button;
 
 var fileExplorerIcon: Texture = undefined;
 

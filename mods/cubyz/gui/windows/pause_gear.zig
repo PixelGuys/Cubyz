@@ -4,14 +4,14 @@ const main = @import("main");
 const Texture = main.graphics.Texture;
 const Vec2f = main.vec.Vec2f;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
-const Button = @import("../components/Button.zig");
+const Button = gui.Button;
 const Label = GuiComponent.Label;
 const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
-const VerticalList = @import("../components/VerticalList.zig");
+const VerticalList = gui.VerticalList;
 
 pub var window: GuiWindow = GuiWindow{
 	.relativePosition = .{

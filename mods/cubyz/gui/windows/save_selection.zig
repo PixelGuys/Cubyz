@@ -7,14 +7,14 @@ const Vec2f = main.vec.Vec2f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Texture = main.graphics.Texture;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
-const Button = @import("../components/Button.zig");
-const HorizontalList = @import("../components/HorizontalList.zig");
-const Label = @import("../components/Label.zig");
-const TextInput = @import("../components/TextInput.zig");
-const VerticalList = @import("../components/VerticalList.zig");
+const Button = gui.Button;
+const HorizontalList = gui.HorizontalList;
+const Label = gui.Label;
+const TextInput = gui.TextInput;
+const VerticalList = gui.VerticalList;
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},

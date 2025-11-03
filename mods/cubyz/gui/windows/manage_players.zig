@@ -5,14 +5,14 @@ const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
-const Button = @import("../components/Button.zig");
-const Label = @import("../components/Label.zig");
-const TextInput = @import("../components/TextInput.zig");
-const VerticalList = @import("../components/VerticalList.zig");
-const HorizontalList = @import("../components/HorizontalList.zig");
+const Button = gui.Button;
+const Label = gui.Label;
+const TextInput = gui.TextInput;
+const VerticalList = gui.VerticalList;
+const HorizontalList = gui.HorizontalList;
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},

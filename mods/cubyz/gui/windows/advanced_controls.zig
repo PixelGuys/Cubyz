@@ -4,14 +4,14 @@ const main = @import("main");
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
-const Button = @import("../components/Button.zig");
-const CheckBox = @import("../components/CheckBox.zig");
-const ContinuousSlider = @import("../components/ContinuousSlider.zig");
-const DiscreteSlider = @import("../components/DiscreteSlider.zig");
-const VerticalList = @import("../components/VerticalList.zig");
+const Button = gui.Button;
+const CheckBox = gui.CheckBox;
+const ContinuousSlider = gui.ContinuousSlider;
+const DiscreteSlider = gui.DiscreteSlider;
+const VerticalList = gui.VerticalList;
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},

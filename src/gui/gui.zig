@@ -11,17 +11,19 @@ const List = main.List;
 
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const Button = @import("components/Button.zig");
-const CheckBox = @import("components/CheckBox.zig");
-const ItemSlot = @import("components/ItemSlot.zig");
-const ScrollBar = @import("components/ScrollBar.zig");
-const ContinuousSlider = @import("components/ContinuousSlider.zig");
-const DiscreteSlider = @import("components/DiscreteSlider.zig");
-const TextInput = @import("components/TextInput.zig");
+pub const Button = @import("components/Button.zig");
+pub const CheckBox = @import("components/CheckBox.zig");
+pub const ItemSlot = @import("components/ItemSlot.zig");
+pub const ScrollBar = @import("components/ScrollBar.zig");
+pub const ContinuousSlider = @import("components/ContinuousSlider.zig");
+pub const DiscreteSlider = @import("components/DiscreteSlider.zig");
+pub const TextInput = @import("components/TextInput.zig");
+pub const VerticalList = @import("components/VerticalList.zig");
+pub const Label = @import("components/Label.zig");
 pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
-pub const windowlist = @import("windows/_windowlist.zig");
+const windowlist = @import("gui/windows");
 const GamepadCursor = @import("gamepad_cursor.zig");
 
 var windowList: List(*GuiWindow) = undefined;
@@ -36,6 +38,10 @@ pub var hideGui: bool = false;
 pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
+
+pub fn getWindow(comptime id: []const u8) @TypeOf(@field(windowlist, id)) {
+	return @field(windowlist, id);
+}
 
 const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	const Action = enum {

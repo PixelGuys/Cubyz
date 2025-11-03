@@ -6,7 +6,7 @@ const Inventory = main.items.Inventory;
 const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const TextInput = GuiComponent.TextInput;

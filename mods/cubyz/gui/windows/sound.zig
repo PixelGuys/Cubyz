@@ -5,12 +5,12 @@ const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
-const Button = @import("../components/Button.zig");
-const ContinuousSlider = @import("../components/ContinuousSlider.zig");
-const VerticalList = @import("../components/VerticalList.zig");
+const Button = gui.Button;
+const ContinuousSlider = gui.ContinuousSlider;
+const VerticalList = gui.VerticalList;
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},

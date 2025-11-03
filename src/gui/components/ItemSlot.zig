@@ -9,7 +9,7 @@ const TextBuffer = graphics.TextBuffer;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 
 const ItemSlot = @This();

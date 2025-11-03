@@ -10,7 +10,7 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 const Button = GuiComponent.Button;
 const Label = GuiComponent.Label;

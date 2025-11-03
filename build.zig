@@ -110,13 +110,17 @@ pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
 		}
 	}
 
-	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
+	const filename = try step.owner.allocator.dupe(u8, name);
+	std.mem.replaceScalar(u8, filename, '/', '_');
+	const file_path = step.owner.fmt("mods/{s}.zig", .{filename});
 	try std.fs.cwd().writeFile(.{.data = featureList.items, .sub_path = file_path});
 }
 
 pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
+	const filename = try b.allocator.dupe(u8, name);
+	std.mem.replaceScalar(u8, filename, '/', '_');
 	const module = b.createModule(.{
-		.root_source_file = b.path(b.fmt("mods/{s}.zig", .{name})),
+		.root_source_file = b.path(b.fmt("mods/{s}.zig", .{filename})),
 		.target = exe.root_module.resolved_target,
 		.optimize = exe.root_module.optimize,
 	});
@@ -140,7 +144,7 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 
 pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
 	try makeModFeature(step, "rotation");
-	try makeModFeature(exe, "gui/windows");
+	try makeModFeature(step, "gui/windows");
 }
 
 fn createLaunchConfig() !void {

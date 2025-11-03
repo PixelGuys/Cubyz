@@ -6,7 +6,7 @@ const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;
 const Texture = main.graphics.Texture;
 
-const gui = @import("../gui.zig");
+const gui = main.gui;
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const HorizontalList = GuiComponent.HorizontalList;
