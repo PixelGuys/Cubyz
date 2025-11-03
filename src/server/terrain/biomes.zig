@@ -34,13 +34,12 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
 		const id = parameters.get([]const u8, "id", "");
-		const structure = parameters.get([]const u8, "structure", "");
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
 		};
 		const vtableModel = vtable.loadModel(parameters) orelse {
-			std.log.err("Couldn't find blueprint with id '{s}'. Dropping model from biome.", .{structure});
+			std.log.err("Internal error occurred attempting to load structure with id {s} Dropping model from biome.", .{id});
 			return null;
 		};
 		return SimpleStructureModel{

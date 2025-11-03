@@ -31,6 +31,7 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 		main.utils.panicWithMessage("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
 	};
 	const structureRef = sbb.getByStringId(structureId) orelse {
+		std.log.err("Could not find blueprint with id {s}. Structure will not be added.", .{structureId});
 		return null;
 	};
 	const rotationParam = parameters.getChild("rotation");
