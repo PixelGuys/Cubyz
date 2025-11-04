@@ -132,7 +132,7 @@ fn refresh() void {
 		return;
 	}
 	if(window.rootComponent) |*comp| {
-		comp.deinit();
+		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.utils.castFunctionSelfToAnyopaque(VerticalList.deinit)});
 	}
 	if(list.children.items.len == 0) {
 		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));

@@ -2,37 +2,26 @@ const std = @import("std");
 
 const main = @import("main");
 
-var arena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
-const allocator = arena.allocator();
-var tagList: main.List([]const u8) = .init(allocator);
-var tagIds: std.StringHashMap(Tag) = .init(allocator.allocator);
-
-pub fn init() void {
-	loadDefaults();
-}
-
-pub fn deinit() void {
-	arena.deinit();
-}
-
-fn loadDefaults() void {
-	inline for(comptime std.meta.fieldNames(Tag)) |tag| {
-		std.debug.assert(Tag.find(tag) == @field(Tag, tag));
-	}
-}
+var tagList: main.ListUnmanaged([]const u8) = .{};
+var tagIds: std.StringHashMapUnmanaged(Tag) = .{};
 
 pub const Tag = enum(u32) {
 	air = 0,
 	fluid = 1,
 	sbbChild = 2,
 	fluidPlaceable = 3,
+	chiselable = 4,
 	_,
 
+	pub fn initTags() void {
+		inline for(comptime std.meta.fieldNames(Tag)) |tag| {
+			std.debug.assert(Tag.find(tag) == @field(Tag, tag));
+		}
+	}
+
 	pub fn resetTags() void {
-		tagList.clearAndFree();
-		tagIds.clearAndFree();
-		_ = arena.reset(.free_all);
-		loadDefaults();
+		tagList = .{};
+		tagIds = .{};
 	}
 
 	pub fn get(tag: []const u8) ?Tag {
@@ -42,9 +31,9 @@ pub const Tag = enum(u32) {
 	pub fn find(tag: []const u8) Tag {
 		if(tagIds.get(tag)) |res| return res;
 		const result: Tag = @enumFromInt(tagList.items.len);
-		const dupedTag = allocator.dupe(u8, tag);
-		tagList.append(dupedTag);
-		tagIds.put(dupedTag, result) catch unreachable;
+		const dupedTag = main.worldArena.dupe(u8, tag);
+		tagList.append(main.worldArena, dupedTag);
+		tagIds.put(main.worldArena.allocator, dupedTag, result) catch unreachable;
 		return result;
 	}
 

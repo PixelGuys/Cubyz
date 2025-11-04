@@ -8,6 +8,7 @@ pub const assets = @import("assets.zig");
 pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
+pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
 pub const files = @import("files.zig");
@@ -46,9 +47,9 @@ const Vec3d = vec.Vec3d;
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
-var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
-var handled_gpa = heap.ErrorHandlingAllocator.init(global_gpa.allocator());
-pub const globalAllocator: heap.NeverFailingAllocator = handled_gpa.allocator();
+pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
+pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
+pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 
 pub fn initThreadLocals() void {
@@ -272,7 +273,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 }
 
 // MARK: Callbacks
-fn escape() void {
+fn escape(_: Window.Key.Modifiers) void {
 	if(gui.selectedTextInput != null) {
 		gui.setSelectedTextInput(null);
 		return;
@@ -280,72 +281,72 @@ fn escape() void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 }
-fn ungrabMouse() void {
+fn ungrabMouse(_: Window.Key.Modifiers) void {
 	if(Window.grabbed) {
 		gui.toggleGameMenu();
 	}
 }
-fn openInventory() void {
+fn openInventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 	gui.openWindow("inventory");
 }
-fn openCreativeInventory() void {
+fn openCreativeInventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
-fn openChat() void {
+fn openChat(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
-	ungrabMouse();
+	ungrabMouse(mods);
 	gui.openWindow("chat");
 	gui.windowlist.chat.input.select();
 }
-fn openCommand() void {
+fn openCommand(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
-	openChat();
+	openChat(mods);
 	gui.windowlist.chat.input.clear();
 	gui.windowlist.chat.input.inputCharacter('/');
 }
-fn takeBackgroundImageFn() void {
+fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	const showItem = itemdrop.ItemDisplayManager.showItem;
 	itemdrop.ItemDisplayManager.showItem = false;
 	renderer.MenuBackGround.takeBackgroundImage();
 	itemdrop.ItemDisplayManager.showItem = showItem;
 }
-fn toggleHideGui() void {
+fn toggleHideGui(_: Window.Key.Modifiers) void {
 	gui.hideGui = !gui.hideGui;
 }
-fn toggleHideDisplayItem() void {
+fn toggleHideDisplayItem(_: Window.Key.Modifiers) void {
 	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
 }
-fn toggleDebugOverlay() void {
+fn toggleDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug");
 }
-fn togglePerformanceOverlay() void {
+fn togglePerformanceOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("performance_graph");
 }
-fn toggleGPUPerformanceOverlay() void {
+fn toggleGPUPerformanceOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("gpu_performance_measuring");
 }
-fn toggleNetworkDebugOverlay() void {
+fn toggleNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug_network");
 }
-fn toggleAdvancedNetworkDebugOverlay() void {
+fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug_network_advanced");
 }
-fn cycleHotbarSlot(i: comptime_int) *const fn() void {
+fn cycleHotbarSlot(i: comptime_int) *const fn(Window.Key.Modifiers) void {
 	return &struct {
-		fn set() void {
+		fn set(_: Window.Key.Modifiers) void {
 			game.Player.selectedSlot = @intCast(@mod(@as(i33, game.Player.selectedSlot) + i, 12));
 		}
 	}.set;
 }
-fn setHotbarSlot(i: comptime_int) *const fn() void {
+fn setHotbarSlot(i: comptime_int) *const fn(Window.Key.Modifiers) void {
 	return &struct {
-		fn set() void {
+		fn set(_: Window.Key.Modifiers) void {
 			game.Player.selectedSlot = i - 1;
 		}
 	}.set;
@@ -366,7 +367,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
-		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
 		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
@@ -490,9 +490,7 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 }
 
 pub fn main() void { // MARK: main()
-	defer if(global_gpa.deinit() == .leak) {
-		std.log.err("Memory leak", .{});
-	};
+	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
@@ -538,14 +536,10 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
+	callbacks.init();
+
 	block_entity.init();
 	defer block_entity.deinit();
-
-	blocks.tickFunctions = .init();
-	defer blocks.tickFunctions.deinit();
-
-	blocks.touchFunctions = .init();
-	defer blocks.touchFunctions.deinit();
 
 	models.init();
 	defer models.deinit();
@@ -556,11 +550,7 @@ pub fn main() void { // MARK: main()
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
-	tag.init();
-	defer tag.deinit();
-
 	assets.init();
-	defer assets.deinit();
 
 	blocks.meshes.init();
 	defer blocks.meshes.deinit();
@@ -593,9 +583,9 @@ pub fn main() void { // MARK: main()
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = std.time.nanoTimestamp();
 
-	if(settings.developerAutoEnterWorld.len != 0) {
+	if(settings.launchConfig.autoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
+		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
 	audio.setMusic("cubyz:cubyz");
@@ -644,7 +634,13 @@ pub fn main() void { // MARK: main()
 		}
 
 		if(!isHidden) {
-			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+			if(game.world != null) {
+				renderer.updateFov(settings.fov);
+				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+			} else {
+				renderer.updateFov(70.0);
+				renderer.MenuBackGround.render();
+			}
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();
