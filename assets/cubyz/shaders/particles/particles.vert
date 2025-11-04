@@ -69,15 +69,24 @@ void main() {
 	);
 	light = max(sunLight*ambientLight, blockLight)/31;
 
-	float rotation = particle.rotation;
 	vec3 faceVertPos = facePositions[vertexID];
-	float sn = sin(rotation);
-	float cs = cos(rotation);
-	const vec3 vertexRotationPos = vec3(
-		faceVertPos.x*cs - faceVertPos.y*sn,
-		faceVertPos.x*sn + faceVertPos.y*cs,
-		0
-	);
+	vec3 vertexRotationPos;
+
+	// Check if this is a block particle (bit 31 of uvOffset is set)
+	if ((particle.uvOffset & 0x80000000u) != 0u) {
+		// Block particles don't rotate
+		vertexRotationPos = faceVertPos;
+	} else {
+		// Regular particles rotate
+		float rotation = particle.rotation;
+		float sn = sin(rotation);
+		float cs = cos(rotation);
+		vertexRotationPos = vec3(
+			faceVertPos.x*cs - faceVertPos.y*sn,
+			faceVertPos.x*sn + faceVertPos.y*cs,
+			0
+		);
+	}
 
 	const vec3 vertexPos = (billboardMatrix*vec4(particleType.size*vertexRotationPos, 1)).xyz + particle.pos;
 	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
