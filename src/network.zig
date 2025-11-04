@@ -65,28 +65,28 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
+		if(builtin.os.tag == .windows) {// TODO: Upstream error, fix after next Zig update after #24466 is merged
 			const sendto = struct {
 				extern "c" fn sendto(sockfd: posix.system.fd_t, buf: *const anyopaque, len: usize, flags: u32, dest_addr: ?*const posix.system.sockaddr, addrlen: posix.system.socklen_t) c_int;
 			}.sendto;
 			const result = sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
 			if(result < 0) {
-				std.log.info("Got error while sending to {f}: {s}", .{ destination, @tagName(std.os.windows.ws2_32.WSAGetLastError()) });
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())});
 			} else {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);
 			}
 		} else {
 			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-				std.log.info("Got error while sending to {f}: {s}", .{ destination, @errorName(err) });
+				std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 				return;
 			});
 		}
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
-		if(builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
+		if(builtin.os.tag == .windows) {// Of course Windows always has it's own special thing.
 			var pfd = [1]posix.pollfd{
-				.{ .fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined },
+				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
 			};
 			const length = std.os.windows.ws2_32.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
 			if(length == std.os.windows.ws2_32.SOCKET_ERROR) {
@@ -103,7 +103,7 @@ const Socket = struct {
 			}
 		} else {
 			var pfd = [1]posix.pollfd{
-				.{ .fd = self.socketID, .events = posix.POLL.IN, .revents = undefined },
+				.{.fd = self.socketID, .events = posix.POLL.IN, .revents = undefined},
 			};
 			const length = try posix.poll(&pfd, timeout);
 			if(length == 0) return error.Timeout;
@@ -154,9 +154,9 @@ pub const Address = struct {
 
 	pub fn format(self: Address, writer: anytype) !void {
 		if(self.isSymmetricNAT) {
-			try writer.print("{}.{}.{}.{}:?{}", .{ self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port });
+			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
 		} else {
-			try writer.print("{}.{}.{}.{}:{}", .{ self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port });
+			try writer.print("{}.{}.{}.{}:{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
 		}
 	}
 };
@@ -169,7 +169,7 @@ const Request = struct {
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
 /// Reference: https://datatracker.ietf.org/doc/html/rfc5389
-const STUN = struct { // MARK: STUN
+const STUN = struct {// MARK: STUN
 	const ipServerList = [_][]const u8{
 		"stun.12voip.com:3478",
 		"stun.1und1.de:3478",
@@ -270,7 +270,7 @@ const STUN = struct { // MARK: STUN
 	};
 	const MAPPED_ADDRESS: u16 = 0x0001;
 	const XOR_MAPPED_ADDRESS: u16 = 0x0020;
-	const MAGIC_COOKIE = [_]u8{ 0x21, 0x12, 0xA4, 0x42 };
+	const MAGIC_COOKIE = [_]u8{0x21, 0x12, 0xA4, 0x42};
 
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
@@ -292,7 +292,7 @@ const STUN = struct { // MARK: STUN
 			const ip = splitter.first();
 			const serverAddress = Address{
 				.ip = Socket.resolveIP(ip) catch |err| {
-					std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{ ip, @errorName(err) });
+					std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
 					continue;
 				},
 				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
@@ -300,11 +300,11 @@ const STUN = struct { // MARK: STUN
 			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500 * 1000000)) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
-					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{ @errorName(err), server, answer });
+					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
 				var result = findIPPort(answer) catch |err| {
-					std.log.err("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{ @errorName(err), server, answer });
+					std.log.err("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
 				if(oldAddress) |other| {
@@ -322,7 +322,7 @@ const STUN = struct { // MARK: STUN
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return Address{ .ip = Socket.resolveIP("127.0.0.1") catch unreachable, .port = settings.defaultPort }; // TODO: Return ip address in LAN.
+		return Address{.ip = Socket.resolveIP("127.0.0.1") catch unreachable, .port = settings.defaultPort}; // TODO: Return ip address in LAN.
 	}
 
 	fn findIPPort(_data: []const u8) !Address {
@@ -376,7 +376,7 @@ const STUN = struct { // MARK: STUN
 	}
 };
 
-pub const ConnectionManager = struct { // MARK: ConnectionManager
+pub const ConnectionManager = struct {// MARK: ConnectionManager
 	socket: Socket = undefined,
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
@@ -480,7 +480,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn sendRequest(self: *ConnectionManager, allocator: NeverFailingAllocator, data: []const u8, target: Address, timeout_ns: u64) ?[]const u8 {
 		self.socket.send(data, target);
-		var request = Request{ .address = target, .data = data };
+		var request = Request{.address = target, .data = data};
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
@@ -572,7 +572,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
-					std.log.err("Cannot connect user from external IP {f}: {s}", .{ source, @errorName(err) });
+					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});
 					return;
 				};
 				user.decreaseRefCount();
@@ -669,11 +669,11 @@ pub const Protocols = struct {
 						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
 						if(name.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(name) > 50) {
-							std.log.err("Player has too long name with {}/{} characters.", .{ main.graphics.TextBuffer.Parser.countVisibleCharacters(name), name.len });
+							std.log.err("Player has too long name with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(name), name.len});
 							return error.Invalid;
 						}
 						const version = zon.get([]const u8, "version", "unknown");
-						std.log.info("User {s} joined using version {s}", .{ name, version });
+						std.log.info("User {s} joined using version {s}", .{name, version});
 
 						if(!try main.settings.version.isCompatibleClientVersion(version)) {
 							std.log.warn("Version incompatible with server version {s}", .{main.settings.version.version});
@@ -1000,7 +1000,7 @@ pub const Protocols = struct {
 						break;
 					},
 					else => {
-						std.log.err("Unrecognized zon parameters for protocol {}: {s}", .{ id, reader.remaining });
+						std.log.err("Unrecognized zon parameters for protocol {}: {s}", .{id, reader.remaining});
 					},
 				}
 			}
@@ -1080,11 +1080,11 @@ pub const Protocols = struct {
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
 							world.gameTime.store(expectedTime, .monotonic);
-						} else if(curTime < expectedTime) { // world.gameTime++
+						} else if(curTime < expectedTime) {// world.gameTime++
 							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
 								curTime = actualTime;
 							}
-						} else { // world.gameTime--
+						} else {// world.gameTime--
 							while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .monotonic, .monotonic)) |actualTime| {
 								curTime = actualTime;
 							}
@@ -1118,7 +1118,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
-			conn.send(.fast, id, &.{ @intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode) });
+			conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
@@ -1186,7 +1186,7 @@ pub const Protocols = struct {
 			const msg = reader.remaining;
 			if(conn.user) |user| {
 				if(msg.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(msg) > 1000) {
-					std.log.err("Received too long chat message with {}/{} characters.", .{ main.graphics.TextBuffer.Parser.countVisibleCharacters(msg), msg.len });
+					std.log.err("Received too long chat message with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(msg), msg.len});
 					return error.Invalid;
 				}
 				main.server.messageFrom(msg, user);
@@ -1248,7 +1248,7 @@ pub const Protocols = struct {
 			defer main.stackAllocator.free(_inflatedData);
 			const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, reader.remaining);
 			if(_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize * main.server.terrain.LightMap.LightMapFragment.mapSize * 2) {
-				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{ _inflatedLen, reader.remaining, _inflatedData[0.._inflatedLen] });
+				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, reader.remaining, _inflatedData[0.._inflatedLen]});
 				return error.Invalid;
 			}
 			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
@@ -1288,9 +1288,9 @@ pub const Protocols = struct {
 				};
 			} else {
 				const typ = try reader.readInt(u8);
-				if(typ == 0xff) { // Confirmation
+				if(typ == 0xff) {// Confirmation
 					try items.Inventory.Sync.ClientSide.receiveConfirmation(reader);
-				} else if(typ == 0xfe) { // Failure
+				} else if(typ == 0xfe) {// Failure
 					items.Inventory.Sync.ClientSide.receiveFailure();
 				} else {
 					try items.Inventory.Sync.ClientSide.receiveSyncOperation(reader);
@@ -1343,7 +1343,7 @@ pub const Protocols = struct {
 			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
 			if(block.typ != blockType) return;
 			const blockEntity = block.blockEntity() orelse return;
-			try blockEntity.updateServerData(pos, &ch.super, .{ .update = reader });
+			try blockEntity.updateServerData(pos, &ch.super, .{.update = reader});
 			ch.setChanged();
 
 			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
@@ -1375,7 +1375,7 @@ pub const Protocols = struct {
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 
 			for (users) |user| {
-				blockUpdate.send(user.conn, &.{.{ .x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = writer.data.items }});
+				blockUpdate.send(user.conn, &.{.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = writer.data.items}});
 			}
 		}
 
@@ -1393,7 +1393,7 @@ pub const Protocols = struct {
 	};
 };
 
-pub const Connection = struct { // MARK: Connection
+pub const Connection = struct {// MARK: Connection
 	const maxMtu: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
@@ -1419,7 +1419,7 @@ pub const Connection = struct { // MARK: Connection
 		doubleLoss,
 	};
 
-	const RangeBuffer = struct { // MARK: RangeBuffer
+	const RangeBuffer = struct {// MARK: RangeBuffer
 		const Range = struct {
 			start: SequenceIndex,
 			len: SequenceIndex,
@@ -1502,7 +1502,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
-	const ReceiveBuffer = struct { // MARK: ReceiveBuffer
+	const ReceiveBuffer = struct {// MARK: ReceiveBuffer
 		const Range = struct {
 			start: SequenceIndex,
 			len: SequenceIndex,
@@ -1599,7 +1599,7 @@ pub const Connection = struct { // MARK: Connection
 			if(start -% self.availablePosition < 0) return .accepted; // We accepted it in the past.
 			const offset: usize = @intCast(start -% self.currentReadPosition);
 			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
-			self.ranges.addRange(main.globalAllocator, .{ .start = start, .len = len });
+			self.ranges.addRange(main.globalAllocator, .{.start = start, .len = len});
 			if(start == self.availablePosition) {
 				try self.collectRangesAndExecuteProtocols(conn);
 			}
@@ -1607,7 +1607,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
-	const SendBuffer = struct { // MARK: SendBuffer
+	const SendBuffer = struct {// MARK: SendBuffer
 		const Range = struct {
 			start: SequenceIndex,
 			len: SequenceIndex,
@@ -1733,7 +1733,7 @@ pub const Connection = struct { // MARK: Connection
 			// Resend old packet:
 			if(self.lostRanges.popFront()) |_range| {
 				var range = _range;
-				if(range.len > buf.len) { // MTU changed → split the data
+				if(range.len > buf.len) {// MTU changed → split the data
 					self.lostRanges.pushFront(.{
 						.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
 						.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
@@ -1769,7 +1769,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
-	const Channel = struct { // MARK: Channel
+	const Channel = struct {// MARK: Channel
 		receiveBuffer: ReceiveBuffer,
 		sendBuffer: SendBuffer,
 		allowedDelay: i64,
@@ -1838,7 +1838,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
-	const ChannelId = enum(u8) { // MARK: ChannelId
+	const ChannelId = enum(u8) {// MARK: ChannelId
 		lossy = 0,
 		fast = 1,
 		slow = 2,
@@ -2046,7 +2046,7 @@ pub const Connection = struct { // MARK: Connection
 			self.rttEstimate = (1 - alpha) * self.rttEstimate + alpha * averageRtt;
 			self.rttUncertainty = (1 - beta) * self.rttUncertainty + beta * largestDifference;
 			self.lastRttSampleTime = timestamp;
-			if(!self.hasRttEstimate) { // Kill the 1 second delay caused by the first packet
+			if(!self.hasRttEstimate) {// Kill the 1 second delay caused by the first packet
 				self.nextPacketTimestamp = timestamp;
 				self.hasRttEstimate = true;
 			}
@@ -2119,7 +2119,7 @@ pub const Connection = struct { // MARK: Connection
 				},
 				.awaitingClientAcknowledgement => {},
 				.connected => {
-					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) { // Reconnection attempt
+					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) {// Reconnection attempt
 						if(self.user) |user| {
 							self.manager.removeConnection(self);
 							main.server.disconnect(user);
@@ -2316,7 +2316,7 @@ const ProtocolTask = struct {
 		defer self.clean();
 		var reader = utils.BinaryReader.init(self.data);
 		Protocols.list[self.protocol].?(self.conn, &reader) catch |err| {
-			std.log.err("Got error {s} while executing protocol {} with data {any}", .{ @errorName(err), self.protocol, self.data }); // TODO: Maybe disconnect on error
+			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
 		};
 	}
 
