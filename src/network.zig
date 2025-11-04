@@ -297,7 +297,7 @@ const STUN = struct { // MARK: STUN
 				},
 				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
 			};
-			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500 * 1000000)) |answer| {
+			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500*1000000)) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
 					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
@@ -366,7 +366,7 @@ const STUN = struct { // MARK: STUN
 
 	fn verifyHeader(data: []const u8, transactionID: []const u8) !void {
 		if(data[0] != 0x01 or data[1] != 0x01) return error.NotABinding;
-		if(@as(u16, @intCast(data[2] & 0xff)) * 256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
+		if(@as(u16, @intCast(data[2] & 0xff))*256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
 		for(MAGIC_COOKIE, 0..) |cookie, i| {
 			if(data[i + 4] != cookie) return error.WrongCookie;
 		}
@@ -618,7 +618,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 
 			// Send packets roughly every 1 ms:
-			if(curTime -% lastTime > 1 * ms) {
+			if(curTime -% lastTime > 1*ms) {
 				lastTime = curTime;
 				var i: u32 = 0;
 				self.mutex.lock();
@@ -648,7 +648,7 @@ const UnconfirmedPacket = struct {
 
 // MARK: Protocols
 pub const Protocols = struct {
-	pub var list: [256]?*const fn (*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
+	pub var list: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
 	pub var isAsynchronous: [256]bool = @splat(false);
 	pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
 	pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
@@ -777,7 +777,7 @@ pub const Protocols = struct {
 		}
 		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
 			if(requests.len == 0) return;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 14 + 4 * requests.len);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 14 + 4*requests.len);
 			defer writer.deinit();
 			writer.writeVec(Vec3i, basePosition);
 			writer.writeInt(u16, renderDistance);
@@ -915,9 +915,9 @@ pub const Protocols = struct {
 			writer.writeVec(Vec3d, playerPos);
 			for(entityData) |data| {
 				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
-				if(velocityMagnitudeSqr < 1e-6 * 1e-6) {
+				if(velocityMagnitudeSqr < 1e-6*1e-6) {
 					writer.writeEnum(Type, .noVelocityEntity);
-				} else if(velocityMagnitudeSqr > 1000 * 1000) {
+				} else if(velocityMagnitudeSqr > 1000*1000) {
 					writer.writeEnum(Type, .f32VelocityEntity);
 					writer.writeVec(Vec3f, @floatCast(data.vel));
 				} else {
@@ -930,9 +930,9 @@ pub const Protocols = struct {
 			}
 			for(itemData) |data| {
 				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
-				if(velocityMagnitudeSqr < 1e-6 * 1e-6) {
+				if(velocityMagnitudeSqr < 1e-6*1e-6) {
 					writer.writeEnum(Type, .noVelocityItem);
-				} else if(velocityMagnitudeSqr > 1000 * 1000) {
+				} else if(velocityMagnitudeSqr > 1000*1000) {
 					writer.writeEnum(Type, .f32VelocityItem);
 					writer.writeVec(Vec3f, @floatCast(data.vel));
 				} else {
@@ -1155,7 +1155,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
-			const bufferSize = particleId.len * 8 + 32;
+			const bufferSize = particleId.len*8 + 32;
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
 			defer writer.deinit();
 
@@ -1221,7 +1221,7 @@ pub const Protocols = struct {
 		}
 		pub fn sendRequest(conn: *Connection, requests: []main.server.terrain.SurfaceMap.MapFragmentPosition) void {
 			if(requests.len == 0) return;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9 * requests.len);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9*requests.len);
 			defer writer.deinit();
 			for(requests) |req| {
 				writer.writeInt(i32, req.wx);
@@ -1244,10 +1244,10 @@ pub const Protocols = struct {
 				.voxelSize = @as(u31, 1) << voxelSizeShift,
 				.voxelSizeShift = voxelSizeShift,
 			};
-			const _inflatedData = main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize * main.server.terrain.LightMap.LightMapFragment.mapSize * 2);
+			const _inflatedData = main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2);
 			defer main.stackAllocator.free(_inflatedData);
 			const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, reader.remaining);
-			if(_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize * main.server.terrain.LightMap.LightMapFragment.mapSize * 2) {
+			if(_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2) {
 				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, reader.remaining, _inflatedData[0.._inflatedLen]});
 				return error.Invalid;
 			}
@@ -1659,7 +1659,7 @@ pub const Connection = struct { // MARK: Connection
 			const bits = 1 + if(data.len == 0) 0 else std.math.log2_int(usize, data.len);
 			const bytes = std.math.divCeil(usize, bits, 7) catch unreachable;
 			for(0..bytes) |i| {
-				const shift = 7 * (bytes - i - 1);
+				const shift = 7*(bytes - i - 1);
 				const byte = (data.len >> @intCast(shift) & 0x7f) | if(i == bytes - 1) @as(u8, 0) else 0x80;
 				self.buffer.pushBack(@intCast(byte));
 				self.nextIndex +%= 1;
@@ -1808,7 +1808,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
-			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3 * conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
+			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
 			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
 		}
 
@@ -1884,7 +1884,7 @@ pub const Connection = struct { // MARK: Connection
 	slowChannel: Channel,
 
 	hasRttEstimate: bool = false,
-	rttEstimate: f32 = 1000 * ms,
+	rttEstimate: f32 = 1000*ms,
 	rttUncertainty: f32 = 0.0,
 	lastRttSampleTime: i64,
 	nextPacketTimestamp: i64,
@@ -1919,11 +1919,11 @@ pub const Connection = struct { // MARK: Connection
 			.lastConnection = networkTimestamp(),
 			.nextPacketTimestamp = networkTimestamp(),
 			.nextConfirmationTimestamp = networkTimestamp(),
-			.lastRttSampleTime = networkTimestamp() -% 10_000 * ms,
+			.lastRttSampleTime = networkTimestamp() -% 10_000*ms,
 			.queuedConfirmations = .init(main.globalAllocator, 1024),
-			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1 * ms, .lossy),
-			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10 * ms, .fast),
-			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100 * ms, .slow),
+			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1*ms, .lossy),
+			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .fast),
+			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100*ms, .slow),
 			.connectionIdentifier = networkTimestamp(),
 			.remoteConnectionIdentifier = 0,
 		};
@@ -2005,7 +2005,7 @@ pub const Connection = struct { // MARK: Connection
 		if(self.slowStart) {
 			self.bandwidthEstimateInBytesPerRtt += fullPacketLen;
 		} else {
-			self.bandwidthEstimateInBytesPerRtt += fullPacketLen / self.bandwidthEstimateInBytesPerRtt * @as(f32, @floatFromInt(self.mtuEstimate)) + fullPacketLen / 100.0;
+			self.bandwidthEstimateInBytesPerRtt += fullPacketLen / self.bandwidthEstimateInBytesPerRtt*@as(f32, @floatFromInt(self.mtuEstimate)) + fullPacketLen / 100.0;
 		}
 	}
 
@@ -2019,7 +2019,7 @@ pub const Connection = struct { // MARK: Connection
 		var numRtt: f32 = 0;
 		while(reader.remaining.len != 0) {
 			const channel = try reader.readEnum(ChannelId);
-			const timeOffset = 2 * @as(i64, try reader.readInt(u16));
+			const timeOffset = 2*@as(i64, try reader.readInt(u16));
 			const start = try reader.readInt(SequenceIndex);
 			const confirmationResult = switch(channel) {
 				.lossy => self.lossyChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
@@ -2043,8 +2043,8 @@ pub const Connection = struct { // MARK: Connection
 			const timeDifference: f32 = @floatFromInt(timestamp -% self.lastRttSampleTime);
 			const alpha = 1.0 - std.math.pow(f32, 7.0 / 8.0, timeDifference / self.rttEstimate);
 			const beta = 1.0 - std.math.pow(f32, 3.0 / 4.0, timeDifference / self.rttEstimate);
-			self.rttEstimate = (1 - alpha) * self.rttEstimate + alpha * averageRtt;
-			self.rttUncertainty = (1 - beta) * self.rttUncertainty + beta * largestDifference;
+			self.rttEstimate = (1 - alpha)*self.rttEstimate + alpha*averageRtt;
+			self.rttUncertainty = (1 - beta)*self.rttUncertainty + beta*largestDifference;
 			self.lastRttSampleTime = timestamp;
 			if(!self.hasRttEstimate) { // Kill the 1 second delay caused by the first packet
 				self.nextPacketTimestamp = timestamp;
@@ -2197,14 +2197,14 @@ pub const Connection = struct { // MARK: Connection
 		switch(self.connectionState.load(.monotonic)) {
 			.awaitingClientConnection => {
 				if(timestamp -% self.nextPacketTimestamp < 0) return;
-				self.nextPacketTimestamp = timestamp +% 100 * ms;
+				self.nextPacketTimestamp = timestamp +% 100*ms;
 				self.manager.send(&.{@intFromEnum(ChannelId.keepalive)}, self.remoteAddress, null);
 			},
 			.awaitingServerResponse, .awaitingClientAcknowledgement => {
 				// Send the initial packet once every 100 ms.
 				if(timestamp -% self.nextPacketTimestamp < 0) return;
-				self.nextPacketTimestamp = timestamp +% 100 * ms;
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 1 + @sizeOf(i64) + 3 * @sizeOf(SequenceIndex));
+				self.nextPacketTimestamp = timestamp +% 100*ms;
+				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 1 + @sizeOf(i64) + 3*@sizeOf(SequenceIndex));
 				defer writer.deinit();
 
 				writer.writeEnum(ChannelId, .init);
@@ -2231,9 +2231,9 @@ pub const Connection = struct { // MARK: Connection
 		self.handlePacketLoss(self.slowChannel.checkForLosses(self, timestamp));
 
 		// We don't want to send too many packets at once if there was a period of no traffic.
-		if(timestamp -% 10 * ms -% self.nextPacketTimestamp > 0) {
-			self.relativeIdleTime += timestamp -% 10 * ms -% self.nextPacketTimestamp;
-			self.nextPacketTimestamp = timestamp -% 10 * ms;
+		if(timestamp -% 10*ms -% self.nextPacketTimestamp > 0) {
+			self.relativeIdleTime += timestamp -% 10*ms -% self.nextPacketTimestamp;
+			self.nextPacketTimestamp = timestamp -% 10*ms;
 		}
 
 		if(self.relativeIdleTime + self.relativeSendTime > @as(i64, @intFromFloat(self.rttEstimate))) {
@@ -2258,7 +2258,7 @@ pub const Connection = struct { // MARK: Connection
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
-			const packetTime: i64 = @intFromFloat(@max(1, networkLen / self.bandwidthEstimateInBytesPerRtt * self.rttEstimate));
+			const packetTime: i64 = @intFromFloat(@max(1, networkLen / self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
 			self.nextPacketTimestamp +%= packetTime;
 			self.relativeSendTime += packetTime;
 		}
