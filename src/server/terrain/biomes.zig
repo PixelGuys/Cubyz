@@ -53,7 +53,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
 
-	pub fn registerGenerator(comptime Generator: type) void {
+	pub fn registerGenerator(comptime Generator: type, comptime generatorName: []const u8) void {
 		var self: VTable = undefined;
 		self.loadModel = main.utils.castFunctionReturnToAnyopaque(Generator.loadModel);
 		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
@@ -63,7 +63,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			}
 		}.hash);
 		self.generationMode = Generator.generationMode;
-		modelRegistry.put(main.globalArena.allocator, Generator.id, self) catch unreachable;
+		modelRegistry.put(main.globalArena.allocator, generatorName, self) catch unreachable;
 	}
 
 	fn getHash(self: SimpleStructureModel) u64 {
@@ -623,9 +623,9 @@ const TransitionBiome = struct {
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
 
 pub fn init() void {
-	const list = @import("simple_structures/_list.zig");
+	const list = @import("simple_structures");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
-		SimpleStructureModel.registerGenerator(@field(list, decl.name));
+		SimpleStructureModel.registerGenerator(@field(list, decl.name), decl.name);
 	}
 }
 
