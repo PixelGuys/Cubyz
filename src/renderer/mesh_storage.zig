@@ -850,7 +850,7 @@ fn batchUpdateBlocks() void {
 			}
 
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
-		}
+		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 	for(regenerateMeshList.items) |mesh| {
 		mesh.generateMesh(&lightRefreshList);
