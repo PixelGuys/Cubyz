@@ -9,7 +9,6 @@ const Vec3f = main.vec.Vec3f;
 
 const FractalNoiseZWeighted3D = @This();
 
-
 pos: ChunkPosition,
 cache: Array3D(f32),
 voxelShift: u5,
