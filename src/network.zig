@@ -2005,7 +2005,7 @@ pub const Connection = struct { // MARK: Connection
 		if(self.slowStart) {
 			self.bandwidthEstimateInBytesPerRtt += fullPacketLen;
 		} else {
-			self.bandwidthEstimateInBytesPerRtt += fullPacketLen / self.bandwidthEstimateInBytesPerRtt*@as(f32, @floatFromInt(self.mtuEstimate)) + fullPacketLen / 100.0;
+			self.bandwidthEstimateInBytesPerRtt += fullPacketLen/self.bandwidthEstimateInBytesPerRtt*@as(f32, @floatFromInt(self.mtuEstimate)) + fullPacketLen/100.0;
 		}
 	}
 
@@ -2038,11 +2038,11 @@ pub const Connection = struct { // MARK: Connection
 		}
 		if(numRtt > 0) {
 			// Taken mostly from RFC 6298 with some minor changes
-			const averageRtt = sumRtt / numRtt;
+			const averageRtt = sumRtt/numRtt;
 			const largestDifference = @max(maxRtt - averageRtt, averageRtt - minRtt, @abs(maxRtt - self.rttEstimate), @abs(self.rttEstimate - minRtt));
 			const timeDifference: f32 = @floatFromInt(timestamp -% self.lastRttSampleTime);
-			const alpha = 1.0 - std.math.pow(f32, 7.0 / 8.0, timeDifference / self.rttEstimate);
-			const beta = 1.0 - std.math.pow(f32, 3.0 / 4.0, timeDifference / self.rttEstimate);
+			const alpha = 1.0 - std.math.pow(f32, 7.0/8.0, timeDifference/self.rttEstimate);
+			const beta = 1.0 - std.math.pow(f32, 3.0/4.0, timeDifference/self.rttEstimate);
 			self.rttEstimate = (1 - alpha)*self.rttEstimate + alpha*averageRtt;
 			self.rttUncertainty = (1 - beta)*self.rttUncertainty + beta*largestDifference;
 			self.lastRttSampleTime = timestamp;
@@ -2258,7 +2258,7 @@ pub const Connection = struct { // MARK: Connection
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
-			const packetTime: i64 = @intFromFloat(@max(1, networkLen / self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
+			const packetTime: i64 = @intFromFloat(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
 			self.nextPacketTimestamp +%= packetTime;
 			self.relativeSendTime += packetTime;
 		}
