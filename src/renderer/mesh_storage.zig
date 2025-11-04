@@ -100,7 +100,7 @@ fn spawnBlockBreakParticles(block: blocks.Block, selectedPos: Vec3i) void {
 	}
 }
 
-pub fn init() void {// MARK: init()
+pub fn init() void { // MARK: init()
 	lastRD = 0;
 	blockUpdateList = .init(main.globalAllocator, 16);
 	meshMemoryPool = .init(main.globalAllocator);
@@ -272,7 +272,7 @@ fn reduceRenderDistance(fullRenderDistance: i64, reduction: i64) i32 {
 	return reducedRenderDistance;
 }
 
-fn isInRenderDistance(pos: chunk.ChunkPosition) bool {// MARK: isInRenderDistance()
+fn isInRenderDistance(pos: chunk.ChunkPosition) bool { // MARK: isInRenderDistance()
 	const maxRenderDistance = lastRD*chunk.chunkSize*pos.voxelSize;
 	const size: u31 = chunk.chunkSize*pos.voxelSize;
 	const mask: i32 = size - 1;
@@ -324,7 +324,7 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 	return true;
 }
 
-fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void {// MARK: freeOldMeshes()
+fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { // MARK: freeOldMeshes()
 	for(0..settings.highestLod + 1) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -459,7 +459,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void {/
 	}
 }
 
-fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void {// MARK: createNewMeshes()
+fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void { // MARK: createNewMeshes()
 	for(0..settings.highestLod + 1) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -596,7 +596,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 	}
 }
 
-pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *const main.renderer.Frustum, playerPos: Vec3d, renderDistance: u16) []*chunk_meshing.ChunkMesh {// MARK: updateAndGetRenderChunks()
+pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *const main.renderer.Frustum, playerPos: Vec3d, renderDistance: u16) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
 	meshList.clearRetainingCapacity();
 
 	const playerPosInt: Vec3i = @intFromFloat(@floor(playerPos));
@@ -759,7 +759,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	return meshList.items;
 }
 
-pub fn updateMeshes(targetTime: i64) void {// MARK: updateMeshes()=
+pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 	if(!blockUpdateList.isEmpty()) batchUpdateBlocks();
 
 	mutex.lock();
@@ -894,7 +894,7 @@ pub fn finishMesh(pos: chunk.ChunkPosition) void {
 	updatableList.append(pos);
 }
 
-pub const MeshGenerationTask = struct {// MARK: MeshGenerationTask
+pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	mesh: *chunk.Chunk,
 
 	pub const vtable = utils.ThreadPool.VTable{
