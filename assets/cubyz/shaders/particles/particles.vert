@@ -84,7 +84,6 @@ void main() {
 
 	float textureIndex = floor(particle.lifeRatio*particleType.animationFrames + particleType.startFrame);
 
-	
 	vec2 baseUV = uvPositions[vertexID];
 	if ((particle.uvOffset & 0x80000000u) != 0u) {
 		uint uvOffsetX = particle.uvOffset & 0xFFFFu;
