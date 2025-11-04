@@ -77,7 +77,7 @@ const Stripe = struct { // MARK: Stripe
 	}
 };
 
-fn hashGeneric(input: anytype) u64 {
+pub fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
 	return switch(@typeInfo(T)) {
 		.bool => hashCombine(hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
@@ -138,12 +138,12 @@ fn hashGeneric(input: anytype) u64 {
 }
 
 // https://stackoverflow.com/questions/5889238/why-is-xor-the-default-way-to-combine-hashes
-fn hashCombine(left: u64, right: u64) u64 {
+pub fn hashCombine(left: u64, right: u64) u64 {
 	return left ^ (right +% 0x517cc1b727220a95 +% (left << 6) +% (left >> 2));
 }
 
 // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
-fn hashInt(input: u64) u64 {
+pub fn hashInt(input: u64) u64 {
 	var x = input;
 	x = (x ^ (x >> 30))*%0xbf58476d1ce4e5b9;
 	x = (x ^ (x >> 27))*%0x94d049bb133111eb;
@@ -347,7 +347,7 @@ pub const Biome = struct { // MARK: Biome
 	}
 
 	fn getCheckSum(self: *Biome) u64 {
-		return terrain.hashGeneric(self.*);
+		return hashGeneric(self.*);
 	}
 };
 

@@ -61,7 +61,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
 		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {
-				return terrain.hashGeneric(ptr.*);
+				return terrain.biomes.hashGeneric(ptr.*);
 			}
 		}.hash);
 		self.generationMode = Generator.generationMode;
