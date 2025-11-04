@@ -203,13 +203,12 @@ pub const launchConfig = struct {
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		const worldConfig = zon.getChild("autoCreateWorldConfig");
 		if(!worldConfig.isNull()) {
-			var gamemode: ?main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, worldConfig.get([]const u8, "gamemode", "survival"));
-			if(gamemode == null) {
+			const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, worldConfig.get([]const u8, "gamemode", "survival")) orelse blk: {
 				std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to survival.", .{worldConfig.get([]const u8, "gamemode", "survival")});
-				gamemode = .survival;
-			}
+				break :blk main.game.Gamemode.survival;
+			};
 			autoCreateWorldConfig = .{
-				.gamemode = gamemode.?,
+				.gamemode = gamemode,
 				.testingMode = worldConfig.get(bool, "testingMode", false),
 				.allowCheats = worldConfig.get(bool, "allowCheats", false),
 			};

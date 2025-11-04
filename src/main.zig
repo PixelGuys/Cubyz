@@ -488,7 +488,98 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	}
 	return false;
 }
+pub fn clientRender() void {
+	if(settings.playerName.len == 0) {
+		gui.openWindow("change_name");
+	} else {
+		gui.openWindow("main");
+	}
 
+	const c = Window.c;
+	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
+	var lastBeginRendering = std.time.nanoTimestamp();
+
+	if(settings.launchConfig.autoEnterWorld.len != 0) {
+		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
+	}
+
+	audio.setMusic("cubyz:cubyz");
+
+	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		heap.GarbageCollection.syncPoint();
+		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
+		if(!isHidden) {
+			c.glfwSwapBuffers(Window.window);
+			// Clear may also wait on vsync, so it's done before handling events:
+			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+			c.glDepthFunc(c.GL_LESS);
+			c.glDepthMask(c.GL_TRUE);
+			c.glDisable(c.GL_SCISSOR_TEST);
+			c.glClearColor(0.5, 1, 1, 1);
+			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+			gui.windowlist.gpu_performance_measuring.stopQuery();
+		} else {
+			std.Thread.sleep(16_000_000);
+		}
+
+		const endRendering = std.time.nanoTimestamp();
+		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
+			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
+			std.posix.exit(1);
+		}
+		lastFrameTime.store(frameTime, .monotonic);
+
+		if(settings.fpsCap) |fpsCap| {
+			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
+			std.Thread.sleep(sleep);
+		}
+		const begin = std.time.nanoTimestamp();
+		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+		lastDeltaTime.store(deltaTime, .monotonic);
+		lastBeginRendering = begin;
+
+		Window.handleEvents(deltaTime);
+
+		file_monitor.handleEvents();
+
+		if(game.world != null) { // Update the game
+			game.update(deltaTime);
+		}
+
+		if(!isHidden) {
+			if(game.world != null) {
+				renderer.updateFov(settings.fov);
+				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+			} else {
+				renderer.updateFov(70.0);
+				renderer.MenuBackGround.render();
+			}
+			// Render the GUI
+			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
+			gui.updateAndRenderGui();
+			gui.windowlist.gpu_performance_measuring.stopQuery();
+		}
+
+		if(shouldExitToMenu.load(.monotonic)) {
+			shouldExitToMenu.store(false, .monotonic);
+			Window.setMouseGrabbed(false);
+			if(game.world) |world| {
+				world.deinit();
+				game.world = null;
+			}
+			gui.openWindow("main");
+			audio.setMusic("cubyz:cubyz");
+		}
+	}
+
+	if(game.world) |world| {
+		world.deinit();
+		game.world = null;
+	}
+}
 pub fn main() void { // MARK: main()
 	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
@@ -577,96 +668,7 @@ pub fn main() void { // MARK: main()
 	if(headless) {
 		server.start(settings.launchConfig.autoEnterWorld, null);
 	} else {
-		if(settings.playerName.len == 0) {
-			gui.openWindow("change_name");
-		} else {
-			gui.openWindow("main");
-		}
-
-		const c = Window.c;
-		Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-		var lastBeginRendering = std.time.nanoTimestamp();
-
-		if(settings.launchConfig.autoEnterWorld.len != 0) {
-			// Speed up the dev process by entering the world directly.
-			gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
-		}
-
-		audio.setMusic("cubyz:cubyz");
-
-		while(c.glfwWindowShouldClose(Window.window) == 0) {
-			heap.GarbageCollection.syncPoint();
-			const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
-			if(!isHidden) {
-				c.glfwSwapBuffers(Window.window);
-				// Clear may also wait on vsync, so it's done before handling events:
-				gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
-				c.glDepthFunc(c.GL_LESS);
-				c.glDepthMask(c.GL_TRUE);
-				c.glDisable(c.GL_SCISSOR_TEST);
-				c.glClearColor(0.5, 1, 1, 1);
-				c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-				gui.windowlist.gpu_performance_measuring.stopQuery();
-			} else {
-				std.Thread.sleep(16_000_000);
-			}
-
-			const endRendering = std.time.nanoTimestamp();
-			const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
-			if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
-				std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
-				std.posix.exit(1);
-			}
-			lastFrameTime.store(frameTime, .monotonic);
-
-			if(settings.fpsCap) |fpsCap| {
-				const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
-				const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-				std.Thread.sleep(sleep);
-			}
-			const begin = std.time.nanoTimestamp();
-			const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
-			lastDeltaTime.store(deltaTime, .monotonic);
-			lastBeginRendering = begin;
-
-			Window.handleEvents(deltaTime);
-
-			file_monitor.handleEvents();
-
-			if(game.world != null) { // Update the game
-				game.update(deltaTime);
-			}
-
-			if(!isHidden) {
-				if(game.world != null) {
-					renderer.updateFov(settings.fov);
-					renderer.render(game.Player.getEyePosBlocking(), deltaTime);
-				} else {
-					renderer.updateFov(70.0);
-					renderer.MenuBackGround.render();
-				}
-				// Render the GUI
-				gui.windowlist.gpu_performance_measuring.startQuery(.gui);
-				gui.updateAndRenderGui();
-				gui.windowlist.gpu_performance_measuring.stopQuery();
-			}
-
-			if(shouldExitToMenu.load(.monotonic)) {
-				shouldExitToMenu.store(false, .monotonic);
-				Window.setMouseGrabbed(false);
-				if(game.world) |world| {
-					world.deinit();
-					game.world = null;
-				}
-				gui.openWindow("main");
-				audio.setMusic("cubyz:cubyz");
-			}
-		}
-
-		if(game.world) |world| {
-			world.deinit();
-			game.world = null;
-		}
+		clientRender();
 	}
 }
 
