@@ -65,7 +65,7 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		if(builtin.os.tag == .windows) {// TODO: Upstream error, fix after next Zig update after #24466 is merged
+		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
 			const sendto = struct {
 				extern "c" fn sendto(sockfd: posix.system.fd_t, buf: *const anyopaque, len: usize, flags: u32, dest_addr: ?*const posix.system.sockaddr, addrlen: posix.system.socklen_t) c_int;
 			}.sendto;
@@ -84,7 +84,7 @@ const Socket = struct {
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
-		if(builtin.os.tag == .windows) {// Of course Windows always has it's own special thing.
+		if(builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
 			var pfd = [1]posix.pollfd{
 				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
 			};
@@ -132,7 +132,7 @@ const Socket = struct {
 
 pub fn init() void {
 	Socket.startup();
-	inline for (@typeInfo(Protocols).@"struct".decls) |decl| {
+	inline for(@typeInfo(Protocols).@"struct".decls) |decl| {
 		if(@TypeOf(@field(Protocols, decl.name)) == type) {
 			const id = @field(Protocols, decl.name).id;
 			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {
@@ -169,7 +169,7 @@ const Request = struct {
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
 /// Reference: https://datatracker.ietf.org/doc/html/rfc5389
-const STUN = struct {// MARK: STUN
+const STUN = struct { // MARK: STUN
 	const ipServerList = [_][]const u8{
 		"stun.12voip.com:3478",
 		"stun.1und1.de:3478",
@@ -277,7 +277,7 @@ const STUN = struct {// MARK: STUN
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
 		std.mem.writeInt(i128, seed[0..16], std.time.nanoTimestamp(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
-		for (0..16) |_| {
+		for(0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
 			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len - 1)];
 			var data = [_]u8{
@@ -367,16 +367,16 @@ const STUN = struct {// MARK: STUN
 	fn verifyHeader(data: []const u8, transactionID: []const u8) !void {
 		if(data[0] != 0x01 or data[1] != 0x01) return error.NotABinding;
 		if(@as(u16, @intCast(data[2] & 0xff)) * 256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
-		for (MAGIC_COOKIE, 0..) |cookie, i| {
+		for(MAGIC_COOKIE, 0..) |cookie, i| {
 			if(data[i + 4] != cookie) return error.WrongCookie;
 		}
-		for (transactionID, 0..) |_, i| {
+		for(transactionID, 0..) |_, i| {
 			if(data[i + 8] != transactionID[i]) return error.WrongTransaction;
 		}
 	}
 };
 
-pub const ConnectionManager = struct {// MARK: ConnectionManager
+pub const ConnectionManager = struct { // MARK: ConnectionManager
 	socket: Socket = undefined,
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
@@ -437,7 +437,7 @@ pub const ConnectionManager = struct {// MARK: ConnectionManager
 	}
 
 	pub fn deinit(self: *ConnectionManager) void {
-		for (self.connections.items) |conn| {
+		for(self.connections.items) |conn| {
 			conn.disconnect();
 		}
 
@@ -445,7 +445,7 @@ pub const ConnectionManager = struct {// MARK: ConnectionManager
 		self.thread.join();
 		self.socket.deinit();
 		self.connections.deinit();
-		for (self.requests.items) |request| {
+		for(self.requests.items) |request| {
 			request.requestNotifier.signal();
 		}
 		self.requests.deinit();
@@ -488,7 +488,7 @@ pub const ConnectionManager = struct {// MARK: ConnectionManager
 
 			request.requestNotifier.timedWait(&self.mutex, timeout_ns) catch {};
 
-			for (self.requests.items, 0..) |req, i| {
+			for(self.requests.items, 0..) |req, i| {
 				if(req == &request) {
 					_ = self.requests.swapRemove(i);
 					break;
@@ -513,7 +513,7 @@ pub const ConnectionManager = struct {// MARK: ConnectionManager
 	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected}!void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		for (self.connections.items) |other| {
+		for(self.connections.items) |other| {
 			if(other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
 		}
 		self.connections.append(conn);
@@ -530,7 +530,7 @@ pub const ConnectionManager = struct {// MARK: ConnectionManager
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		for (self.connections.items, 0..) |other, i| {
+		for(self.connections.items, 0..) |other, i| {
 			if(other == conn) {
 				_ = self.connections.swapRemove(i);
 				break;
@@ -542,7 +542,7 @@ pub const ConnectionManager = struct {// MARK: ConnectionManager
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
 
-		for (self.connections.items) |conn| {
+		for(self.connections.items) |conn| {
 			if(conn.remoteAddress.ip == source.ip) {
 				if(conn.bruteforcingPort) {
 					conn.remoteAddress.port = source.port;
@@ -558,7 +558,7 @@ pub const ConnectionManager = struct {// MARK: ConnectionManager
 		{
 			defer self.mutex.unlock();
 			// Check if it's part of an active request:
-			for (self.requests.items) |request| {
+			for(self.requests.items) |request| {
 				if(request.address.ip == source.ip and request.address.port == source.port) {
 					request.data = main.globalAllocator.dupe(u8, data);
 					request.requestNotifier.signal();
@@ -781,7 +781,7 @@ pub const Protocols = struct {
 			defer writer.deinit();
 			writer.writeVec(Vec3i, basePosition);
 			writer.writeInt(u16, renderDistance);
-			for (requests) |req| {
+			for(requests) |req| {
 				const voxelSizeShift: u5 = std.math.log2_int(u31, req.voxelSize);
 				const positionMask = ~((@as(i32, 1) << voxelSizeShift + chunk.chunkShift) - 1);
 				writer.writeInt(i8, @intCast((req.wx -% (basePosition[0] & positionMask)) >> voxelSizeShift + chunk.chunkShift));
@@ -913,7 +913,7 @@ pub const Protocols = struct {
 
 			writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
 			writer.writeVec(Vec3d, playerPos);
-			for (entityData) |data| {
+			for(entityData) |data| {
 				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
 				if(velocityMagnitudeSqr < 1e-6 * 1e-6) {
 					writer.writeEnum(Type, .noVelocityEntity);
@@ -928,7 +928,7 @@ pub const Protocols = struct {
 				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
 				writer.writeVec(Vec3f, data.rot);
 			}
-			for (itemData) |data| {
+			for(itemData) |data| {
 				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
 				if(velocityMagnitudeSqr < 1e-6 * 1e-6) {
 					writer.writeEnum(Type, .noVelocityItem);
@@ -967,7 +967,7 @@ pub const Protocols = struct {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
 			defer writer.deinit();
 
-			for (updates) |update| {
+			for(updates) |update| {
 				writer.writeInt(i32, update.x);
 				writer.writeInt(i32, update.y);
 				writer.writeInt(i32, update.z);
@@ -1080,11 +1080,11 @@ pub const Protocols = struct {
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
 							world.gameTime.store(expectedTime, .monotonic);
-						} else if(curTime < expectedTime) {// world.gameTime++
+						} else if(curTime < expectedTime) { // world.gameTime++
 							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
 								curTime = actualTime;
 							}
-						} else {// world.gameTime--
+						} else { // world.gameTime--
 							while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .monotonic, .monotonic)) |actualTime| {
 								curTime = actualTime;
 							}
@@ -1223,7 +1223,7 @@ pub const Protocols = struct {
 			if(requests.len == 0) return;
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9 * requests.len);
 			defer writer.deinit();
-			for (requests) |req| {
+			for(requests) |req| {
 				writer.writeInt(i32, req.wx);
 				writer.writeInt(i32, req.wy);
 				writer.writeInt(u8, req.voxelSizeShift);
@@ -1254,7 +1254,7 @@ pub const Protocols = struct {
 			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
 			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
 			map.init(pos.wx, pos.wy, pos.voxelSize);
-			for (&map.startHeight) |*val| {
+			for(&map.startHeight) |*val| {
 				val.* = try ligthMapReader.readInt(i16);
 			}
 			renderer.mesh_storage.updateLightMap(map);
@@ -1262,7 +1262,7 @@ pub const Protocols = struct {
 		pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) void {
 			var ligthMapWriter = utils.BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(@TypeOf(map.startHeight)));
 			defer ligthMapWriter.deinit();
-			for (&map.startHeight) |val| {
+			for(&map.startHeight) |val| {
 				ligthMapWriter.writeInt(i16, val);
 			}
 			const compressedData = utils.Compression.deflate(main.stackAllocator, ligthMapWriter.data.items, .default);
@@ -1288,9 +1288,9 @@ pub const Protocols = struct {
 				};
 			} else {
 				const typ = try reader.readInt(u8);
-				if(typ == 0xff) {// Confirmation
+				if(typ == 0xff) { // Confirmation
 					try items.Inventory.Sync.ClientSide.receiveConfirmation(reader);
-				} else if(typ == 0xfe) {// Failure
+				} else if(typ == 0xfe) { // Failure
 					items.Inventory.Sync.ClientSide.receiveFailure();
 				} else {
 					try items.Inventory.Sync.ClientSide.receiveSyncOperation(reader);
@@ -1374,7 +1374,7 @@ pub const Protocols = struct {
 			const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 
-			for (users) |user| {
+			for(users) |user| {
 				blockUpdate.send(user.conn, &.{.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = writer.data.items}});
 			}
 		}
@@ -1393,7 +1393,7 @@ pub const Protocols = struct {
 	};
 };
 
-pub const Connection = struct {// MARK: Connection
+pub const Connection = struct { // MARK: Connection
 	const maxMtu: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
@@ -1419,7 +1419,7 @@ pub const Connection = struct {// MARK: Connection
 		doubleLoss,
 	};
 
-	const RangeBuffer = struct {// MARK: RangeBuffer
+	const RangeBuffer = struct { // MARK: RangeBuffer
 		const Range = struct {
 			start: SequenceIndex,
 			len: SequenceIndex,
@@ -1479,7 +1479,7 @@ pub const Connection = struct {// MARK: Connection
 		}
 
 		pub fn hasRange(self: *RangeBuffer, range: Range) bool {
-			for (self.ranges.items) |other| {
+			for(self.ranges.items) |other| {
 				if(range.start -% other.start >= 0 and range.end() -% other.end() <= 0) {
 					return true;
 				}
@@ -1491,7 +1491,7 @@ pub const Connection = struct {// MARK: Connection
 			if(self.ranges.items.len == 0) return null;
 			var firstRange = self.ranges.items[0];
 			var index: usize = 0;
-			for (self.ranges.items[1..], 1..) |range, i| {
+			for(self.ranges.items[1..], 1..) |range, i| {
 				if(range.start -% firstRange.start < 0) {
 					firstRange = range;
 					index = i;
@@ -1502,7 +1502,7 @@ pub const Connection = struct {// MARK: Connection
 		}
 	};
 
-	const ReceiveBuffer = struct {// MARK: ReceiveBuffer
+	const ReceiveBuffer = struct { // MARK: ReceiveBuffer
 		const Range = struct {
 			start: SequenceIndex,
 			len: SequenceIndex,
@@ -1607,7 +1607,7 @@ pub const Connection = struct {// MARK: Connection
 		}
 	};
 
-	const SendBuffer = struct {// MARK: SendBuffer
+	const SendBuffer = struct { // MARK: SendBuffer
 		const Range = struct {
 			start: SequenceIndex,
 			len: SequenceIndex,
@@ -1658,7 +1658,7 @@ pub const Connection = struct {// MARK: Connection
 			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			const bits = 1 + if(data.len == 0) 0 else std.math.log2_int(usize, data.len);
 			const bytes = std.math.divCeil(usize, bits, 7) catch unreachable;
-			for (0..bytes) |i| {
+			for(0..bytes) |i| {
 				const shift = 7 * (bytes - i - 1);
 				const byte = (data.len >> @intCast(shift) & 0x7f) | if(i == bytes - 1) @as(u8, 0) else 0x80;
 				self.buffer.pushBack(@intCast(byte));
@@ -1677,7 +1677,7 @@ pub const Connection = struct {// MARK: Connection
 
 		pub fn receiveConfirmationAndGetTimestamp(self: *SendBuffer, start: SequenceIndex) ?ReceiveConfirmationResult {
 			var result: ?ReceiveConfirmationResult = null;
-			for (self.unconfirmedRanges.items, 0..) |range, i| {
+			for(self.unconfirmedRanges.items, 0..) |range, i| {
 				if(range.start == start) {
 					result = .{
 						.timestamp = range.timestamp,
@@ -1689,12 +1689,12 @@ pub const Connection = struct {// MARK: Connection
 				}
 			}
 			var smallestUnconfirmed = self.highestSentIndex;
-			for (self.unconfirmedRanges.items) |range| {
+			for(self.unconfirmedRanges.items) |range| {
 				if(smallestUnconfirmed -% range.start > 0) {
 					smallestUnconfirmed = range.start;
 				}
 			}
-			for (0..self.lostRanges.len) |i| {
+			for(0..self.lostRanges.len) |i| {
 				const range = self.lostRanges.getAtOffset(i) catch unreachable;
 				if(smallestUnconfirmed -% range.start > 0) {
 					smallestUnconfirmed = range.start;
@@ -1733,7 +1733,7 @@ pub const Connection = struct {// MARK: Connection
 			// Resend old packet:
 			if(self.lostRanges.popFront()) |_range| {
 				var range = _range;
-				if(range.len > buf.len) {// MTU changed → split the data
+				if(range.len > buf.len) { // MTU changed → split the data
 					self.lostRanges.pushFront(.{
 						.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
 						.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
@@ -1769,7 +1769,7 @@ pub const Connection = struct {// MARK: Connection
 		}
 	};
 
-	const Channel = struct {// MARK: Channel
+	const Channel = struct { // MARK: Channel
 		receiveBuffer: ReceiveBuffer,
 		sendBuffer: SendBuffer,
 		allowedDelay: i64,
@@ -1831,14 +1831,14 @@ pub const Connection = struct {// MARK: Connection
 		}
 
 		pub fn getStatistics(self: *Channel, unconfirmed: *usize, queued: *usize) void {
-			for (self.sendBuffer.unconfirmedRanges.items) |range| {
+			for(self.sendBuffer.unconfirmedRanges.items) |range| {
 				unconfirmed.* += @intCast(range.len);
 			}
 			queued.* = @intCast(self.sendBuffer.nextIndex -% self.sendBuffer.highestSentIndex);
 		}
 	};
 
-	const ChannelId = enum(u8) {// MARK: ChannelId
+	const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
 		fast = 1,
 		slow = 2,
@@ -2046,7 +2046,7 @@ pub const Connection = struct {// MARK: Connection
 			self.rttEstimate = (1 - alpha) * self.rttEstimate + alpha * averageRtt;
 			self.rttUncertainty = (1 - beta) * self.rttUncertainty + beta * largestDifference;
 			self.lastRttSampleTime = timestamp;
-			if(!self.hasRttEstimate) {// Kill the 1 second delay caused by the first packet
+			if(!self.hasRttEstimate) { // Kill the 1 second delay caused by the first packet
 				self.nextPacketTimestamp = timestamp;
 				self.hasRttEstimate = true;
 			}
@@ -2119,7 +2119,7 @@ pub const Connection = struct {// MARK: Connection
 				},
 				.awaitingClientAcknowledgement => {},
 				.connected => {
-					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) {// Reconnection attempt
+					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) { // Reconnection attempt
 						if(self.user) |user| {
 							self.manager.removeConnection(self);
 							main.server.disconnect(user);
