@@ -40,7 +40,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 		};
 	}
 
-	fn privateDeinit(self: *CaveBiomeMapFragment, _: usize) void {
+	fn privateDeinit(self: *CaveBiomeMapFragment) void {
 		memoryPool.destroy(self);
 	}
 
@@ -95,7 +95,6 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 /// A generator for the cave biome map.
 pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	init: *const fn(parameters: ZonElement) void,
-	deinit: *const fn() void,
 	generate: *const fn(map: *CaveBiomeMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
@@ -107,7 +106,6 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	pub fn registerGenerator(comptime Generator: type) void {
 		const self = CaveBiomeGenerator{
 			.init = &Generator.init,
-			.deinit = &Generator.deinit,
 			.generate = &Generator.generate,
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,

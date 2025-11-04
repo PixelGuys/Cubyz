@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const Window = @import("graphics/Window.zig");
 
 pub const version = @import("utils/version.zig");
 
@@ -54,13 +55,13 @@ pub var leavesQuality: u16 = 2;
 
 pub var @"lod0.5Distance": f32 = 200;
 
+pub var blockContrast: f32 = 0;
+
 pub var storageTime: i64 = 5000;
 
 pub var updateRepeatSpeed: u31 = 200;
 
 pub var updateRepeatDelay: u31 = 500;
-
-pub var developerAutoEnterWorld: []const u8 = "";
 
 pub var developerGPUInfiniteLoopDetection: bool = false;
 
@@ -104,6 +105,9 @@ pub fn init() void {
 		key.key = keyZon.get(c_int, "key", key.key);
 		key.mouseButton = keyZon.get(c_int, "mouseButton", key.mouseButton);
 		key.scancode = keyZon.get(c_int, "scancode", key.scancode);
+		if(key.isToggling != .never) {
+			key.isToggling = std.meta.stringToEnum(Window.Key.IsToggling, keyZon.get([]const u8, "isToggling", "")) orelse key.isToggling;
+		}
 	}
 }
 
@@ -157,6 +161,9 @@ pub fn save() void {
 		keyZon.put("key", key.key);
 		keyZon.put("mouseButton", key.mouseButton);
 		keyZon.put("scancode", key.scancode);
+		if(key.isToggling != .never) {
+			keyZon.put("isToggling", @tagName(key.isToggling));
+		}
 		keyboard.put(key.name, keyZon);
 	}
 	zonObject.put("keyboard", keyboard);
@@ -171,20 +178,17 @@ pub fn save() void {
 	defer oldZonObject.deinit(main.stackAllocator);
 
 	if(oldZonObject == .object) {
-		oldZonObject.join(zonObject);
-	} else {
-		oldZonObject.deinit(main.stackAllocator);
-		oldZonObject = zonObject;
-		zonObject = .null;
+		zonObject.join(.preferLeft, oldZonObject);
 	}
 
-	main.files.cubyzDir().writeZon(settingsFile, oldZonObject) catch |err| {
+	main.files.cubyzDir().writeZon(settingsFile, zonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }
 
 pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
+	pub var autoEnterWorld: []const u8 = "";
 
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
@@ -194,6 +198,7 @@ pub const launchConfig = struct {
 		defer zon.deinit(main.stackAllocator);
 
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+		autoEnterWorld = main.globalAllocator.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
 	}
 
 	pub fn deinit() void {

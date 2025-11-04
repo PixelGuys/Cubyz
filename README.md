@@ -25,6 +25,7 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 
 
 # Run Cubyz
+### This section is about compiling a dev version, if you just want a precompiled version, go to [releases](https://github.com/PixelGuys/Cubyz/releases)
 ## The Easy Way (no tools needed)
 1. Download the latest [source code](https://codeload.github.com/PixelGuys/Cubyz/zip/refs/heads/master)
 2. Extract the zip file
@@ -35,12 +36,6 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 - If it doesn't work and keeps running for more than 10 minutes without doing anything it can help to kill and restart the process. A few people seem to experience this, and I have not found the cause. It might also help to delete the `zig-cache` folder.
 - If you see an error message in the terminal, please report it in the [Issues](https://github.com/PixelGuys/Cubyz/issues) tab or on the [Discord server](https://discord.gg/XtqCRRG).
 - Otherwise you can always ask for help on the Discord server. If you are unable to get it compiling on your machine, you can also ask on the Discord server and we may compile a release for you.
-
-#### Note for Linux Users:
-I also had to install a few `-dev` packages for the compilation to work:
-```
-sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
-```
 
 ## The Better Way
 1. Install Git

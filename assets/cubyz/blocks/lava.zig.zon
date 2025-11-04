@@ -11,4 +11,9 @@
 	.emittedLight = 0xff7b00,
 	.model = "cubyz:cube",
 	.texture = "cubyz:lava",
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 2.0,
+		.damageType = .heat,
+	},
 }

@@ -15,6 +15,11 @@
 	.texture3 = "cubyz:branch/cactus/bend",
 	.texture4 = "cubyz:branch/cactus/intersection",
 	.texture5 = "cubyz:branch/cactus/cross",
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 0.5,
+		.damageType = .spiky,
+	},
 	.item = .{
 		.material = .{
 			.durability = 50,

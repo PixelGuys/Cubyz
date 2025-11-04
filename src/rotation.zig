@@ -6,6 +6,7 @@ const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const main = @import("main");
 const ModelIndex = main.models.ModelIndex;
+const Tag = main.Tag;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
@@ -99,14 +100,14 @@ pub const RotationMode = struct { // MARK: RotationMode
 			if(oldBlock == newBlock) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
 			if(!oldBlock.replacable()) {
-				var damage: f32 = 1;
+				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isTool = item.item != null and item.item.? == .tool;
 				if(isTool) {
 					damage = item.item.?.tool.getBlockDamage(oldBlock);
 				}
 				damage -= oldBlock.blockResistance();
 				if(damage > 0) {
-					if(isTool) {
+					if(isTool and item.item.?.tool.isEffectiveOn(oldBlock)) {
 						return .{.yes_costsDurability = 1};
 					} else return .yes;
 				}
@@ -123,6 +124,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 				}
 			}
 			return .no;
+		}
+		pub fn getBlockTags() []const Tag {
+			return &.{};
 		}
 	};
 
@@ -161,6 +165,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 	onBlockBreaking: *const fn(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 
 	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
+
+	getBlockTags: *const fn() []const Tag = DefaultFunctions.getBlockTags,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
