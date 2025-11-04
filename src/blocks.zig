@@ -28,6 +28,9 @@ const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 
+var arenaAllocator = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
+const arena = arenaAllocator.allocator();
+
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
 pub const BlockDrop = struct {
