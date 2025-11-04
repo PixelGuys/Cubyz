@@ -488,7 +488,100 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	}
 	return false;
 }
-pub fn clientRender() void {
+
+pub fn main() void { // MARK: main()
+	defer heap.allocators.deinit();
+	defer heap.GarbageCollection.assertAllThreadsStopped();
+	initThreadLocals();
+	defer deinitThreadLocals();
+
+	initLogging();
+	defer deinitLogging();
+
+	std.log.info("Starting game with version {s}", .{settings.version.version});
+
+	settings.launchConfig.init();
+	defer settings.launchConfig.deinit();
+
+	const headless = settings.launchConfig.headlessServer;
+
+	if(!headless) gui.initWindowList();
+	defer if(!headless) gui.deinitWindowList();
+
+	files.init();
+	defer files.deinit();
+
+	settings.init();
+	defer settings.deinit();
+
+	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
+	defer threadPool.deinit();
+
+	file_monitor.init();
+	defer file_monitor.deinit();
+
+	if(!headless) Window.init();
+	defer if(!headless) Window.deinit();
+
+	if(!headless) graphics.init();
+	defer if(!headless) graphics.deinit();
+
+	if(!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
+	defer if(!headless) audio.deinit();
+
+	utils.initDynamicIntArrayStorage();
+	defer utils.deinitDynamicIntArrayStorage();
+
+	chunk.init();
+	defer chunk.deinit();
+
+	rotation.init();
+	defer rotation.deinit();
+
+	callbacks.init();
+
+	block_entity.init();
+	defer block_entity.deinit();
+
+	models.init();
+	defer models.deinit();
+
+	items.globalInit();
+	defer items.deinit();
+
+	if(!headless) itemdrop.ItemDropRenderer.init();
+	defer if(!headless) itemdrop.ItemDropRenderer.deinit();
+
+	assets.init();
+
+	if(!headless) blocks.meshes.init();
+	defer if(!headless) blocks.meshes.deinit();
+
+	if(!headless) renderer.init();
+	defer if(!headless) renderer.deinit();
+
+	network.init();
+
+	if(!headless) entity.ClientEntityManager.init();
+	defer if(!headless) entity.ClientEntityManager.deinit();
+
+	if(!headless) gui.init();
+	defer if(!headless) gui.deinit();
+
+	if(!headless) particles.ParticleManager.init();
+	defer if(!headless) particles.ParticleManager.deinit();
+
+	server.terrain.globalInit();
+	defer server.terrain.globalDeinit();
+
+	if(headless) {
+		server.start(settings.launchConfig.autoEnterWorld, null);
+	} else {
+		clientMain();
+	}
+}
+
+pub fn clientMain() void { // MARK: clientMain()
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
@@ -578,97 +671,6 @@ pub fn clientRender() void {
 	if(game.world) |world| {
 		world.deinit();
 		game.world = null;
-	}
-}
-pub fn main() void { // MARK: main()
-	defer heap.allocators.deinit();
-	defer heap.GarbageCollection.assertAllThreadsStopped();
-	initThreadLocals();
-	defer deinitThreadLocals();
-
-	initLogging();
-	defer deinitLogging();
-
-	std.log.info("Starting game with version {s}", .{settings.version.version});
-
-	settings.launchConfig.init();
-	defer settings.launchConfig.deinit();
-
-	const headless = settings.launchConfig.headlessServer;
-
-	if(!headless) gui.initWindowList();
-	defer if(!headless) gui.deinitWindowList();
-
-	files.init();
-	defer files.deinit();
-
-	settings.init();
-	defer settings.deinit();
-
-	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
-	defer threadPool.deinit();
-
-	file_monitor.init();
-	defer file_monitor.deinit();
-
-	if(!headless) Window.init();
-	defer if(!headless) Window.deinit();
-
-	if(!headless) graphics.init();
-	defer if(!headless) graphics.deinit();
-
-	if(!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
-	defer if(!headless) audio.deinit();
-
-	utils.initDynamicIntArrayStorage();
-	defer utils.deinitDynamicIntArrayStorage();
-
-	chunk.init();
-	defer chunk.deinit();
-
-	rotation.init();
-	defer rotation.deinit();
-
-	callbacks.init();
-
-	block_entity.init();
-	defer block_entity.deinit();
-
-	models.init();
-	defer models.deinit();
-
-	items.globalInit();
-	defer items.deinit();
-
-	if(!headless) itemdrop.ItemDropRenderer.init();
-	defer if(!headless) itemdrop.ItemDropRenderer.deinit();
-
-	assets.init();
-
-	if(!headless) blocks.meshes.init();
-	defer if(!headless) blocks.meshes.deinit();
-
-	if(!headless) renderer.init();
-	defer if(!headless) renderer.deinit();
-
-	network.init();
-
-	if(!headless) entity.ClientEntityManager.init();
-	defer if(!headless) entity.ClientEntityManager.deinit();
-
-	if(!headless) gui.init();
-	defer if(!headless) gui.deinit();
-
-	if(!headless) particles.ParticleManager.init();
-	defer if(!headless) particles.ParticleManager.deinit();
-
-	server.terrain.globalInit();
-	defer server.terrain.globalDeinit();
-
-	if(headless) {
-		server.start(settings.launchConfig.autoEnterWorld, null);
-	} else {
-		clientRender();
 	}
 }
 

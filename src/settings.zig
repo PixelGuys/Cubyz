@@ -205,7 +205,7 @@ pub const launchConfig = struct {
 		if(!worldConfig.isNull()) {
 			const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, worldConfig.get([]const u8, "gamemode", "survival")) orelse blk: {
 				std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to survival.", .{worldConfig.get([]const u8, "gamemode", "survival")});
-				break :blk main.game.Gamemode.survival;
+				break :blk .survival;
 			};
 			autoCreateWorldConfig = .{
 				.gamemode = gamemode,
