@@ -310,7 +310,7 @@ fn openCommand() void {
 }
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
-	
+
 	const oldHideGui = gui.hideGui;
 	gui.hideGui = true;
 	const oldShowItem = itemdrop.ItemDisplayManager.showItem;
