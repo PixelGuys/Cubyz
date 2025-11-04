@@ -61,7 +61,7 @@ pub const ParticleManager = struct {
 		particleTypeHashmap.deinit(arenaAllocator.allocator);
 
 		var it = blockTextureValidRegions.valueIterator();
-		while (it.next()) |validRegions| {
+		while(it.next()) |validRegions| {
 			validRegions.deinit();
 		}
 		blockTextureValidRegions.deinit(arenaAllocator.allocator);
@@ -162,18 +162,18 @@ pub const ParticleManager = struct {
 		const minVisiblePixels = (regionWidth*regionHeight)/4; // At least 25% visible
 
 		var gridY: u16 = 0;
-		while (gridY < gridSize) : (gridY += 1) {
+		while(gridY < gridSize) : (gridY += 1) {
 			var gridX: u16 = 0;
-			while (gridX < gridSize) : (gridX += 1) {
+			while(gridX < gridSize) : (gridX += 1) {
 				// Count visible pixels in this region
 				var visibleCount: u32 = 0;
 				const startX = gridX*regionWidth;
 				const startY = gridY*regionHeight;
 
 				var y: u32 = 0;
-				while (y < regionHeight) : (y += 1) {
+				while(y < regionHeight) : (y += 1) {
 					var x: u32 = 0;
-					while (x < regionWidth) : (x += 1) {
+					while(x < regionWidth) : (x += 1) {
 						const pixelX = startX + x;
 						const pixelY = startY + y;
 						if(pixelX < image.width and pixelY < image.height) {
@@ -318,7 +318,7 @@ pub const ParticleSystem = struct {
 		const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);
 
 		var i: u32 = 0;
-		while (i < particleCount) {
+		while(i < particleCount) {
 			const particle = &particles[i];
 			const particleLocal = &particlesLocal[i];
 			particle.lifeRatio -= particleLocal.lifeVelocity*deltaTime;
@@ -478,7 +478,7 @@ pub const Emitter = struct {
 		pub fn spawn(self: SpawnPoint) struct {Vec3d, Vec3f} {
 			const particlePos = self.position;
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
-			const dir: Vec3f = switch (self.mode) {
+			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
 				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 			};
@@ -496,13 +496,13 @@ pub const Emitter = struct {
 		pub fn spawn(self: SpawnSphere) struct {Vec3d, Vec3f} {
 			const spawnPos: Vec3f = @splat(self.radius);
 			var offsetPos: Vec3f = undefined;
-			while (true) {
+			while(true) {
 				offsetPos = random.nextFloatVectorSigned(3, &seed);
 				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
 			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
-			const dir: Vec3f = switch (self.mode) {
+			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 				.spread => @floatCast(offsetPos),
@@ -523,7 +523,7 @@ pub const Emitter = struct {
 			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &seed);
 			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
-			const dir: Vec3f = switch (self.mode) {
+			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 				.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
