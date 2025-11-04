@@ -70,8 +70,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
 	} else if(t.os.tag == .macos) {
-		// NOTE(blackedout): miniaudio loads its frameworks dynamically at runtime, so no need to link against them.
-		// The following ones are for GLFW and found in the src/CMakeLists.txt of that repository
 		exe.linkFramework("Cocoa");
 		exe.linkFramework("CoreFoundation");
 		exe.linkFramework("IOKit");

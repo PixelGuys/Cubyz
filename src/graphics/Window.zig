@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const panic = std.debug.panic;
 
 const main = @import("main");
 const settings = main.settings;
@@ -680,14 +681,9 @@ pub fn setClipboardString(string: []const u8) void {
 pub fn init() void { // MARK: init()
 	_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
 
-	// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
-	// and GLFW's default attempt to load it dynamically would fail. Instead, tell GLFW where it can find the loader functions directly.
-	//
-	// Additionally, before GLFW touches Vulkan, tell the Vulkan loader where it can find the directory of the layer manifest files and
-	// the MoltenVK driver manifest file by setting the environment variables `VK_ADD_LAYER_PATH` and `VK_DRIVER_FILES`.
-	// Documented at https://vulkan.lunarg.com/doc/view/latest/mac/layer_configuration.html (2025-11-02)
-	// and at https://vulkan.lunarg.com/doc/view/latest/mac/LoaderDriverInterface.html (2025-11-02)
 	if(builtin.target.os.tag == .macos) {
+		// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
+		// and GLFW's default attempt to load it dynamically would fail. Instead, tell GLFW where it can find the loader functions directly.
 		c.glfwInitVulkanLoader(c.vkGetInstanceProcAddr);
 
 		if(c.setenv("VK_ADD_LAYER_PATH", "./zig-out/bin", 1) != 0) {

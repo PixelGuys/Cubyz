@@ -207,25 +207,19 @@ pub fn createInstance() void {
 		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
 	}
 
-	// NOTE(blackedout): Add additional extensions to the glfwExtensions and use different flags depending on the target.
-	// Since for macOS, Vulkan headers with a version > 1.0 are used, the extension names and flag must not be exposed to other targets.
-	const additionalExtensions = if(builtin.target.os.tag == .macos)
-		[_][*:0]const u8{
-			c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
-			c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-		}
-	else
-		[_][*:0]const u8{};
-
-	const createFlags = if(builtin.target.os.tag == .macos)
-		c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
-	else
-		0;
-
-	var extensions = std.ArrayList([*c]const u8).initCapacity(main.stackAllocator.allocator, glfwExtensionCount + additionalExtensions.len) catch unreachable;
+	var createFlags: u32 = 0;
+	var extensions = std.ArrayList([*c]const u8).init(main.stackAllocator.allocator);
 	defer extensions.deinit();
 	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]) catch unreachable;
-	extensions.appendSlice(&additionalExtensions) catch unreachable;
+
+	if(builtin.target.os.tag == .macos) {
+		// NOTE(blackedout): These constants may not be available for other targets because currently only macOS uses higher version headers
+		extensions.appendSlice(&.{
+			c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+			c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+		}) catch unreachable;
+		createFlags |= c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+	}
 
 	const createInfo = c.VkInstanceCreateInfo{
 		.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
