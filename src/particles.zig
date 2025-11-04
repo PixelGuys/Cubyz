@@ -24,7 +24,6 @@ var seed: u64 = undefined;
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
 
-/// Number of subdivisions for block particle UV sampling (creates a NxN grid)
 pub const blockParticleUVGridSize: comptime_int = 8;
 
 pub const ParticleManager = struct {
