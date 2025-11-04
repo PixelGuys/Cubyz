@@ -84,12 +84,11 @@ void main() {
 
 	float textureIndex = floor(particle.lifeRatio*particleType.animationFrames + particleType.startFrame);
 
-	// Apply UV offset for block particles (NxN grid sampling)
+	
 	vec2 baseUV = uvPositions[vertexID];
-	// Check if high bit is set (indicates UV offset is present)
 	if ((particle.uvOffset & 0x80000000u) != 0u) {
 		uint uvOffsetX = particle.uvOffset & 0xFFFFu;
-		uint uvOffsetY = (particle.uvOffset >> 16) & 0x7FFFu; // Mask out the flag bit
+		uint uvOffsetY = (particle.uvOffset >> 16) & 0x7FFFu;
 		baseUV = (baseUV + vec2(uvOffsetX, uvOffsetY)) / float(BLOCK_PARTICLE_UV_GRID_SIZE);
 	}
 
