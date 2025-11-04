@@ -90,12 +90,12 @@ pub const ParticleManager = struct {
 		const base = readTexture(assetsFolder, textureId, ".png", Image.defaultImage, .isMandatory);
 		const emission = readTexture(assetsFolder, textureId, "_emission.png", Image.emptyImage, .isOptional);
 		const hasEmission = (emission.imageData.ptr != Image.emptyImage.imageData.ptr);
-		const baseAnimationFrameCount = base.height / base.width;
-		const emissionAnimationFrameCount = emission.height / emission.width;
+		const baseAnimationFrameCount = base.height/base.width;
+		const emissionAnimationFrameCount = emission.height/emission.width;
 
 		typ.frameCount = @floatFromInt(baseAnimationFrameCount);
 		typ.startFrame = @floatFromInt(textures.items.len);
-		typ.size = @as(f32, @floatFromInt(base.width)) / 16;
+		typ.size = @as(f32, @floatFromInt(base.width))/16;
 
 		var isBaseBroken = false;
 		var isEmissionBroken = false;
@@ -137,19 +137,19 @@ pub const ParticleManager = struct {
 	}
 
 	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image, isBroken: bool) void {
-		for (0..frameCount) |i| {
+		for(0..frameCount) |i| {
 			container.append(if (isBroken) image else extractAnimationSlice(image, i));
 		}
 	}
 
 	fn extractAnimationSlice(image: Image, frameIndex: usize) Image {
-		const frameCount = image.height / image.width;
-		const frameHeight = image.height / frameCount;
-		const startHeight = frameHeight * frameIndex;
-		const endHeight = frameHeight * (frameIndex + 1);
+		const frameCount = image.height/image.width;
+		const frameHeight = image.height/frameCount;
+		const startHeight = frameHeight*frameIndex;
+		const endHeight = frameHeight*(frameIndex + 1);
 		var result = image;
 		result.height = @intCast(frameHeight);
-		result.imageData = result.imageData[startHeight * image.width .. endHeight * image.width];
+		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
 		return result;
 	}
 
@@ -157,9 +157,9 @@ pub const ParticleManager = struct {
 		var validRegions = main.List(UVRegion).init(arenaAllocator);
 
 		const gridSize = blockParticleUVGridSize;
-		const regionWidth = image.width / gridSize;
-		const regionHeight = image.height / gridSize;
-		const minVisiblePixels = (regionWidth * regionHeight) / 4; // At least 25% visible
+		const regionWidth = image.width/gridSize;
+		const regionHeight = image.height/gridSize;
+		const minVisiblePixels = (regionWidth*regionHeight)/4; // At least 25% visible
 
 		var gridY: u16 = 0;
 		while (gridY < gridSize) : (gridY += 1) {
@@ -167,8 +167,8 @@ pub const ParticleManager = struct {
 			while (gridX < gridSize) : (gridX += 1) {
 				// Count visible pixels in this region
 				var visibleCount: u32 = 0;
-				const startX = gridX * regionWidth;
-				const startY = gridY * regionHeight;
+				const startX = gridX*regionWidth;
+				const startY = gridY*regionHeight;
 
 				var y: u32 = 0;
 				while (y < regionHeight) : (y += 1) {
@@ -193,7 +193,7 @@ pub const ParticleManager = struct {
 
 		// If no valid regions found, add the center region as fallback
 		if (validRegions.items.len == 0) {
-			validRegions.append(.{ .x = gridSize / 2, .y = gridSize / 2 });
+			validRegions.append(.{ .x = gridSize/2, .y = gridSize/2 });
 		}
 
 		return validRegions;
@@ -203,7 +203,7 @@ pub const ParticleManager = struct {
 		const particleType = ParticleType{
 			.frameCount = 1,
 			.startFrame = -@as(f32, @floatFromInt(textureIndex)) - 1, // negative to indicate block texture
-			.size = 1.0 / @as(f32, blockParticleUVGridSize),
+			.size = 1.0/@as(f32, blockParticleUVGridSize),
 		};
 
 		const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
@@ -217,13 +217,13 @@ pub const ParticleManager = struct {
 	pub fn getRandomValidUVOffset(textureIndex: u16, randomSeed: *u64) u32 {
 		const validRegions = blockTextureValidRegions.get(textureIndex) orelse {
 			// Fallback: return center region
-			const center = blockParticleUVGridSize / 2;
+			const center = blockParticleUVGridSize/2;
 			return center | (@as(u32, center) << 16) | (1 << 31);
 		};
 
 		if (validRegions.items.len == 0) {
 			// Fallback: return center region
-			const center = blockParticleUVGridSize / 2;
+			const center = blockParticleUVGridSize/2;
 			return center | (@as(u32, center) << 16) | (1 << 31);
 		}
 
@@ -281,8 +281,8 @@ pub const ParticleSystem = struct {
 			.lifeTimeMax = 10,
 			.velMin = 0.1,
 			.velMax = 0.3,
-			.rotVelMin = std.math.pi * 0.2,
-			.rotVelMax = std.math.pi * 0.6,
+			.rotVelMin = std.math.pi*0.2,
+			.rotVelMax = std.math.pi*0.6,
 			.randomizeRotationOnSpawn = true,
 		};
 		particlesSSBO = SSBO.init();
@@ -303,7 +303,7 @@ pub const ParticleSystem = struct {
 	pub fn update(deltaTime: f32) void {
 		mutex.lock();
 		if (networkCreationQueue.items.len != 0) {
-			for (networkCreationQueue.items) |creation| {
+			for(networkCreationQueue.items) |creation| {
 				creation.emitter.spawnParticles(creation.count, Emitter.SpawnPoint, .{
 					.mode = .spread,
 					.position = creation.pos,
@@ -321,7 +321,7 @@ pub const ParticleSystem = struct {
 		while (i < particleCount) {
 			const particle = &particles[i];
 			const particleLocal = &particlesLocal[i];
-			particle.lifeRatio -= particleLocal.lifeVelocity * deltaTime;
+			particle.lifeRatio -= particleLocal.lifeVelocity*deltaTime;
 			if (particle.lifeRatio < 0) {
 				particleCount -= 1;
 				particles[i] = particles[particleCount];
@@ -331,15 +331,15 @@ pub const ParticleSystem = struct {
 
 			var rot = particle.posAndRotation[3];
 			const rotVel = particleLocal.velAndRotationVel[3];
-			rot += rotVel * deltaTime;
+			rot += rotVel*deltaTime;
 
-			particleLocal.velAndRotationVel += vec.combine(properties.gravity, 0) * vecDeltaTime;
-			particleLocal.velAndRotationVel *= @splat(@exp(-properties.drag * deltaTime));
-			const posDelta = particleLocal.velAndRotationVel * vecDeltaTime;
+			particleLocal.velAndRotationVel += vec.combine(properties.gravity, 0)*vecDeltaTime;
+			particleLocal.velAndRotationVel *= @splat(@exp(-properties.drag*deltaTime));
+			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 			if (particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
-				const hitBox: game.collision.Box = .{ .min = @splat(size * -0.5), .max = @splat(size * 0.5) };
+				const hitBox: game.collision.Box = .{ .min = @splat(size*-0.5), .max = @splat(size*0.5) };
 				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{ particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2] } + prevPlayerPosDifference));
 				v3Pos[0] += posDelta[0];
 				if (game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
@@ -392,8 +392,8 @@ pub const ParticleSystem = struct {
 	}
 
 	fn addParticleWithUV(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, uvOffset: u32) void {
-		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed) * properties.lifeTimeMax;
-		const rot = if (properties.randomizeRotationOnSpawn) random.nextFloat(&seed) * std.math.pi * 2 else 0;
+		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
+		const rot = if (properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.pi*2 else 0;
 
 		particles[particleCount] = Particle{
 			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
@@ -401,8 +401,8 @@ pub const ParticleSystem = struct {
 			.uvOffset = uvOffset,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
-			.velAndRotationVel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&seed) * properties.rotVelMax),
-			.lifeVelocity = 1 / lifeTime,
+			.velAndRotationVel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax),
+			.lifeVelocity = 1/lifeTime,
 			.collides = collides,
 		};
 		particleCount += 1;
@@ -417,8 +417,8 @@ pub const ParticleSystem = struct {
 		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 
-		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi * 0.5)
-			.mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi * 0.5));
+		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5)
+			.mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
 		c.glActiveTexture(c.GL_TEXTURE0);
@@ -430,8 +430,8 @@ pub const ParticleSystem = struct {
 
 		c.glBindVertexArray(chunk_meshing.vao);
 
-		for (0..std.math.divCeil(u32, particleCount, chunk_meshing.maxQuadsInIndexBuffer) catch unreachable) |_| {
-			c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCount * 6), c.GL_UNSIGNED_INT, null);
+		for(0..std.math.divCeil(u32, particleCount, chunk_meshing.maxQuadsInIndexBuffer) catch unreachable) |_| {
+			c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCount*6), c.GL_UNSIGNED_INT, null);
 		}
 	}
 
@@ -477,12 +477,12 @@ pub const Emitter = struct {
 
 		pub fn spawn(self: SpawnPoint) struct { Vec3d, Vec3f } {
 			const particlePos = self.position;
-			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed) * ParticleSystem.properties.velMax);
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch (self.mode) {
 				.direction => |dir| dir,
 				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 			};
-			const particleVel = dir * speed;
+			const particleVel = dir*speed;
 
 			return .{ particlePos, particleVel };
 		}
@@ -500,14 +500,14 @@ pub const Emitter = struct {
 				offsetPos = random.nextFloatVectorSigned(3, &seed);
 				if (vec.lengthSquare(offsetPos) <= 1) break;
 			}
-			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos * spawnPos));
-			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed) * ParticleSystem.properties.velMax);
+			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch (self.mode) {
 				.direction => |dir| dir,
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 				.spread => @floatCast(offsetPos),
 			};
-			const particleVel = dir * speed;
+			const particleVel = dir*speed;
 
 			return .{ particlePos, particleVel };
 		}
@@ -521,14 +521,14 @@ pub const Emitter = struct {
 		pub fn spawn(self: SpawnCube) struct { Vec3d, Vec3f } {
 			const spawnPos: Vec3f = self.size;
 			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &seed);
-			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos * spawnPos));
-			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed) * ParticleSystem.properties.velMax);
+			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch (self.mode) {
 				.direction => |dir| dir,
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 				.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
 			};
-			const particleVel = dir * speed;
+			const particleVel = dir*speed;
 
 			return .{ particlePos, particleVel };
 		}
@@ -545,7 +545,7 @@ pub const Emitter = struct {
 
 	pub fn spawnParticles(self: Emitter, spawnCount: u32, comptime T: type, spawnRules: T) void {
 		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
-		for (0..count) |_| {
+		for(0..count) |_| {
 			const particlePos, const particleVel = spawnRules.spawn();
 
 			ParticleSystem.addParticle(self.typ, particlePos, particleVel, self.collides);
@@ -554,7 +554,7 @@ pub const Emitter = struct {
 
 	pub fn spawnParticlesWithUV(self: Emitter, spawnCount: u32, comptime T: type, spawnRules: T, uvOffset: u32) void {
 		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
-		for (0..count) |_| {
+		for(0..count) |_| {
 			const particlePos, const particleVel = spawnRules.spawn();
 
 			ParticleSystem.addParticleWithUV(self.typ, particlePos, particleVel, self.collides, uvOffset);
