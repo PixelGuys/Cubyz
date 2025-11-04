@@ -100,15 +100,15 @@ pub const ParticleManager = struct {
 		var isBaseBroken = false;
 		var isEmissionBroken = false;
 
-		if (base.height%base.width != 0) {
+		if(base.height%base.width != 0) {
 			std.log.err("Particle base texture has incorrect dimensions ({}x{}) expected height to be multiple of width for {s} ({s})", .{base.width, base.height, textureId, assetsFolder});
 			isBaseBroken = true;
 		}
-		if (hasEmission and emission.height%emission.width != 0) {
+		if(hasEmission and emission.height%emission.width != 0) {
 			std.log.err("Particle emission texture has incorrect dimensions ({}x{}) expected height to be multiple of width for {s} ({s})", .{base.width, base.height, textureId, assetsFolder});
 			isEmissionBroken = true;
 		}
-		if (hasEmission and baseAnimationFrameCount != emissionAnimationFrameCount) {
+		if(hasEmission and baseAnimationFrameCount != emissionAnimationFrameCount) {
 			std.log.err("Particle base texture and emission texture frame count mismatch ({} vs {}) for {s} ({s})", .{baseAnimationFrameCount, emissionAnimationFrameCount, textureId, assetsFolder});
 			isEmissionBroken = true;
 		}
@@ -131,14 +131,14 @@ pub const ParticleManager = struct {
 		defer main.stackAllocator.free(worldAssetsPath);
 
 		return graphics.Image.readFromFile(arenaAllocator, worldAssetsPath) catch graphics.Image.readFromFile(arenaAllocator, gameAssetsPath) catch {
-			if (status == .isMandatory) std.log.err("Particle texture not found in {s} and {s}.", .{worldAssetsPath, gameAssetsPath});
+			if(status == .isMandatory) std.log.err("Particle texture not found in {s} and {s}.", .{worldAssetsPath, gameAssetsPath});
 			return default;
 		};
 	}
 
 	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image, isBroken: bool) void {
 		for(0..frameCount) |i| {
-			container.append(if (isBroken) image else extractAnimationSlice(image, i));
+			container.append(if(isBroken) image else extractAnimationSlice(image, i));
 		}
 	}
 
@@ -176,23 +176,23 @@ pub const ParticleManager = struct {
 					while (x < regionWidth) : (x += 1) {
 						const pixelX = startX + x;
 						const pixelY = startY + y;
-						if (pixelX < image.width and pixelY < image.height) {
+						if(pixelX < image.width and pixelY < image.height) {
 							const pixel = image.getRGB(pixelX, pixelY);
-							if (pixel.a >= 128) {// Consider semi-transparent as visible
+							if(pixel.a >= 128) {// Consider semi-transparent as visible
 								visibleCount += 1;
 							}
 						}
 					}
 				}
 
-				if (visibleCount >= minVisiblePixels) {
+				if(visibleCount >= minVisiblePixels) {
 					validRegions.append(.{.x = gridX, .y = gridY});
 				}
 			}
 		}
 
 		// If no valid regions found, add the center region as fallback
-		if (validRegions.items.len == 0) {
+		if(validRegions.items.len == 0) {
 			validRegions.append(.{.x = gridSize/2, .y = gridSize/2});
 		}
 
@@ -221,7 +221,7 @@ pub const ParticleManager = struct {
 			return center | (@as(u32, center) << 16) | (1 << 31);
 		};
 
-		if (validRegions.items.len == 0) {
+		if(validRegions.items.len == 0) {
 			// Fallback: return center region
 			const center = blockParticleUVGridSize/2;
 			return center | (@as(u32, center) << 16) | (1 << 31);
@@ -302,7 +302,7 @@ pub const ParticleSystem = struct {
 
 	pub fn update(deltaTime: f32) void {
 		mutex.lock();
-		if (networkCreationQueue.items.len != 0) {
+		if(networkCreationQueue.items.len != 0) {
 			for(networkCreationQueue.items) |creation| {
 				creation.emitter.spawnParticles(creation.count, Emitter.SpawnPoint, .{
 					.mode = .spread,
@@ -322,7 +322,7 @@ pub const ParticleSystem = struct {
 			const particle = &particles[i];
 			const particleLocal = &particlesLocal[i];
 			particle.lifeRatio -= particleLocal.lifeVelocity*deltaTime;
-			if (particle.lifeRatio < 0) {
+			if(particle.lifeRatio < 0) {
 				particleCount -= 1;
 				particles[i] = particles[particleCount];
 				particlesLocal[i] = particlesLocal[particleCount];
@@ -337,27 +337,27 @@ pub const ParticleSystem = struct {
 			particleLocal.velAndRotationVel *= @splat(@exp(-properties.drag*deltaTime));
 			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
-			if (particleLocal.collides) {
+			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference));
 				v3Pos[0] += posDelta[0];
-				if (game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
-					v3Pos[0] = if (posDelta[0] < 0)
+				if(game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
+					v3Pos[0] = if(posDelta[0] < 0)
 						box.max[0] - hitBox.min[0]
 					else
 						box.min[0] - hitBox.max[0];
 				}
 				v3Pos[1] += posDelta[1];
-				if (game.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
-					v3Pos[1] = if (posDelta[1] < 0)
+				if(game.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
+					v3Pos[1] = if(posDelta[1] < 0)
 						box.max[1] - hitBox.min[1]
 					else
 						box.min[1] - hitBox.max[1];
 				}
 				v3Pos[2] += posDelta[2];
-				if (game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-					v3Pos[2] = if (posDelta[2] < 0)
+				if(game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
+					v3Pos[2] = if(posDelta[2] < 0)
 						box.max[2] - hitBox.min[2]
 					else
 						box.min[2] - hitBox.max[2];
@@ -393,7 +393,7 @@ pub const ParticleSystem = struct {
 
 	fn addParticleWithUV(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool, uvOffset: u32) void {
 		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
-		const rot = if (properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.pi*2 else 0;
+		const rot = if(properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.pi*2 else 0;
 
 		particles[particleCount] = Particle{
 			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
@@ -498,7 +498,7 @@ pub const Emitter = struct {
 			var offsetPos: Vec3f = undefined;
 			while (true) {
 				offsetPos = random.nextFloatVectorSigned(3, &seed);
-				if (vec.lengthSquare(offsetPos) <= 1) break;
+				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
 			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
