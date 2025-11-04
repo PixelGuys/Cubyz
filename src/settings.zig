@@ -55,13 +55,13 @@ pub var leavesQuality: u16 = 2;
 
 pub var @"lod0.5Distance": f32 = 200;
 
+pub var blockContrast: f32 = 0;
+
 pub var storageTime: i64 = 5000;
 
 pub var updateRepeatSpeed: u31 = 200;
 
 pub var updateRepeatDelay: u31 = 500;
-
-pub var developerAutoEnterWorld: []const u8 = "";
 
 pub var developerGPUInfiniteLoopDetection: bool = false;
 
@@ -190,6 +190,7 @@ pub fn save() void {
 
 pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
+	pub var autoEnterWorld: []const u8 = "";
 
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
@@ -199,6 +200,7 @@ pub const launchConfig = struct {
 		defer zon.deinit(main.stackAllocator);
 
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+		autoEnterWorld = main.globalAllocator.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
 	}
 
 	pub fn deinit() void {
