@@ -625,7 +625,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				defer self.mutex.unlock();
 				while(i < self.connections.items.len) {
 					var conn = self.connections.items[i];
-					if(conn.hasRttEstimate and networkTimestamp() -% conn.lastConnection > Connection.timeoutMicroseconds) {
+					if(conn.hasRttEstimate and networkTimestamp() -% conn.lastConnection > settings.connectionTimeout) {
 						self.mutex.unlock();
 						conn.disconnect();
 						self.mutex.lock();
@@ -1408,7 +1408,6 @@ pub const Connection = struct { // MARK: Connection
 
 	const receiveBufferSize = 8 << 20;
 
-	pub const timeoutMicroseconds: i64 = 5_000_000;
 	// Statistics:
 	pub var packetsSent: Atomic(u32) = .init(0);
 	pub var packetsResent: Atomic(u32) = .init(0);
