@@ -152,24 +152,24 @@ const ChunkManager = struct { // MARK: ChunkManager
 		}
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
-			switch (self.source) {
+			switch(self.source) {
 				.user => |user| return self.pos.getPriority(user.player.pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
 
 		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
-			switch (self.source) { // Remove the task if the player disconnected
+			switch(self.source) { // Remove the task if the player disconnected
 				.user => |user| if(!user.connected.load(.unordered)) return false,
 				.entityChunk => |ch| if(ch.refCount.load(.monotonic) == 2) return false,
 			}
-			switch (self.source) { // Remove the task if it's far enough away from the player:
+			switch(self.source) { // Remove the task if it's far enough away from the player:
 				.user => |user| {
 					const minDistSquare = self.pos.getMinDistanceSquared(user.clientUpdatePos);
 					//                                                                              ↓ Margin for error. (diagonal of 1 chunk)
-					var targetRenderDistance: i64 = @as(i64, user.renderDistance) * chunk.chunkSize + @as(i64, @intFromFloat(@as(comptime_int, chunk.chunkSize) * @sqrt(3.0)));
+					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @intFromFloat(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
 					targetRenderDistance *= self.pos.voxelSize;
-					return minDistSquare <= targetRenderDistance * targetRenderDistance;
+					return minDistSquare <= targetRenderDistance*targetRenderDistance;
 				},
 				.entityChunk => {},
 			}
@@ -182,7 +182,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 		}
 
 		pub fn clean(self: *ChunkLoadTask) void {
-			switch (self.source) {
+			switch(self.source) {
 				.user => |user| user.decreaseRefCount(),
 				.entityChunk => |ch| ch.decreaseRefCount(),
 			}
@@ -280,7 +280,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 	pub fn generateChunk(pos: ChunkPosition, source: Source) void { // MARK: generateChunk()
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
-		switch (source) {
+		switch(source) {
 			.user => |user| {
 				main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
 				ch.decreaseRefCount();
@@ -299,7 +299,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 				return ch;
 			}
 		};
-		const regionSize = pos.voxelSize * chunk.chunkSize * storage.RegionFile.regionSize;
+		const regionSize = pos.voxelSize*chunk.chunkSize*storage.RegionFile.regionSize;
 		const regionMask: i32 = regionSize - 1;
 		const region = storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
 		defer region.decreaseRefCount();
@@ -308,9 +308,9 @@ const ChunkManager = struct { // MARK: ChunkManager
 		defer ch.mutex.unlock();
 		if(region.getChunk(
 			main.stackAllocator,
-			@as(usize, @intCast(pos.wx -% region.pos.wx)) / pos.voxelSize / chunk.chunkSize,
-			@as(usize, @intCast(pos.wy -% region.pos.wy)) / pos.voxelSize / chunk.chunkSize,
-			@as(usize, @intCast(pos.wz -% region.pos.wz)) / pos.voxelSize / chunk.chunkSize,
+			@as(usize, @intCast(pos.wx -% region.pos.wx))/pos.voxelSize/chunk.chunkSize,
+			@as(usize, @intCast(pos.wy -% region.pos.wy))/pos.voxelSize/chunk.chunkSize,
+			@as(usize, @intCast(pos.wz -% region.pos.wz))/pos.voxelSize/chunk.chunkSize,
 		)) |data| blk: { // Load chunk from file:
 			defer main.stackAllocator.free(data);
 			storage.ChunkCompression.loadChunk(&ch.super, .server, data) catch {
@@ -340,14 +340,14 @@ const ChunkManager = struct { // MARK: ChunkManager
 	}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
 	pub fn getOrGenerateChunkAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
-		const mask = pos.voxelSize * chunk.chunkSize - 1;
+		const mask = pos.voxelSize*chunk.chunkSize - 1;
 		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
 		const result = chunkCache.findOrCreate(pos, chunkInitFunctionForCacheAndIncreaseRefCount, ServerChunk.increaseRefCount);
 		return result;
 	}
 
 	pub fn getChunkFromCacheAndIncreaseRefCount(pos: ChunkPosition) ?*ServerChunk {
-		const mask = pos.voxelSize * chunk.chunkSize - 1;
+		const mask = pos.voxelSize*chunk.chunkSize - 1;
 		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
 		const result = chunkCache.find(pos, ServerChunk.increaseRefCount) orelse return null;
 		return result;
@@ -597,17 +597,17 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 							region.mutex.unlock();
 							defer region.mutex.lock();
 							const pos = ChunkPosition{
-								.wx = self.pos.wx + @as(i32, @intCast(x)) * chunk.chunkSize,
-								.wy = self.pos.wy + @as(i32, @intCast(y)) * chunk.chunkSize,
-								.wz = self.pos.wz + @as(i32, @intCast(z)) * chunk.chunkSize,
+								.wx = self.pos.wx + @as(i32, @intCast(x))*chunk.chunkSize,
+								.wy = self.pos.wy + @as(i32, @intCast(y))*chunk.chunkSize,
+								.wz = self.pos.wz + @as(i32, @intCast(z))*chunk.chunkSize,
 								.voxelSize = 1,
 							};
 							const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
 							defer ch.decreaseRefCount();
 							var nextPos = pos;
-							nextPos.wx &= ~@as(i32, self.pos.voxelSize * chunk.chunkSize);
-							nextPos.wy &= ~@as(i32, self.pos.voxelSize * chunk.chunkSize);
-							nextPos.wz &= ~@as(i32, self.pos.voxelSize * chunk.chunkSize);
+							nextPos.wx &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
+							nextPos.wy &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
+							nextPos.wz &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
 							nextPos.voxelSize *= 2;
 							const nextHigherLod = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(nextPos);
 							defer nextHigherLod.decreaseRefCount();
@@ -717,7 +717,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				// Explore chunks in a spiral from the center:
 				const radius = 65536;
 				const mapSize = terrain.ClimateMap.ClimateMapFragment.mapSize;
-				const spiralLen = 2 * radius / mapSize * 2 * radius / mapSize;
+				const spiralLen = 2*radius/mapSize*2*radius/mapSize;
 				var wx: i32 = 0;
 				var wy: i32 = 0;
 				var dirChanges: usize = 1;
@@ -729,18 +729,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
 						const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
 						const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
-						std.log.info("Trying roughly ({}, {})", .{wx + x * biomeSize, wy + y * biomeSize});
+						std.log.info("Trying roughly ({}, {})", .{wx + x*biomeSize, wy + y*biomeSize});
 						const sample = map.map[x][y];
 						if(sample.biome.isValidPlayerSpawn) {
 							for(0..16) |_| {
-								self.spawn[0] = wx + x * biomeSize + main.random.nextIntBounded(u31, &seed, biomeSize * 2) - biomeSize;
-								self.spawn[1] = wy + y * biomeSize + main.random.nextIntBounded(u31, &seed, biomeSize * 2) - biomeSize;
+								self.spawn[0] = wx + x*biomeSize + main.random.nextIntBounded(u31, &seed, biomeSize*2) - biomeSize;
+								self.spawn[1] = wy + y*biomeSize + main.random.nextIntBounded(u31, &seed, biomeSize*2) - biomeSize;
 								std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[1]});
 								if(self.isValidSpawnLocation(self.spawn[0], self.spawn[1])) break :foundPosition;
 							}
 						}
 					}
-					switch (dir) {
+					switch(dir) {
 						.dirNegX => wx -%= mapSize,
 						.dirPosX => wx +%= mapSize,
 						.dirNegY => wy -%= mapSize,
@@ -749,7 +749,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					}
 					stepsRemaining -= 1;
 					if(stepsRemaining == 0) {
-						switch (dir) {
+						switch(dir) {
 							.dirNegX => dir = .dirNegY,
 							.dirPosX => dir = .dirPosY,
 							.dirNegY => dir = .dirPosX,
@@ -758,7 +758,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						}
 						dirChanges += 1;
 						// Every second turn the number of steps needed doubles.
-						stepsRemaining = dirChanges / 2;
+						stepsRemaining = dirChanges/2;
 					}
 				}
 				std.log.err("Found no valid spawn location", .{});
@@ -922,9 +922,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: i32) void {
-		const vel: Vec3d = @floatCast(dir * @as(Vec3f, @splat(velocity)));
-		const rot = main.random.nextFloatVector(3, &main.seed) * @as(Vec3f, @splat(2 * std.math.pi));
-		self.itemDropManager.add(pos, vel, rot, stack, server.updatesPerSec * 900, pickupCooldown);
+		const vel: Vec3d = @floatCast(dir*@as(Vec3f, @splat(velocity)));
+		const rot = main.random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi));
+		self.itemDropManager.add(pos, vel, rot, stack, server.updatesPerSec*900, pickupCooldown);
 	}
 
 	pub fn drop(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32) void {
@@ -969,7 +969,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn update(self: *ServerWorld) void { // MARK: update()
 		const newTime = std.time.milliTimestamp();
-		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime)) / 1000.0;
+		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
 		self.lastUpdateTime = newTime;
 		if(deltaTime > 0.3) {
 			std.log.warn("Update time is getting too high. It's already at {} s!", .{deltaTime});
