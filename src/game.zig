@@ -927,6 +927,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}*@as(Vec2f, @splat(3.14*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
+
 	Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
 	if(collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
