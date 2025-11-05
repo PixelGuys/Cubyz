@@ -5,4 +5,5 @@
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
+	.rotation = "cubyz:stairs",
 }
