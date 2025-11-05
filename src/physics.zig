@@ -57,6 +57,7 @@ pub const InputState = struct {
 	gravity: f64 = 30.0,
 	airTerminalVelocity: f64 = 90.0,
 	density: f64 = 1.2,
+	runTouchBlocks: bool = false,
 
 	pub fn fromPlayer() InputState {
 		return .{
@@ -66,6 +67,7 @@ pub const InputState = struct {
 			.isFlying = Player.isFlying.load(.monotonic),
 			.hasCollision = !Player.isGhost.load(.monotonic),
 			.boundingBox = Player.outerBoundingBox,
+			.runTouchBlocks = true,
 		};
 	}
 };
@@ -315,7 +317,9 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 				eyeData.pos[2] -= move[2];
 			}
 		}
-		collision.touchBlocks(&Player.super, hitBox, .client, deltaTime);
+		if(inputState.runTouchBlocks) {
+			collision.touchBlocks(&Player.super, hitBox, .client, deltaTime);
+		}
 	} else {
 		physicsState.pos += move;
 	}
