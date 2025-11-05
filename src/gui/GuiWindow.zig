@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("../main.zig");
 const utils = main.utils;
 const graphics = main.graphics;
 const draw = graphics.draw;
@@ -44,6 +44,12 @@ const RelativePosition = union(enum) {
 	},
 };
 
+const TitleBarButton = enum(u8) {
+	close = 0,
+	zoomIn = 1,
+	zoomOut = 2,
+};
+
 const snapDistance = 3;
 const titleBarHeight = 18;
 const iconWidth = 18;
@@ -57,10 +63,10 @@ relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 id: []const u8 = undefined,
 rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
+titleBarButtons: []const TitleBarButton = &.{.close, .zoomOut, .zoomIn},
 hasBackground: bool = true,
 hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a button, to for example leave the inventory open while playing.
 closeIfMouseIsGrabbed: bool = false,
-closeable: bool = true,
 isHud: bool = false,
 
 shiftClickableInventory: ?main.items.Inventory = null,
@@ -143,13 +149,12 @@ pub fn defaultFunction() void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
-	const btnPos = self.getButtonPositions();
-	const zoomInPos = btnPos[2]/self.scale;
+	const leftmostButtonPos = self.size[0]/self.scale - @as(f32, @floatFromInt(iconWidth*self.titleBarButtons.len));
 	if(scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
-		windowMoving = scaledMousePos[0] <= zoomInPos;
+		windowMoving = scaledMousePos[0] <= leftmostButtonPos;
 	} else {
 		if(self.rootComponent) |*component| {
 			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
@@ -159,48 +164,41 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
-	const closePos = if(self.closeable) self.size[0] - iconWidth*self.scale else self.size[0];
-	const zoomOutPos = closePos - iconWidth*self.scale;
-	const zoomInPos = zoomOutPos - iconWidth*self.scale;
-	return .{closePos, zoomOutPos, zoomInPos};
+pub fn buttonAction(self: *GuiWindow, button: TitleBarButton) void {
+	if(button == .close) {
+		gui.closeWindowFromRef(self);
+	}
+	if(button == .zoomOut) {
+		if(self.scale > 1) {
+			self.scale -= 0.5;
+		} else {
+			self.scale -= 0.25;
+		}
+		self.scale = @max(self.scale, 0.25);
+		gui.updateWindowPositions();
+		gui.save();
+	}
+	if(button == .zoomIn) {
+		if(self.scale >= 1) {
+			self.scale += 0.5;
+		} else {
+			self.scale += 0.25;
+		}
+		gui.updateWindowPositions();
+		gui.save();
+	}
 }
 
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	if(grabPosition != null and grabbedWindow == self and (self.showTitleBar or gui.reorderWindows)) {
-		const btnPos = self.getButtonPositions();
-		const closePos = btnPos[0];
-		const zoomOutPos = btnPos[1];
-		const zoomInPos = btnPos[2];
 		const mousePositionRelative = mousePosition - self.pos;
 		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
-		if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
-			if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
-				// Zoom in
-				if(self.scale >= 1) {
-					self.scale += 0.5;
-				} else {
-					self.scale += 0.25;
-				}
-				gui.updateWindowPositions();
-				gui.save();
-			}
-			if(mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] <= closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] <= closePos) {
-				// Zoom out
-				if(self.scale > 1) {
-					self.scale -= 0.5;
-				} else {
-					self.scale -= 0.25;
-				}
-				self.scale = @max(self.scale, 0.25);
-				gui.updateWindowPositions();
-				gui.save();
-			}
-			if(mousePositionRelative[0] > closePos and grabPositionRelative[0] > closePos) {
-				// Close
-				if(self.closeable) gui.closeWindowFromRef(self);
-			}
+		const mousePositionIndex: usize = @intFromFloat(@divFloor(self.size[0] - mousePositionRelative[0], iconWidth*self.scale));
+		const grabPositionIndex: usize = @intFromFloat(@divFloor(self.size[0] - grabPositionRelative[0], iconWidth*self.scale));
+
+		if(mousePositionIndex == grabPositionIndex and mousePositionIndex < self.titleBarButtons.len) {
+			self.buttonAction(self.titleBarButtons[mousePositionIndex]);
 		}
 	}
 	grabPosition = null;
@@ -380,7 +378,7 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 pub fn getMinWindowWidth(self: *GuiWindow) f32 {
-	return iconWidth*@as(f32, (if(self.closeable) 4 else 3));
+	return iconWidth*@as(f32, @floatFromInt(self.titleBarButtons.len));
 }
 pub fn updateWindowPosition(self: *GuiWindow) void {
 	const minSize = self.getMinWindowWidth();
@@ -479,14 +477,15 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 pub fn drawIcons(self: *const GuiWindow) void {
 	draw.setColor(0xffffffff);
 	var x = self.size[0]/self.scale;
-	if(self.closeable) {
+	for(self.titleBarButtons) |button| {
 		x -= iconWidth;
-		closeTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+		const buttonTexture = switch(button) {
+			.close => closeTexture,
+			.zoomOut => zoomOutTexture,
+			.zoomIn => zoomInTexture,
+		};
+		buttonTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 	}
-	x -= iconWidth;
-	zoomOutTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
-	x -= iconWidth;
-	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
