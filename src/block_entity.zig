@@ -139,7 +139,6 @@ pub const BlockEntityTypeList = struct {
 			invId: main.items.Inventory.InventoryId,
 		});
 
-		pub const id = "chest";
 		pub fn init() void {
 			StorageServer.init();
 		}
@@ -269,7 +268,6 @@ pub const BlockEntityTypeList = struct {
 		const textureHeight = 72;
 		const textureMargin = 4;
 
-		pub const id = "sign";
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
@@ -395,7 +393,7 @@ pub const BlockEntityTypeList = struct {
 				const index = mesh.chunk.getLocalBlockIndex(pos);
 				const block = mesh.chunk.data.getValue(index);
 				const blockEntity = block.blockEntity() orelse return;
-				if(!std.mem.eql(u8, blockEntity.id, id)) return;
+				if(!std.mem.eql(u8, blockEntity.id, "Sign")) return;
 
 				StorageClient.mutex.lock();
 				defer StorageClient.mutex.unlock();
