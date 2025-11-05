@@ -480,7 +480,7 @@ pub const BlockEntityTypeList = struct {
 const BlockEntityTypes = StringIndexedVTables(BlockEntityType, BlockEntityTypeList, struct {});
 
 pub fn init() void {
-	BlockEntityTypes.init(main.globalAllocator.allocator);
+	BlockEntityTypes.init(main.globalAllocator);
 }
 
 pub fn reset() void {
