@@ -460,16 +460,17 @@ pub fn start(name: []const u8, port: ?u16) void {
 }
 
 pub fn stop() void {
+	kickPlayers(.expectedClose, "Server stopped.");
 	running.store(false, .monotonic);
 }
 
-pub fn kickPlayers(reason: network.Connection.DisconnectReason) void {
+pub fn kickPlayers(reason: network.Connection.DisconnectReason, reasonMessage: ?[]const u8) void {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
 	for(userList) |user| {
 		if(user.connected.load(.monotonic) and !user.isLocal) {
-			user.conn.disconnect(reason);
+			user.conn.disconnect(reason, reasonMessage);
 		}
 	}
 }
@@ -522,7 +523,7 @@ pub fn connectInternal(user: *User) void {
 	if(!world.?.testingMode) {
 		for(userList) |other| {
 			if(std.mem.eql(u8, other.name, user.name)) {
-				user.conn.disconnect(.alreadyConnected);
+				user.conn.disconnect(.alreadyConnected, null);
 				return;
 			}
 		}

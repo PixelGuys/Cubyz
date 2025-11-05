@@ -16,14 +16,10 @@ pub var window: GuiWindow = GuiWindow{
 const padding: f32 = 16;
 const width: f32 = 256;
 
-pub var reasonCode: main.network.Connection.DisconnectReason = .worldClosed;
-var reason: []const u8 = "";
+pub var reason: []const u8 = "";
 
 pub fn init() void {
 	reason = "";
-	if(reasonCode != .worldClosed) {
-		setDisconnectedReason(reasonCode);
-	}
 }
 
 pub fn deinit() void {
@@ -31,27 +27,32 @@ pub fn deinit() void {
 }
 
 fn ack(_: usize) void {
-	reasonCode = .worldClosed;
 	gui.closeWindowFromRef(&window);
 }
 
-pub fn setDisconnectedReason(newReasonCode: main.network.Connection.DisconnectReason) void {
-	if(newReasonCode != .worldClosed) {
-		main.globalAllocator.free(reason);
-		reasonCode = newReasonCode;
-		reason = main.globalAllocator.dupe(u8, switch(newReasonCode) {
-			.kicked => "You were kicked from the server.",
-			.serverStopped => "The server has server stopped.",
-			.badPacket => "Invalid network packet received.",
-			.alreadyConnected => "You are already connected.",
-			.timeout => "Connection timed out.",
-			else => "",
-		});
-	}
+pub fn setDisconnectedReason(newReasonCode: main.network.Connection.DisconnectReason, newReasonMessage: ?[]const u8) void {
+	main.globalAllocator.free(reason);
+
+	var tmpBuffer: ?[]u8 = null;
+	defer if(tmpBuffer) |buf| main.stackAllocator.allocator.free(buf);
+
+	const formattedMessage = switch(newReasonCode) {
+		.expectedClose => if(newReasonMessage) |newRm| newRm else "",
+		.kicked => if(newReasonMessage) |newRm| kickl: {
+			const formatted = std.fmt.allocPrint(main.stackAllocator.allocator, "You were kicked from the server. Reason: {s}", .{newRm}) catch break :kickl "You were kicked from the server.";
+			tmpBuffer = formatted;
+			break :kickl formatted;
+		} else "You were kicked from the server.",
+		.badPacket => "Invalid network packet received.",
+		.alreadyConnected => "You are already connected.",
+		.timeout => "Connection timed out.",
+		else => "",
+	};
+	reason = main.globalAllocator.dupe(u8, formattedMessage);
 }
 
 pub fn showDisconnectReason() void {
-	if(reasonCode != .worldClosed) {
+	if(reason.len > 0) {
 		gui.openWindowFromRef(&window);
 	}
 }
