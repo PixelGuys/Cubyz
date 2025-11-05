@@ -404,25 +404,18 @@ pub const DamageType = enum(u8) {
 
 pub const Player = struct { // MARK: Player
 	pub const EyeData = struct {
-		pos: Vec3d,
-		vel: Vec3d,
-		coyote: f64,
-		step: @Vector(3, bool),
-		box: collision.Box,
-		desiredPos: Vec3d,
-	};
-	pub var super: main.server.Entity = .{};
-	pub var eye: EyeData = .{
-		.pos = .{0, 0, 0},
-		.vel = .{0, 0, 0},
-		.coyote = 0,
-		.step = .{false, false, false},
-		.box = .{
+		pos: Vec3d = .{0, 0, 0},
+		vel: Vec3d = .{0, 0, 0},
+		coyote: f64 = 0.0,
+		step: @Vector(3, bool) = .{false, false, false},
+		box: collision.Box = .{
 			.min = -Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.6},
 			.max = Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
 		},
-		.desiredPos = .{0, 0, 1.7 - standingBoundingBoxExtent[2]},
+		desiredPos: Vec3d = .{0, 0, 1.7 - standingBoundingBoxExtent[2]},
 	};
+	pub var super: main.server.Entity = .{};
+	pub var eye: EyeData = .{};
 	pub var crouching: bool = false;
 	pub var id: u32 = 0;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
@@ -554,10 +547,7 @@ pub const Player = struct { // MARK: Player
 		Player.super.health = Player.super.maxHealth;
 		Player.super.energy = Player.super.maxEnergy;
 
-		Player.eye.pos = .{0, 0, 0};
-		Player.eye.vel = .{0, 0, 0};
-		Player.eye.coyote = 0;
-		Player.eye.step = .{false, false, false};
+		Player.eye = .{};
 		Player.jumpCoyote = 0;
 	}
 
