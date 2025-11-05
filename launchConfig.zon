@@ -1,10 +1,5 @@
 .{
-    .cubyzDir = "./run-data",
+    .cubyzDir = "",
     .headlessServer = false,
     .autoEnterWorld = "",
-    .autoCreateWorldConfig = .{
-	.gamemode = .survival,
-	.testingMode = false,
-	.allowCheats = false,
-    }
 }

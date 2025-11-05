@@ -190,7 +190,6 @@ pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;
-	pub var autoCreateWorldConfig: main.server.world_zig.WorldSettings = undefined;
 
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
@@ -201,18 +200,6 @@ pub const launchConfig = struct {
 
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
-		const worldConfig = zon.getChild("autoCreateWorldConfig");
-		if(!worldConfig.isNull()) {
-			const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, worldConfig.get([]const u8, "gamemode", "survival")) orelse blk: {
-				std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to survival.", .{worldConfig.get([]const u8, "gamemode", "survival")});
-				break :blk .survival;
-			};
-			autoCreateWorldConfig = .{
-				.gamemode = gamemode,
-				.testingMode = worldConfig.get(bool, "testingMode", false),
-				.allowCheats = worldConfig.get(bool, "allowCheats", false),
-			};
-		}
 		autoEnterWorld = main.globalAllocator.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
 	}
 
