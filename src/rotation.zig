@@ -196,7 +196,7 @@ pub fn deinit() void {
 }
 
 pub fn getByID(id: []const u8) *RotationMode {
-	if(RotationModes.getVTable(id)) |mode| return mode;
+	if(RotationModes.getEntry(id)) |mode| return mode;
 	std.log.err("Could not find rotation mode {s}. Using cubyz:no_rotation instead.", .{id});
-	return RotationModes.getVTable("cubyz:no_rotation").?;
+	return RotationModes.getEntry("cubyz:no_rotation").?;
 }
