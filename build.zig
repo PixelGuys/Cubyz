@@ -144,7 +144,7 @@ pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions)
 fn createLaunchConfig() !void {
 	std.fs.cwd().access("launchConfig.zon", .{}) catch {
 		try std.fs.cwd().writeFile(.{
-			.data = ".{\n\t.cubyzDir = \"\",\n}\n",
+			.data = ".{\n\t.cubyzDir = \"\",\n\t.autoEnterWorld = \"\",\n\t.headlessServer = false,\n}\n",
 			.sub_path = "launchConfig.zon",
 		});
 	};
