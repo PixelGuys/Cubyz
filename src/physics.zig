@@ -250,7 +250,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 		} else if(Player.eye.coyote > 0) {
 			Player.eye.pos[2] -= move[2];
 		}
-		collision.touchBlocks(Player.super, hitBox, .client);
+		collision.touchBlocks(&Player.super, hitBox, .client, deltaTime);
 	} else {
 		Player.super.pos += move;
 	}
