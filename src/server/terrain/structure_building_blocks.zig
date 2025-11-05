@@ -345,22 +345,20 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 
 	childrenToResolve = .init(main.stackAllocator);
 	defer childrenToResolve.deinit();
-	var stage1Count: u32 = 0;
+	var loadedCount: u32 = 0;
 	{
 		var iterator = structures.iterator();
-		var index: u32 = 0;
 		while(iterator.next()) |entry| {
-			structureList.items[index] = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
+			structureList.items[loadedCount] = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
 				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.*, @errorName(err)});
 				continue;
 			};
 			const key = main.worldArena.dupe(u8, entry.key_ptr.*);
-			structureMap.put(main.worldArena.allocator, key, @enumFromInt(index)) catch unreachable;
+			structureMap.put(main.worldArena.allocator, key, @enumFromInt(loadedCount)) catch unreachable;
 
 			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
-			index += 1;
+			loadedCount += 1;
 		}
-		stage1Count = index;
 	}
 	{
 		for(childrenToResolve.items) |entry| {
@@ -371,7 +369,7 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 			entry.structure.* = childStructure.get();
 		}
 	}
-	for(structureList.items[0..stage1Count]) |sbb| sbb.postResolutionChecks();
+	for(structureList.items[0..loadedCount]) |sbb| sbb.postResolutionChecks();
 }
 
 pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
