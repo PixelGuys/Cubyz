@@ -179,8 +179,8 @@ pub const ParticleSystem = struct {
 		);
 
 		properties = EmitterProperties{
-			.gravity = .{0, 0, -2},
-			.drag = 0.2,
+			.gravity = .{0, 0, 0},
+			.drag = 1,
 			.lifeTimeMin = 10,
 			.lifeTimeMax = 10,
 			.velMin = 0.1,
