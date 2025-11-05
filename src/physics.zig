@@ -19,7 +19,7 @@ pub const PhysicsState = struct {
 	currentFriction: f32 = undefined,
 	onGround: bool = false,
 	jumpCoyote: f64 = 0,
-	eyeData: ?Player.EyeData = null,
+	eye: ?Player.EyeData = null,
 	fallDamage: f32 = 0.0,
 
 	pub fn fromPlayer() PhysicsState {
@@ -29,7 +29,7 @@ pub const PhysicsState = struct {
 			.volumeProperties = Player.volumeProperties,
 			.currentFriction = Player.currentFriction,
 			.onGround = Player.onGround,
-			.eyeData = Player.eyeData,
+			.eye = Player.eye,
 		};
 	}
 	pub fn toPlayer(self: PhysicsState) void {
@@ -40,7 +40,7 @@ pub const PhysicsState = struct {
 		Player.volumeProperties = self.volumeProperties;
 		Player.currentFriction = self.currentFriction;
 		Player.onGround = self.onGround;
-		Player.eyeData = self.eyeData.?;
+		Player.eye = self.eye.?;
 		Inventory.Sync.addHealth(-self.fallDamage, .fall, .client, Player.id);
 	}
 };
@@ -124,7 +124,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			move[i] = a/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
 		}
 
-		if(physicsState.eyeData) |*eyeData| {
+		if(physicsState.eye) |*eyeData| {
 			acc = @splat(0);
 			// Apply springs to the eye position:
 			var springConstants = Vec3d{0, 0, 0};
@@ -208,7 +208,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 		if(physicsState.vel[2] > 0) {
 			steppingHeight = physicsState.vel[2]*physicsState.vel[2]/inputState.gravity/2;
 		}
-		if(physicsState.eyeData) |eyeData| {
+		if(physicsState.eye) |eyeData| {
 			steppingHeight = @min(steppingHeight, eyeData.pos[2] - eyeData.box.min[2]);
 		}
 
@@ -241,7 +241,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 
 		const stepAmount = xMovement[2] + yMovement[2];
 		if(stepAmount > 0) {
-			if(physicsState.eyeData) |*eyeData| {
+			if(physicsState.eye) |*eyeData| {
 				if(eyeData.coyote <= 0) {
 					eyeData.vel[2] = @max(1.5*vec.length(physicsState.vel), eyeData.vel[2], 4);
 					eyeData.step[2] = true;
@@ -263,7 +263,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 		physicsState.pos[2] += move[2];
 		if(collision.collides(side, .z, -move[2], physicsState.pos, hitBox)) |box| {
 			if(move[2] < 0) {
-				if(physicsState.eyeData) |*eyeData| {
+				if(physicsState.eye) |*eyeData| {
 					if(!wasOnGround) {
 						eyeData.vel[2] = physicsState.vel[2];
 						eyeData.pos[2] -= (box.max[2] - hitBox.min[2] - physicsState.pos[2]);
@@ -285,7 +285,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 				velocityChange = physicsState.vel[2]*@as(f64, @floatCast(1 - bounciness));
 				physicsState.vel[2] = -physicsState.vel[2]*bounciness;
 				physicsState.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
-				if(physicsState.eyeData) |*eyeData| {
+				if(physicsState.eye) |*eyeData| {
 					eyeData.vel[2] *= 2;
 				}
 			} else {
@@ -306,11 +306,11 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 			// This calculates how long the physicsState has to fall until we know they're not walking over a small gap.
 			// We add deltaTime because we subtract deltaTime at the bottom of update
 			physicsState.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
-			if(physicsState.eyeData) |*eyeData| {
+			if(physicsState.eye) |*eyeData| {
 				eyeData.coyote = @sqrt(2*inputState.steppingHeight[2]/inputState.gravity) + deltaTime;
 				eyeData.pos[2] -= move[2];
 			}
-		} else if(physicsState.eyeData) |*eyeData| {
+		} else if(physicsState.eye) |*eyeData| {
 			if(eyeData.coyote > 0) {
 				eyeData.pos[2] -= move[2];
 			}
@@ -321,7 +321,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 	}
 
 	// Clamp the eyePosition and subtract eye coyote time.
-	if(physicsState.eyeData) |*eyeData| {
+	if(physicsState.eye) |*eyeData| {
 		eyeData.pos = @max(eyeData.box.min, @min(eyeData.pos, eyeData.box.max));
 		eyeData.coyote -= deltaTime;
 	}
