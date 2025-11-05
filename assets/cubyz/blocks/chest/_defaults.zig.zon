@@ -6,5 +6,5 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:planar",
-	.blockEntity = .Chest,
+	.blockEntity = "cubyz:chest",
 }

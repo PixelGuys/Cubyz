@@ -13,6 +13,6 @@
 		.ceiling = "cubyz:sign/ceiling",
 		.floor = "cubyz:sign/floor",
 	},
-	.blockEntity = .Sign,
+	.blockEntity = "cubyz:sign",
 	.lodReplacement = "cubyz:air",
 }

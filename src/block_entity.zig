@@ -133,7 +133,7 @@ fn BlockEntityDataStorage(T: type) type {
 }
 
 pub const BlockEntityTypeList = struct {
-	pub const Chest = struct {
+	pub const @"cubyz:chest" = struct {
 		const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
@@ -229,7 +229,7 @@ pub const BlockEntityTypeList = struct {
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
-	pub const Sign = struct {
+	pub const @"cubyz:sign" = struct {
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
@@ -393,7 +393,7 @@ pub const BlockEntityTypeList = struct {
 				const index = mesh.chunk.getLocalBlockIndex(pos);
 				const block = mesh.chunk.data.getValue(index);
 				const blockEntity = block.blockEntity() orelse return;
-				if(!std.mem.eql(u8, blockEntity.id, "Sign")) return;
+				if(!std.mem.eql(u8, blockEntity.id, "cubyz:sign")) return;
 
 				StorageClient.mutex.lock();
 				defer StorageClient.mutex.unlock();
