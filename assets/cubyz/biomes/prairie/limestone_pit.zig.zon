@@ -3,8 +3,8 @@
 		.dry,
 		.barren,
 	},
-	.minRadius = 6,
-	.maxRadius = 12,
+	.minRadius = 16,
+	.maxRadius = 22,
 	.chance = 0,
 	.minHeight = 30,
 	.maxHeight = 36,
@@ -14,7 +14,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:prairie/base",
-			.chance = 24,
+			.chance = 5,
 		},
 	},
 	.structures = .{

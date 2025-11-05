@@ -6,4 +6,5 @@
 	.{.old = "coal", .new = "coal_ore"},
 	.{.old = "diamond", .new = "diamond_ore"},
 	.{.old = "mossy_cobblestone", .new = "cobblestone"},
+	.{.old = "chisel", .new = "iron_ingot"},
 }

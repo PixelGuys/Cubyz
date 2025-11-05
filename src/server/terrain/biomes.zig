@@ -350,6 +350,12 @@ pub const Biome = struct { // MARK: Biome
 			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
+		if(minRadius > maxRadius) {
+			std.log.err("Biome {s} has invalid radius range ({d}, {d})", .{self.id, minRadius, maxRadius});
+		}
+		if(minRadius < terrain.SurfaceMap.MapFragment.biomeSize/2) {
+			std.log.err("Biome {s} has radius {d}, smaller than grid resolution. It should be at least {d}", .{self.id, minRadius, terrain.SurfaceMap.MapFragment.biomeSize/2});
+		}
 		if(self.minHeight > self.maxHeight) {
 			std.log.err("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
 		}
