@@ -39,7 +39,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			return null;
 		};
 		const vtableModel = vtable.loadModel(parameters) orelse {
-			std.log.err("Internal error occurred attempting to load structure with id {s} Dropping model from biome.", .{id});
+			std.log.err("Error occurred while loading structure with id '{s}'. Dropping model from biome.", .{id});
 			return null;
 		};
 		return SimpleStructureModel{
