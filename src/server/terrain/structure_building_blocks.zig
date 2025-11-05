@@ -311,7 +311,8 @@ pub const StructureBuildingBlock = struct {
 		// Collect all unique child blocks used in blueprints of this SBB.
 		var childBlocksInBlueprints: ListUnmanaged(LocalBlockIndex) = .{};
 		defer childBlocksInBlueprints.deinit(main.stackAllocator);
-		for(self.blueprints.items, 0..) |blueprints, blueprintIndex| {
+
+                for(self.blueprints.items, 0..) |blueprints, blueprintIndex| {
 			if(blueprints.items == null) continue;
 
 			for(blueprints.items.?[0].childBlocks) |child| {
