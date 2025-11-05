@@ -1,5 +1,3 @@
 .{
-    .cubyzDir = "",
-    .headlessServer = false,
-    .autoEnterWorld = "",
+	.cubyzDir = "",
 }
