@@ -17,7 +17,7 @@ const HorizontalList = @import("../components/HorizontalList.zig");
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 64},
 	.hasBackground = true,
-	.titleBarButtons = &.{.zoomIn, .zoomOut},
+	.titleBarButtons = &.{.zoomOut, .zoomIn},
 	.relativePosition = .{
 		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},

@@ -23,7 +23,7 @@ pub var window = GuiWindow{
 	.showTitleBar = false,
 	.hasBackground = false,
 	.hideIfMouseIsGrabbed = false,
-	.titleBarButtons = &.{.zoomIn, .zoomOut},
+	.titleBarButtons = &.{.zoomOut, .zoomIn},
 };
 
 var heartTexture: Texture = undefined;
