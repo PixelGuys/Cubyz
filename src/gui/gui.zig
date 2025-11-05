@@ -468,7 +468,7 @@ pub const textCallbacks = struct {
 	}
 };
 
-pub fn mainButtonPressed() void {
+pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	inventory.update();
 	selectedWindow = null;
 	setSelectedTextInput(null);
@@ -491,7 +491,7 @@ pub fn mainButtonPressed() void {
 	}
 }
 
-pub fn mainButtonReleased() void {
+pub fn mainButtonReleased(_: main.Window.Key.Modifiers) void {
 	inventory.applyChanges(true);
 	const oldWindow = selectedWindow;
 	selectedWindow = null;
@@ -511,11 +511,11 @@ pub fn mainButtonReleased() void {
 	}
 }
 
-pub fn secondaryButtonPressed() void {
+pub fn secondaryButtonPressed(_: main.Window.Key.Modifiers) void {
 	inventory.update();
 }
 
-pub fn secondaryButtonReleased() void {
+pub fn secondaryButtonReleased(_: main.Window.Key.Modifiers) void {
 	inventory.applyChanges(false);
 }
 
@@ -701,7 +701,8 @@ pub const inventory = struct { // MARK: inventory
 							return;
 						}
 					}
-					if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null) {
+					const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
+					if(item == null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.?.stackSize()) {
 						leftClickSlots.append(itemSlot);
 					}
 				}
@@ -712,7 +713,7 @@ pub const inventory = struct { // MARK: inventory
 						return;
 					}
 				}
-				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 1);
+				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
 				rightClickSlots.append(itemSlot);
 			}
 		}
@@ -746,7 +747,11 @@ pub const inventory = struct { // MARK: inventory
 			if(rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
-				hovered.inventory.takeHalf(hovered.itemSlot, carried);
+				if(hovered.inventory.type == .creative) {
+					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
+				} else {
+					hovered.inventory.takeHalf(hovered.itemSlot, carried);
+				}
 			} else if(!hoveredAWindow) {
 				carried.dropOne(0);
 			}

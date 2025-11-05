@@ -2239,57 +2239,6 @@ pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionRetur
 	return @ptrCast(&function);
 }
 
-// MARK: Callback
-pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
-	return struct {
-		const Self = @This();
-
-		hashMap: std.StringHashMap(*const Function) = undefined,
-
-		pub fn init() Self {
-			var self = Self{.hashMap = .init(main.globalAllocator.allocator)};
-			inline for(@typeInfo(Child).@"struct".decls) |declaration| {
-				if(@TypeOf(@field(Child, declaration.name)) == Function) {
-					std.log.debug("Registered Callback '{s}'", .{declaration.name});
-					self.hashMap.putNoClobber(declaration.name, &@field(Child, declaration.name)) catch unreachable;
-				}
-			}
-			return self;
-		}
-
-		pub fn deinit(self: *Self) void {
-			self.hashMap.deinit();
-		}
-
-		pub fn getFunctionPointer(self: *Self, id: []const u8) ?*const Function {
-			return self.hashMap.get(id);
-		}
-	};
-}
-
-test "NamedCallbacks registers functions" {
-	const TestFunction = fn(_: i32) void;
-	const TestFunctions = struct {
-		// Callback should register this
-		pub fn testFunction(_: i32) void {}
-		pub fn otherTestFunction(_: i32) void {}
-		// Callback should ignore this
-		pub fn wrongSignatureFunction(_: i32, _: bool) void {}
-	};
-	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
-
-	testFunctions = .init();
-	defer testFunctions.deinit();
-
-	try std.testing.expectEqual(2, testFunctions.hashMap.count());
-
-	try std.testing.expectEqual(&TestFunctions.testFunction, testFunctions.getFunctionPointer("testFunction").?);
-	try std.testing.expectEqual(&TestFunctions.otherTestFunction, testFunctions.getFunctionPointer("otherTestFunction").?);
-
-	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("functionTest"));
-	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
-}
-
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);

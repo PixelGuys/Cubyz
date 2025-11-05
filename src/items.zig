@@ -433,7 +433,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 	}
 };
 
-/// Determines the physical properties of a tool to caclulate in-game parameters such as durability and speed.
+/// Determines the physical properties of a tool to calculate in-game parameters such as durability and speed.
 const ToolPhysics = struct { // MARK: ToolPhysics
 	/// Determines all the basic properties of the tool.
 	pub fn evaluateTool(tool: *Tool) void {
@@ -447,8 +447,8 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			var weight: f32 = 0;
 			for(0..25) |i| {
 				const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
-				sum += property.weigths[i]*material.getProperty(property.source orelse break);
-				weight += property.weigths[i];
+				sum += property.weights[i]*material.getProperty(property.source orelse break);
+				weight += property.weights[i];
 			}
 			if(weight == 0) continue;
 			switch(property.method) {
@@ -540,7 +540,7 @@ const SlotInfo = packed struct { // MARK: SlotInfo
 const PropertyMatrix = struct { // MARK: PropertyMatrix
 	source: ?MaterialProperty,
 	destination: ?ToolProperty,
-	weigths: [25]f32,
+	weights: [25]f32,
 	resultScale: f32,
 	method: Method,
 
@@ -811,10 +811,6 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
-	fn id(self: *Tool) []const u8 {
-		return self.type.id();
-	}
-
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.writer().print(
@@ -958,7 +954,10 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn id(self: Item) []const u8 {
 		switch(self) {
-			inline else => |item| {
+			.tool => |tool| {
+				return tool.type.id();
+			},
+			.baseItem => |item| {
 				return item.id();
 			},
 		}
@@ -1185,8 +1184,17 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		val.resultScale = paramZon.get(f32, "factor", 1.0);
 		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
+		var total_weight: f32 = 0.0;
 		for(0..25) |i| {
-			val.weigths[i] = matrixZon.getAtIndex(f32, i, 0.0);
+			val.weights[i] = matrixZon.getAtIndex(f32, i, 0.0);
+		}
+		for(0..25) |i| {
+			total_weight += val.weights[i];
+		}
+		for(0..25) |i| {
+			if(val.weights[i] != 0x0) {
+				val.weights[i] /= total_weight;
+			}
 		}
 	}
 	var pixelSources: [16][16]u8 = undefined;
