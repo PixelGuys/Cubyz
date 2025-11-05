@@ -478,18 +478,18 @@ pub const BlockEntityTypeList = struct {
 const BlockEntityTypes = StringIndexedVTables(BlockEntityType, BlockEntityTypeList, struct {});
 
 pub fn init() void {
-	BlockEntityTypes.init(main.globalAllocator);
+	BlockEntityTypes.callAll("init");
 }
 
 pub fn reset() void {
-	BlockEntityTypes.reset();
+	BlockEntityTypes.callAll("reset");
 }
 
 pub fn deinit() void {
-	BlockEntityTypes.deinit();
+	BlockEntityTypes.callAll("deinit");
 }
 
-pub fn getByID(_id: ?[]const u8) ?*BlockEntityType {
+pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 	const id = _id orelse return null;
 	if(BlockEntityTypes.getEntry(id)) |cls| return cls;
 	std.log.err("BlockEntityType with id '{s}' not found", .{id});

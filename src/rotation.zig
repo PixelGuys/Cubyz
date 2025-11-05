@@ -184,18 +184,18 @@ pub fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat
 // MARK: init/register
 
 pub fn init() void {
-	RotationModes.init(main.globalAllocator);
+	RotationModes.callAll("init");
 }
 
 pub fn reset() void {
-	RotationModes.reset();
+	RotationModes.callAll("reset");
 }
 
 pub fn deinit() void {
-	RotationModes.deinit();
+	RotationModes.callAll("deinit");
 }
 
-pub fn getByID(id: []const u8) *RotationMode {
+pub fn getByID(id: []const u8) *const RotationMode {
 	if(RotationModes.getEntry(id)) |mode| return mode;
 	std.log.err("Could not find rotation mode {s}. Using cubyz:no_rotation instead.", .{id});
 	return RotationModes.getEntry("cubyz:no_rotation").?;
