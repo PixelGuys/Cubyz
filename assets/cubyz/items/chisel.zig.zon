@@ -1,4 +1,0 @@
-.{
-	.texture = "chisel.png",
-	.stackSize = 1,
-}

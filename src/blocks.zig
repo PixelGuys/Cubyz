@@ -21,6 +21,9 @@ const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
 const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
+const ClientBlockCallback = main.callbacks.ClientBlockCallback;
+const ServerBlockCallback = main.callbacks.ServerBlockCallback;
+const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
@@ -68,8 +71,8 @@ var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
-/// GUI that is opened on click.
-var _gui: [maxBlockCount][]u8 = undefined;
+
+var _onInteract: [maxBlockCount]ClientBlockCallback = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
@@ -82,8 +85,8 @@ var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
-var _tickEvent: [maxBlockCount]?TickEvent = undefined;
-var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
+var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
+var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
 var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
 var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
@@ -99,8 +102,11 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
+	const rotation_tags = _mode[size].getBlockTags();
+	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
+	defer main.stackAllocator.free(block_tags);
+	_blockTags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
 
-	_blockTags[size] = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	for(_blockTags[size]) |tag| {
 		if(tag == Tag.sbbChild) {
@@ -113,7 +119,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
-	_gui[size] = main.worldArena.dupe(u8, zon.get([]const u8, "gui", ""));
+	_onInteract[size] = blk: {
+		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onInteract event for block {s}", .{id});
+			break :blk .noop;
+		};
+	};
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -125,15 +136,18 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
-
-	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
-		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
-		if(_function == null) {
-			std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
-		}
-		break :blk _function;
-	} else null;
+	_onTick[size] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onTick event for block {s}", .{id});
+			break :blk .noop;
+		};
+	};
+	_onTouch[size] = blk: {
+		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onTouch event for block {s}", .{id});
+			break :blk .noop;
+		};
+	};
 
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
@@ -369,9 +383,8 @@ pub const Block = packed struct { // MARK: Block
 		return _absorption[self.typ];
 	}
 
-	/// GUI that is opened on click.
-	pub inline fn gui(self: Block) []u8 {
-		return _gui[self.typ];
+	pub inline fn onInteract(self: Block) ClientBlockCallback {
+		return _onInteract[self.typ];
 	}
 
 	pub inline fn mode(self: Block) *RotationMode {
@@ -418,12 +431,12 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub inline fn tickEvent(self: Block) ?TickEvent {
-		return _tickEvent[self.typ];
+	pub inline fn onTick(self: Block) ServerBlockCallback {
+		return _onTick[self.typ];
 	}
 
-	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
-		return _touchFunction[self.typ];
+	pub inline fn onTouch(self: Block) BlockTouchCallback {
+		return _onTouch[self.typ];
 	}
 
 	pub fn blockEntity(self: Block) ?*BlockEntityType {
@@ -434,49 +447,6 @@ pub const Block = packed struct { // MARK: Block
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 };
-
-// MARK: Tick
-pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
-pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
-pub const TickFunctions = struct {
-	pub fn replaceWithCobble(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
-		const cobblestone = parseBlock("cubyz:cobblestone");
-
-		const wx = _chunk.super.pos.wx + x;
-		const wy = _chunk.super.pos.wy + y;
-		const wz = _chunk.super.pos.wz + z;
-
-		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
-	}
-};
-
-pub const TickEvent = struct {
-	function: *const TickFunction,
-	chance: f32,
-
-	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
-		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
-
-		const function = tickFunctions.getFunctionPointer(functionName) orelse {
-			std.log.err("Could not find TickFunction {s}.", .{functionName});
-			return null;
-		};
-
-		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
-	}
-
-	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
-			self.function(block, _chunk, x, y, z);
-		}
-	}
-};
-
-// MARK: Touch
-pub var touchFunctions: utils.NamedCallbacks(TouchFunctions, TouchFunction) = undefined;
-pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
-pub const TouchFunctions = struct {};
 
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
