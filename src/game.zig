@@ -54,8 +54,6 @@ pub const collision = struct {
 		min: Vec3d,
 		max: Vec3d,
 
-		pub const point: Box = .{.min = .{0.0, 0.0, 0.0}, .max = .{0.0, 0.0, 0.0}};
-
 		pub fn center(self: Box) Vec3d {
 			return (self.min + self.max)*@as(Vec3d, @splat(0.5));
 		}

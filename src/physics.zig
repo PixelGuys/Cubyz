@@ -53,7 +53,7 @@ pub const InputState = struct {
 	jumpHeight: f64 = 0.0,
 	isFlying: bool = false,
 	hasCollision: bool = true,
-	boundingBox: collision.Box = collision.Box.point,
+	boundingBox: collision.Box,
 	gravity: f64 = 30.0,
 	airTerminalVelocity: f64 = 90.0,
 	density: f64 = 1.2,
