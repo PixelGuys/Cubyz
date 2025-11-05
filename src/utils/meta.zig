@@ -9,7 +9,7 @@ pub fn StringIndexedVTables(VTable: type, TypeList: type, Defaults: type) type {
 
 		fn createMap() std.StaticStringMap(VTable) {
 			const decls = @typeInfo(TypeList).@"struct".decls;
-			var vals: [decls.len]struct { []const u8, VTable } = undefined;
+			var vals: [decls.len]struct {[]const u8, VTable} = undefined;
 			for(0.., decls) |i, declaration| {
 				const Type = @field(TypeList, declaration.name);
 				var result: VTable = undefined;
