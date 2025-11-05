@@ -27,5 +27,11 @@
 			.depth = 1,
 			.smoothness = 0.1,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/palm/coconut",
+			.placeMode = .degradable,
+			.chance = 0.0015,
+		},
 	},
 }

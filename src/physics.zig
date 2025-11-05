@@ -315,6 +315,7 @@ pub fn update(deltaTime: f64, physicsState: *PhysicsState, inputState: InputStat
 				eyeData.pos[2] -= move[2];
 			}
 		}
+		collision.touchBlocks(&Player.super, hitBox, .client, deltaTime);
 	} else {
 		physicsState.pos += move;
 	}
