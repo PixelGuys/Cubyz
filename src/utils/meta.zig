@@ -24,7 +24,7 @@ pub fn StringIndexedVTables(VTable: type, TypeList: type, Defaults: type) type {
 
 		pub fn getVTable(id: []const u8) ?*VTable {
 			if(hashmap.getPtr(id)) |entry| {
-				return *entry.vtable;
+				return &entry.vtable;
 			} else {
 				return null;
 			}

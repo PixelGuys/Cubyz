@@ -74,7 +74,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	getBlockTags: *const fn() []const Tag,
 };
 
-const DefaultRotationMode = struct {
+pub const DefaultRotationMode = struct {
 	pub const dependsOnNeighbors: bool = false;
 	pub const naturalStandard: u16 = 0;
 	pub fn model(block: Block) ModelIndex {

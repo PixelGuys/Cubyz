@@ -9,6 +9,7 @@ const rotation = main.rotation;
 const Degrees = rotation.Degrees;
 const RayIntersectionResult = rotation.RayIntersectionResult;
 const RotationMode = rotation.RotationMode;
+const DefaultRotationMode = rotation.DefaultRotationMode;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Tag = main.Tag;
@@ -262,7 +263,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, relativePlay
 	for([_]u16{1, 2, 4, 8, 16, 32, 64, 128}) |bit| {
 		if(block.data & bit == 0) {
 			const cornerModelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(255 ^ bit);
-			if(RotationMode.DefaultFunctions.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
+			if(DefaultRotationMode.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or intersection.distance < result.?.distance) {
 					result = intersection;
 					resultBit = bit;
@@ -288,7 +289,7 @@ pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: 
 			else => {},
 		}
 	}
-	return RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir);
+	return DefaultRotationMode.rayIntersection(block, item, relativePlayerPos, playerDir);
 }
 
 pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
@@ -306,11 +307,11 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 			else => {},
 		}
 	}
-	return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
+	return DefaultRotationMode.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
+	if(oldBlock.typ != newBlock.typ) return DefaultRotationMode.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 	if(oldBlock.data == newBlock.data) return .no;
 	if(item.item != null and item.item.? == .tool) {
 		return .{.yes_costsDurability = 1};
