@@ -258,7 +258,7 @@ pub const ParticleSystem = struct {
 
 				const effectiveGravity: f32 = @floatCast(physics.gravity*(particleLocal.density - density));
 				particleLocal.velAndRotationVel[2] -= effectiveGravity*deltaTime;
-				particleLocal.velAndRotationVel /= @splat(@exp(frictionCoeffecient*deltaTime));
+				particleLocal.velAndRotationVel *= @splat(@exp(-frictionCoeffecient*deltaTime));
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 				v3Pos[0] += posDelta[0];
@@ -287,7 +287,7 @@ pub const ParticleSystem = struct {
 				const frictionCoeffecient = physics.gravity/physics.airTerminalVelocity;
 				const effectiveGravity: f32 = @floatCast(physics.gravity*particleLocal.density);
 				particleLocal.velAndRotationVel[2] -= effectiveGravity*deltaTime;
-				particleLocal.velAndRotationVel /= @splat(@exp(frictionCoeffecient*deltaTime));
+				particleLocal.velAndRotationVel *= @splat(@exp(-frictionCoeffecient*deltaTime));
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 				pos += Vec3f{posDelta[0], posDelta[1], posDelta[2]} + prevPlayerPosDifference;
