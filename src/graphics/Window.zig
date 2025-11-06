@@ -685,13 +685,6 @@ pub fn init() void { // MARK: init()
 		// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
 		// and GLFW's default attempt to load it dynamically would fail. Instead, tell GLFW where it can find the loader functions directly.
 		c.glfwInitVulkanLoader(c.vkGetInstanceProcAddr);
-
-		if(c.setenv("VK_ADD_LAYER_PATH", "./zig-out/bin", 1) != 0) {
-			@panic("Failed to set 'VK_ADD_LAYER_PATH'");
-		}
-		if(c.setenv("VK_DRIVER_FILES", "./zig-out/bin/MoltenVK_icd.json", 1) != 0) {
-			@panic("Failed to set 'VK_DRIVER_FILES'");
-		}
 	}
 
 	if(c.glfwInit() == 0) {
