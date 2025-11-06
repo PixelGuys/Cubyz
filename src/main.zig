@@ -311,10 +311,16 @@ fn openCommand() void {
 }
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
-	const showItem = itemdrop.ItemDisplayManager.showItem;
+
+	const oldHideGui = gui.hideGui;
+	gui.hideGui = true;
+	const oldShowItem = itemdrop.ItemDisplayManager.showItem;
 	itemdrop.ItemDisplayManager.showItem = false;
+
 	renderer.MenuBackGround.takeBackgroundImage();
-	itemdrop.ItemDisplayManager.showItem = showItem;
+
+	gui.hideGui = oldHideGui;
+	itemdrop.ItemDisplayManager.showItem = oldShowItem;
 }
 fn toggleHideGui() void {
 	gui.hideGui = !gui.hideGui;
