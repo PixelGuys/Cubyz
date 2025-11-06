@@ -16,7 +16,7 @@ const ZonElement = main.ZonElement;
 const list = @import("rotation");
 
 pub const RayIntersectionResult = struct {
-	distance: f64,
+	distance: f32,
 	min: Vec3f,
 	max: Vec3f,
 	face: Neighbor,
@@ -57,46 +57,33 @@ pub const RotationMode = struct { // MARK: RotationMode
 			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
 		}
 		pub fn rayModelIntersection(modelIndex: ModelIndex, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
-			const invDir = @as(Vec3f, @splat(1))/playerDir;
 			const modelData = modelIndex.model();
-			const min: Vec3f = modelData.min;
-			const max: Vec3f = modelData.max;
-			var minimum: ?f64 = null;
+			var minimum: ?f32 = null;
 			var face: ?Neighbor = null;
-			for(modelData.collision) |box| {
-				const t1 = (box.min - relativePlayerPos)*invDir;
-				const t2 = (box.max - relativePlayerPos)*invDir;
-				const boxTMin = @reduce(.Max, @min(t1, t2));
-				const boxTMax = @reduce(.Min, @max(t1, t2));
-				if(boxTMin <= boxTMax and boxTMax > 0) {
-					var intersectingFace: Neighbor = undefined;
-					if(boxTMin == t1[0]) {
-						intersectingFace = Neighbor.dirNegX;
-					} else if(boxTMin == t1[1]) {
-						intersectingFace = Neighbor.dirNegY;
-					} else if(boxTMin == t1[2]) {
-						intersectingFace = Neighbor.dirDown;
-					} else if(boxTMin == t2[0]) {
-						intersectingFace = Neighbor.dirPosX;
-					} else if(boxTMin == t2[1]) {
-						intersectingFace = Neighbor.dirPosY;
-					} else if(boxTMin == t2[2]) {
-						intersectingFace = Neighbor.dirUp;
-					} else {
-						unreachable;
+			var quadList: main.List(main.models.QuadInfo) = .init(main.stackAllocator);
+			defer quadList.deinit();
+			modelData.getRawFaces(&quadList);
+			for(quadList.items) |quad| {
+				const triangle1: [3]Vec3f = .{quad.cornerVec(0), quad.cornerVec(1), quad.cornerVec(2)};
+				const triangle2: [3]Vec3f = .{quad.cornerVec(1), quad.cornerVec(2), quad.cornerVec(3)};
+				if(rayTriangleIntersection(relativePlayerPos, playerDir, triangle1)) |distance| {
+					if(minimum == null or distance < minimum.?) {
+						minimum = distance;
+						face = Neighbor.fromVec(f32, quad.normalVec());
 					}
-					if(minimum == null or boxTMin < minimum.?) {
-						minimum = boxTMin;
-						face = intersectingFace;
+				}
+				if(rayTriangleIntersection(relativePlayerPos, playerDir, triangle2)) |distance| {
+					if(minimum == null or distance < minimum.?) {
+						minimum = distance;
+						face = Neighbor.fromVec(f32, quad.normalVec());
 					}
 				}
 			}
 			if(minimum != null) {
 				return .{
 					.distance = minimum.?,
-					.min = min,
-					.max = max,
+					.min = modelData.min,
+					.max = modelData.max,
 					.face = face.?,
 				};
 			}
@@ -185,6 +172,39 @@ pub fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat
 	quad.normal = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(quad.normal, 0)));
 	for(&quad.corners) |*corner| {
 		corner.* = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(corner.* - Vec3f{0.5, 0.5, 0.5}, 1))) + Vec3f{0.5, 0.5, 0.5};
+	}
+}
+
+fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) ?f32 {
+	const e1 = triangle[1] - triangle[0];
+	const e2 = triangle[2] - triangle[0];
+
+	const rayCrossE2 = vec.cross(direction, e2);
+	const det = vec.dot(e1, rayCrossE2);
+
+	if(det > -std.math.floatEps(f32) and det < std.math.floatEps(f32)) {
+		return null;
+	}
+
+	const invDet = 1.0 / det;
+	const s = origin - triangle[0];
+	const u = invDet * vec.dot(s, rayCrossE2);
+	if(u < 0.0 or u > 1.0) {
+		return null;
+	}
+
+	const sCrossE1 = vec.cross(s, e1);
+	const v = invDet * vec.dot(direction, sCrossE1);
+	if(v < 0.0 or u + v > 1.0) {
+		return null;
+	}
+
+	const t = invDet * vec.dot(e2, sCrossE1);
+
+	if(t > std.math.floatEps(f32)) {
+		return t;
+	} else {
+		return null;
 	}
 }
 
