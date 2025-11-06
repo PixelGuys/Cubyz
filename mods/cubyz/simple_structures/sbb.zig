@@ -13,7 +13,6 @@ const Neighbor = main.chunk.Neighbor;
 const ServerChunk = main.chunk.ServerChunk;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-pub const id = "cubyz:sbb";
 pub const generationMode = .floor;
 
 const SbbGen = @This();

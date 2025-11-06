@@ -13,8 +13,6 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-pub const id = "cubyz:simple_tree";
-
 const SimpleTreeModel = @This();
 
 pub const generationMode = .floor;
