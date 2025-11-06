@@ -306,10 +306,16 @@ fn openCommand(mods: Window.Key.Modifiers) void {
 }
 fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
-	const showItem = itemdrop.ItemDisplayManager.showItem;
+
+	const oldHideGui = gui.hideGui;
+	gui.hideGui = true;
+	const oldShowItem = itemdrop.ItemDisplayManager.showItem;
 	itemdrop.ItemDisplayManager.showItem = false;
+
 	renderer.MenuBackGround.takeBackgroundImage();
-	itemdrop.ItemDisplayManager.showItem = showItem;
+
+	gui.hideGui = oldHideGui;
+	itemdrop.ItemDisplayManager.showItem = oldShowItem;
 }
 fn toggleHideGui(_: Window.Key.Modifiers) void {
 	gui.hideGui = !gui.hideGui;
