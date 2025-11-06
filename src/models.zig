@@ -11,6 +11,10 @@ const Vec3d = vec.Vec3d;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
 
+const c = @cImport({
+	@cInclude("cgltf.h");
+});
+
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Box = main.game.collision.Box;
@@ -595,6 +599,157 @@ pub const Model = struct {
 
 		return quadInfos.toOwnedSlice();
 	}
+
+	pub fn loadGltf(path: []const u8) void {
+		var options: c.cgltf_options = .{
+			.type = c.cgltf_file_type_glb,
+		};
+		var data: *c.cgltf_data = undefined;
+		// var file = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/Untitled.gltf") catch |err| blk: {
+		//         std.log.err("Error while reading player model: {s}", .{@errorName(err)});
+		//         break :blk &.{};
+		//     };
+		// defer main.stackAllocator.free(file);
+
+		// for (file) |i| {
+		//     std.debug.print("{c}", .{i});
+		// }
+		
+		// const result = c.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
+		var result = c.cgltf_parse_file(&options, @ptrCast(path.ptr), @ptrCast(&data));
+		
+		const name = switch (result) {
+				0 =>  "result_success",
+				1 =>  "result_data_too_short",
+				2 =>  "result_unknown_format",
+				3 =>  "result_invalid_json",
+				4 =>  "result_invalid_gltf",
+				5 =>  "result_invalid_options",
+				6 =>  "result_file_not_found",
+				7 =>  "result_io_error",
+				8 =>  "result_out_of_memory",
+				9 =>  "result_legacy_gltf",
+				10 => "result_max_enum",
+				else => unreachable,
+			};
+		std.debug.print("yuppii!!!!!!!!!!!!!!! size: {s}\n", .{name});
+		if (result != c.cgltf_result_success) {
+			return;
+		}
+		result = c.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
+		std.debug.print("yuppii>>>>>>>>> size: {s}\n", .{name});
+		if (result != c.cgltf_result_success) {
+			c.cgltf_free(@ptrCast(data));
+			return;
+		}
+
+		std.log.info("\n", .{});
+
+		for (data.nodes, 0..data.nodes_count) |node, _| {
+			std.log.info("node name: \"{s}\"  child count: {d}", .{node.name, node.children_count});
+
+			if (node.children_count == 0) continue;
+			for (node.children.*, 0..node.children_count) |child, _| {
+				if (node.parent != null) {
+					std.log.info("      parent name: \"{s}\"", .{node.parent.*.name});
+				}
+				std.log.info("      child name: \"{s}\"", .{child.name});
+				const primitives = child.mesh.*.primitives;
+				for (primitives, 0..child.mesh.*.primitives_count) |prim, _| {
+					const typ = switch (prim.type) {
+						0 => "cgltf_primitive_type_invalid",
+						1 => "cgltf_primitive_type_points",
+						2 => "cgltf_primitive_type_lines",
+						3 => "cgltf_primitive_type_line_loop",
+						4 => "cgltf_primitive_type_line_strip",
+						5 => "cgltf_primitive_type_triangles",
+						6 => "cgltf_primitive_type_triangle_strip",
+						7 => "cgltf_primitive_type_triangle_fan",
+						else => unreachable,
+					};
+					std.log.info("            type: {s}", .{typ});
+				}
+			}
+		}
+
+        // std.debug.print("count: {d}\n", .{data.animations_count});
+        // for (data.animations, 0..data.animations_count) |animData, _| {
+        //     std.debug.print("ANIM name: \"{s}\" samplerCount: {d} channelCount: {d}\n", .{animData.name, animData.samplers_count, animData.channels_count});
+            
+        //     for (animData.channels, 0..animData.channels_count) |channel, _| {
+        //         const t = switch (channel.target_path) {
+        //             0 => "animation_path_type_invalid",
+        //             1 => "animation_path_type_translation",
+        //             2 => "animation_path_type_rotation",
+        //             3 => "animation_path_type_scale",
+        //             4 => "animation_path_type_weights",
+        //             5 => "animation_path_type_max_enum",
+        //             else => unreachable,
+        //         };
+        //         std.debug.print("node: {s} target: {s}\n", .{channel.target_node[0].name, t});
+        //         // for (channel.extras) |value| {}
+        //         const sampler = channel.sampler.*;
+        //         const l = switch (sampler.interpolation) {
+        //             0 => "interpolation_type_linear",
+        //             1 => "interpolation_type_step",
+        //             2 => "interpolation_type_cubic_spline",
+        //             3 => "interpolation_type_max_enum",
+        //             else => unreachable,
+        //         };
+
+        //         // anim.length = @max(anim.length, sampler.input.*.max[0]);
+        //         const timestampsBV = sampler.input[0].buffer_view[0];
+        //         const valuesBV = sampler.output[0].buffer_view[0];
+                
+        //         std.debug.print("      lerp: \"{s}\"   data size: {d}\n", .{l, valuesBV.buffer[0].size});
+        //         std.debug.print("      vals - offset: {d}   size: {d}   stride: {d}\n", .{valuesBV.offset, valuesBV.size, sampler.output.*.stride});
+        //         var kfTimestamps: []u8 = undefined;
+        //         var kfValues: []u8 = undefined;
+        //         if (valuesBV.buffer[0].data) |da| {
+        //             kfValues = @as([]u8, @ptrCast(da));
+        //             kfValues.len = valuesBV.buffer[0].size;
+        //             kfValues = kfValues[valuesBV.offset..valuesBV.offset+valuesBV.size];
+
+        //             kfTimestamps = @as([]u8, @ptrCast(da));
+        //             kfTimestamps.len = timestampsBV.buffer[0].size;
+        //             kfTimestamps = kfTimestamps[timestampsBV.offset..timestampsBV.offset+timestampsBV.size];
+        //             const timestamps: []f32 = @alignCast(@ptrCast(kfTimestamps));
+        //             switch (channel.target_path) {
+        //                 c.cgltf_animation_path_type_rotation => {
+        //                     var rotations: [][4]f32 = @alignCast(@ptrCast(kfValues));
+        //                     rotations.len = @divFloor(valuesBV.size, @sizeOf(f32) * 4);
+        //                     const quats = main.stackAllocator.alloc(Vec4f, rotations.len);
+        //                     defer main.stackAllocator.free(quats);
+        //                     for (quats, 0..) |*v, i| {
+        //                         const r = rotations[i];
+        //                         v.* = .{-r[1], -r[2], -r[3], r[0]};
+        //                         std.debug.print("         time: {d}    rot: {d}\n", .{timestamps[i], v.*});
+        //                     }
+        //                     anim.rotationTimeline = .init(timestamps, quats);
+        //                 },
+        //                 c.cgltf_animation_path_type_translation => {
+        //                     var positions: []const [3]f32 = @alignCast(@ptrCast(kfValues));   
+        //                     positions.len = @divFloor(valuesBV.size, @sizeOf(f32) * 3);
+        //                     const posits = main.stackAllocator.alloc(Vec3d, positions.len);
+        //                     defer main.stackAllocator.free(posits);
+        //                     for (posits, 0..) |*v, i| {
+        //                         const r = positions[i];
+        //                         v.* = @floatCast(Vec3f{-r[0], r[2], r[1]});
+        //                         std.debug.print("         time: {d}    rot: {d}\n", .{timestamps[i], v.*});
+        //                     }
+        //                     // anim.positionTimeline = .init(timestamps, posits);
+        //                 },
+        //                 else => unreachable,
+        //             }
+        //         }
+        //         // animationHashMap.put(main.globalArena.allocator, std.mem.span(animData.name), @intCast(animationTypes.items.len)) catch unreachable;
+        //         // animationTypes.append(main.globalArena, anim);
+        //     }
+        // }
+		std.debug.print("free!!\n", .{});
+		c.cgltf_free(@ptrCast(data));
+	}
+
 
 	fn deinit(self: *const Model) void {
 		for(0..6) |i| {

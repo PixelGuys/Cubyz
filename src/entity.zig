@@ -118,6 +118,7 @@ pub const ClientEntityManager = struct {
 		defer main.stackAllocator.free(modelFile);
 		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
 		defer main.stackAllocator.free(quadInfos);
+		main.models.Model.loadGltf("assets/cubyz/entity/models/snale.glb");
 		modelBuffer = .initStatic(main.models.QuadInfo, quadInfos);
 		modelBuffer.bind(11);
 		modelSize = @intCast(quadInfos.len);
