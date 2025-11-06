@@ -186,20 +186,20 @@ fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) 
 		return null;
 	}
 
-	const invDet = 1.0 / det;
+	const invDet = 1.0/det;
 	const s = origin - triangle[0];
-	const u = invDet * vec.dot(s, rayCrossE2);
+	const u = invDet*vec.dot(s, rayCrossE2);
 	if(u < 0.0 or u > 1.0) {
 		return null;
 	}
 
 	const sCrossE1 = vec.cross(s, e1);
-	const v = invDet * vec.dot(direction, sCrossE1);
+	const v = invDet*vec.dot(direction, sCrossE1);
 	if(v < 0.0 or u + v > 1.0) {
 		return null;
 	}
 
-	const t = invDet * vec.dot(e2, sCrossE1);
+	const t = invDet*vec.dot(e2, sCrossE1);
 
 	if(t > std.math.floatEps(f32)) {
 		return t;
