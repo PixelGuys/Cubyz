@@ -4,7 +4,7 @@
 	.minHeight = 35,
 	.maxHeight = 40,
 	.maxHeightLimit = 60,
-	.radius = 32,
+	.radius = 48,
 	.keepOriginalTerrain = 0.5,
 	.roughness = 10,
 	.hills = 2,
@@ -26,9 +26,15 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/mahogany/sapele/ancient",
+			.structure = "cubyz:tree/mahogany/sapele/ancient_short",
 			.placeMode = .degradable,
-			.chance = 0.06,
+			.chance = 0.03,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/ancient_tall",
+			.placeMode = .degradable,
+			.chance = 0.03,
 		},
 		.{
 			.id = "cubyz:sbb",

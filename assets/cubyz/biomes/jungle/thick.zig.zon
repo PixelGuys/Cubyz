@@ -24,7 +24,13 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/mahogany/sapele/ancient",
+			.structure = "cubyz:tree/mahogany/sapele/ancient_short",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/ancient_tall",
 			.placeMode = .degradable,
 			.chance = 0.01,
 		},
