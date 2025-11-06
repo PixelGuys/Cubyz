@@ -1126,12 +1126,10 @@ pub const Protocols = struct {
 								std.log.err("Error while parsing direction mode: \"{s}\"", .{@errorName(err)});
 								return;
 							};
-							if(zon.get(?[]const u8, "type", null)) |_| {
-								spawnShape = particles.Emitter.SpawnShape.parse(zon) catch |err| {
-									std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
-									return;
-								};
-							}
+							spawnShape = particles.Emitter.SpawnShape.parse(zon) catch |err| {
+								std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
+								return;
+							};
 						}
 
 						const emitter: particles.Emitter = .init(particleId, collides, spawnShape, emitterProperties, dirMode);

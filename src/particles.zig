@@ -433,8 +433,8 @@ pub const DirectionMode = union(enum(u8)) {
 	};
 
 	pub fn parse(zon: ZonElement) !DirectionMode {
-		const dirModeName = zon.get(?[]const u8, "mode", null) orelse return error.ModeNotFound;
-		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.DirectionModeNotFound;
+		const dirModeName = zon.get([]const u8, "mode", @tagName(DirectionMode.spread));
+		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.InvalidDirectionMode;
 		return switch(dirMode) {
 			.direction => {
 				const dir = zon.get(Vec3f, "direction", .{0, 0, 1});
@@ -466,7 +466,7 @@ pub const Emitter = struct {
 		}
 
 		pub fn parse(zon: ZonElement) !SpawnShape {
-			const typeZon = zon.get(?[]const u8, "shape", null) orelse return error.TypeNotFound;
+			const typeZon = zon.get([]const u8, "shape", @tagName(SpawnShape.point));
 			const spawnType = std.meta.stringToEnum(std.meta.Tag(SpawnShape), typeZon) orelse return error.InvalidType;
 			return switch(spawnType) {
 				inline else => |typ| @unionInit(SpawnShape, @tagName(typ), try @FieldType(SpawnShape, @tagName(typ)).parse(zon)),
@@ -516,7 +516,7 @@ pub const Emitter = struct {
 
 		pub fn parse(zon: ZonElement) !SpawnSphere {
 			return SpawnSphere{
-				.radius = zon.get(f32, "radius", 0),
+				.radius = zon.get(f32, "radius", 1),
 			};
 		}
 	};
@@ -541,7 +541,7 @@ pub const Emitter = struct {
 
 		pub fn parse(zon: ZonElement) !SpawnCube {
 			return SpawnCube{
-				.size = zon.get(Vec3f, "size", .{0, 0, 0}),
+				.size = zon.get(Vec3f, "size", .{1, 1, 1}),
 			};
 		}
 	};
