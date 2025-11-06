@@ -5,6 +5,7 @@
 		.{.items = .{"cubyz:permafrost"}},
 	},
 	.model = "cubyz:cube",
+	.rotation = "cubyz:stairs",
 	.texture = "cubyz:cold_grass",
 	.texture_bottom = "cubyz:permafrost",
 }

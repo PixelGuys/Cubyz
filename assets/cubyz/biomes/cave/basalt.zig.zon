@@ -1,0 +1,42 @@
+.{
+	.isCave = true,
+	.maxHeight = -1000,
+	.minHeight = -48250,
+	.chance = 0.2,
+	.fogDensity = 8,
+
+	.stoneBlock = "cubyz:basalt",
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cave/lava_spout",
+			.placeMode = .degradable,
+			.chance = 0.06,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:basalt",
+			.chance = 0.1,
+			.size = 4,
+			.size_variation = 10,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:magma",
+			.chance = 0.055,
+			.width = 4,
+			.variation = 3,
+			.depth = 3,
+			.smoothness = 0.2,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:lava",
+			.chance = 0.007,
+			.width = 4,
+			.variation = 5,
+			.depth = 1,
+			.smoothness = 1,
+		},
+	},
+}

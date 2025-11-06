@@ -468,7 +468,7 @@ pub const textCallbacks = struct {
 	}
 };
 
-pub fn mainButtonPressed() void {
+pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	inventory.update();
 	selectedWindow = null;
 	setSelectedTextInput(null);
@@ -491,7 +491,7 @@ pub fn mainButtonPressed() void {
 	}
 }
 
-pub fn mainButtonReleased() void {
+pub fn mainButtonReleased(_: main.Window.Key.Modifiers) void {
 	inventory.applyChanges(true);
 	const oldWindow = selectedWindow;
 	selectedWindow = null;
@@ -511,11 +511,11 @@ pub fn mainButtonReleased() void {
 	}
 }
 
-pub fn secondaryButtonPressed() void {
+pub fn secondaryButtonPressed(_: main.Window.Key.Modifiers) void {
 	inventory.update();
 }
 
-pub fn secondaryButtonReleased() void {
+pub fn secondaryButtonReleased(_: main.Window.Key.Modifiers) void {
 	inventory.applyChanges(false);
 }
 
