@@ -1046,7 +1046,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		const isTool = stack.item != null and stack.item.? == .tool;
 		var selectedBlock: ?blocks.Block = null;
 		var isToolEffective = false;
-		if (selectedBlockPos) |selectedPos| {
+		if(selectedBlockPos) |selectedPos| {
 			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id(), "cubyz:selection_wand");
 			if(isSelectionWand) {
 				game.Player.selectionPosition1 = selectedPos;
@@ -1055,12 +1055,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 
 			selectedBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]);
-			if (isTool and selectedBlock != null) {
+			if(isTool and selectedBlock != null) {
 				isToolEffective = stack.item.?.tool.isEffectiveOn(selectedBlock.?);
 			}
 		}
 
-		const swingTime = 5 * if(isTool and isToolEffective) 1.0/stack.item.?.tool.swingSpeed else 0.5;
+		const swingTime = 5*if(isTool and isToolEffective) 1.0/stack.item.?.tool.swingSpeed else 0.5;
 		if(currentSwingTime != swingTime) {
 			currentSwingProgress = 0;
 			currentSwingTime = swingTime;
@@ -1068,7 +1068,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.itemdrop.ItemDisplayManager.setSwingData(swingTime);
 		}
 		currentSwingProgress += @floatCast(deltaTime);
-		if (currentSwingProgress > currentSwingTime and selectedBlockPos == null) {
+		if(currentSwingProgress > currentSwingTime and selectedBlockPos == null) {
 			currentSwingProgress = 0;
 		}
 

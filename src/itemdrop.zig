@@ -560,7 +560,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	var currentPos: Vec3d = @splat(0);
 	var currentRot: Vec4f = @splat(0);
 
-    pub var handPos: Vec3d = @splat(0);
+	pub var handPos: Vec3d = @splat(0);
 
 	pub var anim = animation.Animation{};
 
@@ -586,14 +586,14 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
 
-		if (isSwinging) {
+		if(isSwinging) {
 			anim.update(deltaTime);
-			
+
 			const animPos = anim.getPosition();
 			const animRot = anim.getRotation();
 			// if (vec.lengthSquare())
-			currentPos = animPos;//std.math.lerp(currentPos, animPos, @as(Vec3d, @splat(0.15)));
-			currentRot = animRot;//std.math.lerp(currentRot, animRot, @as(Vec3d, @splat(0.5)));
+			currentPos = animPos; //std.math.lerp(currentPos, animPos, @as(Vec3d, @splat(0.15)));
+			currentRot = animRot; //std.math.lerp(currentRot, animRot, @as(Vec3d, @splat(0.5)));
 		} else {
 			currentPos = std.math.lerp(currentPos, Vec3d{0, 0, 0}, @as(Vec3d, @splat(0.2)));
 			currentRot = vec.slerp(currentRot, Vec4f{0, 0, 0, 1}, 0.75);
@@ -607,7 +607,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	}
 
 	pub fn setSwingData(swingTime: f64) void {
-		anim.speed = anim.length / @as(f32, @floatCast(swingTime));
+		anim.speed = anim.length/@as(f32, @floatCast(swingTime));
 	}
 };
 
@@ -641,7 +641,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		ambientLight: c_int,
 	} = undefined;
 	var handPipeline: graphics.Pipeline = undefined;
-    var modelTexture: main.graphics.Texture = undefined;
+	var modelTexture: main.graphics.Texture = undefined;
 
 	const ItemVoxelModel = struct {
 		index: u31 = undefined,
@@ -758,13 +758,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			.{.attachments = &.{.alphaBlending}},
 		);
 
-        modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snale.png");
+		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snale.png");
 		const playerHandModelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/snale_right_hand.obj") catch |err| blk: {
 			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
 			break :blk &.{};
 		};
 		defer main.stackAllocator.free(playerHandModelFile);
-		
+
 		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, playerHandModelFile);
 		defer main.stackAllocator.free(quadInfos);
 		playerHandModelBuffer = .initStatic(main.models.QuadInfo, quadInfos);
@@ -782,7 +782,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		}
 		freeSlots.deinit();
 		playerHandModelBuffer.deinit();
-        modelTexture.deinit();
+		modelTexture.deinit();
 	}
 
 	var voxelModels: utils.Cache(ItemVoxelModel, 32, 32, ItemVoxelModel.deinit) = .{};
@@ -903,7 +903,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			bindLightUniform(lightResult, ambientLight);
 			bindModelUniforms(model.index, blockType);
 			pos += ItemDisplayManager.currentPos;
-		
+
 			// const animatedRotation: Vec4f = ItemDisplayManager.currentRot;
 
 			var modelMatrix = Mat4f.rotationZ(-cameraRot[2]);
@@ -927,62 +927,62 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 			modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
-			
+
 			drawItem(vertices, modelMatrix);
-		}// else {
+		} // else {
 
-        handPipeline.bind(null);
-        c.glBindVertexArray(main.renderer.chunk_meshing.vao);
-        c.glUniformMatrix4fv(handUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-        modelTexture.bindTo(0);
-        c.glUniform3fv(handUniforms.ambientLight, 1, @ptrCast(&ambientLight));
-        c.glUniform1f(handUniforms.contrast, 0.12);
-        const light = (@as(u32, lightResult[0] >> 3) << 25 |
-            @as(u32, lightResult[1] >> 3) << 20 |
-            @as(u32, lightResult[2] >> 3) << 15 |
-            @as(u32, lightResult[3] >> 3) << 10 |
-            @as(u32, lightResult[4] >> 3) << 5 |
-            @as(u32, lightResult[5] >> 3) << 0);
-        c.glUniform1ui(handUniforms.light, @bitCast(@as(u32, light)));
+		handPipeline.bind(null);
+		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		c.glUniformMatrix4fv(handUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+		modelTexture.bindTo(0);
+		c.glUniform3fv(handUniforms.ambientLight, 1, @ptrCast(&ambientLight));
+		c.glUniform1f(handUniforms.contrast, 0.12);
+		const light = (@as(u32, lightResult[0] >> 3) << 25 |
+			@as(u32, lightResult[1] >> 3) << 20 |
+			@as(u32, lightResult[2] >> 3) << 15 |
+			@as(u32, lightResult[3] >> 3) << 10 |
+			@as(u32, lightResult[4] >> 3) << 5 |
+			@as(u32, lightResult[5] >> 3) << 0);
+		c.glUniform1ui(handUniforms.light, @bitCast(@as(u32, light)));
 
-        scale = 1;
+		scale = 1;
 
-        pos = Vec3d{0.4, 1.5, -0.2};
-        var yRot: f32 = -std.math.pi*0.35;
-        if(selectedItem) |item| {
-            const isBlock: bool = item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
+		pos = Vec3d{0.4, 1.5, -0.2};
+		var yRot: f32 = -std.math.pi*0.35;
+		if(selectedItem) |item| {
+			const isBlock: bool = item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
 			// var blockType: u16 = 0;
 			if(isBlock) {
 				pos = Vec3d{0.3, 0.5, -0.4};
-                yRot = -std.math.pi*0.55;
+				yRot = -std.math.pi*0.55;
 			} else {
 				pos = Vec3d{0.4, 0.65, -0.5};
-                yRot = -std.math.pi*0.55;
+				yRot = -std.math.pi*0.55;
 			}
-        }
-        // ItemDisplayManager.handPos = std.math.lerp(ItemDisplayManager.handPos, pos, @as(Vec3d, @splat(0.3)));
-        // var newCoolPos = ItemDisplayManager.handPos;
-        pos += ItemDisplayManager.currentPos;
+		}
+		// ItemDisplayManager.handPos = std.math.lerp(ItemDisplayManager.handPos, pos, @as(Vec3d, @splat(0.3)));
+		// var newCoolPos = ItemDisplayManager.handPos;
+		pos += ItemDisplayManager.currentPos;
 
-        const animatedRotation: Vec4f = ItemDisplayManager.currentRot;
-        var modelMatrix = Mat4f.rotationZ(-cameraRot[2]);
-        modelMatrix = modelMatrix.mul(Mat4f.rotationY(-cameraRot[1]));
-        modelMatrix = modelMatrix.mul(Mat4f.rotationX(-cameraRot[0]));
-        modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
+		const animatedRotation: Vec4f = ItemDisplayManager.currentRot;
+		var modelMatrix = Mat4f.rotationZ(-cameraRot[2]);
+		modelMatrix = modelMatrix.mul(Mat4f.rotationY(-cameraRot[1]));
+		modelMatrix = modelMatrix.mul(Mat4f.rotationX(-cameraRot[0]));
+		modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
 
-        modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
-        modelMatrix = modelMatrix.mul(Mat4f.rotationY(yRot));
+		modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
+		modelMatrix = modelMatrix.mul(Mat4f.rotationY(yRot));
 
 		modelMatrix = modelMatrix.mul(Mat4f.rotationQuat(animatedRotation));
-        // modelMatrix = modelMatrix.mul(Mat4f.rotationX(animatedRotation[0]));
-        // modelMatrix = modelMatrix.mul(Mat4f.rotationY(animatedRotation[1]));
-        // modelMatrix = modelMatrix.mul(Mat4f.rotationZ(animatedRotation[2]));
+		// modelMatrix = modelMatrix.mul(Mat4f.rotationX(animatedRotation[0]));
+		// modelMatrix = modelMatrix.mul(Mat4f.rotationY(animatedRotation[1]));
+		// modelMatrix = modelMatrix.mul(Mat4f.rotationZ(animatedRotation[2]));
 
-        modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
+		modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 
-        c.glUniformMatrix4fv(handUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
-        c.glUniformMatrix4fv(handUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-        c.glDrawElements(c.GL_TRIANGLES, 6*playerHandModelSize, c.GL_UNSIGNED_INT, null);
+		c.glUniformMatrix4fv(handUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(handUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
+		c.glDrawElements(c.GL_TRIANGLES, 6*playerHandModelSize, c.GL_UNSIGNED_INT, null);
 		//}
 	}
 

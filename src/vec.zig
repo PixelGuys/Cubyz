@@ -102,7 +102,7 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 }
 
 pub fn lerpAnim(a: anytype, b: @TypeOf(a), t: @typeInfo(@TypeOf(a)).vector.child) @TypeOf(a) {
-	if (@typeInfo(@TypeOf(a)).vector.len == 4) {
+	if(@typeInfo(@TypeOf(a)).vector.len == 4) {
 		return slerp(a, b, t);
 	}
 
@@ -114,12 +114,12 @@ pub fn slerp(qa: anytype, qb: @TypeOf(qa), t: @typeInfo(@TypeOf(qa)).vector.chil
 	const vecType = @TypeOf(qa);
 
 	var qbm = qb;
-	var cosHalfTheta: vecFloatType = @reduce(.Add, qa * qb);
+	var cosHalfTheta: vecFloatType = @reduce(.Add, qa*qb);
 	// if qa=qbm or qa=-qbm then theta = 0 and we can return qa
-	if (@abs(cosHalfTheta) >= 1.0){
+	if(@abs(cosHalfTheta) >= 1.0) {
 		return qa;
 	}
-	if (cosHalfTheta < 0) {
+	if(cosHalfTheta < 0) {
 		qbm = -qb;
 		cosHalfTheta = -cosHalfTheta;
 	}
@@ -128,13 +128,13 @@ pub fn slerp(qa: anytype, qb: @TypeOf(qa), t: @typeInfo(@TypeOf(qa)).vector.chil
 	const sinHalfTheta: vecFloatType = @sqrt(1.0 - cosHalfTheta*cosHalfTheta);
 	// if theta = 180 degrees then result is not fully defined
 	// we could rotate around any axis normal to qa or qbm
-	if (@abs(sinHalfTheta) < 0.001){
-		return (qa * @as(vecType, @splat(0.5)) + qbm * @as(vecType, @splat(0.5)));
+	if(@abs(sinHalfTheta) < 0.001) {
+		return (qa*@as(vecType, @splat(0.5)) + qbm*@as(vecType, @splat(0.5)));
 	}
-	const ratioA: vecFloatType = @sin((1 - t) * halfTheta) / sinHalfTheta;
-	const ratioB: vecFloatType = @sin(t * halfTheta) / sinHalfTheta; 
+	const ratioA: vecFloatType = @sin((1 - t)*halfTheta)/sinHalfTheta;
+	const ratioB: vecFloatType = @sin(t*halfTheta)/sinHalfTheta;
 	//calculate Quaternion.
-	return (qa * @as(vecType, @splat(ratioA)) + qbm * @as(vecType, @splat(ratioB)));
+	return (qa*@as(vecType, @splat(ratioA)) + qbm*@as(vecType, @splat(ratioB)));
 }
 
 pub const Mat4f = struct { // MARK: Mat4f
