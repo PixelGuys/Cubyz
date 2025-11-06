@@ -8,7 +8,7 @@ const Window = @import("graphics/Window.zig");
 pub const version = @import("utils/version.zig");
 
 pub const defaultPort: u16 = 47649;
-pub const connectionTimeout = 5_000_000;
+pub const connectionTimeout = 60_000_000;
 
 pub const entityLookback: i16 = 100;
 
