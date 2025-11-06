@@ -67,7 +67,6 @@ pub const ParticleManager = struct {
 
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
 		const particleTypeLocal = ParticleTypeLocal{
-			.drag = if(zon.get(?f32, "drag", null)) |v| @splat(v) else zon.get(Vec2f, "drag", .{0.1, 0.2}),
 			.density = if(zon.get(?f32, "density", null)) |v| @splat(v) else zon.get(Vec2f, "density", .{2, 3}),
 			.rotVel = (if(zon.get(?f32, "rotationVelocity", null)) |v|
 				@as(Vec2f, @splat(v))
@@ -316,7 +315,6 @@ pub const ParticleSystem = struct {
 
 	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
 		const lifeTime = properties.lifeTime[0] + (properties.lifeTime[1] - properties.lifeTime[0])*random.nextFloat(&seed);
-		const drag = particleType.drag[0] + (particleType.drag[1] - particleType.drag[0])*random.nextFloat(&seed);
 		const density = particleType.density[0] + (particleType.density[1] - particleType.density[0])*random.nextFloat(&seed);
 		const rot = if(properties.randomizeRotation) random.nextFloat(&seed)*std.math.pi*2 else 0;
 		const rotVel = (particleType.rotVel[0] + (particleType.rotVel[1] - particleType.rotVel[0])*random.nextFloatSigned(&seed));
@@ -330,7 +328,6 @@ pub const ParticleSystem = struct {
 			.velAndRotationVel = vec.combine(vel, rotVel),
 			.lifeVelocity = 1/lifeTime,
 			.density = density,
-			.drag = drag,
 			.collides = collides,
 		};
 		particleCount += 1;
@@ -578,7 +575,6 @@ pub const ParticleType = struct {
 
 pub const ParticleTypeLocal = struct {
 	density: Vec2f,
-	drag: Vec2f,
 	rotVel: Vec2f,
 };
 
@@ -595,6 +591,5 @@ pub const ParticleLocal = struct {
 	velAndRotationVel: Vec4f,
 	lifeVelocity: f32,
 	density: f32,
-	drag: f32,
 	collides: bool,
 };
