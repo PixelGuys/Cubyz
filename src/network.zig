@@ -626,7 +626,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				while(i < self.connections.items.len) {
 					var conn = self.connections.items[i];
 					if(@intFromEnum(conn.handShakeState.load(.monotonic)) > @intFromEnum(Connection.HandShakeState.start) and networkTimestamp() -% conn.lastConnection > settings.connectionTimeout) {
-                                                std.log.debug("Disconnecting due to timeout.", .{});
 						self.mutex.unlock();
 						conn.disconnect();
 						self.mutex.lock();
@@ -714,7 +713,7 @@ pub const Protocols = struct {
 						conn.send(.fast, id, outData);
 						conn.handShakeState.store(.serverData, .monotonic);
 						main.server.connect(conn.user.?);
-					}, 
+					},
 					.assets => {
 						std.log.info("Received assets.", .{});
 						main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
