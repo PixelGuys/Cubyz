@@ -740,18 +740,11 @@ pub const Command = struct { // MARK: Command
 
 			switch(typ) {
 				.create => {
-					var out: SyncOperation = .{.create = .{
+					const out: SyncOperation = .{.create = .{
 						.inv = try InventoryAndSlot.read(reader, .client, null),
 						.amount = try reader.readInt(u16),
-						.item = null,
+						.item = if(reader.remaining.len > 0) try Item.fromBytes(reader) else null,
 					}};
-
-					if(reader.remaining.len != 0) {
-						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-						defer zon.deinit(main.stackAllocator);
-						out.create.item = try Item.init(zon);
-					}
-
 					return out;
 				},
 				.delete => {
@@ -798,12 +791,7 @@ pub const Command = struct { // MARK: Command
 					create.inv.write(&writer);
 					writer.writeInt(u16, create.amount);
 					if(create.item) |item| {
-						const zon = ZonElement.initObject(main.stackAllocator);
-						defer zon.deinit(main.stackAllocator);
-						item.insertIntoZon(main.stackAllocator, zon);
-						const string = zon.toStringEfficient(main.stackAllocator, &.{});
-						defer main.stackAllocator.free(string);
-						writer.writeSlice(string);
+						item.toBytes(&writer);
 					}
 				},
 				.delete => |delete| {
@@ -1654,12 +1642,12 @@ pub const Command = struct { // MARK: Command
 			const sourceStack = self.source.ref();
 			if(sourceStack.item == null) return;
 			if(self.amount > sourceStack.amount) return;
-			if(!self.dest.canHold(.{.item = sourceStack.item, .amount = self.amount})) return;
 
 			var remainingAmount = self.amount;
 			for(self.dest._items, 0..) |*destStack, destSlot| {
 				if(std.meta.eql(destStack.item, sourceStack.item) or destStack.item == null) {
 					const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
+					if(amount == 0) continue;
 					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
 						.source = self.source,
