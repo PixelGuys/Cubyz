@@ -15,9 +15,9 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		}
 		const tickSpeed = std.fmt.parseInt(u32, arg, 0) catch {
-            source.sendMessage("#ff0000Expected u32 number, found \"{s}\"", .{arg});
-            return;
-        };
+			source.sendMessage("#ff0000Expected u32 number, found \"{s}\"", .{arg});
+			return;
+		};
 		main.server.world.?.tickSpeed = tickSpeed;
 		return;
 	}
