@@ -653,21 +653,87 @@ pub const Model = struct {
 				if (node.parent != null) {
 					std.log.info("      parent name: \"{s}\"", .{node.parent.*.name});
 				}
-				std.log.info("      child name: \"{s}\"", .{child.name});
+				std.log.info("      child name: \"{s}\" count: {d}", .{child.name, child.mesh.*.primitives_count});
 				const primitives = child.mesh.*.primitives;
 				for (primitives, 0..child.mesh.*.primitives_count) |prim, _| {
-					const typ = switch (prim.type) {
-						0 => "cgltf_primitive_type_invalid",
-						1 => "cgltf_primitive_type_points",
-						2 => "cgltf_primitive_type_lines",
-						3 => "cgltf_primitive_type_line_loop",
-						4 => "cgltf_primitive_type_line_strip",
-						5 => "cgltf_primitive_type_triangles",
-						6 => "cgltf_primitive_type_triangle_strip",
-						7 => "cgltf_primitive_type_triangle_fan",
-						else => unreachable,
-					};
-					std.log.info("            type: {s}", .{typ});
+					if (prim.type != c.cgltf_primitive_type_triangles) {
+						const typ = switch (prim.type) {
+							0 => "cgltf_primitive_type_invalid",
+							1 => "cgltf_primitive_type_points",
+							2 => "cgltf_primitive_type_lines",
+							3 => "cgltf_primitive_type_line_loop",
+							4 => "cgltf_primitive_type_line_strip",
+							5 => "cgltf_primitive_type_triangles",
+							6 => "cgltf_primitive_type_triangle_strip",
+							7 => "cgltf_primitive_type_triangle_fan",
+							else => unreachable,
+						};
+						std.log.err("Unsupported primitive type: {s}", .{typ});
+						continue;
+					}
+
+					const indicesAccessor = prim.indices.*;
+					const indicesBV = indicesAccessor.buffer_view.*;
+					var indicesBuf: []u8 = @ptrCast(indicesBV.buffer.*.data);
+					indicesBuf.len = indicesBV.buffer.*.size;
+					indicesBuf = indicesBuf[indicesBV.offset..indicesBV.offset+indicesBV.size];
+					// there is a problem that blockbench is too smart and is packing indicies in different size ints
+					var indices: []u16 = @alignCast(@ptrCast(indicesBuf));
+					indices.len = indicesAccessor.count;
+
+					var corners: [4]usize = .{0, 0, 0, 0};
+					var curCorn: u8 = 0;
+					var count: u32 = 0;
+					for (indices) |i| {
+						std.debug.print("{d} ", .{i});
+					}
+					std.debug.print("\n", .{});
+					for (indices, 0..) |i, idx| {
+						if (count == 6) {
+							// for (corners) |corn| {
+							// std.debug.print("{d} ", .{corn, idx});
+							// }
+							std.debug.print("{any}   {d}\n", .{corners, idx});
+							corners = .{0, 0, 0, 0};
+							count = 0;
+							curCorn = 0;
+						}
+						count += 1;
+						var isFilled = false;
+						for (corners) |corn| {
+							isFilled = isFilled or corn == i;
+						}
+						if (!isFilled) {
+							corners[curCorn] = @intCast(i);
+							curCorn += 1;
+						}
+					}
+					std.debug.print("\n", .{});
+
+					for (prim.attributes, 0..prim.attributes_count) |attrib, _| {
+						const typ = switch (attrib.type) {
+							0 => "cgltf_attribute_type_invalid",
+							1 => "cgltf_attribute_type_position",
+							2 => "cgltf_attribute_type_normal",
+							3 => "cgltf_attribute_type_tangent",
+							4 => "cgltf_attribute_type_texcoord",
+							5 => "cgltf_attribute_type_color",
+							6 => "cgltf_attribute_type_joints",
+							7 => "cgltf_attribute_type_weights",
+							8 => "cgltf_attribute_type_custom",
+							else => unreachable,
+						};
+						std.log.debug("{s}", .{typ});
+					}
+					// const indicesAccessor = ;
+					// const indicesBV = indicesAccessor.buffer_view.*;
+					// var indicesBuf: []u8 = @ptrCast(indicesBV.buffer.*.data);
+					// indicesBuf.len = indicesBV.buffer.*.size;
+					// indicesBuf = indicesBuf[indicesBV.offset..indicesBV.offset+indicesBV.size];
+					// // there is a problem that blockbench is too smart and is packing indicies in different size ints
+					// var indices: []u16 = @alignCast(@ptrCast(indicesBuf));
+					// indices.len = indicesAccessor.count;
+					// std.log.debug("typ: {d} {d} {d}", .{indicesAccessor.component_type, indicesAccessor.count, indicesBV.size});
 				}
 			}
 		}
