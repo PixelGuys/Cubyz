@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const physics = @import("physics.zig");
 const chunk_meshing = @import("renderer/chunk_meshing.zig");
 const graphics = @import("graphics.zig");
 const SSBO = graphics.SSBO;
@@ -176,8 +177,6 @@ pub const ParticleSystem = struct {
 	};
 	var uniforms: UniformStruct = undefined;
 
-	const gravity: Vec3f = .{0, 0, -9.8};
-
 	fn init() void {
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/particles/particles.vert",
@@ -235,15 +234,32 @@ pub const ParticleSystem = struct {
 			var rot = particle.rot;
 			const rotVel = particleLocal.velAndRotationVel[3];
 			rot += rotVel*deltaTime;
-
-			particleLocal.velAndRotationVel += @as(Vec4f, @splat(particleLocal.density))*vec.combine(gravity, 0)*vecDeltaTime;
-			particleLocal.velAndRotationVel *= @splat(@exp(-particleLocal.drag*deltaTime));
-			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
+			
+			
 
 			if(particleLocal.collides) {
+				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
+				const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
+				const intPos: vec.Vec3i = @intFromFloat(@floor(positionf64));
+				const _block = main.renderer.mesh_storage.getBlockFromRenderThread(intPos[0], intPos[1], intPos[2]);
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
-				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
+
+				var frictionCoeffecient: f32 = undefined;
+				var density: f64 = undefined;
+				if(_block) |block| {
+					frictionCoeffecient = physics.gravity / @as(f32, @floatCast(block.terminalVelocity()));
+					density = block.density();
+				} else {
+					frictionCoeffecient = physics.gravity / physics.airTerminalVelocity;
+					density = 0;
+				}
+
+				const effectiveGravity: f32 = @floatCast(physics.gravity*(particleLocal.density-density));
+				particleLocal.velAndRotationVel[2] -= effectiveGravity*deltaTime;
+				particleLocal.velAndRotationVel /= @splat(@exp(frictionCoeffecient*deltaTime));
+				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
+
 				v3Pos[0] += posDelta[0];
 				if(game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					v3Pos[0] = if(posDelta[0] < 0)
@@ -267,6 +283,12 @@ pub const ParticleSystem = struct {
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
+				const frictionCoeffecient = physics.gravity / physics.airTerminalVelocity;
+				const effectiveGravity: f32 = @floatCast(physics.gravity*particleLocal.density);
+				particleLocal.velAndRotationVel[2] -= effectiveGravity*deltaTime;
+				particleLocal.velAndRotationVel /= @splat(@exp(frictionCoeffecient*deltaTime));
+				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
+
 				pos += Vec3f{posDelta[0], posDelta[1], posDelta[2]} + prevPlayerPosDifference;
 			}
 
