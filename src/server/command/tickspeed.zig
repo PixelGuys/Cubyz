@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
-pub const description = "Get or set the server random tickrate, measured in ticks per chunk per frame.";
+pub const description = "Get or set the server's random tickrate, measured in ticks per chunk per frame.";
 pub const usage = "/tickspeed <rate>";
 
 pub fn execute(args: []const u8, source: *User) void {
