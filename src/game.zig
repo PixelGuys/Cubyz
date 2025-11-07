@@ -555,8 +555,7 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn dropFromHand(mods: main.Window.Key.Modifiers) void {
-		if(mods.shift)
-		{
+		if(mods.shift) {
 			inventory.dropStack(selectedSlot);
 		} else {
 			inventory.dropOne(selectedSlot);
