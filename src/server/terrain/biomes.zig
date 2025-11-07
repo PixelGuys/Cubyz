@@ -20,7 +20,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		water_surface,
 	};
 	const VTable = struct {
-		loadModel: *const fn(arena: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
+		loadModel: *const fn(parameters: ZonElement) *anyopaque,
 		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
@@ -40,7 +40,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		};
 		return SimpleStructureModel{
 			.vtable = vtable,
-			.data = vtable.loadModel(arenaAllocator.allocator(), parameters),
+			.data = vtable.loadModel(parameters),
 			.chance = parameters.get(f32, "chance", 0.1),
 			.priority = parameters.get(f32, "priority", 1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
@@ -52,11 +52,6 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	}
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arenaAllocator: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
-
-	pub fn reset() void {
-		std.debug.assert(arenaAllocator.reset(.free_all));
-	}
 
 	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
@@ -68,7 +63,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			}
 		}.hash);
 		self.generationMode = Generator.generationMode;
-		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
+		modelRegistry.put(main.globalArena.allocator, Generator.id, self) catch unreachable;
 	}
 
 	fn getHash(self: SimpleStructureModel) u64 {
@@ -320,7 +315,7 @@ pub const Biome = struct { // MARK: Biome
 		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
 		const maxRadius = zon.get(f32, "maxRadius", minRadius);
 		self.* = Biome{
-			.id = main.globalAllocator.dupe(u8, id),
+			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
 			.properties = GenerationProperties.fromZon(zon.getChild("properties"), true),
 			.isCave = zon.get(bool, "isCave", false),
@@ -350,11 +345,17 @@ pub const Biome = struct { // MARK: Biome
 			.maxHeightLimit = zon.get(i32, "maxHeightLimit", std.math.maxInt(i32)),
 			.smoothBeaches = zon.get(bool, "smoothBeaches", false),
 			.supportsRivers = zon.get(bool, "rivers", false),
-			.preferredMusic = main.globalAllocator.dupe(u8, zon.get([]const u8, "music", "cubyz:cubyz")),
+			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:cubyz")),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
+		if(minRadius > maxRadius) {
+			std.log.err("Biome {s} has invalid radius range ({d}, {d})", .{self.id, minRadius, maxRadius});
+		}
+		if(minRadius < terrain.SurfaceMap.MapFragment.biomeSize/2) {
+			std.log.err("Biome {s} has radius {d}, smaller than grid resolution. It should be at least {d}", .{self.id, minRadius, terrain.SurfaceMap.MapFragment.biomeSize/2});
+		}
 		if(self.minHeight > self.maxHeight) {
 			std.log.err("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
 		}
@@ -383,7 +384,7 @@ pub const Biome = struct { // MARK: Biome
 			unfinishedTransitionBiomes.put(main.globalAllocator.allocator, self.id, transitionBiomes) catch unreachable;
 		}
 
-		self.structure = BlockStructure.init(main.globalAllocator, zon.getChild("ground_structure"));
+		self.structure = BlockStructure.init(main.worldArena, zon.getChild("ground_structure"));
 
 		const structures = zon.getChild("structures");
 		var vegetation = main.ListUnmanaged(SimpleStructureModel){};
@@ -400,23 +401,13 @@ pub const Biome = struct { // MARK: Biome
 				model.chance /= totalChance;
 			}
 		}
-		self.vegetationModels = main.globalAllocator.dupe(SimpleStructureModel, vegetation.items);
+		self.vegetationModels = main.worldArena.dupe(SimpleStructureModel, vegetation.items);
 
 		const stripes = zon.getChild("stripes");
-		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
+		self.stripes = main.worldArena.alloc(Stripe, stripes.toSlice().len);
 		for(stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
 		}
-	}
-
-	pub fn deinit(self: *Biome) void {
-		self.subBiomes.deinit(main.globalAllocator);
-		self.structure.deinit(main.globalAllocator);
-		main.globalAllocator.free(self.transitionBiomes);
-		main.globalAllocator.free(self.vegetationModels);
-		main.globalAllocator.free(self.stripes);
-		main.globalAllocator.free(self.preferredMusic);
-		main.globalAllocator.free(self.id);
 	}
 
 	fn getCheckSum(self: *Biome) u64 {
@@ -508,14 +499,14 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		children: [3]*TreeNode,
 	},
 
-	pub fn init(allocator: NeverFailingAllocator, currentSlice: []Biome, parameterShift: u5) *TreeNode {
-		const self = allocator.create(TreeNode);
+	pub fn init(arena: NeverFailingAllocator, currentSlice: []Biome, parameterShift: u5) *TreeNode {
+		const self = arena.create(TreeNode);
 		if(currentSlice.len <= 1 or parameterShift >= @bitSizeOf(Biome.GenerationProperties)) {
 			self.* = .{.leaf = .{}};
 			for(currentSlice) |biome| {
 				self.leaf.totalChance += biome.chance;
 			}
-			self.leaf.aliasTable = .init(allocator, currentSlice);
+			self.leaf.aliasTable = .init(arena, currentSlice);
 			return self;
 		}
 		var chanceLower: f32 = 0;
@@ -569,25 +560,11 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 			@memcpy(currentSlice[upperIndex..], lists[2].items);
 		}
 
-		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift + 3);
-		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex], parameterShift + 3);
-		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex..], parameterShift + 3);
+		self.branch.children[0] = TreeNode.init(arena, currentSlice[0..lowerIndex], parameterShift + 3);
+		self.branch.children[1] = TreeNode.init(arena, currentSlice[lowerIndex..upperIndex], parameterShift + 3);
+		self.branch.children[2] = TreeNode.init(arena, currentSlice[upperIndex..], parameterShift + 3);
 
 		return self;
-	}
-
-	pub fn deinit(self: *TreeNode, allocator: NeverFailingAllocator) void {
-		switch(self.*) {
-			.leaf => |leaf| {
-				leaf.aliasTable.deinit(allocator);
-			},
-			.branch => |branch| {
-				for(branch.children) |child| {
-					child.deinit(allocator);
-				}
-			},
-		}
-		allocator.destroy(self);
 	}
 
 	pub fn getBiome(self: *const TreeNode, seed: *u64, x: i32, y: i32, depth: usize) *const Biome {
@@ -616,9 +593,9 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 
 // MARK: init/register
 var finishedLoading: bool = false;
-var biomes: main.List(Biome) = undefined;
-var caveBiomes: main.List(Biome) = undefined;
-var biomesById: std.StringHashMap(*Biome) = undefined;
+var biomes: main.ListUnmanaged(Biome) = .{};
+var caveBiomes: main.ListUnmanaged(Biome) = .{};
+var biomesById: std.StringHashMapUnmanaged(*Biome) = .{};
 var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
 pub var byTypeBiomes: *TreeNode = undefined;
 
@@ -646,9 +623,6 @@ const TransitionBiome = struct {
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
 
 pub fn init() void {
-	biomes = .init(main.globalAllocator);
-	caveBiomes = .init(main.globalAllocator);
-	biomesById = .init(main.globalAllocator.allocator);
 	const list = @import("simple_structures/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		SimpleStructureModel.registerGenerator(@field(list, decl.name));
@@ -656,31 +630,12 @@ pub fn init() void {
 }
 
 pub fn reset() void {
-	SimpleStructureModel.reset();
 	finishedLoading = false;
-	for(biomes.items) |*biome| {
-		biome.deinit();
-	}
-	for(caveBiomes.items) |*biome| {
-		biome.deinit();
-	}
-	biomes.clearRetainingCapacity();
-	caveBiomes.clearRetainingCapacity();
-	biomesById.clearRetainingCapacity();
-	biomesByIndex.clearRetainingCapacity();
-	byTypeBiomes.deinit(main.globalAllocator);
-}
-
-pub fn deinit() void {
-	for(biomes.items) |*biome| {
-		biome.deinit();
-	}
-	biomes.deinit();
-	caveBiomes.deinit();
-	biomesById.deinit();
-	biomesByIndex.deinit(main.globalAllocator);
-	// TODO? byTypeBiomes.deinit(main.globalAllocator);
-	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
+	biomes = .{};
+	caveBiomes = .{};
+	biomesById = .{};
+	biomesByIndex = .{};
+	byTypeBiomes = undefined;
 }
 
 pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
@@ -688,10 +643,10 @@ pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
 	var biome: Biome = undefined;
 	biome.init(id, paletteId, zon);
 	if(biome.isCave) {
-		caveBiomes.append(biome);
+		caveBiomes.append(main.worldArena, biome);
 		std.log.debug("Registered    cave biome: {d: >5} '{s}'", .{paletteId, id});
 	} else {
-		biomes.append(biome);
+		biomes.append(main.worldArena, biome);
 		std.log.debug("Registered surface biome: {d: >5} '{s}'", .{paletteId, id});
 	}
 }
@@ -711,15 +666,16 @@ pub fn finishLoading() void {
 			biomes.items[nonZeroBiomes] = biome;
 		}
 	}
-	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items[0..nonZeroBiomes], 0);
-	biomesByIndex.resize(main.globalAllocator, biomes.items.len + caveBiomes.items.len);
+	byTypeBiomes = TreeNode.init(main.worldArena, biomes.items[0..nonZeroBiomes], 0);
+	biomesByIndex.resize(main.worldArena, biomes.items.len + caveBiomes.items.len);
+	biomesById.ensureTotalCapacity(main.worldArena.allocator, @intCast(biomes.items.len + caveBiomes.items.len)) catch unreachable;
 
 	for(biomes.items) |*biome| {
-		biomesById.put(biome.id, biome) catch unreachable;
+		biomesById.putAssumeCapacity(biome.id, biome);
 		biomesByIndex.items[biome.paletteId] = biome;
 	}
 	for(caveBiomes.items) |*biome| {
-		biomesById.put(biome.id, biome) catch unreachable;
+		biomesById.putAssumeCapacity(biome.id, biome);
 		biomesByIndex.items[biome.paletteId] = biome;
 	}
 	var subBiomeIterator = unfinishedSubBiomes.iterator();
@@ -733,7 +689,7 @@ pub fn finishLoading() void {
 		for(subBiomeDataList.items) |item| {
 			parentBiome.subBiomeTotalChance += item.chance;
 		}
-		parentBiome.subBiomes = .initFromContext(main.globalAllocator, subBiomeDataList.items);
+		parentBiome.subBiomes = .initFromContext(main.worldArena, subBiomeDataList.items);
 	}
 	unfinishedSubBiomes.clearAndFree(main.globalAllocator.allocator);
 
@@ -741,7 +697,7 @@ pub fn finishLoading() void {
 	while(transitionBiomeIterator.next()) |transitionBiomeData| {
 		const parentBiome = biomesById.get(transitionBiomeData.key_ptr.*) orelse unreachable;
 		const transitionBiomes = transitionBiomeData.value_ptr.*;
-		parentBiome.transitionBiomes = main.globalAllocator.alloc(TransitionBiome, transitionBiomes.len);
+		parentBiome.transitionBiomes = main.worldArena.alloc(TransitionBiome, transitionBiomes.len);
 		for(parentBiome.transitionBiomes, transitionBiomes) |*res, src| {
 			res.* = .{
 				.biome = biomesById.get(src.biomeId) orelse {
