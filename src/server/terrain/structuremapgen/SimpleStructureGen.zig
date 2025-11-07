@@ -169,6 +169,15 @@ const SimpleStructure = struct {
 				}
 				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
 			},
+			.floor_above_water => {
+				if(biomeMap.getSurfaceHeight(self.wx, self.wy) <= 0) return;
+				if(caveMap.isSolid(px, py, relZ)) {
+					relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
+				} else {
+					relZ = caveMap.findTerrainChangeBelow(px, py, relZ) + chunk.super.pos.voxelSize;
+				}
+				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
+			},
 			.air => {
 				relZ += -16 + random.nextIntBounded(i32, &seed, 32);
 				if(caveMap.isSolid(px, py, relZ)) return;

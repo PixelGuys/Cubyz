@@ -15,6 +15,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		floor,
 		ceiling,
 		floor_and_ceiling,
+		floor_above_water,
 		air,
 		underground,
 		water_surface,

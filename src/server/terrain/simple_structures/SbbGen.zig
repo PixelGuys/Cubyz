@@ -14,7 +14,7 @@ const ServerChunk = main.chunk.ServerChunk;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const id = "cubyz:sbb";
-pub const generationMode = .floor;
+pub const generationMode = .floor_above_water;
 
 const SbbGen = @This();
 
