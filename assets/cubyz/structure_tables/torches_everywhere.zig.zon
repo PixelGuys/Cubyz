@@ -1,0 +1,14 @@
+.{
+	.id = "cubyz:torches_everywhere",
+	.biomeTags = .{},
+
+	.structures = .{
+		.{
+			.id = "cubyz:simple_vegetation",
+			.chance = 0.1,
+			.block = "cubyz:torch",
+			.height = 1,
+			.height_variation = 0,
+		},
+	},
+}
