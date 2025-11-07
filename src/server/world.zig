@@ -804,7 +804,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.wio.loadWorldData(); // load data here in order for entities to also be loaded.
 
 		if(@reduce(.And, self.spawn == Vec3i{0, 0, 0})) {
-			var seed: u64 = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+			var seed: u64 = self.seed ^ 275892235728371;
 			std.log.info("Finding position..", .{});
 			foundPosition: {
 				// Explore chunks in a spiral from the center:
@@ -819,8 +819,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				for(0..spiralLen) |_| {
 					const map = main.server.terrain.ClimateMap.getOrGenerateFragment(wx, wy);
 					for(0..map.map.len) |_| {
-						const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
-						const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
+						const x = main.random.nextIntBounded(u31, &seed, map.map.len);
+						const y = main.random.nextIntBounded(u31, &seed, map.map.len);
 						const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
 						std.log.info("Trying roughly ({}, {})", .{wx + x*biomeSize, wy + y*biomeSize});
 						const sample = map.map[x][y];
