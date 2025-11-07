@@ -600,7 +600,7 @@ pub const Model = struct {
 		return quadInfos.toOwnedSlice();
 	}
 
-	pub fn loadGltf(path: []const u8) void {
+	pub fn loadGltf(allocator: main.heap.NeverFailingAllocator, path: []const u8) []QuadInfo {
 		var options: c.cgltf_options = .{
 			.type = c.cgltf_file_type_glb,
 		};
@@ -616,6 +616,7 @@ pub const Model = struct {
 		// }
 		
 		// const result = c.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
+		// TODO: make this parse from memory (important to parse null terminated array)
 		var result = c.cgltf_parse_file(&options, @ptrCast(path.ptr), @ptrCast(&data));
 		
 		const name = switch (result) {
@@ -633,26 +634,48 @@ pub const Model = struct {
 				else => unreachable,
 			};
 		std.debug.print("yuppii!!!!!!!!!!!!!!! size: {s}\n", .{name});
+
+		var quadInfos = main.List(QuadInfo).init(allocator);
+		defer quadInfos.deinit();
+
 		if (result != c.cgltf_result_success) {
-			return;
+			return quadInfos.toOwnedSlice();
 		}
 		result = c.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
 		std.debug.print("yuppii>>>>>>>>> size: {s}\n", .{name});
 		if (result != c.cgltf_result_success) {
 			c.cgltf_free(@ptrCast(data));
-			return;
+			return quadInfos.toOwnedSlice();
 		}
+
+		var quadIndices = main.List([4]usize).init(main.stackAllocator);
+		defer quadIndices.deinit();
 
 		std.log.info("\n", .{});
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
-			std.log.info("node name: \"{s}\"  child count: {d}", .{node.name, node.children_count});
-
 			if (node.children_count == 0) continue;
+			std.log.info("node name: \"{s}\"  child count: {d}", .{node.name, node.children_count});
 			for (node.children.*, 0..node.children_count) |child, _| {
 				if (node.parent != null) {
 					std.log.info("      parent name: \"{s}\"", .{node.parent.*.name});
 				}
+				var tMat = Mat4f.translation(Vec3f{
+					-node.translation[0],
+					node.translation[2],
+					node.translation[1],
+				});
+				tMat = tMat.mul(Mat4f.rotationQuat(vec.Vec4f{
+					-node.rotation[0],
+					node.rotation[2],
+					node.rotation[1],
+					node.rotation[3],
+				}));
+				tMat = tMat.mul(Mat4f.scale(Vec3f{
+					-node.scale[0],
+					node.scale[2],
+					node.scale[1],
+				}));
 				std.log.info("      child name: \"{s}\" count: {d}", .{child.name, child.mesh.*.primitives_count});
 				const primitives = child.mesh.*.primitives;
 				for (primitives, 0..child.mesh.*.primitives_count) |prim, _| {
@@ -671,6 +694,23 @@ pub const Model = struct {
 						std.log.err("Unsupported primitive type: {s}", .{typ});
 						continue;
 					}
+					var cMat = Mat4f.translation(Vec3f{
+						-child.translation[0],
+						child.translation[2],
+						child.translation[1],
+					});
+					cMat = cMat.mul(Mat4f.rotationQuat(vec.Vec4f{
+						-child.rotation[0],
+						child.rotation[2],
+						child.rotation[1],
+						child.rotation[3],
+					}));
+					cMat = cMat.mul(Mat4f.scale(Vec3f{
+						-child.scale[0],
+						child.scale[2],
+						child.scale[1],
+					}));
+					cMat = tMat.mul(cMat);
 
 					const indicesAccessor = prim.indices.*;
 					const indicesBV = indicesAccessor.buffer_view.*;
@@ -680,60 +720,122 @@ pub const Model = struct {
 					// there is a problem that blockbench is too smart and is packing indicies in different size ints
 					var indices: []u16 = @alignCast(@ptrCast(indicesBuf));
 					indices.len = indicesAccessor.count;
+					std.debug.print("count: {d}\n", .{indices.len});
 
-					var corners: [4]usize = .{0, 0, 0, 0};
+					var quadInds: [4]usize = .{0, 0, 0, 0};
 					var curCorn: u8 = 0;
 					var count: u32 = 0;
 					for (indices) |i| {
 						std.debug.print("{d} ", .{i});
 					}
 					std.debug.print("\n", .{});
-					for (indices, 0..) |i, idx| {
-						if (count == 6) {
-							// for (corners) |corn| {
-							// std.debug.print("{d} ", .{corn, idx});
-							// }
-							std.debug.print("{any}   {d}\n", .{corners, idx});
-							corners = .{0, 0, 0, 0};
-							count = 0;
-							curCorn = 0;
-						}
-						count += 1;
+					for (indices) |i| {
 						var isFilled = false;
-						for (corners) |corn| {
+						for (quadInds) |corn| {
 							isFilled = isFilled or corn == i;
 						}
 						if (!isFilled) {
-							corners[curCorn] = @intCast(i);
+							quadInds[curCorn] = @intCast(i);
 							curCorn += 1;
 						}
-					}
-					std.debug.print("\n", .{});
+						count += 1;
+						if (count == 6) {
+							// std.debug.print("{any}   {d}\n", .{quadInds, idx});
 
-					for (prim.attributes, 0..prim.attributes_count) |attrib, _| {
-						const typ = switch (attrib.type) {
-							0 => "cgltf_attribute_type_invalid",
-							1 => "cgltf_attribute_type_position",
-							2 => "cgltf_attribute_type_normal",
-							3 => "cgltf_attribute_type_tangent",
-							4 => "cgltf_attribute_type_texcoord",
-							5 => "cgltf_attribute_type_color",
-							6 => "cgltf_attribute_type_joints",
-							7 => "cgltf_attribute_type_weights",
-							8 => "cgltf_attribute_type_custom",
-							else => unreachable,
-						};
-						std.log.debug("{s}", .{typ});
+							quadIndices.append(quadInds);
+
+							quadInds = .{0, 0, 0, 0};
+							count = 0;
+							curCorn = 0;
+						}
 					}
-					// const indicesAccessor = ;
-					// const indicesBV = indicesAccessor.buffer_view.*;
-					// var indicesBuf: []u8 = @ptrCast(indicesBV.buffer.*.data);
-					// indicesBuf.len = indicesBV.buffer.*.size;
-					// indicesBuf = indicesBuf[indicesBV.offset..indicesBV.offset+indicesBV.size];
-					// // there is a problem that blockbench is too smart and is packing indicies in different size ints
-					// var indices: []u16 = @alignCast(@ptrCast(indicesBuf));
-					// indices.len = indicesAccessor.count;
-					// std.log.debug("typ: {d} {d} {d}", .{indicesAccessor.component_type, indicesAccessor.count, indicesBV.size});
+
+					std.debug.print("QUADSCOUNT::::: {d}", .{quadIndices.items.len});
+					for (quadIndices.items) |qi| {
+						var corners: [4][3]f32 = undefined;
+						var normal: [3]f32 = undefined;
+						var uvs: [4][2]f32 = undefined;
+						for (prim.attributes, 0..prim.attributes_count) |attrib, _| {
+							const attribAccessor = attrib.data.*;
+							const attribBV = attribAccessor.buffer_view.*;
+							const attribData = attribBV.buffer[0].data.?;
+							var attribBuf: []u8 = @ptrCast(attribData);
+							// std.debug.print("\n{d}   {d}\n\n", .{attribAccessor.offset, attribBV.offset});
+							attribBuf.len = attribBV.buffer[0].size;
+							attribBuf = attribBuf[attribBV.offset..attribBV.offset+attribBV.size];
+
+							switch (attrib.type) {
+								c.cgltf_attribute_type_position => {
+									var positions: []const [3]f32 = @alignCast(@ptrCast(attribBuf));
+									positions.len = attribAccessor.count;
+									
+									for (qi, 0..) |i, idx| {
+										const p = positions[i];
+										// std.debug.print("{any}\n", .{p});
+										const pos: vec.Vec4f = cMat.mulVec(.{-p[0], p[2], p[1], 1});
+										corners[idx] = .{pos[0], pos[1], pos[2]};
+									}
+								}, 
+								c.cgltf_attribute_type_normal => {
+									var normals: []const [3]f32 = @alignCast(@ptrCast(attribBuf));
+									normals.len = attribAccessor.count;
+
+									normal = normals[qi[0]];
+								}, 
+								c.cgltf_attribute_type_texcoord => {
+									var texcoords: []const [2]f32 = @alignCast(@ptrCast(attribBuf));
+									texcoords.len = attribAccessor.count;
+
+									for (qi, 0..) |i, idx| {
+										std.debug.print("{any}\n", .{texcoords[i]});
+										uvs[idx] = texcoords[i];
+									}
+								}, 
+								else => unreachable,
+							}
+						}
+
+						const iA: u32 = 1;
+						const iB: u32 = 3;
+						const iC: u32 = 0;
+						const iD: u32 = 2;
+
+						const uvA: Vec2f = uvs[iA];
+						const uvB: Vec2f = uvs[iB];
+						const uvC: Vec2f = uvs[iC];
+						const uvD: Vec2f = uvs[iD];
+
+						const cornerA: Vec3f = corners[iA];
+						const cornerB: Vec3f = corners[iB];
+						const cornerC: Vec3f = corners[iC];
+						const cornerD: Vec3f = corners[iD];
+						
+						quadInfos.append(.{
+							.normal = .{normal[0], normal[1], normal[2]},
+							.corners = .{cornerA, cornerB, cornerC, cornerD},
+							.cornerUV = .{uvA, uvB, uvC, uvD},
+							// .corners = corners,
+							// .cornerUV = uvs,
+							.textureSlot = 0,
+						});
+
+						// const typ = switch (attrib.type) {
+						// 0 => "cgltf_attribute_type_invalid",
+						// 1 => "cgltf_attribute_type_position",
+						// 2 => "cgltf_attribute_type_normal",
+						// 3 => "cgltf_attribute_type_tangent",
+						// 4 => "cgltf_attribute_type_texcoord",
+						// 5 => "cgltf_attribute_type_color",
+						// 6 => "cgltf_attribute_type_joints",
+						// 7 => "cgltf_attribute_type_weights",
+						// 8 => "cgltf_attribute_type_custom",
+						// else => unreachable,
+						// };
+
+						// std.log.debug("{s}", .{typ});
+					}
+					quadIndices.clearRetainingCapacity();
+					std.debug.print("\n", .{});
 				}
 			}
 		}
@@ -814,6 +916,8 @@ pub const Model = struct {
         // }
 		std.debug.print("free!!\n", .{});
 		c.cgltf_free(@ptrCast(data));
+
+		return quadInfos.toOwnedSlice();
 	}
 
 

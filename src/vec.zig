@@ -114,6 +114,17 @@ pub const Mat4f = struct { // MARK: Mat4f
 		};
 	}
 
+	pub fn fromArr(arr: [16]f32) Mat4f { // zig fmt: off
+		return Mat4f{
+			.rows = [4]Vec4f{
+				Vec4f{arr[0],  arr[1],  arr[2],  arr[3]},
+				Vec4f{arr[4],  arr[5],  arr[6],  arr[7]},
+				Vec4f{arr[8],  arr[9],  arr[10], arr[11]},
+				Vec4f{arr[12], arr[13], arr[14], arr[15]},
+			},
+		};
+	} // zig fmt: on
+
 	pub fn translation(pos: Vec3f) Mat4f {
 		return Mat4f{
 			.rows = [4]Vec4f{
@@ -174,6 +185,48 @@ pub const Mat4f = struct { // MARK: Mat4f
 			},
 		};
 	}
+
+	pub fn rotationQuat(q: Vec4f) Mat4f { // zig fmt: off
+		const sqw: f32 = q[3]*q[3];
+		const sqx: f32 = q[0]*q[0];
+		const sqy: f32 = q[1]*q[1];
+		const sqz: f32 = q[2]*q[2];
+
+		// invs (inverse square length) is only required if quaternion is not already normalised
+		const invs: f32 = 1 / (sqx + sqy + sqz + sqw);
+		const m00 = ( sqx - sqy - sqz + sqw)*invs; // since sqw + sqx + sqy + sqz =1/invs*invs
+		const m11 = (-sqx + sqy - sqz + sqw)*invs;
+		const m22 = (-sqx - sqy + sqz + sqw)*invs;
+		
+		var tmp1: f32 = q[0]*q[1];
+		var tmp2: f32 = q[2]*q[3];
+		const m10 = 2.0 * (tmp1 + tmp2)*invs;
+		const m01 = 2.0 * (tmp1 - tmp2)*invs;
+		
+		tmp1 = q[0]*q[2];
+		tmp2 = q[1]*q[3];
+		const m20 = 2.0 * (tmp1 - tmp2)*invs;
+		const m02 = 2.0 * (tmp1 + tmp2)*invs;
+		tmp1 = q[1]*q[2];
+		tmp2 = q[0]*q[3];
+		const m21 = 2.0 * (tmp1 + tmp2)*invs;
+		const m12 = 2.0 * (tmp1 - tmp2)*invs;
+        const m = Mat4f{
+            .rows = [4]Vec4f{
+                Vec4f{m00, m01, m02, 0},
+                Vec4f{m10, m11, m12, 0},
+                Vec4f{m20, m21, m22, 0},
+                Vec4f{0,   0,   0,   1},
+            },
+            // .rows = [4]Vec4f{
+            //     Vec4f{m00, m10, m20, 0},
+            //     Vec4f{m01, m11, m21, 0},
+            //     Vec4f{m02, m12, m22, 0},
+            //     Vec4f{0,   0,   0,   1},
+            // },
+		};
+		return m;  
+	} // zig fmt: on
 
 	pub fn perspective(fovY: f32, aspect: f32, near: f32, far: f32) Mat4f { // zig fmt: off
 		const tanY = std.math.tan(fovY*0.5);

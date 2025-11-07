@@ -112,16 +112,26 @@ pub const ClientEntityManager = struct {
 
 		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snale.png");
 		const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/snale.obj") catch |err| blk: {
-			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-			break :blk &.{};
+		std.log.err("Error while reading player model: {s}", .{@errorName(err)});
+		break :blk &.{};
 		};
 		defer main.stackAllocator.free(modelFile);
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
+		const quadInfos2 = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
+		defer main.stackAllocator.free(quadInfos2);
+		const quadInfos = main.models.Model.loadGltf(main.stackAllocator, "assets/cubyz/entity/models/snale.glb");
 		defer main.stackAllocator.free(quadInfos);
-		main.models.Model.loadGltf("assets/cubyz/entity/models/snale.glb");
+		std.debug.print("\n\n\n {d} {d}\n\n\n", .{quadInfos2.len, quadInfos.len});
 		modelBuffer = .initStatic(main.models.QuadInfo, quadInfos);
 		modelBuffer.bind(11);
 		modelSize = @intCast(quadInfos.len);
+
+		addEntity(ZonElement.parseFromString(main.globalArena, null, 
+			\\ .{
+			\\    .id = 1,
+			\\    .name = "bobik",
+			\\
+			\\  }
+		));
 	}
 
 	pub fn deinit() void {
