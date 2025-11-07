@@ -289,13 +289,14 @@ pub const User = struct { // MARK: User
 };
 
 pub const Settings = struct {
-	pub var ipBanList: main.List(u32) = undefined;
+	pub var ipBanList: main.List(network.IpAddress) = undefined;
 
 	fn toZon() ZonElement {
 		const data = ZonElement.initObject(main.stackAllocator);
 		const arr = ZonElement.initArray(main.stackAllocator);
 		for(ipBanList.items) |ip| {
-			arr.append(ip);
+			const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", ip);
+			arr.append(ipString);
 		}
 		data.put("ipBanList", arr);
 		return data;
@@ -305,7 +306,7 @@ pub const Settings = struct {
 		const arrayZon = zon.getChild("ipBanList").toSlice();
 		ipBanList = .initCapacity(allocator, arrayZon.len);
 		for(arrayZon) |elem| {
-			ipBanList.append(elem.as(u32, 0));
+			ipBanList.append(network.IpAddress.parse(elem.as([]const u8, "")) orelse continue);
 		}
 	}
 

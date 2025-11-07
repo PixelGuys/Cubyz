@@ -35,12 +35,10 @@ fn ipBan(conn: *main.network.Connection) void {
 	needsUpdate = true;
 }
 
-// u32 in a pointer costume
-fn unBan(ip_: usize) void {
+fn unBan(ip: *main.network.IpAddress) void {
 	var bannedIps = &main.server.Settings.ipBanList;
-	const ip: u32 = @intCast(ip_);
-	const removed = bannedIps.swapRemove(std.mem.indexOfScalar(u32, bannedIps.items, ip).?);
-	std.debug.assert(removed == ip);
+	const removed = bannedIps.swapRemove(std.mem.indexOfScalar(u32, @ptrCast(bannedIps.items), ip.*.address).?);
+	std.debug.assert(removed.address == ip.*.address);
 	needsUpdate = true;
 }
 
@@ -71,11 +69,11 @@ pub fn onOpen() void {
 		if(bannedIps.len > 0) {
 			list.add(Label.init(.{0, 0}, 200, "Banned IPs", .left));
 			for(bannedIps) |ip| {
-				const ipText = std.fmt.allocPrint(main.stackAllocator.allocator, "{}.{}.{}.{}", .{ip & 255, ip >> 8 & 255, ip >> 16 & 255, ip >> 24}) catch unreachable;
+				const ipText = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ip}) catch unreachable;
 				defer main.stackAllocator.free(ipText);
 				const row = HorizontalList.init();
 				row.add(Label.init(.{0, 0}, 200, ipText, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Unban", .{.callback = @ptrCast(&unBan), .arg = @intCast(ip)}));
+				row.add(Button.initText(.{0, 0}, 100, "Unban", .{.callback = @ptrCast(&unBan), .arg = @intFromPtr(&ip)}));
 				list.add(row);
 			}
 		}
