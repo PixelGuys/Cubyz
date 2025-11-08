@@ -1,6 +1,5 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const panic = std.debug.panic;
 
 const main = @import("main");
 const settings = main.settings;
@@ -14,11 +13,9 @@ pub const c = @cImport({
 	@cInclude("glad/gl.h");
 
 	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
-	// stdlib.h is used to set the Vulkan environment variables on macOS
 	if(builtin.target.os.tag == .macos) {
 		@cInclude("vulkan/vulkan.h");
 		@cInclude("vulkan/vulkan_beta.h");
-		@cInclude("stdlib.h");
 	} else {
 		@cInclude("glad/vulkan.h");
 	}
@@ -685,6 +682,8 @@ pub fn init() void { // MARK: init()
 		// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
 		// and GLFW's default attempt to load it dynamically would fail. Instead, tell GLFW where it can find the loader functions directly.
 		c.glfwInitVulkanLoader(c.vkGetInstanceProcAddr);
+
+		c.glfwInitHint(c.GLFW_COCOA_CHDIR_RESOURCES, c.GLFW_FALSE);
 	}
 
 	if(c.glfwInit() == 0) {
