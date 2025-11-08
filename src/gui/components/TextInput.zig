@@ -317,10 +317,7 @@ pub fn tab(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.shift) {
 		if(self.optional.onPrevious) |cb| cb.run();
 	} else {
-		if (self.optional.onNext) |cb|cb.run() else {
-			self.inputCharacter('\t');
-			self.ensureCursorVisibility();
-		}
+		if(self.optional.onNext) |cb| cb.run();
 	}
 }
 
