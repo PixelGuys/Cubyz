@@ -341,8 +341,8 @@ pub const StructureBuildingBlock = struct {
 pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	std.debug.assert(structureList.items.len == 0);
 	std.debug.assert(structureMap.capacity() == 0);
+	structureList.ensureCapacity(main.worldArena, structures.count());
 	structureMap.ensureTotalCapacity(main.worldArena.allocator, structures.count()) catch unreachable;
-        std.log.debug("worldArena capacity before sbbs: {d}", .{main.heap.allocators.worldArenaAllocator.queryCapacity()});
 	childrenToResolve = .init(main.stackAllocator);
 	defer childrenToResolve.deinit();
 	var loadedCount: u32 = 0;
@@ -369,7 +369,6 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 			entry.structure.* = childStructure.get();
 		}
 	}
-        std.log.debug("worldArena capacity after sbbs: {d}", .{main.heap.allocators.worldArenaAllocator.queryCapacity()});
 	for(structureList.items) |sbb| sbb.postResolutionChecks();
 }
 
