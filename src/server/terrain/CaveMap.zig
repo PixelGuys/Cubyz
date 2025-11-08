@@ -263,9 +263,9 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 };
 
 // MARK: cache
-const cacheSize = 1 << 11; // Must be a power of 2!
+const cacheSize = 1 << 12; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
-const associativity = 8; // 512 MiB Cache size
+const associativity = 8; // 1024 MiB Cache size
 var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
