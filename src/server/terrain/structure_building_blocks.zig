@@ -342,10 +342,10 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	std.debug.assert(structureList.items.len == 0);
 	std.debug.assert(structureMap.capacity() == 0);
 
-        structureList.ensureCapacity(main.worldArena, structures.count());
+	structureList.ensureCapacity(main.worldArena, structures.count());
 	structureMap.ensureTotalCapacity(main.worldArena.allocator, structures.count()) catch unreachable;
 
-        childrenToResolve = .init(main.stackAllocator);
+	childrenToResolve = .init(main.stackAllocator);
 	defer childrenToResolve.deinit();
 	var loadedCount: u32 = 0;
 	{
@@ -356,7 +356,7 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 				continue;
 			});
 
-                        const key = main.worldArena.dupe(u8, entry.key_ptr.*);
+			const key = main.worldArena.dupe(u8, entry.key_ptr.*);
 			structureMap.put(main.worldArena.allocator, key, @enumFromInt(loadedCount)) catch unreachable;
 
 			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
