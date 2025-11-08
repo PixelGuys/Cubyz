@@ -102,7 +102,7 @@ fn isCorrectNetAddress(str: []const u8) bool {
 
 	// check if this is a valid domain name
 	const validDomain: bool = blk: {
-		if (portLess.len > 253) break :blk false;
+		if(portLess.len > 253) break :blk false;
 
 		var iter = std.mem.splitScalar(u8, portLess, '.');
 		while(iter.next()) |label| {
