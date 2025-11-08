@@ -745,7 +745,13 @@ pub const Protocols = struct {
 			conn.send(.fast, id, data);
 
 			conn.mutex.lock();
-			conn.handShakeWaiting.wait(&conn.mutex);
+			while(true) {
+				conn.handShakeWaiting.timedWait(&conn.mutex, 16_000_000) catch {
+					main.heap.GarbageCollection.syncPoint();
+					continue;
+				};
+				break;
+			}
 			if(conn.connectionState.load(.monotonic) == .disconnectDesired) return error.DisconnectedByServer;
 			conn.mutex.unlock();
 		}
