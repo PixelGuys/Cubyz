@@ -143,7 +143,7 @@ pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions)
 
 fn createLaunchConfig() !void {
 	std.fs.cwd().access("launchConfig.zon", .{}) catch {
-		const launchConfig = 
+		const launchConfig =
 			\\.{
 			\\    .cubyzDir = "",
 			\\    .autoEnterWorld = "",
