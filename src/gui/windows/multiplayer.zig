@@ -19,6 +19,7 @@ pub var window = GuiWindow{
 
 var ipAddressLabel: *Label = undefined;
 var ipAddressEntry: *TextInput = undefined;
+var joinButton: *Button = undefined;
 
 const padding: f32 = 8;
 
@@ -85,6 +86,46 @@ fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
+fn isCorrectNetAddress(str: []const u8) bool {
+	// min doamin name length is 2
+	if(str.len < 2) return false;
+
+	// check if port is valid
+	const portLess = blk: {
+		var iter = std.mem.splitScalar(u8, str, ':');
+		break :blk iter.first();
+	};
+	if(str.len > portLess.len) {
+		const port = str[portLess.len + 1 ..];
+		_ = std.fmt.parseUnsigned(u16, port, 10) catch return false;
+	}
+
+	// check if this is a valid domain name
+	const validDomain: bool = blk: {
+		if (portLess.len > 253) break :blk false;
+
+		var iter = std.mem.splitScalar(u8, portLess, '.');
+		while(iter.next()) |label| {
+			if(label.len < 2 or label.len > 63) break :blk false;
+
+			const first = label[0];
+			const last = label[label.len - 1];
+			if(!std.ascii.isAlphanumeric(first) or
+				!std.ascii.isAlphanumeric(last)) break :blk false;
+
+			for(label[1 .. label.len - 1]) |c| {
+				if(c != '-' and !std.ascii.isAlphanumeric(c)) break :blk false;
+			}
+		}
+		break :blk true;
+	};
+	if(validDomain) return true;
+
+	// check if this is a valid IP address
+	_ = std.net.Address.parseIp(portLess, 0) catch return false;
+	return true;
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
@@ -94,7 +135,8 @@ pub fn onOpen() void {
 	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}, .{});
 	list.add(ipAddressEntry);
-	list.add(Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
+	joinButton = Button.initText(.{0, 0}, 100, "Join", .{.callback = &join});
+	list.add(joinButton);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -131,4 +173,6 @@ pub fn update() void {
 		gotIpAddress.store(false, .monotonic);
 		ipAddressLabel.updateText(ipAddress);
 	}
+
+	joinButton.disabled = !isCorrectNetAddress(ipAddressEntry.currentString.items);
 }
