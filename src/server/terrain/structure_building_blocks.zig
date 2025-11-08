@@ -349,7 +349,7 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	{
 		var iterator = structures.iterator();
 		while(iterator.next()) |entry| {
-			structureList.append(main.worldArena, StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
+			structureList.appendAssumeCapacity(StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
 				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.*, @errorName(err)});
 				continue;
 			});

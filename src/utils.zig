@@ -2225,6 +2225,7 @@ fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
 pub fn castFunctionSelfToAnyopaque(function: anytype) *const CastFunctionSelfToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
+
 fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
 	var typeInfo = @typeInfo(Fn);
 	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(*anyopaque) or @typeInfo(typeInfo.@"fn".return_type.?) == .optional) {
@@ -2249,6 +2250,7 @@ pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionRetur
 pub fn castFunctionReturnToOptionalAnyopaque(function: anytype) *const CastFunctionReturnToOptionalAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
+
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);
