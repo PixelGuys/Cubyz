@@ -93,6 +93,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 	const caveMap = CaveMapView.init(main.stackAllocator, map.pos, size, 32);
 	defer caveMap.deinit(main.stackAllocator);
 	const margin = 16;
+	const marginZ = 32;
 	if(map.pos.voxelSize <= 4) {
 		const blueNoise = noise.BlueNoise.getRegionData(main.stackAllocator, map.pos.wx -% margin, map.pos.wy -% margin, size + 2*margin, size + 2*margin);
 		defer main.stackAllocator.free(blueNoise);
@@ -130,7 +131,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 								.generateFn = &SimpleStructure.generate,
 							},
 							.priority = model.priority,
-						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% margin}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% margin});
+						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% marginZ}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% marginZ});
 						break;
 					} else {
 						randomValue -= model.chance;
@@ -174,7 +175,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 								.generateFn = &SimpleStructure.generate,
 							},
 							.priority = model.priority,
-						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% margin}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% margin});
+						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% marginZ}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% marginZ});
 						break;
 					} else {
 						randomValue -= adaptedChance;
