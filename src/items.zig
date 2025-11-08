@@ -420,7 +420,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
 						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
 						var light = 2 - @as(i32, @intFromFloat(@round((lightTL*2 + lightTR)/6)));
-						light = @max(@min(light, 4), 0);
+						light = @max(@min(light, material.colorPalette.len - 1), 0);
 						img.setRGB(x, 15 - y, material.colorPalette[@intCast(light)]);
 					} else {
 						img.setRGB(x, 15 - y, if((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
