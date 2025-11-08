@@ -196,8 +196,7 @@ pub fn createInstance() void {
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	if(glfwExtensions == null) {
-		@panic("glfwGetRequiredInstanceExtensions returned a null pointer. If you're on macOS, please make sure to call the " ++
-			"executable with the working directory being the root of the repository.");
+		@panic("glfwGetRequiredInstanceExtensions returned a null pointer. This may be a problem with your Vulkan driver.");
 	}
 
 	const availableExtensions = enumerateInstanceExtensionProperties(main.stackAllocator, null);
