@@ -347,9 +347,9 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 
 	childrenToResolve = .init(main.stackAllocator);
 	defer childrenToResolve.deinit();
-	var loadedCount: u32 = 0;
 	{
 		var iterator = structures.iterator();
+		var loadedCount: u32 = 0;
 		while(iterator.next()) |entry| {
 			structureList.appendAssumeCapacity(StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
 				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.*, @errorName(err)});
