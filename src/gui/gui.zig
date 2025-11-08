@@ -466,6 +466,11 @@ pub const textCallbacks = struct {
 			current.newline(mods);
 		}
 	}
+	pub fn tab(mods: main.Window.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.tab(mods);
+		}
+	}
 };
 
 pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {

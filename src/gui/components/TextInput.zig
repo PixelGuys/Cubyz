@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("../../main.zig");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const TextBuffer = graphics.TextBuffer;
@@ -49,6 +49,8 @@ pub fn __deinit() void {
 const OptionalCallbacks = struct {
 	onUp: ?gui.Callback = null,
 	onDown: ?gui.Callback = null,
+	onNext: ?gui.Callback = null,
+	onPrevious: ?gui.Callback = null,
 };
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
@@ -308,6 +310,17 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 			}
 		}
 		self.ensureCursorVisibility();
+	}
+}
+
+pub fn tab(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+	if(mods.shift) {
+		if(self.optional.onPrevious) |cb| cb.run();
+	} else {
+		if (self.optional.onNext) |cb|cb.run() else {
+			self.inputCharacter('\t');
+			self.ensureCursorVisibility();
+		}
 	}
 }
 
