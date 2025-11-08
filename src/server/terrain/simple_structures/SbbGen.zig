@@ -57,8 +57,9 @@ pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk:
 }
 
 fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
-	const blueprints = &(structure.getBlueprints(seed).* orelse return);
-	const origin = blueprints[0].originBlock;
+        const blueprints = &(structure.getBlueprints(seed).* orelse return);
+	
+        const origin = blueprints[0].originBlock;
 	const blueprintRotation = rotation.apply(alignDirections(origin.direction(), placementDirection) catch |err| {
 		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
 		return;
