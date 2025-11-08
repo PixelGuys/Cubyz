@@ -36,7 +36,7 @@ leafElongation: f32,
 deltaLeafElongation: f32,
 branched: bool,
 
-pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) *SimpleTreeModel {
+pub fn loadModel(arena: NeverFailingAllocator, parameters: ZonElement) ?*SimpleTreeModel {
 	const self = arena.create(SimpleTreeModel);
 	self.* = .{
 		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type", "")) orelse blk: {
