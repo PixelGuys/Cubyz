@@ -313,6 +313,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	// Load all the stored maps and update their next LODs.
 	const interpolationDistance = 64;
 	for(mapPositions.items) |pos| {
+		main.heap.GarbageCollection.syncPoint();
 		var neighborInfo: MapFragment.NeighborInfo = undefined;
 		inline for(comptime std.meta.fieldNames(MapFragment.NeighborInfo)) |name| {
 			var neighborPos = pos;
