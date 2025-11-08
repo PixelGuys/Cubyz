@@ -295,21 +295,10 @@ fn openCreativeInventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
 
-	var creative_opened = false;
-	for(gui.openWindows.items) |window| {
-		if(std.mem.eql(u8, window.id, "creative_inventory")) {
-			creative_opened = true;
-		}
-	}
-
-	if(creative_opened) {
+	if(Window.grabbed) {
 		gui.toggleGameMenu();
-	} else {
-		if(Window.grabbed) {
-			gui.toggleGameMenu();
-		}
-		gui.openWindow("creative_inventory");
 	}
+	gui.openWindow("creative_inventory");
 }
 fn openChat(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
