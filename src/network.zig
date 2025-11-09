@@ -586,7 +586,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn run(self: *ConnectionManager) void {
 		self.threadId = std.Thread.getCurrentId();
-		main.initThreadLocals();
+		main.initThreadLocals(.network);
 		defer main.deinitThreadLocals();
 
 		var lastTime: i64 = networkTimestamp();

@@ -35,7 +35,7 @@ fn discoverIpAddress() void {
 }
 
 fn discoverIpAddressFromNewThread() void {
-	main.initThreadLocals();
+	main.initThreadLocals(.network);
 	defer main.deinitThreadLocals();
 
 	discoverIpAddress();

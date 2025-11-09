@@ -46,13 +46,16 @@ const Vec3d = vec.Vec3d;
 
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
+const ThreadType = enum{render, server, network, audio, pool};
+pub threadlocal var threadType: ThreadType = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
 pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
 pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 
-pub fn initThreadLocals() void {
+pub fn initThreadLocals(typ: ThreadType) void {
+	threadType = typ;
 	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
@@ -492,7 +495,7 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 pub fn main() void { // MARK: main()
 	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
-	initThreadLocals();
+	initThreadLocals(.render);
 	defer deinitThreadLocals();
 
 	initLogging();

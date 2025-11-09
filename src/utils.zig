@@ -900,7 +900,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 
 	fn run(self: *ThreadPool, id: usize) void {
-		main.initThreadLocals();
+		main.initThreadLocals(.pool);
 		defer main.deinitThreadLocals();
 
 		var lastUpdate = std.time.milliTimestamp();
