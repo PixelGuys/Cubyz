@@ -1599,6 +1599,16 @@ pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 	}
 }
 
+pub fn deadlockFreeDoubleLock(m1: *std.Thread.Mutex, m2: *std.Thread.Mutex) void {
+	if(@intFromPtr(m1) < @intFromPtr(m2)) {
+		m1.lock();
+		m2.lock();
+	} else {
+		m2.lock();
+		m1.lock();
+	}
+}
+
 /// A read-write lock with read priority.
 pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 	condition: std.Thread.Condition = .{},
@@ -1653,7 +1663,7 @@ pub const Side = enum {
 
 const endian: std.builtin.Endian = .big;
 
-pub const BinaryReader = struct {
+pub const BinaryReader = struct { // MARK: BinaryReader
 	remaining: []const u8,
 
 	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat};
@@ -1737,7 +1747,7 @@ pub const BinaryReader = struct {
 	}
 };
 
-pub const BinaryWriter = struct {
+pub const BinaryWriter = struct { // MARK: BinaryWriter
 	data: main.List(u8),
 
 	pub fn init(allocator: NeverFailingAllocator) BinaryWriter {

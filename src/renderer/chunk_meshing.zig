@@ -1339,22 +1339,12 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.uploadChunkPosition();
 	}
 
-	fn deadlockFreeDoubleLock(m1: *std.Thread.Mutex, m2: *std.Thread.Mutex) void {
-		if(@intFromPtr(m1) < @intFromPtr(m2)) {
-			m1.lock();
-			m2.lock();
-		} else {
-			m2.lock();
-			m1.lock();
-		}
-	}
-
 	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		for(chunk.Neighbor.iterable) |neighbor| {
 			const nullNeighborMesh = mesh_storage.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 			if(nullNeighborMesh) |neighborMesh| sameLodBlock: {
 				std.debug.assert(neighborMesh != self);
-				deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
+				main.utils.deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 				defer self.mutex.unlock();
 				defer neighborMesh.mutex.unlock();
 				if(self.lastNeighborsSameLod[neighbor.toInt()] == neighborMesh) break :sameLodBlock;
@@ -1448,7 +1438,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				}
 				continue;
 			};
-			deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
+			main.utils.deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 			defer self.mutex.unlock();
 			defer neighborMesh.mutex.unlock();
 			if(self.lastNeighborsHigherLod[neighbor.toInt()] == neighborMesh) continue;
