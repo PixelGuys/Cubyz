@@ -1,0 +1,6 @@
+.{
+	.minHeight = 40,
+	.maxHeight = 50,
+	.minRadius = 256,
+	.maxRadius = 320,
+}

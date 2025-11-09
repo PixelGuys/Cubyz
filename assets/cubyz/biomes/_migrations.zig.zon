@@ -15,4 +15,5 @@
 	.{.old = "ocean_shelf", .new = "ocean/temperate/shelf"},
 	.{.old = "cold_ocean", .new = "ocean/cold/base"},
 	.{.old = "warm_ocean", .new = "ocean/warm/base"},
+	.{.old = "prairie/base", .new = "prairie/base/flat"},
 }
