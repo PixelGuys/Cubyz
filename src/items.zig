@@ -911,7 +911,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			},
 			.null => {
 				return 0;
-			}
+			},
 		}
 	}
 
@@ -938,7 +938,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			},
 			.null => {
 				return .null;
-			}
+			},
 		}
 	}
 
