@@ -485,7 +485,7 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.world.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.world.path));
-		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 12);
+		self.world.tickSpeed = std.atomic.Value(u32).init(worldData.get(u32, "tickSpeed", 12));
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
@@ -499,7 +499,7 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
 		worldData.put("name", self.world.name);
 		worldData.put("lastUsedTime", std.time.milliTimestamp());
-		worldData.put("tickSpeed", self.world.tickSpeed);
+		worldData.put("tickSpeed", self.world.tickSpeed.load(.monotonic));
 		// TODO: Save entities
 		try self.dir.writeZon("world.zig.zon", worldData);
 	}
@@ -521,7 +521,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	lastUnimportantDataSent: i64,
 	doGameTimeCycle: bool = true,
 
-	tickSpeed: u32 = 12,
+	tickSpeed: std.atomic.Value(u32) = std.atomic.Value(u32).init(12),
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
@@ -1025,7 +1025,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	fn tickBlocksInChunk(self: *ServerWorld, _chunk: *chunk.ServerChunk) void {
-		for(0..self.tickSpeed) |_| {
+		for(0..self.tickSpeed.load(.monotonic)) |_| {
 			const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
 
 			const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;

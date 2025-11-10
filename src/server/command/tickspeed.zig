@@ -18,8 +18,8 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("#ff0000Expected u32 number, found \"{s}\"", .{arg});
 			return;
 		};
-		main.server.world.?.tickSpeed = tickSpeed;
+		main.server.world.?.tickSpeed.store(tickSpeed,.monotonic);
 		return;
 	}
-	source.sendMessage("#ffff00{}", .{main.server.world.?.tickSpeed});
+	source.sendMessage("#ffff00{}", .{main.server.world.?.tickSpeed.load(.monotonic)});
 }
