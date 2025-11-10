@@ -6,5 +6,5 @@
 	},
 	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
-	.texture = "cubyz:terracotta_tiles",
+	.texture = "cubyz:terracotta_tile",
 }

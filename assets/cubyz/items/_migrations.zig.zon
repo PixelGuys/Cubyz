@@ -17,4 +17,7 @@
 	.{.old = "willow_leaves", .new = "leaves/willow"},
 	.{.old = "yellow_leaves", .new = "leaves/yellow"},
 	.{.old = "pine_needles", .new = "leaves/pine"},
+	.{.old = "limestone_tiles", .new = "limestone_tile"},
+	.{.old = "terracotta_tiles", .new = "terracotta_tile"},
+	.{.old = "ferrock_tiles", .new = "ferrock_tile"},
 }

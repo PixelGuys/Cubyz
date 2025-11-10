@@ -29,4 +29,7 @@
 	.{.old = "yellow_leaves_opaque", .new = "leaves/opaque/yellow"},
 	.{.old = "pine_needles", .new = "leaves/pine"},
 	.{.old = "pine_needles_opaque", .new = "leaves/opaque/pine"},
+	.{.old = "limestone_tiles", .new = "limestone_tile"},
+	.{.old = "terracotta_tiles", .new = "terracotta_tile"},
+	.{.old = "ferrock_tiles", .new = "ferrock_tile"},
 }
