@@ -573,6 +573,10 @@ pub fn main() void { // MARK: main()
 	defer server.terrain.globalDeinit();
 
 	if(headless) {
+		server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldConfig) catch |err| {
+			std.log.err("Error creating world: {}", .{err});
+			return;
+		};
 		server.start(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		clientMain();

@@ -148,6 +148,11 @@ fn createLaunchConfig() !void {
 			\\    .cubyzDir = "",
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
+			\\    .worldConfig = .{
+			\\            .gamemode = "survival",
+			\\            .testingMode = false,
+			\\            .allowCheats = false,
+			\\    }
 			\\}
 		;
 		try std.fs.cwd().writeFile(.{
