@@ -658,7 +658,7 @@ pub const inventory = struct { // MARK: inventory
 			if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
 				if(mainGuiButton.pressed) {
 					if(recipeItem == .null and itemSlot.inventory._items[itemSlot.itemSlot].item != .null) {
-						recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
+						recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.clone();
 					}
 					if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
 					const time = std.time.milliTimestamp();
@@ -756,7 +756,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.dropOne(0);
 			}
 		}
-		if(recipeItem) |item| item.deinit();
+		recipeItem.deinit();
 		recipeItem = .null;
 	}
 

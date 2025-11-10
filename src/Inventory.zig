@@ -684,7 +684,7 @@ pub const Command = struct { // MARK: Command
 					}
 					delete.inv.ref().amount -= delete.amount;
 					if(delete.inv.ref().amount == 0) {
-						delete.inv.ref().item = null;
+						delete.inv.ref().item = .null;
 					}
 
 					delete.inv.inv.update();
@@ -869,7 +869,7 @@ pub const Command = struct { // MARK: Command
 					std.debug.assert(info.dest.ref().amount >= info.amount);
 					info.dest.ref().amount -= info.amount;
 					if(info.dest.ref().amount == 0) {
-						info.dest.ref().item.?.deinit();
+						info.dest.ref().item.deinit();
 						info.dest.ref().item = null;
 					}
 					info.dest.inv.update();
@@ -941,10 +941,10 @@ pub const Command = struct { // MARK: Command
 				.item = if(inv.ref().amount == 0) item else .null,
 			}});
 		}
-		std.debug.assert(inv.ref().item == .null or std.meta.eql(inv.ref().item.?, item.?));
-		inv.ref().item = item.?;
+		std.debug.assert(inv.ref().item == .null or std.meta.eql(inv.ref().item, item));
+		inv.ref().item = item;
 		inv.ref().amount += amount;
-		std.debug.assert(inv.ref().amount <= item.?.stackSize());
+		std.debug.assert(inv.ref().amount <= item.stackSize());
 	}
 
 	fn executeRemoveOperation(self: *Command, allocator: NeverFailingAllocator, side: Side, inv: InventoryAndSlot, amount: u16) void {
@@ -1351,7 +1351,8 @@ pub const Command = struct { // MARK: Command
 				try FillFromCreative.run(.{.dest = self.dest, .item = itemSource, .amount = amount}, allocator, cmd, side, user, gamemode);
 				return;
 			}
-			if(self.dest.ref().item) |itemDest| {
+			const itemDest = self.dest.ref().item;
+			if(itemDest != .null) {
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest.ref().amount >= itemDest.stackSize()) return;
 					const amount = @min(itemDest.stackSize() - self.dest.ref().amount, self.source.ref().amount, self.amount);
@@ -1415,9 +1416,11 @@ pub const Command = struct { // MARK: Command
 				}
 				return;
 			}
-			const itemSource = self.source.ref().item orelse return;
+			const itemSource = self.source.ref().item;
+			if(itemSource == .null) return;
 			const desiredAmount = (1 + self.source.ref().amount)/2;
-			if(self.dest.ref().item) |itemDest| {
+			const itemDest = self.dest.ref().item;
+			if(itemDest != .null) {
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest.ref().amount >= itemDest.stackSize()) return;
 					const amount = @min(itemDest.stackSize() - self.dest.ref().amount, desiredAmount);
@@ -1468,7 +1471,7 @@ pub const Command = struct { // MARK: Command
 				};
 				cmd.tryCraftingTo(allocator, temp, self.source, side, user);
 				std.debug.assert(cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
-				if(_items[0].item != null) {
+				if(_items[0].item != .null) {
 					if(side == .server) {
 						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
 						main.server.world.?.dropWithCooldown(_items[0], user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
@@ -1588,7 +1591,7 @@ pub const Command = struct { // MARK: Command
 					}
 				}
 				for(self.dest._items, 0..) |*destStack, destSlot| {
-					if(destStack.item == null) {
+					if(destStack.item == .null) {
 						cmd.executeBaseOperation(allocator, .{.swap = .{
 							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
 							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
@@ -1643,7 +1646,7 @@ pub const Command = struct { // MARK: Command
 			var remainingAmount = self.amount;
 			var selectedEmptySlot: ?u32 = null;
 			for(self.dest._items, 0..) |*destStack, destSlot| {
-				if(destStack.item == .null and selectedEmptySlot == .null) {
+				if(destStack.item == .null and selectedEmptySlot == null) {
 					selectedEmptySlot = @intCast(destSlot);
 				}
 				if(std.meta.eql(destStack.item, sourceStack.item)) {

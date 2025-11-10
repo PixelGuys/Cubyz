@@ -952,15 +952,11 @@ pub const Item = union(ItemType) { // MARK: Item
 	}
 
 	pub fn getTexture(self: Item) ?graphics.Texture {
-		switch(self) {
-			.baseItem => |_baseItem| {
-				return _baseItem.getTexture();
-			},
-			.tool => |_tool| {
-				return _tool.getTexture();
-			},
+		return switch(self) {
+			.baseItem => |_baseItem| _baseItem.getTexture(),
+			.tool => |_tool| _tool.getTexture(),
 			.null => null,
-		}
+		};
 	}
 
 	pub fn id(self: Item) ?[]const u8 {
@@ -1000,12 +996,10 @@ pub const Item = union(ItemType) { // MARK: Item
 	}
 
 	pub fn hashCode(self: Item) u32 {
-		switch(self) {
+		return switch(self) {
 			.null => 0,
-			inline else => |item| {
-				return item.hashCode();
-			},
-		}
+			inline else => |item| item.hashCode(),
+		};
 	}
 };
 
