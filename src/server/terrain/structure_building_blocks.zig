@@ -74,9 +74,9 @@ const BlueprintEntry = struct {
 	childBlocks: []StructureBlock,
 
 	const StructureBlock = struct {
-		x: u16,
-		y: u16,
-		z: u16,
+		x: i16,
+		y: i16,
+		z: i16,
 		index: LocalBlockIndex,
 		data: u16,
 
@@ -222,11 +222,15 @@ pub const Rotation = union(RotationMode) {
 	}
 };
 
+const Snapping = enum {none, top, bottom};
+
 pub const StructureBuildingBlock = struct {
 	id: []const u8,
 	children: []?*StructureBuildingBlock,
 	blueprints: AliasTable(Blueprints),
 	rotation: Rotation,
+	snapping: Snapping,
+	originOffset: Vec3i,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
 		const zonBlueprintsList = zon.getChild("blueprints");
@@ -282,6 +286,8 @@ pub const StructureBuildingBlock = struct {
 			.children = main.worldArena.alloc(?*StructureBuildingBlock, childBlockName.items.len),
 			.blueprints = .init(main.worldArena, blueprintArray),
 			.rotation = rotation,
+			.snapping = std.meta.stringToEnum(Snapping, zon.get([]const u8, "snapping", "none")) orelse .none,
+			.originOffset = zon.get(Vec3i, "originOffset", .{0, 0, 0}),
 		};
 		@memset(self.children, null);
 

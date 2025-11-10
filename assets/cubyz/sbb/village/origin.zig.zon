@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:village/origin"},
+	},
+	.originOffset = .{0, 0, -1},
+	.children = .{
+		.green = "cubyz:village/path/always_path",
+	},
+}
