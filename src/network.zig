@@ -2380,3 +2380,30 @@ test "Parse address" {
 	const symmetricSocketAddress = SocketAddress.parse("127.0.0.1:?1234").?;
 	try std.testing.expectEqual(SocketAddress { .ip = IpAddress.localHost, .isSymmetricNAT = true, .port = 1234 }, symmetricSocketAddress);
 }
+
+test "Format address" {
+	const addresses: [4][]const u8 = .{
+		"127.0.0.1",
+		"123.1.111.222",
+		"1.1.1.1",
+		"0.0.0.0",
+	};
+	for(addresses) |addressStr| {
+		const address = IpAddress.parse(addressStr).?;
+		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
+		defer main.heap.testingAllocator.free(reformattedAddress);
+		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
+	}
+	const socketAddresses: [4][]const u8 = .{
+		"127.0.0.1:1234",
+		"123.1.111.222:?11111",
+		"1.1.1.1:255",
+		"0.0.0.0:?3333",
+	};
+	for(socketAddresses) |addressStr| {
+		const address = SocketAddress.parse(addressStr).?;
+		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
+		defer main.heap.testingAllocator.free(reformattedAddress);
+		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
+	}
+}
