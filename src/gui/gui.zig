@@ -657,7 +657,7 @@ pub const inventory = struct { // MARK: inventory
 			const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 			if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
 				if(mainGuiButton.pressed) {
-					if(recipeItem == null and itemSlot.inventory._items[itemSlot.itemSlot].item != null) {
+					if(recipeItem == .null and itemSlot.inventory._items[itemSlot.itemSlot].item != .null) {
 						recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
 					}
 					if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
@@ -757,7 +757,7 @@ pub const inventory = struct { // MARK: inventory
 			}
 		}
 		if(recipeItem) |item| item.deinit();
-		recipeItem = null;
+		recipeItem = .null;
 	}
 
 	fn render(mousePos: Vec2f) void {

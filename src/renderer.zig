@@ -982,61 +982,60 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		if(selectedBlockPos) |selectedPos| {
 			var oldBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			var block = oldBlock;
-			if(inventory.getItem(slot)) |item| {
-				switch(item) {
-					.baseItem => |baseItem| {
-						if(baseItem.block()) |itemBlock| {
-							const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
-							var neighborDir = Vec3i{0, 0, 0};
-							// Check if stuff can be added to the block itself:
-							if(itemBlock == block.typ) {
-								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
-									if(!canPlaceBlock(selectedPos, block)) return;
-									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
-									return;
-								}
-							} else {
-								if(rotationMode.modifyBlock(&block, itemBlock)) {
-									if(!canPlaceBlock(selectedPos, block)) return;
-									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
-									return;
-								}
+			switch(inventory.getItem(slot)) {
+				.baseItem => |baseItem| {
+					if(baseItem.block()) |itemBlock| {
+						const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
+						var neighborDir = Vec3i{0, 0, 0};
+						// Check if stuff can be added to the block itself:
+						if(itemBlock == block.typ) {
+							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+							if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
+								if(!canPlaceBlock(selectedPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+								return;
 							}
-							// Check the block in front of it:
-							const neighborPos = posBeforeBlock;
-							neighborDir = selectedPos - posBeforeBlock;
-							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
-							const neighborBlock = block;
-							oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
-							block = oldBlock;
-							if(block.typ == itemBlock) {
-								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
-									if(!canPlaceBlock(neighborPos, block)) return;
-									updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
-									return;
-								}
-							} else {
-								if(!block.replacable()) return;
-								block.typ = itemBlock;
-								block.data = 0;
-								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
-									if(!canPlaceBlock(neighborPos, block)) return;
-									updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
-									return;
-								}
+						} else {
+							if(rotationMode.modifyBlock(&block, itemBlock)) {
+								if(!canPlaceBlock(selectedPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+								return;
 							}
 						}
-						if(std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
-							game.Player.selectionPosition2 = selectedPos;
-							main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
-							return;
+						// Check the block in front of it:
+						const neighborPos = posBeforeBlock;
+						neighborDir = selectedPos - posBeforeBlock;
+						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
+						const neighborBlock = block;
+						oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
+						block = oldBlock;
+						if(block.typ == itemBlock) {
+							if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
+								if(!canPlaceBlock(neighborPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
+								return;
+							}
+						} else {
+							if(!block.replacable()) return;
+							block.typ = itemBlock;
+							block.data = 0;
+							if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
+								if(!canPlaceBlock(neighborPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
+								return;
+							}
 						}
-					},
-					.tool => |tool| {
-						_ = tool; // TODO: Tools might change existing blocks.
-					},
-				}
+					}
+					if(std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
+						game.Player.selectionPosition2 = selectedPos;
+						main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
+						return;
+					}
+				},
+				.tool => |tool| {
+					_ = tool; // TODO: Tools might change existing blocks.
+				},
+				.null => {},
 			}
 		}
 	}

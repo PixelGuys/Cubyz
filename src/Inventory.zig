@@ -488,7 +488,7 @@ pub const Sync = struct { // MARK: Sync
 					}
 				}
 			}
-			if(itemStack.amount == 0) itemStack.item = null;
+			if(itemStack.amount == 0) itemStack.item = .null;
 		}
 
 		fn setGamemode(user: *main.server.User, gamemode: Gamemode) void {
@@ -671,7 +671,7 @@ pub const Command = struct { // MARK: Command
 						return error.Invalid;
 					}
 
-					if(create.inv.ref().amount +| create.amount > create.inv.ref().item.?.stackSize()) {
+					if(create.inv.ref().amount +| create.amount > create.inv.ref().item.stackSize()) {
 						return error.Invalid;
 					}
 					create.inv.ref().amount += create.amount;
@@ -860,7 +860,7 @@ pub const Command = struct { // MARK: Command
 					info.dest.inv.update();
 				},
 				.delete => |info| {
-					std.debug.assert(info.source.ref().item == null or std.meta.eql(info.source.ref().item, info.item));
+					std.debug.assert(info.source.ref().item == .null or std.meta.eql(info.source.ref().item, info.item));
 					info.source.ref().item = info.item;
 					info.source.ref().amount += info.amount;
 					info.source.inv.update();
@@ -941,7 +941,7 @@ pub const Command = struct { // MARK: Command
 				.item = if(inv.ref().amount == 0) item else .null,
 			}});
 		}
-		std.debug.assert(inv.ref().item == null or std.meta.eql(inv.ref().item.?, item.?));
+		std.debug.assert(inv.ref().item == .null or std.meta.eql(inv.ref().item.?, item.?));
 		inv.ref().item = item.?;
 		inv.ref().amount += amount;
 		std.debug.assert(inv.ref().amount <= item.?.stackSize());
@@ -1131,7 +1131,7 @@ pub const Command = struct { // MARK: Command
 		var remainingAmount: u16 = source.ref().amount;
 		for(dest._items, 0..) |*destStack, destSlot| {
 			if(std.meta.eql(destStack.item, source.ref().item) or destStack.item == .null) {
-				const amount = @min(source.ref().item.?.stackSize() - destStack.amount, remainingAmount);
+				const amount = @min(source.ref().item.stackSize() - destStack.amount, remainingAmount);
 				self.executeBaseOperation(allocator, .{.create = .{
 					.dest = .{.inv = dest, .slot = @intCast(destSlot)},
 					.amount = amount,
@@ -1345,10 +1345,8 @@ pub const Command = struct { // MARK: Command
 			if(itemSource == .null) return;
 			if(self.source.inv.type == .creative) {
 				var amount: u16 = self.amount;
-				if(self.dest.ref().item) |carried| {
-					if(std.meta.eql(carried, itemSource)) {
-						amount = @min(self.dest.ref().amount + self.amount, itemSource.stackSize());
-					}
+				if(std.meta.eql(self.dest.ref().item, itemSource)) {
+					amount = @min(self.dest.ref().amount + self.amount, itemSource.stackSize());
 				}
 				try FillFromCreative.run(.{.dest = self.dest, .item = itemSource, .amount = amount}, allocator, cmd, side, user, gamemode);
 				return;
@@ -1407,7 +1405,7 @@ pub const Command = struct { // MARK: Command
 			}
 			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
-				if(self.dest.ref().item == null and self.source.ref().item != null) {
+				if(self.dest.ref().item == .null and self.source.ref().item != .null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = self.dest,
 						.source = self.source,
@@ -1457,10 +1455,10 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: Drop, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
 			if(self.source.inv.type == .creative) return;
-			if(self.source.ref().item == null) return;
+			if(self.source.ref().item == .null) return;
 			if(self.source.inv.type == .crafting) {
 				if(self.source.slot != self.source.inv._items.len - 1) return;
-				var _items: [1]ItemStack = .{.{.item = null, .amount = 0}};
+				var _items: [1]ItemStack = .{.{.item = .null, .amount = 0}};
 				const temp: Inventory = .{
 					.type = .normal,
 					._items = &_items,
@@ -1578,7 +1576,7 @@ pub const Command = struct { // MARK: Command
 				if(sourceStack.item == .null) continue;
 				for(self.dest._items, 0..) |*destStack, destSlot| {
 					if(std.meta.eql(destStack.item, sourceStack.item)) {
-						const amount = @min(destStack.item.?.stackSize() - destStack.amount, sourceStack.amount);
+						const amount = @min(destStack.item.stackSize() - destStack.amount, sourceStack.amount);
 						cmd.executeBaseOperation(allocator, .{.move = .{
 							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
 							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
@@ -1645,7 +1643,7 @@ pub const Command = struct { // MARK: Command
 			var remainingAmount = self.amount;
 			var selectedEmptySlot: ?u32 = null;
 			for(self.dest._items, 0..) |*destStack, destSlot| {
-				if(destStack.item == null and selectedEmptySlot == null) {
+				if(destStack.item == .null and selectedEmptySlot == .null) {
 					selectedEmptySlot = @intCast(destSlot);
 				}
 				if(std.meta.eql(destStack.item, sourceStack.item)) {
@@ -2136,7 +2134,7 @@ pub fn canHold(self: Inventory, sourceStack: ItemStack) bool {
 	var remainingAmount = sourceStack.amount;
 	for(self._items) |*destStack| {
 		if(std.meta.eql(destStack.item, sourceStack.item) or destStack.item == .null) {
-			const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
+			const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 			remainingAmount -= amount;
 			if(remainingAmount == 0) return true;
 		}

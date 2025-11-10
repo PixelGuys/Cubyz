@@ -1021,15 +1021,12 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn deinit(self: *ItemStack) void {
-		if(self.item) |item| {
-			item.deinit();
-		}
+		self.item.deinit();
 	}
 
 	pub fn clone(self: *const ItemStack) ItemStack {
-		const item = self.item orelse return .{};
 		return .{
-			.item = item.clone(),
+			.item = self.item.clone(),
 			.amount = self.amount,
 		};
 	}
@@ -1039,8 +1036,8 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn storeToZon(self: *const ItemStack, allocator: NeverFailingAllocator, zonObject: ZonElement) void {
-		if(self.item) |item| {
-			item.insertIntoZon(allocator, zonObject);
+		if(self.item != .null) {
+			self.item.insertIntoZon(allocator, zonObject);
 			zonObject.put("amount", self.amount);
 		}
 	}
@@ -1058,12 +1055,8 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn toBytes(self: *const ItemStack, writer: *BinaryWriter) void {
-		if(self.item) |item| {
-			writer.writeVarInt(u16, self.amount);
-			item.toBytes(writer);
-		} else {
-			writer.writeVarInt(u16, 0);
-		}
+		writer.writeVarInt(u16, self.amount);
+		self.item.toBytes(writer);
 	}
 };
 

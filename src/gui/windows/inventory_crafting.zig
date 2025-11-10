@@ -47,18 +47,16 @@ pub fn deinit() void {
 }
 
 fn addItemStackToAvailable(itemStack: ItemStack) void {
-	if(itemStack.item) |item| {
-		if(item == .baseItem) {
-			const baseItem = item.baseItem;
-			for(availableItems.items, 0..) |alreadyPresent, i| {
-				if(baseItem == alreadyPresent) {
-					itemAmount.items[i] += itemStack.amount;
-					return;
-				}
+	if(itemStack.item == .baseItem) {
+		const baseItem = itemStack.item.baseItem;
+		for(availableItems.items, 0..) |alreadyPresent, i| {
+			if(baseItem == alreadyPresent) {
+				itemAmount.items[i] += itemStack.amount;
+				return;
 			}
-			availableItems.append(baseItem);
-			itemAmount.append(itemStack.amount);
 		}
+		availableItems.append(baseItem);
+		itemAmount.append(itemStack.amount);
 	}
 }
 
