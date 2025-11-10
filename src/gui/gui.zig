@@ -486,7 +486,7 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
-	} else if(main.game.world != null and inventory.carried.getItem(0) == null) {
+	} else if(main.game.world != null and inventory.carried.getItem(0) == .null) {
 		toggleGameMenu();
 	}
 }

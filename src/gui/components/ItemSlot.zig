@@ -134,32 +134,32 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		self.texture.?.bindTo(0);
 		draw.boundImage(self.pos, self.size);
 	}
-	if(self.inventory.getItem(self.itemSlot)) |item| {
-		const itemTexture = item.getTexture();
+	const item = self.inventory.getItem(self.itemSlot);
+	if(item.getTexture()) |itemTexture| {
 		itemTexture.bindTo(0);
 		draw.setColor(0xff000000);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)) + Vec2f{1.0, 1.0}, self.size - @as(Vec2f, @splat(2*border)));
 		draw.setColor(0xffffffff);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
-		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
-		if(shouldRenderStackSizeText) {
-			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
-		}
-		if(item == .tool) {
-			const tool = item.tool;
-			const durabilityPercentage = @as(f32, @floatFromInt(tool.durability))/tool.maxDurability;
+	}
+	const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
+	if(shouldRenderStackSizeText) {
+		self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
+	}
+	if(item == .tool) {
+		const tool = item.tool;
+		const durabilityPercentage = @as(f32, @floatFromInt(tool.durability))/tool.maxDurability;
 
-			if(durabilityPercentage < 1) {
-				const width = durabilityPercentage*(self.size[0] - 2*border);
-				draw.setColor(0xff000000);
-				draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{self.size[0] - 2*border, (self.size[1] - 2*border)/16.0});
+		if(durabilityPercentage < 1) {
+			const width = durabilityPercentage*(self.size[0] - 2*border);
+			draw.setColor(0xff000000);
+			draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{self.size[0] - 2*border, (self.size[1] - 2*border)/16.0});
 
-				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
-				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
+			const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
+			const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
 
-				draw.setColor(0xff000000 | (@as(u32, @intCast(red)) << 16) | (@as(u32, @intCast(green)) << 8));
-				draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{width, (self.size[1] - 2*border)/16.0});
-			}
+			draw.setColor(0xff000000 | (@as(u32, @intCast(red)) << 16) | (@as(u32, @intCast(green)) << 8));
+			draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{width, (self.size[1] - 2*border)/16.0});
 		}
 	}
 	if(self.mode != .immutable) {

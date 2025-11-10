@@ -472,7 +472,7 @@ pub const Sync = struct { // MARK: Sync
 					const inv = inventories.items[@intFromEnum(inventoryId.*)].inv;
 					for(inv._items, 0..) |invStack, slot| {
 						if(std.meta.eql(invStack.item, itemStack.item)) {
-							const amount = @min(itemStack.item.?.stackSize() - invStack.amount, itemStack.amount);
+							const amount = @min(itemStack.item.stackSize() - invStack.amount, itemStack.amount);
 							if(amount == 0) continue;
 							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
 							itemStack.amount -= amount;
@@ -743,7 +743,7 @@ pub const Command = struct { // MARK: Command
 					const out: SyncOperation = .{.create = .{
 						.inv = try InventoryAndSlot.read(reader, .client, null),
 						.amount = try reader.readInt(u16),
-						.item = if(reader.remaining.len > 0) try Item.fromBytes(reader) else null,
+						.item = try Item.fromBytes(reader),
 					}};
 					return out;
 				},
@@ -847,7 +847,7 @@ pub const Command = struct { // MARK: Command
 					info.source.ref().amount += info.amount;
 					info.dest.ref().amount -= info.amount;
 					if(info.dest.ref().amount == 0) {
-						info.dest.ref().item = null;
+						info.dest.ref().item = .null;
 					}
 					info.source.inv.update();
 					info.dest.inv.update();
@@ -931,7 +931,7 @@ pub const Command = struct { // MARK: Command
 		return &.{};
 	}
 
-	fn executeAddOperation(self: *Command, allocator: NeverFailingAllocator, side: Side, inv: InventoryAndSlot, amount: u16, item: ?Item) void {
+	fn executeAddOperation(self: *Command, allocator: NeverFailingAllocator, side: Side, inv: InventoryAndSlot, amount: u16, item: Item) void {
 		if(amount == 0) return;
 		if(item == null) return;
 		if(side == .server) {
@@ -969,9 +969,9 @@ pub const Command = struct { // MARK: Command
 				.durability = durability,
 			}});
 		}
-		inv.ref().item.?.tool.durability -|= durability;
-		if(inv.ref().item.?.tool.durability == 0) {
-			inv.ref().item = null;
+		inv.ref().item.tool.durability -|= durability;
+		if(inv.ref().item.tool.durability == 0) {
+			inv.ref().item = .null;
 			inv.ref().amount = 0;
 		}
 	}
@@ -1077,7 +1077,7 @@ pub const Command = struct { // MARK: Command
 		std.debug.assert(dest.type == .normal);
 		if(source.slot != source.inv._items.len - 1) return;
 		if(!dest.canHold(source.ref().*)) return;
-		if(source.ref().item == null) return; // Can happen if the we didn't receive the inventory information from the server yet.
+		if(source.ref().item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
 		const playerInventory: Inventory = switch(side) {
 			.client => main.game.Player.inventory,
@@ -1285,7 +1285,7 @@ pub const Command = struct { // MARK: Command
 			}
 			if(self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled) return;
 			if(self.dest.inv.type == .workbench and self.dest.slot == 25) {
-				if(self.source.ref().item == null and self.dest.ref().item != null) {
+				if(self.source.ref().item == .null and self.dest.ref().item != .null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = self.source,
 						.source = self.dest,
@@ -1394,7 +1394,7 @@ pub const Command = struct { // MARK: Command
 		fn run(self: TakeHalf, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
 			if(self.source.inv.type == .creative) {
-				if(self.dest.ref().item == null) {
+				if(self.dest.ref().item == .null) {
 					const item = self.source.ref().item;
 					try FillFromCreative.run(.{.dest = self.dest, .item = item}, allocator, cmd, side, user, gamemode);
 				}
@@ -1523,11 +1523,11 @@ pub const Command = struct { // MARK: Command
 					.amount = self.dest.ref().amount,
 				}}, side);
 			}
-			if(self.item) |_item| {
+			if(self.item != .null) {
 				cmd.executeBaseOperation(allocator, .{.create = .{
 					.dest = self.dest,
-					.item = _item,
-					.amount = if(self.amount == 0) _item.stackSize() else self.amount,
+					.item = self.item,
+					.amount = if(self.amount == 0) self.item.stackSize() else self.amount,
 				}}, side);
 			}
 		}
@@ -1535,10 +1535,10 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: FillFromCreative, writer: *utils.BinaryWriter) void {
 			self.dest.write(writer);
 			writer.writeInt(u16, self.amount);
-			if(self.item) |item| {
+			if(self.item != .null) {
 				const zon = ZonElement.initObject(main.stackAllocator);
 				defer zon.deinit(main.stackAllocator);
-				item.insertIntoZon(main.stackAllocator, zon);
+				self.item.insertIntoZon(main.stackAllocator, zon);
 				const string = zon.toStringEfficient(main.stackAllocator, &.{});
 				defer main.stackAllocator.free(string);
 				writer.writeSlice(string);
@@ -1574,7 +1574,7 @@ pub const Command = struct { // MARK: Command
 			var sourceItems = self.source._items;
 			if(self.source.type == .workbench) sourceItems = self.source._items[0..25];
 			outer: for(sourceItems, 0..) |*sourceStack, sourceSlot| {
-				if(sourceStack.item == null) continue;
+				if(sourceStack.item == .null) continue;
 				for(self.dest._items, 0..) |*destStack, destSlot| {
 					if(std.meta.eql(destStack.item, sourceStack.item)) {
 						const amount = @min(destStack.item.?.stackSize() - destStack.amount, sourceStack.amount);
@@ -1638,7 +1638,7 @@ pub const Command = struct { // MARK: Command
 				return;
 			}
 			const sourceStack = self.source.ref();
-			if(sourceStack.item == null) return;
+			if(sourceStack.item == .null) return;
 			if(self.amount > sourceStack.amount) return;
 
 			var remainingAmount = self.amount;
@@ -1693,7 +1693,7 @@ pub const Command = struct { // MARK: Command
 			var items = self.inv._items;
 			if(self.inv.type == .workbench) items = self.inv._items[0..25];
 			for(items, 0..) |stack, slot| {
-				if(stack.item == null) continue;
+				if(stack.item == .null) continue;
 
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.inv, .slot = @intCast(slot)},
@@ -1803,7 +1803,7 @@ pub const Command = struct { // MARK: Command
 			if(!switch(costOfChange) {
 				.no => false,
 				.yes => true,
-				.yes_costsDurability => |_| stack.item != null and stack.item.? == .tool,
+				.yes_costsDurability => |_| stack.item == .tool,
 				.yes_costsItems => |amount| stack.amount >= amount,
 				.yes_dropsItems => true,
 			}) {
@@ -2134,7 +2134,7 @@ pub fn canHold(self: Inventory, sourceStack: ItemStack) bool {
 
 	var remainingAmount = sourceStack.amount;
 	for(self._items) |*destStack| {
-		if(std.meta.eql(destStack.item, sourceStack.item) or destStack.item == null) {
+		if(std.meta.eql(destStack.item, sourceStack.item) or destStack.item == .null) {
 			const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
 			remainingAmount -= amount;
 			if(remainingAmount == 0) return true;
@@ -2166,8 +2166,8 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	}
 	for(0..remainingCount) |_| {
 		var stack = ItemStack.fromBytes(reader) catch continue;
-		if(stack.item) |item| {
-			std.log.err("Lost {} of {s}", .{stack.amount, item.id()});
+		if(stack.item != .null) {
+			std.log.err("Lost {} of {s}", .{stack.amount, stack.item.id()});
 		}
 		stack.deinit();
 	}

@@ -951,7 +951,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		}
 	}
 
-	pub fn getTexture(self: Item) graphics.Texture {
+	pub fn getTexture(self: Item) ?graphics.Texture {
 		switch(self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.getTexture();
@@ -959,7 +959,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				return _tool.getTexture();
 			},
-			.null => unreachable,
+			.null => null,
 		}
 	}
 

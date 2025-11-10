@@ -582,10 +582,10 @@ pub const Player = struct { // MARK: Player
 
 			if(isCreative()) {
 				const targetSlot = blk: {
-					if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
+					if(inventory.getItem(selectedSlot) == .null) break :blk selectedSlot;
 					// Look for an empty slot
 					for(0..12) |slotIdx| {
-						if(inventory.getItem(slotIdx) == null) {
+						if(inventory.getItem(slotIdx) == .null) {
 							break :blk slotIdx;
 						}
 					}
