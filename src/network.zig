@@ -148,7 +148,7 @@ pub fn init() void {
 pub const IpAddress = struct {
 	address: u32,
 
-	pub const localHost = IpAddress {.address = 0x0100007f};
+	pub const localHost = IpAddress{.address = 0x0100007f};
 
 	pub fn format(self: IpAddress, writer: anytype) !void {
 		try writer.print("{}.{}.{}.{}", .{self.address & 255, self.address >> 8 & 255, self.address >> 16 & 255, self.address >> 24});
@@ -2376,10 +2376,10 @@ test "Parse address" {
 
 	try std.testing.expectEqual(IpAddress.localHost, address);
 	const socketAddress = SocketAddress.parse("127.0.0.1:1234").?;
-	try std.testing.expectEqual(SocketAddress { .ip = IpAddress.localHost, .port = 1234 }, socketAddress);
+	try std.testing.expectEqual(SocketAddress{.ip = IpAddress.localHost, .port = 1234}, socketAddress);
 
 	const symmetricSocketAddress = SocketAddress.parse("127.0.0.1:?1234").?;
-	try std.testing.expectEqual(SocketAddress { .ip = IpAddress.localHost, .isSymmetricNAT = true, .port = 1234 }, symmetricSocketAddress);
+	try std.testing.expectEqual(SocketAddress{.ip = IpAddress.localHost, .isSymmetricNAT = true, .port = 1234}, symmetricSocketAddress);
 }
 
 test "Format address" {
