@@ -274,10 +274,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 // MARK: Callbacks
 fn escape(_: Window.Key.Modifiers) void {
-	if(gui.selectedTextInput != null) {
-		gui.setSelectedTextInput(null);
-		return;
-	}
+	if(gui.selectedTextInput != null) gui.setSelectedTextInput(null);
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 }
