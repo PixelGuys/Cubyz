@@ -371,6 +371,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
 		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
+		.{.name = "drop", .key = c.GLFW_KEY_Q, .repeatAction = &game.Player.dropFromHand, .notifyRequirement = .inGame},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
