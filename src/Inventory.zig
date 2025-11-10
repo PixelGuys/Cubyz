@@ -480,7 +480,7 @@ pub const Sync = struct { // MARK: Sync
 						}
 					}
 					for(inv._items, 0..) |invStack, slot| {
-						if(invStack.item == null) {
+						if(invStack.item == .null) {
 							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
 							itemStack.amount = 0;
 							break :outer;
@@ -665,9 +665,9 @@ pub const Command = struct { // MARK: Command
 		pub fn executeFromData(reader: *utils.BinaryReader) !void {
 			switch(try deserialize(reader)) {
 				.create => |create| {
-					if(create.item) |item| {
-						create.inv.ref().item = item;
-					} else if(create.inv.ref().item == null) {
+					if(create.item != .null) {
+						create.inv.ref().item = create.item;
+					} else if(create.inv.ref().item == .null) {
 						return error.Invalid;
 					}
 
@@ -933,7 +933,7 @@ pub const Command = struct { // MARK: Command
 
 	fn executeAddOperation(self: *Command, allocator: NeverFailingAllocator, side: Side, inv: InventoryAndSlot, amount: u16, item: Item) void {
 		if(amount == 0) return;
-		if(item == null) return;
+		if(item == .null) return;
 		if(side == .server) {
 			self.syncOperations.append(allocator, .{.create = .{
 				.inv = inv,
@@ -1130,7 +1130,7 @@ pub const Command = struct { // MARK: Command
 
 		var remainingAmount: u16 = source.ref().amount;
 		for(dest._items, 0..) |*destStack, destSlot| {
-			if(std.meta.eql(destStack.item, source.ref().item) or destStack.item == null) {
+			if(std.meta.eql(destStack.item, source.ref().item) or destStack.item == .null) {
 				const amount = @min(source.ref().item.?.stackSize() - destStack.amount, remainingAmount);
 				self.executeBaseOperation(allocator, .{.create = .{
 					.dest = .{.inv = dest, .slot = @intCast(destSlot)},
@@ -1175,10 +1175,10 @@ pub const Command = struct { // MARK: Command
 				},
 				.recipe => |val| {
 					writer.writeInt(u16, val.resultAmount);
-					writer.writeWithDelimiter(val.resultItem.id().?, 0);
+					writer.writeWithDelimiter(val.resultItem.id(), 0);
 					for(0..val.sourceItems.len) |i| {
 						writer.writeInt(u16, val.sourceAmounts[i]);
-						writer.writeWithDelimiter(val.sourceItems[i].id().?, 0);
+						writer.writeWithDelimiter(val.sourceItems[i].id(), 0);
 					}
 				},
 				.blockInventory => |val| {
@@ -1297,18 +1297,18 @@ pub const Command = struct { // MARK: Command
 			}
 			if(self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
 
-			if(self.dest.ref().item) |itemDest| {
-				if(self.source.ref().item) |itemSource| {
-					if(std.meta.eql(itemDest, itemSource)) {
-						if(self.dest.ref().amount >= itemDest.stackSize()) return;
-						const amount = @min(itemDest.stackSize() - self.dest.ref().amount, self.source.ref().amount);
-						cmd.executeBaseOperation(allocator, .{.move = .{
-							.dest = self.dest,
-							.source = self.source,
-							.amount = amount,
-						}}, side);
-						return;
-					}
+			const itemDest = self.dest.ref().item;
+			const itemSource = self.source.ref().item;
+			if(itemDest != .null and itemSource != .null) {
+				if(std.meta.eql(itemDest, itemSource)) {
+					if(self.dest.ref().amount >= itemDest.stackSize()) return;
+					const amount = @min(itemDest.stackSize() - self.dest.ref().amount, self.source.ref().amount);
+					cmd.executeBaseOperation(allocator, .{.move = .{
+						.dest = self.dest,
+						.source = self.source,
+						.amount = amount,
+					}}, side);
+					return;
 				}
 			}
 			if(self.source.inv.type == .workbench and !canPutIntoWorkbench(self.dest)) return;
@@ -1341,7 +1341,8 @@ pub const Command = struct { // MARK: Command
 			if(self.dest.inv.type == .crafting) return;
 			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
 			if(self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
-			const itemSource = self.source.ref().item orelse return;
+			const itemSource = self.source.ref().item;
+			if(itemSource == .null) return;
 			if(self.source.inv.type == .creative) {
 				var amount: u16 = self.amount;
 				if(self.dest.ref().item) |carried| {
