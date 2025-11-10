@@ -4,7 +4,7 @@ const main = @import("main");
 const User = main.server.User;
 
 pub const description = "Get or set the server's random tickrate, measured in blocks per chunk per tick.";
-pub const usage = "/tickspeed <rate>";
+pub const usage = "/tickspeed\n/tickspeed <rate>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
