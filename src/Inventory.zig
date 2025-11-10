@@ -599,12 +599,12 @@ pub const Command = struct { // MARK: Command
 		},
 		delete: struct {
 			source: InventoryAndSlot,
-			item: ?Item = undefined,
+			item: Item = undefined,
 			amount: u16,
 		},
 		create: struct {
 			dest: InventoryAndSlot,
-			item: ?Item,
+			item: Item,
 			amount: u16,
 		},
 		useDurability: struct {
@@ -640,7 +640,7 @@ pub const Command = struct { // MARK: Command
 		create: struct {
 			inv: InventoryAndSlot,
 			amount: u16,
-			item: ?Item,
+			item: Item,
 		},
 		delete: struct {
 			inv: InventoryAndSlot,
@@ -1511,7 +1511,7 @@ pub const Command = struct { // MARK: Command
 
 	const FillFromCreative = struct { // MARK: FillFromCreative
 		dest: InventoryAndSlot,
-		item: ?Item,
+		item: Item,
 		amount: u16 = 0,
 
 		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, mode: Gamemode) error{serverFailure}!void {
@@ -1550,7 +1550,7 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !FillFromCreative {
 			const dest = try InventoryAndSlot.read(reader, side, user);
 			const amount = try reader.readInt(u16);
-			var item: ?Item = null;
+			var item: Item = .null;
 			if(reader.remaining.len != 0) {
 				const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 				defer zon.deinit(main.stackAllocator);
@@ -2041,8 +2041,8 @@ fn update(self: Inventory) void {
 		const slotInfos = self.type.workbench.slotInfos();
 
 		for(0..25) |i| {
-			if(self._items[i].item != null and self._items[i].item.? == .baseItem) {
-				availableItems[i] = self._items[i].item.?.baseItem;
+			if(self._items[i].item == .baseItem) {
+				availableItems[i] = self._items[i].item.baseItem;
 			} else {
 				if(!slotInfos[i].optional and !slotInfos[i].disabled) {
 					return;
@@ -2099,11 +2099,11 @@ pub fn dropOne(source: Inventory, sourceSlot: u32) void {
 	Sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source, .slot = sourceSlot}, .desiredAmount = 1}});
 }
 
-pub fn fillFromCreative(dest: Inventory, destSlot: u32, item: ?Item) void {
+pub fn fillFromCreative(dest: Inventory, destSlot: u32, item: Item) void {
 	Sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest, .slot = destSlot}, .item = item}});
 }
 
-pub fn fillAmountFromCreative(dest: Inventory, destSlot: u32, item: ?Item, amount: u16) void {
+pub fn fillAmountFromCreative(dest: Inventory, destSlot: u32, item: Item, amount: u16) void {
 	Sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest, .slot = destSlot}, .item = item, .amount = amount}});
 }
 
@@ -2119,7 +2119,7 @@ pub fn size(self: Inventory) usize {
 	return self._items.len;
 }
 
-pub fn getItem(self: Inventory, slot: usize) ?Item {
+pub fn getItem(self: Inventory, slot: usize) Item {
 	return self._items[slot].item;
 }
 

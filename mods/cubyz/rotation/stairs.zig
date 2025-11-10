@@ -274,37 +274,33 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, relativePlay
 	return result;
 }
 
-pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-	if(item) |_item| {
-		switch(_item) {
-			.tool => |tool| {
-				const tags = tool.type.blockTags();
-				for(tags) |tag| {
-					if(tag == .chiselable) {
-						return closestRay(.intersection, block, relativePlayerPos, playerDir);
-					}
+pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+	switch(item) {
+		.tool => |tool| {
+			const tags = tool.type.blockTags();
+			for(tags) |tag| {
+				if(tag == .chiselable) {
+					return closestRay(.intersection, block, relativePlayerPos, playerDir);
 				}
-			},
-			else => {},
-		}
+			}
+		},
+		else => {},
 	}
 	return RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir);
 }
 
-pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
-	if(item) |_item| {
-		switch(_item) {
-			.tool => |tool| {
-				for(tool.type.blockTags()) |tag| {
-					if(tag == .chiselable) {
-						currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
-						if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
-						return;
-					}
+pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+	switch(item) {
+		.tool => |tool| {
+			for(tool.type.blockTags()) |tag| {
+				if(tag == .chiselable) {
+					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
+					if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
+					return;
 				}
-			},
-			else => {},
-		}
+			}
+		},
+		else => {},
 	}
 	return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 }

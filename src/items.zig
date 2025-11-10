@@ -865,11 +865,13 @@ pub const Tool = struct { // MARK: Tool
 const ItemType = enum(u7) {
 	baseItem,
 	tool,
+	null,
 };
 
 pub const Item = union(ItemType) { // MARK: Item
 	baseItem: BaseItemIndex,
 	tool: *Tool,
+	null: void,
 
 	pub fn init(zon: ZonElement) !Item {
 		if(BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
@@ -883,7 +885,7 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn deinit(self: Item) void {
 		switch(self) {
-			.baseItem => {},
+			.baseItem, .null => {},
 			.tool => |_tool| {
 				_tool.deinit();
 			},
@@ -892,7 +894,7 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn clone(self: Item) Item {
 		switch(self) {
-			.baseItem => return self,
+			.baseItem, .null => return self,
 			.tool => |tool| {
 				return .{.tool = tool.clone()};
 			},
@@ -907,6 +909,9 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => {
 				return 1;
 			},
+			.null => {
+				return 0;
+			}
 		}
 	}
 
@@ -918,6 +923,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				zonObject.put("tool", _tool.save(allocator));
 			},
+			.null => {}, // TODO: should we handle this case?
 		}
 	}
 
@@ -930,6 +936,9 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => {
 				return .{.tool = try Tool.fromBytes(reader)};
 			},
+			.null => {
+				return .null;
+			}
 		}
 	}
 
@@ -938,6 +947,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		switch(self) {
 			.baseItem => writer.writeEnum(BaseItemIndex, self.baseItem),
 			.tool => |tool| tool.toBytes(writer),
+			.null => {},
 		}
 	}
 
@@ -949,10 +959,11 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				return _tool.getTexture();
 			},
+			.null => unreachable,
 		}
 	}
 
-	pub fn id(self: Item) []const u8 {
+	pub fn id(self: Item) ?[]const u8 {
 		switch(self) {
 			.tool => |tool| {
 				return tool.type.id();
@@ -960,10 +971,11 @@ pub const Item = union(ItemType) { // MARK: Item
 			.baseItem => |item| {
 				return item.id();
 			},
+			.null => return null,
 		}
 	}
 
-	pub fn getTooltip(self: Item) []const u8 {
+	pub fn getTooltip(self: Item) ?[]const u8 {
 		switch(self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.getTooltip();
@@ -971,10 +983,11 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				return _tool.getTooltip();
 			},
+			.null => return null,
 		}
 	}
 
-	pub fn getImage(self: Item) graphics.Image {
+	pub fn getImage(self: Item) ?graphics.Image {
 		switch(self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.image();
@@ -982,11 +995,13 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				return _tool.image;
 			},
+			.null => return null,
 		}
 	}
 
 	pub fn hashCode(self: Item) u32 {
 		switch(self) {
+			.null => 0,
 			inline else => |item| {
 				return item.hashCode();
 			},
@@ -995,7 +1010,7 @@ pub const Item = union(ItemType) { // MARK: Item
 };
 
 pub const ItemStack = struct { // MARK: ItemStack
-	item: ?Item = null,
+	item: Item = .null,
 	amount: u16 = 0,
 
 	pub fn load(zon: ZonElement) !ItemStack {
@@ -1235,12 +1250,12 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 	const recipe = Recipe{
 		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
 		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
-		.resultItem = output.item.?.baseItem,
+		.resultItem = output.item.baseItem,
 		.resultAmount = output.amount,
 	};
 	for(inputs, 0..) |inputZon, i| {
 		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.?.baseItem;
+		recipe.sourceItems[i] = input.item.baseItem;
 		recipe.sourceAmounts[i] = input.amount;
 	}
 	return recipe;

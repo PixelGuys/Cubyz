@@ -903,7 +903,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var selectionFace: chunk.Neighbor = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
-	pub fn select(pos: Vec3d, _dir: Vec3f, item: ?main.items.Item) void {
+	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
@@ -926,8 +926,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		while(total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) blk: {
-				const fluidPlaceable = item != null and item.? == .baseItem and item.?.baseItem.hasTag(.fluidPlaceable);
-				const holdingTargetedBlock = item != null and item.? == .baseItem and item.?.baseItem.block() == block.typ;
+				const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+				const holdingTargetedBlock = item == .baseItem and item.baseItem.block() == block.typ;
 				if(block.hasTag(.air) and !holdingTargetedBlock) break :blk;
 				if(block.hasTag(.fluid) and !fluidPlaceable and !holdingTargetedBlock) break :blk; // TODO: Buckets could select fluids
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
@@ -1044,7 +1044,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		if(selectedBlockPos) |selectedPos| {
 			const stack = inventory.getStack(slot);
-			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id(), "cubyz:selection_wand");
+			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
 			if(isSelectionWand) {
 				game.Player.selectionPosition1 = selectedPos;
 				main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
@@ -1057,7 +1057,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				currentBlockProgress = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			const holdingTargetedBlock = stack.item != null and stack.item.? == .baseItem and stack.item.?.baseItem.block() == block.typ;
+			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
 			if((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
 
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));

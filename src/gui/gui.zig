@@ -604,7 +604,7 @@ pub const inventory = struct { // MARK: inventory
 	var carriedItemSlot: *ItemSlot = undefined;
 	var leftClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
 	var rightClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
-	var recipeItem: ?main.items.Item = null;
+	var recipeItem: main.items.Item = .null;
 	var initialized: bool = false;
 	const minCraftingCooldown = 20;
 	const maxCraftingCooldown = 400;
@@ -766,8 +766,7 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
 		if(carried.getAmount(0) == 0) if(hoveredItemSlot) |hovered| {
-			if(hovered.inventory.getItem(hovered.itemSlot)) |item| {
-				const tooltip = item.getTooltip();
+			if(hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
 				const fontSize = 16;
