@@ -652,70 +652,72 @@ pub const inventory = struct { // MARK: inventory
 
 	fn update() void {
 		if(!initialized) return;
-		if(hoveredItemSlot) |itemSlot| {
-			const mainGuiButton = main.KeyBoard.key("mainGuiButton");
-			const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
-			if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
-				if(mainGuiButton.pressed) {
-					if(recipeItem == null and itemSlot.inventory._items[itemSlot.itemSlot].item != null) {
-						recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
-					}
-					if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
-					const time = std.time.milliTimestamp();
-					if(!startedCrafting) {
-						startedCrafting = true;
-						craftingCooldown = maxCraftingCooldown;
-						nextCraftingAction = time;
-					}
-					while(time -% nextCraftingAction >= 0) {
-						nextCraftingAction +%= craftingCooldown;
-						craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
-						if(mainGuiButton.modsOnPress.shift) {
-							itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-						} else {
-							itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
-						}
-					}
-					return;
-				}
-			}
-			if(itemSlot.mode != .normal) return;
+		const itemSlot = hoveredItemSlot orelse {
+			return;
+		};
+		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
+		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
+		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
 			if(mainGuiButton.pressed) {
-				if(mainGuiButton.modsOnPress.shift) {
-					if(itemSlot.inventory.id == main.game.Player.inventory.id) {
-						var iterator = std.mem.reverseIterator(openWindows.items);
-						while(iterator.next()) |window| {
-							if(window.shiftClickableInventory) |inv| {
-								itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-								break;
-							}
-						}
-					} else {
+				if(recipeItem == null and itemSlot.inventory._items[itemSlot.itemSlot].item != null) {
+					recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
+				}
+				if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
+				const time = std.time.milliTimestamp();
+				if(!startedCrafting) {
+					startedCrafting = true;
+					craftingCooldown = maxCraftingCooldown;
+					nextCraftingAction = time;
+				}
+				while(time -% nextCraftingAction >= 0) {
+					nextCraftingAction +%= craftingCooldown;
+					craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
+					if(mainGuiButton.modsOnPress.shift) {
 						itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+					} else {
+						itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
+					}
+				}
+				return;
+			}
+		}
+		if(itemSlot.mode != .normal) return;
+
+		if(mainGuiButton.pressed) {
+			if(mainGuiButton.modsOnPress.shift) {
+				if(itemSlot.inventory.id == main.game.Player.inventory.id) {
+					var iterator = std.mem.reverseIterator(openWindows.items);
+					while(iterator.next()) |window| {
+						if(window.shiftClickableInventory) |inv| {
+							itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+							break;
+						}
 					}
 				} else {
-					if(carried.getAmount(0) == 0) return;
-					for(leftClickSlots.items) |deliveredSlot| {
-						if(itemSlot == deliveredSlot) {
-							return;
-						}
-					}
-					const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-					if(item == null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.?.stackSize()) {
-						leftClickSlots.append(itemSlot);
-					}
+					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				}
-			} else if(secondaryGuiButton.pressed) {
+			} else {
 				if(carried.getAmount(0) == 0) return;
-				for(rightClickSlots.items) |deliveredSlot| {
+				for(leftClickSlots.items) |deliveredSlot| {
 					if(itemSlot == deliveredSlot) {
 						return;
 					}
 				}
-				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
-				rightClickSlots.append(itemSlot);
+				const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
+				if(item == null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.?.stackSize()) {
+					leftClickSlots.append(itemSlot);
+				}
 			}
+		} else if(secondaryGuiButton.pressed) {
+			if(carried.getAmount(0) == 0) return;
+			for(rightClickSlots.items) |deliveredSlot| {
+				if(itemSlot == deliveredSlot) {
+					return;
+				}
+			}
+			itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
+			rightClickSlots.append(itemSlot);
 		}
 	}
 
