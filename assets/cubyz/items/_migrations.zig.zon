@@ -7,4 +7,7 @@
 	.{.old = "diamond", .new = "diamond_ore"},
 	.{.old = "mossy_cobblestone", .new = "cobblestone"},
 	.{.old = "chisel", .new = "iron_ingot"},
+	.{.old = "limestone_tiles", .new = "limestone_tile"},
+	.{.old = "terracotta_tiles", .new = "terracotta_tile"},
+	.{.old = "ferrock_tiles", .new = "ferrock_tile"},
 }

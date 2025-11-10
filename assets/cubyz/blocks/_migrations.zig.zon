@@ -9,4 +9,7 @@
 	.{.old = "stone_tile", .new = "slate_tile"},
 	.{.old = "stone_wall", .new = "slate_wall"},
 	.{.old = "mossy_cobblestone", .new = "cobblestone"},
+	.{.old = "limestone_tiles", .new = "limestone_tile"},
+	.{.old = "terracotta_tiles", .new = "terracotta_tile"},
+	.{.old = "ferrock_tiles", .new = "ferrock_tile"},
 }

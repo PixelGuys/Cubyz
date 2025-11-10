@@ -7,5 +7,5 @@
 	},
 	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
-	.texture = "cubyz:ferrock_tiles",
+	.texture = "cubyz:ferrock_tile",
 }
