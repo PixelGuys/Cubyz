@@ -1175,10 +1175,10 @@ pub const Command = struct { // MARK: Command
 				},
 				.recipe => |val| {
 					writer.writeInt(u16, val.resultAmount);
-					writer.writeWithDelimiter(val.resultItem.id(), 0);
+					writer.writeWithDelimiter(val.resultItem.id().?, 0);
 					for(0..val.sourceItems.len) |i| {
 						writer.writeInt(u16, val.sourceAmounts[i]);
-						writer.writeWithDelimiter(val.sourceItems[i].id(), 0);
+						writer.writeWithDelimiter(val.sourceItems[i].id().?, 0);
 					}
 				},
 				.blockInventory => |val| {
@@ -2167,7 +2167,7 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	for(0..remainingCount) |_| {
 		var stack = ItemStack.fromBytes(reader) catch continue;
 		if(stack.item != .null) {
-			std.log.err("Lost {} of {s}", .{stack.amount, stack.item.id()});
+			std.log.err("Lost {} of {s}", .{stack.amount, stack.item.id().?});
 		}
 		stack.deinit();
 	}
