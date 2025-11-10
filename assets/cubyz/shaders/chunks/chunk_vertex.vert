@@ -15,6 +15,9 @@ layout(location = 1) uniform mat4 projectionMatrix;
 layout(location = 2) uniform mat4 viewMatrix;
 layout(location = 3) uniform ivec3 playerPositionInteger;
 layout(location = 4) uniform vec3 playerPositionFraction;
+#ifdef ENTITY
+layout(location = 14) uniform mat4 modelMatrix;
+#endif
 
 struct FaceData {
 	int encodedPositionAndLightIndex;
@@ -96,6 +99,10 @@ void main() {
 	normal = quads[quadIndex].normal;
 
 	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
+#ifdef ENTITY
+	// Offset by one to account for block position in chunk
+	position = (modelMatrix*vec4(position - vec3(1), 1)).xyz + vec3(1);
+#endif
 	position *= voxelSize;
 	position += vec3(chunks[chunkID].position.xyz - playerPositionInteger);
 	position -= playerPositionFraction;
