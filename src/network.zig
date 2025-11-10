@@ -193,6 +193,7 @@ pub const SocketAddress = struct {
 		}
 		return .{
 			.ip = IpAddress.parse(ipString) orelse return null,
+			.isSymmetricNAT = isSymmetricNAT,
 			.port = std.fmt.parseInt(u16, portString, 10) catch return null,
 		};
 	}
@@ -604,9 +605,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if(self.online.load(.acquire) and source.ip.address == self.externalAddress.ip.address and source.port == self.externalAddress.port) return;
 		}
-		if(self.allowNewConnections.load(.monotonic) or source.ip == SocketAddress.localHost) {
+		if(self.allowNewConnections.load(.monotonic) or source.ip.address == IpAddress.localHost.address) {
 			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
-				if(std.mem.containsAtLeastScalar(u32, main.server.Settings.ipBanList.items, 1, source.ip)) {
+				if(std.mem.containsAtLeastScalar(u32, @ptrCast(main.server.Settings.ipBanList.items), 1, source.ip.address)) {
 					return;
 				}
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;

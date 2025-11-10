@@ -295,7 +295,8 @@ pub const Settings = struct {
 		const data = ZonElement.initObject(main.stackAllocator);
 		const arr = ZonElement.initArray(main.stackAllocator);
 		for(ipBanList.items) |ip| {
-			const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", ip);
+			const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ip}) catch unreachable;
+			defer main.stackAllocator.free(ipString);
 			arr.append(ipString);
 		}
 		data.put("ipBanList", arr);
