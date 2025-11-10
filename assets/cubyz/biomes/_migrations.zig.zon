@@ -10,4 +10,9 @@
 	.{.old = "tundra", .new = "tundra/base"},
 	.{.old = "forest/base", .new = "forest/mixed/oak_birch"},
 	.{.old = "forest/clearing", .new = "forest/mixed/oak_birch_clearing"},
+	.{.old = "beach", .new = "beach/warm/base"},
+	.{.old = "ocean", .new = "ocean/temperate/base"},
+	.{.old = "ocean_shelf", .new = "ocean/temperate/shelf"},
+	.{.old = "cold_ocean", .new = "ocean/cold/base"},
+	.{.old = "warm_ocean", .new = "ocean/warm/base"},
 }

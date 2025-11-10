@@ -222,7 +222,6 @@ pub const MapFragment = struct { // MARK: MapFragment
 /// Generates the detailed(block-level precision) height and biome maps from the climate map.
 pub const MapGenerator = struct {
 	init: *const fn(parameters: ZonElement) void,
-	deinit: *const fn() void,
 	generateMapFragment: *const fn(fragment: *MapFragment, seed: u64) void,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(MapGenerator) = .{};
@@ -230,7 +229,6 @@ pub const MapGenerator = struct {
 	fn registerGenerator(comptime Generator: type) void {
 		const self = MapGenerator{
 			.init = &Generator.init,
-			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,
 		};
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
@@ -313,6 +311,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	// Load all the stored maps and update their next LODs.
 	const interpolationDistance = 64;
 	for(mapPositions.items) |pos| {
+		main.heap.GarbageCollection.syncPoint();
 		var neighborInfo: MapFragment.NeighborInfo = undefined;
 		inline for(comptime std.meta.fieldNames(MapFragment.NeighborInfo)) |name| {
 			var neighborPos = pos;

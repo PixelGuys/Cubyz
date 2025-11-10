@@ -351,14 +351,13 @@ const ChunkManager = struct { // MARK: ChunkManager
 		return self;
 	}
 
-	pub fn deinit(self: ChunkManager) void {
+	pub fn deinit(_: ChunkManager) void {
 		for(0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
 		entityChunkHashMap.deinit();
 		server.terrain.deinit();
 		main.assets.unloadAssets();
-		self.terrainGenerationProfile.deinit();
 		storage.deinit();
 	}
 
@@ -415,7 +414,8 @@ const ChunkManager = struct { // MARK: ChunkManager
 			return ch;
 		}
 		ch.generated = true;
-		const caveMap = terrain.CaveMap.CaveMapView.findMapsAround(ch);
+		const caveMap = terrain.CaveMap.CaveMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
+		defer caveMap.deinit(main.stackAllocator);
 		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 		defer biomeMap.deinit();
 		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
@@ -784,15 +784,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				defer self.mutex.lock();
 				updateRequest.ch.save(self);
 				updateRequest.ch.decreaseRefCount();
+				main.heap.GarbageCollection.syncPoint();
 			}
 			while(self.regionUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.region.store();
 				updateRequest.region.decreaseRefCount();
+				main.heap.GarbageCollection.syncPoint();
 			}
 			self.mutex.unlock();
 			std.Thread.sleep(1_000_000);
+			main.heap.GarbageCollection.syncPoint();
 			self.mutex.lock();
 			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
 		}
@@ -1036,9 +1039,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			_chunk.mutex.lock();
 			const block = _chunk.getBlock(x, y, z);
 			_chunk.mutex.unlock();
-			if(block.tickEvent()) |event| {
-				event.tryRandomTick(block, _chunk, x, y, z);
-			}
+			_ = block.onTick().run(.{.block = block, .chunk = _chunk, .x = x, .y = y, .z = z});
 		}
 	}
 
