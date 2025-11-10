@@ -20,11 +20,15 @@ const border: f32 = 3;
 const fontSize: f32 = 16;
 const blinkDurationMs: i64 = 500;
 
+pub const obfuscationChar = "∗".*;
+pub const obfuscatedStringBuffer = obfuscationChar ** 512;
+
 var texture: Texture = undefined;
 
 pos: Vec2f,
 size: Vec2f,
 pressed: bool = false,
+obfuscated: bool = false,
 cursor: ?u32 = null,
 selectionStart: ?u32 = null,
 currentString: main.List(u8),
@@ -122,7 +126,7 @@ pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) void {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		textPos[1] -= diff*self.scrollBar.currentState;
 	}
-	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
+	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.getBufferLen());
 	self.pressed = true;
 	self.ensureCursorVisibility();
 }
@@ -134,7 +138,7 @@ pub fn mainButtonReleased(self: *TextInput, mousePosition: Vec2f) void {
 			const diff = self.textSize[1] - (self.maxHeight - 2*border);
 			textPos[1] -= diff*self.scrollBar.currentState;
 		}
-		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
+		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.getBufferLen());
 		if(self.cursor == self.selectionStart) {
 			self.selectionStart = null;
 		}
@@ -152,7 +156,7 @@ pub fn select(self: *TextInput) void {
 	self.pressed = false;
 	self.selectionStart = null;
 	if(self.cursor == null)
-		self.cursor = @intCast(self.currentString.items.len);
+		self.cursor = @intCast(self.getBufferLen());
 }
 
 pub fn deselect(self: *TextInput) void {
@@ -160,14 +164,55 @@ pub fn deselect(self: *TextInput) void {
 	self.selectionStart = null;
 }
 
+fn cursorPosFromObfuscated(self: *const TextInput) u32 {
+	var iter: std.unicode.Utf8Iterator = .{.bytes = self.currentString.items, .i = 0};
+	return @intCast(iter.peek(self.cursor.?/obfuscationChar.len).len);
+}
+
+fn cursorPosToObfuscated(self: *const TextInput) u32 {
+	const newCursor = (std.unicode.utf8CountCodepoints(self.currentString.items[0..self.cursor.?]) catch 0)*obfuscationChar.len;
+	return @intCast(newCursor);
+}
+
+fn getBufferLen(self: *const TextInput) usize {
+	return if(self.obfuscated) self.textBuffer.glyphs.len*obfuscationChar.len else self.currentString.items.len;
+}
+
+pub fn obfuscate(self: *TextInput) void {
+	if(self.obfuscated) return;
+	if(self.cursor != null) {
+		self.cursor = self.cursorPosToObfuscated();
+	}
+	self.selectionStart = null;
+	self.obfuscated = true;
+	self.reloadText();
+}
+
+pub fn deobfuscate(self: *TextInput) void {
+	if(!self.obfuscated) return;
+	if(self.cursor != null) {
+		self.cursor = self.cursorPosFromObfuscated();
+	}
+	self.selectionStart = null;
+	self.obfuscated = false;
+	self.reloadText();
+}
+
 fn reloadText(self: *TextInput) void {
+	const displayText = if(self.obfuscated) blk: {
+		const len = (std.unicode.utf8CountCodepoints(self.currentString.items) catch 0)*obfuscationChar.len;
+		break :blk if(len > obfuscatedStringBuffer.len) &.{} else obfuscatedStringBuffer[0..len];
+	} else self.currentString.items;
+
 	self.textBuffer.deinit();
-	self.textBuffer = TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
+	self.textBuffer = TextBuffer.init(main.globalAllocator, displayText, .{}, true, .left);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
 }
 
 fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if(mods.control) {
+	if(self.obfuscated) {
+		self.cursor.? -= @min(self.cursor.?, obfuscationChar.len);
+	} else if(mods.control) {
 		const text = self.currentString.items;
 		if(self.cursor.? == 0) return;
 		self.cursor.? -= 1;
@@ -213,7 +258,10 @@ pub fn left(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn moveCursorRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if(self.cursor.? < self.currentString.items.len) {
+	if(self.obfuscated) {
+		const len = self.textBuffer.glyphs.len*obfuscationChar.len;
+		self.cursor.? += if(self.cursor.? < len) obfuscationChar.len else 0;
+	} else if(self.cursor.? < self.currentString.items.len) {
 		if(mods.control) {
 			const text = self.currentString.items;
 			// Find start of next "word":
@@ -255,8 +303,8 @@ pub fn right(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn moveCursorVertically(self: *TextInput, relativeLines: f32) enum {changed, same} {
-	const newCursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.currentString.items.len);
-	self.cursor = newCursor;
+	const newCursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.getBufferLen());
+	defer self.cursor = newCursor;
 	if(self.cursor != newCursor) {
 		return .changed;
 	}
@@ -312,7 +360,7 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn moveCursorToStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if(mods.control) {
+	if(mods.control or self.obfuscated) {
 		self.cursor.? = 0;
 	} else {
 		self.cursor.? = @intCast(if(std.mem.lastIndexOf(u8, self.currentString.items[0..self.cursor.?], "\n")) |nextPos| nextPos + 1 else 0);
@@ -342,7 +390,9 @@ pub fn gotoStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn moveCursorToEnd(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if(mods.control) {
+	if(self.obfuscated) {
+		self.cursor.? = @intCast(self.textBuffer.glyphs.len*obfuscationChar.len);
+	} else if(mods.control) {
 		self.cursor.? = @intCast(self.currentString.items.len);
 	} else {
 		self.cursor.? += @intCast(std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len - self.cursor.?);
@@ -376,7 +426,15 @@ fn deleteSelection(self: *TextInput) void {
 		const start = @min(selectionStart, self.cursor.?);
 		const end = @max(selectionStart, self.cursor.?);
 
-		self.currentString.replaceRange(start, end - start, &[0]u8{});
+		if(self.obfuscated) {
+			var iter: std.unicode.Utf8Iterator = .{.bytes = self.currentString.items, .i = 0};
+			const realStart = iter.peek(start/obfuscationChar.len).len;
+			const realEnd = iter.peek(end/obfuscationChar.len).len;
+			self.currentString.replaceRange(realStart, realEnd - realStart, &[0]u8{});
+		} else {
+			self.currentString.replaceRange(start, end - start, &[0]u8{});
+		}
+
 		self.cursor.? = start;
 		self.selectionStart = null;
 		self.ensureCursorVisibility();
@@ -410,9 +468,10 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 		self.deleteSelection();
 		var buf: [4]u8 = undefined;
 		const utf8 = buf[0 .. std.unicode.utf8Encode(character, &buf) catch return];
-		self.currentString.insertSlice(cursor.*, utf8);
+		const pos = if(self.obfuscated) self.cursorPosFromObfuscated() else cursor.*;
+		self.currentString.insertSlice(pos, utf8);
 		self.reloadText();
-		cursor.* += @intCast(utf8.len);
+		cursor.* += if(self.obfuscated) obfuscationChar.len else @intCast(utf8.len);
 		self.ensureCursorVisibility();
 	}
 }
@@ -421,14 +480,17 @@ pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
 	self.clear();
 	self.currentString.insertSlice(0, utf8EncodedString);
 	self.reloadText();
-	if(self.cursor != null) self.cursor = @intCast(utf8EncodedString.len);
+	if(self.cursor != null) {
+		const len = if(self.obfuscated) self.textBuffer.glyphs.len*obfuscationChar.len else utf8EncodedString.len;
+		self.cursor = @intCast(len);
+	}
 	self.ensureCursorVisibility();
 }
 
 pub fn selectAll(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		self.selectionStart = 0;
-		self.cursor = @intCast(self.currentString.items.len);
+		self.cursor = @intCast(self.getBufferLen());
 		self.ensureCursorVisibility();
 	}
 }
@@ -439,7 +501,15 @@ pub fn copy(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 			if(self.selectionStart) |selectionStart| {
 				const start = @min(cursor, selectionStart);
 				const end = @max(cursor, selectionStart);
-				main.Window.setClipboardString(self.currentString.items[start..end]);
+				if(self.obfuscated) {
+					var iter: std.unicode.Utf8Iterator = .{.bytes = self.currentString.items, .i = 0};
+					const realStart = iter.peek(start/obfuscationChar.len).len;
+					iter.i = realStart;
+					const realEnd = realStart + iter.peek(end/obfuscationChar.len - start/obfuscationChar.len).len;
+					main.Window.setClipboardString(self.currentString.items[realStart..realEnd]);
+				} else {
+					main.Window.setClipboardString(self.currentString.items[start..end]);
+				}
 			}
 		}
 		self.ensureCursorVisibility();
@@ -450,8 +520,12 @@ pub fn paste(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		const string = main.Window.getClipboardString();
 		self.deleteSelection();
-		self.currentString.insertSlice(self.cursor.?, string);
-		self.cursor.? += @intCast(string.len);
+		const pos = if(self.obfuscated) self.cursorPosFromObfuscated() else self.cursor.?;
+		self.currentString.insertSlice(pos, string);
+		self.cursor.? += if(self.obfuscated) blk: {
+			const len = (std.unicode.utf8CountCodepoints(string) catch 0)*obfuscationChar.len;
+			break :blk if(len > obfuscatedStringBuffer.len) 0 else @intCast(len);
+		} else @intCast(string.len);
 		self.reloadText();
 		self.ensureCursorVisibility();
 	}
@@ -512,7 +586,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	}
 	self.textBuffer.render(textPos[0], textPos[1], fontSize);
 	if(self.pressed) {
-		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
+		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.getBufferLen());
 	}
 	if(self.cursor) |cursor| {
 		const cursorPos = textPos + self.textBuffer.indexToCursorPos(cursor);
