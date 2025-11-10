@@ -433,6 +433,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if(online) {
 			result.makeOnline();
 		}
+		if(main.settings.launchConfig.headlessServer) {
+			result.allowNewConnections.store(true, .monotonic);
+		}
 		return result;
 	}
 
@@ -668,6 +671,10 @@ pub const Protocols = struct {
 						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
+						if(!std.unicode.utf8ValidateSlice(name)) {
+							std.log.err("Received player name with invalid UTF-8 characters.", .{});
+							return error.Invalid;
+						}
 						if(name.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(name) > 50) {
 							std.log.err("Player has too long name with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(name), name.len});
 							return error.Invalid;
@@ -745,7 +752,13 @@ pub const Protocols = struct {
 			conn.send(.fast, id, data);
 
 			conn.mutex.lock();
-			conn.handShakeWaiting.wait(&conn.mutex);
+			while(true) {
+				conn.handShakeWaiting.timedWait(&conn.mutex, 16_000_000) catch {
+					main.heap.GarbageCollection.syncPoint();
+					continue;
+				};
+				break;
+			}
 			if(conn.connectionState.load(.monotonic) == .disconnectDesired) return error.DisconnectedByServer;
 			conn.mutex.unlock();
 		}
@@ -1183,6 +1196,10 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			const msg = reader.remaining;
+			if(!std.unicode.utf8ValidateSlice(msg)) {
+				std.log.err("Received chat message with invalid UTF-8 characters.", .{});
+				return error.Invalid;
+			}
 			if(conn.user) |user| {
 				if(msg.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(msg) > 1000) {
 					std.log.err("Received too long chat message with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(msg), msg.len});
