@@ -690,9 +690,9 @@ pub const Command = struct { // MARK: Command
 					delete.inv.inv.update();
 				},
 				.useDurability => |durability| {
-					durability.inv.ref().item.?.tool.durability -|= durability.durability;
-					if(durability.inv.ref().item.?.tool.durability == 0) {
-						durability.inv.ref().item = null;
+					durability.inv.ref().item.tool.durability -|= durability.durability;
+					if(durability.inv.ref().item.tool.durability == 0) {
+						durability.inv.ref().item = .null;
 						durability.inv.ref().amount = 0;
 					}
 
@@ -870,12 +870,12 @@ pub const Command = struct { // MARK: Command
 					info.dest.ref().amount -= info.amount;
 					if(info.dest.ref().amount == 0) {
 						info.dest.ref().item.deinit();
-						info.dest.ref().item = null;
+						info.dest.ref().item = .null;
 					}
 					info.dest.inv.update();
 				},
 				.useDurability => |info| {
-					std.debug.assert(info.source.ref().item == null or std.meta.eql(info.source.ref().item, info.item));
+					std.debug.assert(info.source.ref().item == .null or std.meta.eql(info.source.ref().item, info.item));
 					info.source.ref().item = info.item;
 					info.item.tool.durability = info.previousDurability;
 					info.source.inv.update();
@@ -1486,7 +1486,7 @@ pub const Command = struct { // MARK: Command
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if(side == .server) {
 				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
@@ -1650,7 +1650,7 @@ pub const Command = struct { // MARK: Command
 					selectedEmptySlot = @intCast(destSlot);
 				}
 				if(std.meta.eql(destStack.item, sourceStack.item)) {
-					const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
+					const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 					if(amount == 0) continue;
 					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},

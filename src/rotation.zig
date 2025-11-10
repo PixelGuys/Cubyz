@@ -103,7 +103,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isTool = item.item == .tool;
 				if(isTool) {
-					damage = item.item.?.tool.getBlockDamage(oldBlock);
+					damage = item.item.tool.getBlockDamage(oldBlock);
 				}
 				damage -= oldBlock.blockResistance();
 				if(damage > 0) {
@@ -112,11 +112,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 					} else return .yes;
 				}
 			} else {
-				if(item.item) |_item| {
-					if(_item == .baseItem) {
-						if(_item.baseItem.block() != null and _item.baseItem.block().? == newBlock.typ) {
-							return .{.yes_costsItems = 1};
-						}
+				if(item.item == .baseItem) {
+					if(item.item.baseItem.block() != null and item.item.baseItem.block().? == newBlock.typ) {
+						return .{.yes_costsItems = 1};
 					}
 				}
 				if(newBlock.typ == 0) {
