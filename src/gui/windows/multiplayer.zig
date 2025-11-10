@@ -101,11 +101,7 @@ fn isValidAddress(str: []const u8) bool {
 		_ = std.fmt.parseUnsigned(u16, port, 10) catch return false;
 	}
 
-	if(std.net.isValidHostName(address)) return true;
-
-	// check if this is a valid IP address
-	_ = std.net.Address.parseIp(address, 0) catch return false;
-	return true;
+	return std.net.isValidHostName(address);
 }
 
 pub fn onOpen() void {
