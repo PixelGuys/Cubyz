@@ -1,5 +1,5 @@
 .{
-	.minHeight = 50,
+	.minHeight = 54,
 	.maxHeight = 58,
 	.minRadius = 16,
 	.maxRadius = 80,
@@ -7,7 +7,7 @@
 	.keepOriginalTerrain = 0.5,
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:prairie/base/flat",
+			.id = "cubyz:prairie/base",
 			.chance = 5,
 		},
 	},

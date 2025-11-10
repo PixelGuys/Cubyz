@@ -15,7 +15,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:prairie/base/flat",
+			.id = "cubyz:prairie/base",
 			.chance = 5,
 		},
 	},
