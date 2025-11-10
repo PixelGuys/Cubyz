@@ -126,7 +126,7 @@ pub fn model(block: Block) ModelIndex {
 
 pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, _: ?Neighbor, currentData: *Block, neighbor: Block, _: bool) bool {
 	if(neighbor.mode() == currentData.mode()) parallelPlacing: {
-		const bit = closestRay(.bit, neighbor, null, relativePlayerPos - @as(Vec3f, @floatFromInt(relativeDir)), playerDir);
+		const bit = closestRay(.bit, neighbor, .null, relativePlayerPos - @as(Vec3f, @floatFromInt(relativeDir)), playerDir);
 		const bitData: CarpetData = @bitCast(@as(u6, @truncate(bit)));
 		if((bitData.negX or bitData.posX) and relativeDir[0] != 0) break :parallelPlacing;
 		if((bitData.negY or bitData.posY) and relativeDir[1] != 0) break :parallelPlacing;

@@ -308,7 +308,7 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 	if(oldBlock.data == newBlock.data) return .no;
-	if(item.item != null and item.item.? == .tool) {
+	if(item.item == .tool) {
 		return .{.yes_costsDurability = 1};
 	}
 	return .no;

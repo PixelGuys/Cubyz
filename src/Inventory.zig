@@ -319,7 +319,7 @@ pub const Sync = struct { // MARK: Sync
 			}
 			if(source != null and command.payload == .open) { // Send initial items
 				for(command.payload.open.inv._items, 0..) |stack, slot| {
-					if(stack.item != null) {
+					if(stack.item != .null) {
 						const syncOp = Command.SyncOperation{.create = .{
 							.inv = .{.inv = command.payload.open.inv, .slot = @intCast(slot)},
 							.amount = stack.amount,
@@ -463,7 +463,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn tryCollectingToPlayerInventory(user: *main.server.User, itemStack: *ItemStack) void {
-			if(itemStack.item == null) return;
+			if(itemStack.item == .null) return;
 			mutex.lock();
 			defer mutex.unlock();
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
@@ -790,9 +790,7 @@ pub const Command = struct { // MARK: Command
 				.create => |create| {
 					create.inv.write(&writer);
 					writer.writeInt(u16, create.amount);
-					if(create.item) |item| {
-						item.toBytes(&writer);
-					}
+					create.item.toBytes(&writer);
 				},
 				.delete => |delete| {
 					delete.inv.write(&writer);
@@ -844,7 +842,7 @@ pub const Command = struct { // MARK: Command
 			switch(step) {
 				.move => |info| {
 					if(info.amount == 0) continue;
-					std.debug.assert(std.meta.eql(info.source.ref().item, info.dest.ref().item) or info.source.ref().item == null);
+					std.debug.assert(std.meta.eql(info.source.ref().item, info.dest.ref().item) or info.source.ref().item == .null);
 					info.source.ref().item = info.dest.ref().item;
 					info.source.ref().amount += info.amount;
 					info.dest.ref().amount -= info.amount;
@@ -897,7 +895,7 @@ pub const Command = struct { // MARK: Command
 			switch(step) {
 				.move, .swap, .create, .addHealth, .addEnergy => {},
 				.delete => |info| {
-					info.item.?.deinit();
+					info.item.deinit();
 				},
 				.useDurability => |info| {
 					if(info.previousDurability <= info.durability) {
@@ -940,7 +938,7 @@ pub const Command = struct { // MARK: Command
 			self.syncOperations.append(allocator, .{.create = .{
 				.inv = inv,
 				.amount = amount,
-				.item = if(inv.ref().amount == 0) item else null,
+				.item = if(inv.ref().amount == 0) item else .null,
 			}});
 		}
 		std.debug.assert(inv.ref().item == null or std.meta.eql(inv.ref().item.?, item.?));
@@ -959,7 +957,7 @@ pub const Command = struct { // MARK: Command
 		}
 		inv.ref().amount -= amount;
 		if(inv.ref().amount == 0) {
-			inv.ref().item = null;
+			inv.ref().item = .null;
 		}
 	}
 
@@ -1007,7 +1005,7 @@ pub const Command = struct { // MARK: Command
 				info.dest.inv.update();
 			},
 			.useDurability => |*info| {
-				info.item = info.source.ref().item.?;
+				info.item = info.source.ref().item;
 				info.previousDurability = info.item.tool.durability;
 				self.executeDurabilityUseOperation(allocator, side, info.source, info.durability);
 				info.source.inv.update();
@@ -1067,11 +1065,11 @@ pub const Command = struct { // MARK: Command
 	}
 
 	fn canPutIntoWorkbench(source: InventoryAndSlot) bool {
-		if(source.ref().item) |item| {
-			if(item != .baseItem) return false;
-			return item.baseItem.material() != null;
-		}
-		return true;
+		return switch(source.ref().item) {
+			.null => true,
+			.baseItem => |item| item.material() != null,
+			.tool => false,
+		};
 	}
 
 	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: Inventory, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
