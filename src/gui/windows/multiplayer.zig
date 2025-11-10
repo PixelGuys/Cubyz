@@ -19,6 +19,7 @@ pub var window = GuiWindow{
 
 var ipAddressLabel: *Label = undefined;
 var ipAddressEntry: *TextInput = undefined;
+var joinButton: *Button = undefined;
 
 const padding: f32 = 8;
 
@@ -85,6 +86,24 @@ fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
+fn isValidAddress(str: []const u8) bool {
+	// min doamin name length is 2
+	if(str.len < 2) return false;
+
+	// check if port is valid
+	var iter = std.mem.splitScalar(u8, str, ':');
+	const address = iter.first();
+	const portPart = iter.rest();
+	if(str.len > address.len) {
+		if(portPart.len == 0) return false;
+
+		const port = if(portPart[0] == '?') portPart[1..] else portPart;
+		_ = std.fmt.parseUnsigned(u16, port, 10) catch return false;
+	}
+
+	return std.net.isValidHostName(address);
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
@@ -94,7 +113,8 @@ pub fn onOpen() void {
 	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}, .{});
 	list.add(ipAddressEntry);
-	list.add(Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
+	joinButton = Button.initText(.{0, 0}, 100, "Join", .{.callback = &join});
+	list.add(joinButton);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -131,4 +151,6 @@ pub fn update() void {
 		gotIpAddress.store(false, .monotonic);
 		ipAddressLabel.updateText(ipAddress);
 	}
+
+	joinButton.disabled = !isValidAddress(ipAddressEntry.currentString.items);
 }
