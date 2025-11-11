@@ -23,7 +23,7 @@ block: main.blocks.Block,
 height0: u31,
 deltaHeight: u31,
 
-pub fn loadModel(parameters: ZonElement) *SimpleVegetation {
+pub fn loadModel(parameters: ZonElement) ?*SimpleVegetation {
 	const self = main.worldArena.create(SimpleVegetation);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
