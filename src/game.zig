@@ -554,6 +554,14 @@ pub const Player = struct { // MARK: Player
 		Player.jumpCoyote = 0;
 	}
 
+	pub fn dropFromHand(mods: main.Window.Key.Modifiers) void {
+		if(mods.shift) {
+			inventory.dropStack(selectedSlot);
+		} else {
+			inventory.dropOne(selectedSlot);
+		}
+	}
+
 	pub fn breakBlock(deltaTime: f64) void {
 		inventory.breakBlock(selectedSlot, deltaTime);
 	}
