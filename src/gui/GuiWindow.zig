@@ -52,7 +52,7 @@ pub const TitleBarButton = struct {
 fn closeAction(self: *GuiWindow) void {
 	gui.closeWindowFromRef(self);
 }
-pub const closeButton = TitleBarButton{
+pub const closeButton: TitleBarButton = .{
 	.callback = &closeAction,
 	.texture = &closeTexture,
 };
@@ -99,7 +99,7 @@ relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 id: []const u8 = undefined,
 rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
-titleBarButtons: []const TitleBarButton = &.{closeButton, zoomOutButton, zoomInButton},
+titleBarButtons: []const TitleBarButton = &.{zoomInButton, zoomOutButton, closeButton},
 hasBackground: bool = true,
 hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a button, to for example leave the inventory open while playing.
 closeIfMouseIsGrabbed: bool = false,
@@ -205,11 +205,11 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const mousePositionRelative = mousePosition - self.pos;
 		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
-		const mousePositionIndex: usize = @intFromFloat(@divFloor(self.size[0] - mousePositionRelative[0], iconWidth*self.scale));
-		const grabPositionIndex: usize = @intFromFloat(@divFloor(self.size[0] - grabPositionRelative[0], iconWidth*self.scale));
+		const mousePositionIndex: usize = @as(usize, @intFromFloat(@divFloor(self.size[0] - mousePositionRelative[0], iconWidth*self.scale)));
+		const grabPositionIndex: usize = @as(usize, @intFromFloat(@divFloor(self.size[0] - grabPositionRelative[0], iconWidth*self.scale)));
 
 		if(mousePositionIndex == grabPositionIndex and mousePositionIndex < self.titleBarButtons.len) {
-			self.titleBarButtons[mousePositionIndex].callback(self);
+			self.titleBarButtons[self.titleBarButtons.len - 1 - mousePositionIndex].callback(self);
 		}
 	}
 	grabPosition = null;
@@ -487,10 +487,10 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 
 pub fn drawIcons(self: *const GuiWindow) void {
 	draw.setColor(0xffffffff);
-	var x = self.size[0]/self.scale;
+	var x = self.size[0]/self.scale - @as(f32, @floatFromInt(iconWidth*(self.titleBarButtons.len)));
 	for(self.titleBarButtons) |button| {
-		x -= iconWidth;
 		button.texture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+		x += iconWidth;
 	}
 }
 
