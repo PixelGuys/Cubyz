@@ -18,7 +18,6 @@ const Vec3f = vec.Vec3f;
 const terrain = server.terrain;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const DelayedEventQueue = main.DelayedEventQueue;
 const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
@@ -544,7 +543,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	biomeChecksum: i64 = 0,
 
 	//TODO: do this per chunk not world.
-	delayedEventQueue: main.utils.CircularBufferQueue(DelayedEventQueue.Event),
+	delayedUpdateQueue: main.utils.CircularBufferQueue(Vec3i),
 
 	const ChunkUpdateRequest = struct {
 		ch: *ServerChunk,
@@ -567,7 +566,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
-			.delayedEventQueue = .init(main.globalAllocator, 256*256),
+			.delayedUpdateQueue = .init(main.globalAllocator, 256),
 		};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
@@ -642,7 +641,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.decreaseRefCount();
 		}
 		self.regionUpdateQueue.deinit();
-		self.delayedEventQueue.deinit();
+		self.delayedUpdateQueue.deinit();
 		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
@@ -1061,12 +1060,25 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		ChunkManager.mutex.unlock();
 
 		//even queue
-		while(true){ 
-			if(self.delayedEventQueue.popFront())|event|{
-				if(!event.run())
-					continue;
-			}
-			break;
+		while(true){
+ 
+			if(self.delayedUpdateQueue.popFront())|event|{
+				var ch = self.getOrGenerateChunkAndIncreaseRefCount(chunk.ChunkPosition.initFromWorldPos(event, 1));
+				defer ch.decreaseRefCount();
+				
+				ch.mutex.lock();
+				const block = ch.getBlock(event[0] & chunk.chunkMask, event[1] & chunk.chunkMask, event[2] & chunk.chunkMask);
+				ch.mutex.unlock();
+				
+				if(block.onUpdate().run(.{
+					.block = block,
+					.chunk = ch,
+					.x = event[0] & chunk.chunkMask,
+					.y = event[1] & chunk.chunkMask,
+					.z = event[2] & chunk.chunkMask
+				}) == .handled)
+					break;
+			}else break;
 		}
 		// tick blocks
 		for(currentChunks.items) |entityChunk| {
@@ -1186,7 +1198,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	/// Returns the actual block on failure
-	pub fn cmpxchgBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
+	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
 		main.utils.assertLocked(&main.items.Inventory.Sync.ServerSide.mutex); // Block entities with inventories need this mutex to be locked
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
@@ -1249,12 +1261,29 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		if(oldBlock)|old|{
+
+			//trigger updates:
+			const updateRange = 1;
+			for (0..updateRange*2+1) |offsetX| {
+				for (0..updateRange*2+1) |offsetY| {
+					for (0..updateRange*2+1) |offsetZ| {
+						const px = wx+@as(i32,@intCast(offsetX))-updateRange;
+						const py = wy+@as(i32,@intCast(offsetY))-updateRange;
+						const pz = wz+@as(i32,@intCast(offsetZ))-updateRange;
+						if(px != wx or py != wy or wz != pz){
+							self.delayedUpdateQueue.pushBack(Vec3i{ px, py, pz, });
+						}
+					}
+				}
+			}
+
+			//onBreak event
 			_ = old.onBreak().run(.{
 				.block=old,
 				.chunk=baseChunk,
-				.x = wx,
-				.y = wy,
-				.z = wz
+				.x = wx & chunk.chunkMask,
+				.y = wy & chunk.chunkMask,
+				.z = wz & chunk.chunkMask
 			}	);
 		}
 		return null;

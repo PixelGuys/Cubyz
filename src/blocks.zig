@@ -72,6 +72,7 @@ var _light: [maxBlockCount]u32 = undefined;
 //is this block decayable?
 var _decayable:       [maxBlockCount]bool                = undefined;
 var _onBreak:         [maxBlockCount]ServerBlockCallback = undefined;
+var _onUpdate:        [maxBlockCount]ServerBlockCallback = undefined;
 var _decayProhibitor: [maxBlockCount]bool                = undefined;
 
 /// How much light this block absorbs if it is transparent
@@ -125,6 +126,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_onBreak[size] = blk: {
 		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
 			std.log.err("Failed to load onBreak event for block {s}", .{id});
+			break :blk .noop;
+		};
+	};
+	_onUpdate[size] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onUpdate event for block {s}", .{id});
 			break :blk .noop;
 		};
 	};
@@ -409,6 +416,10 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn onBreak(self: Block) ServerBlockCallback {
 		return _onBreak[self.typ];
 	}
+	pub inline fn onUpdate(self: Block) ServerBlockCallback {
+		return _onUpdate[self.typ];
+	}
+	
 
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];

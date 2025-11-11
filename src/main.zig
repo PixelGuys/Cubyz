@@ -30,7 +30,6 @@ pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
-pub const DelayedEventQueue = @import("DelayedEventQueue/delayedEventQueue.zig");
 
 pub const Window = @import("graphics/Window.zig");
 
