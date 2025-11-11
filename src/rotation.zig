@@ -36,99 +36,99 @@ pub const Degrees = enum(u2) {
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
 pub const RotationMode = struct { // MARK: RotationMode
 	pub const DefaultFunctions = struct {
-			pub fn model(block: Block) ModelIndex {
-				return blocks.meshes.modelIndexStart(block);
-			}
-			pub fn rotateZ(data: u16, _: Degrees) u16 {
-				return data;
-			}
-			pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
-				return blockPlacing;
-			}
-			pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-				return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
-			}
-			pub fn updateData(_: *Block, _: Neighbor, _: Block) bool {
-				return false;
-			}
-			pub fn modifyBlock(_: *Block, _: u16) bool {
-				return false;
-			}
-			pub fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-				return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
-			}
-			pub fn rayModelIntersection(modelIndex: ModelIndex, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
-				const invDir = @as(Vec3f, @splat(1))/playerDir;
-				const modelData = modelIndex.model();
-				const min: Vec3f = modelData.min;
-				const max: Vec3f = modelData.max;
-				const t1 = (min - relativePlayerPos)*invDir;
-				const t2 = (max - relativePlayerPos)*invDir;
-				const boxTMin = @reduce(.Max, @min(t1, t2));
-				const boxTMax = @reduce(.Min, @max(t1, t2));
-				if(boxTMin <= boxTMax and boxTMax > 0) {
-					var face: Neighbor = undefined;
-					if(boxTMin == t1[0]) {
-						face = Neighbor.dirNegX;
-					} else if(boxTMin == t1[1]) {
-						face = Neighbor.dirNegY;
-					} else if(boxTMin == t1[2]) {
-						face = Neighbor.dirDown;
-					} else if(boxTMin == t2[0]) {
-						face = Neighbor.dirPosX;
-					} else if(boxTMin == t2[1]) {
-						face = Neighbor.dirPosY;
-					} else if(boxTMin == t2[2]) {
-						face = Neighbor.dirUp;
-					} else {
-						unreachable;
-					}
-					return .{
-						.distance = boxTMin,
-						.min = min,
-						.max = max,
-						.face = face,
-					};
-				}
-				return null;
-			}
-			pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
-				currentData.* = .{.typ = 0, .data = 0};
-			}
-			pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-				shouldDropSourceBlockOnSuccess.* = true;
-				if(oldBlock == newBlock) return .no;
-				if(oldBlock.typ == newBlock.typ) return .yes;
-				if(!oldBlock.replacable()) {
-					var damage: f32 = main.game.Player.defaultBlockDamage;
-					const isTool = item.item != null and item.item.? == .tool;
-					if(isTool) {
-						damage = item.item.?.tool.getBlockDamage(oldBlock);
-					}
-					damage -= oldBlock.blockResistance();
-					if(damage > 0) {
-						if(isTool and item.item.?.tool.isEffectiveOn(oldBlock)) {
-							return .{.yes_costsDurability = 1};
-						} else return .yes;
-					}
+		pub fn model(block: Block) ModelIndex {
+			return blocks.meshes.modelIndexStart(block);
+		}
+		pub fn rotateZ(data: u16, _: Degrees) u16 {
+			return data;
+		}
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
+			return blockPlacing;
+		}
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
+			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
+		}
+		pub fn updateData(_: *Block, _: Neighbor, _: Block) bool {
+			return false;
+		}
+		pub fn modifyBlock(_: *Block, _: u16) bool {
+			return false;
+		}
+		pub fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
+		}
+		pub fn rayModelIntersection(modelIndex: ModelIndex, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
+			const invDir = @as(Vec3f, @splat(1))/playerDir;
+			const modelData = modelIndex.model();
+			const min: Vec3f = modelData.min;
+			const max: Vec3f = modelData.max;
+			const t1 = (min - relativePlayerPos)*invDir;
+			const t2 = (max - relativePlayerPos)*invDir;
+			const boxTMin = @reduce(.Max, @min(t1, t2));
+			const boxTMax = @reduce(.Min, @max(t1, t2));
+			if(boxTMin <= boxTMax and boxTMax > 0) {
+				var face: Neighbor = undefined;
+				if(boxTMin == t1[0]) {
+					face = Neighbor.dirNegX;
+				} else if(boxTMin == t1[1]) {
+					face = Neighbor.dirNegY;
+				} else if(boxTMin == t1[2]) {
+					face = Neighbor.dirDown;
+				} else if(boxTMin == t2[0]) {
+					face = Neighbor.dirPosX;
+				} else if(boxTMin == t2[1]) {
+					face = Neighbor.dirPosY;
+				} else if(boxTMin == t2[2]) {
+					face = Neighbor.dirUp;
 				} else {
-					if(item.item) |_item| {
-						if(_item == .baseItem) {
-							if(_item.baseItem.block() != null and _item.baseItem.block().? == newBlock.typ) {
-								return .{.yes_costsItems = 1};
-							}
+					unreachable;
+				}
+				return .{
+					.distance = boxTMin,
+					.min = min,
+					.max = max,
+					.face = face,
+				};
+			}
+			return null;
+		}
+		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+			currentData.* = .{.typ = 0, .data = 0};
+		}
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			shouldDropSourceBlockOnSuccess.* = true;
+			if(oldBlock == newBlock) return .no;
+			if(oldBlock.typ == newBlock.typ) return .yes;
+			if(!oldBlock.replacable()) {
+				var damage: f32 = main.game.Player.defaultBlockDamage;
+				const isTool = item.item != null and item.item.? == .tool;
+				if(isTool) {
+					damage = item.item.?.tool.getBlockDamage(oldBlock);
+				}
+				damage -= oldBlock.blockResistance();
+				if(damage > 0) {
+					if(isTool and item.item.?.tool.isEffectiveOn(oldBlock)) {
+						return .{.yes_costsDurability = 1};
+					} else return .yes;
+				}
+			} else {
+				if(item.item) |_item| {
+					if(_item == .baseItem) {
+						if(_item.baseItem.block() != null and _item.baseItem.block().? == newBlock.typ) {
+							return .{.yes_costsItems = 1};
 						}
 					}
-					if(newBlock.typ == 0) {
-						return .yes;
-					}
 				}
-				return .no;
+				if(newBlock.typ == 0) {
+					return .yes;
+				}
 			}
-			pub fn getBlockTags() []const Tag {
-				return &.{};
-			}
+			return .no;
+		}
+		pub fn getBlockTags() []const Tag {
+			return &.{};
+		}
 	};
 
 	pub const CanBeChangedInto = union(enum) {
