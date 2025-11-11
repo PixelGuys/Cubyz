@@ -23,7 +23,7 @@ pub var window = GuiWindow{
 	.showTitleBar = false,
 	.hasBackground = false,
 	.hideIfMouseIsGrabbed = false,
-	.titleBarButtons = &.{.zoomOut, .zoomIn},
+	.titleBarButtons = &.{GuiWindow.zoomOutButton, GuiWindow.zoomInButton},
 	.scale = 0.75,
 };
 

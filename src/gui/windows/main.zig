@@ -11,7 +11,7 @@ const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
-	.titleBarButtons = &.{.zoomOut, .zoomIn},
+	.titleBarButtons = &.{GuiWindow.zoomOutButton, GuiWindow.zoomInButton},
 };
 
 const padding: f32 = 8;

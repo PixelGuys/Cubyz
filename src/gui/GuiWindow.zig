@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("../main.zig");
 const utils = main.utils;
 const graphics = main.graphics;
 const draw = graphics.draw;
@@ -44,10 +44,46 @@ const RelativePosition = union(enum) {
 	},
 };
 
-const TitleBarButton = enum(u8) {
-	close = 0,
-	zoomIn = 1,
-	zoomOut = 2,
+pub const TitleBarButton = struct {
+	callback: *const fn(*GuiWindow) void,
+	texture: *Texture,
+};
+
+fn closeAction(self: *GuiWindow) void {
+	gui.closeWindowFromRef(self);
+}
+pub const closeButton = TitleBarButton{
+	.callback = &closeAction,
+	.texture = &closeTexture,
+};
+
+fn zoomOutAction(self: *GuiWindow) void {
+	if(self.scale > 1) {
+		self.scale -= 0.5;
+	} else {
+		self.scale -= 0.25;
+	}
+	self.scale = @max(self.scale, 0.25);
+	gui.updateWindowPositions();
+	gui.save();
+}
+pub const zoomOutButton: TitleBarButton = .{
+	.callback = &zoomOutAction,
+	.texture = &zoomOutTexture,
+};
+
+fn zoomInAction(self: *GuiWindow) void {
+	if(self.scale >= 1) {
+		self.scale += 0.5;
+	} else {
+		self.scale += 0.25;
+	}
+	gui.updateWindowPositions();
+	gui.save();
+}
+pub const zoomInButton: TitleBarButton = .{
+	.callback = &zoomInAction,
+	.texture = &zoomInTexture,
 };
 
 const snapDistance = 3;
@@ -63,7 +99,7 @@ relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 id: []const u8 = undefined,
 rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
-titleBarButtons: []const TitleBarButton = &.{.close, .zoomOut, .zoomIn},
+titleBarButtons: []const TitleBarButton = &.{closeButton, zoomOutButton, zoomInButton},
 hasBackground: bool = true,
 hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a button, to for example leave the inventory open while playing.
 closeIfMouseIsGrabbed: bool = false,
@@ -164,31 +200,6 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn buttonAction(self: *GuiWindow, button: TitleBarButton) void {
-	if(button == .close) {
-		gui.closeWindowFromRef(self);
-	}
-	if(button == .zoomOut) {
-		if(self.scale > 1) {
-			self.scale -= 0.5;
-		} else {
-			self.scale -= 0.25;
-		}
-		self.scale = @max(self.scale, 0.25);
-		gui.updateWindowPositions();
-		gui.save();
-	}
-	if(button == .zoomIn) {
-		if(self.scale >= 1) {
-			self.scale += 0.5;
-		} else {
-			self.scale += 0.25;
-		}
-		gui.updateWindowPositions();
-		gui.save();
-	}
-}
-
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	if(grabPosition != null and grabbedWindow == self and (self.showTitleBar or gui.reorderWindows)) {
 		const mousePositionRelative = mousePosition - self.pos;
@@ -198,7 +209,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const grabPositionIndex: usize = @intFromFloat(@divFloor(self.size[0] - grabPositionRelative[0], iconWidth*self.scale));
 
 		if(mousePositionIndex == grabPositionIndex and mousePositionIndex < self.titleBarButtons.len) {
-			self.buttonAction(self.titleBarButtons[mousePositionIndex]);
+			self.titleBarButtons[mousePositionIndex].callback(self);
 		}
 	}
 	grabPosition = null;
@@ -479,12 +490,7 @@ pub fn drawIcons(self: *const GuiWindow) void {
 	var x = self.size[0]/self.scale;
 	for(self.titleBarButtons) |button| {
 		x -= iconWidth;
-		const buttonTexture = switch(button) {
-			.close => closeTexture,
-			.zoomOut => zoomOutTexture,
-			.zoomIn => zoomInTexture,
-		};
-		buttonTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+		button.texture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 	}
 }
 

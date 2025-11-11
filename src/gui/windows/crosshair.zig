@@ -18,7 +18,7 @@ pub var window = GuiWindow{
 	.hasBackground = false,
 	.isHud = true,
 	.hideIfMouseIsGrabbed = false,
-	.titleBarButtons = &.{.zoomOut, .zoomIn},
+	.titleBarButtons = &.{GuiWindow.zoomOutButton, GuiWindow.zoomInButton},
 };
 
 var texture: Texture = undefined;

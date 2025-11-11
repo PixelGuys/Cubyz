@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("../../main.zig");
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 
@@ -41,10 +41,10 @@ pub fn onOpen() void {
 	const width = 420;
 	if(settings.playerName.len == 0) {
 		list.add(Label.init(.{0, 0}, width, "Please enter your name!", .center));
-		window.titleBarButtons = &.{.zoomOut, .zoomIn};
+		window.titleBarButtons = &.{GuiWindow.zoomOutButton, GuiWindow.zoomInButton};
 	} else {
 		list.add(Label.init(.{0, 0}, width, "#ff0000Warning: #ffffffYou lose access to your inventory data when changing the name!", .center));
-		window.titleBarButtons = &.{.close, .zoomOut, .zoomIn};
+		window.titleBarButtons = &.{GuiWindow.closeButton, GuiWindow.zoomOutButton, GuiWindow.zoomInButton};
 	}
 	list.add(Label.init(.{0, 0}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
 	list.add(Label.init(.{0, 0}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\_\\___underlined__\\_\\_ \\~\\~~~strike-through~~\\~\\~", .center));
