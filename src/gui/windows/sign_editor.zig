@@ -44,7 +44,7 @@ fn apply(_: usize) void {
 		return;
 	}
 
-	main.block_entity.BlockEntityTypeList.@"cubyz:sign".updateTextFromClient(pos, textComponent.currentString.items);
+	main.block_entity.BlockEntityTypeList.sign.updateTextFromClient(pos, textComponent.currentString.items);
 
 	gui.closeWindowFromRef(&window);
 }

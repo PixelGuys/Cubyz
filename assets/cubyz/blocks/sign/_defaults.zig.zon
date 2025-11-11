@@ -7,12 +7,12 @@
 	.viewThrough = true,
 	.alwaysViewThrough = true,
 	.collide = false,
-	.rotation = "cubyz:sign",
+	.rotation = "aign",
 	.model = .{
 		.side = "cubyz:sign/side",
 		.ceiling = "cubyz:sign/ceiling",
 		.floor = "cubyz:sign/floor",
 	},
-	.blockEntity = "cubyz:sign",
+	.blockEntity = .sign,
 	.lodReplacement = "cubyz:air",
 }

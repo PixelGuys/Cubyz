@@ -135,7 +135,7 @@ fn BlockEntityDataStorage(T: type) type {
 }
 
 pub const BlockEntityTypeList = struct {
-	pub const @"cubyz:chest" = struct {
+	pub const chest = struct {
 		const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
@@ -212,8 +212,8 @@ pub const BlockEntityTypeList = struct {
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 			switch(event) {
 				.remove => {
-					const chest = StorageServer.remove(pos, chunk) orelse return;
-					main.items.Inventory.Sync.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
+					const chestBlock = StorageServer.remove(pos, chunk) orelse return;
+					main.items.Inventory.Sync.ServerSide.destroyAndDropExternallyManagedInventory(chestBlock.invId, pos);
 				},
 				.update => |_| {
 					StorageServer.mutex.lock();
@@ -231,7 +231,7 @@ pub const BlockEntityTypeList = struct {
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
-	pub const @"cubyz:sign" = struct {
+	pub const sign = struct {
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
@@ -402,7 +402,7 @@ pub const BlockEntityTypeList = struct {
 				const index = mesh.chunk.getLocalBlockIndex(pos);
 				const block = mesh.chunk.data.getValue(index);
 				const blockEntity = block.blockEntity() orelse return;
-				if(!std.mem.eql(u8, blockEntity.id, "cubyz:sign")) return;
+				if(!std.mem.eql(u8, blockEntity.id, "sign")) return;
 
 				StorageClient.mutex.lock();
 				defer StorageClient.mutex.unlock();
