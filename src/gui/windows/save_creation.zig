@@ -31,6 +31,8 @@ var gamemodeInput: *Button = undefined;
 
 var allowCheats: bool = true;
 
+var allowPlayerList: bool = true;
+
 var testingMode: bool = false;
 
 fn gamemodeCallback(_: usize) void {
@@ -42,13 +44,17 @@ fn allowCheatsCallback(allow: bool) void {
 	allowCheats = allow;
 }
 
+fn allowPlayerListCallback(allow: bool) void {
+	allowPlayerList = allow;
+}
+
 fn testingModeCallback(enabled: bool) void {
 	testingMode = enabled;
 }
 
 fn createWorld(_: usize) void {
 	const worldName = textInput.currentString.items;
-	const worldSettings: main.server.world_zig.WorldSettings = .{.gamemode = gamemode, .allowCheats = allowCheats, .testingMode = testingMode};
+	const worldSettings: main.server.world_zig.WorldSettings = .{.gamemode = gamemode, .allowCheats = allowCheats, .allowPlayerList = allowPlayerList, .testingMode = testingMode};
 	main.server.world_zig.tryCreateWorld(worldName, worldSettings) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 	};
@@ -76,6 +82,8 @@ pub fn onOpen() void {
 	list.add(gamemodeInput);
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
+
+	list.add(CheckBox.init(.{0, 0}, 128, "Allow Player List", true, &allowPlayerListCallback));
 
 	if(!build_options.isTaggedRelease) {
 		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));

@@ -26,6 +26,7 @@ pub const notification = @import("notification.zig");
 pub const pause = @import("pause.zig");
 pub const pause_gear = @import("pause_gear.zig");
 pub const performance_graph = @import("performance_graph.zig");
+pub const player_list = @import("player_list.zig");
 pub const save_creation = @import("save_creation.zig");
 pub const save_selection = @import("save_selection.zig");
 pub const settings = @import("settings.zig");
