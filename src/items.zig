@@ -419,7 +419,10 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 						// Calculate the lighting based on the nearest free space:
 						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
 						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-						var light = 2 - @as(i32, @intFromFloat(@round((lightTL*2 + lightTR)/6)));
+						const mid = @as(f32, @floatFromInt(material.colorPalette.len - 1))/2.0;
+						const lightScale = mid/2.75;
+						const lightVal = (lightTL*2.0 + lightTR)/6.0*lightScale;
+						var light = @as(i32, @intFromFloat(@round(@floor(mid) - lightVal)));
 						light = @max(@min(light, material.colorPalette.len - 1), 0);
 						img.setRGB(x, 15 - y, material.colorPalette[@intCast(light)]);
 					} else {
