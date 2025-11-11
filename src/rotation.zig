@@ -148,26 +148,26 @@ pub const RotationMode = struct { // MARK: RotationMode
 	model: *const fn(block: Block) ModelIndex = &DefaultFunctions.model,
 
 	// Rotates block data counterclockwise around the Z axis.
-	rotateZ: *const fn(data: u16, angle: Degrees) u16 = &DefaultFunctions.rotateZ,
+	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
 
 	createBlockModel: *const fn(block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
-	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = &DefaultFunctions.generateData,
+	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
 
-	modifyBlock: *const fn(block: *Block, newType: u16) bool = &DefaultFunctions.modifyBlock,
+	modifyBlock: *const fn(block: *Block, newType: u16) bool = DefaultFunctions.modifyBlock,
 
 	rayIntersection: *const fn(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 
 	onBlockBreaking: *const fn(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 
-	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = &DefaultFunctions.canBeChangedInto,
+	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
 
-	getBlockTags: *const fn() []const Tag = &DefaultFunctions.getBlockTags,
+	getBlockTags: *const fn() []const Tag = DefaultFunctions.getBlockTags,
 };
 
 const RotationModes = StringIndexedVTables(RotationMode, list);
