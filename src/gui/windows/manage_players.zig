@@ -22,14 +22,12 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
 
-pub var needsUpdate: bool = false;
-
 fn kick(conn: *main.network.Connection) void {
 	conn.disconnect();
 }
 
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	{
 		main.server.connectionManager.mutex.lock();
 		defer main.server.connectionManager.mutex.unlock();
@@ -72,8 +70,7 @@ pub fn update() void {
 	main.server.connectionManager.mutex.lock();
 	const serverListLen = main.server.connectionManager.connections.items.len;
 	main.server.connectionManager.mutex.unlock();
-	if(needsUpdate or userList.len != serverListLen) {
-		needsUpdate = false;
+	if(userList.len != serverListLen) {
 		onClose();
 		onOpen();
 	}
