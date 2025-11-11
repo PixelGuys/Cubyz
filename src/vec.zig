@@ -172,7 +172,7 @@ pub const Mat3f = struct { // MARK: Mat3f
 	pub fn mul(self: Mat3f, other: Mat3f) Mat3f {
 		const transposeOther = other.transpose();
 		var result: Mat3f = undefined;
-		for (&result.rows, self.rows) |*resRow, selfRow| {
+		for(&result.rows, self.rows) |*resRow, selfRow| {
 			resRow.* = .{
 				dot(selfRow, transposeOther.rows[0]),
 				dot(selfRow, transposeOther.rows[1]),
