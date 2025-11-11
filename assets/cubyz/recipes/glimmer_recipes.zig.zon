@@ -7,5 +7,4 @@
 		.inputs = .{"cubyz:vine/glimmer_worms"},
 		.output = "cubyz:glimmer_powder",
 	},
-
 }
