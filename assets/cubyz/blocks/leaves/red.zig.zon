@@ -1,0 +1,16 @@
+.{
+	.tags = .{.cuttable, .leaf},
+	.blockHealth = 0.5,
+	.drops = .{
+		.{.items = .{"cubyz:leaves/red_undecayable"}},
+	},
+	.degradable = true,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x213241,
+	.model = "cubyz:cube",
+	.texture = "cubyz:leaves/red",
+	.lodReplacement = "cubyz:leaves/red_opaque",
+	.opaqueVariant = "cubyz:leaves/red_opaque",
+
+	.decayable = true
+}

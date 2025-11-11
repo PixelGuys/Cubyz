@@ -3,5 +3,5 @@
 	.hasItem = false,
 	.absorbedLight = 0x213241,
 	.model = "cubyz:cube",
-	.texture = "cubyz:red_leaves_opaque",
+	.texture = "cubyz:leaves/red_opaque",
 }
