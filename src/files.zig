@@ -36,8 +36,8 @@ pub fn openDirInWindow(path: []const u8) void {
 
 pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 	const command = switch(builtin.os.tag) {
-		.windows => .{},
-		.macos => .{},
+		.windows => .{}, // TODO: make this work with windows
+		.macos => .{}, // TODO: make this work with macos
 		else => .{"zenity", "--file-selection", "--directory"},
 	};
 	const result = std.process.Child.run(.{
@@ -71,8 +71,8 @@ pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 
 pub fn fileQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 	const command = switch(builtin.os.tag) {
-		.windows => .{},
-		.macos => .{},
+		.windows => .{}, // TODO: make this work with windows
+		.macos => .{}, // TODO: make this work with macos
 		else => .{"zenity", "--file-selection"},
 	};
 	const result = std.process.Child.run(.{

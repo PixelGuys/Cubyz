@@ -376,8 +376,9 @@ fn fileQuery(_: Window.Key.Modifiers) void {
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
 	pub var keys = [_]Window.Key{
-		.{.name = "folder", .key = c.GLFW_KEY_GRAVE_ACCENT, .pressAction = &folderQuery},
-		.{.name = "file", .key = c.GLFW_KEY_TAB, .pressAction = &fileQuery},
+		// temporary testing keybinds
+		.{.name = "folder", .key = c.GLFW_KEY_1, .pressAction = &folderQuery},
+		.{.name = "file", .key = c.GLFW_KEY_2, .pressAction = &fileQuery},
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
