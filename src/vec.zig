@@ -161,7 +161,7 @@ pub const Mat3f = struct { // MARK: Mat3f
 
 	pub fn transpose(self: Mat3f) Mat3f {
 		return Mat3f{
-			.rows = [4]Vec3f{
+			.rows = [3]Vec3f{
 				Vec3f{self.rows[0][0], self.rows[1][0], self.rows[2][0]},
 				Vec3f{self.rows[0][1], self.rows[1][1], self.rows[2][1]},
 				Vec3f{self.rows[0][2], self.rows[1][2], self.rows[2][2]},
