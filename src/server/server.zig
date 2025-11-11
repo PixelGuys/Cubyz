@@ -288,34 +288,6 @@ pub const User = struct { // MARK: User
 	}
 };
 
-pub const Settings = struct {
-	pub var ipBanList: main.List(network.IpAddress) = undefined;
-
-	fn toZon() ZonElement {
-		const data = ZonElement.initObject(main.stackAllocator);
-		const arr = ZonElement.initArray(main.stackAllocator);
-		for(ipBanList.items) |ip| {
-			const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ip}) catch unreachable;
-			defer main.stackAllocator.free(ipString);
-			arr.append(ipString);
-		}
-		data.put("ipBanList", arr);
-		return data;
-	}
-
-	fn loadFrom(allocator: NeverFailingAllocator, zon: ZonElement) void {
-		const arrayZon = zon.getChild("ipBanList").toSlice();
-		ipBanList = .initCapacity(allocator, arrayZon.len);
-		for(arrayZon) |elem| {
-			ipBanList.append(network.IpAddress.parse(elem.as([]const u8, "")) orelse continue);
-		}
-	}
-
-	fn deinit() void {
-		ipBanList.deinit();
-	}
-};
-
 pub const updatesPerSec: u32 = 20;
 const updateNanoTime: u32 = 1000000000/20;
 
@@ -355,8 +327,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	const settingsZon = main.files.cubyzDir().readToZon(main.stackAllocator, "server.zig.zon") catch .null;
 	defer settingsZon.deinit(main.stackAllocator);
 
-	Settings.loadFrom(main.stackAllocator, settingsZon);
-
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
@@ -387,12 +357,6 @@ fn deinit() void {
 	connectionManager = undefined;
 
 	if(world) |world_| {
-		const zon = Settings.toZon();
-		defer zon.deinit(main.stackAllocator);
-		Settings.deinit();
-		main.files.cubyzDir().writeZon("server.zig.zon", zon) catch |err| {
-			std.log.err("Error while saving the server settings: {s}", .{@errorName(err)});
-		};
 		world_.deinit();
 	}
 	world = null;
