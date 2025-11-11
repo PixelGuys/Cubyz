@@ -1,10 +1,11 @@
 .{
 	.{
 		.inputs = .{"cubyz:glimmergill"},
-		.output = "cubyz:glimmer_powder",
+		.output = "2 cubyz:glimmer_powder",
 	},
 	.{
 		.inputs = .{"cubyz:vine/glimmer_worms"},
-		.output = "cubyz:glimmer_powder",
+		.output = "2 cubyz:glimmer_powder",
 	},
 }
+
