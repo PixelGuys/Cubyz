@@ -467,7 +467,7 @@ const Bloom = struct { // MARK: Bloom
 	}
 };
 
-pub const MenuBackGround = struct { // Mark: MenuBackground
+pub const MenuBackGround = struct { // MARK: MenuBackground
 	var pipeline: graphics.Pipeline = undefined;
 	var uniforms: struct {
 		viewMatrix: c_int,
@@ -667,7 +667,7 @@ pub const MenuBackGround = struct { // Mark: MenuBackground
 	}
 };
 
-pub const Skybox = struct { // Mark: Skybox
+pub const Skybox = struct { // MARK: Skybox
 	var starPipeline: graphics.Pipeline = undefined;
 	var starUniforms: struct {
 		mvp: c_int,
