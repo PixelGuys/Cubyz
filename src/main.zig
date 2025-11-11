@@ -351,10 +351,7 @@ fn setHotbarSlot(i: comptime_int) *const fn(Window.Key.Modifiers) void {
 }
 
 fn folderQuery(_: Window.Key.Modifiers) void {
-	const meow = files.folderQuery(stackAllocator) catch |err| {
-		std.log.err("something broke: {s}", .{@errorName(err)});
-		return;
-	};
+	const meow = files.folderQuery(stackAllocator) catch return;
 	if(meow) |mrrp| {
 		std.log.info("folder: {s}", .{mrrp});
 	} else {
@@ -362,10 +359,7 @@ fn folderQuery(_: Window.Key.Modifiers) void {
 	}
 }
 fn fileQuery(_: Window.Key.Modifiers) void {
-	const meow = files.fileQuery(stackAllocator) catch |err| {
-		std.log.err("something broke: {s}", .{@errorName(err)});
-		return;
-	};
+	const meow = files.fileQuery(stackAllocator) catch return;
 	if(meow) |mrrp| {
 		std.log.info("file: {s}", .{mrrp});
 	} else {
