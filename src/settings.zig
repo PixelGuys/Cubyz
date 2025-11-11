@@ -202,7 +202,7 @@ pub const launchConfig = struct {
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		autoEnterWorld = main.globalAllocator.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
-		const config = zon.getChild("autoCreateWorldConfig");
+		const config = zon.getChild("worldConfig");
 		if(!config.isNull()) {
 			const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, config.get([]const u8, "gamemode", "survival")) orelse blk: {
 				std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to survival.", .{config.get([]const u8, "gamemode", "survival")});
