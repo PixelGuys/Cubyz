@@ -13,6 +13,9 @@ const VerticalList = @import("../components/VerticalList.zig");
 const Button = @import("../components/Button.zig");
 
 var fileExplorerIcon: Texture = undefined;
+var errorText: []const u8 = "";
+var isOpen: bool = false;
+var errorCount: u32 = 0;
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 64},
@@ -26,14 +29,30 @@ pub var window = GuiWindow{
 
 pub fn init() void {
 	fileExplorerIcon = Texture.initFromFile("assets/cubyz/ui/file_explorer_icon.png");
+	errorText = main.globalAllocator.dupe(u8, "");
 }
 
 pub fn deinit() void {
 	fileExplorerIcon.deinit();
+	main.globalAllocator.free(errorText);
 }
 
 fn openLog(_: usize) void {
 	main.files.openDirInWindow("logs");
+}
+
+pub fn raiseError(newText: []const u8) void {
+	if(isOpen) {
+		gui.closeWindow("error_prompt");
+		errorCount += 1;
+		gui.openWindow("error_prompt");
+	} else {
+		// openWindow can take time
+		main.globalAllocator.free(errorText);
+		errorText = main.globalAllocator.dupe(u8, newText);
+		errorCount = 0;
+		gui.openWindow("error_prompt");
+	}
 }
 
 const padding: f32 = 8;
@@ -43,9 +62,17 @@ pub fn update() void {
 	}
 }
 
+const plainErrorText = "#ffff00The game encountered errors.\nCheck the logs for details.";
+const singleErrorFmtText = "#ff0000{s}";
+const multipleErrorFmtText =  "#ff0000{s}\n#ffff00And {d} more...\nCheck the logs for details.";
+
 pub fn onOpen() void {
+	isOpen = true;
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Label.init(.{padding, 16 + padding}, 128, "#ffff00The game encountered errors. Check the logs for details", .center));
+	var buf: [256]u8 = undefined;
+	const str = if(errorCount == 0) std.fmt.bufPrint(&buf, singleErrorFmtText, .{errorText}) catch plainErrorText
+		else std.fmt.bufPrint(&buf, multipleErrorFmtText, .{errorText, errorCount}) catch plainErrorText;
+	list.add(Label.init(.{padding, 16 + padding}, 256, str, .center));
 	list.add(Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openLog}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -54,6 +81,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
+	isOpen = false;
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
