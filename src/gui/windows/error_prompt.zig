@@ -12,10 +12,10 @@ const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 const Button = @import("../components/Button.zig");
 
-var fileExplorerIcon: Texture = undefined;
-var errorText: []const u8 = "";
-var isOpen: bool = false;
 var errorCount: u32 = 0;
+var errorText: []const u8 = "";
+var fileExplorerIcon: Texture = undefined;
+var isOpen: bool = false;
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 64},
@@ -43,15 +43,14 @@ fn openLog(_: usize) void {
 
 pub fn raiseError(newText: []const u8) void {
 	if(isOpen) {
-		gui.closeWindow("error_prompt");
 		errorCount += 1;
-		gui.openWindow("error_prompt");
+		onClose();
+		onOpen();
 	} else {
-		// openWindow can take time
 		main.globalAllocator.free(errorText);
 		errorText = main.globalAllocator.dupe(u8, newText);
 		errorCount = 0;
-		gui.openWindow("error_prompt");
+		gui.openWindowFromRef(&window);
 	}
 }
 
