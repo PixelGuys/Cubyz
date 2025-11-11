@@ -662,6 +662,9 @@ pub const World = struct { // MARK: World
 		self.manager.deinit();
 		main.server.stop();
 		if(main.server.thread) |serverThread| {
+			main.heap.GarbageCollection.waitForFreeCompletion();
+			main.heap.GarbageCollection.removeThread();
+			defer main.heap.GarbageCollection.addThread();
 			serverThread.join();
 			main.server.thread = null;
 		}

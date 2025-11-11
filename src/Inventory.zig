@@ -270,6 +270,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn deinit() void {
+			main.heap.GarbageCollection.waitForFreeCompletion();
 			for(inventories.items()) |inv| {
 				if(inv.source != .alreadyFreed) {
 					std.log.err("Leaked inventory with source {}", .{inv.source});
