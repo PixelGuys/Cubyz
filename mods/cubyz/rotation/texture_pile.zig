@@ -7,7 +7,6 @@ const Neighbor = main.chunk.Neighbor;
 const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
 const RotationMode = rotation.RotationMode;
-const DefaultRotationMode = rotation.DefaultRotationMode;
 const vec = main.vec;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
@@ -83,7 +82,7 @@ fn isItemBlock(block: Block, item: main.items.ItemStack) bool {
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	switch(DefaultRotationMode.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
 		.no, .yes_costsDurability, .yes_dropsItems => return .no,
 		.yes_costsItems => |r| return .{.yes_costsItems = r},
 		.yes => {

@@ -484,7 +484,7 @@ pub const BlockEntityTypeList = struct {
 	};
 };
 
-const BlockEntityTypes = StringIndexedVTables(BlockEntityType, BlockEntityTypeList, struct {});
+const BlockEntityTypes = StringIndexedVTables(BlockEntityType, BlockEntityTypeList);
 
 pub fn init() void {
 	BlockEntityTypes.callAll("init");

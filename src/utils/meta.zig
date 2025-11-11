@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-pub fn StringIndexedVTables(VTable: type, TypeList: type, Defaults: type) type {
+pub fn StringIndexedVTables(VTable: type, TypeList: type) type {
 	return struct {
 		const map: std.StaticStringMap(VTable) = createMap();
 
@@ -18,11 +18,12 @@ pub fn StringIndexedVTables(VTable: type, TypeList: type, Defaults: type) type {
 						continue;
 					}
 					if(!@hasDecl(Type, field.name)) {
-						if(@hasDecl(Defaults, field.name)) {
-							if(field.type == @TypeOf(@field(Defaults, field.name))) {
-								@field(result, field.name) = @field(Defaults, field.name);
+						if(field.default_value_ptr) |default_| {
+							const default: *const field.type = @alignCast(@ptrCast(default_));
+							if(field.type == @TypeOf(default)) {
+								@field(result, field.name) = default;
 							} else {
-								@field(result, field.name) = &@field(Defaults, field.name);
+								@field(result, field.name) = default.*;
 							}
 						} else {
 							@compileError("VTable missing field '" ++ field.name ++ "'");

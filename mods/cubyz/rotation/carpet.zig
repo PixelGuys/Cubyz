@@ -9,7 +9,6 @@ const rotation = main.rotation;
 const Degrees = rotation.Degrees;
 const RayIntersectionResult = rotation.RayIntersectionResult;
 const RotationMode = rotation.RotationMode;
-const DefaultRotationMode = rotation.DefaultRotationMode;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Vec3f = vec.Vec3f;
@@ -157,7 +156,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 	for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
 		if(block.data & bit != 0) {
 			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(bit - 1);
-			if(DefaultRotationMode.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or result.?.distance > intersection.distance) {
 					result = intersection;
 					resultBit = bit;

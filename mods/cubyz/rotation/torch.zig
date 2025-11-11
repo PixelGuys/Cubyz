@@ -9,7 +9,6 @@ const rotation = main.rotation;
 const Degrees = rotation.Degrees;
 const RayIntersectionResult = rotation.RayIntersectionResult;
 const RotationMode = rotation.RotationMode;
-const DefaultRotationMode = rotation.DefaultRotationMode;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Vec3f = vec.Vec3f;
@@ -175,7 +174,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 	for([_]u16{1, 2, 4, 8, 16}) |bit| {
 		if(block.data & bit != 0) {
 			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(bit - 1);
-			if(DefaultRotationMode.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or intersection.distance < result.?.distance) {
 					result = intersection;
 					resultBit = bit;
@@ -198,7 +197,7 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	switch(DefaultRotationMode.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
 		.no, .yes_costsDurability, .yes_dropsItems => return .no,
 		.yes, .yes_costsItems => {
 			const torchAmountChange = @as(i32, @popCount(newBlock.data)) - if(oldBlock.typ == newBlock.typ) @as(i32, @popCount(oldBlock.data)) else 0;
