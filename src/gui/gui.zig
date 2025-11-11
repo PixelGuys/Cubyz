@@ -18,7 +18,7 @@ const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
 const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
-const Tooltip = @import("components/Tooltip.zig");
+const Tooltip = @import("tooltip.zig");
 pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
@@ -156,7 +156,7 @@ pub fn init() void { // MARK: init()
 	ContinuousSlider.__init();
 	DiscreteSlider.__init();
 	TextInput.__init();
-	Tooltip.__init();
+	Tooltip.init();
 	load();
 	GamepadCursor.init();
 }
@@ -780,7 +780,7 @@ pub const inventory = struct { // MARK: inventory
 				label.size = size;
 
 				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
-				const sliceOffset = GuiComponent.Tooltip.cornerVec2Size[0]*2;
+				const sliceOffset = Tooltip.cornerVec2Size[0]*2;
 				var pos = mousePos;
 				if(pos[0] + size[0] + sliceOffset >= windowSize[0]) {
 					pos[0] -= size[0] + sliceOffset;
@@ -789,11 +789,11 @@ pub const inventory = struct { // MARK: inventory
 				}
 				pos[1] = @min(pos[1] - GuiComponent.Label.fontSize, windowSize[1] - size[1] - sliceOffset);
 
-				var tooltipElement = GuiComponent.Tooltip.init();
-				defer tooltipElement.deinit();
-				tooltipElement.components.add(label);
-				tooltipElement.components.finish(.left);
-				tooltipElement.render(pos);
+				var list = GuiComponent.VerticalList.init(Vec2f{0, 0}, 360, Tooltip.cornerVec2Size[1]);
+				defer list.deinit();
+				list.add(label);
+				list.finish(.left);
+				Tooltip.render(list, pos);
 			}
 		};
 	}

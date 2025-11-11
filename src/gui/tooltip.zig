@@ -8,48 +8,25 @@ const Texture = graphics.Texture;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
-const gui = @import("../gui.zig");
+const gui = @import("gui.zig");
 const GuiComponent = gui.GuiComponent;
 const VerticalList = GuiComponent.VerticalList;
-
-const Tooltip = @This();
 
 // pre-Set SLICE values
 pub const cornerVec2Size = Vec2f{4, 4};
 
 var tooltipTexture: Texture = undefined;
 
-pos: Vec2f,
-size: Vec2f,
-components: *VerticalList,
-
-pub fn __init() void {
+pub fn init() void {
 	tooltipTexture = Texture.initFromFile("assets/cubyz/ui/tooltip_frame.png");
 }
 
-pub fn __deinit() void {
+pub fn deinit() void {
 	tooltipTexture.deinit();
 }
 
-pub fn init() *Tooltip {
-	const self = main.globalAllocator.create(Tooltip);
-	self.* = Tooltip{.components = VerticalList.init(Vec2f{0, 0}, 360, cornerVec2Size[1]), .pos = Vec2f{0, 0}, .size = undefined};
-	return self;
-}
-
-pub fn deinit(self: *const Tooltip) void {
-	self.components.deinit();
-	main.globalAllocator.destroy(self);
-}
-
-pub fn render(self: *Tooltip, mousePosition: ?Vec2f) void {
-	const size = self.components.size + Vec2f{cornerVec2Size[0], self.components.padding};
-	self.size = size;
-
-	var pos = self.pos;
-	if(mousePosition != null) {
-		pos = mousePosition.?;
-	}
+pub fn render(list: *VerticalList, pos: Vec2f) void {
+	const size = list.size + Vec2f{cornerVec2Size[0], list.padding};
 
 	tooltipTexture.bindTo(0);
 
@@ -77,6 +54,6 @@ pub fn render(self: *Tooltip, mousePosition: ?Vec2f) void {
 		draw.boundSubImage(pos + Vec2f{cornerVec2Size[0], cornerVec2Size[1]}, Vec2f{size[0] - 2*cornerVec2Size[0], size[1] - 2*cornerVec2Size[1]}, .{upperTexture[0], lowerTexture[0]}, .{upperTexture[0] - lowerTexture[0], cornerSizeUV[1]});
 	}
 
-	self.components.pos = pos + Vec2f{cornerVec2Size[0]/2, self.components.padding/2};
-	self.components.render(pos);
+	list.pos = pos + Vec2f{cornerVec2Size[0]/2, list.padding/2};
+	list.render(pos);
 }
