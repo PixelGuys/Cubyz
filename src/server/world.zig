@@ -18,6 +18,7 @@ const Vec3f = vec.Vec3f;
 const terrain = server.terrain;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+const DelayedEventQueue = main.DelayedEventQueue;
 const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
@@ -542,6 +543,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	biomeChecksum: i64 = 0,
 
+	//TODO: do this per chunk not world.
+	delayedEventQueue: main.utils.CircularBufferQueue(DelayedEventQueue.Event),
+
 	const ChunkUpdateRequest = struct {
 		ch: *ServerChunk,
 		milliTimeStamp: i64,
@@ -563,6 +567,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
+			.delayedEventQueue = .init(main.globalAllocator, 256*256),
 		};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
@@ -637,6 +642,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.decreaseRefCount();
 		}
 		self.regionUpdateQueue.deinit();
+		self.delayedEventQueue.deinit();
 		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
@@ -1054,6 +1060,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		ChunkManager.mutex.unlock();
 
+		//even queue
+		while(true){ 
+			if(self.delayedEventQueue.popFront())|event|{
+				if(!event.run())
+					continue;
+			}
+			break;
+		}
 		// tick blocks
 		for(currentChunks.items) |entityChunk| {
 			defer entityChunk.decreaseRefCount();
@@ -1233,6 +1247,15 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		for(userList) |user| {
 			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
+		}
+		if(oldBlock)|old|{
+			_ = old.onBreak().run(.{
+				.block=old,
+				.chunk=baseChunk,
+				.x = wx,
+				.y = wy,
+				.z = wz
+			}	);
 		}
 		return null;
 	}
