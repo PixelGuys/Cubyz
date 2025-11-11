@@ -44,7 +44,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "glow_caves:vine/glimmer_worms",
+			.block = "cubyz:vine/glimmer_worms",
 			.generationMode = .ceiling,
 			.chance = 0.4,
 			.height = 9,
@@ -52,7 +52,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "glow_caves:vine/glimmer_worms",
+			.block = "cubyz:vine/glimmer_worms",
 			.generationMode = .ceiling,
 			.chance = 0.2,
 			.height = 15,
