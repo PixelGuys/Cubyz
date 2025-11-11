@@ -1,6 +1,6 @@
 .{
-	.texture0 = "glow_caves:vine/glimmer_worms/top",
-	.texture1 = "glow_caves:vine/glimmer_worms/bottom",
+	.texture0 = "cubyz:vine/glimmer_worms/top",
+	.texture1 = "cubyz:vine/glimmer_worms/bottom",
 	.emittedLight = 0x392862,
 	.item = .{
 		.texture = "vine/glimmer_worms.png",
