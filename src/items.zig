@@ -422,7 +422,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 						const mid = @as(f32, @floatFromInt(material.colorPalette.len - 1))/2.0;
 						const lightScale = mid/2;
 						const lightVal = (lightTL*2.0 + lightTR)/6.0*lightScale;
-						var light = @as(i32, @intFromFloat(@round(mid - lightVal)));
+						var light = @as(i32, @intFromFloat(@round(@floor(mid) - lightVal)));
 						light = @max(@min(light, material.colorPalette.len - 1), 0);
 						img.setRGB(x, 15 - y, material.colorPalette[@intCast(light)]);
 					} else {
