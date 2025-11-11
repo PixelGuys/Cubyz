@@ -389,7 +389,7 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 pub fn getMinWindowWidth(self: *GuiWindow) f32 {
-	return iconWidth*@as(f32, @floatFromInt(self.titleBarButtons.len));
+	return iconWidth*@as(f32, @floatFromInt(self.titleBarButtons.len + 1));
 }
 pub fn updateWindowPosition(self: *GuiWindow) void {
 	const minSize = self.getMinWindowWidth();
