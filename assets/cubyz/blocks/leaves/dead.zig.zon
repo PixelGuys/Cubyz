@@ -11,6 +11,4 @@
 	.texture = "cubyz:leaves/dead",
 	.lodReplacement = "cubyz:leaves/dead_opaque",
 	.opaqueVariant = "cubyz:leaves/dead_opaque",
-
-	.decayable = true
 }
