@@ -1,0 +1,15 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 70,
+	.blockResistance = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.emittedLight = 0x8C8C9A,
+	.rotation = "cubyz:ore",
+	.model = "cubyz:cube",
+	.texture = "glow_caves:glimmer_powder",
+	.item = .{
+		.texture = "glimmer_powder.png",
+	},
+}
