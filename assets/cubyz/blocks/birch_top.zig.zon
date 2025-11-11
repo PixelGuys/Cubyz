@@ -9,9 +9,6 @@
 	.texture = "cubyz:birch_log",
 	.texture_top = "cubyz:birch_log",
 	.texture_bottom = "cubyz:birch_log_top",
-	.onBreak = .{
-		.type = .logBreak
-	},
 	.decayProhibitor = true,
 
 }
