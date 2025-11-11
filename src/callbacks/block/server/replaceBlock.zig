@@ -20,8 +20,6 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const wy = params.chunk.super.pos.wy + params.y;
 	const wz = params.chunk.super.pos.wz + params.z;
 
-	main.items.Inventory.Sync.ServerSide.mutex.lock();
-	defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 	_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, self.block);
 	return .handled;
 }

@@ -394,6 +394,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 }
 
 fn update() void { // MARK: update()
+	main.items.Inventory.Sync.ServerSide.executeReceivedCommands();
 	world.?.update();
 
 	while(userConnectList.popFront()) |user| {

@@ -182,21 +182,28 @@ pub const Sync = struct { // MARK: Sync
 			users: main.ListUnmanaged(struct {user: *main.server.User, cliendId: InventoryId}),
 			source: Source,
 			managed: Managed,
+			wasDeinitedOnAnotherThread: bool = false,
+			mutex: std.Thread.Mutex = .{},
 
 			const Managed = enum {internallyManaged, externallyManaged};
 
-			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed, callbacks: Callbacks) ServerInventory {
-				main.utils.assertLocked(&mutex);
-				return .{
-					.inv = Inventory._init(main.globalAllocator, len, typ, source, .server, callbacks),
+			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed, callbacks: Callbacks) *ServerInventory {
+				var inventory = Inventory._init(main.globalAllocator, len, typ, source, .server, callbacks);
+				const self = &inventories.items()[@intFromEnum(inventory.id)];
+				inventory.wasDeinitedOnAnotherThreadPtr = &self.wasDeinitedOnAnotherThread;
+				inventory.mutex = &self.mutex;
+				self.* = .{
+					.inv = inventory,
 					.users = .{},
 					.source = source,
 					.managed = managed,
 				};
+				return self;
 			}
 
 			fn deinit(self: *ServerInventory) void {
-				main.utils.assertLocked(&mutex);
+				main.utils.assertLocked(&self.mutex);
+				self.wasDeinitedOnAnotherThread = true;
 				while(self.users.items.len != 0) {
 					self.removeUser(self.users.items[0].user, self.users.items[0].cliendId);
 				}
@@ -208,7 +215,9 @@ pub const Sync = struct { // MARK: Sync
 			}
 
 			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
-				main.utils.assertLocked(&mutex);
+				std.debug.assert(main.threadType == .server);
+				self.mutex.lock();
+				defer self.mutex.unlock();
 				self.users.append(main.globalAllocator, .{.user = user, .cliendId = clientId});
 				user.inventoryClientToServerIdMap.put(clientId, self.inv.id) catch unreachable;
 				if(self.users.items.len == 1) {
@@ -219,7 +228,8 @@ pub const Sync = struct { // MARK: Sync
 			}
 
 			fn removeUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
-				main.utils.assertLocked(&mutex);
+				std.debug.assert(main.threadType == .server);
+				main.utils.assertLocked(&self.mutex);
 				var index: usize = undefined;
 				for(self.users.items, 0..) |userData, i| {
 					if(userData.user == user) {
@@ -236,26 +246,31 @@ pub const Sync = struct { // MARK: Sync
 					if(self.managed == .internallyManaged) {
 						if(self.inv.type.shouldDepositToUserOnClose()) {
 							const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
+							playerInventory.mutex.lock();
+							defer playerInventory.mutex.unlock();
+							var command = Command{
+								.payload = .{.depositOrDrop = .{.dest = playerInventory, .source = self.inv, .dropLocation = user.player.pos}},
+							};
+							Sync.ServerSide.executeCommandWithInventoriesLocked(&command, null);
 						}
 						self.deinit();
 					}
 				}
 			}
 		};
-		pub var mutex: std.Thread.Mutex = .{};
 
-		var inventories: main.List(ServerInventory) = undefined;
+		var inventories: main.utils.VirtualList(ServerInventory, 1 << 24) = undefined;
+		var inventoriesMutex: std.Thread.Mutex = .{};
 		var maxId: InventoryId = @enumFromInt(0);
 		var freeIdList: main.List(InventoryId) = undefined;
 
 		pub fn init() void {
-			inventories = .initCapacity(main.globalAllocator, 256);
+			inventories = .init();
 			freeIdList = .init(main.globalAllocator);
 		}
 
 		pub fn deinit() void {
-			for(inventories.items) |inv| {
+			for(inventories.items()) |inv| {
 				if(inv.source != .alreadyFreed) {
 					std.log.err("Leaked inventory with source {}", .{inv.source});
 				}
@@ -264,11 +279,11 @@ pub const Sync = struct { // MARK: Sync
 			freeIdList.deinit();
 			inventories.deinit();
 			maxId = @enumFromInt(0);
+			commandListArenaAllocator.deinit();
 		}
 
 		pub fn disconnectUser(user: *main.server.User) void {
-			mutex.lock();
-			defer mutex.unlock();
+			std.debug.assert(main.threadType == .server);
 			while(true) {
 				// Reinitializing the iterator in the loop to allow for removal:
 				var iter = user.inventoryClientToServerIdMap.keyIterator();
@@ -278,7 +293,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn nextId() InventoryId {
-			main.utils.assertLocked(&mutex);
+			main.utils.assertLocked(&inventoriesMutex);
 			if(freeIdList.popOrNull()) |id| {
 				return id;
 			}
@@ -287,15 +302,64 @@ pub const Sync = struct { // MARK: Sync
 			return maxId;
 		}
 
+		fn freeIdInGC(id: usize) void {
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
+			freeIdList.append(@enumFromInt(id - 1));
+		}
+
 		fn freeId(id: InventoryId) void {
-			main.utils.assertLocked(&mutex);
-			freeIdList.append(id);
+			main.heap.GarbageCollection.deferredFree(.{
+				.ptr = @ptrFromInt(@intFromEnum(id) + 1),
+				.freeFunction = main.utils.castFunctionSelfToAnyopaque(freeIdInGC),
+			});
 		}
 
 		fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
+			std.debug.assert(main.threadType == .server);
 			var command = Command{
 				.payload = payload,
 			};
+
+			var commandInventories = command.getInventories(main.stackAllocator);
+			defer main.stackAllocator.free(commandInventories);
+
+			for(commandInventories) |inv| {
+				if(inv.type == .crafting) {
+					const playerInv = getInventoryFromId((source orelse break).inventory orelse break);
+					commandInventories = main.stackAllocator.realloc(commandInventories, commandInventories.len + 1);
+					commandInventories[commandInventories.len - 1] = playerInv;
+					break;
+				}
+			}
+
+			// Sort to prevent deadlock
+			std.sort.insertion(Inventory, commandInventories, {}, struct {
+				fn lessThanFn(_: void, a: Inventory, b: Inventory) bool {
+					return @intFromPtr(a.mutex) < @intFromPtr(b.mutex);
+				}
+			}.lessThanFn);
+
+			for(0..commandInventories.len) |i| {
+				if(i != 0 and commandInventories[i - 1].mutex == commandInventories[i].mutex) continue;
+				commandInventories[i].mutex.lock();
+			}
+			defer for(0..commandInventories.len) |i| {
+				if(i != 0 and commandInventories[i - 1].mutex == commandInventories[i].mutex) continue;
+				commandInventories[i].mutex.unlock();
+			};
+
+			for(commandInventories) |inv| {
+				if(inv.wasDeinitedOnAnotherThread()) {
+					main.network.Protocols.inventory.sendFailure(source.?.conn);
+					return;
+				}
+			}
+			executeCommandWithInventoriesLocked(&command, source);
+		}
+
+		fn executeCommandWithInventoriesLocked(command: *Command, source: ?*main.server.User) void {
+			std.debug.assert(main.threadType == .server);
 			command.do(main.globalAllocator, .server, source, if(source) |s| s.gamemode.raw else .creative) catch {
 				main.network.Protocols.inventory.sendFailure(source.?.conn);
 				return;
@@ -337,37 +401,29 @@ pub const Sync = struct { // MARK: Sync
 			};
 		}
 
-		pub fn receiveCommand(source: *main.server.User, reader: *utils.BinaryReader) !void {
-			mutex.lock();
-			defer mutex.unlock();
-			const typ = try reader.readEnum(Command.PayloadType);
-			@setEvalBranchQuota(100000);
-			const payload: Command.Payload = switch(typ) {
-				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try @FieldType(Command.Payload, @tagName(_typ)).deserialize(reader, .server, source)),
-			};
-			executeCommand(payload, source);
-		}
-
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
-			mutex.lock();
-			defer mutex.unlock();
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged, callbacks);
-			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
 			inventory.inv.fromBytes(data);
 			return inventory.inv.id;
 		}
 
 		pub fn destroyExternallyManagedInventory(invId: InventoryId) void {
-			mutex.lock();
-			defer mutex.unlock();
-			std.debug.assert(inventories.items[@intFromEnum(invId)].managed == .externallyManaged);
-			inventories.items[@intFromEnum(invId)].deinit();
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
+			std.debug.assert(inventories.items()[@intFromEnum(invId)].managed == .externallyManaged);
+			const inv = &inventories.items()[@intFromEnum(invId)];
+			inv.mutex.lock();
+			defer inv.mutex.unlock();
+			inventories.items()[@intFromEnum(invId)].deinit();
 		}
 
 		pub fn destroyAndDropExternallyManagedInventory(invId: InventoryId, pos: Vec3i) void {
-			main.utils.assertLocked(&mutex);
-			std.debug.assert(inventories.items[@intFromEnum(invId)].managed == .externallyManaged);
-			const inv = &inventories.items[@intFromEnum(invId)];
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
+			std.debug.assert(inventories.items()[@intFromEnum(invId)].managed == .externallyManaged);
+			const inv = &inventories.items()[@intFromEnum(invId)];
 			for(inv.inv._items) |*itemStack| {
 				if(itemStack.amount == 0) continue;
 				main.server.world.?.drop(
@@ -378,11 +434,15 @@ pub const Sync = struct { // MARK: Sync
 				);
 				itemStack.* = .{};
 			}
+			inv.mutex.lock();
+			defer inv.mutex.unlock();
 			inv.deinit();
 		}
 
 		fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
-			main.utils.assertLocked(&mutex);
+			std.debug.assert(main.threadType == .server);
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
 			switch(source) {
 				.recipe, .blockInventory, .playerInventory, .hand => {
 					switch(source) {
@@ -394,7 +454,7 @@ pub const Sync = struct { // MARK: Sync
 						},
 						else => {},
 					}
-					for(inventories.items) |*inv| {
+					for(inventories.items()) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
 							return;
@@ -405,9 +465,7 @@ pub const Sync = struct { // MARK: Sync
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source, .internallyManaged, .{});
-
-			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
-			inventories.items[@intFromEnum(inventory.inv.id)].addUser(user, clientId);
+			inventory.addUser(user, clientId);
 
 			switch(source) {
 				.blockInventory => unreachable, // Should be loaded by the block entity
@@ -426,20 +484,28 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn closeInventory(user: *main.server.User, clientId: InventoryId) !void {
-			main.utils.assertLocked(&mutex);
+			std.debug.assert(main.threadType == .server);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return error.InventoryNotFound;
-			inventories.items[@intFromEnum(serverId)].removeUser(user, clientId);
+			inventoriesMutex.lock();
+			inventories.items()[@intFromEnum(serverId)].mutex.lock();
+			defer inventories.items()[@intFromEnum(serverId)].mutex.unlock();
+			inventoriesMutex.unlock();
+			inventories.items()[@intFromEnum(serverId)].removeUser(user, clientId);
 		}
 
 		fn getInventory(user: *main.server.User, clientId: InventoryId) ?Inventory {
-			main.utils.assertLocked(&mutex);
+			std.debug.assert(main.threadType == .server);
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
-			return inventories.items[@intFromEnum(serverId)].inv;
+			return inventories.items()[@intFromEnum(serverId)].inv;
 		}
 
 		pub fn getInventoryFromSource(source: Source) ?Inventory {
-			main.utils.assertLocked(&mutex);
-			for(inventories.items) |inv| {
+			std.debug.assert(main.threadType == .server);
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
+			for(inventories.items()) |inv| {
 				if(std.meta.eql(inv.source, source)) {
 					return inv.inv;
 				}
@@ -448,43 +514,50 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn getInventoryFromId(serverId: InventoryId) Inventory {
-			return inventories.items[@intFromEnum(serverId)].inv;
+			std.debug.assert(main.threadType == .server);
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
+			return inventories.items()[@intFromEnum(serverId)].inv;
 		}
 
 		pub fn clearPlayerInventory(user: *main.server.User) void {
-			mutex.lock();
-			defer mutex.unlock();
+			std.debug.assert(main.threadType == .server);
+			inventoriesMutex.lock();
+			defer inventoriesMutex.unlock();
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			while(inventoryIdIterator.next()) |inventoryId| {
-				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
-					executeCommand(.{.clear = .{.inv = inventories.items[@intFromEnum(inventoryId.*)].inv}}, null);
+				if(inventories.items()[@intFromEnum(inventoryId.*)].source == .playerInventory) {
+					executeCommand(.{.clear = .{.inv = inventories.items()[@intFromEnum(inventoryId.*)].inv}}, null);
 				}
 			}
 		}
 
 		pub fn tryCollectingToPlayerInventory(user: *main.server.User, itemStack: *ItemStack) void {
 			if(itemStack.item == null) return;
-			mutex.lock();
-			defer mutex.unlock();
+			std.debug.assert(main.threadType == .server);
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			outer: while(inventoryIdIterator.next()) |inventoryId| {
-				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
-					const inv = inventories.items[@intFromEnum(inventoryId.*)].inv;
-					for(inv._items, 0..) |invStack, slot| {
-						if(std.meta.eql(invStack.item, itemStack.item)) {
-							const amount = @min(itemStack.item.?.stackSize() - invStack.amount, itemStack.amount);
-							if(amount == 0) continue;
-							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
-							itemStack.amount -= amount;
-							if(itemStack.amount == 0) break :outer;
-						}
+				const inv = blk: {
+					inventoriesMutex.lock();
+					defer inventoriesMutex.unlock();
+					if(inventories.items()[@intFromEnum(inventoryId.*)].source != .playerInventory) continue;
+					break :blk inventories.items()[@intFromEnum(inventoryId.*)].inv;
+				};
+
+				for(inv._items, 0..) |invStack, slot| {
+					if(std.meta.eql(invStack.item, itemStack.item)) {
+						const amount = @min(itemStack.item.?.stackSize() - invStack.amount, itemStack.amount);
+						if(amount == 0) continue;
+						executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
+						itemStack.amount -= amount;
+						if(itemStack.amount == 0) break :outer;
 					}
-					for(inv._items, 0..) |invStack, slot| {
-						if(invStack.item == null) {
-							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
-							itemStack.amount = 0;
-							break :outer;
-						}
+				}
+				for(inv._items, 0..) |invStack, slot| {
+					if(invStack.item == null) {
+						executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
+						itemStack.amount = 0;
+						break :outer;
 					}
 				}
 			}
@@ -492,10 +565,59 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn setGamemode(user: *main.server.User, gamemode: Gamemode) void {
-			mutex.lock();
-			defer mutex.unlock();
+			user.mutex.lock();
+			defer user.mutex.unlock();
 			user.gamemode.store(gamemode, .monotonic);
 			main.network.Protocols.genericUpdate.sendGamemode(user.conn, gamemode);
+		}
+
+		const RawCommand = struct {
+			typ: Command.PayloadType,
+			data: []const u8,
+			source: *main.server.User,
+		};
+		var commandListArenaAllocator: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
+		const commandListArena = commandListArenaAllocator.allocator();
+		var commandList: main.ListUnmanaged(RawCommand) = .{};
+		var commandListMutex: std.Thread.Mutex = .{};
+
+		pub fn receiveCommand(source: *main.server.User, reader: *utils.BinaryReader) !void {
+			const typ = try reader.readEnum(Command.PayloadType); // TODO: Move to server
+			commandListMutex.lock();
+			defer commandListMutex.unlock();
+			commandList.append(commandListArena, .{
+				.typ = typ,
+				.data = commandListArena.dupe(u8, reader.remaining),
+				.source = source,
+			});
+		}
+
+		pub fn executeReceivedCommands() void {
+			commandListMutex.lock();
+			const oldArena = commandListArenaAllocator;
+			defer oldArena.deinit();
+			commandListArenaAllocator = .init(main.globalAllocator);
+			const commands = commandList.items;
+			commandList = .{};
+			commandListMutex.unlock();
+			for(commands) |command| {
+				executeReceivedCommand(command) catch |err| {
+					std.log.err("Got error while processing Inventory command {}: {s}. Disconnecting player.", .{command.typ, @errorName(err)});
+					if(@errorReturnTrace()) |trace| {
+						std.log.info("{f}", .{trace});
+					}
+					std.log.debug("Payload data: {any}", .{command.data});
+					main.server.disconnect(command.source);
+				};
+			}
+		}
+		fn executeReceivedCommand(command: RawCommand) !void {
+			var reader = BinaryReader.init(command.data);
+			@setEvalBranchQuota(100000);
+			const payload: Command.Payload = switch(command.typ) {
+				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try @FieldType(Command.Payload, @tagName(_typ)).deserialize(&reader, .server, command.source)),
+			};
+			executeCommand(payload, command.source);
 		}
 	};
 
@@ -713,7 +835,9 @@ pub const Command = struct { // MARK: Command
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch(self) {
 				inline .create, .delete, .useDurability => |data| {
-					const users = Sync.ServerSide.inventories.items[@intFromEnum(data.inv.inv.id)].users.items;
+					Sync.ServerSide.inventoriesMutex.lock();
+					defer Sync.ServerSide.inventoriesMutex.unlock();
+					const users = Sync.ServerSide.inventories.items()[@intFromEnum(data.inv.inv.id)].users.items;
 					const result = allocator.alloc(*main.server.User, users.len);
 					for(0..users.len) |i| {
 						result[i] = users[i].user;
@@ -829,8 +953,18 @@ pub const Command = struct { // MARK: Command
 		return writer.data.toOwnedSlice();
 	}
 
+	fn getInventories(self: *Command, allocator: NeverFailingAllocator) []Inventory {
+		switch(self.payload) {
+			inline else => |payload| {
+				if(@hasDecl(@TypeOf(payload), "getInventories")) return payload.getInventories(allocator);
+			},
+		}
+		return &.{};
+	}
+
 	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void { // MARK: do()
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
+		if(side == .server) std.debug.assert(main.threadType == .server);
 		switch(self.payload) {
 			inline else => |payload| {
 				try payload.run(allocator, self, side, user, gamemode);
@@ -1085,9 +1219,11 @@ pub const Command = struct { // MARK: Command
 			.client => main.game.Player.inventory,
 			.server => blk: {
 				if(user) |_user| {
+					Sync.ServerSide.inventoriesMutex.lock();
+					defer Sync.ServerSide.inventoriesMutex.unlock();
 					var it = _user.inventoryClientToServerIdMap.valueIterator();
 					while(it.next()) |serverId| {
-						const serverInventory = &Sync.ServerSide.inventories.items[@intFromEnum(serverId.*)];
+						const serverInventory = &Sync.ServerSide.inventories.items()[@intFromEnum(serverId.*)];
 						if(serverInventory.source == .playerInventory)
 							break :blk serverInventory.inv;
 					}
@@ -1149,6 +1285,10 @@ pub const Command = struct { // MARK: Command
 	const Open = struct { // MARK: Open
 		inv: Inventory,
 		source: Source,
+
+		fn getInventories(self: Open, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.inv});
+		}
 
 		fn run(_: Open, _: NeverFailingAllocator, _: *Command, _: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {}
 
@@ -1275,6 +1415,10 @@ pub const Command = struct { // MARK: Command
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 
+		fn getInventories(self: DepositOrSwap, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.source.inv, self.dest.inv});
+		}
+
 		fn run(self: DepositOrSwap, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			std.debug.assert(self.source.inv.type == .normal);
 			if(self.dest.inv.type == .creative) {
@@ -1338,6 +1482,10 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
+		fn getInventories(self: Deposit, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.source.inv, self.dest.inv});
+		}
+
 		fn run(self: Deposit, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			if(self.source.inv.type != .normal and (self.source.inv.type != .creative or self.dest.inv.type != .normal)) return error.serverFailure;
 			if(self.dest.inv.type == .crafting) return;
@@ -1392,6 +1540,10 @@ pub const Command = struct { // MARK: Command
 	const TakeHalf = struct { // MARK: TakeHalf
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
+
+		fn getInventories(self: TakeHalf, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.source.inv, self.dest.inv});
+		}
 
 		fn run(self: TakeHalf, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
@@ -1456,18 +1608,25 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		desiredAmount: u16 = 0xffff,
 
+		fn getInventories(self: Drop, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.source.inv});
+		}
+
 		fn run(self: Drop, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
 			if(self.source.inv.type == .creative) return;
 			if(self.source.ref().item == null) return;
 			if(self.source.inv.type == .crafting) {
 				if(self.source.slot != self.source.inv._items.len - 1) return;
 				var _items: [1]ItemStack = .{.{.item = null, .amount = 0}};
+				var mutex: std.Thread.Mutex = .{};
+				mutex.lock();
 				const temp: Inventory = .{
 					.type = .normal,
 					._items = &_items,
 					.id = undefined,
 					.source = undefined,
 					.callbacks = .{},
+					.mutex = &mutex,
 				};
 				cmd.tryCraftingTo(allocator, temp, self.source, side, user);
 				std.debug.assert(cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
@@ -1513,6 +1672,10 @@ pub const Command = struct { // MARK: Command
 		dest: InventoryAndSlot,
 		item: ?Item,
 		amount: u16 = 0,
+
+		fn getInventories(self: FillFromCreative, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.dest.inv});
+		}
 
 		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, mode: Gamemode) error{serverFailure}!void {
 			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
@@ -1568,6 +1731,10 @@ pub const Command = struct { // MARK: Command
 		dest: Inventory,
 		source: Inventory,
 		dropLocation: Vec3d,
+
+		fn getInventories(self: DepositOrDrop, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.source, self.dest});
+		}
 
 		pub fn run(self: DepositOrDrop, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
 			std.debug.assert(self.dest.type == .normal);
@@ -1631,6 +1798,10 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
+		fn getInventories(self: DepositToAny, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.source.inv, self.dest});
+		}
+
 		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
 			if(self.dest.type == .creative) return;
 			if(self.dest.type == .crafting) return;
@@ -1688,6 +1859,10 @@ pub const Command = struct { // MARK: Command
 
 	const Clear = struct { // MARK: Clear
 		inv: Inventory,
+
+		fn getInventories(self: Clear, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.inv});
+		}
 
 		pub fn run(self: Clear, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
 			if(self.inv.type == .creative) return;
@@ -1792,6 +1967,10 @@ pub const Command = struct { // MARK: Command
 				return velocity;
 			}
 		};
+
+		fn getInventories(self: UpdateBlock, allocator: NeverFailingAllocator) []Inventory {
+			return allocator.dupe(Inventory, &.{self.source.inv});
+		}
 
 		fn run(self: UpdateBlock, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			if(self.source.inv.type != .normal) return;
@@ -1984,11 +2163,14 @@ const Type = union(TypeEnum) {
 type: Type,
 id: InventoryId,
 _items: []ItemStack,
+mutex: *std.Thread.Mutex = undefined,
+wasDeinitedOnAnotherThreadPtr: ?*bool = null,
 source: Source,
 callbacks: Callbacks,
 
 pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, callbacks: Callbacks) Inventory {
-	const self = _init(allocator, _size, _type, source, .client, callbacks);
+	var self = _init(allocator, _size, _type, source, .client, callbacks);
+	self.mutex = &Sync.ClientSide.mutex;
 	Sync.ClientSide.executeCommand(.{.open = .{.inv = self, .source = source}});
 	return self;
 }
@@ -2032,7 +2214,13 @@ fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: Side) void {
 	allocator.free(self._items);
 }
 
+fn wasDeinitedOnAnotherThread(self: Inventory) bool {
+	main.utils.assertLocked(self.mutex);
+	return (self.wasDeinitedOnAnotherThreadPtr orelse return false).*;
+}
+
 fn update(self: Inventory) void {
+	main.utils.assertLocked(self.mutex);
 	defer if(self.callbacks.onUpdateCallback) |cb| cb(self.source);
 	if(self.type == .workbench) {
 		self._items[self._items.len - 1].deinit();

@@ -971,8 +971,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
-			main.items.Inventory.Sync.ServerSide.mutex.lock();
-			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
 				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
@@ -1173,7 +1171,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	/// Returns the actual block on failure
 	pub fn cmpxchgBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
-		main.utils.assertLocked(&main.items.Inventory.Sync.ServerSide.mutex); // Block entities with inventories need this mutex to be locked
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
 		const x: u5 = @intCast(wx & chunk.chunkMask);

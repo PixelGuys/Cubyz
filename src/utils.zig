@@ -1600,6 +1600,7 @@ pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 }
 
 pub fn deadlockFreeDoubleLock(m1: *std.Thread.Mutex, m2: *std.Thread.Mutex) void {
+	std.debug.assert(m1 != m2); // Deadlock
 	if(@intFromPtr(m1) < @intFromPtr(m2)) {
 		m1.lock();
 		m2.lock();
