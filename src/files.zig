@@ -10,7 +10,7 @@ pub fn openDirInWindow(path: []const u8) void {
 	defer main.stackAllocator.free(newPath);
 
 	if(builtin.os.tag == .windows) {
-		std.mem.replaceScalar(u8, newPath, '/', '\\');
+		windowsPathConvert(newPath);
 	}
 
 	const command = switch(builtin.os.tag) {
@@ -36,15 +36,15 @@ pub fn openDirInWindow(path: []const u8) void {
 
 pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 	const command = switch(builtin.os.tag) {
-		.windows => .{"explorer"},
-		.macos => .{"open"},
+		.windows => .{},
+		.macos => .{},
 		else => .{"zenity", "--file-selection", "--directory"},
 	};
 	const result = std.process.Child.run(.{
 		.allocator = allocator.allocator,
 		.argv = &command,
 	}) catch |err| {
-		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
+		std.log.err("Got error while trying to open folder selector: {s}", .{@errorName(err)});
 		return err;
 	};
 	defer {
@@ -53,7 +53,7 @@ pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 	}
 
 	if (result.stdout.len == 0) {
-		return error.Test;
+		return null;
 	}
 
 	const output = std.fmt.allocPrint(allocator.allocator, "{s}", .{result.stdout[0..(result.stdout.len - 1)]}) catch unreachable;
@@ -64,9 +64,48 @@ pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 	}
 	
 	if(builtin.os.tag == .windows) {
-		std.mem.replaceScalar(u8, output, '/', '\\');
+		windowsPathConvert(output);
 	}
 	return output;
+}
+
+pub fn fileQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
+	const command = switch(builtin.os.tag) {
+		.windows => .{},
+		.macos => .{},
+		else => .{"zenity", "--file-selection"},
+	};
+	const result = std.process.Child.run(.{
+		.allocator = allocator.allocator,
+		.argv = &command,
+	}) catch |err| {
+		std.log.err("Got error while trying to open file selector: {s}", .{@errorName(err)});
+		return err;
+	};
+	defer {
+		allocator.free(result.stderr);
+		allocator.free(result.stdout);
+	}
+
+	if (result.stdout.len == 0) {
+		return null;
+	}
+
+	const output = std.fmt.allocPrint(allocator.allocator, "{s}", .{result.stdout[0..(result.stdout.len - 1)]}) catch unreachable;
+	
+	if(output.len == 0) {
+		allocator.free(output);
+		return null;
+	}
+	
+	if(builtin.os.tag == .windows) {
+		windowsPathConvert(output);
+	}
+	return output;
+}
+
+fn windowsPathConvert(pathPtr: *[]const u8) void {
+	std.mem.replaceScalar(u8, pathPtr.*, '/', '\\');
 }
 
 pub fn cwd() Dir {

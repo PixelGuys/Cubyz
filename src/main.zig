@@ -350,9 +350,34 @@ fn setHotbarSlot(i: comptime_int) *const fn(Window.Key.Modifiers) void {
 	}.set;
 }
 
+fn folderQuery(_: Window.Key.Modifiers) void {
+	const meow = files.folderQuery(stackAllocator) catch |err| {
+		std.log.err("something broke: {s}", .{@errorName(err)});
+		return;
+	};
+	if(meow) |mrrp| {
+		std.log.info("folder: {s}", .{mrrp});
+	} else {
+		std.log.warn("nothing selected!", .{});
+	}
+}
+fn fileQuery(_: Window.Key.Modifiers) void {
+	const meow = files.fileQuery(stackAllocator) catch |err| {
+		std.log.err("something broke: {s}", .{@errorName(err)});
+		return;
+	};
+	if(meow) |mrrp| {
+		std.log.info("file: {s}", .{mrrp});
+	} else {
+		std.log.warn("nothing selected!", .{});
+	}
+}
+
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
 	pub var keys = [_]Window.Key{
+		.{.name = "folder", .key = c.GLFW_KEY_GRAVE_ACCENT, .pressAction = &folderQuery},
+		.{.name = "file", .key = c.GLFW_KEY_TAB, .pressAction = &fileQuery},
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
