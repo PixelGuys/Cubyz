@@ -46,7 +46,7 @@ const Vec3d = vec.Vec3d;
 
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
-const ThreadType = enum{render, server, network, audio, pool};
+const ThreadType = enum {render, server, network, audio, pool};
 pub threadlocal var threadType: ThreadType = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
 pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
