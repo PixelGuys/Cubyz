@@ -10,7 +10,7 @@ pub fn openDirInWindow(path: []const u8) void {
 	defer main.stackAllocator.free(newPath);
 
 	if(builtin.os.tag == .windows) {
-		windowsPathConvert(newPath);
+		windowsPathConvert(&newPath);
 	}
 
 	const command = switch(builtin.os.tag) {
@@ -64,7 +64,7 @@ pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 	}
 
 	if(builtin.os.tag == .windows) {
-		windowsPathConvert(output);
+		windowsPathConvert(&output);
 	}
 	return output;
 }
@@ -99,7 +99,7 @@ pub fn fileQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 	}
 
 	if(builtin.os.tag == .windows) {
-		windowsPathConvert(output);
+		windowsPathConvert(&output);
 	}
 	return output;
 }
