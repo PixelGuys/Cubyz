@@ -205,8 +205,8 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const mousePositionRelative = mousePosition - self.pos;
 		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
-		const mousePositionIndex: usize = @as(usize, @intFromFloat(@divFloor(self.size[0] - mousePositionRelative[0], iconWidth*self.scale)));
-		const grabPositionIndex: usize = @as(usize, @intFromFloat(@divFloor(self.size[0] - grabPositionRelative[0], iconWidth*self.scale)));
+		const mousePositionIndex: usize = std.math.clamp(@as(i32, @intFromFloat(@divFloor(self.size[0] - mousePositionRelative[0], iconWidth*self.scale))), 0, self.titleBarButtons.len);
+		const grabPositionIndex: usize = std.math.clamp(@as(i32, @intFromFloat(@divFloor(self.size[0] - grabPositionRelative[0], iconWidth*self.scale))), 0, self.titleBarButtons.len);
 
 		if(mousePositionIndex == grabPositionIndex and mousePositionIndex < self.titleBarButtons.len) {
 			self.titleBarButtons[self.titleBarButtons.len - 1 - mousePositionIndex].callback(self);
