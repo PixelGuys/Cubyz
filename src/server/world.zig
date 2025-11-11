@@ -485,7 +485,7 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.world.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.world.path));
-		self.world.tickSpeed = std.atomic.Value(u32).init(worldData.get(u32, "tickSpeed", 12));
+		self.world.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
@@ -521,7 +521,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	lastUnimportantDataSent: i64,
 	doGameTimeCycle: bool = true,
 
-	tickSpeed: std.atomic.Value(u32) = std.atomic.Value(u32).init(12),
+	tickSpeed: std.atomic.Value(u32) = .init(12),
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
