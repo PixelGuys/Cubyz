@@ -342,26 +342,25 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	std.debug.assert(structureList.items.len == 0);
 	std.debug.assert(structureMap.capacity() == 0);
 
-	structureList.resize(main.worldArena, structures.count());
+	structureList.ensureCapacity(main.worldArena, structures.count());
 	structureMap.ensureTotalCapacity(main.worldArena.allocator, structures.count()) catch unreachable;
 
 	childrenToResolve = .init(main.stackAllocator);
 	defer childrenToResolve.deinit();
 	{
 		var iterator = structures.iterator();
-		var index: u32 = 0;
+		var loadedCount: u32 = 0;
 		while(iterator.next()) |entry| {
-			defer index += 1;
-
-			structureList.items[index] = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
+			structureList.appendAssumeCapacity(StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
 				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.*, @errorName(err)});
 				continue;
-			};
+			});
 
 			const key = main.worldArena.dupe(u8, entry.key_ptr.*);
-			structureMap.put(main.worldArena.allocator, key, @enumFromInt(index)) catch unreachable;
+			structureMap.put(main.worldArena.allocator, key, @enumFromInt(loadedCount)) catch unreachable;
 
 			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
+			loadedCount += 1;
 		}
 	}
 	{

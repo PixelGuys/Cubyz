@@ -91,5 +91,14 @@
 			.density = 0.1,
 			.priority = 0.1,
 		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:bluebells",
+			.chance = 0.01,
+			.width = 5,
+			.variation = 3,
+			.density = 0.4,
+			.priority = 0.1,
+		},
 	},
 }

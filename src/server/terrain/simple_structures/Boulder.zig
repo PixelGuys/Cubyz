@@ -23,7 +23,7 @@ block: main.blocks.Block,
 size: f32,
 sizeVariation: f32,
 
-pub fn loadModel(parameters: ZonElement) *Boulder {
+pub fn loadModel(parameters: ZonElement) ?*Boulder {
 	const self = main.worldArena.create(Boulder);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:slate")),
