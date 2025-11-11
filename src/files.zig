@@ -52,17 +52,17 @@ pub fn folderQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 		allocator.free(result.stdout);
 	}
 
-	if (result.stdout.len == 0) {
+	if(result.stdout.len == 0) {
 		return null;
 	}
 
 	const output = std.fmt.allocPrint(allocator.allocator, "{s}", .{result.stdout[0..(result.stdout.len - 1)]}) catch unreachable;
-	
+
 	if(output.len == 0) {
 		allocator.free(output);
 		return null;
 	}
-	
+
 	if(builtin.os.tag == .windows) {
 		windowsPathConvert(output);
 	}
@@ -87,17 +87,17 @@ pub fn fileQuery(allocator: main.heap.NeverFailingAllocator) !?[]const u8 {
 		allocator.free(result.stdout);
 	}
 
-	if (result.stdout.len == 0) {
+	if(result.stdout.len == 0) {
 		return null;
 	}
 
 	const output = std.fmt.allocPrint(allocator.allocator, "{s}", .{result.stdout[0..(result.stdout.len - 1)]}) catch unreachable;
-	
+
 	if(output.len == 0) {
 		allocator.free(output);
 		return null;
 	}
-	
+
 	if(builtin.os.tag == .windows) {
 		windowsPathConvert(output);
 	}
