@@ -26,11 +26,10 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 		const leave = params.chunk.getBlock(wx & main.chunk.chunkMask, wy & main.chunk.chunkMask, wz & main.chunk.chunkMask);
 		params.chunk.mutex.unlock();
 
-		//check if there is any log in the proximity?^
+		// check if there is any log in the proximity?^
 		const checkRange = 5;
 		var logFound: bool = false;
 
-		//main.Window.setMouseGrabbed(false);
 		const checkLength = checkRange*2 + 1;
 		var checked: [checkLength*checkLength*checkLength]bool = undefined;
 		var queue = main.utils.CircularBufferQueue(Vec3i).init(main.globalAllocator, 32);
@@ -47,12 +46,12 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 		queue.pushBack(Vec3i{wx, wy, wz + 1});
 
 		blk: while(queue.popFront()) |value| {
-			//calc relative position
+			// calc relative position
 			const x = @as(i32, @intCast(value[0])) - wx;
 			const y = @as(i32, @intCast(value[1])) - wy;
 			const z = @as(i32, @intCast(value[2])) - wz;
 
-			//mark as checked
+			// mark as checked
 			if(@max(@abs(x), @abs(y), @abs(z)) > checkRange)
 				continue;
 			const arrayIndexX = x + checkRange;
@@ -63,7 +62,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 				continue;
 			checked[@as(usize, @intCast(index))] = true;
 
-			//get the chunk
+			// get the chunk
 			const chunkPosition = main.chunk.ChunkPosition.initFromWorldPos(value, 1);
 			var chunk = world.getOrGenerateChunkAndIncreaseRefCount(chunkPosition);
 			defer chunk.decreaseRefCount();
@@ -80,7 +79,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 			}
 			// it is a leave of the same type
 			else if(log.typ == leave.typ) {
-				const neighbourRange = 1; //1 = leaves need path to log without air gab
+				const neighbourRange = 1; // 1 = leaves need path to log without air gab
 				for(0..neighbourRange*2 + 1) |offsetX| {
 					for(0..neighbourRange*2 + 1) |offsetY| {
 						for(0..neighbourRange*2 + 1) |offsetZ| {
@@ -100,10 +99,10 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 		if(logFound)
 			return .ignored;
-		//no, there is no log in proximity
+		// no, there is no log in proximity
 		world.updateBlock(wx, wy, wz, main.blocks.Block.air);
 
-		//trigger others leaves:
+		// trigger others leaves:
 		const updateRange = 1;
 		for(0..updateRange*2 + 1) |offsetX| {
 			for(0..updateRange*2 + 1) |offsetY| {
