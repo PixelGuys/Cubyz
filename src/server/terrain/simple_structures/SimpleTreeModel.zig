@@ -60,14 +60,14 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 		var pz: i32 = chunk.startIndex(z);
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				var enabledConnections = 0b000011;
+				var enabledConnections: u6 = 0b000011;
 
 				if(self.branched) {
 					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
 					if(main.random.nextFloat(seed) < chance) {
 						const d = main.random.nextIntBounded(u32, seed, 4);
 						generateBranch(self, x, y, pz, d, chunk, seed);
-						enabledConnections += 2 << (d + 2);
+						enabledConnections += @as(u6, 2) << @truncate(d + 1);
 					}
 				}
 
