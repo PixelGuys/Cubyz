@@ -1,5 +1,0 @@
-.{
-    .onUpdate = .{
-		.type = .leafDecay
-	}
-}
