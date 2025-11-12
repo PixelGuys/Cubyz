@@ -30,7 +30,7 @@ pub const WorldSettings = struct {
 	gamemode: Gamemode = .creative,
 	allowCheats: bool = false,
 	testingMode: bool = false,
-	seed: u64 = 0,
+	seed: []const u8 = "",
 };
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
 	// Remove illegal ASCII characters:
@@ -59,6 +59,15 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 		i += 1;
 	}
 	return allocator.dupe(u8, resultName);
+}
+fn parseWorldSeed(seedStr: []const u8) u64 {
+	if(seedStr.len == 0) {
+		return main.random.nextInt(u64, &main.seed);
+	} else {
+		return std.fmt.parseInt(u64, seedStr, 0) catch {
+			return std.hash.Wyhash.hash(0, seedStr);
+		};
+	}
 }
 
 pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void {
@@ -96,7 +105,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void
 		worldInfo.put("name", worldName);
 		worldInfo.put("version", worldDataVersion);
 		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
-		worldInfo.put("seed", worldSettings.seed);
+		worldInfo.put("seed", parseWorldSeed(worldSettings.seed));
 
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
 	}
@@ -473,7 +482,10 @@ const WorldIO = struct { // MARK: WorldIO
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
 		}
-		return worldData.get(?u64, "seed", null) orelse main.random.nextInt(u48, &main.seed);
+		return worldData.get(?u64, "seed", null) orelse {
+			std.log.err("Cannot load world. World has no seed!", .{});
+			return error.NoSeed;
+		};
 	}
 
 	pub fn loadWorldData(self: WorldIO) !void {
@@ -527,7 +539,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	allowCheats: bool = undefined,
 	testingMode: bool = undefined,
 
-	seed: u64,
+	seed: u64 = undefined,
 	path: []const u8,
 	name: []const u8 = &.{},
 	spawn: Vec3i = undefined,
@@ -558,7 +570,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.lastUpdateTime = std.time.milliTimestamp(),
 			.milliTime = std.time.milliTimestamp(),
 			.lastUnimportantDataSent = std.time.milliTimestamp(),
-			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
@@ -805,7 +816,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		if(@reduce(.And, self.spawn == Vec3i{0, 0, 0})) {
 			var seed: u64 = self.seed ^ 275892235728371;
-			std.log.info("Finding position..", .{});
+			std.log.info("Finding spawn position...", .{});
 			foundPosition: {
 				// Explore chunks in a spiral from the center:
 				const radius = 65536;

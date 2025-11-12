@@ -47,21 +47,9 @@ fn testingModeCallback(enabled: bool) void {
 	testingMode = enabled;
 }
 
-fn getWorldSeed(seedStr: []const u8) u64 {
-	if(seedStr.len == 0) {
-		return main.random.nextInt(u64, &main.seed);
-	} else {
-		return std.fmt.parseInt(u64, seedStr, 0) catch {
-			return std.hash.Wyhash.hash(0, seedStr);
-		};
-	}
-}
-
 fn createWorld(_: usize) void {
 	const worldName = nameInput.currentString.items;
-	const worldSeedStr = seedInput.currentString.items;
-
-	const worldSeed = getWorldSeed(worldSeedStr);
+	const worldSeed = seedInput.currentString.items;
 
 	const worldSettings: main.server.world_zig.WorldSettings = .{.gamemode = gamemode, .allowCheats = allowCheats, .testingMode = testingMode, .seed = worldSeed};
 	main.server.world_zig.tryCreateWorld(worldName, worldSettings) catch |err| {
