@@ -20,7 +20,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		water_surface,
 	};
 	const VTable = struct {
-		loadModel: *const fn(parameters: ZonElement) *anyopaque,
+		loadModel: *const fn(parameters: ZonElement) ?*anyopaque,
 		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
@@ -38,9 +38,13 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
 		};
+		const vtableModel = vtable.loadModel(parameters) orelse {
+			std.log.err("Error occurred while loading structure with id '{s}'. Dropping model from biome.", .{id});
+			return null;
+		};
 		return SimpleStructureModel{
 			.vtable = vtable,
-			.data = vtable.loadModel(parameters),
+			.data = vtableModel,
 			.chance = parameters.get(f32, "chance", 0.1),
 			.priority = parameters.get(f32, "priority", 1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
@@ -55,7 +59,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
-		self.loadModel = main.utils.castFunctionReturnToAnyopaque(Generator.loadModel);
+		self.loadModel = main.utils.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
 		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
 		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {

@@ -1642,12 +1642,16 @@ pub const Command = struct { // MARK: Command
 			const sourceStack = self.source.ref();
 			if(sourceStack.item == null) return;
 			if(self.amount > sourceStack.amount) return;
-			if(!self.dest.canHold(.{.item = sourceStack.item, .amount = self.amount})) return;
 
 			var remainingAmount = self.amount;
+			var selectedEmptySlot: ?u32 = null;
 			for(self.dest._items, 0..) |*destStack, destSlot| {
-				if(std.meta.eql(destStack.item, sourceStack.item) or destStack.item == null) {
+				if(destStack.item == null and selectedEmptySlot == null) {
+					selectedEmptySlot = @intCast(destSlot);
+				}
+				if(std.meta.eql(destStack.item, sourceStack.item)) {
 					const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
+					if(amount == 0) continue;
 					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
 						.source = self.source,
@@ -1656,6 +1660,13 @@ pub const Command = struct { // MARK: Command
 					remainingAmount -= amount;
 					if(remainingAmount == 0) break;
 				}
+			}
+			if(remainingAmount > 0 and selectedEmptySlot != null) {
+				cmd.executeBaseOperation(allocator, .{.move = .{
+					.dest = .{.inv = self.dest, .slot = selectedEmptySlot.?},
+					.source = self.source,
+					.amount = remainingAmount,
+				}}, side);
 			}
 		}
 

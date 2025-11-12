@@ -25,20 +25,22 @@ const UpdateEvent = union(enum) {
 	update: *BinaryReader,
 };
 
+pub const ErrorSet = BinaryReader.AllErrors || error{Invalid};
+
 pub const BlockEntityType = struct {
 	id: []const u8,
 	vtable: VTable,
 
 	const VTable = struct {
-		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
+		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void,
 		onUnloadClient: *const fn(dataIndex: BlockEntityIndex) void,
-		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
+		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void,
 		onUnloadServer: *const fn(dataIndex: BlockEntityIndex) void,
 		onStoreServerToDisk: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onStoreServerToClient: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) main.callbacks.Result,
-		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void,
-		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void,
+		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
+		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
 		getServerToClientData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
@@ -57,13 +59,13 @@ pub const BlockEntityType = struct {
 		}
 		return class;
 	}
-	pub inline fn onLoadClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+	pub inline fn onLoadClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 		return self.vtable.onLoadClient(pos, chunk, reader);
 	}
 	pub inline fn onUnloadClient(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
 		return self.vtable.onUnloadClient(dataIndex);
 	}
-	pub inline fn onLoadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+	pub inline fn onLoadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 		return self.vtable.onLoadServer(pos, chunk, reader);
 	}
 	pub inline fn onUnloadServer(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
@@ -78,10 +80,10 @@ pub const BlockEntityType = struct {
 	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
 		return self.vtable.onInteract(pos, chunk);
 	}
-	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateClientData(pos, chunk, event);
 	}
-	pub inline fn updateServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+	pub inline fn updateServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateServerData(pos, chunk, event);
 	}
 	pub inline fn getServerToClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
@@ -215,9 +217,9 @@ pub const BlockEntityTypes = struct {
 			.onUpdateCallback = &onInventoryUpdateCallback,
 		};
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
+		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) ErrorSet!void {}
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
-		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 
@@ -258,8 +260,8 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
-		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
-		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 			switch(event) {
 				.remove => {
 					const chest = StorageServer.remove(pos, chunk) orelse return;
@@ -325,16 +327,17 @@ pub const BlockEntityTypes = struct {
 			StorageServer.init();
 			StorageClient.init();
 			textureDeinitList = .init(main.globalAllocator);
-
-			pipeline = graphics.Pipeline.init(
-				"assets/cubyz/shaders/block_entity/sign.vert",
-				"assets/cubyz/shaders/block_entity/sign.frag",
-				"",
-				&uniforms,
-				.{},
-				.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
-				.{.attachments = &.{.alphaBlending}},
-			);
+			if(!main.settings.launchConfig.headlessServer) {
+				pipeline = graphics.Pipeline.init(
+					"assets/cubyz/shaders/block_entity/sign.vert",
+					"assets/cubyz/shaders/block_entity/sign.frag",
+					"",
+					&uniforms,
+					.{},
+					.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
+					.{.attachments = &.{.alphaBlending}},
+				);
+			}
 		}
 		pub fn deinit() void {
 			while(textureDeinitList.popOrNull()) |texture| {
@@ -371,10 +374,10 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
-		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 			return updateClientData(pos, chunk, .{.update = reader});
 		}
-		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 			if(event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageClient.remove(pos, chunk) orelse return;
 				entry.deinit();
@@ -396,10 +399,10 @@ pub const BlockEntityTypes = struct {
 			};
 		}
 
-		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 			return updateServerData(pos, chunk, .{.update = reader});
 		}
-		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 			if(event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageServer.remove(pos, chunk) orelse return;
 				main.globalAllocator.free(entry.text);
@@ -408,6 +411,13 @@ pub const BlockEntityTypes = struct {
 
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
+
+			const newText = event.update.remaining;
+
+			if(!std.unicode.utf8ValidateSlice(newText)) {
+				std.log.err("Received sign text with invalid UTF-8 characters.", .{});
+				return error.Invalid;
+			}
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
