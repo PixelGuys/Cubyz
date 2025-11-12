@@ -9,7 +9,6 @@ const rotation = main.rotation;
 const Degrees = rotation.Degrees;
 const vec = main.vec;
 const Mat3f = vec.Mat3f;
-const Mat4f = vec.Mat4f;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
