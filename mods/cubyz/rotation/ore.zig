@@ -10,7 +10,6 @@ const Degrees = rotation.Degrees;
 const RayIntersectionResult = rotation.RayIntersectionResult;
 const RotationMode = rotation.RotationMode;
 const vec = main.vec;
-const Mat4f = vec.Mat4f;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
