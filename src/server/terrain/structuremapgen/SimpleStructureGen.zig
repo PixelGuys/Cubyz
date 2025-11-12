@@ -1,7 +1,7 @@
 const std = @import("std");
 const sign = std.math.sign;
 
-const main = @import("main");
+const main = @import("main.zig");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const Array3D = main.utils.Array3D;
 const ChunkPosition = main.chunk.ChunkPosition;
 

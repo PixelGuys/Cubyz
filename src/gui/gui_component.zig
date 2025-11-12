@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 

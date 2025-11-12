@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("main");
+const main = @import("main.zig");
 const Array2D = main.utils.Array2D;
 const Cache = main.utils.Cache;
 const ZonElement = main.ZonElement;

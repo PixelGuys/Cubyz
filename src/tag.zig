@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 
 var tagList: main.ListUnmanaged([]const u8) = .{};
 var tagIds: std.StringHashMapUnmanaged(Tag) = .{};

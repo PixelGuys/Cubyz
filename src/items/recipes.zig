@@ -1,5 +1,5 @@
 const std = @import("std");
-const main = @import("main");
+const main = @import("main.zig");
 const items = main.items;
 const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const ItemStack = main.items.ItemStack;
 const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const Tool = main.items.Tool;
 
 pub const Data = packed struct(u128) {strength: f32, tag: main.Tag, pad: u64 = undefined};

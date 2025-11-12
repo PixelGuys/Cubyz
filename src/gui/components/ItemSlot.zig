@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const Inventory = main.items.Inventory;
 const graphics = main.graphics;
 const draw = graphics.draw;

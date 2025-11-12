@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 
 dps: f32,
 damageType: main.game.DamageType,

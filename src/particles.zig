@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const chunk_meshing = @import("renderer/chunk_meshing.zig");
 const graphics = @import("graphics.zig");
 const SSBO = graphics.SSBO;

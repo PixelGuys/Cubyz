@@ -2,7 +2,7 @@ const std = @import("std");
 
 const build_options = @import("build_options");
 
-const main = @import("main");
+const main = @import("main.zig");
 const Array2D = main.utils.Array2D;
 const random = main.random;
 const ZonElement = main.ZonElement;

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const blocks = main.blocks;
 const Block = blocks.Block;
 const Neighbor = main.chunk.Neighbor;

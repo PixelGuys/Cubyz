@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const terrain = main.server.terrain;
 const Vec3i = main.vec.Vec3i;
 const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;

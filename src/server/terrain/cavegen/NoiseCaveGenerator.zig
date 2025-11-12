@@ -1,7 +1,7 @@
 const std = @import("std");
 const sign = std.math.sign;
 
-const main = @import("main");
+const main = @import("main.zig");
 const Array3D = main.utils.Array3D;
 const random = main.random;
 const ZonElement = main.ZonElement;

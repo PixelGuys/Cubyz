@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const c = main.Window.c;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 

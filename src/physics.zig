@@ -2,7 +2,7 @@ const std = @import("std");
 
 const items = @import("items.zig");
 const Inventory = items.Inventory;
-const main = @import("main");
+const main = @import("main.zig");
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
 const Vec3f = vec.Vec3f;

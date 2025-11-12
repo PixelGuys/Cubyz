@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Tool = main.items.Tool;
 const ZonElement = main.ZonElement;

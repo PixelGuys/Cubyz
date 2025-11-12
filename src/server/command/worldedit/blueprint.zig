@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const User = main.server.User;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;

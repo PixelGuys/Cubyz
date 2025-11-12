@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const Item = main.items.Item;
 const Inventory = main.items.Inventory;
 const Player = main.game.Player;

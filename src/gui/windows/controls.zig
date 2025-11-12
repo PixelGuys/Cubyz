@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const Vec2f = main.vec.Vec2f;
 const c = main.Window.c;
 const gui = @import("../gui.zig");

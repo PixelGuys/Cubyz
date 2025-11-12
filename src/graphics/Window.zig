@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const main = @import("main");
+const main = @import("main.zig");
 const settings = main.settings;
 const files = main.files;
 const vec = main.vec;

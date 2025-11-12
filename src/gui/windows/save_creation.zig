@@ -2,7 +2,7 @@ const std = @import("std");
 
 const build_options = @import("build_options");
 
-const main = @import("main");
+const main = @import("main.zig");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;

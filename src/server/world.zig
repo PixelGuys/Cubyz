@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main");
+const main = @import("main.zig");
 const Block = main.blocks.Block;
 const Cache = main.utils.Cache;
 const chunk = main.chunk;

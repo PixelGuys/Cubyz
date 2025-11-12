@@ -3,7 +3,7 @@ const Allocator = std.mem.Allocator;
 
 const build_options = @import("build_options");
 
-const main = @import("main");
+const main = @import("main.zig");
 
 var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allocator);
 pub const testingAllocator = testingErrorHandlingAllocator.allocator();
