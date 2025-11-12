@@ -11,8 +11,7 @@
 	.texture = "cubyz:leaves/dead",
 	.lodReplacement = "cubyz:leaves/dead_opaque",
 	.opaqueVariant = "cubyz:leaves/dead_opaque",
-
 	.onUpdate = .{
-		.type = .leafDecay
-	}
+		.type = .leafDecay,
+	},
 }
