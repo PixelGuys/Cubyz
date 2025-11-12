@@ -291,10 +291,10 @@ fn openInventory(_: Window.Key.Modifiers) void {
 	gui.toggleGameMenu();
 	gui.openWindow("inventory");
 }
-fn openCreativeInventory(_: Window.Key.Modifiers) void {
+fn openCreativeInventory(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
-	ungrabMouse();
+	ungrabMouse(mods);
 	gui.openWindow("creative_inventory");
 }
 fn openChat(mods: Window.Key.Modifiers) void {
