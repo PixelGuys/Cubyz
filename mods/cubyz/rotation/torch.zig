@@ -10,7 +10,7 @@ const Degrees = rotation.Degrees;
 const RayIntersectionResult = rotation.RayIntersectionResult;
 const RotationMode = rotation.RotationMode;
 const vec = main.vec;
-const Mat4f = vec.Mat4f;
+const Mat3f = vec.Mat3f;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
@@ -57,11 +57,11 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	for(1..32) |i| {
 		const torchData: TorchData = @bitCast(@as(u5, @intCast(i)));
 		if(i & i - 1 == 0) {
-			if(torchData.center) centerModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.identity()});
-			if(torchData.negX) negXModel = sideModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(0)});
-			if(torchData.posX) posXModel = sideModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi)});
-			if(torchData.negY) negYModel = sideModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0)});
-			if(torchData.posY) posYModel = sideModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0)});
+			if(torchData.center) centerModel = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.identity()});
+			if(torchData.negX) negXModel = sideModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(0)});
+			if(torchData.posX) posXModel = sideModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(std.math.pi)});
+			if(torchData.negY) negYModel = sideModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(std.math.pi/2.0)});
+			if(torchData.posY) posYModel = sideModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(-std.math.pi/2.0)});
 		} else {
 			var models: [5]ModelIndex = undefined;
 			var amount: usize = 0;
