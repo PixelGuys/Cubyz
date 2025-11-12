@@ -70,10 +70,10 @@ var _hasBackFace: [maxBlockCount]bool = undefined;
 var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 //is this block decayable?
-var _decayable:       [maxBlockCount]bool                = undefined;
-var _onBreak:         [maxBlockCount]ServerBlockCallback = undefined;
-var _onUpdate:        [maxBlockCount]ServerBlockCallback = undefined;
-var _decayProhibitor: [maxBlockCount]bool                = undefined;
+var _decayable: [maxBlockCount]bool = undefined;
+var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
+var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
+var _decayProhibitor: [maxBlockCount]bool = undefined;
 
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -122,7 +122,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	}
 	_decayable[size] = zon.get(bool, "decayable", false);
 	_decayProhibitor[size] = zon.get(bool, "decayProhibitor", false);
-	
+
 	_onBreak[size] = blk: {
 		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
 			std.log.err("Failed to load onBreak event for block {s}", .{id});
@@ -135,7 +135,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break :blk .noop;
 		};
 	};
-	
 
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
@@ -419,7 +418,6 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn onUpdate(self: Block) ServerBlockCallback {
 		return _onUpdate[self.typ];
 	}
-	
 
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
