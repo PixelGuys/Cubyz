@@ -10,7 +10,7 @@ const Degrees = rotation.Degrees;
 const RayIntersectionResult = rotation.RayIntersectionResult;
 const RotationMode = rotation.RotationMode;
 const vec = main.vec;
-const Mat4f = vec.Mat4f;
+const Mat3f = vec.Mat3f;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
@@ -79,12 +79,12 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	for(1..64) |i| {
 		const carpetData: CarpetData = @bitCast(@as(u6, @intCast(i)));
 		if(i & i - 1 == 0) {
-			if(carpetData.negX) negXModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
-			if(carpetData.posX) posXModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
-			if(carpetData.negY) negYModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
-			if(carpetData.posY) posYModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi).mul(Mat4f.rotationX(-std.math.pi/2.0))});
-			if(carpetData.negZ) negZModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.identity()});
-			if(carpetData.posZ) posZModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
+			if(carpetData.negX) negXModel = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(-std.math.pi/2.0).mul(Mat3f.rotationX(-std.math.pi/2.0))});
+			if(carpetData.posX) posXModel = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(std.math.pi/2.0).mul(Mat3f.rotationX(-std.math.pi/2.0))});
+			if(carpetData.negY) negYModel = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationX(-std.math.pi/2.0)});
+			if(carpetData.posY) posYModel = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(std.math.pi).mul(Mat3f.rotationX(-std.math.pi/2.0))});
+			if(carpetData.negZ) negZModel = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.identity()});
+			if(carpetData.posZ) posZModel = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationY(std.math.pi)});
 		} else {
 			var models: [6]ModelIndex = undefined;
 			var amount: usize = 0;
