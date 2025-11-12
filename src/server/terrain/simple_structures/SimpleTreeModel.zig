@@ -60,15 +60,18 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 		var pz: i32 = chunk.startIndex(z);
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, self.woodBlock);
+				var enabledConnections = 0b000011;
 
 				if(self.branched) {
 					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
 					if(main.random.nextFloat(seed) < chance) {
 						const d = main.random.nextIntBounded(u32, seed, 4);
 						generateBranch(self, x, y, pz, d, chunk, seed);
+						enabledConnections += 2 << (d + 2);
 					}
 				}
+
+				chunk.updateBlockIfDegradable(x, y, pz, .{.typ = self.woodBlock.typ, .data = enabledConnections});
 			}
 		}
 	}
@@ -78,13 +81,13 @@ pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, ch
 	_ = seed;
 
 	if(d == 0 and chunk.liesInChunk(x + 1, y, z)) {
-		chunk.updateBlockIfDegradable(x + 1, y, z, self.woodBlock);
+		chunk.updateBlockIfDegradable(x + 1, y, z, .{.typ = self.woodBlock.typ, .data = 0b001000});
 	} else if(d == 1 and chunk.liesInChunk(x - 1, y, z)) {
-		chunk.updateBlockIfDegradable(x - 1, y, z, self.woodBlock);
+		chunk.updateBlockIfDegradable(x - 1, y, z, .{.typ = self.woodBlock.typ, .data = 0b000100});
 	} else if(d == 2 and chunk.liesInChunk(x, y + 1, z)) {
-		chunk.updateBlockIfDegradable(x, y + 1, z, self.woodBlock);
+		chunk.updateBlockIfDegradable(x, y + 1, z, .{.typ = self.woodBlock.typ, .data = 0b100000});
 	} else if(d == 3 and chunk.liesInChunk(x, y - 1, z)) {
-		chunk.updateBlockIfDegradable(x, y - 1, z, self.woodBlock);
+		chunk.updateBlockIfDegradable(x, y - 1, z, .{.typ = self.woodBlock.typ, .data = 0b010000});
 	}
 }
 
