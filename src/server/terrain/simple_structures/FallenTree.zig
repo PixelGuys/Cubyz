@@ -20,15 +20,13 @@ pub const generationMode = .floor;
 const FallenTree = @This();
 
 woodBlock: u16,
-topWoodBlock: u16,
 height0: u32,
 deltaHeight: u31,
 
 pub fn loadModel(parameters: ZonElement) ?*FallenTree {
 	const self = main.worldArena.create(FallenTree);
 	self.* = .{
-		.woodBlock = main.blocks.getTypeById(parameters.get([]const u8, "log", "cubyz:oak_log")),
-		.topWoodBlock = main.blocks.getTypeById(parameters.get([]const u8, "top", "cubyz:oak_top")),
+		.woodBlock = main.blocks.getTypeById(parameters.get([]const u8, "log", "cubyz:log/oak")),
 		.height0 = parameters.get(u32, "height", 6),
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
 	};
@@ -95,8 +93,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 	for(0..length) |val| {
 		const v: i32 = @intCast(val);
 		if(chunk.liesInChunk(x + dx*(v + 2), y + dy*(v + 2), z)) {
-			const typ = if(v == (length - 1)) self.topWoodBlock else self.woodBlock;
-			chunk.updateBlockIfDegradable(x + dx*(v + 2), y + dy*(v + 2), z, .{.typ = typ, .data = @intCast(d.? + 2)});
+			chunk.updateBlockIfDegradable(x + dx*(v + 2), y + dy*(v + 2), z, .{.typ = self.woodBlock, .data = @intCast(d.? + 2)});
 		}
 	}
 }
