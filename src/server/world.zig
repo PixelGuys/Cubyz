@@ -1060,24 +1060,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		ChunkManager.mutex.unlock();
 
 		//even queue
-		for(0..10)|_|{
-			while(true){
-				if(self.delayedUpdateQueue.popFront())|event|{
+		for(0..10) |_| {
+			while(true) {
+				if(self.delayedUpdateQueue.popFront()) |event| {
 					var ch = self.getOrGenerateChunkAndIncreaseRefCount(chunk.ChunkPosition.initFromWorldPos(event, 1));
 					defer ch.decreaseRefCount();
 					ch.mutex.lock();
 					const block = ch.getBlock(event[0] & chunk.chunkMask, event[1] & chunk.chunkMask, event[2] & chunk.chunkMask);
 					ch.mutex.unlock();
-					
-					if(block.onUpdate().run(.{
-						.block = block,
-						.chunk = ch,
-						.x = event[0] & chunk.chunkMask,
-						.y = event[1] & chunk.chunkMask,
-						.z = event[2] & chunk.chunkMask
-					}) == .handled)
+
+					if(block.onUpdate().run(.{.block = block, .chunk = ch, .x = event[0] & chunk.chunkMask, .y = event[1] & chunk.chunkMask, .z = event[2] & chunk.chunkMask}) == .handled)
 						break;
-				}else break;
+				} else break;
 			}
 		}
 		// tick blocks
@@ -1260,31 +1254,29 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		for(userList) |user| {
 			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
-		if(oldBlock)|old|{
+		if(oldBlock) |old| {
 
 			//trigger updates:
 			const updateRange = 1;
-			for (0..updateRange*2+1) |offsetX| {
-				for (0..updateRange*2+1) |offsetY| {
-					for (0..updateRange*2+1) |offsetZ| {
-						const px = wx+@as(i32,@intCast(offsetX))-updateRange;
-						const py = wy+@as(i32,@intCast(offsetY))-updateRange;
-						const pz = wz+@as(i32,@intCast(offsetZ))-updateRange;
-						if(px != wx or py != wy or wz != pz){
-							self.delayedUpdateQueue.pushBack(Vec3i{ px, py, pz, });
+			for(0..updateRange*2 + 1) |offsetX| {
+				for(0..updateRange*2 + 1) |offsetY| {
+					for(0..updateRange*2 + 1) |offsetZ| {
+						const px = wx + @as(i32, @intCast(offsetX)) - updateRange;
+						const py = wy + @as(i32, @intCast(offsetY)) - updateRange;
+						const pz = wz + @as(i32, @intCast(offsetZ)) - updateRange;
+						if(px != wx or py != wy or wz != pz) {
+							self.delayedUpdateQueue.pushBack(Vec3i{
+								px,
+								py,
+								pz,
+							});
 						}
 					}
 				}
 			}
 
 			//onBreak event
-			_ = old.onBreak().run(.{
-				.block=old,
-				.chunk=baseChunk,
-				.x = wx & chunk.chunkMask,
-				.y = wy & chunk.chunkMask,
-				.z = wz & chunk.chunkMask
-			}	);
+			_ = old.onBreak().run(.{.block = old, .chunk = baseChunk, .x = wx & chunk.chunkMask, .y = wy & chunk.chunkMask, .z = wz & chunk.chunkMask});
 		}
 		return null;
 	}
