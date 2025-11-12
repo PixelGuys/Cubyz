@@ -2,7 +2,7 @@
 	.minHeight = 54,
 	.maxHeight = 58,
 	.minRadius = 16,
-	.maxRadius = 80,
+	.maxRadius = 36,
 	.chance = 0,
 	.keepOriginalTerrain = 0.5,
 	.parentBiomes = .{
