@@ -739,6 +739,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
+				if(main.KeyBoard.key("mainGuiButton").modsOnPress.shift) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
 			} else if(!hoveredAWindow) {
 				carried.dropStack(0);
