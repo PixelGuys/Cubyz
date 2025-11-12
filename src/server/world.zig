@@ -542,7 +542,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	biomeChecksum: i64 = 0,
 
-	//TODO: do this per chunk not world.
+	// TODO: do this per chunk not world.
 	delayedUpdateQueue: main.utils.CircularBufferQueue(Vec3i),
 
 	const ChunkUpdateRequest = struct {
@@ -1059,7 +1059,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		ChunkManager.mutex.unlock();
 
-		//even queue
+		// event queue
 		for(0..10) |_| {
 			while(true) {
 				if(self.delayedUpdateQueue.popFront()) |event| {
@@ -1256,7 +1256,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		if(oldBlock) |old| {
 
-			//trigger updates:
+			// trigger updates:
 			const updateRange = 1;
 			for(0..updateRange*2 + 1) |offsetX| {
 				for(0..updateRange*2 + 1) |offsetY| {
@@ -1275,7 +1275,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				}
 			}
 
-			//onBreak event
+			// onBreak event
 			_ = old.onBreak().run(.{.block = old, .chunk = baseChunk, .x = wx & chunk.chunkMask, .y = wy & chunk.chunkMask, .z = wz & chunk.chunkMask});
 		}
 		return null;

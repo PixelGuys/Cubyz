@@ -69,7 +69,7 @@ var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
 var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
-//is this block decayable?
+/// is this block decayable?
 var _decayable: [maxBlockCount]bool = undefined;
 var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
 var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
