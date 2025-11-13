@@ -43,7 +43,7 @@ pub fn loadModel(parameters: ZonElement) ?*SimpleTreeModel {
 			if(parameters.get(?[]const u8, "type", null)) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
 			break :blk .round;
 		},
-		.leavesBlock = main.blocks.parseBlock(parameters.get([]const u8, "leaves", "cubyz:oak_leaves")),
+		.leavesBlock = main.blocks.parseBlock(parameters.get([]const u8, "leaves", "cubyz:leaves/oak")),
 		.woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log", "cubyz:oak_log")),
 		.topWoodBlock = main.blocks.parseBlock(parameters.get([]const u8, "top", "cubyz:oak_top")),
 		.height0 = parameters.get(i32, "height", 6),
