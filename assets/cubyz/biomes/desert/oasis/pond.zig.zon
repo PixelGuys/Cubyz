@@ -1,21 +1,10 @@
 .{
-	.properties = .{
-		.hot,
-		.dry,
-	},
-	.chance = 0,
 	.minHeight = -5,
-	.maxHeight = 0,
-	.maxHeightLimit = 10,
+	.maxHeight = -1,
+	.maxHeightLimit = -1,
 	.minRadius = 30,
-	.maxRadius = 50,
+	.maxRadius = 45,
 	.hills = 5,
-	.validPlayerSpawn = false,
-	.music = "cubyz:EasternThought",
-	.ground_structure = .{
-		"3 to 4 cubyz:sand",
-	},
-	.stoneBlock = "cubyz:sandstone",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:desert/oasis/base",
