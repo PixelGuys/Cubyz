@@ -35,7 +35,7 @@ pub fn loadModel(parameters: ZonElement) ?*FallenTree {
 
 pub fn generateStump(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk) void {
 	if(chunk.liesInChunk(x, y, z))
-		chunk.updateBlockIfDegradable(x, y, z, .{.typ = self.woodBlock, .data = 0});
+		chunk.updateBlockIfDegradable(x, y, z, .{.typ = self.woodBlock, .data = 0b000011});
 }
 
 pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, seed: *u64) void {
@@ -80,20 +80,26 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 	var dx: i32 = 0;
 	var dy: i32 = 0;
 
+	var enabledConnections: u6 = 0b000000;
+
 	if(d.? == 0) {
 		dx = 1;
+		enabledConnections = 0b001100;
 	} else if(d.? == 1) {
 		dx = -1;
+		enabledConnections = 0b001100;
 	} else if(d.? == 2) {
 		dy = 1;
+		enabledConnections = 0b110000;
 	} else if(d.? == 3) {
 		dy = -1;
+		enabledConnections = 0b110000;
 	}
 
 	for(0..length) |val| {
 		const v: i32 = @intCast(val);
 		if(chunk.liesInChunk(x + dx*(v + 2), y + dy*(v + 2), z)) {
-			chunk.updateBlockIfDegradable(x + dx*(v + 2), y + dy*(v + 2), z, .{.typ = self.woodBlock, .data = @intCast(d.? + 2)});
+			chunk.updateBlockIfDegradable(x + dx*(v + 2), y + dy*(v + 2), z, .{.typ = self.woodBlock, .data = enabledConnections});
 		}
 	}
 }
