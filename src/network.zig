@@ -471,6 +471,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if(online) {
 			result.makeOnline();
 		}
+		if(main.settings.launchConfig.headlessServer) {
+			result.allowNewConnections.store(true, .monotonic);
+		}
 		return result;
 	}
 
