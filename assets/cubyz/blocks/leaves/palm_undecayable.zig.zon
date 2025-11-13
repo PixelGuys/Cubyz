@@ -8,8 +8,8 @@
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x363436,
 	.model = "cubyz:cube_hanging_planes",
-	.texture = "cubyz:palm_leaves",
-	.texture12 = "cubyz:palm_leaves_hanging",
-	.lodReplacement = "cubyz:palm_leaves_opaque",
-	.opaqueVariant = "cubyz:palm_leaves_opaque",
+	.texture = "cubyz:leaves/palm",
+	.texture12 = "cubyz:leaves/palm_hanging",
+	.lodReplacement = "cubyz:leaves/palm_opaque",
+	.opaqueVariant = "cubyz:leaves/palm_opaque",
 }
