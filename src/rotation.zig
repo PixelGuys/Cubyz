@@ -99,7 +99,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			shouldDropSourceBlockOnSuccess.* = true;
 			if(oldBlock == newBlock) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
-			if(!oldBlock.replacable()) {
+			if(!oldBlock.replaceable()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isTool = item.item != null and item.item.? == .tool;
 				if(isTool) {

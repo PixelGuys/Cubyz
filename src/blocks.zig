@@ -59,7 +59,7 @@ var _blockHealth: [maxBlockCount]f32 = undefined;
 var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
-var _replacable: [maxBlockCount]bool = undefined;
+var _replaceable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
@@ -118,7 +118,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
-	_replacable[size] = zon.get(bool, "replacable", false);
+	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_onInteract[size] = blk: {
 		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
 			std.log.err("Failed to load onInteract event for block {s}", .{id});
@@ -336,8 +336,8 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	/// Whether you can replace it with another block, mainly used for fluids/gases
-	pub inline fn replacable(self: Block) bool {
-		return _replacable[self.typ];
+	pub inline fn replaceable(self: Block) bool {
+		return _replaceable[self.typ];
 	}
 
 	pub inline fn selectable(self: Block) bool {
