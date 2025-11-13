@@ -173,7 +173,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		} else if(gui.hoveredItemSlot) |hoveredItemSlot| {
 			if(hoveredItemSlot.inventory.getItem(hoveredItemSlot.itemSlot)) |hoveredItem| {
 				if(self.inventory.getItem(self.itemSlot)) |item| {
-					const eql = switch (hoveredItem) {
+					const eql = switch(hoveredItem) {
 						.baseItem => |baseItem| item == .baseItem and item.baseItem == baseItem,
 						.tool => |tool| item == .tool and item.tool.type == tool.type,
 					};
