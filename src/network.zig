@@ -154,13 +154,13 @@ pub const IpAddress = struct {
 		try writer.print("{}.{}.{}.{}", .{self.address & 255, self.address >> 8 & 255, self.address >> 16 & 255, self.address >> 24});
 	}
 
-	pub fn parse(string: []const u8) ?IpAddress {
+	pub fn parse(string: []const u8) !IpAddress {
 		var parts = std.mem.splitScalar(u8, string, '.');
 		var address: u32 = 0;
 		while(parts.next()) |part| {
-			const octet = std.fmt.parseInt(u8, part, 10) catch return null;
+			const octet = try std.fmt.parseInt(u8, part, 10);
 			address >>= 8;
-			if(address >> 24 > 0) return null;
+			if(address >> 24 > 0) return error.TooManyOctets;
 			address |= @as(u32, octet) << 24;
 		}
 		return .{.address = address};
@@ -180,21 +180,21 @@ pub const SocketAddress = struct {
 		}
 	}
 
-	pub fn parse(string: []const u8) ?SocketAddress {
+	pub fn parse(string: []const u8) !SocketAddress {
 		var parts = std.mem.splitScalar(u8, string, ':');
-		const ipString = parts.next() orelse return null;
-		var portString = parts.next() orelse return null;
-		if(parts.next() != null) return null;
+		const ipString = parts.next() orelse unreachable;
+		var portString = parts.next() orelse return error.MissingColon;
+		if(parts.next() != null) return error.MultipleColons;
 		var isSymmetricNAT = false;
-		if(portString.len == 0) return null;
+		if(portString.len == 0) return error.EmptyPort;
 		if(portString[0] == '?') {
 			isSymmetricNAT = true;
 			portString = portString[1..];
 		}
 		return .{
-			.ip = IpAddress.parse(ipString) orelse return null,
+			.ip = try IpAddress.parse(ipString),
 			.isSymmetricNAT = isSymmetricNAT,
-			.port = std.fmt.parseInt(u16, portString, 10) catch return null,
+			.port = try std.fmt.parseInt(u16, portString, 10),
 		};
 	}
 };
@@ -2385,13 +2385,13 @@ const ProtocolTask = struct {
 };
 
 test "Parse address" {
-	const address = IpAddress.parse("127.0.0.1").?;
+	const address = try IpAddress.parse("127.0.0.1");
 
 	try std.testing.expectEqual(IpAddress.localHost, address);
-	const socketAddress = SocketAddress.parse("127.0.0.1:1234").?;
+	const socketAddress = try SocketAddress.parse("127.0.0.1:1234");
 	try std.testing.expectEqual(SocketAddress{.ip = IpAddress.localHost, .port = 1234}, socketAddress);
 
-	const symmetricSocketAddress = SocketAddress.parse("127.0.0.1:?1234").?;
+	const symmetricSocketAddress = try SocketAddress.parse("127.0.0.1:?1234");
 	try std.testing.expectEqual(SocketAddress{.ip = IpAddress.localHost, .isSymmetricNAT = true, .port = 1234}, symmetricSocketAddress);
 }
 
@@ -2403,7 +2403,7 @@ test "Format address" {
 		"0.0.0.0",
 	};
 	for(addresses) |addressStr| {
-		const address = IpAddress.parse(addressStr).?;
+		const address = try IpAddress.parse(addressStr);
 		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
 		defer main.heap.testingAllocator.free(reformattedAddress);
 		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
@@ -2415,7 +2415,7 @@ test "Format address" {
 		"0.0.0.0:?3333",
 	};
 	for(socketAddresses) |addressStr| {
-		const address = SocketAddress.parse(addressStr).?;
+		const address = try SocketAddress.parse(addressStr);
 		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
 		defer main.heap.testingAllocator.free(reformattedAddress);
 		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
