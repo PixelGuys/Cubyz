@@ -9,9 +9,6 @@
 	.absorbedLight = 0x363436,
 	.model = "cubyz:cube",
 	.texture = "cubyz:leaves/baobab",
-	.lodReplacement = "cubyz:leaves/baobab_opaque",
-	.opaqueVariant = "cubyz:leaves/baobab_opaque",
-	.onUpdate = .{
-		.type = .leafDecay,
-	},
+	.lodReplacement = "cubyz:leaves/opaque/baobab",
+	.opaqueVariant = "cubyz:leaves/opaque/baobab",
 }

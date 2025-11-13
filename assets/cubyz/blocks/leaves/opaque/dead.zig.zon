@@ -1,0 +1,7 @@
+.{
+	.tags = .{.cuttable, .leaf},
+	.hasItem = false,
+	.absorbedLight = 0x222222,
+	.model = "cubyz:cube",
+	.texture = "cubyz:leaves/opaque/dead",
+}
