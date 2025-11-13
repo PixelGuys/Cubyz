@@ -204,10 +204,16 @@ pub const std_options: std.Options = .{ // MARK: std_options
 				resultArgs[resultArgs.len - 1] = colorReset;
 			}
 			logToStdErr(formatString, resultArgs);
-			if(level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
-				openingErrorWindow = true;
-				gui.openWindow("error_prompt");
-				openingErrorWindow = false;
+			if(level == .err and !settings.launchConfig.headlessServer) {
+				resultArgs[0] = "";
+				resultArgs[resultArgs.len - 1] = "";
+				var buf: [65536]u8 = undefined;
+				var fba = std.heap.FixedBufferAllocator.init(&buf);
+				const allocator = fba.allocator();
+
+				const string = std.fmt.allocPrint(allocator, formatString, resultArgs) catch formatString;
+				defer allocator.free(string);
+				gui.windowlist.error_prompt.raiseError(string);
 			}
 		}
 	}.logFn,
