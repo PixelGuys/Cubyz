@@ -116,12 +116,6 @@ const Socket = struct {
 		return buffer[0..length];
 	}
 
-	fn resolveIP(addr: []const u8) !IpAddress {
-		const list = try std.net.getAddressList(main.stackAllocator.allocator, addr, settings.defaultPort);
-		defer list.deinit();
-		return .{.address = list.addrs[0].in.sa.addr};
-	}
-
 	fn getPort(self: Socket) !u16 {
 		var addr: posix.sockaddr.in = undefined;
 		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
@@ -145,6 +139,8 @@ pub fn init() void {
 	}
 }
 
+pub const AddressParseMode = enum{parse, resolve, parseOrResolve};
+
 pub const IpAddress = struct {
 	address: u32,
 
@@ -154,8 +150,22 @@ pub const IpAddress = struct {
 		try writer.print("{}.{}.{}.{}", .{self.address & 255, self.address >> 8 & 255, self.address >> 16 & 255, self.address >> 24});
 	}
 
-	pub fn parse(string: []const u8) !IpAddress {
-		var parts = std.mem.splitScalar(u8, string, '.');
+	pub fn fromString(addr: []const u8, comptime mode: AddressParseMode, allocator: NeverFailingAllocator) !IpAddress {
+		return switch(mode) {
+			.parse => return parse(addr),
+			.resolve => return resolve(allocator, addr, settings.defaultPort),
+			.parseOrResolve => return parse(addr) catch resolve(allocator, addr, settings.defaultPort),
+		};
+	}
+
+	fn resolve(allocator: NeverFailingAllocator, addr: []const u8, port: u16) !IpAddress {
+		const list = try std.net.getAddressList(allocator.allocator, addr, port);
+		defer list.deinit();
+		return .{.address = list.addrs[0].in.sa.addr};
+	}
+
+	fn parse(addr: []const u8) !IpAddress {
+		var parts = std.mem.splitScalar(u8, addr, '.');
 		var address: u32 = 0;
 		while(parts.next()) |part| {
 			const octet = try std.fmt.parseInt(u8, part, 10);
@@ -180,7 +190,8 @@ pub const SocketAddress = struct {
 		}
 	}
 
-	pub fn parse(string: []const u8) !SocketAddress {
+	/// The allocator can be left undefined when the mode is `.parse`.
+	pub fn fromString(string: []const u8, comptime mode: AddressParseMode, allocator: NeverFailingAllocator) !SocketAddress {
 		var parts = std.mem.splitScalar(u8, string, ':');
 		const ipString = parts.next() orelse unreachable;
 		var portString = parts.next() orelse return error.MissingColon;
@@ -191,10 +202,15 @@ pub const SocketAddress = struct {
 			isSymmetricNAT = true;
 			portString = portString[1..];
 		}
+		const port = try std.fmt.parseInt(u16, portString, 10);
 		return .{
-			.ip = try IpAddress.parse(ipString),
+			.ip = switch(mode) {
+				.parse => try IpAddress.parse(ipString),
+				.resolve => try IpAddress.resolve(allocator, ipString, port),
+				.parseOrResolve => IpAddress.parse(ipString) catch try IpAddress.resolve(allocator, ipString, port),
+			},
 			.isSymmetricNAT = isSymmetricNAT,
-			.port = try std.fmt.parseInt(u16, portString, 10),
+			.port = port,
 		};
 	}
 };
@@ -326,14 +342,9 @@ const STUN = struct { // MARK: STUN
 			};
 			random.fill(data[8..]); // Fill the transaction ID.
 
-			var splitter = std.mem.splitScalar(u8, server, ':');
-			const ip = splitter.first();
-			const serverAddress = SocketAddress{
-				.ip = Socket.resolveIP(ip) catch |err| {
-					std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
-					continue;
-				},
-				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
+			const serverAddress = SocketAddress.fromString(server, .resolve, main.stackAllocator) catch |err| {
+				std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{server, @errorName(err)});
+				continue;
 			};
 			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500*1000000)) |answer| {
 				defer main.globalAllocator.free(answer);
@@ -360,7 +371,7 @@ const STUN = struct { // MARK: STUN
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return SocketAddress{.ip = Socket.resolveIP("127.0.0.1") catch unreachable, .port = settings.defaultPort}; // TODO: Return ip address in LAN.
+		return SocketAddress{.ip = IpAddress.localHost, .port = settings.defaultPort}; // TODO: Return ip address in LAN.
 	}
 
 	fn findIPPort(_data: []const u8) !SocketAddress {
@@ -1991,20 +2002,8 @@ pub const Connection = struct { // MARK: Connection
 			result.queuedConfirmations.deinit();
 		}
 		if(result.connectionIdentifier == 0) result.connectionIdentifier = 1;
-
-		var splitter = std.mem.splitScalar(u8, ipPort, ':');
-		const ip = splitter.first();
-		result.remoteAddress.ip = try Socket.resolveIP(ip);
-		var port = splitter.rest();
-		if(port.len != 0 and port[0] == '?') {
-			result.remoteAddress.isSymmetricNAT = true;
-			result.bruteforcingPort = true;
-			port = port[1..];
-		}
-		result.remoteAddress.port = std.fmt.parseUnsigned(u16, port, 10) catch blk: {
-			if(ip.len != ipPort.len) std.log.err("Could not parse port \"{s}\". Using default port instead.", .{port});
-			break :blk settings.defaultPort;
-		};
+		result.remoteAddress = try SocketAddress.fromString(ipPort, .parseOrResolve, main.stackAllocator);
+		result.bruteforcingPort = result.remoteAddress.isSymmetricNAT;
 
 		try result.manager.addConnection(result);
 		return result;
@@ -2385,13 +2384,13 @@ const ProtocolTask = struct {
 };
 
 test "Parse address" {
-	const address = try IpAddress.parse("127.0.0.1");
+	const address = try IpAddress.fromString("127.0.0.1", .parse, undefined);
 
 	try std.testing.expectEqual(IpAddress.localHost, address);
-	const socketAddress = try SocketAddress.parse("127.0.0.1:1234");
+	const socketAddress = try SocketAddress.fromString("127.0.0.1:1234", .parse, undefined);
 	try std.testing.expectEqual(SocketAddress{.ip = IpAddress.localHost, .port = 1234}, socketAddress);
 
-	const symmetricSocketAddress = try SocketAddress.parse("127.0.0.1:?1234");
+	const symmetricSocketAddress = try SocketAddress.fromString("127.0.0.1:?1234", .parse, undefined);
 	try std.testing.expectEqual(SocketAddress{.ip = IpAddress.localHost, .isSymmetricNAT = true, .port = 1234}, symmetricSocketAddress);
 }
 
@@ -2403,7 +2402,7 @@ test "Format address" {
 		"0.0.0.0",
 	};
 	for(addresses) |addressStr| {
-		const address = try IpAddress.parse(addressStr);
+		const address = try IpAddress.fromString(addressStr, .parse, undefined);
 		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
 		defer main.heap.testingAllocator.free(reformattedAddress);
 		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
@@ -2415,7 +2414,7 @@ test "Format address" {
 		"0.0.0.0:?3333",
 	};
 	for(socketAddresses) |addressStr| {
-		const address = try SocketAddress.parse(addressStr);
+		const address = try SocketAddress.fromString(addressStr, .parse, undefined);
 		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
 		defer main.heap.testingAllocator.free(reformattedAddress);
 		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
