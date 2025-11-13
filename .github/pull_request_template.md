@@ -2,11 +2,13 @@
 
 ## If not already covered by an issue (specified below), what is the motivation for the change(s) in this PR?
 
-## Fixes: (issue number here)
+## What issues does this PR resolve? (Add as many as are applicable)
+### Example: Fixes #12345
+- Fixes #
+- Fixes #
 
 ## What design decisions did you make to develop your solution ? Why did you make those choices?
-If this change required refactoring existing code, explain why it needed to be refactored. 
-What limitation are you resolving with the refactor?
+ - If this change required refactoring existing code, explain why it needed to be refactored. What limitation are you resolving with the refactor?
 
 ## If this change is something the users will notice, please write a one-sentence description of this change so it may be used in a changelog:
 
