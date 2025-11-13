@@ -27,4 +27,6 @@
 	.{.old = "willow_leaves_opaque", .new = "leaves/opaque/willow"},
 	.{.old = "yellow_leaves", .new = "leaves/yellow"},
 	.{.old = "yellow_leaves_opaque", .new = "leaves/opaque/yellow"},
+	.{.old = "pine_needles", .new = "leaves/pine"},
+	.{.old = "pine_needles_opaque", .new = "leaves/opaque/pine"},
 }
