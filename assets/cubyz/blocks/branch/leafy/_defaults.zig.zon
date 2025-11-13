@@ -9,7 +9,4 @@
 		.shellModel = "cubyz:cube",
 		.textureSlotOffset = 6,
 	},
-	.onUpdate = .{
-		.type = .leafBreak,
-	},
 }
