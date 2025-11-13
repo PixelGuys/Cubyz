@@ -60,7 +60,7 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 		var pz: i32 = chunk.startIndex(z);
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				var enabledConnections: u6 = 0b000011;
+				var enabledConnections: u6 = if(pz == z + height - 1) 0b000010 else 0b000011;
 
 				if(self.branched) {
 					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
