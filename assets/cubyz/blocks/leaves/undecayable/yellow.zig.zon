@@ -9,6 +9,6 @@
 	.absorbedLight = 0x1C1C38,
 	.model = "cubyz:cube",
 	.texture = "cubyz:leaves/yellow",
-	.lodReplacement = "cubyz:leaves/yellow_opaque",
-	.opaqueVariant = "cubyz:leaves/yellow_opaque",
+	.lodReplacement = "cubyz:leaves/opaque/yellow",
+	.opaqueVariant = "cubyz:leaves/opaque/yellow",
 }
