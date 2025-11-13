@@ -204,7 +204,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 				resultArgs[resultArgs.len - 1] = colorReset;
 			}
 			logToStdErr(formatString, resultArgs);
-			if(level == .err and !openingErrorWindow) {
+			if(level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
 				openingErrorWindow = true;
 				gui.openWindow("error_prompt");
 				openingErrorWindow = false;
@@ -274,10 +274,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 // MARK: Callbacks
 fn escape(_: Window.Key.Modifiers) void {
-	if(gui.selectedTextInput != null) {
-		gui.setSelectedTextInput(null);
-		return;
-	}
+	if(gui.selectedTextInput != null) gui.setSelectedTextInput(null);
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 }
@@ -286,10 +283,10 @@ fn ungrabMouse(_: Window.Key.Modifiers) void {
 		gui.toggleGameMenu();
 	}
 }
-fn openCreativeInventory(_: Window.Key.Modifiers) void {
+fn openCreativeInventory(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
-	gui.toggleGameMenu();
+	ungrabMouse(mods);
 	gui.openWindow("creative_inventory");
 }
 fn openChat(mods: Window.Key.Modifiers) void {
@@ -306,10 +303,16 @@ fn openCommand(mods: Window.Key.Modifiers) void {
 }
 fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
-	const showItem = itemdrop.ItemDisplayManager.showItem;
+
+	const oldHideGui = gui.hideGui;
+	gui.hideGui = true;
+	const oldShowItem = itemdrop.ItemDisplayManager.showItem;
 	itemdrop.ItemDisplayManager.showItem = false;
+
 	renderer.MenuBackGround.takeBackgroundImage();
-	itemdrop.ItemDisplayManager.showItem = showItem;
+
+	gui.hideGui = oldHideGui;
+	itemdrop.ItemDisplayManager.showItem = oldShowItem;
 }
 fn toggleHideGui(_: Window.Key.Modifiers) void {
 	gui.hideGui = !gui.hideGui;
@@ -365,6 +368,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
 		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
+		.{.name = "drop", .key = c.GLFW_KEY_Q, .repeatAction = &game.Player.dropFromHand, .notifyRequirement = .inGame},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
@@ -492,13 +496,15 @@ pub fn main() void { // MARK: main()
 	initLogging();
 	defer deinitLogging();
 
-	std.log.info("Starting game client with version {s}", .{settings.version.version});
-
-	gui.initWindowList();
-	defer gui.deinitWindowList();
+	std.log.info("Starting game with version {s}", .{settings.version.version});
 
 	settings.launchConfig.init();
 	defer settings.launchConfig.deinit();
+
+	const headless = settings.launchConfig.headlessServer;
+
+	if(!headless) gui.initWindowList();
+	defer if(!headless) gui.deinitWindowList();
 
 	files.init();
 	defer files.deinit();
@@ -512,14 +518,14 @@ pub fn main() void { // MARK: main()
 	file_monitor.init();
 	defer file_monitor.deinit();
 
-	Window.init();
-	defer Window.deinit();
+	if(!headless) Window.init();
+	defer if(!headless) Window.deinit();
 
-	graphics.init();
-	defer graphics.deinit();
+	if(!headless) graphics.init();
+	defer if(!headless) graphics.deinit();
 
-	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
-	defer audio.deinit();
+	if(!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
+	defer if(!headless) audio.deinit();
 
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
@@ -541,39 +547,46 @@ pub fn main() void { // MARK: main()
 	items.globalInit();
 	defer items.deinit();
 
-	itemdrop.ItemDropRenderer.init();
-	defer itemdrop.ItemDropRenderer.deinit();
+	if(!headless) itemdrop.ItemDropRenderer.init();
+	defer if(!headless) itemdrop.ItemDropRenderer.deinit();
 
 	assets.init();
 
-	blocks.meshes.init();
-	defer blocks.meshes.deinit();
+	if(!headless) blocks.meshes.init();
+	defer if(!headless) blocks.meshes.deinit();
 
-	renderer.init();
-	defer renderer.deinit();
+	if(!headless) renderer.init();
+	defer if(!headless) renderer.deinit();
 
 	network.init();
 
-	entity.ClientEntityManager.init();
-	defer entity.ClientEntityManager.deinit();
+	if(!headless) entity.ClientEntityManager.init();
+	defer if(!headless) entity.ClientEntityManager.deinit();
 
-	gui.init();
-	defer gui.deinit();
+	if(!headless) gui.init();
+	defer if(!headless) gui.deinit();
 
-	particles.ParticleManager.init();
-	defer particles.ParticleManager.deinit();
+	if(!headless) particles.ParticleManager.init();
+	defer if(!headless) particles.ParticleManager.deinit();
 
+	server.terrain.globalInit();
+	defer server.terrain.globalDeinit();
+
+	if(headless) {
+		server.start(settings.launchConfig.autoEnterWorld, null);
+	} else {
+		clientMain();
+	}
+}
+
+pub fn clientMain() void { // MARK: clientMain()
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
 	}
 
-	server.terrain.globalInit();
-	defer server.terrain.globalDeinit();
-
 	const c = Window.c;
-
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = std.time.nanoTimestamp();
 

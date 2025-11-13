@@ -414,7 +414,8 @@ const ChunkManager = struct { // MARK: ChunkManager
 			return ch;
 		}
 		ch.generated = true;
-		const caveMap = terrain.CaveMap.CaveMapView.findMapsAround(ch);
+		const caveMap = terrain.CaveMap.CaveMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
+		defer caveMap.deinit(main.stackAllocator);
 		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 		defer biomeMap.deinit();
 		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
@@ -485,7 +486,7 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.world.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.world.path));
-		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 12);
+		self.world.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
@@ -499,7 +500,7 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
 		worldData.put("name", self.world.name);
 		worldData.put("lastUsedTime", std.time.milliTimestamp());
-		worldData.put("tickSpeed", self.world.tickSpeed);
+		worldData.put("tickSpeed", self.world.tickSpeed.load(.monotonic));
 		// TODO: Save entities
 		try self.dir.writeZon("world.zig.zon", worldData);
 	}
@@ -521,7 +522,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	lastUnimportantDataSent: i64,
 	doGameTimeCycle: bool = true,
 
-	tickSpeed: u32 = 12,
+	tickSpeed: std.atomic.Value(u32) = .init(12),
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
@@ -783,15 +784,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				defer self.mutex.lock();
 				updateRequest.ch.save(self);
 				updateRequest.ch.decreaseRefCount();
+				main.heap.GarbageCollection.syncPoint();
 			}
 			while(self.regionUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.region.store();
 				updateRequest.region.decreaseRefCount();
+				main.heap.GarbageCollection.syncPoint();
 			}
 			self.mutex.unlock();
 			std.Thread.sleep(1_000_000);
+			main.heap.GarbageCollection.syncPoint();
 			self.mutex.lock();
 			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
 		}
@@ -1025,7 +1029,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	fn tickBlocksInChunk(self: *ServerWorld, _chunk: *chunk.ServerChunk) void {
-		for(0..self.tickSpeed) |_| {
+		for(0..self.tickSpeed.load(.monotonic)) |_| {
 			const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
 
 			const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;

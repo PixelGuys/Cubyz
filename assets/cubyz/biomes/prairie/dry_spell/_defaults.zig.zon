@@ -1,0 +1,33 @@
+.{
+	.properties = .{
+		.dry,
+	},
+	.chance = 0,
+	.minRadius = 45,
+	.maxRadius = 60,
+	.minHeight = 35,
+	.maxHeight = 40,
+	.roughness = 1,
+	.hills = 3,
+	.ground_structure = .{
+		"4 to 5 cubyz:limestone",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:dirt",
+			.chance = 0.5,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.01,
+			.block = "cubyz:limestone",
+			.size = 3,
+			.size_variance = 9,
+		},
+	},
+}

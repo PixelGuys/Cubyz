@@ -2228,14 +2228,26 @@ pub fn castFunctionSelfToAnyopaque(function: anytype) *const CastFunctionSelfToA
 
 fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
 	var typeInfo = @typeInfo(Fn);
-	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(*anyopaque)) {
+	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(*anyopaque) or @typeInfo(typeInfo.@"fn".return_type.?) == .optional) {
 		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{typeInfo.@"fn".return_type.?}));
 	}
 	typeInfo.@"fn".return_type = *anyopaque;
 	return @Type(typeInfo);
 }
+
+fn CastFunctionReturnToOptionalAnyopaqueType(Fn: type) type {
+	var typeInfo = @typeInfo(Fn);
+	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(?*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(?*anyopaque) or @typeInfo(typeInfo.@"fn".return_type.?) != .optional) {
+		@compileError(std.fmt.comptimePrint("Cannot convert {} to ?*anyopaque", .{typeInfo.@"fn".return_type.?}));
+	}
+	typeInfo.@"fn".return_type = ?*anyopaque;
+	return @Type(typeInfo);
+}
 /// Turns the return parameter into a anyopaque*
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
+	return @ptrCast(&function);
+}
+pub fn castFunctionReturnToOptionalAnyopaque(function: anytype) *const CastFunctionReturnToOptionalAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
 

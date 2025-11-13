@@ -36,7 +36,7 @@ fn Callback(_Params: type, list: type) type {
 			inline for(@typeInfo(list).@"struct".decls) |decl| {
 				const CallbackStruct = @field(list, decl.name);
 				eventCreationMap.put(main.globalArena.allocator, decl.name, .{
-					.init = main.utils.castFunctionReturnToAnyopaque(CallbackStruct.init),
+					.init = main.utils.castFunctionReturnToOptionalAnyopaque(CallbackStruct.init),
 					.run = main.utils.castFunctionSelfToAnyopaque(CallbackStruct.run),
 				}) catch unreachable;
 			}

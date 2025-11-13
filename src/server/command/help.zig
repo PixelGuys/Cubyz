@@ -21,6 +21,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			msg.appendSlice(cmd.description);
 			msg.append('\n');
 		}
+		msg.appendSlice("\nUse /help <command> for usage of a specific command.\n");
 	} else {
 		var split = std.mem.splitScalar(u8, args, ' ');
 		while(split.next()) |arg| {
