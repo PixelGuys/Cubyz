@@ -27,7 +27,6 @@ const Type = enum {
 typ: Type,
 leavesBlock: main.blocks.Block,
 woodBlock: main.blocks.Block,
-topWoodBlock: main.blocks.Block,
 height0: i32,
 deltaHeight: u31,
 leafRadius: f32,
@@ -44,8 +43,7 @@ pub fn loadModel(parameters: ZonElement) ?*SimpleTreeModel {
 			break :blk .round;
 		},
 		.leavesBlock = main.blocks.parseBlock(parameters.get([]const u8, "leaves", "cubyz:oak_leaves")),
-		.woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log", "cubyz:oak_log")),
-		.topWoodBlock = main.blocks.parseBlock(parameters.get([]const u8, "top", "cubyz:oak_top")),
+		.woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log", "cubyz:log/oak")),
 		.height0 = parameters.get(i32, "height", 6),
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
 		.leafRadius = parameters.get(f32, "leafRadius", (1 + parameters.get(f32, "height", 6))/2),
@@ -62,15 +60,18 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 		var pz: i32 = chunk.startIndex(z);
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, if(pz == z + height - 1) self.topWoodBlock else self.woodBlock);
+				var enabledConnections: u6 = if(pz == z + height - 1) 0b000010 else 0b000011;
 
 				if(self.branched) {
 					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
 					if(main.random.nextFloat(seed) < chance) {
 						const d = main.random.nextIntBounded(u32, seed, 4);
 						generateBranch(self, x, y, pz, d, chunk, seed);
+						enabledConnections += @as(u6, 2) << @truncate(d + 1);
 					}
 				}
+
+				chunk.updateBlockIfDegradable(x, y, pz, .{.typ = self.woodBlock.typ, .data = enabledConnections});
 			}
 		}
 	}
@@ -80,13 +81,13 @@ pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, ch
 	_ = seed;
 
 	if(d == 0 and chunk.liesInChunk(x + 1, y, z)) {
-		chunk.updateBlockIfDegradable(x + 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 2});
+		chunk.updateBlockIfDegradable(x + 1, y, z, .{.typ = self.woodBlock.typ, .data = 0b001000});
 	} else if(d == 1 and chunk.liesInChunk(x - 1, y, z)) {
-		chunk.updateBlockIfDegradable(x - 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 3});
+		chunk.updateBlockIfDegradable(x - 1, y, z, .{.typ = self.woodBlock.typ, .data = 0b000100});
 	} else if(d == 2 and chunk.liesInChunk(x, y + 1, z)) {
-		chunk.updateBlockIfDegradable(x, y + 1, z, .{.typ = self.topWoodBlock.typ, .data = 4});
+		chunk.updateBlockIfDegradable(x, y + 1, z, .{.typ = self.woodBlock.typ, .data = 0b100000});
 	} else if(d == 3 and chunk.liesInChunk(x, y - 1, z)) {
-		chunk.updateBlockIfDegradable(x, y - 1, z, .{.typ = self.topWoodBlock.typ, .data = 5});
+		chunk.updateBlockIfDegradable(x, y - 1, z, .{.typ = self.woodBlock.typ, .data = 0b010000});
 	}
 }
 
