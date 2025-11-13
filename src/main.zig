@@ -283,7 +283,6 @@ fn ungrabMouse(_: Window.Key.Modifiers) void {
 		gui.toggleGameMenu();
 	}
 }
-
 fn openCreativeInventory(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
