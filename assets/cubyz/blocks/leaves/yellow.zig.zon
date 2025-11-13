@@ -2,7 +2,7 @@
 	.tags = .{.cuttable, .leaf},
 	.blockHealth = 0.5,
 	.drops = .{
-		.{.items = .{"cubyz:leaves/yellow_undecayable"}},
+		.{.items = .{"cubyz:leaves/undecayable/yellow"}},
 	},
 	.degradable = true,
 	.alwaysViewThrough = true,
