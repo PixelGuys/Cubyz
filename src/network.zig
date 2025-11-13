@@ -139,7 +139,7 @@ pub fn init() void {
 	}
 }
 
-pub const AddressParseMode = enum{parse, resolve, parseOrResolve};
+pub const AddressParseMode = enum {parse, resolve, parseOrResolve};
 
 pub const IpAddress = struct {
 	address: u32,
