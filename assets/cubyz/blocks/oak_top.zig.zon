@@ -9,5 +9,4 @@
 	.texture = "cubyz:oak_log",
 	.texture_top = "cubyz:oak_log",
 	.texture_bottom = "cubyz:oak_log_top",
-	.decayProhibitor = true,
 }
