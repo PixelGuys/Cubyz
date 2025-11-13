@@ -1,14 +1,14 @@
 .{
 	.drops = .{
-		.{.items = .{"cubyz:pine_needles", "cubyz:pine_branch"}},
+		.{.items = .{"cubyz:leaves/pine", "cubyz:pine_branch"}},
 	},
-	.texture = "cubyz:pine_needles",
+	.texture = "cubyz:leaves/pine",
 	.texture6 = "cubyz:branch/pine/dot",
 	.texture7 = "cubyz:branch/pine/half_line",
 	.texture8 = "cubyz:branch/pine/line",
 	.texture9 = "cubyz:branch/pine/bend",
 	.texture10 = "cubyz:branch/pine/intersection",
 	.texture11 = "cubyz:branch/pine/cross",
-	.lodReplacement = "cubyz:pine_needles_opaque",
-	.opaqueVariant = "cubyz:pine_needles_opaque",
+	.lodReplacement = "cubyz:leaves/opaque/pine",
+	.opaqueVariant = "cubyz:leaves/opaque/pine",
 }
