@@ -32,6 +32,7 @@ pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
 pub var reorderWindows: bool = false;
 pub var hideGui: bool = false;
+pub var reorderHudCallback: ?*const fn(usize) void = null;
 
 pub var scale: f32 = undefined;
 
