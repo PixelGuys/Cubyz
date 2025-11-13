@@ -92,6 +92,17 @@ Often the simplest code is easier to read, easier to maintain and more efficient
 - Use the simplest data structure for the job: e.g. use a slice instead of List if you know the size upfront
 - Don't make things public if they don't need to be
 
+## Test your changes
+
+Before you submit changes for review, you should take some time to test your changes.
+- Be mindful of the features you have touched by changing the code you've changed. Test those features to ensure there were no regressions.
+- We don't expect you to know everything here. But, a little work up front can save review cycles in the future if you may have broken something by mistake.
+
+## Name your PR appropriately
+
+For example, if you're fixing issue #12345, don't name the PR "Fix #12345".
+Instead, include that in the description of the PR and name your PR something that better describes the impact of your change (i.e. "Add <biome name here>", "Rebalance tool properties", "Refactor <function name>", etc)
+
 ## A note on performance optimizations
 
 I like to follow Casey Muratori's optimization philosophy as outlined here: https://www.youtube.com/watch?v=pgoetgxecw8
