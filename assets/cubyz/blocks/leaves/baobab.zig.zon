@@ -2,7 +2,7 @@
 	.tags = .{.cuttable, .leaf},
 	.blockHealth = 0.5,
 	.drops = .{
-		.{.items = .{"cubyz:leaves/baobab_undecayable"}},
+		.{.items = .{.auto}},
 	},
 	.degradable = true,
 	.alwaysViewThrough = true,
@@ -11,7 +11,4 @@
 	.texture = "cubyz:leaves/baobab",
 	.lodReplacement = "cubyz:leaves/baobab_opaque",
 	.opaqueVariant = "cubyz:leaves/baobab_opaque",
-	.onUpdate = .{
-		.type = .leafDecay,
-	},
 }
