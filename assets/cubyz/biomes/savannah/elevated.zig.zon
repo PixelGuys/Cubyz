@@ -51,6 +51,15 @@
 			.smoothness = 0.1,
 		},
 		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:marigold",
+			.chance = 0.03,
+			.width = 5,
+			.variation = 3,
+			.density = 0.2,
+			.priority = 0.1,
+		},
+		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/baobab/young",
 			.placeMode = .degradable,

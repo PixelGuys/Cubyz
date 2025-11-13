@@ -245,7 +245,10 @@ pub const Blueprint = struct {
 		var blueprintIdToGameIdMap = allocator.alloc(u16, palette.len);
 
 		for(palette, 0..) |blockName, blueprintBlockId| {
-			const gameBlockId = main.blocks.parseBlock(blockName).typ;
+			const gameBlockId = main.blocks.getBlockByIdWithMigrations(blockName) catch |err| blk: {
+				std.log.err("Couldn't find block with name {s}: {s}. Replacing it with air", .{blockName, @errorName(err)});
+				break :blk 0;
+			};
 			blueprintIdToGameIdMap[blueprintBlockId] = gameBlockId;
 		}
 		return blueprintIdToGameIdMap;
