@@ -202,7 +202,7 @@ pub const launchConfig = struct {
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		autoEnterWorld = main.globalAllocator.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
-		worldSettings = main.server.world_zig.WorldSettings.initFromZon(zon.getChildOrNull("worldSettings"));
+		worldSettings = main.server.world_zig.WorldSettings.initFromZon(zon.getChild("worldSettings"));
 	}
 
 	pub fn deinit() void {

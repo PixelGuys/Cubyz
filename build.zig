@@ -148,7 +148,8 @@ fn createLaunchConfig() !void {
 			\\    .cubyzDir = "",
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
-			\\    .worldConfig = .{
+			\\    // The below setting only applies to world creation when autoEnterWorld is set and the world doesn't exist yet.
+			\\    .worldSettings = .{
 			\\        .gamemode = "survival",
 			\\        .testingMode = false,
 			\\        .allowCheats = false,

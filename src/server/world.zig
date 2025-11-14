@@ -30,25 +30,18 @@ pub const WorldSettings = struct {
 	gamemode: Gamemode = .creative,
 	allowCheats: bool = false,
 	testingMode: bool = false,
-	pub fn initFromZon(zon: ?ZonElement) WorldSettings {
-		var self: WorldSettings = undefined;
-		if(zon) |worldSettings| {
-			const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, worldSettings.get([]const u8, "gamemode", "survival")) orelse blk: {
-				std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to survival.", .{worldSettings.get([]const u8, "gamemode", "survival")});
-				break :blk .survival;
-			};
-			self = .{
-				.gamemode = gamemode,
-				.testingMode = worldSettings.get(bool, "testingMode", false),
-				.allowCheats = worldSettings.get(bool, "allowCheats", false),
-			};
-		} else {
-			self = .{
-				.gamemode = .creative,
-				.testingMode = false,
-				.allowCheats = false,
-			};
-		}
+
+	pub fn initFromZon(zon: ZonElement) WorldSettings {
+		var self: WorldSettings = .{};
+		const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "gamemode", "survival")) orelse blk: {
+			std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to {}.", .{zon.get([]const u8, "gamemode", ""), self.gamemode});
+			break :blk self.gamemode;
+		};
+		self = .{
+			.gamemode = gamemode,
+			.testingMode = zon.get(bool, "testingMode", self.testingMode),
+			.allowCheats = zon.get(bool, "allowCheats", self.allowCheats),
+		};
 		return self;
 	}
 };

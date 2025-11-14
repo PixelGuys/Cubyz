@@ -487,6 +487,16 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	return false;
 }
 
+pub fn worldExists(worldName: []const u8) bool {
+	const saveDirectory = std.fs.path.join(stackAllocator.allocator, &.{settings.launchConfig.cubyzDir, "saves", worldName, "world.zig.zon"}) catch unreachable;
+	defer stackAllocator.free(saveDirectory);
+	var worldFound = true;
+	files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| {
+		if(err == error.FileNotFound) worldFound = false;
+	};
+	return worldFound;
+}
+
 pub fn main() void { // MARK: main()
 	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
@@ -571,17 +581,10 @@ pub fn main() void { // MARK: main()
 
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
-
+	if(settings.launchConfig.autoEnterWorld.len > 0) {}
 	if(headless) {
 		if(settings.launchConfig.autoEnterWorld.len > 0) {
-			const saveDirectory = std.fs.path.join(stackAllocator.allocator, &.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.autoEnterWorld}) catch unreachable;
-			defer stackAllocator.free(saveDirectory);
-			var world_found = true;
-			files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| switch(err) {
-				error.FileNotFound => world_found = false,
-				else => return,
-			};
-			if(!world_found) {
+			if(!worldExists(settings.launchConfig.autoEnterWorld)) {
 				server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
 					std.log.err("Error creating world: {}", .{err});
 					return;
@@ -609,6 +612,12 @@ pub fn clientMain() void { // MARK: clientMain()
 	var lastBeginRendering = std.time.nanoTimestamp();
 
 	if(settings.launchConfig.autoEnterWorld.len != 0) {
+		if(!worldExists(settings.launchConfig.autoEnterWorld)) {
+			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
+				std.log.err("Error creating world: {}", .{err});
+				return;
+			};
+		}
 		// Speed up the dev process by entering the world directly.
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
