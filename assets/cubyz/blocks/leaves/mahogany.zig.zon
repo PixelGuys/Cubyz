@@ -8,7 +8,7 @@
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x363436,
 	.model = "cubyz:cube",
-	.texture = "cubyz:pine_needles",
-	.lodReplacement = "cubyz:pine_needles_opaque",
-	.opaqueVariant = "cubyz:pine_needles_opaque",
+	.texture = "cubyz:leaves/mahogany",
+	.lodReplacement = "cubyz:leaves/opaque/mahogany",
+	.opaqueVariant = "cubyz:leaves/opaque/mahogany",
 }

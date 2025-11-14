@@ -554,6 +554,14 @@ pub const Player = struct { // MARK: Player
 		Player.jumpCoyote = 0;
 	}
 
+	pub fn dropFromHand(mods: main.Window.Key.Modifiers) void {
+		if(mods.shift) {
+			inventory.dropStack(selectedSlot);
+		} else {
+			inventory.dropOne(selectedSlot);
+		}
+	}
+
 	pub fn breakBlock(deltaTime: f64) void {
 		inventory.breakBlock(selectedSlot, deltaTime);
 	}
@@ -928,12 +936,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
+	Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
+
 	if(collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,
 		.max = Player.standingBoundingBoxExtent,
 	}) == null) {
-		Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
-
 		if(Player.onGround) {
 			if(Player.crouching) {
 				Player.crouchPerc += @floatCast(deltaTime*10);
