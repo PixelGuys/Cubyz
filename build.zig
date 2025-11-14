@@ -149,10 +149,13 @@ fn createLaunchConfig() !void {
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
 			\\    // This is used for world creation when autoEnterWorld is set and the world doesn't exist yet.
+			\\    // .seed = "" will randomly generate a seed. If you enter a numeric seed, it will be interpreted as such (i.e. "12345").
+			\\    // If the number is too large, or it's not a number, a hashing algorithm will produce a numeric seed from your text.
 			\\    .worldSettings = .{
 			\\        .gamemode = "survival",
 			\\        .testingMode = false,
 			\\        .allowCheats = false,
+			\\        .seed = "",
 			\\    }
 			\\}
 		;
