@@ -34,6 +34,16 @@ var allowCheats: bool = true;
 
 var testingMode: bool = false;
 
+fn chooseSeed(seedStr: []const u8) u64 {
+	if(seedStr.len == 0) {
+		return main.random.nextInt(u64, &main.seed);
+	} else {
+		return std.fmt.parseInt(u64, seedStr, 0) catch {
+			return std.hash.Wyhash.hash(0, seedStr);
+		};
+	}
+}
+
 fn gamemodeCallback(_: usize) void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(gamemode));
@@ -49,9 +59,15 @@ fn testingModeCallback(enabled: bool) void {
 
 fn createWorld(_: usize) void {
 	const worldName = nameInput.currentString.items;
-	const worldSeed = seedInput.currentString.items;
+	const worldSeed = chooseSeed(seedInput.currentString.items);
 
-	const worldSettings: main.server.world_zig.WorldSettings = .{.gamemode = gamemode, .allowCheats = allowCheats, .testingMode = testingMode, .seed = worldSeed};
+	const worldSettings: main.server.world_zig.Settings = .{
+		.defaultGamemode = gamemode,
+		.allowCheats = allowCheats,
+		.testingMode = testingMode,
+		.seed = worldSeed,
+	};
+
 	main.server.world_zig.tryCreateWorld(worldName, worldSettings) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 	};

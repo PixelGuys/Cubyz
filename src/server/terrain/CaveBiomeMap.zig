@@ -407,7 +407,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 
 		if(getSeed) {
 			// A good old "I don't know what I'm doing" hash (TODO: Use some standard hash maybe):
-			seed.* = @as(u64, @bitCast(@as(i64, gridPoint[0]) << 48 ^ @as(i64, gridPoint[1]) << 23 ^ @as(i64, gridPoint[2]) << 11 ^ @as(i64, gridPoint[0]) >> 5 ^ @as(i64, gridPoint[1]) << 3 ^ @as(i64, gridPoint[2]) ^ @as(i64, map)*5427642781)) ^ main.server.world.?.seed;
+			seed.* = @as(u64, @bitCast(@as(i64, gridPoint[0]) << 48 ^ @as(i64, gridPoint[1]) << 23 ^ @as(i64, gridPoint[2]) << 11 ^ @as(i64, gridPoint[0]) >> 5 ^ @as(i64, gridPoint[1]) << 3 ^ @as(i64, gridPoint[2]) ^ @as(i64, map)*5427642781)) ^ main.server.world.?.settings.seed;
 		}
 
 		return self._getBiome(gridPoint[0], gridPoint[1], gridPoint[2], map);
@@ -425,7 +425,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 
 		if(getSeed) {
 			// A good old "I don't know what I'm doing" hash (TODO: Use some standard hash maybe):
-			seed.* = @as(u64, @bitCast(@as(i64, gridPoint[0]) << 48 ^ @as(i64, gridPoint[1]) << 23 ^ @as(i64, gridPoint[2]) << 11 ^ @as(i64, gridPoint[0]) >> 5 ^ @as(i64, gridPoint[1]) << 3 ^ @as(i64, gridPoint[2]) ^ @as(i64, map)*5427642781)) ^ main.server.world.?.seed;
+			seed.* = @as(u64, @bitCast(@as(i64, gridPoint[0]) << 48 ^ @as(i64, gridPoint[1]) << 23 ^ @as(i64, gridPoint[2]) << 11 ^ @as(i64, gridPoint[0]) >> 5 ^ @as(i64, gridPoint[1]) << 3 ^ @as(i64, gridPoint[2]) ^ @as(i64, map)*5427642781)) ^ main.server.world.?.settings.seed;
 		}
 
 		return self._getBiome(gridPoint[0], gridPoint[1], gridPoint[2], map);
@@ -445,7 +445,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		if(pos.voxelSize < 8) {
 			const startX = (pos.wx -% margin) & ~@as(i32, 63);
 			const startY = (pos.wy -% margin) & ~@as(i32, 63);
-			self.noise = CachedFractalNoise.init(startX, startY, pos.voxelSize, width + 64 + 2*margin, main.server.world.?.seed ^ 0x764923684396, 64);
+			self.noise = CachedFractalNoise.init(startX, startY, pos.voxelSize, width + 64 + 2*margin, main.server.world.?.settings.seed ^ 0x764923684396, 64);
 		}
 		return self;
 	}
