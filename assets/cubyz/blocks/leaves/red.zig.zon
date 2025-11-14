@@ -6,9 +6,9 @@
 	},
 	.degradable = true,
 	.alwaysViewThrough = true,
-	.absorbedLight = 0x1C1C38,
+	.absorbedLight = 0x213241,
 	.model = "cubyz:cube",
-	.texture = "cubyz:yellow_leaves",
-	.lodReplacement = "cubyz:yellow_leaves_opaque",
-	.opaqueVariant = "cubyz:yellow_leaves_opaque",
+	.texture = "cubyz:leaves/red",
+	.lodReplacement = "cubyz:leaves/opaque/red",
+	.opaqueVariant = "cubyz:leaves/opaque/red",
 }

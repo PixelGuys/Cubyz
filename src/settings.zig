@@ -190,7 +190,7 @@ pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;
-	pub var worldSettings: main.server.world_zig.WorldSettings = undefined;
+	pub var worldSettings: main.server.world_zig.Settings = undefined;
 
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
@@ -202,7 +202,7 @@ pub const launchConfig = struct {
 		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		autoEnterWorld = main.globalAllocator.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
-		worldSettings = main.server.world_zig.WorldSettings.initFromZon(zon.getChild("worldSettings"));
+		worldSettings = main.server.world_zig.Settings.initFromZon(zon.getChild("worldSettings"));
 	}
 
 	pub fn deinit() void {
