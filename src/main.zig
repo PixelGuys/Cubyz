@@ -51,6 +51,9 @@ pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledG
 pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
+pub const gameStartMilliseconds: u64 = std.time.milliTimestamp();
+pub const headless = false;
+pub const runtimeLimited = false;
 
 pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
@@ -500,7 +503,8 @@ pub fn main() void { // MARK: main()
 
 	settings.launchConfig.init();
 
-	const headless = settings.launchConfig.headlessServer;
+	headless = settings.launchConfig.headlessServer;
+	runtimeLimited = settings.launchConfig.runtimeLimitMillis > 0;
 
 	if(!headless) gui.initWindowList();
 	defer if(!headless) gui.deinitWindowList();
@@ -652,7 +656,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
-
 		if(shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
@@ -662,6 +665,9 @@ pub fn clientMain() void { // MARK: clientMain()
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:cubyz");
+		}
+		if(runtimeLimited and std.time.milliTimestamp() > gameStartMilliseconds + settings.launchConfig.gameRuntimeLimitMillis) {
+			Window.c.glfwSetWindowShouldClose(main.Window.window, main.Window.c.GLFW_TRUE);
 		}
 	}
 
