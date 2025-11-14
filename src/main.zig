@@ -572,18 +572,17 @@ pub fn main() void { // MARK: main()
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 	if(headless) {
-		if(settings.launchConfig.autoEnterWorld.len > 0) {
-			if(!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
-				server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
-					std.log.err("Error creating world: {}", .{err});
-					return;
-				};
-			}
-			server.start(settings.launchConfig.autoEnterWorld, null);
-		} else {
+		if(settings.launchConfig.autoEnterWorld.len == 0) {
 			std.log.err("Cannot run the server without a world name provided via launchConfig.autoEnterWorld.", .{});
 			return;
 		}
+		if(!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
+			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
+				std.log.err("Error creating world: {s}", .{@errorName(err)});
+				return;
+			};
+		}
+		server.start(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		clientMain();
 	}

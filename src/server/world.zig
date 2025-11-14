@@ -46,8 +46,8 @@ pub const WorldSettings = struct {
 	}
 };
 
-pub fn exists(worldName: []const u8) bool {
-	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{main.settings.launchConfig.cubyzDir, "saves", worldName, "world.zig.zon"}) catch unreachable;
+pub fn exists(worldPath: []const u8) bool {
+	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{main.settings.launchConfig.cubyzDir, "saves", worldPath, "world.zig.zon"}) catch unreachable;
 	defer main.stackAllocator.free(saveDirectory);
 	var worldFound = true;
 	files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| {
