@@ -149,9 +149,9 @@ fn createLaunchConfig() !void {
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
 			\\    .worldConfig = .{
-			\\            .gamemode = "survival",
-			\\            .testingMode = false,
-			\\            .allowCheats = false,
+			\\        .gamemode = "survival",
+			\\        .testingMode = false,
+			\\        .allowCheats = false,
 			\\    }
 			\\}
 		;
