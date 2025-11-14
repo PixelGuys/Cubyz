@@ -10,6 +10,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const HorizontalList = GuiComponent.HorizontalList;
+const VerticalList = GuiComponent.VerticalList;
 const ItemSlot = GuiComponent.ItemSlot;
 const Icon = GuiComponent.Icon;
 
@@ -40,13 +41,23 @@ pub fn deinit() void {
 var itemSlots: [12]*ItemSlot = undefined;
 
 pub fn onOpen() void {
-	const list = HorizontalList.init();
-	for(0..12) |i| {
-		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(i), .{.custom = hotbarSlotTexture}, .normal);
-		list.add(itemSlots[i]);
+	if(main.settings.verticalHotbar) {
+		const list = VerticalList.init(.{0, 0}, 1000, 0);
+		for(0..12) |i| {
+			itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(i), .{.custom = hotbarSlotTexture}, .normal);
+			list.add(itemSlots[i]);
+		}
+		list.finish(.center);
+		window.rootComponent = list.toComponent();
+	} else {
+		const list = HorizontalList.init();
+		for(0..12) |i| {
+			itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(i), .{.custom = hotbarSlotTexture}, .normal);
+			list.add(itemSlots[i]);
+		}
+		list.finish(.{0, 0}, .center);
+		window.rootComponent = list.toComponent();
 	}
-	list.finish(.{0, 0}, .center);
-	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.size();
 	gui.updateWindowPositions();
 }
