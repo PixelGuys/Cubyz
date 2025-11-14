@@ -511,7 +511,7 @@ pub fn connectInternal(user: *User) void {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Check if a user with that name is already present
-	if(!world.?.settings.testingMode) {
+	if(!world.?.testingMode) {
 		for(userList) |other| {
 			if(std.mem.eql(u8, other.name, user.name)) {
 				user.conn.disconnect();
@@ -559,7 +559,7 @@ pub fn connectInternal(user: *User) void {
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 	if(msg[0] == '/') { // Command.
-		if(world.?.settings.allowCheats) {
+		if(world.?.allowCheats) {
 			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
 			command.execute(msg[1..], source);
 		} else {
