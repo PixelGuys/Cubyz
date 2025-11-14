@@ -1,10 +1,10 @@
-## Description
+# Description
 
-## Approach
+# Motivation
 
-## Motivation
+# Approach
 
-## Checklist before submitting the PR:
+# Checklist before submitting the PR:
 - [ ] I've read and followed the [contribution guidelines](https://github.com/PixelGuys/Cubyz/blob/master/docs/CONTRIBUTING.md).
 - [ ] I've tested my change thoroughly to ensure I've introduced no regressions.
 - [ ] I've added tests where appropriate.

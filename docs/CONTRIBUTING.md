@@ -45,7 +45,7 @@ To have more success it would help to split things up into smaller PRs, maybe st
 
 This saves time on your end spent reworking your large pull request 10 times. And reviewing your large pull request 10 times is also not fun.
 
-# Write correct, readable and maintainable code
+#Write correct, readable and maintainable code
 
 ## Explicitly handle all errors
 
@@ -92,17 +92,6 @@ Often the simplest code is easier to read, easier to maintain and more efficient
 - Use the simplest data structure for the job: e.g. use a slice instead of List if you know the size upfront
 - Don't make things public if they don't need to be
 
-## Test your changes
-
-Before you submit changes for review, you should take some time to test your changes.
-- Be mindful of the features you have touched by changing the code you've changed. Test those features to ensure there were no regressions.
-- We don't expect you to know everything here. But, a little work up front can save review cycles in the future if you may have broken something by mistake.
-
-## Name your PR appropriately
-
-For example, if you're fixing issue #12345, don't name the PR "Fix #12345".
-Instead, include that in the description of the PR and name your PR something that better describes the impact of your change (i.e. "Add <biome name here>", "Rebalance tool properties", "Refactor <function name>", etc)
-
 ## A note on performance optimizations
 
 I like to follow Casey Muratori's optimization philosophy as outlined here: https://www.youtube.com/watch?v=pgoetgxecw8
@@ -143,7 +132,9 @@ There are a few more things not covered by the formatter:
   assignment ops < bool ops < compare ops < bitwise ops < shift ops < add/sub < mul/div < unary ops<br>
   Only add parenthesis if you need them. Precedence on the right side of the spectrum (unary and mul/div/mod) is also shown visually (enforced by the formatter) through spacing: `x = -a + b*c` instead of `x = - a + b * c`
 
-# Don't put multiple changes into one pull request
+# Pull requests:
+
+## Don't put multiple changes into one pull request
 
 This includes introduction of non-trivial helper functions, refactoring existing code.
 
@@ -159,7 +150,21 @@ And even if it doesn't happen, now the same code has to be reviewed again in it'
 
 If instead you make 3 separate PRs, the first two can be merged on the same day, while the last one needs to be edited. The chances of a merge conflict are small, since 2/3 changes are already merged. And code review is also easier, since only the broken code has to be reviewed more than once.
 
-# Check the changes after creating your pull request
+## Test your changes
+
+Before you submit changes for review, you should take some time to test your changes.
+- Be mindful of the features you have touched by changing the code you've changed. Test those features to ensure there were no regressions.
+- We don't expect you to know everything here. But, a little work up front can save review cycles in the future if you may have broken something by mistake.
+
+## Correct code should not produce error logs
+- Resolve any error logs that appear as a consequence of your change. This can mean some other code is responsible for the error and it was only uncovered by your change. In which case, see above regarding multiple changes in one pull request.
+
+## Name your PR appropriately
+
+Don't name the PR "Fix [#12345](https://github.com/PixelGuys/Cubyz/issues/)".
+Instead, include that in the description of the PR and name your PR something that better describes the impact of your change (i.e. "Add <biome name here>", "Rebalance tool properties", "Refactor <function name>", etc)
+
+## Check the changes after creating your pull request
 
 With a quick check you can ensure that you didn't add any unintended changes.
 
