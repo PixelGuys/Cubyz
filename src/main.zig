@@ -573,10 +573,19 @@ pub fn main() void { // MARK: main()
 	defer server.terrain.globalDeinit();
 
 	if(headless) {
-		server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldConfig) catch |err| {
-			std.log.err("Error creating world: {}", .{err});
-			return;
+		const saveDirectory = std.fs.path.join(stackAllocator.allocator, &.{settings.launchConfig.cubyzDir, "saves", settings.launchConfig.autoEnterWorld}) catch unreachable;
+		defer stackAllocator.free(saveDirectory);
+		var world_found = true;
+		files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| switch(err) {
+			error.FileNotFound => world_found = false,
+			else => return,
 		};
+		if(!world_found) {
+			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
+				std.log.err("Error creating world: {}", .{err});
+				return;
+			};
+		}
 		server.start(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		clientMain();
