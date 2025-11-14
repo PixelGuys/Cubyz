@@ -190,7 +190,7 @@ pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;
-	pub var runtimeLimitMillis: u64 = 0;
+	pub var runtimeLimitMillis: i64 = 0;
 
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {

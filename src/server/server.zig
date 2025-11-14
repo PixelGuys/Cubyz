@@ -458,7 +458,7 @@ pub fn start(name: []const u8, port: ?u16) void {
 			lastTime = newTime;
 		}
 		update();
-		if(main.runtimeLimited and std.time.milliTimestamp() > main.gameStartTime + main.settings.launchConfig.runtimeLimitMillis) {
+		if(main.runtimeLimited and main.headless and std.time.milliTimestamp() > main.gameStartMillis + main.settings.launchConfig.runtimeLimitMillis) {
 			running.store(false, .release);
 		}
 	}
