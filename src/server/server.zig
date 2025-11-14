@@ -458,6 +458,7 @@ pub fn start(name: []const u8, port: ?u16) void {
 			lastTime = newTime;
 		}
 		update();
+		stop();
 	}
 }
 
