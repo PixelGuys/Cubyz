@@ -487,16 +487,6 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	return false;
 }
 
-pub fn worldExists(worldName: []const u8) bool {
-	const saveDirectory = std.fs.path.join(stackAllocator.allocator, &.{settings.launchConfig.cubyzDir, "saves", worldName, "world.zig.zon"}) catch unreachable;
-	defer stackAllocator.free(saveDirectory);
-	var worldFound = true;
-	files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| {
-		if(err == error.FileNotFound) worldFound = false;
-	};
-	return worldFound;
-}
-
 pub fn main() void { // MARK: main()
 	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
@@ -583,7 +573,7 @@ pub fn main() void { // MARK: main()
 	defer server.terrain.globalDeinit();
 	if(headless) {
 		if(settings.launchConfig.autoEnterWorld.len > 0) {
-			if(!worldExists(settings.launchConfig.autoEnterWorld)) {
+			if(!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
 				server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
 					std.log.err("Error creating world: {}", .{err});
 					return;
@@ -611,7 +601,7 @@ pub fn clientMain() void { // MARK: clientMain()
 	var lastBeginRendering = std.time.nanoTimestamp();
 
 	if(settings.launchConfig.autoEnterWorld.len != 0) {
-		if(!worldExists(settings.launchConfig.autoEnterWorld)) {
+		if(!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
 			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
 				std.log.err("Error creating world: {}", .{err});
 				return;

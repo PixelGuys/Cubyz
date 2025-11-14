@@ -33,8 +33,8 @@ pub const WorldSettings = struct {
 
 	pub fn initFromZon(zon: ZonElement) WorldSettings {
 		var self: WorldSettings = .{};
-		const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "gamemode", "survival")) orelse blk: {
-			std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to {}.", .{zon.get([]const u8, "gamemode", ""), self.gamemode});
+		const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "gamemode", @tagName(self.gamemode))) orelse blk: {
+			std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to {s}.", .{zon.get([]const u8, "gamemode", @tagName(self.gamemode)), @tagName(self.gamemode)});
 			break :blk self.gamemode;
 		};
 		self = .{
@@ -45,6 +45,16 @@ pub const WorldSettings = struct {
 		return self;
 	}
 };
+
+pub fn exists(worldName: []const u8) bool {
+	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{main.settings.launchConfig.cubyzDir, "saves", worldName, "world.zig.zon"}) catch unreachable;
+	defer main.stackAllocator.free(saveDirectory);
+	var worldFound = true;
+	files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| {
+		if(err == error.FileNotFound) worldFound = false;
+	};
+	return worldFound;
+}
 
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
 	// Remove illegal ASCII characters:
