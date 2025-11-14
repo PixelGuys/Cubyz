@@ -499,7 +499,6 @@ pub fn main() void { // MARK: main()
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
 	settings.launchConfig.init();
-	defer settings.launchConfig.deinit();
 
 	const headless = settings.launchConfig.headlessServer;
 
