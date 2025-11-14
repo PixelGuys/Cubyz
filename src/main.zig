@@ -581,7 +581,6 @@ pub fn main() void { // MARK: main()
 
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
-	if(settings.launchConfig.autoEnterWorld.len > 0) {}
 	if(headless) {
 		if(settings.launchConfig.autoEnterWorld.len > 0) {
 			if(!worldExists(settings.launchConfig.autoEnterWorld)) {
