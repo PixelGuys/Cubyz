@@ -6,6 +6,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
 pub const ZonElement = union(enum) { // MARK: Zon
+	uint: u64,
 	int: i64,
 	float: f64,
 	string: []const u8,
@@ -74,7 +75,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn clone(self: *const ZonElement, allocator: NeverFailingAllocator) ZonElement {
 		return switch(self.*) {
-			.int, .float, .string, .bool, .null => self.*,
+			.uint, .int, .float, .string, .bool, .null => self.*,
 			.stringOwned => |stringOwned| .{.stringOwned = allocator.allocator.dupe(u8, stringOwned) catch unreachable},
 			.array => |array| blk: {
 				const out = ZonElement.initArray(allocator);
@@ -102,7 +103,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	fn joinGetNew(left: ZonElement, priority: JoinPriority, right: ZonElement, allocator: NeverFailingAllocator) ZonElement {
 		switch(left) {
-			.int, .float, .string, .stringOwned, .bool, .null => {
+			.uint, .int, .float, .string, .stringOwned, .bool, .null => {
 				return switch(priority) {
 					.preferLeft => left.clone(allocator),
 					.preferRight => right.clone(allocator),
@@ -155,6 +156,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		switch(typeInfo) {
 			.int => {
 				switch(self.*) {
+					.uint => return std.math.cast(innerType, self.uint) orelse replacement,
 					.int => return std.math.cast(innerType, self.int) orelse replacement,
 					.float => return std.math.lossyCast(innerType, std.math.round(self.float)),
 					else => return replacement,
@@ -210,7 +212,13 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			.void => return .null,
 			.null => return .null,
 			.bool => return .{.bool = value},
-			.int, .comptime_int => return .{.int = @intCast(value)},
+			.int, .comptime_int => {
+				if(std.math.cast(i64, value)) |casted| {
+					return .{.int = casted};
+				} else {
+					return .{.uint = @intCast(value)};
+				}
+			},
 			.float, .comptime_float => return .{.float = @floatCast(value)},
 			.@"union" => {
 				if(@TypeOf(value) == ZonElement) {
@@ -298,7 +306,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn deinit(self: *const ZonElement, allocator: NeverFailingAllocator) void {
 		switch(self.*) {
-			.int, .float, .bool, .null, .string => return,
+			.uint, .int, .float, .bool, .null, .string => return,
 			.stringOwned => {
 				allocator.free(self.stringOwned);
 			},
@@ -352,7 +360,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	}
 	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch(zon) {
-			.int => |value| {
+			inline .int, .uint => |value| {
 				list.writer().print("{d}", .{value}) catch unreachable;
 			},
 			.float => |value| {
@@ -481,47 +489,66 @@ const Parser = struct { // MARK: Parser
 	/// Assumes that the region starts with a number character ('+', '-', '.' or a digit).
 	fn parseNumber(chars: []const u8, index: *u32) ZonElement {
 		var sign: i2 = 1;
+		const numberStartIndex = index.*;
+
 		if(chars[index.*] == '-') {
 			sign = -1;
 			index.* += 1;
 		} else if(chars[index.*] == '+') {
 			index.* += 1;
 		}
-		var intPart: i64 = 0;
-		if(index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'x') {
-			// Parse hex int
+		var subString: []const u8 = undefined;
+		if(chars.len > 2 and chars[index.*] == '0' and (chars[index.* + 1] == 'x' or chars[index.* + 1] == 'b')) {
 			index.* += 2;
 			while(index.* < chars.len) : (index.* += 1) {
 				switch(chars[index.*]) {
-					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
-						intPart = (chars[index.*] - '0') +% intPart*%16;
-					},
-					'a', 'b', 'c', 'd', 'e', 'f' => {
-						intPart = (chars[index.*] - 'a' + 10) +% intPart*%16;
-					},
-					'A', 'B', 'C', 'D', 'E', 'F' => {
-						intPart = (chars[index.*] - 'A' + 10) +% intPart*%16;
-					},
+					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {},
+					'a',
+					'b',
+					'c',
+					'd',
+					'e',
+					'f',
+					=> {},
+					'A', 'B', 'C', 'D', 'E', 'F' => {},
 					else => {
 						break;
 					},
 				}
 			}
-			return .{.int = sign*intPart};
-		}
-		while(index.* < chars.len) : (index.* += 1) {
-			switch(chars[index.*]) {
-				'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
-					intPart = (chars[index.*] - '0') +% intPart*%10;
-				},
-				else => {
-					break;
-				},
+			subString = chars[numberStartIndex..index.*];
+			const signed: ?i64 = std.fmt.parseInt(i64, subString, 0) catch null;
+			const unsigned: ?u64 = std.fmt.parseInt(u64, subString, 0) catch null;
+			if(signed) |val| {
+				return .{.int = val};
+			} else if(unsigned) |val| {
+				return .{.uint = val};
+			} else {
+				return .{.int = 0};
+			}
+		} else {
+			while(index.* < chars.len) : (index.* += 1) {
+				switch(chars[index.*]) {
+					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {},
+					else => {
+						break;
+					},
+				}
 			}
 		}
-		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) { // This is an int
-			return .{.int = sign*intPart};
+		subString = chars[numberStartIndex..index.*];
+		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) {
+			const signed: ?i64 = std.fmt.parseInt(i64, subString, 0) catch null;
+			const unsigned: ?u64 = std.fmt.parseInt(u64, subString, 0) catch null;
+			if(signed) |val| {
+				return .{.int = val};
+			} else if(unsigned) |val| {
+				return .{.uint = val};
+			} else {
+				return .{.int = 0};
+			}
 		}
+		const intPart: i64 = std.fmt.parseInt(i64, subString, 0) catch unreachable;
 		// So this is a float apparently.
 
 		var floatPart: f64 = 0;
@@ -866,6 +893,12 @@ test "number parsing" {
 	try std.testing.expectApproxEqAbs(Parser.parseNumber("1.234589e10", &index).float, 1.234589e10, 1.0);
 	index = 5;
 	try std.testing.expectApproxEqAbs(Parser.parseNumber("_____0.0000000000234589e10abcdfe", &index).float, 0.234589, 1e-10);
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("9223372036854775807", &index), ZonElement{.int = 9223372036854775807});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("18446744073709551615", &index), ZonElement{.uint = 18446744073709551615});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("-9223372036854775808", &index), ZonElement{.int = -9223372036854775808});
 }
 
 test "element parsing" {
