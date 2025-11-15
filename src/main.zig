@@ -52,9 +52,7 @@ pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 
-pub var gameStartMillis: i64 = undefined;
-pub var headless = false;
-pub var runtimeLimited = false;
+var headless = false;
 
 pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
@@ -492,7 +490,6 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 }
 
 pub fn main() void { // MARK: main()
-	gameStartMillis = std.time.milliTimestamp();
 	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
@@ -506,7 +503,6 @@ pub fn main() void { // MARK: main()
 	settings.launchConfig.init();
 
 	headless = settings.launchConfig.headlessServer;
-	runtimeLimited = settings.launchConfig.runtimeLimitMillis > 0;
 
 	if(!headless) gui.initWindowList();
 	defer if(!headless) gui.deinitWindowList();
@@ -667,9 +663,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:cubyz");
-		}
-		if(runtimeLimited and std.time.milliTimestamp() > gameStartMillis + settings.launchConfig.runtimeLimitMillis) {
-			Window.c.glfwSetWindowShouldClose(Window.window, Window.c.GLFW_TRUE);
 		}
 	}
 
