@@ -107,7 +107,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	const blockBaseModelIndex = blocks.meshes.modelIndexStart(block.*);
 	const neighborBaseModelIndex = blocks.meshes.modelIndexStart(neighborBlock);
 	const neighborModel = blocks.meshes.model(neighborBlock).model();
-	const targetVal = !neighborBlock.replacable() and !neighborBlock.transparent() and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.reverse().toInt()]);
+	const targetVal = !neighborBlock.replaceable() and !neighborBlock.transparent() and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.reverse().toInt()]);
 	var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
 	switch(neighbor) {
 		.dirNegX => {

@@ -39,7 +39,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i,
 		if(neighbor != Neighbor.dirUp) return false;
 		if(!sameBlock) {
 			const neighborModel = neighborBlock.mode().model(neighborBlock).model();
-			const support = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[Neighbor.dirDown.toInt()].len != 0;
+			const support = !neighborBlock.replaceable() and neighborModel.neighborFacingQuads[Neighbor.dirDown.toInt()].len != 0;
 			if(!support) return false;
 		}
 		currentData.data = 1;
