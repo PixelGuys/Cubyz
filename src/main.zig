@@ -499,7 +499,6 @@ pub fn main() void { // MARK: main()
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
 	settings.launchConfig.init();
-	defer settings.launchConfig.deinit();
 
 	const headless = settings.launchConfig.headlessServer;
 
@@ -611,7 +610,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
-	audio.setMusic("cubyz:cubyz");
+	audio.setMusic("cubyz:TotalDemented/Cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		heap.GarbageCollection.syncPoint();
@@ -678,7 +677,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				game.world = null;
 			}
 			gui.openWindow("main");
-			audio.setMusic("cubyz:cubyz");
+			audio.setMusic("cubyz:TotalDemented/Cubyz");
 		}
 	}
 
