@@ -51,23 +51,28 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
 
+	if(t.os.tag == .macos) {
+		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/Cubyz.app/Contents/Frameworks/libMoltenVK.dylib");
+		const moltenVkJsonInstall = b.addInstallFile(subPath.path(b, "MoltenVK_icd.json"), "bin/Cubyz.app/Contents/Resources/vulkan/icd.d/MoltenVK_icd.json");
+		exe.step.dependOn(&moltenVkLibInstall.step);
+		exe.step.dependOn(&moltenVkJsonInstall.step);
+
+		const validationLayerLibInstall = b.addInstallFile(subPath.path(b, "libVkLayer_khronos_validation.dylib"), "bin/Cubyz.app/Contents/Frameworks/libVkLayer_khronos_validation.dylib");
+		const validationLayerJsonInstall = b.addInstallFile(subPath.path(b, "VkLayer_khronos_validation.json"), "bin/Cubyz.app/Contents/Resources/vulkan/explicit_layer.d/VkLayer_khronos_validation.json");
+		exe.step.dependOn(&validationLayerLibInstall.step);
+		exe.step.dependOn(&validationLayerJsonInstall.step);
+	}
+
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("crypt32");
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
 	} else if(t.os.tag == .macos) {
-		exe.linkFramework("AudioUnit");
-		exe.linkFramework("AudioToolbox");
-		exe.linkFramework("CoreAudio");
-		exe.linkFramework("CoreServices");
-		exe.linkFramework("Foundation");
-		exe.linkFramework("IOKit");
 		exe.linkFramework("Cocoa");
+		exe.linkFramework("CoreFoundation");
+		exe.linkFramework("IOKit");
 		exe.linkFramework("QuartzCore");
-		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
-		exe.root_module.addRPathSpecial("@executable_path/../Library");
-		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
 	} else if(t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
@@ -212,7 +217,36 @@ pub fn build(b: *std.Build) !void {
 
 	linkLibraries(b, exe, useLocalDeps);
 
-	b.installArtifact(exe);
+	var exeInstallOptions: std.Build.Step.InstallArtifact.Options = .{};
+	if(target.result.os.tag == .macos) {
+		exeInstallOptions = .{
+			.dest_dir = .{.override = .{.custom = "bin/Cubyz.app/Contents/MacOS"}},
+		};
+
+		const plistContents =
+			\\<?xml version="1.0" encoding="UTF-8"?>
+			\\<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+			\\<plist version="1.0">
+			\\<dict>
+			\\    <key>CFBundleIconFile</key>
+			\\    <string>logo</string>
+			\\</dict>
+			\\</plist>
+		;
+
+		const writeFiles = b.addWriteFiles();
+		const plistPath = writeFiles.add("Info.plist", plistContents);
+		const plistInstall = b.addInstallFile(plistPath, "bin/Cubyz.app/Contents/Info.plist");
+		b.getInstallStep().dependOn(&plistInstall.step);
+		const iconsInstall = b.addInstallFile(b.path("assets/cubyz/logo.icns"), "bin/Cubyz.app/Contents/Resources/logo.icns");
+		b.getInstallStep().dependOn(&iconsInstall.step);
+
+		// NOTE(blackedout): This is to make the Vulkan loader search in (bundle)/Contents/Frameworks to find the libs referenced in the manifest files
+		exe.root_module.addRPathSpecial("@loader_path/../Frameworks");
+	}
+
+	const installExe = b.addInstallArtifact(exe, exeInstallOptions);
+	b.getInstallStep().dependOn(&installExe.step);
 
 	const run_cmd = b.addRunArtifact(exe);
 	run_cmd.step.dependOn(b.getInstallStep());

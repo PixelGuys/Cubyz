@@ -24,4 +24,8 @@ fi
 echo "Cubyz successfully built!"
 echo "Launching Cubyz."
 
-./zig-out/bin/Cubyz
+if [ "$(uname)" = "Darwin" ]; then
+    ./zig-out/bin/Cubyz.app/Contents/MacOS/Cubyz
+else
+    ./zig-out/bin/Cubyz
+fi

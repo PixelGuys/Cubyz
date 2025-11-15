@@ -46,7 +46,7 @@ if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
 	rm -r compiler/zig
 	mkdir compiler/zig
 	echo "Downloading $VERSION..."
-	wget -O compiler/archive.tar.xz https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/$BASE_VERSION/"$VERSION".tar.xz
+	curl -o compiler/archive.tar.xz -L -f -S https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/$BASE_VERSION/"$VERSION".tar.xz
 	if [ $? != 0 ]
 	then
 		echo "Failed to download the Zig compiler."
