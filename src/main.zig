@@ -576,6 +576,11 @@ pub fn main() void { // MARK: main()
 	} else {
 		clientMain();
 	}
+
+	if(game.world) |world| {
+		world.deinit();
+		game.world = null;
+	}
 }
 
 pub fn clientMain() void { // MARK: clientMain()
@@ -663,11 +668,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.openWindow("main");
 			audio.setMusic("cubyz:cubyz");
 		}
-	}
-
-	if(game.world) |world| {
-		world.deinit();
-		game.world = null;
 	}
 }
 
