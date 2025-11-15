@@ -647,6 +647,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
 		self.wio.deinit();
+		main.assets.unloadAssets();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
