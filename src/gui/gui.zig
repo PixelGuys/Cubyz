@@ -652,9 +652,7 @@ pub const inventory = struct { // MARK: inventory
 
 	fn update() void {
 		if(!initialized) return;
-		const itemSlot = hoveredItemSlot orelse {
-			return;
-		};
+		const itemSlot = hoveredItemSlot orelse return;
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
