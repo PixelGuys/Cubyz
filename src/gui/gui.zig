@@ -486,7 +486,7 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
-	} else if(main.game.world != null and inventory.carried.getItem(0) == null) {
+	} else if(main.game.world != null and inventory.carried.getItem(0) == .null) {
 		toggleGameMenu();
 	}
 }
@@ -604,7 +604,7 @@ pub const inventory = struct { // MARK: inventory
 	var carriedItemSlot: *ItemSlot = undefined;
 	var leftClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
 	var rightClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
-	var recipeItem: ?main.items.Item = null;
+	var recipeItem: main.items.Item = .null;
 	var initialized: bool = false;
 	const minCraftingCooldown = 20;
 	const maxCraftingCooldown = 400;
@@ -657,8 +657,8 @@ pub const inventory = struct { // MARK: inventory
 			const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 			if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
 				if(mainGuiButton.pressed) {
-					if(recipeItem == null and itemSlot.inventory._items[itemSlot.itemSlot].item != null) {
-						recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.?.clone();
+					if(recipeItem == .null and itemSlot.inventory._items[itemSlot.itemSlot].item != .null) {
+						recipeItem = itemSlot.inventory._items[itemSlot.itemSlot].item.clone();
 					}
 					if(!std.meta.eql(itemSlot.inventory._items[itemSlot.itemSlot].item, recipeItem)) return;
 					const time = std.time.milliTimestamp();
@@ -702,7 +702,7 @@ pub const inventory = struct { // MARK: inventory
 						}
 					}
 					const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-					if(item == null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.?.stackSize()) {
+					if(item == .null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.stackSize()) {
 						leftClickSlots.append(itemSlot);
 					}
 				}
@@ -756,8 +756,8 @@ pub const inventory = struct { // MARK: inventory
 				carried.dropOne(0);
 			}
 		}
-		if(recipeItem) |item| item.deinit();
-		recipeItem = null;
+		recipeItem.deinit();
+		recipeItem = .null;
 	}
 
 	fn render(mousePos: Vec2f) void {
@@ -766,8 +766,7 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
 		if(carried.getAmount(0) == 0) if(hoveredItemSlot) |hovered| {
-			if(hovered.inventory.getItem(hovered.itemSlot)) |item| {
-				const tooltip = item.getTooltip();
+			if(hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
 				const fontSize = 16;
