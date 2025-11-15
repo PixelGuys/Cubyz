@@ -893,6 +893,12 @@ test "number parsing" {
 	try std.testing.expectApproxEqAbs(Parser.parseNumber("1.234589e10", &index).float, 1.234589e10, 1.0);
 	index = 5;
 	try std.testing.expectApproxEqAbs(Parser.parseNumber("_____0.0000000000234589e10abcdfe", &index).float, 0.234589, 1e-10);
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("9223372036854775807", &index), ZonElement{.int = 9223372036854775807});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("18446744073709551615", &index), ZonElement{.uint = 18446744073709551615});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("-9223372036854775808", &index), ZonElement{.int = -9223372036854775808});
 }
 
 test "element parsing" {
