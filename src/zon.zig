@@ -156,6 +156,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		switch(typeInfo) {
 			.int => {
 				switch(self.*) {
+					.uint => return std.math.cast(innerType, self.uint) orelse replacement,
 					.int => return std.math.cast(innerType, self.int) orelse replacement,
 					.float => return std.math.lossyCast(innerType, std.math.round(self.float)),
 					else => return replacement,
@@ -211,7 +212,15 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			.void => return .null,
 			.null => return .null,
 			.bool => return .{.bool = value},
-			.int, .comptime_int => return .{.int = @intCast(value)},
+			.int,
+			=> {
+				if(std.math.cast(i64, value)) |casted| {
+					return .{.int = casted};
+				} else {
+					return .{.uint = @intCast(value)};
+				}
+			},
+			.comptime_int => return .{.int = @intCast(value)},
 			.float, .comptime_float => return .{.float = @floatCast(value)},
 			.@"union" => {
 				if(@TypeOf(value) == ZonElement) {
@@ -511,11 +520,11 @@ const Parser = struct { // MARK: Parser
 					},
 				}
 			}
-			if(sign == 1 or intPart > std.math.maxInt(i64)) {
-				return .{.uint = intPart};
-			} else {
+			if(sign == -1 or intPart < std.math.maxInt(i64)) {
 				const signed: i64 = @intCast(intPart);
 				return .{.int = sign*signed};
+			} else {
+				return .{.uint = intPart};
 			}
 		}
 		while(index.* < chars.len) : (index.* += 1) {
@@ -529,11 +538,11 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) { // This is an int
-			if(sign == 1 or intPart > std.math.maxInt(i64)) {
-				return .{.uint = intPart};
-			} else {
+			if(sign == -1 or intPart < std.math.maxInt(i64)) {
 				const signed: i64 = @intCast(intPart);
 				return .{.int = sign*signed};
+			} else {
+				return .{.uint = intPart};
 			}
 		}
 		// So this is a float apparently.
