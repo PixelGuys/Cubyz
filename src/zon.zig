@@ -212,15 +212,13 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			.void => return .null,
 			.null => return .null,
 			.bool => return .{.bool = value},
-			.int,
-			=> {
+			.int, .comptime_int => {
 				if(std.math.cast(i64, value)) |casted| {
 					return .{.int = casted};
 				} else {
 					return .{.uint = @intCast(value)};
 				}
 			},
-			.comptime_int => return .{.int = @intCast(value)},
 			.float, .comptime_float => return .{.float = @floatCast(value)},
 			.@"union" => {
 				if(@TypeOf(value) == ZonElement) {
@@ -362,10 +360,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	}
 	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch(zon) {
-			.uint => |value| {
-				list.writer().print("{d}", .{value}) catch unreachable;
-			},
-			.int => |value| {
+			inline .int, .uint => |value| {
 				list.writer().print("{d}", .{value}) catch unreachable;
 			},
 			.float => |value| {
@@ -494,57 +489,54 @@ const Parser = struct { // MARK: Parser
 	/// Assumes that the region starts with a number character ('+', '-', '.' or a digit).
 	fn parseNumber(chars: []const u8, index: *u32) ZonElement {
 		var sign: i2 = 1;
+		const numberStartIndex = index.*;
+
 		if(chars[index.*] == '-') {
 			sign = -1;
 			index.* += 1;
-		} else if(chars[index.*] == '+') {
-			index.* += 1;
 		}
-		var intPart: u64 = 0;
-		if(index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'x') {
-			// Parse hex int
+		var subString: []const u8 = undefined;
+		if(chars[index.*] == '0' and (chars[index.* + 1] == 'x' or chars[index.* + 1] == 'b')) {
 			index.* += 2;
 			while(index.* < chars.len) : (index.* += 1) {
 				switch(chars[index.*]) {
-					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
-						intPart = (chars[index.*] - '0') +% intPart*%16;
-					},
-					'a', 'b', 'c', 'd', 'e', 'f' => {
-						intPart = (chars[index.*] - 'a' + 10) +% intPart*%16;
-					},
-					'A', 'B', 'C', 'D', 'E', 'F' => {
-						intPart = (chars[index.*] - 'A' + 10) +% intPart*%16;
-					},
+					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {},
+					'a',
+					'b',
+					'c',
+					'd',
+					'e',
+					'f',
+					=> {},
+					'A', 'B', 'C', 'D', 'E', 'F' => {},
 					else => {
+						subString = chars[numberStartIndex..index.*];
 						break;
 					},
 				}
 			}
-			if(sign == -1 or intPart < std.math.maxInt(i64)) {
-				const signed: i64 = @intCast(intPart);
-				return .{.int = sign*signed};
+		} else {
+			while(index.* < chars.len) : (index.* += 1) {
+				std.log.debug("char: {}", .{chars[index.*]});
+				switch(chars[index.*]) {
+					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {},
+					else => {
+						subString = chars[numberStartIndex..index.*];
+						break;
+					},
+				}
+			}
+		}
+		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) {
+			const signed: ?i64 = std.fmt.parseInt(i64, subString, 0) catch null;
+			const unsigned: ?u64 = std.fmt.parseInt(u64, subString, 0) catch null;
+			if(signed) |val| {
+				return .{.int = val};
 			} else {
-				return .{.uint = intPart};
+				return .{.uint = unsigned.?};
 			}
 		}
-		while(index.* < chars.len) : (index.* += 1) {
-			switch(chars[index.*]) {
-				'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
-					intPart = (chars[index.*] - '0') +% intPart*%10;
-				},
-				else => {
-					break;
-				},
-			}
-		}
-		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) { // This is an int
-			if(sign == -1 or intPart < std.math.maxInt(i64)) {
-				const signed: i64 = @intCast(intPart);
-				return .{.int = sign*signed};
-			} else {
-				return .{.uint = intPart};
-			}
-		}
+		const intPart: i64 = std.fmt.parseInt(i64, subString, 0) catch unreachable;
 		// So this is a float apparently.
 
 		var floatPart: f64 = 0;
