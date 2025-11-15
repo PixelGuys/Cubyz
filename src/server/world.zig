@@ -1258,30 +1258,32 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		if(oldBlock) |old| {
-
-			// trigger updates:
-			const updateRange = 1;
-			for(0..updateRange*2 + 1) |offsetX| {
-				for(0..updateRange*2 + 1) |offsetY| {
-					for(0..updateRange*2 + 1) |offsetZ| {
-						const px = wx + @as(i32, @intCast(offsetX)) - updateRange;
-						const py = wy + @as(i32, @intCast(offsetY)) - updateRange;
-						const pz = wz + @as(i32, @intCast(offsetZ)) - updateRange;
-						if(px != wx or py != wy or wz != pz) {
-							self.delayedUpdateQueue.pushBack(Vec3i{
-								px,
-								py,
-								pz,
-							});
-						}
-					}
-				}
-			}
+			self.updateSurrounding(wx, wy, wz);
 
 			// onBreak event
 			_ = old.onBreak().run(.{.block = old, .chunk = baseChunk, .x = wx & chunk.chunkMask, .y = wy & chunk.chunkMask, .z = wz & chunk.chunkMask});
 		}
 		return null;
+	}
+	pub fn updateSurrounding(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
+		// trigger updates:
+		const updateRange = 1;
+		for(0..updateRange*2 + 1) |offsetX| {
+			for(0..updateRange*2 + 1) |offsetY| {
+				for(0..updateRange*2 + 1) |offsetZ| {
+					const px = wx + @as(i32, @intCast(offsetX)) - updateRange;
+					const py = wy + @as(i32, @intCast(offsetY)) - updateRange;
+					const pz = wz + @as(i32, @intCast(offsetZ)) - updateRange;
+					if(px != wx or py != wy or wz != pz) {
+						self.delayedUpdateQueue.pushBack(Vec3i{
+							px,
+							py,
+							pz,
+						});
+					}
+				}
+			}
+		}
 	}
 
 	pub fn updateBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, newBlock: Block) void {
