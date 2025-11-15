@@ -1,9 +1,7 @@
 .{
 	.properties = .{
 		.hot,
-		.dry,
 	},
-	.validPlayerSpawn = false,
 	.music = "cubyz:EasternThought",
 	.chance = 0,
 	.fogDensity = 1.5,

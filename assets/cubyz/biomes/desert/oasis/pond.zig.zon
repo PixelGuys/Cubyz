@@ -1,4 +1,8 @@
 .{
+	.properties = .{
+		.wet,
+	},
+	.validPlayerSpawn = false,
 	.minHeight = -5,
 	.maxHeight = -1,
 	.maxHeightLimit = -1,
