@@ -494,9 +494,11 @@ const Parser = struct { // MARK: Parser
 		if(chars[index.*] == '-') {
 			sign = -1;
 			index.* += 1;
+		} else if(chars[index.*] == '+') {
+			index.* += 1;
 		}
 		var subString: []const u8 = undefined;
-		if(chars[index.*] == '0' and (chars[index.* + 1] == 'x' or chars[index.* + 1] == 'b')) {
+		if(chars.len > 2 and chars[index.*] == '0' and (chars[index.* + 1] == 'x' or chars[index.* + 1] == 'b')) {
 			index.* += 2;
 			while(index.* < chars.len) : (index.* += 1) {
 				switch(chars[index.*]) {
@@ -510,30 +512,40 @@ const Parser = struct { // MARK: Parser
 					=> {},
 					'A', 'B', 'C', 'D', 'E', 'F' => {},
 					else => {
-						subString = chars[numberStartIndex..index.*];
 						break;
 					},
 				}
 			}
+			subString = chars[numberStartIndex..index.*];
+			const signed: ?i64 = std.fmt.parseInt(i64, subString, 0) catch null;
+			const unsigned: ?u64 = std.fmt.parseInt(u64, subString, 0) catch null;
+			if(signed) |val| {
+				return .{.int = val};
+			} else if(unsigned) |val| {
+				return .{.uint = val};
+			} else {
+				return .{.int = 0};
+			}
 		} else {
 			while(index.* < chars.len) : (index.* += 1) {
-				std.log.debug("char: {}", .{chars[index.*]});
 				switch(chars[index.*]) {
 					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {},
 					else => {
-						subString = chars[numberStartIndex..index.*];
 						break;
 					},
 				}
 			}
 		}
+		subString = chars[numberStartIndex..index.*];
 		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) {
 			const signed: ?i64 = std.fmt.parseInt(i64, subString, 0) catch null;
 			const unsigned: ?u64 = std.fmt.parseInt(u64, subString, 0) catch null;
 			if(signed) |val| {
 				return .{.int = val};
+			} else if(unsigned) |val| {
+				return .{.uint = val};
 			} else {
-				return .{.uint = unsigned.?};
+				return .{.int = 0};
 			}
 		}
 		const intPart: i64 = std.fmt.parseInt(i64, subString, 0) catch unreachable;
