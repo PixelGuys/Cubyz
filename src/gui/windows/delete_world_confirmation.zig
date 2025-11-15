@@ -47,7 +47,7 @@ fn deleteWorld(_: usize) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	const text = std.fmt.allocPrint(main.stackAllocator.allocator, "Are you sure you want to delete the world **{s}**", .{deleteWorldName}) catch unreachable;
+	const text = std.fmt.allocPrint(main.stackAllocator.allocator, "Are you sure you want to delete the world **{s}**?", .{deleteWorldName}) catch unreachable;
 	defer main.stackAllocator.free(text);
 	list.add(Label.init(.{0, 0}, 128, text, .center));
 	list.add(Button.initText(.{0, 0}, 128, "Yes", .{.callback = &deleteWorld}));
