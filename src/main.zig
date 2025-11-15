@@ -571,6 +571,7 @@ pub fn main() void { // MARK: main()
 
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
+
 	if(headless) {
 		if(settings.launchConfig.autoEnterWorld.len == 0) {
 			std.log.err("Cannot run the server without a world name provided via launchConfig.autoEnterWorld.", .{});

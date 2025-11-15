@@ -44,7 +44,7 @@ pub const Settings = struct {
 	pub fn initFromZon(zon: ZonElement) Settings {
 		var self: Settings = .{};
 		const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse blk: {
-			std.log.err("Invalid gamemode specified in launchConfig: {s}. Defaulting to {s}.", .{zon.get([]const u8, "gamemode", @tagName(self.defaultGamemode)), @tagName(self.defaultGamemode)});
+			std.log.err("Invalid gamemode specified in world settings: {s}. Defaulting to {s}.", .{zon.get([]const u8, "gamemode", @tagName(self.defaultGamemode)), @tagName(self.defaultGamemode)});
 			break :blk self.defaultGamemode;
 		};
 		self = .{
@@ -58,13 +58,12 @@ pub const Settings = struct {
 };
 
 pub fn exists(worldPath: []const u8) bool {
-	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{main.settings.launchConfig.cubyzDir, "saves", worldPath, "world.zig.zon"}) catch unreachable;
+	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{"saves", worldPath, "world.zig.zon"}) catch unreachable;
 	defer main.stackAllocator.free(saveDirectory);
-	var worldFound = true;
 	files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| {
-		if(err == error.FileNotFound) worldFound = false;
+		if(err == error.FileNotFound) return false;
 	};
-	return worldFound;
+	return true;
 }
 
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
