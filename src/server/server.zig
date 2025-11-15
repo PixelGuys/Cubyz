@@ -462,7 +462,19 @@ pub fn start(name: []const u8, port: ?u16) void {
 }
 
 pub fn stop() void {
+	kickPlayers(.expectedClose, "Server stopped.");
 	running.store(false, .monotonic);
+}
+
+pub fn kickPlayers(reason: network.Connection.DisconnectReason, reasonMessage: ?[]const u8) void {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+	for(userList) |user| {
+		if(user.connected.load(.monotonic) and !user.isLocal) {
+			user.conn.disconnect(reason, reasonMessage);
+		}
+	}
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
@@ -488,8 +500,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	};
 	if(!foundUser) return;
 
-	sendMessage("{s}§#ffff00 left", .{user.name});
-	// Let the other clients know about that this new one left.
+	sendMessage("{s}§#ffff00 left.", .{user.name});
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
 	zonArray.array.append(.{.int = user.id});
@@ -514,7 +525,7 @@ pub fn connectInternal(user: *User) void {
 	if(!world.?.testingMode) {
 		for(userList) |other| {
 			if(std.mem.eql(u8, other.name, user.name)) {
-				user.conn.disconnect();
+				user.conn.disconnect(.alreadyConnected, null);
 				return;
 			}
 		}
