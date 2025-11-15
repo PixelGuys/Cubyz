@@ -1257,7 +1257,7 @@ pub fn registerRecipes(zon: ZonElement) void {
 	}
 }
 
-pub fn clearRecipeCachedInventories() void {
+fn clearRecipeCachedInventories() void {
 	for(recipeList.items) |recipe| {
 		main.globalAllocator.free(recipe.sourceItems);
 		main.globalAllocator.free(recipe.sourceAmounts);
@@ -1271,6 +1271,7 @@ pub fn reset() void {
 	toolTypeList = .{};
 	toolTypeIdToIndex = .{};
 	reverseIndices = .{};
+	clearRecipeCachedInventories();
 	recipeList.clearAndFree();
 	itemListSize = 0;
 }

@@ -365,10 +365,6 @@ fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
 	biomes_zig.register(stringId, numericId, zon);
 }
 
-fn registerRecipesFromZon(zon: ZonElement) void {
-	items_zig.registerRecipes(zon);
-}
-
 pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
 
@@ -595,7 +591,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	iterator = worldAssets.recipes.iterator();
 	while(iterator.next()) |entry| {
-		registerRecipesFromZon(entry.value_ptr.*);
+		items_zig.registerRecipes(entry.value_ptr.*);
 	}
 
 	try sbb.registerBlueprints(&worldAssets.blueprints);
