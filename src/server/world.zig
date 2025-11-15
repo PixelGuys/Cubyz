@@ -31,7 +31,40 @@ pub const Settings = struct {
 	allowCheats: bool = false,
 	testingMode: bool = false,
 	seed: u64 = undefined,
+
+	pub fn chooseSeed(seedStr: []const u8) u64 {
+		if(seedStr.len == 0) {
+			return main.random.nextInt(u64, &main.seed);
+		} else {
+			return std.fmt.parseInt(u64, seedStr, 0) catch {
+				return std.hash.Wyhash.hash(0, seedStr);
+			};
+		}
+	}
+	pub fn initFromZon(zon: ZonElement) Settings {
+		var self: Settings = .{};
+		const gamemode: main.game.Gamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse blk: {
+			std.log.err("Invalid gamemode specified in world settings: {s}. Defaulting to {s}.", .{zon.get([]const u8, "gamemode", @tagName(self.defaultGamemode)), @tagName(self.defaultGamemode)});
+			break :blk self.defaultGamemode;
+		};
+		self = .{
+			.defaultGamemode = gamemode,
+			.testingMode = zon.get(bool, "testingMode", self.testingMode),
+			.allowCheats = zon.get(bool, "allowCheats", self.allowCheats),
+			.seed = chooseSeed(zon.get([]const u8, "seed", "")),
+		};
+		return self;
+	}
 };
+
+pub fn exists(worldPath: []const u8) bool {
+	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{"saves", worldPath, "world.zig.zon"}) catch unreachable;
+	defer main.stackAllocator.free(saveDirectory);
+	files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| {
+		if(err == error.FileNotFound) return false;
+	};
+	return true;
+}
 
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
 	// Remove illegal ASCII characters:

@@ -572,6 +572,16 @@ pub fn main() void { // MARK: main()
 	defer server.terrain.globalDeinit();
 
 	if(headless) {
+		if(settings.launchConfig.autoEnterWorld.len == 0) {
+			std.log.err("Cannot run the server without a world name provided via launchConfig.autoEnterWorld.", .{});
+			return;
+		}
+		if(!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
+			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
+				std.log.err("Error creating world: {s}", .{@errorName(err)});
+				return;
+			};
+		}
 		server.start(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		clientMain();
@@ -590,6 +600,12 @@ pub fn clientMain() void { // MARK: clientMain()
 	var lastBeginRendering = std.time.nanoTimestamp();
 
 	if(settings.launchConfig.autoEnterWorld.len != 0) {
+		if(!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
+			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
+				std.log.err("Error creating world: {}", .{err});
+				return;
+			};
+		}
 		// Speed up the dev process by entering the world directly.
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
