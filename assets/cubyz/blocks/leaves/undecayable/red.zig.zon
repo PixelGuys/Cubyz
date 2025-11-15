@@ -1,13 +1,8 @@
 .{
-	.tags = .{.cuttable, .leaf},
-	.blockHealth = 0.5,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.degradable = true,
-	.alwaysViewThrough = true,
 	.absorbedLight = 0x213241,
-	.model = "cubyz:cube",
 	.texture = "cubyz:leaves/red",
 	.lodReplacement = "cubyz:leaves/opaque/red",
 	.opaqueVariant = "cubyz:leaves/opaque/red",

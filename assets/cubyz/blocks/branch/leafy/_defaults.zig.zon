@@ -10,6 +10,6 @@
 		.textureSlotOffset = 6,
 	},
 	.onUpdate = .{
-		.type = .leafBreak,
+		.type = .leafDecay,
 	},
 }
