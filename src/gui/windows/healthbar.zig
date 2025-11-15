@@ -52,9 +52,9 @@ pub fn render() void {
 			x = 0;
 			y += 20;
 		}
-		if(health + 1 <= main.game.Player.super.health) {
+		if(health + 0.5 < main.game.Player.super.health) {
 			heartTexture.bindTo(0);
-		} else if(health + 0.5 <= main.game.Player.super.health) {
+		} else if(health < main.game.Player.super.health) {
 			halfHeartTexture.bindTo(0);
 		} else {
 			deadHeartTexture.bindTo(0);
