@@ -1,0 +1,8 @@
+.{
+    .tags = .{.cuttable, .leaf},
+	.blockHealth = 0.5,
+	.degradable = true,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x363436,
+	.model = "cubyz:cube",
+}
