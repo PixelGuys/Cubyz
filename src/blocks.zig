@@ -69,6 +69,12 @@ var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
 var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
+
+/// is this block decayable?
+var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
+var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
+var _decayProhibitor: [maxBlockCount]bool = undefined;
+
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
 
@@ -114,6 +120,21 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break;
 		}
 	}
+	_decayProhibitor[size] = zon.get(bool, "decayProhibitor", false);
+
+	_onBreak[size] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onBreak event for block {s}", .{id});
+			break :blk .noop;
+		};
+	};
+	_onUpdate[size] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onUpdate event for block {s}", .{id});
+			break :blk .noop;
+		};
+	};
+
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
@@ -394,6 +415,12 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn onInteract(self: Block) ClientBlockCallback {
 		return _onInteract[self.typ];
 	}
+	pub inline fn onBreak(self: Block) ServerBlockCallback {
+		return _onBreak[self.typ];
+	}
+	pub inline fn onUpdate(self: Block) ServerBlockCallback {
+		return _onUpdate[self.typ];
+	}
 
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
@@ -413,6 +440,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
+	}
+
+	pub inline fn decayProhibitor(self: Block) bool {
+		return _decayProhibitor[self.typ];
 	}
 
 	pub inline fn friction(self: Block) f32 {

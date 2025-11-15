@@ -1,6 +1,6 @@
 .{
 	.drops = .{
-		.{.items = .{"cubyz:leaves/undecayable/yellow"}},
+		.{.items = .{.auto}},
 	},
 	.absorbedLight = 0x1C1C38,
 	.texture = "cubyz:leaves/yellow",

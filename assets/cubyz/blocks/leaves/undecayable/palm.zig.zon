@@ -1,6 +1,6 @@
 .{
 	.drops = .{
-		.{.items = .{"cubyz:leaves/undecayable/palm"}},
+		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube_hanging_planes",
 	.texture = "cubyz:leaves/palm",

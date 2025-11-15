@@ -1,6 +1,6 @@
 .{
 	.drops = .{
-		.{.items = .{"cubyz:leaves/undecayable/mahogany"}},
+		.{.items = .{.auto}},
 	},
 	.texture = "cubyz:leaves/mahogany",
 	.lodReplacement = "cubyz:leaves/opaque/mahogany",

@@ -34,4 +34,5 @@
 		},
 		.texture = "branch/palm.png",
 	},
+	.decayProhibitor = true,
 }
