@@ -69,8 +69,8 @@ var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
 var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
+
 /// is this block decayable?
-var _decayable: [maxBlockCount]bool = undefined;
 var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
 var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
 var _decayProhibitor: [maxBlockCount]bool = undefined;
@@ -120,7 +120,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break;
 		}
 	}
-	_decayable[size] = zon.get(bool, "decayable", false);
 	_decayProhibitor[size] = zon.get(bool, "decayProhibitor", false);
 
 	_onBreak[size] = blk: {
@@ -406,10 +405,6 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn light(self: Block) u32 {
 		return _light[self.typ];
-	}
-
-	pub inline fn decayable(self: Block) bool {
-		return _decayable[self.typ];
 	}
 
 	/// How much light this block absorbs if it is transparent.
