@@ -11,7 +11,7 @@ const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
 const structures_zig = @import("structures.zig");
-const SimpleStructureModel = structures_zig.SimpleStructureModel;
+pub const SimpleStructureModel = structures_zig.SimpleStructureModel;
 
 const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
@@ -287,11 +287,17 @@ pub const Biome = struct { // MARK: Biome
 			.maxHeightLimit = zon.get(i32, "maxHeightLimit", std.math.maxInt(i32)),
 			.smoothBeaches = zon.get(bool, "smoothBeaches", false),
 			.supportsRivers = zon.get(bool, "rivers", false),
-			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:cubyz")),
+			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:TotalDemented/Cubyz")),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
+		if(minRadius > maxRadius) {
+			std.log.err("Biome {s} has invalid radius range ({d}, {d})", .{self.id, minRadius, maxRadius});
+		}
+		if(minRadius < terrain.SurfaceMap.MapFragment.biomeSize/2) {
+			std.log.err("Biome {s} has radius {d}, smaller than grid resolution. It should be at least {d}", .{self.id, minRadius, terrain.SurfaceMap.MapFragment.biomeSize/2});
+		}
 		if(self.minHeight > self.maxHeight) {
 			std.log.err("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
 		}

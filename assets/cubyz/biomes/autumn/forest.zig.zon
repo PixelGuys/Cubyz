@@ -45,7 +45,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:yellow_leaves",
+			.leaves = "cubyz:leaves/yellow",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.15,
@@ -59,7 +59,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:red_leaves",
+			.leaves = "cubyz:leaves/red",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.15,
@@ -71,7 +71,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:birch_leaves",
+			.leaves = "cubyz:leaves/birch",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.03,
@@ -85,7 +85,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
+			.leaves = "cubyz:leaves/oak",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.015,

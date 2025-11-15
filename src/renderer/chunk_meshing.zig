@@ -184,7 +184,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
-	c.glUniform1f(locations.contrast, 0);
+	c.glUniform1f(locations.contrast, main.settings.blockContrast);
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
 
@@ -210,7 +210,7 @@ pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d
 pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	transparentPipeline.bind(null);
 
-	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
+	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 	c.glUniform1f(transparentUniforms.@"fog.density", game.fog.density);
 	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.fog.fogLower);
 	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.fog.fogHigher);

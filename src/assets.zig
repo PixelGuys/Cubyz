@@ -219,7 +219,7 @@ pub const Assets = struct {
 					continue;
 				};
 				if(hasDefaults) {
-					zon.join(defaultsStorage.get(main.files.Dir.init(entry.dir), entry.path[0 .. entry.path.len - entry.basename.len]));
+					zon.join(.preferLeft, defaultsStorage.get(main.files.Dir.init(entry.dir), entry.path[0 .. entry.path.len - entry.basename.len]));
 				}
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}
@@ -502,7 +502,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
+	if(!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.

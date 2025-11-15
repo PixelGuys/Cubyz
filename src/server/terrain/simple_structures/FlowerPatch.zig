@@ -24,7 +24,7 @@ width: f32,
 variation: f32,
 density: f32,
 
-pub fn loadModel(parameters: ZonElement) *FlowerPatch {
+pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 	const self = main.worldArena.create(FlowerPatch);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
