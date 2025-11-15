@@ -1,5 +1,5 @@
 .{
-    .tags = .{.cuttable, .leaf},
+	.tags = .{.cuttable, .leaf},
 	.blockHealth = 0.5,
 	.degradable = true,
 	.alwaysViewThrough = true,

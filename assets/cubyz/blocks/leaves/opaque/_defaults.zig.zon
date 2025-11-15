@@ -1,7 +1,6 @@
 .{
-    .tags = .{.cuttable, .leaf},
+	.tags = .{.cuttable, .leaf},
 	.hasItem = false,
 	.absorbedLight = 0x363436,
 	.model = "cubyz:cube",
-
 }
