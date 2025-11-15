@@ -605,6 +605,11 @@ pub const Player = struct { // MARK: Player
 			}
 		}
 	}
+
+	pub fn pauseBlockBreak() void {
+		renderer.MeshSelection.currentSwingProgress = 0;
+		Inventory.pauseBlockBreak();
+	}
 };
 
 pub const World = struct { // MARK: World
@@ -786,6 +791,7 @@ pub fn pressBreak(_: main.Window.Key.Modifiers) void {
 
 pub fn releaseBreak(_: main.Window.Key.Modifiers) void {
 	nextBlockBreakTime = null;
+	Player.pauseBlockBreak();
 }
 
 pub fn pressAcquireSelectedBlock(_: main.Window.Key.Modifiers) void {
