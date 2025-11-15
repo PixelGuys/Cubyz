@@ -6,6 +6,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
 pub const ZonElement = union(enum) { // MARK: Zon
+	uint: u64,
 	int: i64,
 	float: f64,
 	string: []const u8,
@@ -74,7 +75,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn clone(self: *const ZonElement, allocator: NeverFailingAllocator) ZonElement {
 		return switch(self.*) {
-			.int, .float, .string, .bool, .null => self.*,
+			.uint, .int, .float, .string, .bool, .null => self.*,
 			.stringOwned => |stringOwned| .{.stringOwned = allocator.allocator.dupe(u8, stringOwned) catch unreachable},
 			.array => |array| blk: {
 				const out = ZonElement.initArray(allocator);
@@ -102,7 +103,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	fn joinGetNew(left: ZonElement, priority: JoinPriority, right: ZonElement, allocator: NeverFailingAllocator) ZonElement {
 		switch(left) {
-			.int, .float, .string, .stringOwned, .bool, .null => {
+			.uint, .int, .float, .string, .stringOwned, .bool, .null => {
 				return switch(priority) {
 					.preferLeft => left.clone(allocator),
 					.preferRight => right.clone(allocator),
@@ -298,7 +299,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn deinit(self: *const ZonElement, allocator: NeverFailingAllocator) void {
 		switch(self.*) {
-			.int, .float, .bool, .null, .string => return,
+			.uint, .int, .float, .bool, .null, .string => return,
 			.stringOwned => {
 				allocator.free(self.stringOwned);
 			},
@@ -352,6 +353,9 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	}
 	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch(zon) {
+			.uint => |value| {
+				list.writer().print("{d}", .{value}) catch unreachable;
+			},
 			.int => |value| {
 				list.writer().print("{d}", .{value}) catch unreachable;
 			},
@@ -487,7 +491,7 @@ const Parser = struct { // MARK: Parser
 		} else if(chars[index.*] == '+') {
 			index.* += 1;
 		}
-		var intPart: i64 = 0;
+		var intPart: u64 = 0;
 		if(index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'x') {
 			// Parse hex int
 			index.* += 2;
@@ -507,7 +511,12 @@ const Parser = struct { // MARK: Parser
 					},
 				}
 			}
-			return .{.int = sign*intPart};
+			if(sign == 1 or intPart > std.math.maxInt(i64)) {
+				return .{.uint = intPart};
+			} else {
+				const signed: i64 = @intCast(intPart);
+				return .{.int = sign*signed};
+			}
 		}
 		while(index.* < chars.len) : (index.* += 1) {
 			switch(chars[index.*]) {
@@ -520,7 +529,12 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) { // This is an int
-			return .{.int = sign*intPart};
+			if(sign == 1 or intPart > std.math.maxInt(i64)) {
+				return .{.uint = intPart};
+			} else {
+				const signed: i64 = @intCast(intPart);
+				return .{.int = sign*signed};
+			}
 		}
 		// So this is a float apparently.
 
