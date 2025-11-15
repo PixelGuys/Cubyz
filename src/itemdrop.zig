@@ -212,8 +212,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		var ii: u32 = 0;
 		while(ii < self.size) {
 			const i = self.indices[ii];
-			if(self.world.?.getSimulationChunkAndIncreaseRefCount(@intFromFloat(pos[i][0]), @intFromFloat(pos[i][1]), @intFromFloat(pos[i][2]))) |simChunk| {
-				defer simChunk.decreaseRefCount();
+			if(self.world.?.getSimulationChunk(@intFromFloat(pos[i][0]), @intFromFloat(pos[i][1]), @intFromFloat(pos[i][2]))) |simChunk| {
 				if(simChunk.getChunk()) |chunk| {
 					// Check collision with blocks:
 					self.updateEnt(chunk, &pos[i], &vel[i], deltaTime);
@@ -424,8 +423,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			defer chunk.mutex.unlock();
 			block = chunk.getBlock(blockPos[0] - chunk.super.pos.wx, blockPos[1] - chunk.super.pos.wy, blockPos[2] - chunk.super.pos.wz);
 		} else {
-			const otherChunk = self.world.?.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return true;
-			defer otherChunk.decreaseRefCount();
+			const otherChunk = self.world.?.getSimulationChunk(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return true;
 			const ch = otherChunk.getChunk() orelse return true;
 			ch.mutex.lock();
 			defer ch.mutex.unlock();
