@@ -18,6 +18,7 @@ const Blueprint = main.blueprint.Blueprint;
 const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
+const ZonElement = main.ZonElement;
 
 pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
@@ -322,6 +323,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
+
+	const settingsZon = main.files.cubyzDir().readToZon(main.stackAllocator, "server.zig.zon") catch .null;
+	defer settingsZon.deinit(main.stackAllocator);
+
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
@@ -351,8 +356,8 @@ fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
 
-	if(world) |_world| {
-		_world.deinit();
+	if(world) |world_| {
+		world_.deinit();
 	}
 	world = null;
 
@@ -382,7 +387,7 @@ pub fn freeUserListAndDecreaseRefCount(allocator: main.heap.NeverFailingAllocato
 fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 	// Send the entity updates:
 	var initialList: []const u8 = undefined;
-	const list = main.ZonElement.initArray(main.stackAllocator);
+	const list = ZonElement.initArray(main.stackAllocator);
 	defer list.deinit(main.stackAllocator);
 	list.array.append(.null);
 	const itemDropList = world.?.itemDropManager.getInitialList(main.stackAllocator);
@@ -490,7 +495,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.
-	const zonArray = main.ZonElement.initArray(main.stackAllocator);
+	const zonArray = ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
 	zonArray.array.append(.{.int = user.id});
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -521,9 +526,9 @@ pub fn connectInternal(user: *User) void {
 	}
 	// Let the other clients know about this new one.
 	{
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		const entityZon = main.ZonElement.initObject(main.stackAllocator);
+		const entityZon = ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", user.id);
 		entityZon.put("name", user.name);
 		zonArray.array.append(entityZon);
@@ -534,10 +539,10 @@ pub fn connectInternal(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		for(userList) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
+			const entityZon = ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
 			entityZon.put("name", other.name);
 			zonArray.array.append(entityZon);
