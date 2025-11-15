@@ -10,6 +10,7 @@ const Tag = main.Tag;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
+const Mat3f = vec.Mat3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
 
@@ -175,6 +176,13 @@ pub fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat
 	quad.normal = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(quad.normal, 0)));
 	for(&quad.corners) |*corner| {
 		corner.* = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(corner.* - Vec3f{0.5, 0.5, 0.5}, 1))) + Vec3f{0.5, 0.5, 0.5};
+	}
+}
+
+pub fn rotationMatrixTransform3D(quad: *main.models.QuadInfo, transformMatrix: Mat3f) void {
+	quad.normal = Mat3f.mulVec(transformMatrix, quad.normal);
+	for(&quad.corners) |*corner| {
+		corner.* = Mat3f.mulVec(transformMatrix, corner.* - Vec3f{0.5, 0.5, 0.5}) + Vec3f{0.5, 0.5, 0.5};
 	}
 }
 
