@@ -581,8 +581,8 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 			},
 			.setSpawn => {
-					if(conn.isServerSide()) return error.InvalidPacket;
-					game.Player.setSpawn(try reader.readVec(Vec3d));
+				if(conn.isServerSide()) return error.InvalidPacket;
+				game.Player.setSpawn(try reader.readVec(Vec3d));
 			},
 		}
 	}
@@ -613,14 +613,14 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 	}
 
 	pub fn sendSpawnPoint(conn: *Connection, pos: Vec3d) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
-			defer writer.deinit();
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
+		defer writer.deinit();
 
-			writer.writeEnum(UpdateType, .setSpawn);
-			writer.writeVec(Vec3d, pos);
+		writer.writeEnum(UpdateType, .setSpawn);
+		writer.writeVec(Vec3d, pos);
 
-			conn.send(.fast, id, writer.data.items);
-		}
+		conn.send(.fast, id, writer.data.items);
+	}
 
 	pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
