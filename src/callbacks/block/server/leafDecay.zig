@@ -39,7 +39,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leave: Block, wx: i32, wy: i32, wz:
 		const z = @as(i32, @intCast(value[2])) - wz;
 
 		// out of range
-		if(@max(@abs(x), @abs(y), @abs(z)) > checkRange)
+		if(x*x + y*y + z*z > checkRange*checkRange)
 			continue;
 
 		// mark as checked
