@@ -133,11 +133,17 @@ const Socket = struct {
 pub fn init() void {
 	Socket.startup();
 	inline for(@typeInfo(Protocols).@"struct".decls) |decl| {
-		if(@TypeOf(@field(Protocols, decl.name)) == type) {
-			const id = @field(Protocols, decl.name).id;
-			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {
-				Protocols.list[id] = @field(Protocols, decl.name).receive;
-				Protocols.isAsynchronous[id] = @field(Protocols, decl.name).asynchronous;
+		const Protocol = @field(Protocols, decl.name);
+		if(@TypeOf(Protocol) == type) {
+			const id = Protocol.id;
+			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.clientReceiveList[id] == null and Protocols.serverReceiveList[id] == null) {
+				if(@hasDecl(Protocol, "clientReceive")) {
+					Protocols.clientReceiveList[id] = Protocol.clientReceive;
+				}
+				if(@hasDecl(Protocol, "serverReceive")) {
+					Protocols.serverReceiveList[id] = Protocol.serverReceive;
+				}
+				Protocols.isAsynchronous[id] = Protocol.asynchronous;
 			} else {
 				std.log.err("Duplicate list id {}.", .{id});
 			}
@@ -651,7 +657,8 @@ const UnconfirmedPacket = struct {
 
 // MARK: Protocols
 pub const Protocols = struct {
-	pub var list: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
+	pub var clientReceiveList: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
+	pub var serverReceiveList: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
 	pub var isAsynchronous: [256]bool = @splat(false);
 	pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
 	pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
@@ -662,7 +669,34 @@ pub const Protocols = struct {
 		pub const id: u8 = 1;
 		pub const asynchronous = false;
 
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			const newState = try reader.readEnum(Connection.HandShakeState);
+			if(@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
+				conn.handShakeState.store(newState, .monotonic);
+				switch(newState) {
+					.userData => return error.InvalidSide,
+					.assets => {
+						std.log.info("Received assets.", .{});
+						main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
+						var dir = try main.files.cubyzDir().openDir("serverAssets");
+						defer dir.close();
+						try utils.Compression.unpack(dir, reader.remaining);
+					},
+					.serverData => {
+						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
+						defer zon.deinit(main.stackAllocator);
+						try conn.manager.world.?.finishHandshake(zon);
+						conn.handShakeState.store(.complete, .monotonic);
+						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
+					},
+					.start, .complete => {},
+				}
+			} else {
+				// Ignore packages that refer to an unexpected state. Normally those might be packages that were resent by the other side.
+			}
+		}
+
+		fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			const newState = try reader.readEnum(Connection.HandShakeState);
 			if(@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 				conn.handShakeState.store(newState, .monotonic);
@@ -716,20 +750,7 @@ pub const Protocols = struct {
 						conn.handShakeState.store(.serverData, .monotonic);
 						main.server.connect(conn.user.?);
 					},
-					.assets => {
-						std.log.info("Received assets.", .{});
-						main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
-						var dir = try main.files.cubyzDir().openDir("serverAssets");
-						defer dir.close();
-						try utils.Compression.unpack(dir, reader.remaining);
-					},
-					.serverData => {
-						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-						defer zon.deinit(main.stackAllocator);
-						try conn.manager.world.?.finishHandshake(zon);
-						conn.handShakeState.store(.complete, .monotonic);
-						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
-					},
+					.assets, .serverData => return error.InvalidSide,
 					.start, .complete => {},
 				}
 			} else {
@@ -766,7 +787,7 @@ pub const Protocols = struct {
 	pub const chunkRequest = struct {
 		pub const id: u8 = 2;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			const basePosition = try reader.readVec(Vec3i);
 			conn.user.?.clientUpdatePos = basePosition;
 			conn.user.?.renderDistance = try reader.readInt(u16);
@@ -782,10 +803,8 @@ pub const Protocols = struct {
 					.wz = (z << voxelSizeShift + chunk.chunkShift) +% (basePosition[2] & positionMask),
 					.voxelSize = @as(u31, 1) << voxelSizeShift,
 				};
-				if(conn.user) |user| {
-					user.increaseRefCount();
-					main.server.world.?.queueChunkAndDecreaseRefCount(request, user);
-				}
+				conn.user.?.increaseRefCount();
+				main.server.world.?.queueChunkAndDecreaseRefCount(request, conn.user.?);
 			}
 		}
 		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
@@ -808,7 +827,7 @@ pub const Protocols = struct {
 	pub const chunkTransmission = struct {
 		pub const id: u8 = 3;
 		pub const asynchronous = true;
-		fn receive(_: *Connection, reader: *utils.BinaryReader) !void {
+		fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 			const pos = chunk.ChunkPosition{
 				.wx = try reader.readInt(i32),
 				.wy = try reader.readInt(i32),
@@ -840,7 +859,7 @@ pub const Protocols = struct {
 	pub const playerPosition = struct {
 		pub const id: u8 = 4;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			try conn.user.?.receiveData(reader);
 		}
 		var lastPositionSent: u16 = 0;
@@ -877,8 +896,7 @@ pub const Protocols = struct {
 			f16VelocityItem = 4,
 			f32VelocityItem = 5,
 		};
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(conn.isServerSide()) return error.InvalidSide;
+		fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			if(conn.manager.world) |world| {
 				const time = try reader.readInt(i16);
 				const playerPos = try reader.readVec(Vec3d);
@@ -961,10 +979,7 @@ pub const Protocols = struct {
 	pub const blockUpdate = struct {
 		pub const id: u8 = 7;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(conn.isServerSide()) {
-				return error.InvalidPacket;
-			}
+		fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 			while(reader.remaining.len != 0) {
 				renderer.mesh_storage.updateBlock(.{
 					.x = try reader.readInt(i32),
@@ -993,7 +1008,7 @@ pub const Protocols = struct {
 	pub const entity = struct {
 		pub const id: u8 = 8;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			const zonArray = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 			defer zonArray.deinit(main.stackAllocator);
 			var i: u32 = 0;
@@ -1049,14 +1064,12 @@ pub const Protocols = struct {
 			clear = 2,
 		};
 
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			switch(try reader.readEnum(UpdateType)) {
 				.gamemode => {
-					if(conn.isServerSide()) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
 				.teleport => {
-					if(conn.isServerSide()) return error.InvalidPacket;
 					game.Player.setPosBlocking(try reader.readVec(Vec3d));
 				},
 				.worldEditPos => {
@@ -1065,65 +1078,71 @@ pub const Protocols = struct {
 						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
 						.clear => null,
 					};
-					if(conn.isServerSide()) {
-						switch(typ) {
-							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
-							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
-							.clear => {
-								conn.user.?.worldEditData.selectionPosition1 = null;
-								conn.user.?.worldEditData.selectionPosition2 = null;
-							},
-						}
-					} else {
-						switch(typ) {
-							.selectedPos1 => game.Player.selectionPosition1 = pos,
-							.selectedPos2 => game.Player.selectionPosition2 = pos,
-							.clear => {
-								game.Player.selectionPosition1 = null;
-								game.Player.selectionPosition2 = null;
-							},
-						}
+					switch(typ) {
+						.selectedPos1 => game.Player.selectionPosition1 = pos,
+						.selectedPos2 => game.Player.selectionPosition2 = pos,
+						.clear => {
+							game.Player.selectionPosition1 = null;
+							game.Player.selectionPosition2 = null;
+						},
 					}
 				},
 				.time => {
-					if(conn.manager.world) |world| {
-						const expectedTime = try reader.readInt(i64);
+					const world = conn.manager.world.?;
+					const expectedTime = try reader.readInt(i64);
 
-						var curTime = world.gameTime.load(.monotonic);
-						if(@abs(curTime -% expectedTime) >= 10) {
-							world.gameTime.store(expectedTime, .monotonic);
-						} else if(curTime < expectedTime) { // world.gameTime++
-							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
-								curTime = actualTime;
-							}
-						} else { // world.gameTime--
-							while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .monotonic, .monotonic)) |actualTime| {
-								curTime = actualTime;
-							}
+					var curTime = world.gameTime.load(.monotonic);
+					if(@abs(curTime -% expectedTime) >= 10) {
+						world.gameTime.store(expectedTime, .monotonic);
+					} else if(curTime < expectedTime) { // world.gameTime++
+						while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
+							curTime = actualTime;
+						}
+					} else { // world.gameTime--
+						while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .monotonic, .monotonic)) |actualTime| {
+							curTime = actualTime;
 						}
 					}
 				},
 				.biome => {
-					if(conn.manager.world) |world| {
-						const biomeId = try reader.readInt(u32);
+					const world = conn.manager.world.?;
+					const biomeId = try reader.readInt(u32);
 
-						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
-						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
-						if(oldBiome != newBiome) {
-							main.audio.setMusic(newBiome.preferredMusic);
-						}
+					const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
+					const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
+					if(oldBiome != newBiome) {
+						main.audio.setMusic(newBiome.preferredMusic);
 					}
 				},
 				.particles => {
-					if(conn.manager.world) |_| {
-						const sliceSize = try reader.readInt(u16);
-						const particleId = try reader.readSlice(sliceSize);
-						const pos = try reader.readVec(Vec3d);
-						const collides = try reader.readBool();
-						const count = try reader.readInt(u32);
+					const sliceSize = try reader.readInt(u16);
+					const particleId = try reader.readSlice(sliceSize);
+					const pos = try reader.readVec(Vec3d);
+					const collides = try reader.readBool();
+					const count = try reader.readInt(u32);
 
-						const emitter: particles.Emitter = .init(particleId, collides);
-						particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
+					const emitter: particles.Emitter = .init(particleId, collides);
+					particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
+				},
+			}
+		}
+
+		fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			switch(try reader.readEnum(UpdateType)) {
+				.gamemode, .teleport, .time, .biome, .particles => return error.InvalidSide,
+				.worldEditPos => {
+					const typ = try reader.readEnum(WorldEditPosition);
+					const pos: ?Vec3i = switch(typ) {
+						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
+						.clear => null,
+					};
+					switch(typ) {
+						.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
+						.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
+						.clear => {
+							conn.user.?.worldEditData.selectionPosition1 = null;
+							conn.user.?.worldEditData.selectionPosition2 = null;
+						},
 					}
 				},
 			}
@@ -1194,21 +1213,26 @@ pub const Protocols = struct {
 	pub const chat = struct {
 		pub const id: u8 = 10;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 			const msg = reader.remaining;
 			if(!std.unicode.utf8ValidateSlice(msg)) {
 				std.log.err("Received chat message with invalid UTF-8 characters.", .{});
 				return error.Invalid;
 			}
-			if(conn.user) |user| {
-				if(msg.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(msg) > 1000) {
-					std.log.err("Received too long chat message with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(msg), msg.len});
-					return error.Invalid;
-				}
-				main.server.messageFrom(msg, user);
-			} else {
-				main.gui.windowlist.chat.addMessage(msg);
+			main.gui.windowlist.chat.addMessage(msg);
+		}
+		fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			const msg = reader.remaining;
+			if(!std.unicode.utf8ValidateSlice(msg)) {
+				std.log.err("Received chat message with invalid UTF-8 characters.", .{});
+				return error.Invalid;
 			}
+			const user = conn.user.?;
+			if(msg.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(msg) > 1000) {
+				std.log.err("Received too long chat message with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(msg), msg.len});
+				return error.Invalid;
+			}
+			main.server.messageFrom(msg, user);
 		}
 
 		pub fn send(conn: *Connection, msg: []const u8) void {
@@ -1218,7 +1242,7 @@ pub const Protocols = struct {
 	pub const lightMapRequest = struct {
 		pub const id: u8 = 11;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			while(reader.remaining.len >= 9) {
 				const wx = try reader.readInt(i32);
 				const wy = try reader.readInt(i32);
@@ -1250,7 +1274,7 @@ pub const Protocols = struct {
 	pub const lightMapTransmission = struct {
 		pub const id: u8 = 12;
 		pub const asynchronous = true;
-		fn receive(_: *Connection, reader: *utils.BinaryReader) !void {
+		fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 			const wx = try reader.readInt(i32);
 			const wy = try reader.readInt(i32);
 			const voxelSizeShift = try reader.readInt(u5);
@@ -1295,23 +1319,23 @@ pub const Protocols = struct {
 	pub const inventory = struct {
 		pub const id: u8 = 13;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(conn.user) |user| {
-				if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-				items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
-					if(err != error.InventoryNotFound) return err;
-					sendFailure(conn);
-				};
+		fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+			const typ = try reader.readInt(u8);
+			if(typ == 0xff) { // Confirmation
+				try items.Inventory.Sync.ClientSide.receiveConfirmation(reader);
+			} else if(typ == 0xfe) { // Failure
+				items.Inventory.Sync.ClientSide.receiveFailure();
 			} else {
-				const typ = try reader.readInt(u8);
-				if(typ == 0xff) { // Confirmation
-					try items.Inventory.Sync.ClientSide.receiveConfirmation(reader);
-				} else if(typ == 0xfe) { // Failure
-					items.Inventory.Sync.ClientSide.receiveFailure();
-				} else {
-					try items.Inventory.Sync.ClientSide.receiveSyncOperation(reader);
-				}
+				try items.Inventory.Sync.ClientSide.receiveSyncOperation(reader);
 			}
+		}
+		fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			const user = conn.user.?;
+			if(reader.remaining[0] == 0xff) return error.InvalidPacket;
+			items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
+				if(err != error.InventoryNotFound) return err;
+				sendFailure(conn);
+			};
 		}
 		pub fn sendCommand(conn: *Connection, payloadType: items.Inventory.Command.PayloadType, _data: []const u8) void {
 			std.debug.assert(conn.user == null);
@@ -1346,9 +1370,7 @@ pub const Protocols = struct {
 	pub const blockEntityUpdate = struct {
 		pub const id: u8 = 14;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(!conn.isServerSide()) return error.Invalid;
-
+		fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 			const pos = try reader.readVec(Vec3i);
 			const blockType = try reader.readInt(u16);
 			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
@@ -1588,10 +1610,13 @@ pub const Connection = struct { // MARK: Connection
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				const protocolReceive = Protocols.list[protocolIndex] orelse return error.Invalid;
+				const protocolReceive = blk: {
+					if(conn.isServerSide()) break :blk Protocols.serverReceiveList[protocolIndex] orelse return error.Invalid;
+					break :blk Protocols.clientReceiveList[protocolIndex] orelse return error.Invalid;
+				};
 
 				if(Protocols.isAsynchronous[protocolIndex]) {
-					ProtocolTask.schedule(conn, protocolIndex, self.protocolBuffer.items);
+					ProtocolTask.schedule(conn, protocolIndex, protocolReceive, self.protocolBuffer.items);
 				} else {
 					var reader = utils.BinaryReader.init(self.protocolBuffer.items);
 					protocolReceive(conn, &reader) catch |err| {
@@ -2304,6 +2329,7 @@ pub const Connection = struct { // MARK: Connection
 const ProtocolTask = struct {
 	conn: *Connection,
 	protocol: u8,
+	protocolReceive: *const fn(*Connection, *utils.BinaryReader) anyerror!void,
 	data: []const u8,
 
 	const vtable = utils.ThreadPool.VTable{
@@ -2314,11 +2340,12 @@ const ProtocolTask = struct {
 		.taskType = .misc,
 	};
 
-	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
+	pub fn schedule(conn: *Connection, protocol: u8, protocolReceive: *const fn(*Connection, *utils.BinaryReader) anyerror!void, data: []const u8) void {
 		const task = main.globalAllocator.create(ProtocolTask);
 		task.* = ProtocolTask{
 			.conn = conn,
 			.protocol = protocol,
+			.protocolReceive = protocolReceive,
 			.data = main.globalAllocator.dupe(u8, data),
 		};
 		main.threadPool.addTask(task, &vtable);
@@ -2335,7 +2362,7 @@ const ProtocolTask = struct {
 	pub fn run(self: *ProtocolTask) void {
 		defer self.clean();
 		var reader = utils.BinaryReader.init(self.data);
-		Protocols.list[self.protocol].?(self.conn, &reader) catch |err| {
+		self.protocolReceive(self.conn, &reader) catch |err| {
 			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
 		};
 	}

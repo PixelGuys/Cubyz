@@ -255,7 +255,6 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	(logFile orelse return).writeAll(string) catch {};
 	(logFileTs orelse return).writeAll(string) catch {};
 }
@@ -266,7 +265,6 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	const writer = std.debug.lockStderrWriter(&.{});
 	defer std.debug.unlockStderrWriter();
 	nosuspend writer.writeAll(string) catch {};

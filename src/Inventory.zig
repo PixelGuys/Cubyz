@@ -400,6 +400,7 @@ pub const Sync = struct { // MARK: Sync
 							return;
 						}
 					}
+					if(source != .recipe) return error.Invalid;
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -1230,7 +1231,7 @@ pub const Command = struct { // MARK: Command
 				},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.other => .{.other = {}},
-				.alreadyFreed => unreachable,
+				.alreadyFreed => return error.Invalid,
 			};
 			const typ: Type = switch(typeEnum) {
 				inline .normal, .creative, .crafting => |tag| tag,
