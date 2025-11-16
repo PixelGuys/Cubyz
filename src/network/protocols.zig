@@ -511,6 +511,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		time = 3,
 		biome = 4,
 		particles = 5,
+		setSpawn = 6,
 	};
 
 	const WorldEditPosition = enum(u2) {
@@ -524,6 +525,10 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 			.gamemode => {
 				main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 			},
+			.setSpawn => {
+					if(conn.isServerSide()) return error.InvalidPacket;
+					game.Player.setSpawn(try reader.readVec(Vec3d));
+				},
 			.teleport => {
 				game.Player.setPosBlocking(try reader.readVec(Vec3d));
 			},
@@ -606,6 +611,16 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 	pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
 		conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
 	}
+
+	pub fn sendSpawnPoint(conn: *Connection, pos: Vec3d) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .setSpawn);
+			writer.writeVec(Vec3d, pos);
+
+			conn.send(.fast, id, writer.data.items);
+		}
 
 	pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
