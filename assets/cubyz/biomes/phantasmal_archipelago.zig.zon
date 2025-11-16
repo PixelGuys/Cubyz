@@ -7,6 +7,15 @@
 
 	.hills = 45,
 	.roughness = 85,
+	.stripes = .{
+		.{
+			.direction = .{5, 3, 3},
+			.block = "cubyz:limestone",
+			.distance = 36,
+			.offset = 7,
+			.width = 5,
+		},
+	},
 
 	.ground_structure = .{
 		"0 to 2 cubyz:obsidian",
@@ -51,6 +60,13 @@
 			.structure = "cubyz:auroras/auroralow",
 			.rotation = 0,
 			.chance = 0.008,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:limestone",
+			.size = 5,
+			.size_variance = 10,
 		},
 	},
 }
