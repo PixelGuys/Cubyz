@@ -525,10 +525,6 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 			.gamemode => {
 				main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 			},
-			.setSpawn => {
-					if(conn.isServerSide()) return error.InvalidPacket;
-					game.Player.setSpawn(try reader.readVec(Vec3d));
-				},
 			.teleport => {
 				game.Player.setPosBlocking(try reader.readVec(Vec3d));
 			},
@@ -584,12 +580,16 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				const emitter: particles.Emitter = .init(particleId, collides);
 				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 			},
+			.setSpawn => {
+					if(conn.isServerSide()) return error.InvalidPacket;
+					game.Player.setSpawn(try reader.readVec(Vec3d));
+			},
 		}
 	}
 
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		switch(try reader.readEnum(UpdateType)) {
-			.gamemode, .teleport, .time, .biome, .particles => return error.InvalidSide,
+			.gamemode, .teleport, .time, .biome, .particles, .setSpawn => return error.InvalidSide,
 			.worldEditPos => {
 				const typ = try reader.readEnum(WorldEditPosition);
 				const pos: ?Vec3i = switch(typ) {
