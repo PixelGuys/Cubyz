@@ -1041,6 +1041,7 @@ pub const Protocols = struct {
 			time = 3,
 			biome = 4,
 			particles = 5,
+			setSpawn = 6,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -1054,6 +1055,10 @@ pub const Protocols = struct {
 				.gamemode => {
 					if(conn.isServerSide()) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
+				},
+				.setSpawn => {
+					if(conn.isServerSide()) return error.InvalidPacket;
+					game.Player.setSpawn(try reader.readVec(Vec3d));
 				},
 				.teleport => {
 					if(conn.isServerSide()) return error.InvalidPacket;
@@ -1131,6 +1136,16 @@ pub const Protocols = struct {
 
 		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
 			conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
+		}
+
+		pub fn sendSpawnPoint(conn: *Connection, pos: Vec3d) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .setSpawn);
+			writer.writeVec(Vec3d, pos);
+
+			conn.send(.fast, id, writer.data.items);
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {

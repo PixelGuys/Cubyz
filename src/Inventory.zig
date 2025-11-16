@@ -174,6 +174,24 @@ pub const Sync = struct { // MARK: Sync
 				commands.pushBack(cmd);
 			}
 		}
+
+		fn setSpawn(newSpawnPoint: Vec3d) void {
+			mutex.lock();
+			defer mutex.unlock();
+			main.game.Player.setSpawn(newSpawnPoint);
+			var tempData = main.List(Command).init(main.stackAllocator);
+			defer tempData.deinit();
+			while(commands.popBack()) |_cmd| {
+				var cmd = _cmd;
+				cmd.undo();
+				tempData.append(cmd);
+			}
+			while(tempData.popOrNull()) |_cmd| {
+				var cmd = _cmd;
+				cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
+				commands.pushBack(cmd);
+			}
+		}
 	};
 
 	pub const ServerSide = struct { // MARK: ServerSide
@@ -497,6 +515,13 @@ pub const Sync = struct { // MARK: Sync
 			user.gamemode.store(gamemode, .monotonic);
 			main.network.Protocols.genericUpdate.sendGamemode(user.conn, gamemode);
 		}
+
+		fn setSpawn(user: *main.server.User, newSpawnPoint: Vec3d) void {
+			mutex.lock();
+			defer mutex.unlock();
+			user.playerSpawnPos = newSpawnPoint;
+			main.network.Protocols.genericUpdate.sendSpawnPoint(user.conn, newSpawnPoint);
+		}
 	};
 
 	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
@@ -504,6 +529,14 @@ pub const Sync = struct { // MARK: Sync
 			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
 		} else {
 			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
+		}
+	}
+
+	pub fn setSpawn(user: ?*main.server.User, newSpawnPoint: Vec3d) void {
+		if(user == null) {
+			ClientSide.setSpawn(newSpawnPoint);
+		} else {
+			ServerSide.setSpawn(user.?, newSpawnPoint);
 		}
 	}
 
