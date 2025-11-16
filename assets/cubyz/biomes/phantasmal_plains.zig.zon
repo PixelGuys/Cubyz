@@ -20,6 +20,12 @@
 			.chance = 0.1,
 		},
 		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:star/star",
+			.placeMode = .degradable,
+			.chance = 0.03,
+		},
+		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:glimmergill",
 			.chance = 0.02,
