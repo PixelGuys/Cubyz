@@ -521,7 +521,7 @@ pub const Sync = struct { // MARK: Sync
 			mutex.lock();
 			defer mutex.unlock();
 			user.playerSpawnPos = newSpawnPoint;
-			main.network.Protocols.genericUpdate.sendSpawnPoint(user.conn, newSpawnPoint);
+			main.network.protocols.genericUpdate.sendSpawnPoint(user.conn, newSpawnPoint);
 		}
 	};
 
