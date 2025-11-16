@@ -9,7 +9,5 @@
 		.shellModel = "cubyz:cube",
 		.textureSlotOffset = 6,
 	},
-	.onUpdate = .{
-		.type = .leafDecay,
-	},
+	.decayProhibitor = true,
 }
