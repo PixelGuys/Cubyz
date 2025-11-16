@@ -255,7 +255,6 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	(logFile orelse return).writeAll(string) catch {};
 	(logFileTs orelse return).writeAll(string) catch {};
 }
@@ -266,7 +265,6 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	const writer = std.debug.lockStderrWriter(&.{});
 	defer std.debug.unlockStderrWriter();
 	nosuspend writer.writeAll(string) catch {};
@@ -499,7 +497,6 @@ pub fn main() void { // MARK: main()
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
 	settings.launchConfig.init();
-	defer settings.launchConfig.deinit();
 
 	const headless = settings.launchConfig.headlessServer;
 
@@ -595,7 +592,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
-	audio.setMusic("cubyz:cubyz");
+	audio.setMusic("cubyz:TotalDemented/Cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		heap.GarbageCollection.syncPoint();
@@ -662,7 +659,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				game.world = null;
 			}
 			gui.openWindow("main");
-			audio.setMusic("cubyz:cubyz");
+			audio.setMusic("cubyz:TotalDemented/Cubyz");
 		}
 	}
 

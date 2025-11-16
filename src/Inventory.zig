@@ -75,7 +75,7 @@ pub const Sync = struct { // MARK: Sync
 			cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
 			const data = cmd.serializePayload(main.stackAllocator);
 			defer main.stackAllocator.free(data);
-			main.network.Protocols.inventory.sendCommand(main.game.world.?.conn, cmd.payload, data);
+			main.network.protocols.inventory.sendCommand(main.game.world.?.conn, cmd.payload, data);
 			commands.pushBack(cmd);
 		}
 
@@ -315,13 +315,13 @@ pub const Sync = struct { // MARK: Sync
 				.payload = payload,
 			};
 			command.do(main.globalAllocator, .server, source, if(source) |s| s.gamemode.raw else .creative) catch {
-				main.network.Protocols.inventory.sendFailure(source.?.conn);
+				main.network.protocols.inventory.sendFailure(source.?.conn);
 				return;
 			};
 			if(source != null) {
 				const confirmationData = command.confirmationData(main.stackAllocator);
 				defer main.stackAllocator.free(confirmationData);
-				main.network.Protocols.inventory.sendConfirmation(source.?.conn, confirmationData);
+				main.network.protocols.inventory.sendConfirmation(source.?.conn, confirmationData);
 			}
 			for(command.syncOperations.items) |op| {
 				const syncData = op.serialize(main.stackAllocator);
@@ -332,7 +332,7 @@ pub const Sync = struct { // MARK: Sync
 
 				for(users) |user| {
 					if(user == source and op.ignoreSource()) continue;
-					main.network.Protocols.inventory.sendSyncOperation(user.conn, syncData);
+					main.network.protocols.inventory.sendSyncOperation(user.conn, syncData);
 				}
 			}
 			if(source != null and command.payload == .open) { // Send initial items
@@ -345,7 +345,7 @@ pub const Sync = struct { // MARK: Sync
 						}};
 						const syncData = syncOp.serialize(main.stackAllocator);
 						defer main.stackAllocator.free(syncData);
-						main.network.Protocols.inventory.sendSyncOperation(source.?.conn, syncData);
+						main.network.protocols.inventory.sendSyncOperation(source.?.conn, syncData);
 					}
 				}
 			}
@@ -418,6 +418,7 @@ pub const Sync = struct { // MARK: Sync
 							return;
 						}
 					}
+					if(source != .recipe) return error.Invalid;
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -513,7 +514,7 @@ pub const Sync = struct { // MARK: Sync
 			mutex.lock();
 			defer mutex.unlock();
 			user.gamemode.store(gamemode, .monotonic);
-			main.network.Protocols.genericUpdate.sendGamemode(user.conn, gamemode);
+			main.network.protocols.genericUpdate.sendGamemode(user.conn, gamemode);
 		}
 
 		fn setSpawn(user: *main.server.User, newSpawnPoint: Vec3d) void {
@@ -1263,7 +1264,7 @@ pub const Command = struct { // MARK: Command
 				},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.other => .{.other = {}},
-				.alreadyFreed => unreachable,
+				.alreadyFreed => return error.Invalid,
 			};
 			const typ: Type = switch(typeEnum) {
 				inline .normal, .creative, .crafting => |tag| tag,
@@ -1848,7 +1849,7 @@ pub const Command = struct { // MARK: Command
 					defer writer.deinit();
 
 					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.Protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					main.network.protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
 				}
 				return;
 			}
@@ -1860,7 +1861,7 @@ pub const Command = struct { // MARK: Command
 					defer writer.deinit();
 
 					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.Protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					main.network.protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
 					return error.serverFailure;
 				}
 			}
