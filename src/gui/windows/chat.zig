@@ -257,7 +257,7 @@ pub fn sendMessage(_: usize) void {
 				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
 			}
 
-			main.network.Protocols.chat.send(main.game.world.?.conn, data);
+			main.network.protocols.chat.send(main.game.world.?.conn, data);
 			input.clear();
 		}
 	}
