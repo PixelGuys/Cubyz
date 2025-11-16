@@ -532,14 +532,6 @@ pub const Sync = struct { // MARK: Sync
 		}
 	}
 
-	pub fn setSpawn(user: ?*main.server.User, newSpawnPoint: Vec3d) void {
-		if(user == null) {
-			ClientSide.setSpawn(newSpawnPoint);
-		} else {
-			ServerSide.setSpawn(user.?, newSpawnPoint);
-		}
-	}
-
 	pub fn getInventory(id: InventoryId, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
 			.client => ClientSide.getInventory(id),
@@ -552,6 +544,14 @@ pub const Sync = struct { // MARK: Sync
 			ClientSide.setGamemode(gamemode);
 		} else {
 			ServerSide.setGamemode(user.?, gamemode);
+		}
+	}
+
+	pub fn setSpawn(user: ?*main.server.User, newSpawnPoint: Vec3d) void {
+		if(user == null) {
+			ClientSide.setSpawn(newSpawnPoint);
+		} else {
+			ServerSide.setSpawn(user.?, newSpawnPoint);
 		}
 	}
 };
