@@ -1063,16 +1063,20 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		ChunkManager.mutex.unlock();
 
 		// event queue
-		for(0..10) |_| {
-			while(true) {
-				if(self.delayedUpdateQueue.popFront()) |event| {
-					var ch = self.getOrGenerateChunkAndIncreaseRefCount(chunk.ChunkPosition.initFromWorldPos(event, 1));
-					defer ch.decreaseRefCount();
-					if(self.getBlock(event[0], event[1], event[2])) |block| {
-						if(block.onUpdate().run(.{.block = block, .chunk = ch, .x = event[0] & chunk.chunkMask, .y = event[1] & chunk.chunkMask, .z = event[2] & chunk.chunkMask}) == .handled)
-							break;
-					}
-				} else break;
+		const amountToUpdate = self.delayedUpdateQueue.len;
+		for(0..amountToUpdate) |_| {
+			if(self.delayedUpdateQueue.popFront()) |event| {
+				var ch = self.getOrGenerateChunkAndIncreaseRefCount(chunk.ChunkPosition.initFromWorldPos(event, 1));
+				defer ch.decreaseRefCount();
+				if(self.getBlock(event[0], event[1], event[2])) |block| {
+					_ = block.onUpdate().run(.{
+						.block = block,
+						.chunk = ch,
+						.x = event[0] & chunk.chunkMask,
+						.y = event[1] & chunk.chunkMask,
+						.z = event[2] & chunk.chunkMask,
+					});
+				}
 			}
 		}
 		// tick blocks
