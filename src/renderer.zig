@@ -1028,7 +1028,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					}
 					if(std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
 						game.Player.selectionPosition2 = selectedPos;
-						main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
+						main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
 						return;
 					}
 				},
