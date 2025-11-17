@@ -923,7 +923,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				zonObject.put("tool", _tool.save(allocator));
 			},
-			.null => {}, // TODO: should we handle this case?
+			.null => unreachable,
 		}
 	}
 
