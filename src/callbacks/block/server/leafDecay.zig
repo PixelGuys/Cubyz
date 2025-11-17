@@ -12,6 +12,14 @@ pub fn init(_: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	return result;
 }
+fn getIndexInCheckArray(relative_x: i32, relative_y: i32, relative_z: i32, checkRange: comptime_int) usize {
+	const checkLength = checkRange*2 + 1;
+
+	const arrayIndexX = relative_x + checkRange;
+	const arrayIndexY = relative_y + checkRange;
+	const arrayIndexZ = relative_z + checkRange;
+	return @as(usize, @intCast((arrayIndexX*checkLength + arrayIndexY)*checkLength + arrayIndexZ));
+}
 fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
 
 	// init array to mark already searched blocks.
@@ -25,34 +33,14 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 	// queue for breath-first search
 	var queue = main.utils.CircularBufferQueue(Vec3i).init(main.globalAllocator, 32);
 	defer queue.deinit();
-	queue.pushBack(Vec3i{wx - 1, wy, wz});
-	queue.pushBack(Vec3i{wx + 1, wy, wz});
-	queue.pushBack(Vec3i{wx, wy - 1, wz});
-	queue.pushBack(Vec3i{wx, wy + 1, wz});
-	queue.pushBack(Vec3i{wx, wy, wz - 1});
-	queue.pushBack(Vec3i{wx, wy, wz + 1});
 
+	queue.pushBack(Vec3i{0, 0, 0});
+	checked[getIndexInCheckArray(0, 0, 0, checkRange)] = true;
+
+	main.Window.setMouseGrabbed(false);
 	while(queue.popFront()) |value| {
-		// calc relative position
-		const x = value[0] - wx;
-		const y = value[1] - wy;
-		const z = value[2] - wz;
-
-		// out of range
-		if(x*x + y*y + z*z > checkRange*checkRange)
-			continue;
-
-		// mark as checked
-		const arrayIndexX = x + checkRange;
-		const arrayIndexY = y + checkRange;
-		const arrayIndexZ = z + checkRange;
-		const index = (arrayIndexX*checkLength + arrayIndexY)*checkLength + arrayIndexZ;
-		if(checked[@as(usize, @intCast(index))])
-			continue;
-		checked[@as(usize, @intCast(index))] = true;
-
 		// get the (potential) log
-		if(world.getBlock(value[0], value[1], value[2])) |log| {
+		if(world.getBlock(value[0] + wx, value[1] + wy, value[2] + wz)) |log| {
 			// it is a log
 			// end search.
 			if(log.decayProhibitor()) {
@@ -65,14 +53,20 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 				for(0..neighbourRange*2 + 1) |offsetX| {
 					for(0..neighbourRange*2 + 1) |offsetY| {
 						for(0..neighbourRange*2 + 1) |offsetZ| {
-							const totalX = value[0] + @as(i32, @intCast(offsetX)) - neighbourRange;
-							const totalY = value[1] + @as(i32, @intCast(offsetY)) - neighbourRange;
-							const totalZ = value[2] + @as(i32, @intCast(offsetZ)) - neighbourRange;
-							queue.pushBack(Vec3i{
-								totalX,
-								totalY,
-								totalZ,
-							});
+							//relative position
+							const X = value[0] + @as(i32, @intCast(offsetX)) - neighbourRange;
+							const Y = value[1] + @as(i32, @intCast(offsetY)) - neighbourRange;
+							const Z = value[2] + @as(i32, @intCast(offsetZ)) - neighbourRange;
+
+							// out of range
+							if(X*X + Y*Y + Z*Z > checkRange*checkRange)
+								continue;
+
+							// mark as checked
+							if(checked[getIndexInCheckArray(X, Y, Z, checkRange)])
+								continue;
+							checked[getIndexInCheckArray(X, Y, Z, checkRange)] = true;
+							queue.pushBack(Vec3i{X, Y, Z});
 						}
 					}
 				}
