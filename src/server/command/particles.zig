@@ -32,7 +32,7 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	var split = std.mem.splitScalar(u8, args, ' ');
 	const particleId = split.next() orelse return error.TooFewArguments;
 
-	const pos = try parser.parsePosition(&split, source);
+	const particlePos = try parser.parsePosition(&split, source);
 	const collides = try parser.parseBool(split.next() orelse "true");
 	const particleCount = try parseNumber(split.next() orelse "1", source);
 	if(split.next() != null) return error.TooManyArguments;
@@ -40,7 +40,7 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for(users) |user| {
-		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, pos, collides, particleCount);
+		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, particlePos, collides, particleCount);
 	}
 }
 
