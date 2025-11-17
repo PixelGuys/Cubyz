@@ -12,7 +12,7 @@ pub fn init(_: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	return result;
 }
-fn foundWayToLog(world: *Server.ServerWorld, leave: Block, wx: i32, wy: i32, wz: i32) bool {
+fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
 
 	// init array to mark already searched blocks.
 	const checkRange = 5;
@@ -58,9 +58,9 @@ fn foundWayToLog(world: *Server.ServerWorld, leave: Block, wx: i32, wy: i32, wz:
 			if(log.decayProhibitor()) {
 				return true;
 			}
-			// it is the same type of leave
+			// it is the same type of leaf
 			// continue search!
-			else if(log.typ == leave.typ) {
+			else if(log.typ == leaf.typ) {
 				const neighbourRange = 1; // 1 = leaves need path to log without air gab
 				for(0..neighbourRange*2 + 1) |offsetX| {
 					for(0..neighbourRange*2 + 1) |offsetY| {
@@ -90,10 +90,10 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 
 	if(Server.world) |world| {
-		if(world.getBlock(wx, wy, wz))|leave|{
+		if(world.getBlock(wx, wy, wz))|leaf|{
 
 			// check if there is any log in the proximity?^
-			if(foundWayToLog(world, leave, wx, wy, wz))
+			if(foundWayToLog(world, leaf, wx, wy, wz))
 				return .ignored;
 			
 			// no, there is no log in proximity
