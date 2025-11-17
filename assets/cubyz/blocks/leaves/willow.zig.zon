@@ -1,0 +1,8 @@
+.{
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.texture = "cubyz:leaves/willow",
+	.lodReplacement = "cubyz:leaves/opaque/willow",
+	.opaqueVariant = "cubyz:leaves/opaque/willow",
+}

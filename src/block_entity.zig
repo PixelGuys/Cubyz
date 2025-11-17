@@ -249,7 +249,7 @@ pub const BlockEntityTypes = struct {
 		}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) main.callbacks.Result {
-			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 
 			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, .{});
 
@@ -327,16 +327,17 @@ pub const BlockEntityTypes = struct {
 			StorageServer.init();
 			StorageClient.init();
 			textureDeinitList = .init(main.globalAllocator);
-
-			pipeline = graphics.Pipeline.init(
-				"assets/cubyz/shaders/block_entity/sign.vert",
-				"assets/cubyz/shaders/block_entity/sign.frag",
-				"",
-				&uniforms,
-				.{},
-				.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
-				.{.attachments = &.{.alphaBlending}},
-			);
+			if(!main.settings.launchConfig.headlessServer) {
+				pipeline = graphics.Pipeline.init(
+					"assets/cubyz/shaders/block_entity/sign.vert",
+					"assets/cubyz/shaders/block_entity/sign.frag",
+					"",
+					&uniforms,
+					.{},
+					.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
+					.{.attachments = &.{.alphaBlending}},
+				);
+			}
 		}
 		pub fn deinit() void {
 			while(textureDeinitList.popOrNull()) |texture| {
@@ -472,7 +473,7 @@ pub const BlockEntityTypes = struct {
 				};
 			}
 
-			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 		}
 
 		pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {

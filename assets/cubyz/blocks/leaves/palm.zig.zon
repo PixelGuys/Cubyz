@@ -1,0 +1,10 @@
+.{
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:cube_hanging_planes",
+	.texture = "cubyz:leaves/palm",
+	.texture12 = "cubyz:leaves/palm_hanging",
+	.lodReplacement = "cubyz:leaves/opaque/palm",
+	.opaqueVariant = "cubyz:leaves/opaque/palm",
+}
