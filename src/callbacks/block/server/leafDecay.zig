@@ -34,9 +34,9 @@ fn foundWayToLog(world: *Server.ServerWorld, leave: Block, wx: i32, wy: i32, wz:
 
 	while(queue.popFront()) |value| {
 		// calc relative position
-		const x = @as(i32, @intCast(value[0])) - wx;
-		const y = @as(i32, @intCast(value[1])) - wy;
-		const z = @as(i32, @intCast(value[2])) - wz;
+		const x = value[0] - wx;
+		const y = value[1] - wy;
+		const z = value[2] - wz;
 
 		// out of range
 		if(x*x + y*y + z*z > checkRange*checkRange)
@@ -52,33 +52,28 @@ fn foundWayToLog(world: *Server.ServerWorld, leave: Block, wx: i32, wy: i32, wz:
 		checked[@as(usize, @intCast(index))] = true;
 
 		// get the (potential) log
-		const chunkPosition = main.chunk.ChunkPosition.initFromWorldPos(value, 1);
-		var chunk = world.getOrGenerateChunkAndIncreaseRefCount(chunkPosition);
-		chunk.mutex.lock();
-		const log = chunk.getBlock(value[0] & main.chunk.chunkMask, value[1] & main.chunk.chunkMask, value[2] & main.chunk.chunkMask);
-		chunk.mutex.unlock();
-		chunk.decreaseRefCount();
-
-		// it is a log
-		// end search.
-		if(log.decayProhibitor()) {
-			return true;
-		}
-		// it is the same type of leave
-		// continue search!
-		else if(log.typ == leave.typ) {
-			const neighbourRange = 1; // 1 = leaves need path to log without air gab
-			for(0..neighbourRange*2 + 1) |offsetX| {
-				for(0..neighbourRange*2 + 1) |offsetY| {
-					for(0..neighbourRange*2 + 1) |offsetZ| {
-						const totalX = value[0] + @as(i32, @intCast(offsetX)) - neighbourRange;
-						const totalY = value[1] + @as(i32, @intCast(offsetY)) - neighbourRange;
-						const totalZ = value[2] + @as(i32, @intCast(offsetZ)) - neighbourRange;
-						queue.pushBack(Vec3i{
-							totalX,
-							totalY,
-							totalZ,
-						});
+		if(world.getBlock(value[0], value[1], value[2] ))|log|{
+			// it is a log
+			// end search.
+			if(log.decayProhibitor()) {
+				return true;
+			}
+			// it is the same type of leave
+			// continue search!
+			else if(log.typ == leave.typ) {
+				const neighbourRange = 1; // 1 = leaves need path to log without air gab
+				for(0..neighbourRange*2 + 1) |offsetX| {
+					for(0..neighbourRange*2 + 1) |offsetY| {
+						for(0..neighbourRange*2 + 1) |offsetZ| {
+							const totalX = value[0] + @as(i32, @intCast(offsetX)) - neighbourRange;
+							const totalY = value[1] + @as(i32, @intCast(offsetY)) - neighbourRange;
+							const totalZ = value[2] + @as(i32, @intCast(offsetZ)) - neighbourRange;
+							queue.pushBack(Vec3i{
+								totalX,
+								totalY,
+								totalZ,
+							});
+						}
 					}
 				}
 			}
@@ -95,19 +90,19 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 
 	if(Server.world) |world| {
-		params.chunk.mutex.lock();
-		const leave = params.chunk.getBlock(wx & main.chunk.chunkMask, wy & main.chunk.chunkMask, wz & main.chunk.chunkMask);
-		params.chunk.mutex.unlock();
+		if(world.getBlock(wx, wy, wz))|leave|{
 
-		// check if there is any log in the proximity?^
-		if(foundWayToLog(world, leave, wx, wy, wz))
-			return .ignored;
-		// no, there is no log in proximity
-		world.updateBlock(wx, wy, wz, main.blocks.Block.air);
+			// check if there is any log in the proximity?^
+			if(foundWayToLog(world, leave, wx, wy, wz))
+				return .ignored;
+			
+			// no, there is no log in proximity
+			world.updateBlock(wx, wy, wz, main.blocks.Block.air);
 
-		// trigger others leaves:
-		world.updateSurrounding(wx, wy, wz);
-		return .handled;
+			// trigger others leaves:
+			world.updateSurrounding(wx, wy, wz);
+			return .handled;
+		}
 	}
 	return .ignored;
 }

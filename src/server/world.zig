@@ -1068,12 +1068,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				if(self.delayedUpdateQueue.popFront()) |event| {
 					var ch = self.getOrGenerateChunkAndIncreaseRefCount(chunk.ChunkPosition.initFromWorldPos(event, 1));
 					defer ch.decreaseRefCount();
-					ch.mutex.lock();
-					const block = ch.getBlock(event[0] & chunk.chunkMask, event[1] & chunk.chunkMask, event[2] & chunk.chunkMask);
-					ch.mutex.unlock();
-
-					if(block.onUpdate().run(.{.block = block, .chunk = ch, .x = event[0] & chunk.chunkMask, .y = event[1] & chunk.chunkMask, .z = event[2] & chunk.chunkMask}) == .handled)
-						break;
+					if(self.getBlock(event[0], event[1], event[2]))|block|{
+						if(block.onUpdate().run(.{.block = block, .chunk = ch, .x = event[0] & chunk.chunkMask, .y = event[1] & chunk.chunkMask, .z = event[2] & chunk.chunkMask}) == .handled)
+							break;
+					}
 				} else break;
 			}
 		}
