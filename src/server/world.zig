@@ -1257,10 +1257,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		self.updateSurrounding(wx, wy, wz);
-		if(oldBlock) |old| {
-			// onBreak event
-			_ = old.onBreak().run(.{.block = old, .chunk = baseChunk, .x = wx & chunk.chunkMask, .y = wy & chunk.chunkMask, .z = wz & chunk.chunkMask});
-		}
+
 		return null;
 	}
 	pub fn updateSurrounding(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
