@@ -1632,7 +1632,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			if(self.dest.type == .creative) return;
 			if(self.dest.type == .crafting) return;
 			if(self.dest.type == .workbench) return;
@@ -1642,7 +1642,7 @@ pub const Command = struct { // MARK: Command
 			}
 			const sourceStack = self.source.ref();
 			if(sourceStack.item == null) return;
-			if(self.amount > sourceStack.amount) return;
+			if(self.amount > sourceStack.amount and self.source.inv.type != .creative) return;
 
 			var remainingAmount = self.amount;
 			var selectedEmptySlot: ?u32 = null;
@@ -1653,21 +1653,29 @@ pub const Command = struct { // MARK: Command
 				if(std.meta.eql(destStack.item, sourceStack.item)) {
 					const amount = @min(sourceStack.item.?.stackSize() - destStack.amount, remainingAmount);
 					if(amount == 0) continue;
-					cmd.executeBaseOperation(allocator, .{.move = .{
-						.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
-						.source = self.source,
-						.amount = amount,
-					}}, side);
+					if(self.source.inv.type == .creative) {
+						try FillFromCreative.run(.{.dest = .{.inv = self.dest, .slot = @intCast(destSlot)}, .item = self.source.ref().item, .amount = amount + destStack.amount}, allocator, cmd, side, user, gamemode);
+					} else {
+						cmd.executeBaseOperation(allocator, .{.move = .{
+							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
+							.source = self.source,
+							.amount = amount,
+						}}, side);
+					}
 					remainingAmount -= amount;
 					if(remainingAmount == 0) break;
 				}
 			}
 			if(remainingAmount > 0 and selectedEmptySlot != null) {
-				cmd.executeBaseOperation(allocator, .{.move = .{
-					.dest = .{.inv = self.dest, .slot = selectedEmptySlot.?},
-					.source = self.source,
-					.amount = remainingAmount,
-				}}, side);
+				if(self.source.inv.type == .creative) {
+					try FillFromCreative.run(.{.dest = .{.inv = self.dest, .slot = selectedEmptySlot.?}, .item = self.source.ref().item, .amount = remainingAmount}, allocator, cmd, side, user, gamemode);
+				} else {
+					cmd.executeBaseOperation(allocator, .{.move = .{
+						.dest = .{.inv = self.dest, .slot = selectedEmptySlot.?},
+						.source = self.source,
+						.amount = remainingAmount,
+					}}, side);
+				}
 			}
 		}
 

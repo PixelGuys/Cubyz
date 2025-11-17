@@ -739,7 +739,13 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
-				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
+				if(hovered.inventory.type == .creative and main.KeyBoard.key("mainGuiButton").modsOnPress.shift) {
+					if(hovered.inventory.getItem(hovered.itemSlot)) |item| {
+						hovered.inventory.depositToAny(hovered.itemSlot, main.game.Player.inventory, item.stackSize());
+					}
+				} else {
+					hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
+				}
 			} else if(!hoveredAWindow) {
 				carried.dropStack(0);
 			}
