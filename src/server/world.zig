@@ -26,11 +26,13 @@ const Palette = main.assets.Palette;
 const storage = @import("storage.zig");
 const Gamemode = main.game.Gamemode;
 
-pub const WorldSettings = struct {
-	gamemode: Gamemode = .creative,
+pub const Settings = struct {
+	defaultGamemode: Gamemode = .creative,
 	allowCheats: bool = false,
 	testingMode: bool = false,
+	seed: u64 = undefined,
 };
+
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
 	// Remove illegal ASCII characters:
 	const escapedName = main.stackAllocator.alloc(u8, name.len);
@@ -60,7 +62,7 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 	return allocator.dupe(u8, resultName);
 }
 
-pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void {
+pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
 	const worldPath = findValidFolderName(main.stackAllocator, worldName);
 	defer main.stackAllocator.free(worldPath);
 	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
@@ -93,8 +95,9 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void
 		defer worldInfo.deinit(main.stackAllocator);
 
 		worldInfo.put("name", worldName);
-		worldInfo.put("version", main.server.world_zig.worldDataVersion);
+		worldInfo.put("version", worldDataVersion);
 		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
+		worldInfo.put("seed", worldSettings.seed);
 
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
 	}
@@ -104,7 +107,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void
 		const gamerules = main.ZonElement.initObject(main.stackAllocator);
 		defer gamerules.deinit(main.stackAllocator);
 
-		gamerules.put("default_gamemode", @tagName(worldSettings.gamemode));
+		gamerules.put("default_gamemode", @tagName(worldSettings.defaultGamemode));
 		gamerules.put("cheats", worldSettings.allowCheats);
 		gamerules.put("testingMode", worldSettings.testingMode);
 
@@ -115,8 +118,6 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: WorldSettings) !void
 		defer main.stackAllocator.free(assetsPath);
 		try main.files.cubyzDir().makePath(assetsPath);
 	}
-	// TODO: Make the seed configurable
-
 }
 
 pub const EntityChunk = struct {
@@ -322,12 +323,12 @@ const ChunkManager = struct { // MARK: ChunkManager
 			defer self.clean();
 			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			if(self.source) |source| {
-				if(source.connected.load(.unordered)) main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
+				if(source.connected.load(.unordered)) main.network.protocols.lightMapTransmission.sendLightMap(source.conn, map);
 			} else {
 				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 				for(userList) |user| {
-					main.network.Protocols.lightMapTransmission.sendLightMap(user.conn, map);
+					main.network.protocols.lightMapTransmission.sendLightMap(user.conn, map);
 				}
 			}
 		}
@@ -375,7 +376,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
 		switch(source) {
 			.user => |user| {
-				main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
+				main.network.protocols.chunkTransmission.sendChunk(user.conn, ch);
 				ch.decreaseRefCount();
 			},
 			.entityChunk => |entityChunk| {
@@ -414,7 +415,8 @@ const ChunkManager = struct { // MARK: ChunkManager
 			return ch;
 		}
 		ch.generated = true;
-		const caveMap = terrain.CaveMap.CaveMapView.findMapsAround(ch);
+		const caveMap = terrain.CaveMap.CaveMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
+		defer caveMap.deinit(main.stackAllocator);
 		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 		defer biomeMap.deinit();
 		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
@@ -473,7 +475,10 @@ const WorldIO = struct { // MARK: WorldIO
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
 		}
-		return worldData.get(?u64, "seed", null) orelse main.random.nextInt(u48, &main.seed);
+		return worldData.get(?u64, "seed", null) orelse {
+			std.log.err("Cannot load world. World has no seed!", .{});
+			return error.NoSeed;
+		};
 	}
 
 	pub fn loadWorldData(self: WorldIO) !void {
@@ -485,7 +490,7 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.world.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.world.path));
-		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 12);
+		self.world.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
@@ -499,7 +504,7 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
 		worldData.put("name", self.world.name);
 		worldData.put("lastUsedTime", std.time.milliTimestamp());
-		worldData.put("tickSpeed", self.world.tickSpeed);
+		worldData.put("tickSpeed", self.world.tickSpeed.load(.monotonic));
 		// TODO: Save entities
 		try self.dir.writeZon("world.zig.zon", worldData);
 	}
@@ -521,13 +526,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	lastUnimportantDataSent: i64,
 	doGameTimeCycle: bool = true,
 
-	tickSpeed: u32 = 12,
+	tickSpeed: std.atomic.Value(u32) = .init(12),
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
 	testingMode: bool = undefined,
+	seed: u64 = undefined,
 
-	seed: u64,
 	path: []const u8,
 	name: []const u8 = &.{},
 	spawn: Vec3i = undefined,
@@ -558,7 +563,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.lastUpdateTime = std.time.milliTimestamp(),
 			.milliTime = std.time.milliTimestamp(),
 			.lastUnimportantDataSent = std.time.milliTimestamp(),
-			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
@@ -594,19 +598,19 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		errdefer main.assets.unloadAssets();
 
+		var gamerules = files.cubyzDir().readToZon(arena, try std.fmt.allocPrint(arena.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arena);
+		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
+		self.allowCheats = gamerules.get(bool, "cheats", true);
+		self.testingMode = gamerules.get(bool, "testingMode", false);
+
 		self.seed = try self.wio.loadWorldSeed();
+
 		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/palette.zig.zon", .{path}), self.blockPalette.storeToZon(arena));
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arena));
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arena));
 		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arena));
-
-		var gamerules = files.cubyzDir().readToZon(arena, try std.fmt.allocPrint(arena.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arena);
-
-		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
-		self.allowCheats = gamerules.get(bool, "cheats", true);
-		self.testingMode = gamerules.get(bool, "testingMode", false);
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();
@@ -783,15 +787,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				defer self.mutex.lock();
 				updateRequest.ch.save(self);
 				updateRequest.ch.decreaseRefCount();
+				main.heap.GarbageCollection.syncPoint();
 			}
 			while(self.regionUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.region.store();
 				updateRequest.region.decreaseRefCount();
+				main.heap.GarbageCollection.syncPoint();
 			}
 			self.mutex.unlock();
 			std.Thread.sleep(1_000_000);
+			main.heap.GarbageCollection.syncPoint();
 			self.mutex.lock();
 			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
 		}
@@ -804,8 +811,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.wio.loadWorldData(); // load data here in order for entities to also be loaded.
 
 		if(@reduce(.And, self.spawn == Vec3i{0, 0, 0})) {
-			var seed: u64 = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
-			std.log.info("Finding position..", .{});
+			var seed: u64 = self.seed ^ 275892235728371;
+			std.log.info("Finding spawn position...", .{});
 			foundPosition: {
 				// Explore chunks in a spiral from the center:
 				const radius = 65536;
@@ -819,8 +826,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				for(0..spiralLen) |_| {
 					const map = main.server.terrain.ClimateMap.getOrGenerateFragment(wx, wy);
 					for(0..map.map.len) |_| {
-						const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
-						const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
+						const x = main.random.nextIntBounded(u31, &seed, map.map.len);
+						const y = main.random.nextIntBounded(u31, &seed, map.map.len);
 						const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
 						std.log.info("Trying roughly ({}, {})", .{wx + x*biomeSize, wy + y*biomeSize});
 						const sample = map.map[x][y];
@@ -1025,7 +1032,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	fn tickBlocksInChunk(self: *ServerWorld, _chunk: *chunk.ServerChunk) void {
-		for(0..self.tickSpeed) |_| {
+		for(0..self.tickSpeed.load(.monotonic)) |_| {
 			const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
 
 			const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;
@@ -1076,7 +1083,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.genericUpdate.sendTime(user.conn, self);
+				main.network.protocols.genericUpdate.sendTime(user.conn, self);
 			}
 		}
 		self.tick();
@@ -1228,7 +1235,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
 		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
+			main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		return null;
 	}

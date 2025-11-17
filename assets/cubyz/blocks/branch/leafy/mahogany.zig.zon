@@ -1,14 +1,14 @@
 .{
 	.drops = .{
-		.{.items = .{"cubyz:mahogany_leaves", "cubyz:mahogany_branch"}},
+		.{.items = .{"cubyz:leaves/mahogany", "cubyz:mahogany_branch"}},
 	},
-	.texture = "cubyz:mahogany_leaves",
+	.texture = "cubyz:leaves/mahogany",
 	.texture6 = "cubyz:branch/mahogany/dot",
 	.texture7 = "cubyz:branch/mahogany/half_line",
 	.texture8 = "cubyz:branch/mahogany/line",
 	.texture9 = "cubyz:branch/mahogany/bend",
 	.texture10 = "cubyz:branch/mahogany/intersection",
 	.texture11 = "cubyz:branch/mahogany/cross",
-	.lodReplacement = "cubyz:mahogany_leaves_opaque",
-	.opaqueVariant = "cubyz:mahogany_leaves_opaque",
+	.lodReplacement = "cubyz:leaves/opaque/mahogany",
+	.opaqueVariant = "cubyz:leaves/opaque/mahogany",
 }
