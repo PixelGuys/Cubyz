@@ -90,7 +90,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 				return .ignored;
 
 			// no, there is no log in proximity
-			_ = world.cmpxchgBlock(wx, wy, wz, leaf, main.blocks.Block.air);
+			_ = world.cmpxchgBlock(wx, wy, wz, leaf, Block{.typ = leaf.decayReplacement(), .data = 0});
 
 			return .handled;
 		}
