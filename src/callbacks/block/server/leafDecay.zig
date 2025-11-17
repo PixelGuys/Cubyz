@@ -52,7 +52,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 		checked[@as(usize, @intCast(index))] = true;
 
 		// get the (potential) log
-		if(world.getBlock(value[0], value[1], value[2] ))|log|{
+		if(world.getBlock(value[0], value[1], value[2])) |log| {
 			// it is a log
 			// end search.
 			if(log.decayProhibitor()) {
@@ -90,12 +90,12 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 
 	if(Server.world) |world| {
-		if(world.getBlock(wx, wy, wz))|leaf|{
+		if(world.getBlock(wx, wy, wz)) |leaf| {
 
 			// check if there is any log in the proximity?^
 			if(foundWayToLog(world, leaf, wx, wy, wz))
 				return .ignored;
-			
+
 			// no, there is no log in proximity
 			world.updateBlock(wx, wy, wz, main.blocks.Block.air);
 
