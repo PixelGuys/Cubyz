@@ -1266,16 +1266,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 	pub fn updateSurrounding(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
 		// trigger updates:
-		const updateRange = 1;
-		for(0..updateRange*2 + 1) |offsetX| {
-			for(0..updateRange*2 + 1) |offsetY| {
-				for(0..updateRange*2 + 1) |offsetZ| {
-					const px = wx + @as(i32, @intCast(offsetX)) - updateRange;
-					const py = wy + @as(i32, @intCast(offsetY)) - updateRange;
-					const pz = wz + @as(i32, @intCast(offsetZ)) - updateRange;
-					self.delayedUpdateQueue.pushBack(Vec3i{px, py, pz});
-				}
-			}
+		for (chunk.Neighbor.iterable) |value| {
+			const px = wx + value.relX();
+			const py = wy + value.relY();
+			const pz = wz + value.relZ();
+			self.delayedUpdateQueue.pushBack(Vec3i{px, py, pz});
 		}
 	}
 
