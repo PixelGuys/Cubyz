@@ -37,7 +37,6 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 	queue.pushBack(Vec3i{0, 0, 0});
 	checked[getIndexInCheckArray(0, 0, 0, checkRange)] = true;
 
-	main.Window.setMouseGrabbed(false);
 	while(queue.popFront()) |value| {
 		// get the (potential) log
 		if(world.getBlock(value[0] + wx, value[1] + wy, value[2] + wz)) |log| {
@@ -91,10 +90,8 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 				return .ignored;
 
 			// no, there is no log in proximity
-			world.updateBlock(wx, wy, wz, main.blocks.Block.air);
+			_ = world.cmpxchgBlock(wx, wy, wz, leaf, main.blocks.Block.air);
 
-			// trigger others leaves:
-			world.updateSurrounding(wx, wy, wz);
 			return .handled;
 		}
 	}

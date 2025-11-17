@@ -1255,9 +1255,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		for(userList) |user| {
 			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
-		if(oldBlock) |old| {
-			self.updateSurrounding(wx, wy, wz);
 
+		self.updateSurrounding(wx, wy, wz);
+		if(oldBlock) |old| {
 			// onBreak event
 			_ = old.onBreak().run(.{.block = old, .chunk = baseChunk, .x = wx & chunk.chunkMask, .y = wy & chunk.chunkMask, .z = wz & chunk.chunkMask});
 		}
@@ -1272,13 +1272,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					const px = wx + @as(i32, @intCast(offsetX)) - updateRange;
 					const py = wy + @as(i32, @intCast(offsetY)) - updateRange;
 					const pz = wz + @as(i32, @intCast(offsetZ)) - updateRange;
-					if(px != wx or py != wy or wz != pz) {
-						self.delayedUpdateQueue.pushBack(Vec3i{
-							px,
-							py,
-							pz,
-						});
-					}
+					self.delayedUpdateQueue.pushBack(Vec3i{px, py, pz});
 				}
 			}
 		}
