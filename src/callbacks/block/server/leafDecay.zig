@@ -52,7 +52,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 				for(0..neighbourRange*2 + 1) |offsetX| {
 					for(0..neighbourRange*2 + 1) |offsetY| {
 						for(0..neighbourRange*2 + 1) |offsetZ| {
-							//relative position
+							// relative position
 							const X = value[0] + @as(i32, @intCast(offsetX)) - neighbourRange;
 							const Y = value[1] + @as(i32, @intCast(offsetY)) - neighbourRange;
 							const Z = value[2] + @as(i32, @intCast(offsetZ)) - neighbourRange;
