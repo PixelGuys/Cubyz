@@ -35,4 +35,7 @@
 		.texture = "branch/mahogany.png",
 	},
 	.decayProhibitor = true,
+	.onBreak = .{
+		.type = .logBreak,
+	},
 }

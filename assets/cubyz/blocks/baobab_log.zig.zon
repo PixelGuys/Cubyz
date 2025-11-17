@@ -10,4 +10,7 @@
 	.texture_top = "cubyz:baobab_log_top",
 	.texture_bottom = "cubyz:baobab_log_top",
 	.decayProhibitor = true,
+	.onBreak = .{
+		.type = .logBreak,
+	},
 }

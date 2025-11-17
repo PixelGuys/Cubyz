@@ -10,4 +10,7 @@
 	.texture_top = "cubyz:oak_log_top",
 	.texture_bottom = "cubyz:oak_log_top",
 	.decayProhibitor = true,
+	.onBreak = .{
+		.type = .logBreak,
+	},
 }

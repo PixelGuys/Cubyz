@@ -35,4 +35,7 @@
 		.texture = "branch/glimmergill.png",
 	},
 	.decayProhibitor = true,
+	.onBreak = .{
+		.type = .logBreak,
+	},
 }

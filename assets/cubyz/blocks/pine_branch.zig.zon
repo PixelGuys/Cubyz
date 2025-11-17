@@ -35,4 +35,7 @@
 		.texture = "branch/pine.png",
 	},
 	.decayProhibitor = true,
+	.onBreak = .{
+		.type = .logBreak,
+	},
 }

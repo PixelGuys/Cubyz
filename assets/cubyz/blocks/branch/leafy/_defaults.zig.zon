@@ -10,4 +10,7 @@
 		.textureSlotOffset = 6,
 	},
 	.decayProhibitor = true,
+	.onBreak = .{
+		.type = .logBreak,
+	},
 }

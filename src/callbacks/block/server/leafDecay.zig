@@ -7,6 +7,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Server = main.server;
+const logBreak = @import("logBreak.zig");
 
 pub fn init(_: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
@@ -23,7 +24,7 @@ fn getIndexInCheckArray(relative_x: i32, relative_y: i32, relative_z: i32, check
 fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
 
 	// init array to mark already searched blocks.
-	const checkRange = 5;
+	const checkRange = logBreak.widerUpdaterRange;
 	const checkLength = checkRange*2 + 1;
 	var checked: [checkLength*checkLength*checkLength]bool = undefined;
 	for(0..checkLength*checkLength*checkLength) |i| {
@@ -48,26 +49,21 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 			// it is the same type of leaf
 			// continue search!
 			else if(log.typ == leaf.typ) {
-				const neighbourRange = 1; // 1 = leaves need path to log without air gab
-				for(0..neighbourRange*2 + 1) |offsetX| {
-					for(0..neighbourRange*2 + 1) |offsetY| {
-						for(0..neighbourRange*2 + 1) |offsetZ| {
-							// relative position
-							const X = value[0] + @as(i32, @intCast(offsetX)) - neighbourRange;
-							const Y = value[1] + @as(i32, @intCast(offsetY)) - neighbourRange;
-							const Z = value[2] + @as(i32, @intCast(offsetZ)) - neighbourRange;
+				for(main.chunk.Neighbor.iterable) |offset| {
+					// relative position
+					const X = value[0] + offset.relX();
+					const Y = value[1] + offset.relY();
+					const Z = value[2] + offset.relZ();
 
-							// out of range
-							if(X*X + Y*Y + Z*Z > checkRange*checkRange)
-								continue;
+					// out of range
+					if(X*X + Y*Y + Z*Z > checkRange*checkRange)
+						continue;
 
-							// mark as checked
-							if(checked[getIndexInCheckArray(X, Y, Z, checkRange)])
-								continue;
-							checked[getIndexInCheckArray(X, Y, Z, checkRange)] = true;
-							queue.pushBack(Vec3i{X, Y, Z});
-						}
-					}
+					// mark as checked
+					if(checked[getIndexInCheckArray(X, Y, Z, checkRange)])
+						continue;
+					checked[getIndexInCheckArray(X, Y, Z, checkRange)] = true;
+					queue.pushBack(Vec3i{X, Y, Z});
 				}
 			}
 		}
@@ -84,7 +80,6 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	if(Server.world) |world| {
 		if(world.getBlock(wx, wy, wz)) |leaf| {
-
 			// check if there is any log in the proximity?^
 			if(foundWayToLog(world, leaf, wx, wy, wz))
 				return .ignored;

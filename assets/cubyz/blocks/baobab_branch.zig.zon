@@ -35,4 +35,7 @@
 		.texture = "branch/baobab.png",
 	},
 	.decayProhibitor = true,
+	.onBreak = .{
+		.type = .logBreak,
+	},
 }
