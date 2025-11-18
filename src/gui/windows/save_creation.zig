@@ -24,7 +24,8 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var textInput: *TextInput = undefined;
+var nameInput: *TextInput = undefined;
+var seedInput: *TextInput = undefined;
 
 var gamemode: main.game.Gamemode = .creative;
 var gamemodeInput: *Button = undefined;
@@ -32,6 +33,16 @@ var gamemodeInput: *Button = undefined;
 var allowCheats: bool = true;
 
 var testingMode: bool = false;
+
+fn chooseSeed(seedStr: []const u8) u64 {
+	if(seedStr.len == 0) {
+		return main.random.nextInt(u64, &main.seed);
+	} else {
+		return std.fmt.parseInt(u64, seedStr, 0) catch {
+			return std.hash.Wyhash.hash(0, seedStr);
+		};
+	}
+}
 
 fn gamemodeCallback(_: usize) void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
@@ -47,8 +58,16 @@ fn testingModeCallback(enabled: bool) void {
 }
 
 fn createWorld(_: usize) void {
-	const worldName = textInput.currentString.items;
-	const worldSettings: main.server.world_zig.WorldSettings = .{.gamemode = gamemode, .allowCheats = allowCheats, .testingMode = testingMode};
+	const worldName = nameInput.currentString.items;
+	const worldSeed = chooseSeed(seedInput.currentString.items);
+
+	const worldSettings: main.server.world_zig.Settings = .{
+		.defaultGamemode = gamemode,
+		.allowCheats = allowCheats,
+		.testingMode = testingMode,
+		.seed = worldSeed,
+	};
+
 	main.server.world_zig.tryCreateWorld(worldName, worldSettings) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 	};
@@ -69,8 +88,8 @@ pub fn onOpen() void {
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
 	defer main.stackAllocator.free(name);
-	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
-	list.add(textInput);
+	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
+	list.add(nameInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
 	list.add(gamemodeInput);
@@ -80,6 +99,14 @@ pub fn onOpen() void {
 	if(!build_options.isTaggedRelease) {
 		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
 	}
+
+	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .left);
+	seedInput = TextInput.init(.{0, 0}, 128 - 48, 22, "", .{.callback = &createWorld}, .{});
+	const seedRow = HorizontalList.init();
+	seedRow.add(seedLabel);
+	seedRow.add(seedInput);
+	seedRow.finish(.{0, 0}, .center);
+	list.add(seedRow);
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 
