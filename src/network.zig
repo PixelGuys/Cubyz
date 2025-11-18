@@ -119,7 +119,7 @@ pub fn init() void {
 pub const IpAddress = struct {
 	address: u32,
 
-	pub const localhost = IpAddress.parse("127.0.0.1") catch unreachable;
+	pub const localhost = parse("127.0.0.1") catch unreachable;
 
 	pub fn format(self: IpAddress, writer: anytype) !void {
 		try writer.print("{}.{}.{}.{}", .{self.address & 255, self.address >> 8 & 255, self.address >> 16 & 255, self.address >> 24});
