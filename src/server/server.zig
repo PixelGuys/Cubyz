@@ -324,9 +324,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Can't create world.");
 	};
 
-	const settingsZon = main.files.cubyzDir().readToZon(main.stackAllocator, "server.zig.zon") catch .null;
-	defer settingsZon.deinit(main.stackAllocator);
-
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
