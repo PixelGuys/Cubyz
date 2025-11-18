@@ -126,7 +126,8 @@ pub const IpAddress = struct {
 	}
 
 	fn resolve(addr: []const u8, port: ?u16) !IpAddress {
-		const list = try std.net.getAddressList(main.stackAllocator.allocator, addr, port orelse settings.defaultPort);
+		const allocator = if(builtin.is_test) main.heap.testingAllocator else main.stackAllocator;
+		const list = try std.net.getAddressList(allocator.allocator, addr, port orelse settings.defaultPort);
 		defer list.deinit();
 		return .{.address = list.addrs[0].in.sa.addr};
 	}
@@ -1610,7 +1611,7 @@ test "Resolve address" {
 	};
 	for(addresses) |addressStr| {
 		const parsedAddress = try IpAddress.parse(addressStr);
-		const resolvedAddress = try IpAddress.parse(addressStr);
+		const resolvedAddress = try IpAddress.resolve(addressStr, null);
 		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
 	}
 	const socketAddresses: [4][]const u8 = .{
@@ -1621,7 +1622,7 @@ test "Resolve address" {
 	};
 	for(socketAddresses) |addressStr| {
 		const parsedAddress = try SocketAddress.parse(addressStr, null);
-		const resolvedAddress = try SocketAddress.parse(addressStr, null);
+		const resolvedAddress = try SocketAddress.resolve(addressStr, null);
 		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
 	}
 }
