@@ -52,7 +52,7 @@
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:bubble/bubble",
-			.chance = 0.008,
+			.chance = 0.05,
 			.rotation = 0,
 		},
 		.{

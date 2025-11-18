@@ -1,6 +1,6 @@
 .{
 	.blueprints = .{
-		.{.id = "cubyz:bubble/bubble_0", .chance = 1},
+		.{.id = "cubyz:bubble/bubble_0", .chance = 1.2},
 		.{.id = "cubyz:bubble/bubble_1", .chance = 0.9},
 		.{.id = "cubyz:bubble/bubble_2", .chance = 0.7},
 		.{.id = "cubyz:bubble/bubble_3", .chance = 0.6},
