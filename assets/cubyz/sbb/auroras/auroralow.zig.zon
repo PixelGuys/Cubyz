@@ -10,5 +10,8 @@
 		.{.id = "cubyz:auroras/auroralow/auroralow_7", .chance = 1},
 		.{.id = "cubyz:auroras/auroralow/auroralow_8", .chance = 1},
 		.{.id = "cubyz:auroras/auroralow/auroralow_9", .chance = 1},
+		.{.id = "cubyz:auroras/auroralow/broken_0", .chance = 0.5},
+		.{.id = "cubyz:auroras/auroralow/broken_1", .chance = 0.5},
+		.{.id = "cubyz:auroras/auroralow/broken_2", .chance = 0.5},
 	},
 }
