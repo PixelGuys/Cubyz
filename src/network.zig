@@ -157,7 +157,7 @@ pub const SocketAddress = struct {
 		}
 	}
 
-	fn parseInner(string: []const u8) !struct{ip: []const u8, isSymmetricNAT: bool, port: u16} {
+	fn parseInner(string: []const u8) !struct {ip: []const u8, isSymmetricNAT: bool, port: u16} {
 		var parts = std.mem.splitScalar(u8, string, ':');
 		const ip = parts.first();
 		var portString = parts.next() orelse return error.MissingColon;
