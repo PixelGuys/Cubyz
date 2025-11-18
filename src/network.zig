@@ -351,7 +351,7 @@ const stun = struct { // MARK: stun
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return SocketAddress{.ip = IpAddress.localhost, .port = settings.defaultPort}; // TODO: Return ip address in LAN.
+		return SocketAddress{.ip = .localhost, .port = settings.defaultPort}; // TODO: Return ip address in LAN.
 	}
 
 	fn findIPPort(_data: []const u8) !SocketAddress {
