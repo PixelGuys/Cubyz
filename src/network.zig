@@ -157,7 +157,7 @@ pub const SocketAddress = struct {
 		}
 	}
 
-	fn parseInner(string: []const u8) !struct {ip: []const u8, isSymmetricNAT: bool, port: u16} {
+	fn parseInner(string: []const u8, defaultPort: ?u16) !struct {ip: []const u8, isSymmetricNAT: bool, port: u16} {
 		var parts = std.mem.splitScalar(u8, string, ':');
 		const ip = parts.first();
 		var portString = parts.next() orelse return error.MissingColon;
@@ -168,7 +168,7 @@ pub const SocketAddress = struct {
 			isSymmetricNAT = true;
 			portString = portString[1..];
 		}
-		const port = try std.fmt.parseInt(u16, portString, 10);
+		const port = try (std.fmt.parseInt(u16, portString, 10) catch |err| (defaultPort orelse err));
 		return .{
 			.ip = ip,
 			.isSymmetricNAT = isSymmetricNAT,
@@ -176,8 +176,8 @@ pub const SocketAddress = struct {
 		};
 	}
 
-	pub fn parse(string: []const u8) !SocketAddress {
-		const innerResult = try parseInner(string);
+	pub fn parse(string: []const u8, defaultPort: ?u16) !SocketAddress {
+		const innerResult = try parseInner(string, defaultPort);
 		return .{
 			.ip = try IpAddress.parse(innerResult.ip),
 			.isSymmetricNAT = innerResult.isSymmetricNAT,
@@ -185,8 +185,8 @@ pub const SocketAddress = struct {
 		};
 	}
 
-	pub fn resolve(string: []const u8) !SocketAddress {
-		const innerResult = try parseInner(string);
+	pub fn resolve(string: []const u8, defaultPort: ?u16) !SocketAddress {
+		const innerResult = try parseInner(string, defaultPort);
 		return .{
 			.ip = try IpAddress.resolve(innerResult.ip, innerResult.port),
 			.isSymmetricNAT = innerResult.isSymmetricNAT,
@@ -322,7 +322,7 @@ const stun = struct { // MARK: stun
 			};
 			random.fill(data[8..]); // Fill the transaction ID.
 
-			const serverAddress = SocketAddress.resolve(server) catch |err| {
+			const serverAddress = SocketAddress.resolve(server, null) catch |err| {
 				std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{server, @errorName(err)});
 				continue;
 			};
@@ -1210,7 +1210,7 @@ pub const Connection = struct { // MARK: Connection
 			result.queuedConfirmations.deinit();
 		}
 		if(result.connectionIdentifier == 0) result.connectionIdentifier = 1;
-		result.remoteAddress = try SocketAddress.resolve(ipPort);
+		result.remoteAddress = try SocketAddress.resolve(ipPort, settings.defaultPort);
 		result.bruteforcingPort = result.remoteAddress.isSymmetricNAT;
 
 		try result.manager.addConnection(result);
@@ -1594,11 +1594,36 @@ const ProtocolTask = struct {
 test "Parse address" {
 	const localhost: u32 = 0x0100007f;
 	try std.testing.expectEqual(localhost, IpAddress.localhost.address);
-	const socketAddress = try SocketAddress.parse("127.0.0.1:1234");
+	const socketAddress = try SocketAddress.parse("127.0.0.1:1234", null);
 	try std.testing.expectEqual(SocketAddress{.ip = .{.address = localhost}, .port = 1234}, socketAddress);
 
-	const symmetricSocketAddress = try SocketAddress.parse("127.0.0.1:?1234");
+	const symmetricSocketAddress = try SocketAddress.parse("127.0.0.1:?1234", null);
 	try std.testing.expectEqual(SocketAddress{.ip = .{.address = localhost}, .isSymmetricNAT = true, .port = 1234}, symmetricSocketAddress);
+}
+
+test "Resolve address" {
+	const addresses: [4][]const u8 = .{
+		"127.0.0.1",
+		"123.1.111.222",
+		"1.1.1.1",
+		"0.0.0.0",
+	};
+	for(addresses) |addressStr| {
+		const parsedAddress = try IpAddress.parse(addressStr);
+		const resolvedAddress = try IpAddress.parse(addressStr);
+		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
+	}
+	const socketAddresses: [4][]const u8 = .{
+		"127.0.0.1:1234",
+		"123.1.111.222:?11111",
+		"1.1.1.1:255",
+		"0.0.0.0:?3333",
+	};
+	for(socketAddresses) |addressStr| {
+		const parsedAddress = try SocketAddress.parse(addressStr, null);
+		const resolvedAddress = try SocketAddress.parse(addressStr, null);
+		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
+	}
 }
 
 test "Format address" {
@@ -1621,7 +1646,7 @@ test "Format address" {
 		"0.0.0.0:?3333",
 	};
 	for(socketAddresses) |addressStr| {
-		const address = try SocketAddress.parse(addressStr);
+		const address = try SocketAddress.parse(addressStr, null);
 		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
 		defer main.heap.testingAllocator.free(reformattedAddress);
 		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
