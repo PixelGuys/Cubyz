@@ -679,9 +679,9 @@ pub const inventory = struct { // MARK: inventory
 				}
 			}
 			return;
-		} else if(isCrafting) {
-			isCrafting = false;
 		}
+
+		isCrafting = false;
 
 		if(recipeItem != null) return;
 		if(itemSlot.mode != .normal) return;
