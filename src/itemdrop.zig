@@ -260,7 +260,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.entity.send(user.conn, updateData);
+				main.network.protocols.entity.send(user.conn, updateData);
 			}
 		}
 
@@ -292,7 +292,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.entity.send(user.conn, updateData);
+				main.network.protocols.entity.send(user.conn, updateData);
 			}
 		}
 
@@ -348,7 +348,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 		for(userList) |user| {
-			main.network.Protocols.entity.send(user.conn, updateData);
+			main.network.protocols.entity.send(user.conn, updateData);
 		}
 
 		self.emptyMutex.unlock();

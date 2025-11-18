@@ -73,9 +73,9 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:willow_leaves",
+			.leaves = "cubyz:leaves/willow",
 			.log = "cubyz:willow_log",
-			.top = "cubyz:willow_leaves",
+			.top = "cubyz:leaves/willow",
 			.chance = 0.8,
 			.type = .round,
 			.height = 4,
