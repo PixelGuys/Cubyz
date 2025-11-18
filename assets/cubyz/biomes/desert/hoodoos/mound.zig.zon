@@ -1,0 +1,27 @@
+.{
+	.properties = .{},
+	.minRadius = 32,
+	.maxRadius = 80,
+	.chance = 0,
+	.minHeight = 1500,
+	.maxHeight = 3000,
+	.keepOriginalTerrain = 0.99,
+	.roughness = 1,
+	.mountains = 50,
+	.hills = 20,
+	.stoneBlock = "cubyz:sandstone",
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rock/hoodoo",
+			.placeMode = .degradable,
+			.chance = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:desert/hoodoos/base",
+			.chance = 20,
+		},
+	},
+}
