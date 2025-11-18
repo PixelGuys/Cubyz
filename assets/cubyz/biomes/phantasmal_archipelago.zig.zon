@@ -51,15 +51,9 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:auroras/aurorahigh",
+			.structure = "cubyz:bubble/bubble",
 			.chance = 0.008,
 			.rotation = 0,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:auroras/auroralow",
-			.rotation = 0,
-			.chance = 0.008,
 		},
 		.{
 			.id = "cubyz:boulder",
