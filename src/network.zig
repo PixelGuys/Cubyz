@@ -125,8 +125,8 @@ pub const IpAddress = struct {
 		try writer.print("{}.{}.{}.{}", .{self.address & 255, self.address >> 8 & 255, self.address >> 16 & 255, self.address >> 24});
 	}
 
-	fn resolve(allocator: NeverFailingAllocator, addr: []const u8, port: ?u16) !IpAddress {
-		const list = try std.net.getAddressList(allocator.allocator, addr, port orelse settings.defaultPort);
+	fn resolve(addr: []const u8, port: ?u16) !IpAddress {
+		const list = try std.net.getAddressList(main.stackAllocator.allocator, addr, port orelse settings.defaultPort);
 		defer list.deinit();
 		return .{.address = list.addrs[0].in.sa.addr};
 	}
@@ -185,10 +185,10 @@ pub const SocketAddress = struct {
 		};
 	}
 
-	pub fn resolve(allocator: NeverFailingAllocator, string: []const u8) !SocketAddress {
+	pub fn resolve(string: []const u8) !SocketAddress {
 		const innerResult = try parseInner(string);
 		return .{
-			.ip = try IpAddress.resolve(allocator, innerResult.ip, innerResult.port),
+			.ip = try IpAddress.resolve(innerResult.ip, innerResult.port),
 			.isSymmetricNAT = innerResult.isSymmetricNAT,
 			.port = innerResult.port,
 		};
@@ -322,7 +322,7 @@ const stun = struct { // MARK: stun
 			};
 			random.fill(data[8..]); // Fill the transaction ID.
 
-			const serverAddress = SocketAddress.resolve(main.stackAllocator, server) catch |err| {
+			const serverAddress = SocketAddress.resolve(server) catch |err| {
 				std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{server, @errorName(err)});
 				continue;
 			};
@@ -1210,7 +1210,7 @@ pub const Connection = struct { // MARK: Connection
 			result.queuedConfirmations.deinit();
 		}
 		if(result.connectionIdentifier == 0) result.connectionIdentifier = 1;
-		result.remoteAddress = try SocketAddress.resolve(main.stackAllocator, ipPort);
+		result.remoteAddress = try SocketAddress.resolve(ipPort);
 		result.bruteforcingPort = result.remoteAddress.isSymmetricNAT;
 
 		try result.manager.addConnection(result);
