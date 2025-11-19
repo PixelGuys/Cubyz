@@ -421,6 +421,11 @@ pub const textCallbacks = struct {
 			current.up(mods);
 		}
 	}
+	pub fn tab(mods: main.Window.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.tab(mods);
+		}
+	}
 	pub fn gotoStart(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.gotoStart(mods);
