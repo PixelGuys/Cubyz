@@ -26,6 +26,8 @@ const Palette = main.assets.Palette;
 const storage = @import("storage.zig");
 const Gamemode = main.game.Gamemode;
 
+const UpdateSystem = @import("UpdateSystem.zig").UpdateSystem;
+
 pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
 	allowCheats: bool = false,
@@ -547,7 +549,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	biomeChecksum: i64 = 0,
 
 	// TODO: do this per chunk not world.
-	delayedUpdateQueue: main.utils.CircularBufferQueue(Vec3i),
+	updateSystem: *UpdateSystem,
 
 	const ChunkUpdateRequest = struct {
 		ch: *ServerChunk,
@@ -569,7 +571,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
-			.delayedUpdateQueue = .init(main.globalAllocator, 256),
+			.updateSystem = .init(),
 		};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
@@ -644,7 +646,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.decreaseRefCount();
 		}
 		self.regionUpdateQueue.deinit();
-		self.delayedUpdateQueue.deinit();
+		self.updateSystem.deinit();
 		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
@@ -1063,22 +1065,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		ChunkManager.mutex.unlock();
 
 		// event queue
-		const amountToUpdate = self.delayedUpdateQueue.len;
-		for(0..amountToUpdate) |_| {
-			if(self.delayedUpdateQueue.popFront()) |event| {
-				var ch = self.getOrGenerateChunkAndIncreaseRefCount(chunk.ChunkPosition.initFromWorldPos(event, 1));
-				defer ch.decreaseRefCount();
-				if(self.getBlock(event[0], event[1], event[2])) |block| {
-					_ = block.onUpdate().run(.{
-						.block = block,
-						.chunk = ch,
-						.x = event[0] & chunk.chunkMask,
-						.y = event[1] & chunk.chunkMask,
-						.z = event[2] & chunk.chunkMask,
-					});
-				}
-			}
-		}
+		self.updateSystem.update(self);
 		// tick blocks
 		for(currentChunks.items) |entityChunk| {
 			defer entityChunk.decreaseRefCount();
@@ -1270,7 +1257,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const px = wx + value.relX();
 			const py = wy + value.relY();
 			const pz = wz + value.relZ();
-			self.delayedUpdateQueue.pushBack(Vec3i{px, py, pz});
+			self.updateSystem.add(Vec3i{px, py, pz}, 1);
 		}
 	}
 
