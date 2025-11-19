@@ -20,7 +20,6 @@ pub const BlockUpdate = struct {
 };
 
 pub const UpdateSystem = struct {
-	// TODO: make this into a Set, i don't know how to make one in zig
 	queue: std.PriorityQueue(BlockUpdate, void, BlockUpdate.compare),
 	currentTick: u64 = 0,
 
