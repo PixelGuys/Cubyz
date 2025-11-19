@@ -20,16 +20,14 @@ pub const BlockUpdate = struct {
 };
 
 pub const UpdateSystem = struct {
-	//TODO: make this into a Set, i don't know how to make one in zig
+	// TODO: make this into a Set, i don't know how to make one in zig
 	queue: std.PriorityQueue(BlockUpdate, void, BlockUpdate.compare),
-	//queue: main.utils.CircularBufferQueue(BlockUpdate),
 	currentTick: u64 = 0,
 
 	pub fn init() *UpdateSystem {
 		const self = main.globalAllocator.create(UpdateSystem);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = UpdateSystem{
-			//.queue = .init(main.globalAllocator, 256),
 			.queue = .init(main.globalAllocator.allocator, void{}),
 		};
 		return self;
@@ -46,7 +44,7 @@ pub const UpdateSystem = struct {
 		self.currentTick += 1;
 
 		while(true) {
-			//is this event for this tick?
+			// is this event for this tick?
 			if(self.queue.peek()) |event| {
 				if(event.callTimeTick > currentTick)
 					break;
