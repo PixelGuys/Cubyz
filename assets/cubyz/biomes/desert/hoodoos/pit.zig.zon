@@ -20,7 +20,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:desert/hoodoos/base",
-			.chance = 15,
+			.chance = 12,
 		},
 	},
 }

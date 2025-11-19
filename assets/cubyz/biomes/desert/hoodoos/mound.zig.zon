@@ -1,7 +1,7 @@
 .{
 	.properties = .{},
 	.minRadius = 32,
-	.maxRadius = 80,
+	.maxRadius = 48,
 	.chance = 0,
 	.minHeight = 1500,
 	.maxHeight = 3000,
@@ -42,7 +42,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:desert/hoodoos/base",
-			.chance = 20,
+			.chance = 15,
 		},
 	},
 }
