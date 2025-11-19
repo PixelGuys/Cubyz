@@ -12,9 +12,9 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:rock/hoodoo",
+			.structure = "cubyz:rock/hoodoo/small_medium",
 			.placeMode = .degradable,
-			.chance = 0.05,
+			.chance = 0.08,
 		},
 	},
 	.parentBiomes = .{

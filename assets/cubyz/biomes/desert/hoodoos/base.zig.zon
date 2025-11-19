@@ -1,10 +1,5 @@
 .{
-	.properties = .{
-		.hot,
-		.dry,
-		.barren,
-	},
-	.chance = 1.0,
+	.chance = 0.5,
 	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,
@@ -17,9 +12,15 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:rock/hoodoo",
+			.structure = "cubyz:rock/hoodoo/small_medium",
 			.placeMode = .degradable,
 			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rock/hoodoo/large",
+			.placeMode = .degradable,
+			.chance = 0.002,
 		},
 		.{
 			.id = "cubyz:sbb",
