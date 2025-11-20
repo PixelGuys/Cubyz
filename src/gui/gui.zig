@@ -661,7 +661,7 @@ pub const inventory = struct { // MARK: inventory
 
 		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if(recipeItem == .null and item != .null) recipeItem = item.?.clone();
+			if(recipeItem == .null and item != .null) recipeItem = item.clone();
 			if(!std.meta.eql(item, recipeItem)) return;
 			const time = std.time.milliTimestamp();
 			if(!isCrafting) {
@@ -707,7 +707,7 @@ pub const inventory = struct { // MARK: inventory
 				if(itemSlot == deliveredSlot) return;
 			}
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if(item == null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.?.stackSize()) {
+			if(item == .null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.stackSize()) {
 				leftClickSlots.append(itemSlot);
 			}
 		} else if(secondaryGuiButton.pressed) {
@@ -723,7 +723,7 @@ pub const inventory = struct { // MARK: inventory
 		if(!initialized) return;
 		if(main.game.world == null) return;
 		if(leftClick) {
-			if(recipeItem) |item| item.deinit();
+			recipeItem.deinit();
 			recipeItem = .null;
 			isCrafting = false;
 			if(leftClickSlots.items.len != 0) {
