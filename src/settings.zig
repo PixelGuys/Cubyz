@@ -189,6 +189,7 @@ pub fn save() void {
 pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
+	pub var headlessServer: bool = false;
 
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
@@ -197,11 +198,8 @@ pub const launchConfig = struct {
 		};
 		defer zon.deinit(main.stackAllocator);
 
-		cubyzDir = main.globalAllocator.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
-		autoEnterWorld = main.globalAllocator.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
-	}
-
-	pub fn deinit() void {
-		main.globalAllocator.free(cubyzDir);
+		cubyzDir = main.globalArena.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+		headlessServer = zon.get(bool, "headlessServer", headlessServer);
+		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
 	}
 };
