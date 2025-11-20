@@ -34,8 +34,7 @@ pub fn generateAligned(wx: i32, wy: i32, wz: i32, voxelSize: u31, worldSeed: u64
 			while(z0 < height) : (z0 += scaledScale) {
 				var seed = random.initSeed3D(worldSeed, .{wx +% x0*voxelSize, wy +% y0*voxelSize, wz +% z0*voxelSize});
 				const weight = map.get(x0, y0, z0);
-				const offset = @as(f32, @floatFromInt(scale))*@sqrt(@abs(weight*0.25))*std.math.sign(weight)*0.5;
-				map.ptr(x0, y0, z0).* = (random.nextFloat(&seed) - 0.5)*@as(f32, @floatFromInt(scale)) + offset;
+				map.ptr(x0, y0, z0).* = (random.nextFloat(&seed) - 0.5)*@as(f32, @floatFromInt(scale)) + weight;
 			}
 		}
 	}

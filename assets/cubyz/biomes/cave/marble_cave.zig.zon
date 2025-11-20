@@ -4,7 +4,7 @@
 	.minHeight = -512,
 	.chance = 0.2,
 
-	.zWeight = -0.75,
+	.zWeight = -0.2,
 
 	.fogDensity = 10,
 

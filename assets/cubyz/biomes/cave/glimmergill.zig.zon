@@ -3,7 +3,7 @@
 	.maxHeight = -200,
 	.minHeight = -48250,
 	.chance = 0.05,
-	.zWeight = -0.75,
+	.zWeight = -0.2,
 	.fogDensity = 2,
 
 	.music = "cubyz:heart-of-the-beast",

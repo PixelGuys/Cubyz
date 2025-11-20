@@ -8,7 +8,7 @@
 	.chance = 0.01,
 
 	.caves = -0.1,
-	.zWeight = -0.75,
+	.zWeight = -0.2,
 
 	.music = "cubyz:heart-of-the-beast",
 
