@@ -951,11 +951,11 @@ pub const Item = union(ItemType) { // MARK: Item
 		}
 	}
 
-	pub fn getTexture(self: Item) ?graphics.Texture {
+	pub fn getTexture(self: Item) graphics.Texture {
 		return switch(self) {
 			.baseItem => |_baseItem| _baseItem.getTexture(),
 			.tool => |_tool| _tool.getTexture(),
-			.null => null,
+			.null => unreachable,
 		};
 	}
 
