@@ -32,7 +32,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 	}
 
 	// queue for breath-first search
-	var queue = main.utils.CircularBufferQueue(Vec3i).init(main.globalAllocator, 32);
+	var queue = main.utils.CircularBufferQueue(Vec3i).init(main.stackAllocator, 32);
 	defer queue.deinit();
 
 	queue.pushBack(Vec3i{0, 0, 0});
@@ -85,7 +85,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 				return .ignored;
 
 			// no, there is no log in proximity
-			const replacement = Block{.typ = leaf.decayReplacement(), .data = 0};
+			var replacement = Block{.typ = leaf.decayReplacement(), .data = 0};
 			replacement.data = replacement.mode().naturalStandard;
 
 			_ = world.cmpxchgBlock(wx, wy, wz, leaf, replacement);
