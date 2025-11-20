@@ -35,8 +35,8 @@ pub const UpdateSystem = struct {
 		self.queue.deinit();
 		main.globalAllocator.destroy(self);
 	}
-	pub fn add(self: *UpdateSystem, position: Vec3i, inTicks: u32) void {
-		self.queue.add(BlockUpdate{.position = position, .callTimeTick = self.currentTick + inTicks}) catch unreachable;
+	pub fn add(self: *UpdateSystem, position: Vec3i, delayTicks: u32) void {
+		self.queue.add(BlockUpdate{.position = position, .callTimeTick = self.currentTick + delayTicks}) catch unreachable;
 	}
 	pub fn update(self: *UpdateSystem, world: *main.server.ServerWorld) void {
 		const currentTick = self.currentTick;
