@@ -50,7 +50,7 @@ pub const UpdateSystem = struct {
 			}
 			// does the event even exist?
 			if(self.queue.removeOrNull()) |event| {
-				var ch = world.getOrGenerateChunkAndIncreaseRefCount(main.chunk.ChunkPosition.initFromWorldPos(event.position, 1));
+				var ch = world.getChunkFromCacheAndIncreaseRefCount(main.chunk.ChunkPosition.initFromWorldPos(event.position, 1)) orelse continue;
 				defer ch.decreaseRefCount();
 				if(world.getBlock(event.position[0], event.position[1], event.position[2])) |block| {
 					_ = block.onUpdate().run(.{
