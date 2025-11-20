@@ -947,7 +947,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		switch(self) {
 			.baseItem => writer.writeEnum(BaseItemIndex, self.baseItem),
 			.tool => |tool| tool.toBytes(writer),
-			.null => {},
+			.null => unreachable,
 		}
 	}
 
@@ -1049,8 +1049,12 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn toBytes(self: *const ItemStack, writer: *BinaryWriter) void {
-		writer.writeVarInt(u16, self.amount);
-		self.item.toBytes(writer);
+		if(self.item != .null) {
+			writer.writeVarInt(u16, self.amount);
+			self.item.toBytes(writer);
+		} else {
+			writer.writeVarInt(u16, 0);
+		}
 	}
 };
 
