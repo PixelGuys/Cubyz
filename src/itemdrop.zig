@@ -362,21 +362,34 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			return;
 		}
 		vel.* += Vec3d{0, 0, -gravity*deltaTime};
-		inline for(0..3) |i| {
-			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
-			if(main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
+		var onGround = false;
+		inline for ([_]u8{ vec.X, vec.Y, vec.Z }) |axis| {
+			const move = vel.*[axis] * deltaTime; // + acceleration[i]*deltaTime;
+			if(main.game.collision.collides(.server, @enumFromInt(axis), move, pos.*, hitBox)) |box| {
 				if(move < 0) {
-					pos.*[i] = box.max[i] + radius;
+					pos.*[axis] = box.max[axis] + radius;
 				} else {
-					pos.*[i] = box.max[i] - radius;
+					pos.*[axis] = box.min[axis] - radius;
 				}
-				vel.*[i] = 0;
+				vel.*[axis] = 0;
+				// If item as hit the ground then we want to apply friction
+				if (axis == vec.Z and move < 0) {
+					onGround = true;
+				}
 			} else {
-				pos.*[i] += move;
+				pos.*[axis] += move;
 			}
 		}
-		// Apply drag:
-		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
+
+		// Calculate Friction
+		if (onGround) {
+			const groundFriction = main.game.collision.calculateSurfaceProperties(.server, pos.*, hitBox, 20).friction;
+			const frictionDecay = @max(0, 1 - groundFriction * deltaTime);
+			vel.*[vec.X] *= frictionDecay;
+			vel.*[vec.Y] *= frictionDecay;
+		} else {
+			vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
+		}
 	}
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {

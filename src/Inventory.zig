@@ -1475,7 +1475,8 @@ pub const Command = struct { // MARK: Command
 				if(_items[0].item != null) {
 					if(side == .server) {
 						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-						main.server.world.?.dropWithCooldown(_items[0], user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+						const throwPos = user.?.player.pos + main.game.Player.eye.desiredPos;
+						main.server.world.?.dropWithCooldown(_items[0], throwPos, direction, 8, main.server.updatesPerSec*2);
 					}
 				}
 				return;
@@ -1487,7 +1488,8 @@ pub const Command = struct { // MARK: Command
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if(side == .server) {
 				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+				const throwPos = user.?.player.pos + main.game.Player.eye.desiredPos;
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, throwPos, direction, 8, main.server.updatesPerSec*2);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
@@ -1602,7 +1604,7 @@ pub const Command = struct { // MARK: Command
 				}
 				if(side == .server) {
 					const direction = if(user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
-					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 20);
+					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 8);
 				}
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},

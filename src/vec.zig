@@ -10,6 +10,10 @@ pub const Vec4i = @Vector(4, i32);
 pub const Vec4f = @Vector(4, f32);
 pub const Vec4d = @Vector(4, f64);
 
+pub const X: u8 = 0;
+pub const Y: u8 = 1;
+pub const Z: u8 = 2;
+
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
 	return .{pos[0], pos[1], pos[2], w};
 }
