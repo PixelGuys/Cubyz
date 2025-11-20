@@ -68,9 +68,13 @@ const multipleErrorFmtText = "#ff0000{s}\n#ffff00And {d} more...\nCheck the logs
 pub fn onOpen() void {
 	isOpen = true;
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	var buf: [256]u8 = undefined;
-	const str = if(errorCount == 0) std.fmt.bufPrint(&buf, singleErrorFmtText, .{errorText}) catch plainErrorText
-		else std.fmt.bufPrint(&buf, multipleErrorFmtText, .{errorText, errorCount}) catch plainErrorText;
+	var str: []const u8 = undefined;
+	if(errorCount == 0) {
+		str = std.fmt.allocPrint(main.stackAllocator.allocator, singleErrorFmtText, .{errorText}) catch unreachable;
+	} else {
+		str = std.fmt.allocPrint(main.stackAllocator.allocator, multipleErrorFmtText, .{errorText, errorCount}) catch unreachable;
+	}
+	defer main.stackAllocator.free(str);
 	list.add(Label.init(.{padding, 16 + padding}, 256, str, .center));
 	list.add(Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openLog}));
 	list.finish(.center);
