@@ -936,9 +936,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => {
 				return .{.tool = try Tool.fromBytes(reader)};
 			},
-			.null => {
-				return .null;
-			},
+			.null => unreachable,
 		}
 	}
 

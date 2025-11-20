@@ -744,7 +744,7 @@ pub const Command = struct { // MARK: Command
 					const out: SyncOperation = .{.create = .{
 						.inv = try InventoryAndSlot.read(reader, .client, null),
 						.amount = try reader.readInt(u16),
-						.item = try Item.fromBytes(reader),
+						.item = if(reader.remaining.len > 0) try Item.fromBytes(reader) else .null,
 					}};
 					return out;
 				},
