@@ -983,7 +983,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		}
 	}
 
-	pub fn getImage(self: Item) ?graphics.Image {
+	pub fn getImage(self: Item) graphics.Image {
 		switch(self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.image();
@@ -991,7 +991,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				return _tool.image;
 			},
-			.null => return null,
+			.null => unreachable,
 		}
 	}
 

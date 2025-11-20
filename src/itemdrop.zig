@@ -632,7 +632,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				@memcpy(modelData.items[self.index..][0..self.len], data.items);
 			} else {
 				// Find sizes and free index:
-				const img = self.item.getImage().?;
+				const img = self.item.getImage();
 				const size = Vec3i{img.width, 1, img.height};
 				self.len = @intCast(3 + @reduce(.Mul, size));
 				self.index = getSlot(self.len);
