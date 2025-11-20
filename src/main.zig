@@ -693,3 +693,8 @@ test "abc" {
 	refAllDeclsRecursiveExceptCImports(@This());
 	_ = @import("zon.zig");
 }
+
+test "ThreadLocals in test" {
+	initThreadLocals();
+	deinitThreadLocals();
+}

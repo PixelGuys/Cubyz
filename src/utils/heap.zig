@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
@@ -9,8 +10,8 @@ var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allo
 pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 
 pub const allocators = struct { // MARK: allocators
-	pub var globalGpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
-	pub var handledGpa = ErrorHandlingAllocator.init(globalGpa.allocator());
+	pub var globalGpa: std.heap.GeneralPurposeAllocator(.{.thread_safe = true}) = if(builtin.is_test) undefined else .init;
+	pub var handledGpa = ErrorHandlingAllocator.init(if(builtin.is_test) std.testing.allocator else globalGpa.allocator());
 	pub var globalArenaAllocator: NeverFailingArenaAllocator = .init(handledGpa.allocator());
 	pub var worldArenaAllocator: NeverFailingArenaAllocator = undefined;
 	var worldArenaOpenCount: usize = 0;
@@ -20,10 +21,12 @@ pub const allocators = struct { // MARK: allocators
 		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.arena.queryCapacity() >> 20});
 		globalArenaAllocator.deinit();
 		globalArenaAllocator = undefined;
-		if(globalGpa.deinit() == .leak) {
-			std.log.err("Memory leak", .{});
+		if(!builtin.is_test) {
+			if(globalGpa.deinit() == .leak) {
+				std.log.err("Memory leak", .{});
+			}
+			globalGpa = undefined;
 		}
-		globalGpa = undefined;
 	}
 
 	pub fn createWorldArena() void {
