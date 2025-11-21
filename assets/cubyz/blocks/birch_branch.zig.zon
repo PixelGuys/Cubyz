@@ -38,7 +38,4 @@
 		.texture = "branch/birch.png",
 	},
 	.decayProhibitor = true,
-	.onBreak = .{
-		.type = .logBreak,
-	},
 }

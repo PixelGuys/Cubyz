@@ -35,7 +35,4 @@
 		.texture = "branch/toadstool.png",
 	},
 	.decayProhibitor = true,
-	.onBreak = .{
-		.type = .logBreak,
-	},
 }

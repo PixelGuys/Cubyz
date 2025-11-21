@@ -10,7 +10,4 @@
 	.texture_top = "cubyz:pine_log",
 	.texture_bottom = "cubyz:pine_log_top",
 	.decayProhibitor = true,
-	.onBreak = .{
-		.type = .logBreak,
-	},
 }

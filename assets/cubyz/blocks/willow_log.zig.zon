@@ -10,7 +10,4 @@
 	.texture_top = "cubyz:willow_log_top",
 	.texture_bottom = "cubyz:willow_log_top",
 	.decayProhibitor = true,
-	.onBreak = .{
-		.type = .logBreak,
-	},
 }

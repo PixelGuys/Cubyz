@@ -7,7 +7,6 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Server = main.server;
-const logBreak = @import("logBreak.zig");
 
 pub fn init(_: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
@@ -24,7 +23,7 @@ fn getIndexInCheckArray(relative_x: i32, relative_y: i32, relative_z: i32, check
 fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
 
 	// init array to mark already searched blocks.
-	const checkRange = logBreak.widerUpdaterRange;
+	const checkRange = 5;
 	const checkLength = checkRange*2 + 1;
 	var checked: [checkLength*checkLength*checkLength]bool = undefined;
 	for(0..checkLength*checkLength*checkLength) |i| {

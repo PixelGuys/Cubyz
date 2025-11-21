@@ -7,7 +7,4 @@
 	.rotation = "cubyz:log",
 	.model = "cubyz:cube",
 	.decayProhibitor = true,
-	.onBreak = .{
-		.type = .logBreak,
-	},
 }

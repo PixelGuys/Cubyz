@@ -35,7 +35,4 @@
 		.texture = "branch/willow.png",
 	},
 	.decayProhibitor = true,
-	.onBreak = .{
-		.type = .logBreak,
-	},
 }
