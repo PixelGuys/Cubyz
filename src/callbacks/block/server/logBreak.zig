@@ -27,8 +27,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 					if(X*X + Y*Y + Z*Z > widerUpdaterRange*widerUpdaterRange)
 						continue;
 
-					const length = @max(@abs(X), @abs(Y), @abs(Z));
-					_ = world.updateSystem.add(Vec3i{wx + X, wy + Y, wz + Z}, @as(u32, @intCast(length)));
+					_ = world.updateSystem.add(Vec3i{wx + X, wy + Y, wz + Z});
 				}
 			}
 		}

@@ -1256,7 +1256,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const px = wx + value.relX();
 			const py = wy + value.relY();
 			const pz = wz + value.relZ();
-			self.updateSystem.add(Vec3i{px, py, pz}, 1);
+			self.updateSystem.add(Vec3i{px, py, pz});
 		}
 	}
 
