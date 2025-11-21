@@ -51,9 +51,11 @@ pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledG
 pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
+var threadedIo: std.Io.Threaded = undefined;
+pub var io: std.Io = threadedIo.io();
 
 pub fn initThreadLocals() void {
-	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+	seed = @bitCast(@as(i64, @truncate(timestamp().nanoseconds)));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
 	heap.GarbageCollection.addThread();
@@ -62,6 +64,10 @@ pub fn initThreadLocals() void {
 pub fn deinitThreadLocals() void {
 	stackAllocatorBase.deinit();
 	heap.GarbageCollection.removeThread();
+}
+
+pub fn timestamp() std.Io.Timestamp {
+	return (std.Io.Clock.Timestamp.now(io, .awake) catch unreachable).raw;
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -224,9 +230,9 @@ fn initLogging() void {
 		return;
 	};
 
-	const _timestamp = std.time.timestamp();
+	const _timestamp = (std.Io.Clock.Timestamp.now(io, .real) catch unreachable).raw;
 
-	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp}) catch unreachable;
+	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
 	defer stackAllocator.free(_path_str);
 
 	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
@@ -267,7 +273,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	const writer = std.debug.lockStderrWriter(&.{});
 	defer std.debug.unlockStderrWriter();
-	nosuspend writer.writeAll(string) catch {};
+	nosuspend writer[0].writeAll(string) catch {};
 }
 
 // MARK: Callbacks
@@ -490,6 +496,8 @@ pub fn main() void { // MARK: main()
 	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
+	threadedIo = .init(globalAllocator.allocator);
+	defer threadedIo.deinit();
 
 	initLogging();
 	defer deinitLogging();
@@ -585,7 +593,7 @@ pub fn clientMain() void { // MARK: clientMain()
 
 	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastBeginRendering = std.time.nanoTimestamp();
+	var lastBeginRendering = timestamp();
 
 	if(settings.launchConfig.autoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
@@ -608,11 +616,11 @@ pub fn clientMain() void { // MARK: clientMain()
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		} else {
-			std.Thread.sleep(16_000_000);
+			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
 
-		const endRendering = std.time.nanoTimestamp();
-		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+		const endRendering = timestamp();
+		const frameTime = @as(f64, @floatFromInt(endRendering.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
 		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
 			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
 			std.posix.exit(1);
@@ -621,11 +629,11 @@ pub fn clientMain() void { // MARK: clientMain()
 
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
-			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-			std.Thread.sleep(sleep);
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering.nanoseconds -% lastBeginRendering.nanoseconds)));
+			io.sleep(.fromNanoseconds(sleep), .awake) catch {};
 		}
-		const begin = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+		const begin = timestamp();
+		const deltaTime = @as(f64, @floatFromInt(begin.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
 		lastDeltaTime.store(deltaTime, .monotonic);
 		lastBeginRendering = begin;
 
@@ -643,7 +651,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			} else {
 				renderer.updateFov(70.0);
-				renderer.MenuBackGround.render();
+				renderer.MenuBackGround.render(deltaTime);
 			}
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);

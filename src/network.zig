@@ -14,7 +14,7 @@ pub const protocols = @import("network/protocols.zig");
 
 const ms = 1_000;
 inline fn networkTimestamp() i64 {
-	return std.time.microTimestamp();
+	return @truncate(@divTrunc(main.timestamp().toNanoseconds(), 1000));
 }
 
 const Socket = struct {
@@ -252,7 +252,7 @@ const stun = struct { // MARK: stun
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
-		std.mem.writeInt(i128, seed[0..16], std.time.nanoTimestamp(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
+		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
 		for(0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
@@ -1299,7 +1299,7 @@ pub const Connection = struct { // MARK: Connection
 		self.tryReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
 			if(@errorReturnTrace()) |trace| {
-				std.log.info("{f}", .{trace});
+				std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
 			}
 			std.log.debug("Packet data: {any}", .{data});
 			self.disconnect();

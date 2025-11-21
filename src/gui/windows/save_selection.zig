@@ -62,7 +62,7 @@ pub fn openWorld(name: []const u8) void {
 	};
 
 	while(!main.server.running.load(.acquire)) {
-		std.Thread.sleep(1_000_000);
+		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		main.heap.GarbageCollection.syncPoint();
 	}
 	clientConnection.world = &main.game.testWorld;

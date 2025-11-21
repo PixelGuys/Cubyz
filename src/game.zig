@@ -632,7 +632,7 @@ pub const World = struct { // MARK: World
 			.conn = try Connection.init(manager, ip, null),
 			.manager = manager,
 			.name = "client",
-			.milliTime = std.time.milliTimestamp(),
+			.milliTime = main.timestamp().toMilliseconds(),
 		};
 		errdefer self.conn.deinit();
 
@@ -737,7 +737,7 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn update(self: *World) void {
-		const newTime: i64 = std.time.milliTimestamp();
+		const newTime: i64 = main.timestamp().toMilliseconds();
 		while(self.milliTime +% 100 -% newTime < 0) {
 			self.milliTime +%= 100;
 			var curTime = self.gameTime.load(.monotonic);
@@ -765,12 +765,12 @@ pub var projectionMatrix: Mat4f = Mat4f.identity();
 var biomeFog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 
-var nextBlockPlaceTime: ?i64 = null;
-var nextBlockBreakTime: ?i64 = null;
+var nextBlockPlaceTime: ?std.Io.Timestamp = null;
+var nextBlockBreakTime: ?std.Io.Timestamp = null;
 
 pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
-	const time = std.time.milliTimestamp();
-	nextBlockPlaceTime = time + main.settings.updateRepeatDelay;
+	const time = main.timestamp();
+	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
 	Player.placeBlock(mods);
 }
 
@@ -779,8 +779,8 @@ pub fn releasePlace(_: main.Window.Key.Modifiers) void {
 }
 
 pub fn pressBreak(_: main.Window.Key.Modifiers) void {
-	const time = std.time.milliTimestamp();
-	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
+	const time = main.timestamp();
+	nextBlockBreakTime = time.addDuration(main.settings.updateRepeatDelay);
 	Player.breakBlock(0);
 }
 
@@ -972,16 +972,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	physics.update(deltaTime, acc, jumping);
 
-	const time = std.time.milliTimestamp();
+	const time = main.timestamp();
 	if(nextBlockPlaceTime) |*placeTime| {
-		if(time -% placeTime.* >= 0) {
-			placeTime.* += main.settings.updateRepeatSpeed;
+		if(placeTime.durationTo(time).nanoseconds >= 0) {
+			placeTime.* = placeTime.addDuration(main.settings.updateRepeatSpeed);
 			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {
-		if(time -% breakTime.* >= 0 or !Player.isCreative()) {
-			breakTime.* += main.settings.updateRepeatSpeed;
+		if(breakTime.durationTo(time).nanoseconds >= 0 or !Player.isCreative()) {
+			breakTime.* = breakTime.addDuration(main.settings.updateRepeatSpeed);
 			Player.breakBlock(deltaTime);
 		}
 	}

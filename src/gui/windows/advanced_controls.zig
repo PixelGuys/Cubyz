@@ -21,27 +21,27 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 fn delayCallback(newValue: f32) void {
-	settings.updateRepeatDelay = @intFromFloat(newValue);
+	settings.updateRepeatDelay.nanoseconds = @intFromFloat(newValue);
 	settings.save();
 }
 
 fn delayFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Delay: {d:.0} ms", .{value}) catch unreachable;
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Delay: {d:.0} ms", .{value/1.0e6}) catch unreachable;
 }
 
 fn speedCallback(newValue: f32) void {
-	settings.updateRepeatSpeed = @intFromFloat(newValue);
+	settings.updateRepeatSpeed.nanoseconds = @intFromFloat(newValue);
 	settings.save();
 }
 
 fn speedFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Speed: {d:.0} ms", .{value}) catch unreachable;
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Speed: {d:.0} ms", .{value/1.0e6}) catch unreachable;
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 1000.0, @floatFromInt(settings.updateRepeatDelay), &delayCallback, &delayFormatter));
-	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 500.0, @floatFromInt(settings.updateRepeatSpeed), &speedCallback, &speedFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 1000.0, @floatFromInt(settings.updateRepeatDelay.nanoseconds), &delayCallback, &delayFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 500.0, @floatFromInt(settings.updateRepeatSpeed.nanoseconds), &speedCallback, &speedFormatter));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

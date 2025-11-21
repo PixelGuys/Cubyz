@@ -708,7 +708,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 pub const GarbageCollection = struct { // MARK: GarbageCollection
 	var sharedState: std.atomic.Value(u32) = .init(0);
 	threadlocal var threadCycle: u2 = undefined;
-	threadlocal var lastSyncPointTime: i64 = undefined;
+	threadlocal var lastSyncPointTime: std.Io.Timestamp = undefined;
 	const FreeItem = struct {
 		ptr: *anyopaque,
 		freeFunction: *const fn(*anyopaque) void,
@@ -725,7 +725,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		const old: State = @bitCast(sharedState.fetchAdd(@bitCast(State{.totalThreads = 1}), .monotonic));
 		_ = old.totalThreads + 1; // Assert no overflow
 		threadCycle = old.cycle;
-		lastSyncPointTime = std.time.milliTimestamp();
+		lastSyncPointTime = main.timestamp();
 		for(&lists) |*list| {
 			list.* = .initCapacity(main.globalAllocator, 1024);
 		}
@@ -744,10 +744,10 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		const old: State = @bitCast(sharedState.fetchSub(@bitCast(State{.totalThreads = 1}), .monotonic));
 		_ = old.totalThreads - 1; // Assert no overflow
 		if(old.cycle != threadCycle) removeThreadFromWaiting();
-		const newTime = std.time.milliTimestamp();
-		if(newTime -% lastSyncPointTime > 20_000) {
+		const newTime = main.timestamp();
+		if(lastSyncPointTime.durationTo(newTime).toSeconds() > 20) {
 			if(!build_options.isTaggedRelease) {
-				std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{newTime -% lastSyncPointTime});
+				std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{lastSyncPointTime.durationTo(newTime).toMilliseconds()});
 				std.debug.dumpCurrentStackTrace(.{});
 			}
 		}
@@ -781,9 +781,9 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 
 	/// Must be called when no objects originating from other threads are held on the current function stack
 	pub fn syncPoint() void {
-		const newTime = std.time.milliTimestamp();
-		if(newTime -% lastSyncPointTime > 20_000) {
-			std.log.err("No sync point executed in {} ms. Did you forget to add a sync point in the thread's main loop", .{newTime -% lastSyncPointTime});
+		const newTime = main.timestamp();
+		if(lastSyncPointTime.durationTo(newTime).toSeconds() > 20) {
+			std.log.err("No sync point executed in {} ms. Did you forget to add a sync point in the thread's main loop", .{lastSyncPointTime.durationTo(newTime).toMilliseconds()});
 			std.debug.dumpCurrentStackTrace(.{});
 		}
 		lastSyncPointTime = newTime;
@@ -804,11 +804,11 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		const startCycle = threadCycle;
 		while(threadCycle == startCycle) {
 			syncPoint();
-			std.Thread.sleep(1_000_000);
+			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		}
 		while(threadCycle != startCycle) {
 			syncPoint();
-			std.Thread.sleep(1_000_000);
+			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		}
 	}
 };

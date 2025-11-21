@@ -394,7 +394,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
+		writer.writeInt(i16, @truncate(main.timestamp().toMilliseconds()));
 		writer.writeVec(Vec3d, playerPos);
 		for(entityData) |data| {
 			const velocityMagnitudeSqr = vec.lengthSquare(data.vel);

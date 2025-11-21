@@ -651,7 +651,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.waitingThreads.broadcast();
 			while(self.waitingThreadCount != 0) {
 				self.mutex.unlock();
-				std.Thread.sleep(1000000);
+				main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 				self.mutex.lock();
 			}
 			self.mutex.unlock();
@@ -749,7 +749,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.mutex.lock();
 			defer self.mutex.unlock();
 
-			const startTime = std.time.nanoTimestamp();
+			const startTime = main.timestamp();
 
 			while(true) {
 				if(self.size == 0) {
@@ -764,7 +764,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 				if(self.closed) {
 					return error.Closed;
 				}
-				if(std.time.nanoTimestamp() -% startTime > 10_000_000) return error.Timeout;
+				if(startTime.durationTo(main.timestamp()).toMilliseconds() > 10) return error.Timeout;
 			}
 		}
 
@@ -833,7 +833,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			return self.*;
 		}
 	};
-	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
+	const refreshTime: std.Io.Duration = .fromMilliseconds(100); // The time after which all priorities get refreshed.
 
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
@@ -898,7 +898,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Wait for active tasks:
 		for(self.currentTasks) |*task| {
 			while(task.load(.monotonic) == vtable) {
-				std.Thread.sleep(1e6);
+				main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 			}
 		}
 	}
@@ -907,7 +907,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
 
-		var lastUpdate = std.time.milliTimestamp();
+		var lastUpdate = main.timestamp();
 		outer: while(true) {
 			main.heap.GarbageCollection.syncPoint();
 			{
@@ -916,15 +916,15 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					error.Closed => break :outer,
 				};
 				self.currentTasks[id].store(task.vtable, .monotonic);
-				const start = std.time.microTimestamp();
+				const start = main.timestamp();
 				task.vtable.run(task.self);
-				const end = std.time.microTimestamp();
-				self.performance.add(task.vtable.taskType, end - start);
+				const end = main.timestamp();
+				self.performance.add(task.vtable.taskType, @intCast(@divTrunc(start.durationTo(end).toNanoseconds(), 1000)));
 				self.currentTasks[id].store(null, .monotonic);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
 			}
 
-			if(id == 0 and std.time.milliTimestamp() -% lastUpdate > refreshTime) {
+			if(id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
 				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
 				defer temporaryTaskList.deinit();
 				while(self.loadList.extractAny()) |task| {
@@ -938,7 +938,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					}
 				}
 				self.loadList.addMany(temporaryTaskList.items);
-				lastUpdate = std.time.milliTimestamp();
+				lastUpdate = main.timestamp();
 			}
 		}
 	}
@@ -969,7 +969,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					break;
 				}
 			}
-			std.Thread.sleep(1000000);
+			main.io.sleep(.fromMilliseconds(1000000), .awake) catch {};
 		}
 	}
 
@@ -1577,7 +1577,7 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
-		const currentTime: i16 = @truncate(std.time.milliTimestamp());
+		const currentTime: i16 = @truncate(main.timestamp().toMilliseconds());
 		const timeDifference = currentTime -% time;
 		if(self.firstValue) {
 			self.difference.store(timeDifference, .monotonic);

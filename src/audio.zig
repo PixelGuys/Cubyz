@@ -192,7 +192,6 @@ pub fn init() error{miniaudioError}!void {
 	try handleError(c.ma_device_start(&device));
 
 	sampleRate = 44100;
-	lastTime = std.time.milliTimestamp();
 }
 
 pub fn deinit() void {
@@ -239,7 +238,6 @@ const currentMusic = struct {
 };
 
 var activeMusicId: []const u8 = &.{};
-var lastTime: i64 = 0;
 var partialFrame: f32 = 0;
 const animationLengthInSeconds = 5.0;
 
