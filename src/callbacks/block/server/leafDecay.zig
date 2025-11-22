@@ -48,30 +48,27 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 	while(queue.popFront()) |value| {
 		// get the (potential) log
 		if(world.getBlock(value[0] + wx, value[1] + wy, value[2] + wz)) |log| {
-			// it is a log
-			// end search.
+			// it is a log ? end search.
 			if(log.decayProhibitor()) {
 				return true;
 			}
-			// it is the same type of leaf
-			// continue search!
-			else if(log.typ == leaf.typ) {
-				for(main.chunk.Neighbor.iterable) |offset| {
-					// relative position
-					const X = value[0] + offset.relX();
-					const Y = value[1] + offset.relY();
-					const Z = value[2] + offset.relZ();
+			// it is the same type of leaf? continue search!
+			if(log.typ != leaf.typ) continue;
+			for(main.chunk.Neighbor.iterable) |offset| {
+				// relative position
+				const X = value[0] + offset.relX();
+				const Y = value[1] + offset.relY();
+				const Z = value[2] + offset.relZ();
 
-					// out of range
-					if(X*X + Y*Y + Z*Z > checkRange*checkRange)
-						continue;
+				// out of range
+				if(X*X + Y*Y + Z*Z > checkRange*checkRange)
+					continue;
 
-					// mark as checked
-					if(checked[getIndexInCheckArray(X, Y, Z, checkRange)])
-						continue;
-					checked[getIndexInCheckArray(X, Y, Z, checkRange)] = true;
-					queue.pushBack(Vec3i{X, Y, Z});
-				}
+				// mark as checked
+				if(checked[getIndexInCheckArray(X, Y, Z, checkRange)])
+					continue;
+				checked[getIndexInCheckArray(X, Y, Z, checkRange)] = true;
+				queue.pushBack(Vec3i{X, Y, Z});
 			}
 		}
 	}
