@@ -73,6 +73,13 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const wx = params.chunk.super.pos.wx + params.x;
 	const wy = params.chunk.super.pos.wy + params.y;
 	const wz = params.chunk.super.pos.wz + params.z;
+	
+	if(params.block.mode() == main.rotation.getByID("cubyz:decayable")){
+		if(params.block.data != 0)
+			return .ignored;
+	}else{
+		std.log.err("Expected {s} to have cubyz:decayable rotation", .{params.block.id()});
+	}
 
 	main.items.Inventory.Sync.ServerSide.mutex.lock();
 	defer main.items.Inventory.Sync.ServerSide.mutex.unlock();

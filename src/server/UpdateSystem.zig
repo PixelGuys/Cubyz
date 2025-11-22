@@ -24,7 +24,7 @@ pub const UpdateSystem = struct {
 		self.list.append(main.globalAllocator, position);
 	}
 	pub fn update(self: *UpdateSystem, world: *main.server.ServerWorld) void {
-		//swap
+		// swap
 		self.mutex.lock();
 		const list = self.list;
 		defer list.deinit(main.globalAllocator);
