@@ -420,7 +420,9 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn onUpdate(self: Block) ServerBlockCallback {
 		return _onUpdate[self.typ];
 	}
-
+	pub inline fn decayProhibitor(self: Block) bool {
+		return _decayProhibitor[self.typ];
+	}
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
 	}
@@ -439,10 +441,6 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
-	}
-
-	pub inline fn decayProhibitor(self: Block) bool {
-		return _decayProhibitor[self.typ];
 	}
 
 	pub inline fn friction(self: Block) f32 {

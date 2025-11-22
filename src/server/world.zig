@@ -26,7 +26,7 @@ const Palette = main.assets.Palette;
 const storage = @import("storage.zig");
 const Gamemode = main.game.Gamemode;
 
-const UpdateSystem = @import("UpdateSystem.zig").UpdateSystem;
+const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 
 pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
@@ -126,21 +126,21 @@ pub const EntityChunk = struct {
 	chunk: std.atomic.Value(?*ServerChunk) = .init(null),
 	refCount: std.atomic.Value(u32),
 	pos: chunk.ChunkPosition,
-	updateSystem: UpdateSystem,
+	blockUpdateSystem: BlockUpdateSystem,
 
 	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *EntityChunk {
 		const self = main.globalAllocator.create(EntityChunk);
 		self.* = .{
 			.refCount = .init(1),
 			.pos = pos,
-			.updateSystem = .init(),
+			.blockUpdateSystem = .init(),
 		};
 		return self;
 	}
 
 	fn deinit(self: *EntityChunk) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
-		self.updateSystem.deinit();
+		self.blockUpdateSystem.deinit();
 		if(self.chunk.raw) |ch| ch.decreaseRefCount();
 		main.globalAllocator.destroy(self);
 	}
@@ -171,7 +171,7 @@ pub const EntityChunk = struct {
 
 	pub fn update(self: *EntityChunk) void {
 		if(self.getChunk()) |serverChunk| {
-			self.updateSystem.update(serverChunk);
+			self.blockUpdateSystem.update(serverChunk);
 		}
 	}
 };
@@ -1277,7 +1277,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			var ch = self.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse continue;
 			defer ch.decreaseRefCount();
 
-			ch.updateSystem.add(pos);
+			ch.blockUpdateSystem.add(pos);
 		}
 	}
 

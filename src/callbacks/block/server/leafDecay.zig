@@ -81,8 +81,6 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		std.log.err("Expected {s} to have cubyz:decayable rotation", .{params.block.id()});
 	}
 
-	main.items.Inventory.Sync.ServerSide.mutex.lock();
-	defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 
 	if(Server.world) |world| {
 		if(world.getBlock(wx, wy, wz)) |leaf| {
@@ -91,6 +89,8 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 				return .ignored;
 
 			// no, there is no log in proximity
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
 				return .handled;
 			}
