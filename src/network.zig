@@ -18,12 +18,36 @@ inline fn networkTimestamp() i64 {
 }
 
 const Socket = struct {
+	const ws2 = @cImport({
+		@cInclude("winsock2.h");
+	});
 	const posix = std.posix;
-	socketID: posix.socket_t,
+	socketID: if(builtin.os.tag == .windows) ws2.SOCKET else posix.socket_t,
+
+	fn windowsError(err: c_int) !void {
+		if(err == 0) return;
+		switch(err) {
+			ws2.WSASYSNOTREADY => return error.WSASYSNOTREADY,
+			ws2.WSAVERNOTSUPPORTED => return error.WSAVERNOTSUPPORTED,
+			ws2.WSAEINPROGRESS => return error.WSAEINPROGRESS,
+			ws2.WSAEPROCLIM => return error.WSAEPROCLIM,
+			ws2.WSAEFAULT => return error.WSAEFAULT,
+			ws2.WSANOTINITIALISED => return error.WSANOTINITIALISED,
+			ws2.WSAENETDOWN => return error.WSAENETDOWN,
+			ws2.WSAEACCES => return error.WSAEACCES,
+			ws2.WSAEADDRINUSE => return error.WSAEADDRINUSE,
+			ws2.WSAEADDRNOTAVAIL => return error.WSAEADDRNOTAVAIL,
+			ws2.WSAEINVAL => return error.WSAEINVAL,
+			ws2.WSAENOBUFS => return error.WSAENOBUFS,
+			ws2.WSAENOTSOCK => return error.WSAENOTSOCK,
+			else => return error.UNKNOWN,
+		}
+	}
 
 	fn startup() void {
 		if(builtin.os.tag == .windows) {
-			_ = std.os.windows.WSAStartup(2, 2) catch |err| {
+			var data: ws2.WSADATA = undefined;
+			windowsError(ws2.WSAStartup(0x0202, &data)) catch |err| {
 				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
 				@panic("Could not init networking.");
 			};
@@ -32,19 +56,40 @@ const Socket = struct {
 
 	fn init(localPort: u16) !Socket {
 		const self = Socket{
-			.socketID = try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP),
+			.socketID = blk: {
+				if(builtin.os.tag == .windows) {
+					const socket = ws2.socket(ws2.AF_INET, ws2.SOCK_DGRAM, ws2.IPPROTO_UDP);
+					if(socket == ws2.INVALID_SOCKET) {
+						try windowsError(ws2.WSAGetLastError());
+						return error.UNKNOWN;
+					}
+					break :blk socket;
+				} else {
+					break :blk try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
+				}
+			},
 		};
 		errdefer self.deinit();
 		const bindingAddr = posix.sockaddr.in{
 			.port = @byteSwap(localPort),
 			.addr = 0,
 		};
-		try posix.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
+		if(builtin.os.tag == .windows) {
+			if(ws2.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == ws2.SOCKET_ERROR) {
+				try windowsError(ws2.WSAGetLastError());
+			}
+		} else {
+			try posix.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
+		}
 		return self;
 	}
 
 	fn deinit(self: Socket) void {
-		posix.close(self.socketID);
+		if(builtin.os.tag == .windows) {
+			_ = ws2.closesocket(self.socketID);
+		} else {
+			posix.close(self.socketID);
+		}
 	}
 
 	fn send(self: Socket, data: []const u8, destination: Address) void {
@@ -52,19 +97,17 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
-			const sendto = struct {
-				extern "c" fn sendto(sockfd: posix.system.fd_t, buf: *const anyopaque, len: usize, flags: u32, dest_addr: ?*const posix.system.sockaddr, addrlen: posix.system.socklen_t) c_int;
-			}.sendto;
-			const result = sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
-			if(result < 0) {
-				std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())});
+		if(builtin.os.tag == .windows) {
+			const result = ws2.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			if(result == ws2.SOCKET_ERROR) {
+				const err: anyerror = if(windowsError(ws2.WSAGetLastError())) error.Unknown else |err| err;
+				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 			} else {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);
 			}
 		} else {
 			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-				std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
+				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 				return;
 			});
 		}
@@ -72,20 +115,14 @@ const Socket = struct {
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
 		if(builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
-			var pfd = [1]posix.pollfd{
+			var pfd = [1]ws2.pollfd{
 				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
 			};
-			const length = std.os.windows.ws2_32.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
-			if(length == std.os.windows.ws2_32.SOCKET_ERROR) {
-				switch(std.os.windows.ws2_32.WSAGetLastError()) {
-					.WSANOTINITIALISED => unreachable,
-					.WSAENETDOWN => return error.NetworkSubsystemFailed,
-					.WSAENOBUFS => return error.SystemResources,
-					// TODO: handle more errors
-					else => |err| return std.os.windows.unexpectedWSAError(err),
-				}
+			const length = ws2.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
+			if(length == ws2.SOCKET_ERROR) {
+				try windowsError(ws2.WSAGetLastError());
 			} else if(length == 0) {
-				std.Thread.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
+				main.io.sleep(.fromMilliseconds(1), .awake) catch {}; // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
 			}
 		} else {
@@ -96,8 +133,19 @@ const Socket = struct {
 			if(length == 0) return error.Timeout;
 		}
 		var addr: posix.sockaddr.in = undefined;
-		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-		const length = try posix.recvfrom(self.socketID, buffer, 0, @ptrCast(&addr), &addrLen);
+		const length: usize = blk: {
+			if(builtin.os.tag == .windows) {
+				var addrLen: c_int = @sizeOf(posix.sockaddr.in);
+				const result = ws2.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
+				if(result == ws2.SOCKET_ERROR) {
+					try windowsError(ws2.WSAGetLastError());
+				}
+				break :blk @intCast(result);
+			} else {
+				var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+				break :blk try posix.recvfrom(self.socketID, buffer, 0, @ptrCast(&addr), &addrLen);
+			}
+		};
 		resultAddress.ip = addr.addr;
 		resultAddress.port = @byteSwap(addr.port);
 		return buffer[0..length];
@@ -127,8 +175,15 @@ const Socket = struct {
 
 	fn getPort(self: Socket) !u16 {
 		var addr: posix.sockaddr.in = undefined;
-		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-		try posix.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+		if(builtin.os.tag == .windows) {
+			var addrLen: c_int = @sizeOf(posix.sockaddr.in);
+			if(ws2.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == ws2.SOCKET_ERROR) {
+				try windowsError(ws2.WSAGetLastError());
+			}
+		} else {
+			var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+			try posix.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+		}
 		return @byteSwap(addr.port);
 	}
 };
@@ -1509,7 +1564,7 @@ pub const Connection = struct { // MARK: Connection
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
-			std.Thread.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
