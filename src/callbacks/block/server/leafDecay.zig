@@ -81,7 +81,6 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		std.log.err("Expected {s} to have cubyz:decayable rotation", .{params.block.id()});
 	}
 
-
 	if(Server.world) |world| {
 		if(world.getBlock(wx, wy, wz)) |leaf| {
 			// check if there is any log in the proximity?^

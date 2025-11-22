@@ -1277,7 +1277,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			var ch = self.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse continue;
 			defer ch.decreaseRefCount();
 
-			ch.blockUpdateSystem.add(pos);
+			ch.blockUpdateSystem.add(.{
+				.x = @truncate(@as(u32, @bitCast(pos[0]))),
+				.y = @truncate(@as(u32, @bitCast(pos[1]))),
+				.z = @truncate(@as(u32, @bitCast(pos[2]))),
+			});
 		}
 	}
 
