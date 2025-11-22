@@ -26,6 +26,8 @@ const Palette = main.assets.Palette;
 const storage = @import("storage.zig");
 const Gamemode = main.game.Gamemode;
 
+const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
+
 pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
 	allowCheats: bool = false,
@@ -124,18 +126,21 @@ pub const EntityChunk = struct {
 	chunk: std.atomic.Value(?*ServerChunk) = .init(null),
 	refCount: std.atomic.Value(u32),
 	pos: chunk.ChunkPosition,
+	blockUpdateSystem: BlockUpdateSystem,
 
 	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *EntityChunk {
 		const self = main.globalAllocator.create(EntityChunk);
 		self.* = .{
 			.refCount = .init(1),
 			.pos = pos,
+			.blockUpdateSystem = .init(),
 		};
 		return self;
 	}
 
-	fn deinit(self: *const EntityChunk) void {
+	fn deinit(self: *EntityChunk) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+		self.blockUpdateSystem.deinit();
 		if(self.chunk.raw) |ch| ch.decreaseRefCount();
 		main.globalAllocator.destroy(self);
 	}
@@ -162,6 +167,12 @@ pub const EntityChunk = struct {
 
 	pub fn setChunkAndDecreaseRefCount(self: *EntityChunk, ch: *ServerChunk) void {
 		std.debug.assert(self.chunk.swap(ch, .release) == null);
+	}
+
+	pub fn update(self: *EntityChunk) void {
+		if(self.getChunk()) |serverChunk| {
+			self.blockUpdateSystem.update(serverChunk);
+		}
 	}
 };
 
@@ -1062,6 +1073,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer entityChunk.decreaseRefCount();
 			const ch = entityChunk.getChunk() orelse continue;
 			self.tickBlocksInChunk(ch);
+			entityChunk.update();
 		}
 	}
 
@@ -1175,7 +1187,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	/// Returns the actual block on failure
-	pub fn cmpxchgBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
+	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
 		main.utils.assertLocked(&main.items.Inventory.Sync.ServerSide.mutex); // Block entities with inventories need this mutex to be locked
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
@@ -1237,7 +1249,39 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		for(userList) |user| {
 			main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
+		// onBreak event
+		if(oldBlock) |block| {
+			if(block.typ != newBlock.typ) {
+				_ = block.onBreak().run(.{
+					.block = block,
+					.chunk = baseChunk,
+					.x = x,
+					.y = y,
+					.z = z,
+				});
+			}
+		}
+		self.triggerNeighborBlockUpdates(wx, wy, wz);
+
 		return null;
+	}
+	pub fn triggerNeighborBlockUpdates(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
+		for(chunk.Neighbor.iterable) |value| {
+			const pos = Vec3i{
+				wx + value.relX(),
+				wy + value.relY(),
+				wz + value.relZ(),
+			};
+
+			var ch = self.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse continue;
+			defer ch.decreaseRefCount();
+
+			ch.blockUpdateSystem.add(.{
+				.x = @truncate(@as(u32, @bitCast(pos[0]))),
+				.y = @truncate(@as(u32, @bitCast(pos[1]))),
+				.z = @truncate(@as(u32, @bitCast(pos[2]))),
+			});
+		}
 	}
 
 	pub fn updateBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, newBlock: Block) void {
