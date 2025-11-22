@@ -1266,7 +1266,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return null;
 	}
 	pub fn triggerNeighborBlockUpdates(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
-		// trigger updates:
 		for(chunk.Neighbor.iterable) |value| {
 			const pos = Vec3i{
 				wx + value.relX(),
