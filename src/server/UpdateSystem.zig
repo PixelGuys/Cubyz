@@ -23,27 +23,32 @@ pub const UpdateSystem = struct {
 		defer self.mutex.unlock();
 		self.list.append(main.globalAllocator, position);
 	}
-	pub fn update(self: *UpdateSystem, world: *main.server.ServerWorld) void {
+	pub fn update(self: *UpdateSystem, ch: *main.chunk.ServerChunk) void {
 		// swap
 		self.mutex.lock();
 		const list = self.list;
 		defer list.deinit(main.globalAllocator);
 		self.list = .{};
 		self.mutex.unlock();
+		
 
 		// handle events
 		for(list.items) |event| {
-			var ch = world.getChunkFromCacheAndIncreaseRefCount(main.chunk.ChunkPosition.initFromWorldPos(event, 1)) orelse continue;
-			defer ch.decreaseRefCount();
-			if(world.getBlock(event[0], event[1], event[2])) |block| {
-				_ = block.onUpdate().run(.{
-					.block = block,
-					.chunk = ch,
-					.x = event[0] & main.chunk.chunkMask,
-					.y = event[1] & main.chunk.chunkMask,
-					.z = event[2] & main.chunk.chunkMask,
-				});
-			}
+			const x = event[0] & main.chunk.chunkMask;
+			const y = event[1] & main.chunk.chunkMask;
+			const z = event[2] & main.chunk.chunkMask;
+			
+			ch.mutex.lock();
+			const block = ch.getBlock(x,y,z);
+			ch.mutex.unlock();
+
+			_ = block.onUpdate().run(.{
+				.block = block,
+				.chunk = ch,
+				.x = x,
+				.y = y,
+				.z = z,
+			});
 		}
 	}
 };

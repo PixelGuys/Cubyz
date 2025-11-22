@@ -126,18 +126,21 @@ pub const EntityChunk = struct {
 	chunk: std.atomic.Value(?*ServerChunk) = .init(null),
 	refCount: std.atomic.Value(u32),
 	pos: chunk.ChunkPosition,
+	updateSystem:UpdateSystem,
 
 	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *EntityChunk {
 		const self = main.globalAllocator.create(EntityChunk);
 		self.* = .{
 			.refCount = .init(1),
 			.pos = pos,
+			.updateSystem = .init(),
 		};
 		return self;
 	}
 
-	fn deinit(self: *const EntityChunk) void {
+	fn deinit(self: *EntityChunk) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+		self.updateSystem.deinit();
 		if(self.chunk.raw) |ch| ch.decreaseRefCount();
 		main.globalAllocator.destroy(self);
 	}
@@ -164,6 +167,12 @@ pub const EntityChunk = struct {
 
 	pub fn setChunkAndDecreaseRefCount(self: *EntityChunk, ch: *ServerChunk) void {
 		std.debug.assert(self.chunk.swap(ch, .release) == null);
+	}
+
+	pub fn update(self: *EntityChunk)void{
+		if(self.getChunk())|serverChunk|{
+			self.updateSystem.update(serverChunk);
+		}
 	}
 };
 
@@ -548,8 +557,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	biomeChecksum: i64 = 0,
 
-	updateSystem: UpdateSystem,
-
 	const ChunkUpdateRequest = struct {
 		ch: *ServerChunk,
 		milliTimeStamp: i64,
@@ -570,7 +577,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
-			.updateSystem = .init(),
 		};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
@@ -645,7 +651,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.decreaseRefCount();
 		}
 		self.regionUpdateQueue.deinit();
-		self.updateSystem.deinit();
 		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
@@ -1063,13 +1068,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		ChunkManager.mutex.unlock();
 
-		// event queue
-		self.updateSystem.update(self);
 		// tick blocks
 		for(currentChunks.items) |entityChunk| {
 			defer entityChunk.decreaseRefCount();
 			const ch = entityChunk.getChunk() orelse continue;
 			self.tickBlocksInChunk(ch);
+			entityChunk.update();
 		}
 	}
 
@@ -1264,10 +1268,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	pub fn triggerNeighborBlockUpdates(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
 		// trigger updates:
 		for(chunk.Neighbor.iterable) |value| {
-			const px = wx + value.relX();
-			const py = wy + value.relY();
-			const pz = wz + value.relZ();
-			self.updateSystem.add(Vec3i{px, py, pz});
+			const pos = Vec3i{
+				wx + value.relX(),
+				wy + value.relY(),
+				wz + value.relZ(),
+			};
+
+			var ch = self.getSimulationChunkAndIncreaseRefCount(pos[0],pos[1],pos[2]) orelse continue;
+			defer ch.decreaseRefCount();
+
+			ch.updateSystem.add(pos);
 		}
 	}
 
