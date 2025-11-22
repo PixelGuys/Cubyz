@@ -16,7 +16,7 @@ pub const c = @cImport({
 });
 
 var isFullscreen: bool = false;
-pub var viewportYOffset: c_int = 0;
+var viewportYOffset: c_int = 0;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
@@ -507,10 +507,10 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	}
 
 	pub fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.c) void {
-    	std.log.info("Framebuffer Raw: {}, {}", .{newWidth, newHeight});
+    	std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
 		height = @intCast(newHeight - viewportYOffset);
-		main.renderer.updateViewport(500, 500);
+		main.renderer.updateViewport(width, height);
 		main.gui.updateGuiScale();
 		main.gui.updateWindowPositions();
 	}
@@ -521,9 +521,10 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	var currentPos: Vec2f = Vec2f{0, 0};
 	var ignoreDataAfterRecentGrab: bool = true;
 	fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.c) void {
+		const adjustedY = y - @as(f64, @floatFromInt(viewportYOffset));
 		const newPos = Vec2f{
 			@floatCast(x),
-			@floatCast(y),
+			@floatCast(adjustedY),
 		};
 		if(grabbed and !ignoreDataAfterRecentGrab) {
 			var newDelta = (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
@@ -768,9 +769,14 @@ pub fn toggleFullscreen(_: Key.Modifiers) void {
 		const vidMode = c.glfwGetVideoMode(monitor).?;
 		if (main.settings.windowedFullscreen) {
 			c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, c.GLFW_FALSE);
-			// Make the window 1 pixel taller so that Windows keeps it in windowed mode.
-			viewportYOffset = 100;
-			c.glfwSetWindowMonitor(window, null, 0, 0, vidMode[0].width, vidMode[0].height + viewportYOffset, c.GLFW_DONT_CARE);
+<<<<<<< HEAD
+			
+			if(builtin.os.tag == .windows) {
+				// Make the window 1 pixel taller so that Windows keeps it in windowed mode.
+				viewportYOffset = 1;
+			}
+>>>>>>> e9354aaf (Access builtin.os.tag directly)
+			c.glfwSetWindowMonitor(window, null, 0, -viewportYOffset, vidMode[0].width, vidMode[0].height + viewportYOffset, c.GLFW_DONT_CARE);
 		} else {
 			c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode[0].width, vidMode[0].height, c.GLFW_DONT_CARE);
 		}
