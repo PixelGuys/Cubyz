@@ -16,11 +16,12 @@ pub const c = @cImport({
 });
 
 var isFullscreen: bool = false;
-pub var lastUsedMouse: bool = true;
+pub var viewportYOffset: c_int = 0;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
 pub var vulkanWindow: *c.GLFWwindow = undefined;
+pub var lastUsedMouse: bool = true;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
 
@@ -506,10 +507,10 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	}
 
 	pub fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.c) void {
-		std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
+    	std.log.info("Framebuffer Raw: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
-		height = @intCast(newHeight);
-		main.renderer.updateViewport(width, height);
+		height = @intCast(newHeight - viewportYOffset);
+		main.renderer.updateViewport(500, 500);
 		main.gui.updateGuiScale();
 		main.gui.updateWindowPositions();
 	}
@@ -758,14 +759,23 @@ pub fn toggleFullscreen(_: Key.Modifiers) void {
 	if(isFullscreen) {
 		c.glfwGetWindowPos(window, &oldX, &oldY);
 		c.glfwGetWindowSize(window, &oldWidth, &oldHeight);
+		
 		const monitor = c.glfwGetPrimaryMonitor();
 		if(monitor == null) {
 			isFullscreen = false;
 			return;
 		}
 		const vidMode = c.glfwGetVideoMode(monitor).?;
-		c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode[0].width, vidMode[0].height, c.GLFW_DONT_CARE);
+		if (main.settings.windowedFullscreen) {
+			c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, c.GLFW_FALSE);
+			// Make the window 1 pixel taller so that Windows keeps it in windowed mode.
+			viewportYOffset = 100;
+			c.glfwSetWindowMonitor(window, null, 0, 0, vidMode[0].width, vidMode[0].height + viewportYOffset, c.GLFW_DONT_CARE);
+		} else {
+			c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode[0].width, vidMode[0].height, c.GLFW_DONT_CARE);
+		}
 	} else {
+		viewportYOffset = 0;
 		c.glfwSetWindowMonitor(window, null, oldX, oldY, oldWidth, oldHeight, c.GLFW_DONT_CARE);
 		c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, c.GLFW_TRUE);
 	}

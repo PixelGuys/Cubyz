@@ -293,7 +293,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		Bloom.bindReplacementImage();
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
-	if(activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
+	if(activeFrameBuffer == 0) c.glViewport(0, 0, Window.width, Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
