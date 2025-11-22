@@ -19,7 +19,7 @@ jobs:
         with:
           version: ${{ env.VERSION }}
       - run: sudo apt install glslang-tools
-      - run: wget -O ./Cubyz-fmt https://github.com/PixelGuys/Cubyz-formatter/releases/download/0.15.0-dev.1034%2Bbd97b6618/Cubyz-fmt-x86_64-linux
+      - run: wget -O ./Cubyz-fmt https://github.com/PixelGuys/Cubyz-formatter/releases/download/${{ env.VERSION }}/Cubyz-fmt-x86_64-linux
       - run: chmod +x ./Cubyz-fmt
       - run: |
           if ./Cubyz-fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
