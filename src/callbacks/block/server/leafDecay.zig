@@ -45,7 +45,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 
 	while(queue.popFront()) |value| {
 		// get the (potential) log
-		if(world.getBlock(value[0] + wx, value[1] + wy, value[2] + wz)) |log| {
+		if(world.getBlock(value[0] +% wx, value[1] +% wy, value[2] +% wz)) |log| {
 			// it is a log ? end search.
 			if(log.decayProhibitor()) {
 				return true;
