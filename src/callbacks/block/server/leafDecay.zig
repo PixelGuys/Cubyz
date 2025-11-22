@@ -20,12 +20,12 @@ pub fn init(zon: ZonElement) ?*@This() {
 
 	return result;
 }
-fn getIndexInCheckArray(relative_x: i32, relative_y: i32, relative_z: i32, checkRange: comptime_int) usize {
+fn getIndexInCheckArray(relativePosition: Vec3i, checkRange: comptime_int) usize {
 	const checkLength = checkRange*2 + 1;
 
-	const arrayIndexX = relative_x + checkRange;
-	const arrayIndexY = relative_y + checkRange;
-	const arrayIndexZ = relative_z + checkRange;
+	const arrayIndexX = relativePosition[0] + checkRange;
+	const arrayIndexY = relativePosition[1] + checkRange;
+	const arrayIndexZ = relativePosition[2] + checkRange;
 	return @as(usize, @intCast((arrayIndexX*checkLength + arrayIndexY)*checkLength + arrayIndexZ));
 }
 fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
@@ -55,20 +55,17 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 			// it is the same type of leaf? continue search!
 			if(log.typ != leaf.typ) continue;
 			for(main.chunk.Neighbor.iterable) |offset| {
-				// relative position
-				const X = value[0] + offset.relX();
-				const Y = value[1] + offset.relY();
-				const Z = value[2] + offset.relZ();
+				const relativePosition = value + offset.relPos();
 
 				// out of range
-				if(X*X + Y*Y + Z*Z > checkRange*checkRange)
+				if(vec.lengthSquare(relativePosition) > checkRange*checkRange)
 					continue;
-
+	
 				// mark as checked
-				if(checked[getIndexInCheckArray(X, Y, Z, checkRange)])
+				if(checked[getIndexInCheckArray(relativePosition, checkRange)])
 					continue;
-				checked[getIndexInCheckArray(X, Y, Z, checkRange)] = true;
-				queue.pushBack(Vec3i{X, Y, Z});
+				checked[getIndexInCheckArray(relativePosition, checkRange)] = true;
+				queue.pushBack(relativePosition);
 			}
 		}
 	}
