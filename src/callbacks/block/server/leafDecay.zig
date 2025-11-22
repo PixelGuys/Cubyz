@@ -8,8 +8,16 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Server = main.server;
 
-pub fn init(_: ZonElement) ?*@This() {
+block:blocks.Block,
+
+pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
+	if(zon.get(?[]const u8, "replacement", null))|blockname|{
+		result.block = main.blocks.parseBlock(blockname);
+	}
+	else 
+		result.block = main.blocks.Block.air;
+
 	return result;
 }
 fn getIndexInCheckArray(relative_x: i32, relative_y: i32, relative_z: i32, checkRange: comptime_int) usize {
@@ -69,7 +77,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 	}
 	return false;
 }
-pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
+pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
 	const wx = params.chunk.super.pos.wx + params.x;
 	const wy = params.chunk.super.pos.wy + params.y;
 	const wz = params.chunk.super.pos.wz + params.z;
@@ -84,10 +92,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 				return .ignored;
 
 			// no, there is no log in proximity
-			var replacement = Block{.typ = leaf.decayReplacement(), .data = 0};
-			replacement.data = replacement.mode().naturalStandard;
-
-			_ = world.cmpxchgBlock(wx, wy, wz, leaf, replacement);
+			_ = world.cmpxchgBlock(wx, wy, wz, leaf, self.block);
 
 			return .handled;
 		}

@@ -70,11 +70,9 @@ var _hasBackFace: [maxBlockCount]bool = undefined;
 var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 
-/// is this block decayable?
 var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
 var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
 var _decayProhibitor: [maxBlockCount]bool = undefined;
-var _decayReplacement: [maxBlockCount]u16 = undefined;
 
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -245,13 +243,6 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
-fn registerDecayReplacement(typ: u16, zon: ZonElement) void {
-	if(zon.get(?[]const u8, "decayReplacement", null)) |replacement| {
-		_decayReplacement[typ] = getTypeById(replacement);
-	} else {
-		_decayReplacement[typ] = Block.air.typ;
-	}
-}
 
 pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
@@ -262,7 +253,6 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	while(i < size) : (i += 1) {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
-		registerDecayReplacement(i, zonElements.get(_id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 }
@@ -450,10 +440,6 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
-	}
-
-	pub inline fn decayReplacement(self: Block) u16 {
-		return _decayReplacement[self.typ];
 	}
 
 	pub inline fn decayProhibitor(self: Block) bool {
