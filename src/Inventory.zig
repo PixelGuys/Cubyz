@@ -1829,22 +1829,6 @@ pub const Command = struct { // MARK: Command
 					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
 					main.network.Protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
 					return error.serverFailure;
-				} else {
-					// onBreak event
-					const baseChunk = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
-						.wx = self.pos[0] & ~@as(i32, main.chunk.chunkMask),
-						.wy = self.pos[1] & ~@as(i32, main.chunk.chunkMask),
-						.wz = self.pos[2] & ~@as(i32, main.chunk.chunkMask),
-						.voxelSize = 1,
-					});
-					defer baseChunk.decreaseRefCount();
-					_ = self.oldBlock.onBreak().run(.{
-						.block = self.oldBlock,
-						.chunk = baseChunk,
-						.x = self.pos[0] & main.chunk.chunkMask,
-						.y = self.pos[1] & main.chunk.chunkMask,
-						.z = self.pos[2] & main.chunk.chunkMask,
-					});
 				}
 			}
 

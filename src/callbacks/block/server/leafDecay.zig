@@ -38,7 +38,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 		checked[i] = false;
 	}
 
-	// queue for breath-first search
+	// queue for breadth-first search
 	var queue = main.utils.CircularBufferQueue(Vec3i).init(main.stackAllocator, 32);
 	defer queue.deinit();
 

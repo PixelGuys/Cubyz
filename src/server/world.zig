@@ -1245,7 +1245,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		for(userList) |user| {
 			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
-
+		// onBreak event
+		if(oldBlock)|block|{
+			if(block.typ != newBlock.typ){
+				_ = block.onBreak().run(.{
+					.block = block,
+					.chunk = baseChunk,
+					.x = x,
+					.y = y,
+					.z = z,
+				});
+			}
+		}
 		self.updateSurrounding(wx, wy, wz);
 
 		return null;
