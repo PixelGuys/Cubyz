@@ -1257,11 +1257,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				});
 			}
 		}
-		self.updateSurrounding(wx, wy, wz);
+		self.triggerNeighborBlockUpdates(wx, wy, wz);
 
 		return null;
 	}
-	pub fn updateSurrounding(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
+	pub fn triggerNeighborBlockUpdates(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
 		// trigger updates:
 		for(chunk.Neighbor.iterable) |value| {
 			const px = wx + value.relX();
