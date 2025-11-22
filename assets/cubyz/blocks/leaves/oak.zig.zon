@@ -1,6 +1,6 @@
 .{
 	.drops = .{
-		.{.items = .{"cubyz:leaves/undecayable/oak"}},
+		.{.items = .{.auto}},
 		.{.chance = 0.1, .items = .{"cubyz:apple"}},
 	},
 	.texture = "cubyz:leaves/oak",
