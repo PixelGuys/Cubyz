@@ -103,10 +103,26 @@ const Socket = struct {
 		return buffer[0..length];
 	}
 
-	fn resolveIP(addr: []const u8) !u32 {
-		const list = try std.net.getAddressList(main.stackAllocator.allocator, addr, settings.defaultPort);
-		defer list.deinit();
-		return list.addrs[0].in.sa.addr;
+	fn resolveIP(name: []const u8) !u32 {
+		var nameBuf: [255]u8 = undefined;
+		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
+		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
+		std.Io.net.HostName.lookup(.{.bytes = name}, main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
+		while(true) {
+			const entry = resultQueue.getOneUncancelable(main.io);
+			switch(entry) {
+				.address => |addr| {
+					if(addr != .ip4) continue;
+					return std.mem.bytesToValue(u32, addr.ip4.bytes[0..4]);
+				},
+				.canonical_name => {},
+				.end => |err| {
+					try err;
+					break;
+				},
+			}
+		}
+		return error.ReachedEndWithoutFindingAnything;
 	}
 
 	fn getPort(self: Socket) !u16 {
