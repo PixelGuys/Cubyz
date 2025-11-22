@@ -126,7 +126,7 @@ pub const EntityChunk = struct {
 	chunk: std.atomic.Value(?*ServerChunk) = .init(null),
 	refCount: std.atomic.Value(u32),
 	pos: chunk.ChunkPosition,
-	updateSystem:UpdateSystem,
+	updateSystem: UpdateSystem,
 
 	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *EntityChunk {
 		const self = main.globalAllocator.create(EntityChunk);
@@ -169,8 +169,8 @@ pub const EntityChunk = struct {
 		std.debug.assert(self.chunk.swap(ch, .release) == null);
 	}
 
-	pub fn update(self: *EntityChunk)void{
-		if(self.getChunk())|serverChunk|{
+	pub fn update(self: *EntityChunk) void {
+		if(self.getChunk()) |serverChunk| {
 			self.updateSystem.update(serverChunk);
 		}
 	}
@@ -1274,7 +1274,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				wz + value.relZ(),
 			};
 
-			var ch = self.getSimulationChunkAndIncreaseRefCount(pos[0],pos[1],pos[2]) orelse continue;
+			var ch = self.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse continue;
 			defer ch.decreaseRefCount();
 
 			ch.updateSystem.add(pos);

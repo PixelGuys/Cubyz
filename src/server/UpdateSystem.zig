@@ -30,16 +30,15 @@ pub const UpdateSystem = struct {
 		defer list.deinit(main.globalAllocator);
 		self.list = .{};
 		self.mutex.unlock();
-		
 
 		// handle events
 		for(list.items) |event| {
 			const x = event[0] & main.chunk.chunkMask;
 			const y = event[1] & main.chunk.chunkMask;
 			const z = event[2] & main.chunk.chunkMask;
-			
+
 			ch.mutex.lock();
-			const block = ch.getBlock(x,y,z);
+			const block = ch.getBlock(x, y, z);
 			ch.mutex.unlock();
 
 			_ = block.onUpdate().run(.{
