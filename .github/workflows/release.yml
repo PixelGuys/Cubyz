@@ -44,5 +44,4 @@ jobs:
               Linux-x86_64.tar.gz \
               Linux-aarch64.tar.gz \
               Windows-x86_64.zip
-#              Windows-aarch64.zip
           gh release
