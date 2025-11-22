@@ -548,7 +548,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	biomeChecksum: i64 = 0,
 
-	updateSystem: *UpdateSystem,
+	updateSystem: UpdateSystem,
 
 	const ChunkUpdateRequest = struct {
 		ch: *ServerChunk,

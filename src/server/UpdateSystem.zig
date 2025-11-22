@@ -9,17 +9,13 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 pub const UpdateSystem = struct {
 	queue: main.utils.CircularBufferQueue(Vec3i),
 
-	pub fn init() *UpdateSystem {
-		const self = main.globalAllocator.create(UpdateSystem);
-		errdefer main.globalAllocator.destroy(self);
-		self.* = UpdateSystem{
+	pub fn init() UpdateSystem {
+		return .{
 			.queue = .init(main.globalAllocator, 32),
 		};
-		return self;
 	}
-	pub fn deinit(self: *UpdateSystem) void {
+	pub fn deinit(self: UpdateSystem) void {
 		self.queue.deinit();
-		main.globalAllocator.destroy(self);
 	}
 	pub fn add(self: *UpdateSystem, position: Vec3i) void {
 		self.queue.pushBack(position);
