@@ -14,8 +14,7 @@ pub fn init() @This() {
 	return .{};
 }
 pub fn deinit(self: *@This()) void {
-	self.mutex.lock();
-	defer self.mutex.unlock();
+	self.mutex = undefined;
 	self.list.deinit(main.globalAllocator);
 }
 pub fn add(self: *@This(), position: Vec3i) void {
