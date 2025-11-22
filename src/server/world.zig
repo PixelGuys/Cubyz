@@ -1246,8 +1246,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		// onBreak event
-		if(oldBlock)|block|{
-			if(block.typ != newBlock.typ){
+		if(oldBlock) |block| {
+			if(block.typ != newBlock.typ) {
 				_ = block.onBreak().run(.{
 					.block = block,
 					.chunk = baseChunk,

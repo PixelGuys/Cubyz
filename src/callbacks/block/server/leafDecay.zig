@@ -8,15 +8,13 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Server = main.server;
 
-block:blocks.Block,
+decayReplacement: blocks.Block,
 
 pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
-	if(zon.get(?[]const u8, "replacement", null))|blockname|{
-		result.block = main.blocks.parseBlock(blockname);
-	}
-	else 
-		result.block = main.blocks.Block.air;
+	if(zon.get(?[]const u8, "replacement", null)) |blockname| {
+		result.decayReplacement = main.blocks.parseBlock(blockname);
+	} else result.decayReplacement = main.blocks.Block.air;
 
 	return result;
 }
@@ -43,7 +41,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 	defer queue.deinit();
 
 	queue.pushBack(Vec3i{0, 0, 0});
-	checked[getIndexInCheckArray(0, 0, 0, checkRange)] = true;
+	checked[getIndexInCheckArray(Vec3i{0, 0, 0}, checkRange)] = true;
 
 	while(queue.popFront()) |value| {
 		// get the (potential) log
@@ -60,7 +58,7 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 				// out of range
 				if(vec.lengthSquare(relativePosition) > checkRange*checkRange)
 					continue;
-	
+
 				// mark as checked
 				if(checked[getIndexInCheckArray(relativePosition, checkRange)])
 					continue;
@@ -86,7 +84,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 				return .ignored;
 
 			// no, there is no log in proximity
-			_ = world.cmpxchgBlock(wx, wy, wz, leaf, self.block);
+			_ = world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement);
 
 			return .handled;
 		}
