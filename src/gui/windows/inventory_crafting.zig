@@ -69,7 +69,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
-	for([2]Inventory{main.game.Player.hotbar, main.game.Player.mainInventory}) |inv| {
+	inline for(.{main.game.Player.hotbar, main.game.Player.mainInventory}) |inv| {
 		for(0..inv.size()) |i| {
 			addItemStackToAvailable(inv.getStack(i));
 		}

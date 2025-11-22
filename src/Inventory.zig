@@ -477,7 +477,7 @@ pub const Sync = struct { // MARK: Sync
 				if(hotbar == null and inventories.items[@intFromEnum(inventoryId.*)].source == .playerHotbar)
 					hotbar = inventories.items[@intFromEnum(inventoryId.*)].inv;
 				if(hotbar != null and mainInventory != null) {
-					for([2]Inventory{hotbar.?, mainInventory.?}) |inv| {
+					inline for(.{hotbar.?, mainInventory.?}) |inv| {
 						for(inv._items, 0..) |invStack, slot| {
 							if(std.meta.eql(invStack.item, itemStack.item)) {
 								const amount = @min(itemStack.item.?.stackSize() - invStack.amount, itemStack.amount);
@@ -488,7 +488,7 @@ pub const Sync = struct { // MARK: Sync
 							}
 						}
 					}
-					for([2]Inventory{hotbar.?, mainInventory.?}) |inv| {
+					inline for(.{hotbar.?, mainInventory.?}) |inv| {
 						for(inv._items, 0..) |invStack, slot| {
 							if(invStack.item == null) {
 								executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
