@@ -119,7 +119,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break;
 		}
 	}
-	_decayProhibitor[size] = zon.get(bool, "decayProhibitor", false);
 
 	_onBreak[size] = blk: {
 		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
@@ -133,6 +132,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break :blk .noop;
 		};
 	};
+	_decayProhibitor[size] = zon.get(bool, "decayProhibitor", false);
 
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
