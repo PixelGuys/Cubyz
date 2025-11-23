@@ -2,26 +2,13 @@ const builtin = @import("builtin");
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const assets = @import("assets.zig");
-const Block = @import("blocks.zig").Block;
-const chunk = @import("chunk.zig");
-const entity = @import("entity.zig");
-const particles = @import("particles.zig");
-const items = @import("items.zig");
-const Inventory = items.Inventory;
-const ItemStack = items.ItemStack;
-const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
-const game = @import("game.zig");
-const settings = @import("settings.zig");
-const renderer = @import("renderer.zig");
-const utils = @import("utils.zig");
-const vec = @import("vec.zig");
-const Vec3d = vec.Vec3d;
-const Vec3f = vec.Vec3f;
-const Vec3i = vec.Vec3i;
+const game = main.game;
+const settings = main.settings;
+const utils = main.utils;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const BlockUpdate = renderer.mesh_storage.BlockUpdate;
+
+pub const protocols = @import("network/protocols.zig");
 
 // TODO: Might want to use SSL or something similar to encode the message
 
@@ -132,17 +119,7 @@ const Socket = struct {
 
 pub fn init() void {
 	Socket.startup();
-	inline for(@typeInfo(Protocols).@"struct".decls) |decl| {
-		if(@TypeOf(@field(Protocols, decl.name)) == type) {
-			const id = @field(Protocols, decl.name).id;
-			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {
-				Protocols.list[id] = @field(Protocols, decl.name).receive;
-				Protocols.isAsynchronous[id] = @field(Protocols, decl.name).asynchronous;
-			} else {
-				std.log.err("Duplicate list id {}.", .{id});
-			}
-		}
-	}
+	protocols.init();
 }
 
 pub const Address = struct {
@@ -169,7 +146,7 @@ const Request = struct {
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
 /// Reference: https://datatracker.ietf.org/doc/html/rfc5389
-const STUN = struct { // MARK: STUN
+const stun = struct { // MARK: stun
 	const ipServerList = [_][]const u8{
 		"stun.12voip.com:3478",
 		"stun.1und1.de:3478",
@@ -292,7 +269,7 @@ const STUN = struct { // MARK: STUN
 			const ip = splitter.first();
 			const serverAddress = Address{
 				.ip = Socket.resolveIP(ip) catch |err| {
-					std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
+					std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{ip, @errorName(err)});
 					continue;
 				},
 				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
@@ -433,6 +410,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if(online) {
 			result.makeOnline();
 		}
+		if(main.settings.launchConfig.headlessServer) {
+			result.allowNewConnections.store(true, .monotonic);
+		}
 		return result;
 	}
 
@@ -459,7 +439,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn makeOnline(self: *ConnectionManager) void {
 		if(!self.online.load(.acquire)) {
-			self.externalAddress = STUN.requestAddress(self);
+			self.externalAddress = stun.requestAddress(self);
 			self.online.store(true, .release);
 		}
 	}
@@ -1103,36 +1083,13 @@ pub const Protocols = struct {
 				},
 				.particles => {
 					if(conn.manager.world) |_| {
-						const particleIdLen = try reader.readInt(u16);
-						const particleId = try reader.readSlice(particleIdLen);
+						const sliceSize = try reader.readInt(u16);
+						const particleId = try reader.readSlice(sliceSize);
 						const pos = try reader.readVec(Vec3d);
 						const collides = try reader.readBool();
 						const count = try reader.readInt(u32);
-						const spawnZonLen = try reader.readInt(u16);
-						const spawnZon = try reader.readSlice(spawnZonLen);
 
-						var spawnShape = particles.Emitter.SpawnShape{.point = .{}};
-						var emitterProperties = particles.EmitterProperties{
-							.velocity = .{1, 1.5},
-							.lifeTime = .{0.75, 1},
-							.randomizeRotation = true,
-						};
-						var dirMode: particles.DirectionMode = .spread;
-						if(spawnZonLen != 0) {
-							const zon = ZonElement.parseFromString(main.stackAllocator, null, spawnZon);
-							defer zon.deinit(main.stackAllocator);
-							emitterProperties = particles.EmitterProperties.parse(zon);
-							dirMode = particles.DirectionMode.parse(zon) catch |err| {
-								std.log.err("Error while parsing direction mode: \"{s}\"", .{@errorName(err)});
-								return;
-							};
-							spawnShape = particles.Emitter.SpawnShape.parse(zon) catch |err| {
-								std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
-								return;
-							};
-						}
-
-						const emitter: particles.Emitter = .init(particleId, collides, spawnShape, emitterProperties, dirMode);
+						const emitter: particles.Emitter = .init(particleId, collides);
 						particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 					}
 				},
@@ -1176,7 +1133,7 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 
-		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32, spawnZon: []const u8) void {
+		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
 			const bufferSize = particleId.len*8 + 32;
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
 			defer writer.deinit();
@@ -1187,8 +1144,6 @@ pub const Protocols = struct {
 			writer.writeVec(Vec3d, pos);
 			writer.writeBool(collides);
 			writer.writeInt(u32, count);
-			writer.writeInt(u16, @intCast(spawnZon.len));
-			writer.writeSlice(spawnZon);
 
 			conn.send(.fast, id, writer.data.items);
 		}
@@ -1596,19 +1551,7 @@ pub const Connection = struct { // MARK: Connection
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				const protocolReceive = Protocols.list[protocolIndex] orelse return error.Invalid;
-
-				if(Protocols.isAsynchronous[protocolIndex]) {
-					ProtocolTask.schedule(conn, protocolIndex, self.protocolBuffer.items);
-				} else {
-					var reader = utils.BinaryReader.init(self.protocolBuffer.items);
-					protocolReceive(conn, &reader) catch |err| {
-						std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, self.protocolBuffer.items});
-						return err;
-					};
-				}
-
-				_ = Protocols.bytesReceived[protocolIndex].fetchAdd(self.protocolBuffer.items.len, .monotonic);
+				try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
 				self.protocolBuffer.clearRetainingCapacity();
 				if(self.protocolBuffer.items.len > 1 << 24) {
 					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
@@ -1889,7 +1832,7 @@ pub const Connection = struct { // MARK: Connection
 		disconnectDesired,
 	};
 
-	const HandShakeState = enum(u8) {
+	pub const HandShakeState = enum(u8) {
 		start = 0,
 		userData = 1,
 		assets = 2,
@@ -1991,7 +1934,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
-		_ = Protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
+		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
@@ -2013,7 +1956,7 @@ pub const Connection = struct { // MARK: Connection
 		return self.connectionState.load(.unordered) == .connected;
 	}
 
-	fn isServerSide(conn: *Connection) bool {
+	pub fn isServerSide(conn: *Connection) bool {
 		return conn.user != null;
 	}
 
@@ -2306,50 +2249,5 @@ pub const Connection = struct { // MARK: Connection
 			main.exitToMenu(undefined);
 		}
 		std.log.info("Disconnected", .{});
-	}
-};
-
-const ProtocolTask = struct {
-	conn: *Connection,
-	protocol: u8,
-	data: []const u8,
-
-	const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.utils.castFunctionSelfToAnyopaque(run),
-		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
-		.taskType = .misc,
-	};
-
-	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
-		const task = main.globalAllocator.create(ProtocolTask);
-		task.* = ProtocolTask{
-			.conn = conn,
-			.protocol = protocol,
-			.data = main.globalAllocator.dupe(u8, data),
-		};
-		main.threadPool.addTask(task, &vtable);
-	}
-
-	pub fn getPriority(_: *ProtocolTask) f32 {
-		return std.math.floatMax(f32);
-	}
-
-	pub fn isStillNeeded(_: *ProtocolTask) bool {
-		return true;
-	}
-
-	pub fn run(self: *ProtocolTask) void {
-		defer self.clean();
-		var reader = utils.BinaryReader.init(self.data);
-		Protocols.list[self.protocol].?(self.conn, &reader) catch |err| {
-			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
-		};
-	}
-
-	pub fn clean(self: *ProtocolTask) void {
-		main.globalAllocator.free(self.data);
-		main.globalAllocator.destroy(self);
 	}
 };

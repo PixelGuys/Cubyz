@@ -54,7 +54,7 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for(users) |user| {
-		main.network.Protocols.genericUpdate.sendParticles(user.conn, particleId, .{x, y, z}, collides, particleCount, zonStr);
+		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, .{x, y, z}, collides, particleCount, zonStr);
 	}
 }
 

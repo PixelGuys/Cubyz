@@ -1,0 +1,13 @@
+.{
+	.properties = .{
+		.hot,
+	},
+	.music = "cubyz:EasternThought",
+	.chance = 0,
+	.fogDensity = 1.5,
+	.fogColor = 0xe9f2e2,
+	.ground_structure = .{
+		"3 to 4 cubyz:sand",
+	},
+	.stoneBlock = "cubyz:sandstone",
+}

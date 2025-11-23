@@ -260,7 +260,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.entity.send(user.conn, updateData);
+				main.network.protocols.entity.send(user.conn, updateData);
 			}
 		}
 
@@ -292,7 +292,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.entity.send(user.conn, updateData);
+				main.network.protocols.entity.send(user.conn, updateData);
 			}
 		}
 
@@ -348,7 +348,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 		for(userList) |user| {
-			main.network.Protocols.entity.send(user.conn, updateData);
+			main.network.protocols.entity.send(user.conn, updateData);
 		}
 
 		self.emptyMutex.unlock();
@@ -558,7 +558,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		if(deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
-		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eyeVel[2]*0.0075)), 0, 0};
+		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
 		playerVel = vec.clampMag(playerVel, 0.32);
 
 		// TODO: add *smooth* item sway

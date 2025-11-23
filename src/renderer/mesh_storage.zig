@@ -595,8 +595,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	createNewMeshes(olderPx, olderPy, olderPz, olderRD, &meshRequests, &mapRequests);
 
 	// Make requests as soon as possible to reduce latency:
-	network.Protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
-	network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz}, lastRD);
+	network.protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
+	network.protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz}, lastRD);
 
 	// Finds all visible chunks and lod chunks using a breadth-first hierarchical search.
 
