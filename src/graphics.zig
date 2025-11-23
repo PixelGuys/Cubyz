@@ -3,6 +3,7 @@
 const std = @import("std");
 
 pub const hbft = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("freetype/ftadvanc.h");
 	@cInclude("freetype/ftbbox.h");
 	@cInclude("freetype/ftbitmap.h");
@@ -35,6 +36,7 @@ pub const c = @cImport({
 });
 
 pub const stb_image = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("stb/stb_image.h");
 	@cInclude("stb/stb_image_write.h");
 });
@@ -1930,10 +1932,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		pub fn beginRender(self: *Self) void {
 			self.activeFence += 1;
 			if(self.activeFence == self.fences.len) self.activeFence = 0;
-			const startTime = std.time.milliTimestamp();
+			const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
 			while(self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
 				self.finalFree(allocation);
-				if(std.time.milliTimestamp() -% startTime > 5) break; // TODO: Remove after #1434
+				if(main.timestamp().durationTo(endTime).nanoseconds > 0) break; // TODO: Remove after #1434
 			}
 			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 		}

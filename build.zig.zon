@@ -47,8 +47,8 @@
 			.hash = "N-V-__8AACQYrweKK0-hEabTekSwmGwxKrIbdY_2QTOEA7TN",
 		},
 		.cubyz_test_runner = .{
-			.url = "https://github.com/PixelGuys/Cubyz-std-lib/archive/refs/tags/0.15.0-dev.1034+bd97b6618+runner-build.zig.tar.gz",
-			.hash = "zig-0.0.0-Fp4XJConDA0olqTe3d3oYNH6UOlQb_jIZ0YOWKZGHLYQ",
+			.url = "https://github.com/PixelGuys/Cubyz-std-lib/archive/refs/tags/0.16.0-dev.1424+1.tar.gz",
+			.hash = "zig-0.0.0-Fp4XJAXmXQ1r23tqehV14LpPFILnnXSyg7bPitqs8mrf",
 			.lazy = true,
 		},
 	},

@@ -98,7 +98,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
 
 		worldInfo.put("name", worldName);
 		worldInfo.put("version", worldDataVersion);
-		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
+		worldInfo.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
 		worldInfo.put("seed", worldSettings.seed);
 
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
@@ -514,7 +514,7 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("spawn", self.world.spawn);
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
 		worldData.put("name", self.world.name);
-		worldData.put("lastUsedTime", std.time.milliTimestamp());
+		worldData.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.world.tickSpeed.load(.monotonic));
 		// TODO: Save entities
 		try self.dir.writeZon("world.zig.zon", worldData);
@@ -532,9 +532,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	chunkManager: ChunkManager = undefined,
 
 	gameTime: i64 = 0,
-	milliTime: i64,
-	lastUpdateTime: i64,
-	lastUnimportantDataSent: i64,
+	milliTime: std.Io.Timestamp,
+	lastUpdateTime: std.Io.Timestamp,
+	lastUnimportantDataSent: std.Io.Timestamp,
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
@@ -571,9 +571,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
-			.lastUpdateTime = std.time.milliTimestamp(),
-			.milliTime = std.time.milliTimestamp(),
-			.lastUnimportantDataSent = std.time.milliTimestamp(),
+			.lastUpdateTime = main.timestamp(),
+			.milliTime = main.timestamp(),
+			.lastUnimportantDataSent = main.timestamp(),
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
@@ -808,7 +808,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				main.heap.GarbageCollection.syncPoint();
 			}
 			self.mutex.unlock();
-			std.Thread.sleep(1_000_000);
+			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 			main.heap.GarbageCollection.syncPoint();
 			self.mutex.lock();
 			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
@@ -1078,19 +1078,19 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn update(self: *ServerWorld) void { // MARK: update()
-		const newTime = std.time.milliTimestamp();
-		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
+		const newTime = main.timestamp();
+		var deltaTime = @as(f32, @floatFromInt(self.lastUpdateTime.durationTo(newTime).toNanoseconds()))/1.0e9;
 		self.lastUpdateTime = newTime;
 		if(deltaTime > 0.3) {
 			std.log.warn("Update time is getting too high. It's already at {} s!", .{deltaTime});
 			deltaTime = 0.3;
 		}
 
-		while(self.milliTime + 100 < newTime) {
-			self.milliTime += 100;
+		while(self.milliTime.durationTo(newTime).toMilliseconds() < 100) {
+			self.milliTime = self.milliTime.addDuration(.fromMilliseconds(100));
 			if(self.doGameTimeCycle) self.gameTime +%= 1; // gameTime is measured in 100ms.
 		}
-		if(self.lastUnimportantDataSent + 2000 < newTime) { // Send unimportant data every ~2s.
+		if(self.lastUnimportantDataSent.durationTo(newTime).toSeconds() < 2) {
 			self.lastUnimportantDataSent = newTime;
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -1114,7 +1114,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Store chunks and regions.
 		// Stores at least one chunk and one region per iteration.
 		// All chunks and regions will be stored within the storage time.
-		const insertionTime = newTime -% main.settings.storageTime;
+		const insertionTime = newTime.subDuration(main.settings.storageTime);
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		while(self.chunkUpdateQueue.popFront()) |updateRequest| {
@@ -1122,14 +1122,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
-			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
+			if(updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
 		}
 		while(self.regionUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
-			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
+			if(updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
 		}
 	}
 
@@ -1290,13 +1290,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *ServerChunk) void {
 		self.mutex.lock();
-		self.chunkUpdateQueue.pushBack(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
+		self.chunkUpdateQueue.pushBack(.{.ch = ch, .milliTimeStamp = main.timestamp().toMilliseconds()});
 		self.mutex.unlock();
 	}
 
 	pub fn queueRegionFileUpdateAndDecreaseRefCount(self: *ServerWorld, region: *storage.RegionFile) void {
 		self.mutex.lock();
-		self.regionUpdateQueue.pushBack(.{.region = region, .milliTimeStamp = std.time.milliTimestamp()});
+		self.regionUpdateQueue.pushBack(.{.region = region, .milliTimeStamp = main.timestamp().toMilliseconds()});
 		self.mutex.unlock();
 	}
 };
