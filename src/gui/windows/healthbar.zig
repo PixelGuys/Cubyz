@@ -44,24 +44,32 @@ pub fn deinit() void {
 
 pub fn render() void {
 	draw.setColor(0xffffffff);
-	var y: f32 = 0;
+	const displayHealth = @max(0, main.game.Player.super.health);
+	const wholeHearts: usize = @intFromFloat(@ceil(displayHealth*2)/2);
+	const halfHeart: usize = if(0 < @mod(displayHealth, 1) and @mod(displayHealth, 1) < 0.5) 1 else 0;
+	const deadHearts: usize = @max(0, @as(usize, (@intFromFloat(@ceil(main.game.Player.super.maxHealth)))) - (wholeHearts + halfHeart));
+
 	var x: f32 = 0;
-	var health: f32 = 0;
-	while(health < main.game.Player.super.maxHealth) : (health += 1) {
+	var y: f32 = 0;
+	var i: usize = 0;
+	while(i < wholeHearts + halfHeart + deadHearts) : (i += 1) {
 		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
-		if(health + 0.5 < main.game.Player.super.health) {
+
+		if(i < wholeHearts) {
 			heartTexture.bindTo(0);
-		} else if(health < main.game.Player.super.health) {
+		} else if(i < wholeHearts + halfHeart) {
 			halfHeartTexture.bindTo(0);
 		} else {
 			deadHeartTexture.bindTo(0);
 		}
+
 		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
+
 	y += 20;
 	if(y != window.contentSize[1]) {
 		window.contentSize[1] = y;
