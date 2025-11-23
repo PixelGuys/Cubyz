@@ -39,7 +39,7 @@ pub fn execute(args: []const u8, source: *User) void {
 
 fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const zonIndex = std.mem.indexOf(u8, args, " .{") orelse args.len;
-	const zonStr = args[zonIndex..args.len];
+	const zonStr = args[zonIndex..];
 	var split = std.mem.splitScalar(u8, std.mem.trimRight(u8, args[0..zonIndex], " "), ' ');
 	const particleId = split.next() orelse return error.TooFewArguments;
 

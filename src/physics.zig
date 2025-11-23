@@ -15,6 +15,7 @@ const camera = main.game.camera;
 
 pub const gravity = 30.0;
 pub const airTerminalVelocity = 90.0;
+pub const airDensity = 0.001;
 const playerDensity = 1.2;
 
 pub fn calculateProperties() void {
