@@ -660,6 +660,11 @@ pub fn reloadSettings() void {
 	c.glfwSwapInterval(@intFromBool(main.settings.vsync));
 }
 
+pub fn reloadFullscreen() void {
+	_toggleFullscreen();
+	_toggleFullscreen();
+}
+
 pub fn getClipboardString() []const u8 {
 	return std.mem.span(c.glfwGetClipboardString(window) orelse @as([*c]const u8, ""));
 }
@@ -756,6 +761,9 @@ var oldY: c_int = 0;
 var oldWidth: c_int = 0;
 var oldHeight: c_int = 0;
 pub fn toggleFullscreen(_: Key.Modifiers) void {
+	_toggleFullscreen();
+}
+fn _toggleFullscreen() void {
 	isFullscreen = !isFullscreen;
 	if(isFullscreen) {
 		c.glfwGetWindowPos(window, &oldX, &oldY);
@@ -770,12 +778,14 @@ pub fn toggleFullscreen(_: Key.Modifiers) void {
 		if (main.settings.windowedFullscreen) {
 			c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, c.GLFW_FALSE);
 <<<<<<< HEAD
+<<<<<<< HEAD
 			
 			if(builtin.os.tag == .windows) {
 				// Make the window 1 pixel taller so that Windows keeps it in windowed mode.
 				viewportYOffset = 1;
 			}
 >>>>>>> e9354aaf (Access builtin.os.tag directly)
+>>>>>>> a19d68ed (Add fullscreen mode to graphics settings GUI)
 			c.glfwSetWindowMonitor(window, null, 0, -viewportYOffset, vidMode[0].width, vidMode[0].height + viewportYOffset, c.GLFW_DONT_CARE);
 		} else {
 			c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode[0].width, vidMode[0].height, c.GLFW_DONT_CARE);

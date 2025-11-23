@@ -28,6 +28,15 @@ const resolutions = [_]u16{25, 50, 100};
 
 const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 
+var needsUpdate = false;
+
+fn fullscreenModeCallback(_: usize) void {
+	settings.windowedFullscreen = !settings.windowedFullscreen;
+	settings.save();
+	needsUpdate = true;
+	main.Window.reloadFullscreen();
+}
+
 fn fpsCapRound(newValue: f32) ?u32 {
 	if(newValue < 144.0) {
 		return @as(u32, @intFromFloat(newValue/5.0))*5;
@@ -125,6 +134,7 @@ fn vulkanTestingWindowCallback(newValue: bool) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(Button.initText(.{0, 0}, 128, if(settings.windowedFullscreen) "Fullscreen: Borderless" else "Fullscreen: Exclusive", .{.callback = &fullscreenModeCallback}));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 154), &fpsCapCallback, &fpsCapFormatter));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
 	if(main.game.world == null) {
@@ -155,5 +165,15 @@ pub fn onOpen() void {
 pub fn onClose() void {
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
+	}
+}
+
+pub fn render() void {
+	if(needsUpdate) {
+		needsUpdate = false;
+		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
+		onClose();
+		onOpen();
+		window.rootComponent.?.verticalList.scrollBar.currentState = oldScroll;
 	}
 }
