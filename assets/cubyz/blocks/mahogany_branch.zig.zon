@@ -38,4 +38,5 @@
 		},
 		.texture = "branch/mahogany.png",
 	},
+	.decayProhibitor = true,
 }

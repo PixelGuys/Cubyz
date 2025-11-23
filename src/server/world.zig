@@ -334,12 +334,12 @@ const ChunkManager = struct { // MARK: ChunkManager
 			defer self.clean();
 			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			if(self.source) |source| {
-				if(source.connected.load(.unordered)) main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
+				if(source.connected.load(.unordered)) main.network.protocols.lightMapTransmission.sendLightMap(source.conn, map);
 			} else {
 				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 				for(userList) |user| {
-					main.network.Protocols.lightMapTransmission.sendLightMap(user.conn, map);
+					main.network.protocols.lightMapTransmission.sendLightMap(user.conn, map);
 				}
 			}
 		}
@@ -387,7 +387,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
 		switch(source) {
 			.user => |user| {
-				main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
+				main.network.protocols.chunkTransmission.sendChunk(user.conn, ch);
 				ch.decreaseRefCount();
 			},
 			.entityChunk => |entityChunk| {
@@ -1095,7 +1095,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.genericUpdate.sendTime(user.conn, self);
+				main.network.protocols.genericUpdate.sendTime(user.conn, self);
 			}
 		}
 		self.tick();
@@ -1247,7 +1247,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
 		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
+			main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		// onBreak event
 		if(oldBlock) |block| {

@@ -638,7 +638,7 @@ pub const World = struct { // MARK: World
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
-		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
+		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
 
@@ -754,7 +754,7 @@ pub const World = struct { // MARK: World
 			fog.fogLower = biomeFog.fogLower;
 			fog.fogHigher = biomeFog.fogHigher;
 		}
-		network.Protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
+		network.protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
 	}
 };
 pub var testWorld: World = undefined; // TODO:
@@ -932,7 +932,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const newPos = Vec2f{
 			@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),
 			@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
-		}*@as(Vec2f, @splat(3.14*settings.controllerSensitivity));
+		}*@as(Vec2f, @splat(std.math.pi*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 

@@ -38,4 +38,5 @@
 		},
 		.texture = "branch/baobab.png",
 	},
+	.decayProhibitor = true,
 }

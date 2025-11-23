@@ -41,4 +41,5 @@
 		},
 		.texture = "branch/birch.png",
 	},
+	.decayProhibitor = true,
 }
