@@ -584,14 +584,12 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 					defer zon.deinit(main.stackAllocator);
 					emitter = .initFromZon(particleId, collides, zon);
 				} else {
-					const spawnShape = particles.Emitter.SpawnShape{.point = .{}};
 					const emitterProperties = particles.EmitterProperties{
 						.velocity = .{1, 1.5},
 						.lifeTime = .{0.75, 1},
 						.randomizeRotation = true,
 					};
-					const dirMode: particles.DirectionMode = .spread;
-					emitter = .init(particleId, collides, spawnShape, emitterProperties, dirMode);
+					emitter = .init(particleId, collides, .{.point = .{}}, emitterProperties, .spread);
 				}
 
 				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
