@@ -7,15 +7,6 @@
 
 	.hills = 45,
 	.roughness = 85,
-	.stripes = .{
-		.{
-			.direction = .{5, 3, 3},
-			.block = "cubyz:limestone",
-			.distance = 36,
-			.offset = 7,
-			.width = 5,
-		},
-	},
 
 	.ground_structure = .{
 		"0 to 2 cubyz:obsidian",
