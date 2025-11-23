@@ -14,11 +14,11 @@ prevention: main.ListUnmanaged(main.Tag) = .{},
 
 pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
-	//replacement
+	// replacement
 	if(zon.get(?[]const u8, "replacement", null)) |blockname| {
 		result.decayReplacement = main.blocks.parseBlock(blockname);
 	} else result.decayReplacement = main.blocks.Block.air;
-	//prevention
+	// prevention
 	result.prevention = .{};
 	if(zon.getChildOrNull("prevention")) |tagNames| {
 		if(tagNames == .array) {
