@@ -570,12 +570,12 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				}
 			},
 			.particles => {
-				const particleIdLen = try reader.readInt(u16);
+				const particleIdLen = try reader.readVarInt(u16);
 				const particleId = try reader.readSlice(particleIdLen);
 				const pos = try reader.readVec(Vec3d);
 				const collides = try reader.readBool();
-				const count = try reader.readInt(u32);
-				const spawnZonLen = try reader.readInt(u16);
+				const count = try reader.readVarInt(u32);
+				const spawnZonLen = try reader.readVarInt(usize);
 				const spawnZon = try reader.readSlice(spawnZonLen);
 
 				var emitter: particles.Emitter = undefined;
@@ -663,12 +663,12 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		defer writer.deinit();
 
 		writer.writeEnum(UpdateType, .particles);
-		writer.writeInt(u16, @intCast(particleId.len));
+		writer.writeVarInt(u16, @intCast(particleId.len));
 		writer.writeSlice(particleId);
 		writer.writeVec(Vec3d, pos);
 		writer.writeBool(collides);
-		writer.writeInt(u32, count);
-		writer.writeInt(u16, @intCast(spawnZon.len));
+		writer.writeVarInt(u32, count);
+		writer.writeVarInt(usize, spawnZon.len);
 		writer.writeSlice(spawnZon);
 
 		conn.send(.fast, id, writer.data.items);
