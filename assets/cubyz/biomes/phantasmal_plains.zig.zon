@@ -53,7 +53,21 @@
 			.chance = 0.016,
 			.block = "cubyz:chalk/black",
 			.size = 3,
-			.size_variance = 9,
+			.size_variance = 5,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.032,
+			.block = "cubyz:chalk/dark_grey",
+			.size = 4,
+			.size_variance = 7,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:obsidian",
+			.size = 2,
+			.size_variance = 4,
 		},
 	},
 }
