@@ -1,6 +1,6 @@
 .{
 	.properties = .{},
-	.chance = 0.02,
+	.chance = 0.015,
 	.minHeight = 16,
 	.maxHeight = 64,
 	.music = "cubyz:above_the_mist",
