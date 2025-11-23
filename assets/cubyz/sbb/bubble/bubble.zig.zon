@@ -10,6 +10,6 @@
 		.{.id = "cubyz:bubble/broken_1", .chance = 0.5},
 		.{.id = "cubyz:bubble/broken_2", .chance = 0.5},
 		.{.id = "cubyz:bubble/abandoned_bubble", .chance = 0.05},
-		.{.id = "cubyz:bubble/red_bubble", .chance = 0.05},
+		.{.id = "cubyz:bubble/red_bubble", .chance = 0.03},
 	},
 }
