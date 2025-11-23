@@ -25,3 +25,4 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, self.block);
 	return .handled;
 }
+pub fn deinit(_: *@This()) void {}

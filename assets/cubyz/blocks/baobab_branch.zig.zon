@@ -2,7 +2,7 @@
 	.tags = .{.choppable, .wood, .branch},
 	.onUpdate = .{
 		.type = .Decay,
-		.prevention  = .{.log}, 
+		.prevention = .{.log},
 	},
 	.blockHealth = 4,
 	.drops = .{
