@@ -519,141 +519,137 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		clear = 2,
 	};
 
-	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
-		switch(try reader.readEnum(UpdateType)) {
-			.gamemode => {
-				main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
-			},
-			.teleport => {
-				game.Player.setPosBlocking(try reader.readVec(Vec3d));
-			},
-			.worldEditPos => {
-				const typ = try reader.readEnum(WorldEditPosition);
-				const pos: ?Vec3i = switch(typ) {
-					.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
-					.clear => null,
-				};
-				switch(typ) {
-					.selectedPos1 => game.Player.selectionPosition1 = pos,
-					.selectedPos2 => game.Player.selectionPosition2 = pos,
-					.clear => {
-						game.Player.selectionPosition1 = null;
-						game.Player.selectionPosition2 = null;
-					},
-				}
-			},
-			.time => {
-				const world = conn.manager.world.?;
-				const expectedTime = try reader.readInt(i64);
-
-				var curTime = world.gameTime.load(.monotonic);
-				if(@abs(curTime -% expectedTime) >= 10) {
-					world.gameTime.store(expectedTime, .monotonic);
-				} else if(curTime < expectedTime) { // world.gameTime++
-					while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
-						curTime = actualTime;
+	fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			switch(try reader.readEnum(UpdateType)) {
+				.gamemode => {
+					if(conn.isServerSide()) return error.InvalidPacket;
+					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
+				},
+				.teleport => {
+					if(conn.isServerSide()) return error.InvalidPacket;
+					game.Player.setPosBlocking(try reader.readVec(Vec3d));
+				},
+				.worldEditPos => {
+					const typ = try reader.readEnum(WorldEditPosition);
+					const pos: ?Vec3i = switch(typ) {
+						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
+						.clear => null,
+					};
+					if(conn.isServerSide()) {
+						switch(typ) {
+							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
+							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
+							.clear => {
+								conn.user.?.worldEditData.selectionPosition1 = null;
+								conn.user.?.worldEditData.selectionPosition2 = null;
+							},
+						}
+					} else {
+						switch(typ) {
+							.selectedPos1 => game.Player.selectionPosition1 = pos,
+							.selectedPos2 => game.Player.selectionPosition2 = pos,
+							.clear => {
+								game.Player.selectionPosition1 = null;
+								game.Player.selectionPosition2 = null;
+							},
+						}
 					}
-				} else { // world.gameTime--
-					while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .monotonic, .monotonic)) |actualTime| {
-						curTime = actualTime;
+				},
+				.time => {
+					if(conn.manager.world) |world| {
+						const expectedTime = try reader.readInt(i64);
+
+						var curTime = world.gameTime.load(.monotonic);
+						if(@abs(curTime -% expectedTime) >= 10) {
+							world.gameTime.store(expectedTime, .monotonic);
+						} else if(curTime < expectedTime) { // world.gameTime++
+							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
+								curTime = actualTime;
+							}
+						} else { // world.gameTime--
+							while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .monotonic, .monotonic)) |actualTime| {
+								curTime = actualTime;
+							}
+						}
 					}
-				}
-			},
-			.biome => {
-				const world = conn.manager.world.?;
-				const biomeId = try reader.readInt(u32);
+				},
+				.biome => {
+					if(conn.manager.world) |world| {
+						const biomeId = try reader.readInt(u32);
 
-				const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
-				const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
-				if(oldBiome != newBiome) {
-					main.audio.setMusic(newBiome.preferredMusic);
-				}
-			},
-			.particles => {
-				const sliceSize = try reader.readInt(u16);
-				const particleId = try reader.readSlice(sliceSize);
-				const pos = try reader.readVec(Vec3d);
-				const collides = try reader.readBool();
-				const count = try reader.readInt(u32);
+						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
+						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
+						if(oldBiome != newBiome) {
+							main.audio.setMusic(newBiome.preferredMusic);
+						}
+					}
+				},
+				.particles => {
+					if(conn.manager.world) |_| {
+						const sliceSize = try reader.readInt(u16);
+						const particleId = try reader.readSlice(sliceSize);
+						const pos = try reader.readVec(Vec3d);
+						const collides = try reader.readBool();
+						const count = try reader.readInt(u32);
 
-				const emitter: particles.Emitter = .init(particleId, collides);
-				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
-			},
-		}
-	}
-
-	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
-		switch(try reader.readEnum(UpdateType)) {
-			.gamemode, .teleport, .time, .biome, .particles => return error.InvalidSide,
-			.worldEditPos => {
-				const typ = try reader.readEnum(WorldEditPosition);
-				const pos: ?Vec3i = switch(typ) {
-					.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
-					.clear => null,
-				};
-				switch(typ) {
-					.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
-					.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
-					.clear => {
-						conn.user.?.worldEditData.selectionPosition1 = null;
-						conn.user.?.worldEditData.selectionPosition2 = null;
-					},
-				}
-			},
-		}
-	}
-
-	pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
-		conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
-	}
-
-	pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
-		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
-		defer writer.deinit();
-
-		writer.writeEnum(UpdateType, .teleport);
-		writer.writeVec(Vec3d, pos);
-
-		conn.send(.fast, id, writer.data.items);
-	}
-
-	pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
-		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
-		defer writer.deinit();
-
-		writer.writeEnum(UpdateType, .worldEditPos);
-		writer.writeEnum(WorldEditPosition, posType);
-		if(maybePos) |pos| {
-			writer.writeVec(Vec3i, pos);
+						const emitter: particles.Emitter = .init(particleId, collides);
+						particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
+					}
+				},
+			}
 		}
 
-		conn.send(.fast, id, writer.data.items);
-	}
+		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
+			conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
+		}
 
-	pub fn sendBiome(conn: *Connection, biomeIndex: u32) void {
-		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
-		defer writer.deinit();
+		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
+			defer writer.deinit();
 
-		writer.writeEnum(UpdateType, .biome);
-		writer.writeInt(u32, biomeIndex);
+			writer.writeEnum(UpdateType, .teleport);
+			writer.writeVec(Vec3d, pos);
 
-		conn.send(.fast, id, writer.data.items);
-	}
+			conn.send(.fast, id, writer.data.items);
+		}
 
-	pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
-		const bufferSize = particleId.len*8 + 32;
-		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
-		defer writer.deinit();
+		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
+			defer writer.deinit();
 
-		writer.writeEnum(UpdateType, .particles);
-		writer.writeInt(u16, @intCast(particleId.len));
-		writer.writeSlice(particleId);
-		writer.writeVec(Vec3d, pos);
-		writer.writeBool(collides);
-		writer.writeInt(u32, count);
+			writer.writeEnum(UpdateType, .worldEditPos);
+			writer.writeEnum(WorldEditPosition, posType);
+			if(maybePos) |pos| {
+				writer.writeVec(Vec3i, pos);
+			}
 
-		conn.send(.fast, id, writer.data.items);
-	}
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendBiome(conn: *Connection, biomeIndex: u32) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .biome);
+			writer.writeInt(u32, biomeIndex);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
+			const bufferSize = particleId.len*8 + 32;
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .particles);
+			writer.writeInt(u16, @intCast(particleId.len));
+			writer.writeSlice(particleId);
+			writer.writeVec(Vec3d, pos);
+			writer.writeBool(collides);
+			writer.writeInt(u32, count);
+
+			conn.send(.fast, id, writer.data.items);
+		}
 
 	pub fn sendTime(conn: *Connection, world: *const main.server.ServerWorld) void {
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
