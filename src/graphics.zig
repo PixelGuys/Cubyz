@@ -3,6 +3,7 @@
 const std = @import("std");
 
 pub const hbft = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("freetype/ftadvanc.h");
 	@cInclude("freetype/ftbbox.h");
 	@cInclude("freetype/ftbitmap.h");
@@ -35,6 +36,7 @@ pub const c = @cImport({
 });
 
 pub const stb_image = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("stb/stb_image.h");
 	@cInclude("stb/stb_image_write.h");
 });

@@ -4,6 +4,7 @@ const main = @import("main");
 const utils = main.utils;
 
 const c = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("miniaudio.h");
 	@cDefine("STB_VORBIS_HEADER_ONLY", "");
 	@cInclude("stb/stb_vorbis.h");
