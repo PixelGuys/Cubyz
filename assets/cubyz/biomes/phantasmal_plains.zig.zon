@@ -23,7 +23,7 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:star/star",
+			.structure = "cubyz:star/stars",
 			.placeMode = .degradable,
 			.chance = 0.03,
 		},
