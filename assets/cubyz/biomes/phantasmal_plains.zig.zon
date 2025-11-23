@@ -24,7 +24,6 @@
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:star/stars",
-			.placeMode = .degradable,
 			.chance = 0.03,
 		},
 		.{
@@ -50,21 +49,21 @@
 		},
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.016,
+			.chance = 0.008,
 			.block = "cubyz:chalk/black",
 			.size = 3,
 			.size_variance = 5,
 		},
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.032,
+			.chance = 0.008,
 			.block = "cubyz:chalk/dark_grey",
-			.size = 4,
-			.size_variance = 7,
+			.size = 5,
+			.size_variance = 15,
 		},
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.016,
+			.chance = 0.008,
 			.block = "cubyz:obsidian",
 			.size = 2,
 			.size_variance = 4,
