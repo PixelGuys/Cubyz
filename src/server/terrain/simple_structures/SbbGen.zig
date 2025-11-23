@@ -26,12 +26,14 @@ pub fn getHash(self: SbbGen) u64 {
 	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), self.structureRef.id);
 }
 
-pub fn loadModel(parameters: ZonElement) *SbbGen {
+pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 	const structureId = parameters.get(?[]const u8, "structure", null) orelse {
-		main.utils.panicWithMessage("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
+		std.log.err("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
+		return null;
 	};
 	const structureRef = sbb.getByStringId(structureId) orelse {
-		main.utils.panicWithMessage("Could not find structure building block with id '{s}'", .{structureId});
+		std.log.err("Could not find blueprint with id {s}. Structure will not be added.", .{structureId});
+		return null;
 	};
 	const rotationParam = parameters.getChild("rotation");
 	const rotation = sbb.Rotation.fromZon(rotationParam) catch |err| blk: {

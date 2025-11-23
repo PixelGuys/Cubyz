@@ -133,7 +133,7 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
-		network.Protocols.handShake.serverSide(self.conn);
+		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
 
@@ -283,7 +283,7 @@ pub const User = struct { // MARK: User
 		self.sendRawMessage(msg);
 	}
 	fn sendRawMessage(self: *User, msg: []const u8) void {
-		main.network.Protocols.chat.send(self.conn, msg);
+		main.network.protocols.chat.send(self.conn, msg);
 	}
 };
 
@@ -423,7 +423,7 @@ fn update() void { // MARK: update()
 		});
 	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
 	}
 
 	for(userList) |user| {
@@ -431,7 +431,7 @@ fn update() void { // MARK: update()
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if(biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
-			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
+			main.network.protocols.genericUpdate.sendBiome(user.conn, biomeId);
 		}
 	}
 
@@ -498,7 +498,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for(userList) |other| {
-		main.network.Protocols.entity.send(other.conn, data);
+		main.network.protocols.entity.send(other.conn, data);
 	}
 }
 
@@ -530,7 +530,7 @@ pub fn connectInternal(user: *User) void {
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		for(userList) |other| {
-			main.network.Protocols.entity.send(other.conn, data);
+			main.network.protocols.entity.send(other.conn, data);
 		}
 	}
 	{ // Let this client know about the others:
@@ -544,10 +544,10 @@ pub fn connectInternal(user: *User) void {
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
-		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
+		if(user.connected.load(.unordered)) main.network.protocols.entity.send(user.conn, data);
 	}
 	const initialList = getInitialEntityList(main.stackAllocator);
-	main.network.Protocols.entity.send(user.conn, initialList);
+	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
 

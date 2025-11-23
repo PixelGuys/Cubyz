@@ -21,13 +21,6 @@ jobs:
       - run: sudo apt install glslang-tools
       - run: wget -O ./Cubyz-fmt https://github.com/PixelGuys/Cubyz-formatter/releases/download/0.15.0-dev.1034%2Bbd97b6618/Cubyz-fmt-x86_64-linux
       - run: chmod +x ./Cubyz-fmt
-      - run: zig build
-      - run: zig build -Dtarget=x86_64-windows-gnu
-      - run: zig build -Dtarget=aarch64-linux-gnu
-      - run: zig build -Dtarget=aarch64-windows-gnu
-      - run: zig build test
-      - run: zig build format --summary none
-      - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
       - run: |
           if ./Cubyz-fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
             git diff --color=always;
@@ -48,3 +41,10 @@ jobs:
             git diff --color=always;
             exit 1;
           fi
+      - run: zig build
+      - run: zig build -Dtarget=x86_64-windows-gnu
+      - run: zig build -Dtarget=aarch64-linux-gnu
+      - run: zig build -Dtarget=aarch64-windows-gnu
+      - run: zig build test
+      - run: zig build format --summary none
+      - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
