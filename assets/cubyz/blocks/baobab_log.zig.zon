@@ -1,5 +1,5 @@
 .{
-	.tags = .{.choppable, .wood},
+	.tags = .{.choppable, .wood ,.log},
 	.blockHealth = 8,
 	.drops = .{
 		.{.items = .{"cubyz:log/baobab"}},
@@ -9,5 +9,4 @@
 	.texture = "cubyz:baobab_log",
 	.texture_top = "cubyz:baobab_log_top",
 	.texture_bottom = "cubyz:baobab_log_top",
-	.decayProhibitor = true,
 }

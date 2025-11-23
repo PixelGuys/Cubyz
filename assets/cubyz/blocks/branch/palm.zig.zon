@@ -1,5 +1,5 @@
 .{
-	.tags = .{.choppable, .wood},
+	.tags = .{.choppable, .wood,.log},
 	.blockHealth = 4,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -34,5 +34,4 @@
 		},
 		.texture = "branch/palm.png",
 	},
-	.decayProhibitor = true,
 }

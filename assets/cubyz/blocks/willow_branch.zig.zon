@@ -1,5 +1,9 @@
 .{
-	.tags = .{.choppable, .wood},
+	.tags = .{.choppable, .wood,.branch},
+	.onUpdate = .{
+		.type = .Decay,
+		.prevention  = .{.log}, 
+	},
 	.blockHealth = 4,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -34,5 +38,4 @@
 		},
 		.texture = "branch/willow.png",
 	},
-	.decayProhibitor = true,
 }

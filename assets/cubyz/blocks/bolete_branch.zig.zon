@@ -1,5 +1,9 @@
 .{
-	.tags = .{.choppable, .cuttable, .mushroom},
+	.tags = .{.choppable, .cuttable, .mushroom,.branch},
+	.onUpdate = .{
+		.type = .Decay,
+		.prevention  = .{.log}, 
+	},
 	.blockHealth = 2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -34,5 +38,4 @@
 		},
 		.texture = "branch/bolete.png",
 	},
-	.decayProhibitor = true,
 }
