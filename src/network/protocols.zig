@@ -578,28 +578,22 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				const spawnZonLen = try reader.readInt(u16);
 				const spawnZon = try reader.readSlice(spawnZonLen);
 
-				var spawnShape = particles.Emitter.SpawnShape{.point = .{}};
-				var emitterProperties = particles.EmitterProperties{
-					.velocity = .{1, 1.5},
-					.lifeTime = .{0.75, 1},
-					.randomizeRotation = true,
-				};
-				var dirMode: particles.DirectionMode = .spread;
+				var emitter: particles.Emitter = undefined;
 				if(spawnZonLen != 0) {
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, spawnZon);
 					defer zon.deinit(main.stackAllocator);
-					emitterProperties = particles.EmitterProperties.parse(zon);
-					dirMode = particles.DirectionMode.parse(zon) catch |err| {
-						std.log.err("Error while parsing direction mode: \"{s}\"", .{@errorName(err)});
-						return;
+					emitter = .initFromZon(particleId, collides, zon);
+				} else {
+					const spawnShape = particles.Emitter.SpawnShape{.point = .{}};
+					const emitterProperties = particles.EmitterProperties{
+						.velocity = .{1, 1.5},
+						.lifeTime = .{0.75, 1},
+						.randomizeRotation = true,
 					};
-					spawnShape = particles.Emitter.SpawnShape.parse(zon) catch |err| {
-						std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
-						return;
-					};
+					const dirMode: particles.DirectionMode = .spread;
+					emitter = .init(particleId, collides, spawnShape, emitterProperties, dirMode);
 				}
 
-				const emitter: particles.Emitter = .init(particleId, collides, spawnShape, emitterProperties, dirMode);
 				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 			},
 		}
