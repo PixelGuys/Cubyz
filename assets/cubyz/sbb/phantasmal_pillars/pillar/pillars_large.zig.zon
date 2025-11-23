@@ -4,6 +4,7 @@
 		.{.id = "cubyz:phantasmal_pillars/pillar/large/large_pillar_1", .chance = 1},
 		.{.id = "cubyz:phantasmal_pillars/pillar/large/large_pillar_2", .chance = 1},
 		.{.id = "cubyz:phantasmal_pillars/pillar/large/large_pillar_3", .chance = 1},
+		.{.id = "cubyz:phantasmal_pillars/pillar/large/large_pillar_4", .chance = 1},
 		.{.id = null, .chance = 0.3},
 	},
 	.children = .{

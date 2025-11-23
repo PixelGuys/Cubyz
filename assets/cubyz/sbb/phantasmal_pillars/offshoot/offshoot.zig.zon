@@ -13,7 +13,8 @@
 		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_10", .chance = 0.1},
 		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_11", .chance = 0.1},
 		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_12", .chance = 0.1},
-		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_13", .chance = 0.5},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_13", .chance = 0.3},
+		.{.id = "cubyz:phantasmal_pillars/offshoot/offshoot_14", .chance = 0.2},
 		.{.id = null, .chance = 0.3},
 	},
 }
