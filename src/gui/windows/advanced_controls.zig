@@ -40,8 +40,8 @@ fn speedFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []cons
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 1000.0, @floatFromInt(settings.updateRepeatDelay.nanoseconds), &delayCallback, &delayFormatter));
-	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 500.0, @floatFromInt(settings.updateRepeatSpeed.nanoseconds), &speedCallback, &speedFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0e6, 1.0e9, @floatFromInt(settings.updateRepeatDelay.nanoseconds), &delayCallback, &delayFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0e6, 0.5e9, @floatFromInt(settings.updateRepeatSpeed.nanoseconds), &speedCallback, &speedFormatter));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
