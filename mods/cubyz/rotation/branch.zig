@@ -35,10 +35,10 @@ const HashMapKey = struct {
 };
 pub const BranchData = packed struct(u7) {
 	enabledConnections: u6,
-	placedByHuman:u1,
+	placedByHuman: u1,
 
 	pub inline fn init(blockData: u16) BranchData {
-		return .{.enabledConnections = @truncate(blockData),.placedByHuman = @truncate(blockData >> 6)};
+		return .{.enabledConnections = @truncate(blockData), .placedByHuman = @truncate(blockData >> 6)};
 	}
 
 	pub inline fn isConnected(self: @This(), neighbor: Neighbor) bool {
@@ -354,7 +354,7 @@ pub fn generateData(
 		currentData.setConnection(neighbor.?, targetVal);
 
 		currentData.placedByHuman = 1;
-		const result: u16 = @as(u7,@bitCast(currentData));
+		const result: u16 = @as(u7, @bitCast(currentData));
 		if(result == currentBlock.data) return false;
 
 		currentBlock.data = result;
@@ -377,7 +377,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 		currentData.setConnection(neighbor, false);
 	}
 
-	const result: u16 = @as(u7,@bitCast(currentData));
+	const result: u16 = @as(u7, @bitCast(currentData));
 	if(result == block.data) return false;
 
 	block.data = result;
