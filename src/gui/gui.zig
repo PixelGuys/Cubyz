@@ -606,10 +606,10 @@ pub const inventory = struct { // MARK: inventory
 	var rightClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
 	var recipeItem: ?main.items.Item = null;
 	var initialized: bool = false;
-	const minCraftingCooldown = 20;
-	const maxCraftingCooldown = 400;
-	var nextCraftingAction: i64 = undefined;
-	var craftingCooldown: u63 = undefined;
+	const minCraftingCooldown: std.Io.Duration = .fromMilliseconds(20);
+	const maxCraftingCooldown: std.Io.Duration = .fromMilliseconds(400);
+	var nextCraftingAction: std.Io.Timestamp = undefined;
+	var craftingCooldown: std.Io.Duration = undefined;
 	var isCrafting: bool = false;
 
 	pub fn init() void {
@@ -663,15 +663,15 @@ pub const inventory = struct { // MARK: inventory
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
 			if(recipeItem == null and item != null) recipeItem = item.?.clone();
 			if(!std.meta.eql(item, recipeItem)) return;
-			const time = std.time.milliTimestamp();
+			const time = main.timestamp();
 			if(!isCrafting) {
 				isCrafting = true;
 				craftingCooldown = maxCraftingCooldown;
 				nextCraftingAction = time;
 			}
-			while(time -% nextCraftingAction >= 0) {
-				nextCraftingAction +%= craftingCooldown;
-				craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
+			while(time.durationTo(nextCraftingAction).nanoseconds <= 0) {
+				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
+				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds - minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, 1000);
 				if(mainGuiButton.modsOnPress.shift) {
 					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {

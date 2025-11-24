@@ -18,7 +18,7 @@ const TextInput = @This();
 const scrollBarWidth = 5;
 const border: f32 = 3;
 const fontSize: f32 = 16;
-const blinkDurationMs: i64 = 500;
+const blinkDuration: std.Io.Duration = .fromMilliseconds(500);
 
 var texture: Texture = undefined;
 
@@ -35,7 +35,7 @@ textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
 optional: OptionalCallbacks,
-lastBlinkTime: i64 = 0,
+lastBlinkTime: std.Io.Timestamp = .fromNanoseconds(0),
 showCusor: bool = true,
 
 pub fn __init() void {
@@ -477,7 +477,7 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 
 fn ensureCursorVisibility(self: *TextInput) void {
 	self.showCusor = true;
-	self.lastBlinkTime = std.time.milliTimestamp();
+	self.lastBlinkTime = main.timestamp();
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		var y: f32 = 0;
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
@@ -521,9 +521,9 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 
-		const milliTime = std.time.milliTimestamp();
-		if(milliTime -% self.lastBlinkTime > blinkDurationMs) {
-			self.lastBlinkTime = milliTime;
+		const currentTime = main.timestamp();
+		if(self.lastBlinkTime.durationTo(currentTime).nanoseconds > blinkDuration.nanoseconds) {
+			self.lastBlinkTime = currentTime;
 			self.showCusor = !self.showCusor;
 		}
 
