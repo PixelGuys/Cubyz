@@ -1,4 +1,5 @@
 .{
+	.lodReplacement = "cubyz:log/birch",
 	.texture0 = "cubyz:branch/birch/dot",
 	.texture1 = "cubyz:branch/birch/half_line",
 	.texture2 = "cubyz:branch/birch/line",

@@ -1,4 +1,5 @@
 .{
+	.lodReplacement = "cubyz:log/toadstool",
 	.tags = .{.choppable, .cuttable, .mushroom},
 	.blockHealth = 2,
 	.texture0 = "cubyz:branch/toadstool/dot",
