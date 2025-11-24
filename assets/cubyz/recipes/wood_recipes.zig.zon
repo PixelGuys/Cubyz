@@ -28,8 +28,8 @@
 		.output = "cubyz:chest/{type}",
 	},
 	.{
-		.inputs = .{"cubyz:candy_cane/block"},
-		.output = "2 cubyz:candy_cane/branch",
+		.inputs = .{"cubyz:candy_cane_block"},
+		.output = "2 cubyz:branch/candy_cane",
 	},
 	.{
 		.inputs = .{"{mod}:{type}_planks", "cubyz:coal_ore"},
