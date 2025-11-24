@@ -1086,7 +1086,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			deltaTime = 0.3;
 		}
 
-		while(self.milliTime.durationTo(newTime).toMilliseconds() < 100) {
+		while(self.milliTime.durationTo(newTime).toMilliseconds() > 100) {
 			self.milliTime = self.milliTime.addDuration(.fromMilliseconds(100));
 			if(self.doGameTimeCycle) self.gameTime +%= 1; // gameTime is measured in 100ms.
 		}
