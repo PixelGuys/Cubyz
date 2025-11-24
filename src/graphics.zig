@@ -1935,7 +1935,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 			const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
 			while(self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
 				self.finalFree(allocation);
-				if(main.timestamp().durationTo(endTime).nanoseconds > 0) break; // TODO: Remove after #1434
+				if(main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
 			}
 			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 		}
