@@ -9,10 +9,10 @@
 	},
 	.{
 		.inputs = .{"cubyz:log/{type}"},
-		.output = "2 cubyz:{type}_branch",
+		.output = "2 cubyz:branch/{type}",
 	},
 	.{
-		.inputs = .{"cubyz:{type}_branch"},
+		.inputs = .{"cubyz:branch/{type}"},
 		.output = "2 cubyz:{type}_planks",
 	},
 	.{
@@ -26,10 +26,6 @@
 	.{
 		.inputs = .{"4 cubyz:{type}_planks"},
 		.output = "cubyz:chest/{type}",
-	},
-	.{
-		.inputs = .{"cubyz:log/cactus"},
-		.output = "2 cubyz:cactus_arm",
 	},
 	.{
 		.inputs = .{"cubyz:candy_cane/block"},
