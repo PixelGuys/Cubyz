@@ -9,6 +9,5 @@
 	.model = .{
 		.radius = 4,
 	},
-	.alwaysViewThrough = true,
 	.decayProhibitor = true,
 }
