@@ -45,14 +45,15 @@ pub fn deinit() void {
 pub fn render() void {
 	draw.setColor(0xffffffff);
 	const displayHealth = @max(0, main.game.Player.super.health);
-	const wholeHearts: usize = @intFromFloat(@ceil(displayHealth*2)/2);
-	const halfHeart: usize = if(0 < @mod(displayHealth, 1) and @mod(displayHealth, 1) < 0.5) 1 else 0;
-	const deadHearts: usize = @max(0, @as(usize, (@intFromFloat(@ceil(main.game.Player.super.maxHealth)))) - (wholeHearts + halfHeart));
+	const halfHeartUnits: usize = @intFromFloat(@ceil(displayHealth*2));
+	const wholeHearts = halfHeartUnits/2;
+	const halfHeart = halfHeartUnits%2;
+	const totalHearts: usize = @intFromFloat(@ceil(main.game.Player.super.maxHealth));
 
 	var x: f32 = 0;
 	var y: f32 = 0;
 	var i: usize = 0;
-	while(i < wholeHearts + halfHeart + deadHearts) : (i += 1) {
+	while(i < totalHearts) : (i += 1) {
 		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
