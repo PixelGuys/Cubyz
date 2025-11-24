@@ -74,7 +74,7 @@ fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i3
 			}
 			// it is the same type of leaf? continue search!
 			if(log.typ != leaf.typ) continue;
-			const branchData = Branch.BranchData.init(leaf.data);
+			const branchData = Branch.BranchData.init(log.data);
 
 			for(main.chunk.Neighbor.iterable) |offset| {
 				const relativePosition = value + offset.relPos();
