@@ -48,7 +48,7 @@ fn isDecayPreventer(self: *@This(), log: Block) bool {
 	}
 	return false;
 }
-fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32, isBranch: bool) bool {
+fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
 
 	// init array to mark already searched blocks.
 	const checkRange = 5;
@@ -65,6 +65,9 @@ fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i3
 	queue.pushBack(Vec3i{0, 0, 0});
 	checked[getIndexInCheckArray(Vec3i{0, 0, 0}, checkRange)] = true;
 
+	const branchRotation = main.rotation.getByID("cubyz:branch");
+	const sourceIsBranch = leaf.mode() == branchRotation;
+
 	while(queue.popFront()) |value| {
 		// get the (potential) log
 		if(world.getBlock(value[0] +% wx, value[1] +% wy, value[2] +% wz)) |log| {
@@ -72,8 +75,10 @@ fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i3
 			if(self.isDecayPreventer(log)) {
 				return true;
 			}
-			// it is the same type of leaf? continue search!
-			if(log.typ != leaf.typ) continue;
+
+			// it is the same type of leaf? continue search! (Don't do it for branches. We've got isConnected instead!)
+			if(!sourceIsBranch and log.typ != leaf.typ) continue;
+			if(sourceIsBranch and log.mode() != branchRotation) continue;
 			const branchData = Branch.BranchData.init(log.data);
 
 			for(main.chunk.Neighbor.iterable) |offset| {
@@ -82,7 +87,7 @@ fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i3
 				// out of range
 				if(vec.lengthSquare(relativePosition) > checkRange*checkRange)
 					continue;
-				if(isBranch and !branchData.isConnected(offset))
+				if(sourceIsBranch and !branchData.isConnected(offset))
 					continue;
 
 				// mark as checked
@@ -100,7 +105,6 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const wy = params.chunk.super.pos.wy + params.y;
 	const wz = params.chunk.super.pos.wz + params.z;
 
-	var isBranch: bool = false;
 	if(params.block.mode() == main.rotation.getByID("cubyz:decayable")) {
 		if(params.block.data != 0)
 			return .ignored;
@@ -108,7 +112,6 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		const bd = Branch.BranchData.init(params.block.data);
 		if(bd.placedByHuman != 0)
 			return .ignored;
-		isBranch = true;
 	} else {
 		std.log.err("Expected {s} to have cubyz:decayable or cubyz:branch as rotation", .{params.block.id()});
 	}
@@ -116,7 +119,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	if(Server.world) |world| {
 		if(world.getBlock(wx, wy, wz)) |leaf| {
 			// check if there is any log in the proximity?^
-			if(foundWayToLog(self, world, leaf, wx, wy, wz, isBranch))
+			if(foundWayToLog(self, world, leaf, wx, wy, wz))
 				return .ignored;
 
 			// no, there is no log in proximity
