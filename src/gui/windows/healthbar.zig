@@ -52,8 +52,7 @@ pub fn render() void {
 
 	var x: f32 = 0;
 	var y: f32 = 0;
-	var i: usize = 0;
-	while(i < totalHearts) : (i += 1) {
+	for(0..totalHearts) |i| {
 		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
