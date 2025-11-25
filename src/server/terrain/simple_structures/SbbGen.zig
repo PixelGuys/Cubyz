@@ -52,11 +52,11 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 	return self;
 }
 
-pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, seed);
+pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool, inGeneration:bool) void {
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, seed,inGeneration);
 }
 
-fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
+fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64, inGeneration: bool) void {
 	const blueprints = &(structure.getBlueprints(seed).* orelse return);
 
 	const origin = blueprints[0].originBlock;
@@ -68,12 +68,20 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - placementDirection.relPos();
 
-	rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
+	if(inGeneration){
+		rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
+	}else{
+		var pos = Vec3i{0,0,0};
+		pos[0] = chunk.super.pos.wx + pastePosition[0];
+		pos[1] = chunk.super.pos.wy + pastePosition[1];
+		pos[2] = chunk.super.pos.wz + pastePosition[2];
 
+		rotated.blueprint.paste( pos,.{});
+	}
 	for(rotated.childBlocks) |childBlock| {
 		const child = structure.getChildStructure(childBlock) orelse continue;
 		const childRotation = rotation.getChildRotation(seed, child.rotation, childBlock.direction());
-		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed);
+		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed,inGeneration);
 	}
 }
 

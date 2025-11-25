@@ -33,7 +33,7 @@ pub fn loadModel(parameters: ZonElement) ?*Stalagmite {
 	return self;
 }
 
-pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
+pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, isCeiling: bool,_:bool) void {
 	const relX: f32 = @as(f32, @floatFromInt(x)) + main.random.nextFloat(seed);
 	const relY: f32 = @as(f32, @floatFromInt(y)) + main.random.nextFloat(seed);
 	var relZ: f32 = @as(f32, @floatFromInt(z)) + main.random.nextFloat(seed);

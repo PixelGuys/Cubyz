@@ -194,12 +194,12 @@ const SimpleStructure = struct {
 	wz: i32,
 	isCeiling: bool,
 
-	pub fn generate(_self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
+	pub fn generate(_self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView,inGeneration:bool) void {
 		const self: *const SimpleStructure = @ptrCast(@alignCast(_self));
 		var seed = self.seed;
 		const relX = self.wx - chunk.super.pos.wx;
 		const relY = self.wy - chunk.super.pos.wy;
 		const relZ = self.wz - chunk.super.pos.wz;
-		self.model.generate(relX, relY, relZ, chunk, caveMap, biomeMap, &seed, self.isCeiling);
+		self.model.generate(relX, relY, relZ, chunk, caveMap, biomeMap, &seed, self.isCeiling, inGeneration);
 	}
 };

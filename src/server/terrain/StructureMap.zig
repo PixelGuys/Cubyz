@@ -14,11 +14,11 @@ const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 const StructureInternal = struct {
-	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void,
+	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView,inGeneration:bool) void,
 	data: *const anyopaque,
 
 	pub fn generate(self: StructureInternal, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
-		self.generateFn(self.data, chunk, caveMap, biomeMap);
+		self.generateFn(self.data, chunk, caveMap, biomeMap,true);
 	}
 };
 
