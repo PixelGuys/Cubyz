@@ -409,7 +409,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		while(iterator.next()) |entry| {
 			const index = entry.key_ptr.*;
 			const blockEntityIndex = entry.value_ptr.*;
-			const block = ch.data.getValue(index);
+			const block = ch.data.getValue(index.toIndex());
 			const blockEntity = block.blockEntity() orelse continue;
 
 			var tempWriter = BinaryWriter.init(main.stackAllocator);
@@ -423,7 +423,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 			if(tempWriter.data.items.len == 0) continue;
 
-			writer.writeInt(u16, @intCast(index));
+			writer.writeInt(u15, index.toIndex());
 			writer.writeVarInt(usize, tempWriter.data.items.len);
 			writer.writeSlice(tempWriter.data.items);
 		}
@@ -436,12 +436,12 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		std.debug.assert(compressionAlgo == .raw);
 
 		while(reader.remaining.len != 0) {
-			const index = try reader.readInt(u16);
+			const index: chunk.BlockIndex = .fromIndex(try reader.readInt(u15));
 			const pos = ch.getGlobalBlockPosFromIndex(index);
 			const dataLength = try reader.readVarInt(usize);
 
 			const blockEntityData = try reader.readSlice(dataLength);
-			const block = ch.data.getValue(index);
+			const block = ch.data.getValue(index.toIndex());
 			const blockEntity = block.blockEntity() orelse {
 				std.log.err("Could not load BlockEntity at position {} for block {s}: Block has no block entity", .{pos, block.id()});
 				continue;

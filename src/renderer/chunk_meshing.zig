@@ -932,19 +932,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			paletteCache[i] = result;
 		}
 		// Generate the bitMasks:
-		for(0..chunk.chunkSize) |_x| {
-			const x: u5 = @intCast(_x);
-			for(0..chunk.chunkSize) |_y| {
-				const y: u5 = @intCast(_y);
-				for(0..chunk.chunkSize) |_z| {
-					const z: u5 = @intCast(_z);
-					const paletteId = self.chunk.data.impl.raw.data.getValue(chunk.getIndex(x, y, z));
-					const occlusionInfo = paletteCache[paletteId];
-					const setBit = @as(u32, 1) << z;
-					if(occlusionInfo.alwaysViewThrough or (!occlusionInfo.canSeeAllNeighbors and occlusionInfo.canSeeNeighbor == 0)) {
-						alwaysViewThroughMask[x][y] |= setBit;
-					}
-				}
+		for(0..chunk.chunkVolume) |_index| {
+			const index = chunk.BlockIndex.fromIndex(@intCast(_index));
+			const paletteId = self.chunk.data.impl.raw.data.getValue(index.toIndex());
+			const occlusionInfo = paletteCache[paletteId];
+			const setBit = @as(u32, 1) << index.z;
+			if(occlusionInfo.alwaysViewThrough or (!occlusionInfo.canSeeAllNeighbors and occlusionInfo.canSeeNeighbor == 0)) {
+				alwaysViewThroughMask[index.x][index.y] |= setBit;
 			}
 		}
 		const initialAlwaysViewThroughMask = alwaysViewThroughMask;
@@ -972,35 +966,29 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 			break :blk a;
 		};
-		for(0..chunk.chunkSize) |_x| {
-			const x: u5 = @intCast(_x);
-			for(0..chunk.chunkSize) |_y| {
-				const y: u5 = @intCast(_y);
-				for(0..chunk.chunkSize) |_z| {
-					const z: u5 = @intCast(_z);
-					const paletteId = self.chunk.data.impl.raw.data.getValue(chunk.getIndex(x, y, z));
-					const occlusionInfo = paletteCache[paletteId];
-					const setBit = @as(u32, 1) << z;
-					if(depthFilteredViewThroughMask[x][y] & setBit != 0) {} else if(occlusionInfo.canSeeAllNeighbors) {
-						canSeeAllNeighbors[x][y] |= setBit;
-					} else if(occlusionInfo.canSeeNeighbor != 0) {
-						for(chunk.Neighbor.iterable) |neighbor| {
-							if(occlusionInfo.canSeeNeighbor & neighbor.bitMask() != 0) {
-								canSeeNeighbor[neighbor.toInt()][x][y] |= setBit;
-							}
-						}
+		for(0..chunk.chunkVolume) |_index| {
+			const index = chunk.BlockIndex.fromIndex(@intCast(_index));
+			const paletteId = self.chunk.data.impl.raw.data.getValue(index.toIndex());
+			const occlusionInfo = paletteCache[paletteId];
+			const setBit = @as(u32, 1) << index.z;
+			if(depthFilteredViewThroughMask[index.x][index.y] & setBit != 0) {} else if(occlusionInfo.canSeeAllNeighbors) {
+				canSeeAllNeighbors[index.x][index.y] |= setBit;
+			} else if(occlusionInfo.canSeeNeighbor != 0) {
+				for(chunk.Neighbor.iterable) |neighbor| {
+					if(occlusionInfo.canSeeNeighbor & neighbor.bitMask() != 0) {
+						canSeeNeighbor[neighbor.toInt()][index.x][index.y] |= setBit;
 					}
-					if(occlusionInfo.hasExternalQuads) {
-						hasFaces[x][y] |= setBit;
-					}
-					if(occlusionInfo.hasInternalQuads) {
-						const block = self.chunk.data.palette()[paletteId].load(.unordered);
-						if(block.transparent()) {
-							appendInternalQuads(block, x, y, z, false, &transparentCore, main.stackAllocator);
-						} else {
-							appendInternalQuads(block, x, y, z, false, &opaqueCore, main.stackAllocator);
-						}
-					}
+				}
+			}
+			if(occlusionInfo.hasExternalQuads) {
+				hasFaces[index.x][index.y] |= setBit;
+			}
+			if(occlusionInfo.hasInternalQuads) {
+				const block = self.chunk.data.palette()[paletteId].load(.unordered);
+				if(block.transparent()) {
+					appendInternalQuads(block, index.x, index.y, index.z, false, &transparentCore, main.stackAllocator);
+				} else {
+					appendInternalQuads(block, index.x, index.y, index.z, false, &opaqueCore, main.stackAllocator);
 				}
 			}
 		}
@@ -1179,22 +1167,20 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.finishNeighbors(lightRefreshList);
 	}
 
-	fn updateBlockLight(self: *ChunkMesh, x: u5, y: u5, z: u5, newBlock: Block, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn updateBlockLight(self: *ChunkMesh, index: chunk.BlockIndex, newBlock: Block, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
 		for(self.lightingData[0..]) |lightingData| {
-			lightingData.propagateLightsDestructive(&.{.{x, y, z}}, lightRefreshList);
+			lightingData.propagateLightsDestructive(&.{index}, lightRefreshList);
 		}
 		if(newBlock.light() != 0) {
-			self.lightingData[0].propagateLights(&.{.{x, y, z}}, false, lightRefreshList);
+			self.lightingData[0].propagateLights(&.{index}, false, lightRefreshList);
 		}
 	}
 
 	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, blockEntityData: []const u8, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
-		const x: u5 = @intCast(_x & chunk.chunkMask);
-		const y: u5 = @intCast(_y & chunk.chunkMask);
-		const z: u5 = @intCast(_z & chunk.chunkMask);
+		const blockIndex = chunk.BlockIndex.fromWorldCoords(_x, _y, _z);
 		var newBlock = _newBlock;
 		self.mutex.lock();
-		const oldBlock = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+		const oldBlock = self.chunk.data.getValue(blockIndex.toIndex());
 
 		if(oldBlock == newBlock) {
 			if(newBlock.blockEntity()) |blockEntity| {
@@ -1218,38 +1204,29 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
 
 		for(chunk.Neighbor.iterable) |neighbor| {
-			const nx = x + neighbor.relX();
-			const ny = y + neighbor.relY();
-			const nz = z + neighbor.relZ();
+			const neighborIndex, const chunkLocation = blockIndex.neighbor(neighbor);
 
-			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
-				const nnx: u5 = @intCast(nx & chunk.chunkMask);
-				const nny: u5 = @intCast(ny & chunk.chunkMask);
-				const nnz: u5 = @intCast(nz & chunk.chunkMask);
-
+			if(chunkLocation == .inNeighborChunk) {
 				const neighborChunkMesh = mesh_storage.getNeighbor(self.pos, self.pos.voxelSize, neighbor) orelse continue;
 
-				const index = chunk.getIndex(nnx, nny, nnz);
-
 				neighborChunkMesh.mutex.lock();
-				var neighborBlock = neighborChunkMesh.chunk.data.getValue(index);
+				var neighborBlock = neighborChunkMesh.chunk.data.getValue(neighborIndex.toIndex());
 
 				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-					neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
+					neighborChunkMesh.chunk.data.setValue(neighborIndex.toIndex(), neighborBlock);
 					neighborChunkMesh.mutex.unlock();
-					neighborChunkMesh.updateBlockLight(nnx, nny, nnz, neighborBlock, lightRefreshList);
+					neighborChunkMesh.updateBlockLight(neighborIndex, neighborBlock, lightRefreshList);
 					appendIfNotContained(regenerateMeshList, neighborChunkMesh);
 					neighborChunkMesh.mutex.lock();
 				}
 				neighborChunkMesh.mutex.unlock();
 				neighborBlocks[neighbor.toInt()] = neighborBlock;
 			} else {
-				const index = chunk.getIndex(nx, ny, nz);
 				self.mutex.lock();
-				var neighborBlock = self.chunk.data.getValue(index);
+				var neighborBlock = self.chunk.data.getValue(neighborIndex.toIndex());
 				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-					self.chunk.data.setValue(index, neighborBlock);
-					self.updateBlockLight(@intCast(nx), @intCast(ny), @intCast(nz), neighborBlock, lightRefreshList);
+					self.chunk.data.setValue(neighborIndex.toIndex(), neighborBlock);
+					self.updateBlockLight(neighborIndex, neighborBlock, lightRefreshList);
 				}
 				self.mutex.unlock();
 				neighborBlocks[neighbor.toInt()] = neighborBlock;
@@ -1261,31 +1238,31 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 		}
 		self.mutex.lock();
-		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
+		self.chunk.data.setValue(blockIndex.toIndex(), newBlock);
 		self.mutex.unlock();
 
-		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);
+		self.updateBlockLight(blockIndex, newBlock, lightRefreshList);
 
 		self.mutex.lock();
 		// Update neighbor chunks:
-		if(x == 0) {
+		if(blockIndex.x == 0) {
 			self.lastNeighborsHigherLod[chunk.Neighbor.dirNegX.toInt()] = null;
 			self.lastNeighborsSameLod[chunk.Neighbor.dirNegX.toInt()] = null;
-		} else if(x == 31) {
+		} else if(blockIndex.x == 31) {
 			self.lastNeighborsHigherLod[chunk.Neighbor.dirPosX.toInt()] = null;
 			self.lastNeighborsSameLod[chunk.Neighbor.dirPosX.toInt()] = null;
 		}
-		if(y == 0) {
+		if(blockIndex.y == 0) {
 			self.lastNeighborsHigherLod[chunk.Neighbor.dirNegY.toInt()] = null;
 			self.lastNeighborsSameLod[chunk.Neighbor.dirNegY.toInt()] = null;
-		} else if(y == 31) {
+		} else if(blockIndex.y == 31) {
 			self.lastNeighborsHigherLod[chunk.Neighbor.dirPosY.toInt()] = null;
 			self.lastNeighborsSameLod[chunk.Neighbor.dirPosY.toInt()] = null;
 		}
-		if(z == 0) {
+		if(blockIndex.z == 0) {
 			self.lastNeighborsHigherLod[chunk.Neighbor.dirDown.toInt()] = null;
 			self.lastNeighborsSameLod[chunk.Neighbor.dirDown.toInt()] = null;
-		} else if(z == 31) {
+		} else if(blockIndex.z == 31) {
 			self.lastNeighborsHigherLod[chunk.Neighbor.dirUp.toInt()] = null;
 			self.lastNeighborsSameLod[chunk.Neighbor.dirUp.toInt()] = null;
 		}
