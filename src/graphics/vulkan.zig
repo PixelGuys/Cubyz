@@ -207,13 +207,13 @@ pub fn createInstance() void {
 	}
 
 	var createFlags: u32 = 0;
-	var extensions = std.ArrayList([*c]const u8).init(main.stackAllocator.allocator);
-	defer extensions.deinit();
-	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]) catch unreachable;
+	var extensions = std.ArrayList([*c]const u8).initCapacity(main.stackAllocator.allocator, glfwExtensionCount) catch unreachable;
+	defer extensions.deinit(main.stackAllocator.allocator);
+	extensions.appendSlice(main.stackAllocator.allocator, glfwExtensions[0..glfwExtensionCount]) catch unreachable;
 
 	if(builtin.target.os.tag == .macos) {
 		// NOTE(blackedout): These constants may not be available for other targets because currently only macOS uses higher version headers
-		extensions.appendSlice(&.{
+		extensions.appendSlice(main.stackAllocator.allocator, &.{
 			c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 			c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 		}) catch unreachable;
