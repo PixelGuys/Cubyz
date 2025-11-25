@@ -1,7 +1,7 @@
 .{
 	.tags = .{.choppable, .cuttable, .branch},
 	.onUpdate = .{
-		.type = .Decay
+		.type = .Decay,
 	},
 	.blockHealth = 2.5,
 	.drops = .{

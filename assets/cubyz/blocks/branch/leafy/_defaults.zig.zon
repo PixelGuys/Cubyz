@@ -1,7 +1,7 @@
 .{
 	.tags = .{.choppable, .cuttable, .leaf, .branch},
 	.onUpdate = .{
-		.type = .Decay
+		.type = .Decay,
 	},
 	.blockHealth = 0.5,
 	.absorbedLight = 0x202830,
