@@ -194,8 +194,6 @@ pub const ParticleSystem = struct {
 		particlesSSBO = SSBO.init();
 		particlesSSBO.createDynamicBuffer(Particle, maxCapacity);
 		particlesSSBO.bind(13);
-
-		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	}
 
 	fn deinit() void {
@@ -487,7 +485,7 @@ pub const Emitter = struct {
 			const spawnPos: Vec3f = @splat(self.radius);
 			var offsetPos: Vec3f = undefined;
 			while(true) {
-				offsetPos = random.nextFloatVectorSigned(3, &seed);
+				offsetPos = random.nextFloatVectorSigned(3, &main.seed);
 				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
