@@ -555,6 +555,9 @@ pub fn main() void { // MARK: main()
 	if(!headless) itemdrop.ItemDropRenderer.init();
 	defer if(!headless) itemdrop.ItemDropRenderer.deinit();
 
+	itemdrop.ItemDisplayManager.init();
+	defer itemdrop.ItemDisplayManager.deinit();
+
 	assets.init();
 
 	if(!headless) blocks.meshes.init();
