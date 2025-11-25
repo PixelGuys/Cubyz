@@ -196,11 +196,11 @@ pub const SimpleStructure = struct {
 	wz: i32,
 	isCeiling: bool,
 
-	pub fn generate(self: *const SimpleStructure, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
+	pub fn generate(self: *const SimpleStructure, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView,inGeneration:bool) void {
 		var seed = self.seed;
 		const relX = self.wx - chunk.super.pos.wx;
 		const relY = self.wy - chunk.super.pos.wy;
 		const relZ = self.wz - chunk.super.pos.wz;
-		self.model.generate(relX, relY, relZ, chunk, caveMap, biomeMap, &seed, self.isCeiling);
+		self.model.generate(relX, relY, relZ, chunk, caveMap, biomeMap, &seed, self.isCeiling, inGeneration);
 	}
 };
