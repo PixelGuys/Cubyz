@@ -1,8 +1,7 @@
 .{
 	.tags = .{.choppable, .cuttable, .mushroom, .branch},
 	.onUpdate = .{
-		.type = .Decay,
-		.prevention = .{.log},
+		.type = .Decay
 	},
 	.blockHealth = 2,
 	.drops = .{
