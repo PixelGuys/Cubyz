@@ -54,6 +54,28 @@ var fakeReflectionUniforms: struct {
 	frequency: c_int,
 	reflectionMapSize: c_int,
 } = undefined;
+var blockPipeline: graphics.Pipeline = undefined;
+const BlockUniforms = struct {
+	projectionMatrix: c_int,
+	viewMatrix: c_int,
+	modelMatrix: c_int,
+	playerPositionInteger: c_int,
+	playerPositionFraction: c_int,
+	screenSize: c_int,
+	ambientLight: c_int,
+	contrast: c_int,
+	@"fog.color": c_int,
+	@"fog.density": c_int,
+	@"fog.fogLower": c_int,
+	@"fog.fogHigher": c_int,
+	reflectionMapSize: c_int,
+	lodDistance: c_int,
+	zNear: c_int,
+	zFar: c_int,
+};
+var blockUniforms: BlockUniforms = undefined;
+var blockTransparentPipeline: graphics.Pipeline = undefined;
+var blockTransparentUniforms: BlockUniforms = undefined;
 
 pub var activeFrameBuffer: c_uint = 0;
 
@@ -79,6 +101,31 @@ pub fn init() void {
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
 	);
+	blockPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
+		"#define ENTITY",
+		&blockUniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = true},
+		.{.attachments = &.{.noBlending}},
+	);
+	blockTransparentPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/transparent_fragment.frag",
+		"#define ENTITY\n#define transparent\n",
+		&blockTransparentUniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
+		.{.attachments = &.{.{
+			.srcColorBlendFactor = .one,
+			.dstColorBlendFactor = .src1Color,
+			.colorBlendOp = .add,
+			.srcAlphaBlendFactor = .one,
+			.dstAlphaBlendFactor = .src1Alpha,
+			.alphaBlendOp = .add,
+		}}},
+	);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
@@ -96,6 +143,8 @@ pub fn deinit() void {
 	deferredRenderPassPipeline.deinit();
 	fakeReflectionPipeline.deinit();
 	worldFrameBuffer.deinit();
+	blockPipeline.deinit();
+	blockTransparentPipeline.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
@@ -326,6 +375,130 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	if(!main.gui.hideGui) entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
 	gpu_performance_measuring.stopQuery();
+}
+
+pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lighting: union(enum) {
+	world: Vec3i,
+	uniform: u32,
+}, ambientLight: Vec3f, playerPosition: Vec3d, transparencyMode: enum {
+	@"opaque",
+	transparent,
+}, contrast: f32) void {
+	var faceData: main.ListUnmanaged(chunk_meshing.FaceData) = .{};
+	defer faceData.deinit(main.stackAllocator);
+	const model = main.blocks.meshes.model(block).model();
+	if(block.hasBackFace()) {
+		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
+		for(main.chunk.Neighbor.iterable) |neighbor| {
+			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
+		}
+	}
+	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
+	for(main.chunk.Neighbor.iterable) |neighbor| {
+		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
+	}
+	for(faceData.items, 0..) |*face, i| {
+		face.position.lightIndex = @intCast(i);
+	}
+
+	const lightData = main.stackAllocator.alloc(u32, faceData.items.len*4);
+	defer main.stackAllocator.free(lightData);
+
+	switch(lighting) {
+		.world => |lightPos| {
+			const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
+			for(faceData.items) |face| {
+				const quad = face.blockAndQuad.quadIndex.quadInfo();
+				var rawData: [4][6]u5 = undefined;
+				for(0..4) |i| {
+					const vertexPos = vec.xyz(modelMatrix.mulVec(vec.combine(quad.cornerVec(i), 1)));
+					const fullPos = lightPos +% @as(Vec3i, @intFromFloat(vertexPos));
+					const indexData = main.renderer.chunk_meshing.PrimitiveMesh.getCornerLight(mesh, fullPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, quad.normal);
+					for(0..6) |j| {
+						rawData[i][j] = std.math.lossyCast(u5, indexData[j]/8);
+					}
+				}
+				const packedLight = main.renderer.chunk_meshing.PrimitiveMesh.packLightValues(rawData);
+				lightData[face.position.lightIndex*4 ..][0..4].* = packedLight;
+			}
+		},
+		.uniform => |light| {
+			@memset(lightData, light);
+		},
+	}
+
+	const transparent = block.transparent() and transparencyMode == .transparent;
+
+	renderFaces(projMatrix, modelMatrix, faceData.items, lightData, ambientLight, playerPosition, transparent, contrast);
+}
+
+fn renderFaces(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.FaceData, lightData: []u32, ambientLight: Vec3f, playerPosition: Vec3d, transparent: bool, contrast: f32) void {
+	var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
+	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData, &allocation);
+	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
+	var lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
+	main.renderer.chunk_meshing.lightBuffers[0].uploadData(lightData, &lightAllocation);
+	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
+
+	var chunkAllocation: graphics.SubAllocation = .{.start = 0, .len = 0};
+	main.renderer.chunk_meshing.chunkBuffer.uploadData(&.{.{
+		.position = .{0, 0, 0},
+		.min = undefined,
+		.max = undefined,
+		.voxelSize = 1,
+		.lightStart = lightAllocation.start,
+		.vertexStartOpaque = undefined,
+		.faceCountsByNormalOpaque = undefined,
+		.vertexStartTransparent = undefined,
+		.vertexCountTransparent = undefined,
+		.visibilityState = 0,
+		.oldVisibilityState = 0,
+	}}, &chunkAllocation);
+	defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
+
+	const uniforms = if(transparent) blockTransparentUniforms else blockUniforms;
+	if(transparent) {
+		blockTransparentPipeline.bind(null);
+
+		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
+		c.glUniform1f(uniforms.@"fog.density", game.fog.density);
+		c.glUniform1f(uniforms.@"fog.fogLower", game.fog.fogLower);
+		c.glUniform1f(uniforms.@"fog.fogHigher", game.fog.fogHigher);
+	} else {
+		blockPipeline.bind(null);
+	}
+
+	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+
+	c.glUniform1f(uniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
+
+	c.glUniform1f(uniforms.contrast, contrast);
+
+	c.glUniform1f(uniforms.lodDistance, main.settings.@"lod0.5Distance");
+
+	c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.game.camera.viewMatrix));
+
+	c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+
+	c.glUniform1f(uniforms.zNear, main.renderer.zNear);
+	c.glUniform1f(uniforms.zFar, main.renderer.zFar);
+
+	const playerPos = playerPosition + Vec3d{1, 1, 1};
+	c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
+	c.glUniformMatrix4fv(uniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
+
+	c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+
+	main.renderer.chunk_meshing.faceBuffers[0].ssbo.bind(main.renderer.chunk_meshing.faceBuffers[0].binding);
+	main.renderer.chunk_meshing.lightBuffers[0].ssbo.bind(main.renderer.chunk_meshing.lightBuffers[0].binding);
+	c.glActiveTexture(c.GL_TEXTURE0);
+	main.blocks.meshes.blockTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE1);
+	main.blocks.meshes.emissionTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE2);
+	main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+	c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 }
 
 const Bloom = struct { // MARK: Bloom

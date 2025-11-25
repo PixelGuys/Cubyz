@@ -2626,72 +2626,16 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	const oldViewMatrix = main.game.camera.viewMatrix;
 	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(1.0*std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
-	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
-	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
-	defer faceData.deinit(main.stackAllocator);
-	const model = main.blocks.meshes.model(block).model();
-	if(block.hasBackFace()) {
-		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
-		for(main.chunk.Neighbor.iterable) |neighbor| {
-			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
-		}
-	}
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
-	for(main.chunk.Neighbor.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
-	}
+	const i = 4; // Easily switch between the 8 diagonal coordinates.
+	var x: f64 = -65.5 + 0.5;
+	var y: f64 = -65.5 + 0.5;
+	var z: f64 = -92.631 + 0.5;
+	if(i & 1 != 0) x = -x + 1;
+	if(i & 2 != 0) y = -y + 1;
+	if(i & 4 != 0) z = -z + 1;
 
-	for(faceData.items) |*face| {
-		face.position.lightIndex = 0;
-	}
-	var allocation: SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData.items, &allocation);
-	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
-	var lightAllocation: SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.lightBuffers[0].uploadData(&.{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}, &lightAllocation);
-	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
-
-	{
-		const i = 4; // Easily switch between the 8 diagonal coordinates.
-		var x: f64 = -65.5 + 1.5;
-		var y: f64 = -65.5 + 1.5;
-		var z: f64 = -92.631 + 1.5;
-		if(i & 1 != 0) x = -x + 3;
-		if(i & 2 != 0) y = -y + 3;
-		if(i & 4 != 0) z = -z + 3;
-		var chunkAllocation: SubAllocation = .{.start = 0, .len = 0};
-		main.renderer.chunk_meshing.chunkBuffer.uploadData(&.{.{
-			.position = .{0, 0, 0},
-			.min = undefined,
-			.max = undefined,
-			.voxelSize = 1,
-			.lightStart = lightAllocation.start,
-			.vertexStartOpaque = undefined,
-			.faceCountsByNormalOpaque = undefined,
-			.vertexStartTransparent = undefined,
-			.vertexCountTransparent = undefined,
-			.visibilityState = 0,
-			.oldVisibilityState = 0,
-		}}, &chunkAllocation);
-		defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
-		if(block.transparent()) {
-			c.glBlendEquation(c.GL_FUNC_ADD);
-			c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
-		} else {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
-		}
-		c.glUniform1f(uniforms.contrast, 0.25);
-		c.glActiveTexture(c.GL_TEXTURE0);
-		main.blocks.meshes.blockTextureArray.bind();
-		c.glActiveTexture(c.GL_TEXTURE1);
-		main.blocks.meshes.emissionTextureArray.bind();
-		c.glActiveTexture(c.GL_TEXTURE2);
-		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
-		block_texture.depthTexture.bindTo(5);
-		c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
-	}
+	main.renderer.renderBlock(projMatrix, Mat4f.identity(), block, .{.uniform = 0xffffffff}, .{1, 1, 1}, .{x, y, z}, .transparent, 0.25);
 
 	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = undefined;
