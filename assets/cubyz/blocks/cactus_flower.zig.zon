@@ -4,6 +4,23 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
+	.onTick = .{
+		.type = .sapling,
+		.structures = .{
+			.{
+				.id = "cubyz:sbb",
+				.structure = "cubyz:cactus/saguaro",
+				.placeMode = .degradable,
+				.chance = 0.01,
+			},
+			.{
+				.id = "cubyz:sbb",
+				.structure = "cubyz:cactus/young",
+				.placeMode = .degradable,
+				.chance = 0.006,
+			},
+		}
+	},
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,
