@@ -21,8 +21,6 @@ const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const Vec2f = vec.Vec2f;
 
-var seed: u64 = undefined;
-
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
 	var types: main.ListUnmanaged(ParticleType) = .{};
@@ -300,11 +298,11 @@ pub const ParticleSystem = struct {
 	}
 
 	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
-		const lifeTime = properties.lifeTime[0] + (properties.lifeTime[1] - properties.lifeTime[0])*random.nextFloat(&seed);
-		const density = particleType.density[0] + (particleType.density[1] - particleType.density[0])*random.nextFloat(&seed);
-		const rot = if(properties.randomizeRotation) random.nextFloat(&seed)*std.math.pi*2 else 0;
-		const rotVel = (particleType.rotVel[0] + (particleType.rotVel[1] - particleType.rotVel[0])*random.nextFloatSigned(&seed));
-		const dragCoeff = particleType.dragCoefficient[0] + (particleType.dragCoefficient[1] - particleType.dragCoefficient[0])*random.nextFloat(&seed);
+		const lifeTime = properties.lifeTime[0] + (properties.lifeTime[1] - properties.lifeTime[0])*random.nextFloat(&main.seed);
+		const density = particleType.density[0] + (particleType.density[1] - particleType.density[0])*random.nextFloat(&main.seed);
+		const rot = if(properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
+		const rotVel = (particleType.rotVel[0] + (particleType.rotVel[1] - particleType.rotVel[0])*random.nextFloatSigned(&main.seed));
+		const dragCoeff = particleType.dragCoefficient[0] + (particleType.dragCoefficient[1] - particleType.dragCoefficient[0])*random.nextFloat(&main.seed);
 
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
@@ -406,12 +404,12 @@ pub const DirectionMode = union(enum(u8)) {
 
 			var sample: Vec2f = undefined;
 			while(true) {
-				sample = random.nextFloatVectorSigned(2, &seed);
+				sample = random.nextFloatVectorSigned(2, &main.seed);
 				if(vec.lengthSquare(sample) < 1) break;
 			}
 
 			const cosTheta: f32 = std.math.cos(self.coneAngle);
-			const z: f32 = cosTheta + (1.0 - cosTheta)*random.nextFloat(&seed);
+			const z: f32 = cosTheta + (1.0 - cosTheta)*random.nextFloat(&main.seed);
 			const scale: f32 = @sqrt(1.0 - z*z);
 
 			return (u*@as(Vec3f, @splat(sample[0]*scale)) + v*@as(Vec3f, @splat(sample[1]*scale)) + dir*@as(Vec3f, @splat(z)));
@@ -463,10 +461,10 @@ pub const Emitter = struct {
 	pub const SpawnPoint = struct {
 		pub fn spawn(_: SpawnPoint, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct {Vec3d, Vec3f} {
 			const particlePos = pos;
-			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&seed)*properties.velocity[1]);
+			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| dir.getConeVel(),
-				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 			};
 			const particleVel = dir*speed;
 
@@ -489,10 +487,10 @@ pub const Emitter = struct {
 				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
-			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&seed)*properties.velocity[1]);
+			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| dir.getConeVel(),
-				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 				.spread => @floatCast(offsetPos),
 			};
 			const particleVel = dir*speed;
@@ -512,12 +510,12 @@ pub const Emitter = struct {
 
 		pub fn spawn(self: SpawnCube, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct {Vec3d, Vec3f} {
 			const spawnPos: Vec3f = self.size;
-			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &seed);
+			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &main.seed);
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
-			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&seed)*properties.velocity[1]);
+			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| dir.getConeVel(),
-				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 				.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
 			};
 			const particleVel = dir*speed;
