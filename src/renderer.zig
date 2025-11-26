@@ -1007,6 +1007,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							const neighborBlock = block;
 							oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							block = oldBlock;
+							// Check if the neighbor block has a block and that it is the same type as the placed item
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
 									if(!canPlaceBlock(neighborPos, block)) return;
