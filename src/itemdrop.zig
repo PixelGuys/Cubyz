@@ -799,7 +799,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		const viewMatrix = Mat4f.identity();
 		bindCommonUniforms(projMatrix, viewMatrix, ambientLight);
 
-		const selectedItem = game.Player.inventory.getItem(game.Player.selectedSlot);
+		const selectedItem = game.Player.hotbar.getItem(game.Player.selectedSlot);
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
