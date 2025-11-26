@@ -19,10 +19,12 @@ const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 
+pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
@@ -106,7 +108,7 @@ pub const User = struct { // MARK: User
 	isLocal: bool = false,
 	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
-	loadedChunks: [simulationSize][simulationSize][simulationSize]*@import("world.zig").EntityChunk = undefined,
+	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
@@ -228,7 +230,7 @@ pub const User = struct { // MARK: User
 				while(z != newBoxEnd[2]) : (z +%= chunk.chunkSize) {
 					const inZDistance = z -% lastBoxStart[2] >= 0 and z -% lastBoxEnd[2] < 0;
 					if(!inXDistance or !inYDistance or !inZDistance) {
-						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = @TypeOf(world.?.chunkManager).getOrGenerateEntityChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = world_zig.ChunkManager.getOrGenerateSimulationChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 					}
 				}
 			}
