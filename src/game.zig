@@ -429,6 +429,7 @@ pub const Player = struct { // MARK: Player
 	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = .{};
 	pub const inventorySize = 32;
+	pub const hotbarSize = 12;
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 	pub const defaultBlockDamage: f32 = 1;
@@ -577,13 +578,33 @@ pub const Player = struct { // MARK: Player
 				}
 			} else return;
 
-			// Check if there is already a slot with that item type
-			for(0..12) |slotIdx| {
+			for(0..main.game.Player.inventorySize) |slotIdx| {
 				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
-					if(isCreative()) {
-						inventory.fillFromCreative(@intCast(slotIdx), item);
+					if(slotIdx < (main.game.Player.hotbarSize)) {
+						// when item is in hotbar
+						selectedSlot = @intCast(slotIdx);
+					} else {
+						// when item is in inventory
+						const targetSlot = blk: {
+							if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
+							// Look for an empty slot
+							for(0..main.game.Player.hotbarSize) |slotId| {
+								if(inventory.getItem(slotId) == null) {
+									break :blk slotId;
+								}
+							}
+							break :blk selectedSlot;
+						};
+						var carried: Inventory = undefined;
+						carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
+						defer carried.deinit(main.globalAllocator);
+
+						inventory.depositToAny(@intCast(slotIdx), carried, inventory.getAmount(slotIdx));
+						inventory.depositOrSwap(@intCast(targetSlot), carried);
+						inventory.depositOrSwap(@intCast(slotIdx), carried);
+						//inventory.depositOrSwap(@intCast(slotIdx),main.game.Player.inventory.getItem(targetSlot));
+
 					}
-					selectedSlot = @intCast(slotIdx);
 					return;
 				}
 			}
@@ -592,7 +613,7 @@ pub const Player = struct { // MARK: Player
 				const targetSlot = blk: {
 					if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 					// Look for an empty slot
-					for(0..12) |slotIdx| {
+					for(0..main.game.Player.hotbarSize) |slotIdx| {
 						if(inventory.getItem(slotIdx) == null) {
 							break :blk slotIdx;
 						}
