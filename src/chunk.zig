@@ -500,7 +500,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		main.utils.assertLocked(&self.mutex);
 		const posStart = BlockPos.fromLodCoords(x, y, zStartInclusive, self.super.voxelSizeShift);
 		const posEnd = BlockPos.fromLodCoords(x, y, zEndInclusive, self.super.voxelSizeShift);
-		self.super.data.setValueInColumn(posStart.toIndex(), posEnd.toIndex() + 1, newBlock);
+		self.super.data.setValueInColumn(posStart.toIndex(), @as(usize, posEnd.toIndex()) + 1, newBlock);
 	}
 
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
