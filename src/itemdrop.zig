@@ -86,9 +86,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.processChanges();
 		self.changeQueue.deinit();
 		for(self.indices[0..self.size]) |i| {
-			if(self.list.items(.itemStack)[i].item) |item| {
-				item.deinit();
-			}
+			self.list.items(.itemStack)[i].item.deinit();
 		}
 		self.list.deinit(self.allocator.allocator);
 	}
@@ -233,10 +231,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.emptyMutex.lock();
 		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
 			self.emptyMutex.unlock();
-			if(itemStack.item) |item| {
-				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {}×{s}", .{itemStack.amount, item.id()});
-				item.deinit();
-			}
+			std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {}×{s}", .{itemStack.amount, itemStack.item.id() orelse return});
+			itemStack.item.deinit();
 			return;
 		});
 		self.isEmpty.unset(i);
@@ -748,7 +744,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		bindCommonUniforms(projMatrix, game.camera.viewMatrix, ambientLight);
 		const itemDrops = &game.world.?.itemDrops.super;
 		for(itemDrops.indices[0..itemDrops.size]) |i| {
-			if(itemDrops.list.items(.itemStack)[i].item) |item| {
+			const item = itemDrops.list.items(.itemStack)[i].item;
+			if(item != .null) {
 				var pos = itemDrops.list.items(.pos)[i];
 				const rot = itemDrops.list.items(.rot)[i];
 				const blockPos: Vec3i = @intFromFloat(@floor(pos));
@@ -799,8 +796,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		const viewMatrix = Mat4f.identity();
 		bindCommonUniforms(projMatrix, viewMatrix, ambientLight);
 
-		const selectedItem = game.Player.inventory.getItem(game.Player.selectedSlot);
-		if(selectedItem) |item| {
+		const item = game.Player.inventory.getItem(game.Player.selectedSlot);
+		if(item != .null) {
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 
