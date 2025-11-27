@@ -443,6 +443,9 @@ fn update() void { // MARK: update()
 }
 
 pub fn start(name: []const u8, port: ?u16) void {
+	const runtimeLimited = main.settings.launchConfig.runtimeLimitMillis != null;
+	const gameStartMillis: i64 = std.time.milliTimestamp();
+	const headless = main.settings.launchConfig.headlessServer;
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
@@ -460,6 +463,11 @@ pub fn start(name: []const u8, port: ?u16) void {
 			lastTime = newTime;
 		}
 		update();
+		if(main.settings.launchConfig.runtimeLimitMillis) |runtimeLimit| {
+			if(runtimeLimited and headless and std.time.milliTimestamp() > gameStartMillis + runtimeLimit) {
+				stop();
+			}
+		}
 	}
 }
 

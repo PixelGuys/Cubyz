@@ -54,6 +54,8 @@ pub var threadPool: *utils.ThreadPool = undefined;
 var threadedIo: std.Io.Threaded = undefined;
 pub var io: std.Io = threadedIo.io();
 
+var headless = false;
+
 pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(timestamp().nanoseconds)));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
@@ -506,7 +508,7 @@ pub fn main() void { // MARK: main()
 
 	settings.launchConfig.init();
 
-	const headless = settings.launchConfig.headlessServer;
+	headless = settings.launchConfig.headlessServer;
 
 	if(!headless) gui.initWindowList();
 	defer if(!headless) gui.deinitWindowList();
@@ -658,7 +660,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
-
 		if(shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
