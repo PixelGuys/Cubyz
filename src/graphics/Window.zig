@@ -167,15 +167,15 @@ pub const Gamepad = struct {
 		pub fn run(self: *ControllerMappingDownloadTask) void {
 			std.log.info("Starting controller mapping download...", .{});
 			defer self.clean();
-			var client: std.http.Client = .{.allocator = main.stackAllocator.allocator};
+			var client: std.http.Client = .{.allocator = main.stackAllocator.allocator, .io = main.io};
 			defer client.deinit();
-			var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
-			defer list.deinit();
+			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator);
+			defer writer.deinit();
 			defer controllerMappingsDownloaded.store(true, std.builtin.AtomicOrder.release);
 			const fetchResult = client.fetch(.{
 				.method = .GET,
 				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
-				.response_storage = .{.dynamic = &list},
+				.response_writer = &writer.writer,
 			}) catch |err| {
 				std.log.err("Failed to download controller mappings: {s}", .{@errorName(err)});
 				return;
@@ -184,7 +184,7 @@ pub const Gamepad = struct {
 				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
 				return;
 			}
-			files.cwd().write("./gamecontrollerdb.txt", list.items) catch |err| {
+			files.cwd().write("./gamecontrollerdb.txt", writer.written()) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
@@ -206,11 +206,11 @@ pub const Gamepad = struct {
 	pub fn downloadControllerMappings() void {
 		if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
-		const curTimestamp = std.time.nanoTimestamp();
-		const timestamp: i128 = blk: {
+		const curTimestamp: i96 = (std.Io.Clock.Timestamp.now(main.io, .real) catch unreachable).raw.nanoseconds;
+		const timestamp: i96 = blk: {
 			const stamp = files.cwd().read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
 			defer main.stackAllocator.free(stamp);
-			break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
+			break :blk std.fmt.parseInt(i96, stamp, 16) catch 0;
 		};
 		const delta = curTimestamp -% timestamp;
 		needsDownload = delta >= 7*std.time.ns_per_day;

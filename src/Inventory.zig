@@ -767,7 +767,7 @@ pub const Command = struct { // MARK: Command
 				.health => {
 					return .{.health = .{
 						.target = null,
-						.health = @bitCast(try reader.readInt(u32)),
+						.health = try reader.readFloat(f32),
 					}};
 				},
 				.kill => {
@@ -778,7 +778,7 @@ pub const Command = struct { // MARK: Command
 				.energy => {
 					return .{.energy = .{
 						.target = null,
-						.energy = @bitCast(try reader.readInt(u32)),
+						.energy = try reader.readFloat(f32),
 					}};
 				},
 			}
@@ -804,11 +804,11 @@ pub const Command = struct { // MARK: Command
 					writer.writeInt(u32, durability.durability);
 				},
 				.health => |health| {
-					writer.writeInt(u32, @bitCast(health.health));
+					writer.writeFloat(f32, health.health);
 				},
 				.kill => {},
 				.energy => |energy| {
-					writer.writeInt(u32, @bitCast(energy.energy));
+					writer.writeFloat(f32, energy.energy);
 				},
 			}
 			return writer.data.toOwnedSlice();

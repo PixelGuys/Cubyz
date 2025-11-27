@@ -733,7 +733,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	return meshList.items;
 }
 
-pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
+pub fn updateMeshes(targetTime: std.Io.Timestamp) void { // MARK: updateMeshes()
 	if(!blockUpdateList.isEmpty()) batchUpdateBlocks();
 
 	mutex.lock();
@@ -747,7 +747,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 		mutex.unlock();
 		defer mutex.lock();
 		mesh.uploadData();
-		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
+		if(targetTime.durationTo(main.timestamp()).nanoseconds >= 0) break; // Update at least one mesh.
 	}
 	while(mapUpdatableList.popFront()) |map| {
 		if(!isMapInRenderDistance(map.pos)) {
@@ -795,7 +795,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 			updateHigherLodNodeFinishedMeshing(pos, true);
 			mesh.uploadData();
 		}
-		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
+		if(targetTime.durationTo(main.timestamp()).nanoseconds >= 0) break; // Update at least one mesh.
 	}
 }
 

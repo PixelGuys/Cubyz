@@ -26,6 +26,9 @@ const Palette = main.assets.Palette;
 const storage = @import("storage.zig");
 const Gamemode = main.game.Gamemode;
 
+const BlockUpdateSystem = main.server.BlockUpdateSystem;
+const SimulationChunk = main.server.SimulationChunk;
+
 pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
 	allowCheats: bool = false,
@@ -96,7 +99,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
 
 		worldInfo.put("name", worldName);
 		worldInfo.put("version", worldDataVersion);
-		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
+		worldInfo.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
 		worldInfo.put("seed", worldSettings.seed);
 
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
@@ -120,52 +123,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
 	}
 }
 
-pub const EntityChunk = struct {
-	chunk: std.atomic.Value(?*ServerChunk) = .init(null),
-	refCount: std.atomic.Value(u32),
-	pos: chunk.ChunkPosition,
-
-	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *EntityChunk {
-		const self = main.globalAllocator.create(EntityChunk);
-		self.* = .{
-			.refCount = .init(1),
-			.pos = pos,
-		};
-		return self;
-	}
-
-	fn deinit(self: *const EntityChunk) void {
-		std.debug.assert(self.refCount.load(.monotonic) == 0);
-		if(self.chunk.raw) |ch| ch.decreaseRefCount();
-		main.globalAllocator.destroy(self);
-	}
-
-	pub fn increaseRefCount(self: *EntityChunk) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-	}
-
-	pub fn decreaseRefCount(self: *EntityChunk) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if(prevVal == 2) {
-			ChunkManager.tryRemoveEntityChunk(self);
-		}
-		if(prevVal == 1) {
-			self.deinit();
-		}
-	}
-
-	pub fn getChunk(self: *EntityChunk) ?*ServerChunk {
-		return self.chunk.load(.acquire);
-	}
-
-	pub fn setChunkAndDecreaseRefCount(self: *EntityChunk, ch: *ServerChunk) void {
-		std.debug.assert(self.chunk.swap(ch, .release) == null);
-	}
-};
-
-const ChunkManager = struct { // MARK: ChunkManager
+pub const ChunkManager = struct { // MARK: ChunkManager
 	world: *ServerWorld,
 	terrainGenerationProfile: server.terrain.TerrainGenerationProfile,
 
@@ -180,49 +138,49 @@ const ChunkManager = struct { // MARK: ChunkManager
 			return std.meta.eql(a, b);
 		}
 	};
-	var entityChunkHashMap: std.HashMap(chunk.ChunkPosition, *EntityChunk, HashContext, 50) = undefined;
+	var simulationChunkHashMap: std.HashMap(chunk.ChunkPosition, *SimulationChunk, HashContext, 50) = undefined;
 	var mutex: std.Thread.Mutex = .{};
 
-	fn getEntityChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*EntityChunk {
+	fn getSimulationChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*SimulationChunk {
 		std.debug.assert(pos.voxelSize == 1);
 		mutex.lock();
 		defer mutex.unlock();
-		if(entityChunkHashMap.get(pos)) |entityChunk| {
-			entityChunk.increaseRefCount();
-			return entityChunk;
+		if(simulationChunkHashMap.get(pos)) |ch| {
+			ch.increaseRefCount();
+			return ch;
 		}
 		return null;
 	}
 
-	pub fn getOrGenerateEntityChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) *EntityChunk {
+	pub fn getOrGenerateSimulationChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) *SimulationChunk {
 		std.debug.assert(pos.voxelSize == 1);
 		mutex.lock();
-		if(entityChunkHashMap.get(pos)) |entityChunk| {
-			entityChunk.increaseRefCount();
+		if(simulationChunkHashMap.get(pos)) |ch| {
+			ch.increaseRefCount();
 			mutex.unlock();
-			return entityChunk;
+			return ch;
 		}
-		const entityChunk = EntityChunk.initAndIncreaseRefCount(pos);
-		entityChunk.increaseRefCount();
-		entityChunk.increaseRefCount();
-		entityChunkHashMap.put(pos, entityChunk) catch unreachable;
+		const ch = SimulationChunk.initAndIncreaseRefCount(pos);
+		ch.increaseRefCount();
+		ch.increaseRefCount();
+		simulationChunkHashMap.put(pos, ch) catch unreachable;
 		mutex.unlock();
-		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.entityChunk = entityChunk});
-		return entityChunk;
+		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.simulationChunk = ch});
+		return ch;
 	}
 
-	fn tryRemoveEntityChunk(ch: *EntityChunk) void {
+	pub fn tryRemoveSimulationChunk(ch: *SimulationChunk) void {
 		mutex.lock();
 		defer mutex.unlock();
 		if(ch.refCount.load(.monotonic) == 1) { // Only we hold it.
-			std.debug.assert(entityChunkHashMap.remove(ch.pos));
+			std.debug.assert(simulationChunkHashMap.remove(ch.pos));
 			ch.decreaseRefCount();
 		}
 	}
 
 	const Source = union(enum) {
 		user: *User,
-		entityChunk: *EntityChunk,
+		simulationChunk: *SimulationChunk,
 	};
 
 	const ChunkLoadTask = struct { // MARK: ChunkLoadTask
@@ -256,7 +214,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
 			switch(self.source) { // Remove the task if the player disconnected
 				.user => |user| if(!user.connected.load(.unordered)) return false,
-				.entityChunk => |ch| if(ch.refCount.load(.monotonic) == 2) return false,
+				.simulationChunk => |ch| if(ch.refCount.load(.monotonic) == 2) return false,
 			}
 			switch(self.source) { // Remove the task if it's far enough away from the player:
 				.user => |user| {
@@ -266,7 +224,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 					targetRenderDistance *= self.pos.voxelSize;
 					return minDistSquare <= targetRenderDistance*targetRenderDistance;
 				},
-				.entityChunk => {},
+				.simulationChunk => {},
 			}
 			return true;
 		}
@@ -279,7 +237,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 		pub fn clean(self: *ChunkLoadTask) void {
 			switch(self.source) {
 				.user => |user| user.decreaseRefCount(),
-				.entityChunk => |ch| ch.decreaseRefCount(),
+				.simulationChunk => |ch| ch.decreaseRefCount(),
 			}
 			main.globalAllocator.destroy(self);
 		}
@@ -346,7 +304,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 			.world = world,
 			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
 		};
-		entityChunkHashMap = .init(main.globalAllocator.allocator);
+		simulationChunkHashMap = .init(main.globalAllocator.allocator);
 		server.terrain.init(self.terrainGenerationProfile);
 		storage.init();
 		return self;
@@ -356,7 +314,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 		for(0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
-		entityChunkHashMap.deinit();
+		simulationChunkHashMap.deinit();
 		server.terrain.deinit();
 		main.assets.unloadAssets();
 		storage.deinit();
@@ -379,16 +337,16 @@ const ChunkManager = struct { // MARK: ChunkManager
 				main.network.protocols.chunkTransmission.sendChunk(user.conn, ch);
 				ch.decreaseRefCount();
 			},
-			.entityChunk => |entityChunk| {
-				entityChunk.setChunkAndDecreaseRefCount(ch);
+			.simulationChunk => |simulationChunk| {
+				simulationChunk.setChunkAndDecreaseRefCount(ch);
 			},
 		}
 	}
 
 	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
-		if(pos.voxelSize == 1) if(getEntityChunkAndIncreaseRefCount(pos)) |entityChunk| { // Check if we already have it in memory.
-			defer entityChunk.decreaseRefCount();
-			if(entityChunk.getChunk()) |ch| {
+		if(pos.voxelSize == 1) if(getSimulationChunkAndIncreaseRefCount(pos)) |simulationChunk| { // Check if we already have it in memory.
+			defer simulationChunk.decreaseRefCount();
+			if(simulationChunk.getChunk()) |ch| {
 				ch.increaseRefCount();
 				return ch;
 			}
@@ -503,7 +461,7 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("spawn", self.world.spawn);
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
 		worldData.put("name", self.world.name);
-		worldData.put("lastUsedTime", std.time.milliTimestamp());
+		worldData.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.world.tickSpeed.load(.monotonic));
 		// TODO: Save entities
 		try self.dir.writeZon("world.zig.zon", worldData);
@@ -521,9 +479,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	chunkManager: ChunkManager = undefined,
 
 	gameTime: i64 = 0,
-	milliTime: i64,
-	lastUpdateTime: i64,
-	lastUnimportantDataSent: i64,
+	milliTime: std.Io.Timestamp,
+	lastUpdateTime: std.Io.Timestamp,
+	lastUnimportantDataSent: std.Io.Timestamp,
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
@@ -560,9 +518,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
-			.lastUpdateTime = std.time.milliTimestamp(),
-			.milliTime = std.time.milliTimestamp(),
-			.lastUnimportantDataSent = std.time.milliTimestamp(),
+			.lastUpdateTime = main.timestamp(),
+			.milliTime = main.timestamp(),
+			.lastUnimportantDataSent = main.timestamp(),
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
@@ -797,7 +755,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				main.heap.GarbageCollection.syncPoint();
 			}
 			self.mutex.unlock();
-			std.Thread.sleep(1_000_000);
+			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 			main.heap.GarbageCollection.syncPoint();
 			self.mutex.lock();
 			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
@@ -1031,54 +989,37 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.dropWithCooldown(stack, pos, dir, velocity, 0);
 	}
 
-	fn tickBlocksInChunk(self: *ServerWorld, _chunk: *chunk.ServerChunk) void {
-		for(0..self.tickSpeed.load(.monotonic)) |_| {
-			const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
-
-			const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;
-			const y: i32 = blockIndex >> chunk.chunkShift & chunk.chunkMask;
-			const z: i32 = blockIndex & chunk.chunkMask;
-
-			_chunk.mutex.lock();
-			const block = _chunk.getBlock(x, y, z);
-			_chunk.mutex.unlock();
-			_ = block.onTick().run(.{.block = block, .chunk = _chunk, .x = x, .y = y, .z = z});
-		}
-	}
-
 	fn tick(self: *ServerWorld) void {
 		ChunkManager.mutex.lock();
-		var iter = ChunkManager.entityChunkHashMap.valueIterator();
-		var currentChunks: main.ListUnmanaged(*EntityChunk) = .initCapacity(main.stackAllocator, iter.len);
+		var iter = ChunkManager.simulationChunkHashMap.valueIterator();
+		var currentChunks: main.ListUnmanaged(*SimulationChunk) = .initCapacity(main.stackAllocator, iter.len);
 		defer currentChunks.deinit(main.stackAllocator);
-		while(iter.next()) |entityChunk| {
-			entityChunk.*.increaseRefCount();
-			currentChunks.append(main.stackAllocator, entityChunk.*);
+		while(iter.next()) |simulationChunk| {
+			simulationChunk.*.increaseRefCount();
+			currentChunks.append(main.stackAllocator, simulationChunk.*);
 		}
 		ChunkManager.mutex.unlock();
 
-		// tick blocks
-		for(currentChunks.items) |entityChunk| {
-			defer entityChunk.decreaseRefCount();
-			const ch = entityChunk.getChunk() orelse continue;
-			self.tickBlocksInChunk(ch);
+		for(currentChunks.items) |simulationChunk| {
+			defer simulationChunk.decreaseRefCount();
+			simulationChunk.update(self.tickSpeed.load(.unordered));
 		}
 	}
 
 	pub fn update(self: *ServerWorld) void { // MARK: update()
-		const newTime = std.time.milliTimestamp();
-		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
+		const newTime = main.timestamp();
+		var deltaTime = @as(f32, @floatFromInt(self.lastUpdateTime.durationTo(newTime).toNanoseconds()))/1.0e9;
 		self.lastUpdateTime = newTime;
 		if(deltaTime > 0.3) {
 			std.log.warn("Update time is getting too high. It's already at {} s!", .{deltaTime});
 			deltaTime = 0.3;
 		}
 
-		while(self.milliTime + 100 < newTime) {
-			self.milliTime += 100;
+		while(self.milliTime.durationTo(newTime).toMilliseconds() > 100) {
+			self.milliTime = self.milliTime.addDuration(.fromMilliseconds(100));
 			if(self.doGameTimeCycle) self.gameTime +%= 1; // gameTime is measured in 100ms.
 		}
-		if(self.lastUnimportantDataSent + 2000 < newTime) { // Send unimportant data every ~2s.
+		if(self.lastUnimportantDataSent.durationTo(newTime).toSeconds() < 2) {
 			self.lastUnimportantDataSent = newTime;
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -1102,7 +1043,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Store chunks and regions.
 		// Stores at least one chunk and one region per iteration.
 		// All chunks and regions will be stored within the storage time.
-		const insertionTime = newTime -% main.settings.storageTime;
+		const insertionTime = newTime.subDuration(main.settings.storageTime);
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		while(self.chunkUpdateQueue.popFront()) |updateRequest| {
@@ -1110,14 +1051,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
-			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
+			if(updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
 		}
 		while(self.regionUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
-			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
+			if(updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
 		}
 	}
 
@@ -1129,8 +1070,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager.queueLightMapAndDecreaseRefCount(pos, source);
 	}
 
-	pub fn getSimulationChunkAndIncreaseRefCount(_: *ServerWorld, x: i32, y: i32, z: i32) ?*EntityChunk {
-		if(ChunkManager.getEntityChunkAndIncreaseRefCount(.{.wx = x & ~@as(i32, chunk.chunkMask), .wy = y & ~@as(i32, chunk.chunkMask), .wz = z & ~@as(i32, chunk.chunkMask), .voxelSize = 1})) |entityChunk| {
+	pub fn getSimulationChunkAndIncreaseRefCount(_: *ServerWorld, x: i32, y: i32, z: i32) ?*SimulationChunk {
+		if(ChunkManager.getSimulationChunkAndIncreaseRefCount(.{.wx = x & ~@as(i32, chunk.chunkMask), .wy = y & ~@as(i32, chunk.chunkMask), .wz = z & ~@as(i32, chunk.chunkMask), .voxelSize = 1})) |entityChunk| {
 			return entityChunk;
 		}
 		return null;
@@ -1175,7 +1116,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	/// Returns the actual block on failure
-	pub fn cmpxchgBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
+	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
 		main.utils.assertLocked(&main.items.Inventory.Sync.ServerSide.mutex); // Block entities with inventories need this mutex to be locked
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
@@ -1237,7 +1178,39 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		for(userList) |user| {
 			main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
+		// onBreak event
+		if(oldBlock) |block| {
+			if(block.typ != newBlock.typ) {
+				_ = block.onBreak().run(.{
+					.block = block,
+					.chunk = baseChunk,
+					.x = x,
+					.y = y,
+					.z = z,
+				});
+			}
+		}
+		self.triggerNeighborBlockUpdates(wx, wy, wz);
+
 		return null;
+	}
+	pub fn triggerNeighborBlockUpdates(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
+		for(chunk.Neighbor.iterable) |value| {
+			const pos = Vec3i{
+				wx + value.relX(),
+				wy + value.relY(),
+				wz + value.relZ(),
+			};
+
+			var ch = self.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse continue;
+			defer ch.decreaseRefCount();
+
+			ch.blockUpdateSystem.add(.{
+				.x = @truncate(@as(u32, @bitCast(pos[0]))),
+				.y = @truncate(@as(u32, @bitCast(pos[1]))),
+				.z = @truncate(@as(u32, @bitCast(pos[2]))),
+			});
+		}
 	}
 
 	pub fn updateBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, newBlock: Block) void {
@@ -1246,13 +1219,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *ServerChunk) void {
 		self.mutex.lock();
-		self.chunkUpdateQueue.pushBack(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
+		self.chunkUpdateQueue.pushBack(.{.ch = ch, .milliTimeStamp = main.timestamp().toMilliseconds()});
 		self.mutex.unlock();
 	}
 
 	pub fn queueRegionFileUpdateAndDecreaseRefCount(self: *ServerWorld, region: *storage.RegionFile) void {
 		self.mutex.lock();
-		self.regionUpdateQueue.pushBack(.{.region = region, .milliTimeStamp = std.time.milliTimestamp()});
+		self.regionUpdateQueue.pushBack(.{.region = region, .milliTimeStamp = main.timestamp().toMilliseconds()});
 		self.mutex.unlock();
 	}
 };
