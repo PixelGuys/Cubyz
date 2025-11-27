@@ -344,7 +344,7 @@ pub const BlockEntityTypes = struct {
 				texture.deinit();
 			}
 			textureDeinitList.deinit();
-			pipeline.deinit();
+			if(!main.settings.launchConfig.headlessServer) pipeline.deinit();
 			StorageServer.deinit();
 			StorageClient.deinit();
 		}
