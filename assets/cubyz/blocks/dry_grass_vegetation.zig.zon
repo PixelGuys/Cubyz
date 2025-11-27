@@ -13,5 +13,6 @@
 	.item = .{
 		.texture = "dry_grass.png",
 	},
+	.replaceable = true,
 	.lodReplacement = "cubyz:air",
 }
