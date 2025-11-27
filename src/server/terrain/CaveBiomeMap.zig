@@ -8,6 +8,7 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const terrain = @import("terrain.zig");
