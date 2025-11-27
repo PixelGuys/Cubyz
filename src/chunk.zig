@@ -267,7 +267,7 @@ pub const BlockPos = packed struct(u15) { // MARK: BlockPos
 	}
 
 	pub fn neighbor(self: BlockPos, n: Neighbor) struct {BlockPos, enum {inSameChunk, inNeighborChunk}} {
-		const result: BlockPos, const isInNeighborChunk: bool = switch (n) {
+		const result: BlockPos, const isInNeighborChunk: bool = switch(n) {
 			.dirUp => .{.fromCoords(self.x, self.y, self.z +% 1), self.z == chunkMask},
 			.dirDown => .{.fromCoords(self.x, self.y, self.z -% 1), self.z == 0},
 			.dirPosY => .{.fromCoords(self.x, self.y +% 1, self.z), self.y == chunkMask},
