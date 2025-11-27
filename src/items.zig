@@ -995,7 +995,7 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn hashCode(self: Item) u32 {
 		return switch(self) {
-			.null => 0,
+			.null => unreachable,
 			inline else => |item| item.hashCode(),
 		};
 	}
