@@ -338,10 +338,28 @@ pub const ChannelChunk = struct {
 					const entry = &list[x*chunk.chunkSize + y];
 					entry.pos, _ = entry.pos.neighbor(neighbor);
 					switch(neighbor.vectorComponent()) {
-						.x, .y => {
+						.x => {
+							entry.pos = .{
+								.x = if(neighbor.isPositive()) 0 else chunk.chunkSize - 1,
+								.y = @intCast(x),
+								.z = @intCast(y),
+							};
+							entry.value = .{val, val, val};
+						},
+						.y => {
+							entry.pos = .{
+								.y = if(neighbor.isPositive()) 0 else chunk.chunkSize - 1,
+								.x = @intCast(x),
+								.z = @intCast(y),
+							};
 							entry.value = .{val, val, val};
 						},
 						.z => {
+							entry.pos = .{
+								.z = if(neighbor.isPositive()) 0 else chunk.chunkSize - 1,
+								.x = @intCast(x),
+								.y = @intCast(y),
+							};
 							entry.value = .{255, 255, 255};
 						},
 					}
