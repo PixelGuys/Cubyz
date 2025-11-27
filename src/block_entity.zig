@@ -59,37 +59,37 @@ pub const BlockEntityType = struct {
 		}
 		return class;
 	}
-	pub inline fn onLoadClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
+	pub inline fn onLoadClient(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 		return self.vtable.onLoadClient(pos, chunk, reader);
 	}
-	pub inline fn onUnloadClient(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
+	pub inline fn onUnloadClient(self: *const BlockEntityType, dataIndex: BlockEntityIndex) void {
 		return self.vtable.onUnloadClient(dataIndex);
 	}
-	pub inline fn onLoadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
+	pub inline fn onLoadServer(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 		return self.vtable.onLoadServer(pos, chunk, reader);
 	}
-	pub inline fn onUnloadServer(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
+	pub inline fn onUnloadServer(self: *const BlockEntityType, dataIndex: BlockEntityIndex) void {
 		return self.vtable.onUnloadServer(dataIndex);
 	}
-	pub inline fn onStoreServerToDisk(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+	pub inline fn onStoreServerToDisk(self: *const BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToDisk(dataIndex, writer);
 	}
-	pub inline fn onStoreServerToClient(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+	pub inline fn onStoreServerToClient(self: *const BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(dataIndex, writer);
 	}
-	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
+	pub inline fn onInteract(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
 		return self.vtable.onInteract(pos, chunk);
 	}
-	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+	pub inline fn updateClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateClientData(pos, chunk, event);
 	}
-	pub inline fn updateServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+	pub inline fn updateServerData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateServerData(pos, chunk, event);
 	}
-	pub inline fn getServerToClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+	pub inline fn getServerToClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getServerToClientData(pos, chunk, writer);
 	}
-	pub inline fn getClientToServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+	pub inline fn getClientToServerData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getClientToServerData(pos, chunk, writer);
 	}
 };
@@ -561,7 +561,7 @@ pub fn deinit() void {
 	blockyEntityTypes.deinit(main.globalAllocator.allocator);
 }
 
-pub fn getByID(_id: ?[]const u8) ?*BlockEntityType {
+pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 	const id = _id orelse return null;
 	if(blockyEntityTypes.getPtr(id)) |cls| return cls;
 	std.log.err("BlockEntityType with id '{s}' not found", .{id});

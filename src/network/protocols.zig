@@ -864,7 +864,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		conn.send(.fast, id, writer.data.items);
 	}
 
-	fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *main.block_entity.BlockEntityType) void {
+	fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *const main.block_entity.BlockEntityType) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 		blockEntity.getServerToClientData(pos, ch, &writer);
