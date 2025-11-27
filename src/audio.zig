@@ -4,6 +4,7 @@ const main = @import("main");
 const utils = main.utils;
 
 const c = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("miniaudio.h");
 	@cDefine("STB_VORBIS_HEADER_ONLY", "");
 	@cInclude("stb/stb_vorbis.h");
@@ -192,7 +193,6 @@ pub fn init() error{miniaudioError}!void {
 	try handleError(c.ma_device_start(&device));
 
 	sampleRate = 44100;
-	lastTime = std.time.milliTimestamp();
 }
 
 pub fn deinit() void {
@@ -239,7 +239,6 @@ const currentMusic = struct {
 };
 
 var activeMusicId: []const u8 = &.{};
-var lastTime: i64 = 0;
 var partialFrame: f32 = 0;
 const animationLengthInSeconds = 5.0;
 

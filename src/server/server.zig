@@ -19,10 +19,12 @@ const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 
+pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
@@ -98,7 +100,7 @@ pub const User = struct { // MARK: User
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
-	lastSaveTime: i64 = 0,
+	lastSaveTime: std.Io.Timestamp = .fromNanoseconds(0),
 	name: []const u8 = "",
 	renderDistance: u16 = undefined,
 	clientUpdatePos: Vec3i = .{0, 0, 0},
@@ -106,7 +108,7 @@ pub const User = struct { // MARK: User
 	isLocal: bool = false,
 	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
-	loadedChunks: [simulationSize][simulationSize][simulationSize]*@import("world.zig").EntityChunk = undefined,
+	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
@@ -133,7 +135,7 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
-		network.Protocols.handShake.serverSide(self.conn);
+		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
 
@@ -228,7 +230,7 @@ pub const User = struct { // MARK: User
 				while(z != newBoxEnd[2]) : (z +%= chunk.chunkSize) {
 					const inZDistance = z -% lastBoxStart[2] >= 0 and z -% lastBoxEnd[2] < 0;
 					if(!inXDistance or !inYDistance or !inZDistance) {
-						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = @TypeOf(world.?.chunkManager).getOrGenerateEntityChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = world_zig.ChunkManager.getOrGenerateSimulationChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 					}
 				}
 			}
@@ -249,13 +251,13 @@ pub const User = struct { // MARK: User
 	pub fn update(self: *User) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
+		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
-		const saveTime = std.time.milliTimestamp();
-		if(saveTime -% self.lastSaveTime > 5000) {
+		const saveTime = main.timestamp();
+		if(self.lastSaveTime.durationTo(saveTime).toSeconds() > 5) {
 			world.?.savePlayer(self) catch |err| {
 				std.log.err("Failed to save player {s}: {s}", .{self.name, @errorName(err)});
 			};
@@ -283,12 +285,12 @@ pub const User = struct { // MARK: User
 		self.sendRawMessage(msg);
 	}
 	fn sendRawMessage(self: *User, msg: []const u8) void {
-		main.network.Protocols.chat.send(self.conn, msg);
+		main.network.protocols.chat.send(self.conn, msg);
 	}
 };
 
 pub const updatesPerSec: u32 = 20;
-const updateNanoTime: u32 = 1000000000/20;
+const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
 var userMutex: std.Thread.Mutex = .{};
@@ -299,7 +301,7 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
-var lastTime: i128 = undefined;
+var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
 
@@ -310,7 +312,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
-	lastTime = std.time.nanoTimestamp();
+	lastTime = main.timestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
@@ -423,7 +425,7 @@ fn update() void { // MARK: update()
 		});
 	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
 	}
 
 	for(userList) |user| {
@@ -431,7 +433,7 @@ fn update() void { // MARK: update()
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if(biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
-			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
+			main.network.protocols.genericUpdate.sendBiome(user.conn, biomeId);
 		}
 	}
 
@@ -449,12 +451,12 @@ pub fn start(name: []const u8, port: ?u16) void {
 	running.store(true, .release);
 	while(running.load(.monotonic)) {
 		main.heap.GarbageCollection.syncPoint();
-		const newTime = std.time.nanoTimestamp();
-		if(newTime -% lastTime < updateNanoTime) {
-			std.Thread.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
-			lastTime +%= updateNanoTime;
+		const newTime = main.timestamp();
+		if(lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
+			main.io.sleep(lastTime.durationTo(newTime.addDuration(updateTime)), .awake) catch {};
+			lastTime = lastTime.addDuration(updateTime);
 		} else {
-			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime -% lastTime -% updateNanoTime))/1000000.0});
+			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
 			lastTime = newTime;
 		}
 		update();
@@ -498,7 +500,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for(userList) |other| {
-		main.network.Protocols.entity.send(other.conn, data);
+		main.network.protocols.entity.send(other.conn, data);
 	}
 }
 
@@ -530,7 +532,7 @@ pub fn connectInternal(user: *User) void {
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		for(userList) |other| {
-			main.network.Protocols.entity.send(other.conn, data);
+			main.network.protocols.entity.send(other.conn, data);
 		}
 	}
 	{ // Let this client know about the others:
@@ -544,10 +546,10 @@ pub fn connectInternal(user: *User) void {
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
-		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
+		if(user.connected.load(.unordered)) main.network.protocols.entity.send(user.conn, data);
 	}
 	const initialList = getInitialEntityList(main.stackAllocator);
-	main.network.Protocols.entity.send(user.conn, initialList);
+	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
 

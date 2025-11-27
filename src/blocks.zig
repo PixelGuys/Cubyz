@@ -73,6 +73,9 @@ var _light: [maxBlockCount]u32 = undefined;
 var _absorption: [maxBlockCount]u32 = undefined;
 
 var _onInteract: [maxBlockCount]ClientBlockCallback = undefined;
+var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
+var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
+var _decayProhibitor: [maxBlockCount]bool = undefined;
 var _mode: [maxBlockCount]*const RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
@@ -114,6 +117,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break;
 		}
 	}
+
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
@@ -125,6 +129,21 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break :blk .noop;
 		};
 	};
+
+	_onBreak[size] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onBreak event for block {s}", .{id});
+			break :blk .noop;
+		};
+	};
+	_onUpdate[size] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onUpdate event for block {s}", .{id});
+			break :blk .noop;
+		};
+	};
+	_decayProhibitor[size] = zon.get(bool, "decayProhibitor", false);
+
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -290,6 +309,14 @@ pub fn getBlockById(idAndData: []const u8) !u16 {
 	return reverseIndices.get(id) orelse return error.NotFound;
 }
 
+pub fn getBlockByIdWithMigrations(idAndData: []const u8) !u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
+	var id = idAndData[0..blockIdEndIndex];
+	id = main.migrations.applySingle(.block, id);
+	return reverseIndices.get(id) orelse return error.NotFound;
+}
+
 pub fn getBlockData(idLikeString: []const u8) !?u16 {
 	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
 	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
@@ -386,7 +413,15 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn onInteract(self: Block) ClientBlockCallback {
 		return _onInteract[self.typ];
 	}
-
+	pub inline fn onBreak(self: Block) ServerBlockCallback {
+		return _onBreak[self.typ];
+	}
+	pub inline fn onUpdate(self: Block) ServerBlockCallback {
+		return _onUpdate[self.typ];
+	}
+	pub inline fn decayProhibitor(self: Block) bool {
+		return _decayProhibitor[self.typ];
+	}
 	pub inline fn mode(self: Block) *const RotationMode {
 		return _mode[self.typ];
 	}

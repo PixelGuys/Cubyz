@@ -595,8 +595,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	createNewMeshes(olderPx, olderPy, olderPz, olderRD, &meshRequests, &mapRequests);
 
 	// Make requests as soon as possible to reduce latency:
-	network.Protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
-	network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz}, lastRD);
+	network.protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
+	network.protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz}, lastRD);
 
 	// Finds all visible chunks and lod chunks using a breadth-first hierarchical search.
 
@@ -733,7 +733,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	return meshList.items;
 }
 
-pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
+pub fn updateMeshes(targetTime: std.Io.Timestamp) void { // MARK: updateMeshes()
 	if(!blockUpdateList.isEmpty()) batchUpdateBlocks();
 
 	mutex.lock();
@@ -747,7 +747,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 		mutex.unlock();
 		defer mutex.lock();
 		mesh.uploadData();
-		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
+		if(targetTime.durationTo(main.timestamp()).nanoseconds >= 0) break; // Update at least one mesh.
 	}
 	while(mapUpdatableList.popFront()) |map| {
 		if(!isMapInRenderDistance(map.pos)) {
@@ -795,7 +795,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
 			updateHigherLodNodeFinishedMeshing(pos, true);
 			mesh.uploadData();
 		}
-		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
+		if(targetTime.durationTo(main.timestamp()).nanoseconds >= 0) break; // Update at least one mesh.
 	}
 }
 

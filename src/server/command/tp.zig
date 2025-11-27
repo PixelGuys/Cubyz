@@ -35,7 +35,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				if(sample.biome == biome) {
 					const z = sample.height + sample.hills + sample.mountains + sample.roughness;
 					const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
-					main.network.Protocols.genericUpdate.sendTPCoordinates(source.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
+					main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
 					return;
 				}
 			}
@@ -93,5 +93,5 @@ pub fn execute(args: []const u8, source: *User) void {
 	x = std.math.clamp(x.?, -1e9, 1e9); // TODO: Remove after #310 is implemented
 	y = std.math.clamp(y.?, -1e9, 1e9);
 	z = std.math.clamp(z.?, -1e9, 1e9);
-	main.network.Protocols.genericUpdate.sendTPCoordinates(source.conn, .{x.?, y.?, z.?});
+	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{x.?, y.?, z.?});
 }

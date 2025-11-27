@@ -260,7 +260,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.entity.send(user.conn, updateData);
+				main.network.protocols.entity.send(user.conn, updateData);
 			}
 		}
 
@@ -292,7 +292,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.entity.send(user.conn, updateData);
+				main.network.protocols.entity.send(user.conn, updateData);
 			}
 		}
 
@@ -348,7 +348,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 		for(userList) |user| {
-			main.network.Protocols.entity.send(user.conn, updateData);
+			main.network.protocols.entity.send(user.conn, updateData);
 		}
 
 		self.emptyMutex.unlock();
@@ -480,7 +480,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		instance = self;
 		self.* = .{
 			.super = undefined,
-			.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback,
+			.lastTime = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% settings.entityLookback,
 		};
 		self.super.init(allocator, null);
 		self.interpolation.init(
@@ -510,7 +510,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	pub fn updateInterpolationData(self: *ClientItemDropManager) void {
 		self.super.processChanges();
-		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback;
+		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
 		{
 			mutex.lock();

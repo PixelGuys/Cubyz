@@ -11,24 +11,26 @@ pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 pub const meta = @import("utils/meta.zig");
 
 pub const Compression = struct { // MARK: Compression
-	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.deflate.Level) []u8 {
-		var result = main.List(u8).init(allocator);
-		var comp = std.compress.flate.compressor(result.writer(), .{.level = level}) catch unreachable;
-		_ = comp.write(data) catch unreachable;
-		comp.finish() catch unreachable;
-		return result.toOwnedSlice();
+	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
+		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
+		var buffer: [65536]u8 = undefined;
+		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
+		compress.writer.writeAll(data) catch unreachable;
+		compress.writer.flush() catch unreachable;
+		result.writer.flush() catch unreachable;
+		return result.toOwnedSlice() catch unreachable;
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
-		var streamIn = std.Io.fixedBufferStream(data);
-		var decomp = std.compress.flate.decompressor(streamIn.reader());
-		var streamOut = std.Io.fixedBufferStream(buf);
-		try decomp.decompress(streamOut.writer());
-		return streamOut.getWritten().len;
+		var reader = std.Io.Reader.fixed(data);
+		var buffer: [65536]u8 = undefined;
+		var decompressor = std.compress.flate.Decompress.init(&reader, .raw, &buffer);
+		return try decompressor.reader.readSliceShort(buf);
 	}
 
-	pub fn pack(sourceDir: main.files.Dir, writer: anytype) !void {
-		var comp = try std.compress.flate.compressor(writer, .{});
+	pub fn pack(sourceDir: main.files.Dir, writer: *std.Io.Writer) !void {
+		var buffer: [65536]u8 = undefined;
+		var comp = try std.compress.flate.Compress.init(writer, &buffer, .raw, .default);
 		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
@@ -45,25 +47,27 @@ pub const Compression = struct { // MARK: Compression
 				};
 				var len: [4]u8 = undefined;
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), endian);
-				_ = try comp.write(&len);
-				_ = try comp.write(relPath);
+				_ = try comp.writer.write(&len);
+				_ = try comp.writer.write(relPath);
 
 				const fileData = try sourceDir.read(main.stackAllocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
-				_ = try comp.write(&len);
-				_ = try comp.write(fileData);
+				_ = try comp.writer.write(&len);
+				_ = try comp.writer.write(fileData);
 			}
 		}
-		try comp.finish();
+		try comp.writer.flush();
+		try writer.flush();
 	}
 
 	pub fn unpack(outDir: main.files.Dir, input: []const u8) !void {
-		var stream = std.io.fixedBufferStream(input);
-		var decomp = std.compress.flate.decompressor(stream.reader());
-		const reader = decomp.reader();
-		const _data = try reader.readAllAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
+		var inputReader = std.Io.Reader.fixed(input);
+		var buffer: [65536]u8 = undefined;
+		var decompressor = std.compress.flate.Decompress.init(&inputReader, .raw, &buffer);
+		const reader = &decompressor.reader;
+		const _data = try reader.allocRemainingAlignedSentinel(main.stackAllocator.allocator, .unlimited, .@"1", null);
 		defer main.stackAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {
@@ -648,7 +652,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.waitingThreads.broadcast();
 			while(self.waitingThreadCount != 0) {
 				self.mutex.unlock();
-				std.Thread.sleep(1000000);
+				main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 				self.mutex.lock();
 			}
 			self.mutex.unlock();
@@ -746,7 +750,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.mutex.lock();
 			defer self.mutex.unlock();
 
-			const startTime = std.time.nanoTimestamp();
+			const startTime = main.timestamp();
 
 			while(true) {
 				if(self.size == 0) {
@@ -761,7 +765,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 				if(self.closed) {
 					return error.Closed;
 				}
-				if(std.time.nanoTimestamp() -% startTime > 10_000_000) return error.Timeout;
+				if(startTime.durationTo(main.timestamp()).toMilliseconds() > 10) return error.Timeout;
 			}
 		}
 
@@ -830,7 +834,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			return self.*;
 		}
 	};
-	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
+	const refreshTime: std.Io.Duration = .fromMilliseconds(100); // The time after which all priorities get refreshed.
 
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
@@ -895,7 +899,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Wait for active tasks:
 		for(self.currentTasks) |*task| {
 			while(task.load(.monotonic) == vtable) {
-				std.Thread.sleep(1e6);
+				main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 			}
 		}
 	}
@@ -904,7 +908,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
 
-		var lastUpdate = std.time.milliTimestamp();
+		var lastUpdate = main.timestamp();
 		outer: while(true) {
 			main.heap.GarbageCollection.syncPoint();
 			{
@@ -913,15 +917,15 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					error.Closed => break :outer,
 				};
 				self.currentTasks[id].store(task.vtable, .monotonic);
-				const start = std.time.microTimestamp();
+				const start = main.timestamp();
 				task.vtable.run(task.self);
-				const end = std.time.microTimestamp();
-				self.performance.add(task.vtable.taskType, end - start);
+				const end = main.timestamp();
+				self.performance.add(task.vtable.taskType, @intCast(@divTrunc(start.durationTo(end).toNanoseconds(), 1000)));
 				self.currentTasks[id].store(null, .monotonic);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
 			}
 
-			if(id == 0 and std.time.milliTimestamp() -% lastUpdate > refreshTime) {
+			if(id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
 				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
 				defer temporaryTaskList.deinit();
 				while(self.loadList.extractAny()) |task| {
@@ -935,7 +939,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					}
 				}
 				self.loadList.addMany(temporaryTaskList.items);
-				lastUpdate = std.time.milliTimestamp();
+				lastUpdate = main.timestamp();
 			}
 		}
 	}
@@ -966,7 +970,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					break;
 				}
 			}
-			std.Thread.sleep(1000000);
+			main.io.sleep(.fromMilliseconds(1000000), .awake) catch {};
 		}
 	}
 
@@ -1574,7 +1578,7 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
-		const currentTime: i16 = @truncate(std.time.milliTimestamp());
+		const currentTime: i16 = @truncate(main.timestamp().toMilliseconds());
 		const timeDifference = currentTime -% time;
 		if(self.firstValue) {
 			self.difference.store(timeDifference, .monotonic);

@@ -51,9 +51,11 @@ pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledG
 pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
+var threadedIo: std.Io.Threaded = undefined;
+pub var io: std.Io = threadedIo.io();
 
 pub fn initThreadLocals() void {
-	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+	seed = @bitCast(@as(i64, @truncate(timestamp().nanoseconds)));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
 	heap.GarbageCollection.addThread();
@@ -62,6 +64,10 @@ pub fn initThreadLocals() void {
 pub fn deinitThreadLocals() void {
 	stackAllocatorBase.deinit();
 	heap.GarbageCollection.removeThread();
+}
+
+pub fn timestamp() std.Io.Timestamp {
+	return (std.Io.Clock.Timestamp.now(io, if(@import("builtin").os.tag == .windows) .real else .awake) catch unreachable).raw; // TODO: On windows the awake time is broken
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -204,7 +210,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 				resultArgs[resultArgs.len - 1] = colorReset;
 			}
 			logToStdErr(formatString, resultArgs);
-			if(level == .err and !openingErrorWindow) {
+			if(level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
 				openingErrorWindow = true;
 				gui.openWindow("error_prompt");
 				openingErrorWindow = false;
@@ -224,9 +230,9 @@ fn initLogging() void {
 		return;
 	};
 
-	const _timestamp = std.time.timestamp();
+	const _timestamp = (std.Io.Clock.Timestamp.now(io, .real) catch unreachable).raw;
 
-	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp}) catch unreachable;
+	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
 	defer stackAllocator.free(_path_str);
 
 	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
@@ -255,7 +261,6 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	(logFile orelse return).writeAll(string) catch {};
 	(logFileTs orelse return).writeAll(string) catch {};
 }
@@ -266,18 +271,14 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	const writer = std.debug.lockStderrWriter(&.{});
 	defer std.debug.unlockStderrWriter();
-	nosuspend writer.writeAll(string) catch {};
+	nosuspend writer[0].writeAll(string) catch {};
 }
 
 // MARK: Callbacks
 fn escape(_: Window.Key.Modifiers) void {
-	if(gui.selectedTextInput != null) {
-		gui.setSelectedTextInput(null);
-		return;
-	}
+	if(gui.selectedTextInput != null) gui.setSelectedTextInput(null);
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 }
@@ -286,10 +287,10 @@ fn ungrabMouse(_: Window.Key.Modifiers) void {
 		gui.toggleGameMenu();
 	}
 }
-fn openCreativeInventory(_: Window.Key.Modifiers) void {
+fn openCreativeInventory(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
-	gui.toggleGameMenu();
+	ungrabMouse(mods);
 	gui.openWindow("creative_inventory");
 }
 fn openChat(mods: Window.Key.Modifiers) void {
@@ -371,6 +372,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
 		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
+		.{.name = "drop", .key = c.GLFW_KEY_Q, .repeatAction = &game.Player.dropFromHand, .notifyRequirement = .inGame},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
@@ -494,17 +496,20 @@ pub fn main() void { // MARK: main()
 	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
+	threadedIo = .init(globalAllocator.allocator);
+	defer threadedIo.deinit();
 
 	initLogging();
 	defer deinitLogging();
 
-	std.log.info("Starting game client with version {s}", .{settings.version.version});
-
-	gui.initWindowList();
-	defer gui.deinitWindowList();
+	std.log.info("Starting game with version {s}", .{settings.version.version});
 
 	settings.launchConfig.init();
-	defer settings.launchConfig.deinit();
+
+	const headless = settings.launchConfig.headlessServer;
+
+	if(!headless) gui.initWindowList();
+	defer if(!headless) gui.deinitWindowList();
 
 	files.init();
 	defer files.deinit();
@@ -518,14 +523,14 @@ pub fn main() void { // MARK: main()
 	file_monitor.init();
 	defer file_monitor.deinit();
 
-	Window.init();
-	defer Window.deinit();
+	if(!headless) Window.init();
+	defer if(!headless) Window.deinit();
 
-	graphics.init();
-	defer graphics.deinit();
+	if(!headless) graphics.init();
+	defer if(!headless) graphics.deinit();
 
-	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
-	defer audio.deinit();
+	if(!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
+	defer if(!headless) audio.deinit();
 
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
@@ -547,48 +552,55 @@ pub fn main() void { // MARK: main()
 	items.globalInit();
 	defer items.deinit();
 
-	itemdrop.ItemDropRenderer.init();
-	defer itemdrop.ItemDropRenderer.deinit();
+	if(!headless) itemdrop.ItemDropRenderer.init();
+	defer if(!headless) itemdrop.ItemDropRenderer.deinit();
 
 	assets.init();
 
-	blocks.meshes.init();
-	defer blocks.meshes.deinit();
+	if(!headless) blocks.meshes.init();
+	defer if(!headless) blocks.meshes.deinit();
 
-	renderer.init();
-	defer renderer.deinit();
+	if(!headless) renderer.init();
+	defer if(!headless) renderer.deinit();
 
 	network.init();
 
-	entity.ClientEntityManager.init();
-	defer entity.ClientEntityManager.deinit();
+	if(!headless) entity.ClientEntityManager.init();
+	defer if(!headless) entity.ClientEntityManager.deinit();
 
-	gui.init();
-	defer gui.deinit();
+	if(!headless) gui.init();
+	defer if(!headless) gui.deinit();
 
-	particles.ParticleManager.init();
-	defer particles.ParticleManager.deinit();
+	if(!headless) particles.ParticleManager.init();
+	defer if(!headless) particles.ParticleManager.deinit();
 
+	server.terrain.globalInit();
+	defer server.terrain.globalDeinit();
+
+	if(headless) {
+		server.start(settings.launchConfig.autoEnterWorld, null);
+	} else {
+		clientMain();
+	}
+}
+
+pub fn clientMain() void { // MARK: clientMain()
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
 	}
 
-	server.terrain.globalInit();
-	defer server.terrain.globalDeinit();
-
 	const c = Window.c;
-
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastBeginRendering = std.time.nanoTimestamp();
+	var lastBeginRendering = timestamp();
 
 	if(settings.launchConfig.autoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
-	audio.setMusic("cubyz:cubyz");
+	audio.setMusic("cubyz:TotalDemented/Cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		heap.GarbageCollection.syncPoint();
@@ -604,11 +616,11 @@ pub fn main() void { // MARK: main()
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		} else {
-			std.Thread.sleep(16_000_000);
+			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
 
-		const endRendering = std.time.nanoTimestamp();
-		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+		const endRendering = timestamp();
+		const frameTime = @as(f64, @floatFromInt(endRendering.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
 		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
 			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
 			std.posix.exit(1);
@@ -617,11 +629,11 @@ pub fn main() void { // MARK: main()
 
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
-			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-			std.Thread.sleep(sleep);
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering.nanoseconds -% lastBeginRendering.nanoseconds)));
+			io.sleep(.fromNanoseconds(sleep), .awake) catch {};
 		}
-		const begin = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+		const begin = timestamp();
+		const deltaTime = @as(f64, @floatFromInt(begin.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
 		lastDeltaTime.store(deltaTime, .monotonic);
 		lastBeginRendering = begin;
 
@@ -639,7 +651,7 @@ pub fn main() void { // MARK: main()
 				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			} else {
 				renderer.updateFov(70.0);
-				renderer.MenuBackGround.render();
+				renderer.MenuBackGround.render(deltaTime);
 			}
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
@@ -655,7 +667,7 @@ pub fn main() void { // MARK: main()
 				game.world = null;
 			}
 			gui.openWindow("main");
-			audio.setMusic("cubyz:cubyz");
+			audio.setMusic("cubyz:TotalDemented/Cubyz");
 		}
 	}
 
