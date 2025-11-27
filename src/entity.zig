@@ -154,11 +154,10 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 
 		// this value is relative to the fov-y and window size
-		const worldPerScreenUnits = @as(f32, @floatFromInt(main.Window.height))/1024*projMatrix.rows[1][2];
-		const fontBaseSize = 96.0;
-		const fontWorldSize = fontBaseSize*worldPerScreenUnits;
-		const fontMinScreenSize = 16;
-		const fontMinWorldSize = fontWorldSize/4;
+		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
+		const fontBaseSize = 128.0;
+		const fontMinScreenSize = 16.0;
+		const fontScreenSize = fontBaseSize*screenUnits;
 
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
@@ -166,7 +165,7 @@ pub const ClientEntityManager = struct {
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
 				@floatCast(pos3d[1]),
-				@floatCast(pos3d[2] + 1.0),
+				@floatCast(pos3d[2] + 1.1),
 				1,
 			};
 
@@ -182,9 +181,9 @@ pub const ClientEntityManager = struct {
 
 			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
 			defer buf.deinit();
-			const fontScreenSize = std.mem.max(f32, &.{fontMinScreenSize, fontMinWorldSize, fontWorldSize/projectedPos[3]});
-			const size = buf.calculateLineBreaks(fontScreenSize, 1024);
-			buf.render(xCenter - size[0]/2, yCenter - size[1], fontScreenSize);
+			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
+			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
+			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
 
