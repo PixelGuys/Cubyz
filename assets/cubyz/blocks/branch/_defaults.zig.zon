@@ -1,0 +1,13 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = "cubyz:branch",
+	.model = .{
+		.radius = 4,
+	},
+	.decayProhibitor = true,
+}

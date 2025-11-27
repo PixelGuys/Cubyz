@@ -37,8 +37,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/birch",
-			.log = "cubyz:birch_branch:0b11",
-			.top = "cubyz:birch_branch:0b11",
+			.log = "cubyz:branch/birch:0b11",
+			.top = "cubyz:branch/birch:0b11",
 			.chance = 0.7,
 			.type = .round,
 			.height = 14,

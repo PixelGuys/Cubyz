@@ -1,14 +1,4 @@
 .{
-	.tags = .{.choppable, .wood},
-	.blockHealth = 4,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
-	.absorbedLight = 0x202830,
-	.rotation = "cubyz:branch",
-	.model = .{
-		.radius = 4,
-	},
 	.texture0 = "cubyz:branch/birch/dot",
 	.texture1 = "cubyz:branch/birch/half_line",
 	.texture2 = "cubyz:branch/birch/line",
@@ -37,5 +27,4 @@
 		},
 		.texture = "branch/birch.png",
 	},
-	.decayProhibitor = true,
 }
