@@ -676,6 +676,11 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				defer self.mutex.unlock();
 				while(i < self.connections.items.len) {
 					var conn = self.connections.items[i];
+					if(@intFromEnum(conn.handShakeState.load(.monotonic)) > @intFromEnum(Connection.HandShakeState.start) and networkTimestamp() -% conn.lastConnection > settings.connectionTimeout) {
+						self.mutex.unlock();
+						conn.disconnect();
+						self.mutex.lock();
+					}
 					self.mutex.unlock();
 					conn.processNextPackets();
 					self.mutex.lock();
