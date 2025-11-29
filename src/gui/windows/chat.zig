@@ -205,7 +205,7 @@ pub fn onClose() void {
 
 pub fn update() void {
 	if(!messageQueue.isEmpty()) {
-		const currentTime: i32 = @truncate(std.time.milliTimestamp());
+		const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
 		while(messageQueue.popFront()) |msg| {
 			history.append(Label.init(.{0, 0}, 256, msg, .left));
 			main.globalAllocator.free(msg);
@@ -214,7 +214,7 @@ pub fn update() void {
 		refresh();
 	}
 
-	const currentTime: i32 = @truncate(std.time.milliTimestamp());
+	const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
 	while(fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
 		fadeOutEnd += 1;
 	}
