@@ -578,7 +578,7 @@ pub fn main() void { // MARK: main()
 	defer server.terrain.globalDeinit();
 
 	if(headless) {
-		server.start(settings.launchConfig.autoEnterWorld, null);
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		clientMain();
 	}

@@ -1,6 +1,7 @@
 /// A collection of things that should make dealing with opengl easier.
 /// Also contains some basic 2d drawing stuff.
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const hbft = @cImport({
 	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
@@ -32,7 +33,8 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
-	@cInclude("glad/vulkan.h");
+	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
+	@cInclude(if(builtin.target.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
 });
 
 pub const stb_image = @cImport({
@@ -2631,15 +2633,16 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
+	const pos: main.chunk.BlockPos = .fromCoords(1, 1, 1);
 	if(block.hasBackFace()) {
-		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
+		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, true);
 		for(main.chunk.Neighbor.iterable) |neighbor| {
-			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
+			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos, true);
 		}
 	}
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
+	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, false);
 	for(main.chunk.Neighbor.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
+		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos.neighbor(neighbor)[0], false);
 	}
 
 	for(faceData.items) |*face| {
