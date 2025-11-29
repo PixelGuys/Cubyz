@@ -1,0 +1,21 @@
+.{
+	.properties = .{},
+	.radius = 16,
+	.chance = 0,
+	.minHeight = 1500,
+	.maxHeight = 3000,
+	.keepOriginalTerrain = 0.99,
+	.mountains = 50,
+	.hills = 20,
+	.stoneBlock = "cubyz:glacite",
+	.ground_structure = .{
+		"1 cubyz:snow",
+		"1 to 2 cubyz:permafrost",
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:tundra/snowy/base",
+			.chance = 16,
+		},
+	},
+}
