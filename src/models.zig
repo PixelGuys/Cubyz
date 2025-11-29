@@ -638,19 +638,19 @@ pub const Model = struct {
 		return Model.init(quadList.items);
 	}
 
-	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
+	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
 		for(quadList) |quadIndex| {
 			const texture = main.blocks.meshes.textureIndex(block, quadIndex.quadInfo().textureSlot);
-			list.append(allocator, FaceData.init(texture, quadIndex, x, y, z, backFace));
+			list.append(allocator, FaceData.init(texture, quadIndex, pos, backFace));
 		}
 	}
 
-	pub fn appendInternalQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
-		appendQuadsToList(self.internalQuads, list, allocator, block, x, y, z, backFace);
+	pub fn appendInternalQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
+		appendQuadsToList(self.internalQuads, list, allocator, block, pos, backFace);
 	}
 
-	pub fn appendNeighborFacingQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, neighbor: Neighbor, x: i32, y: i32, z: i32, comptime backFace: bool) void {
-		appendQuadsToList(self.neighborFacingQuads[neighbor.toInt()], list, allocator, block, x, y, z, backFace);
+	pub fn appendNeighborFacingQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, neighbor: Neighbor, pos: main.chunk.BlockPos, comptime backFace: bool) void {
+		appendQuadsToList(self.neighborFacingQuads[neighbor.toInt()], list, allocator, block, pos, backFace);
 	}
 };
 

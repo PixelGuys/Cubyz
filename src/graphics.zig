@@ -2631,15 +2631,16 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
+	const pos: main.chunk.BlockPos = .fromCoords(1, 1, 1);
 	if(block.hasBackFace()) {
-		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
+		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, true);
 		for(main.chunk.Neighbor.iterable) |neighbor| {
-			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
+			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos, true);
 		}
 	}
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
+	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, false);
 	for(main.chunk.Neighbor.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
+		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos.neighbor(neighbor)[0], false);
 	}
 
 	for(faceData.items) |*face| {
