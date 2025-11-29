@@ -166,7 +166,7 @@ fn getMapPiecePointer(x: i32, y: i32, voxelSize: u31) *Atomic(?*LightMap.LightMa
 	xIndex &= storageMask;
 	yIndex &= storageMask;
 	const index = xIndex*storageSize + yIndex;
-	return &(&mapStorageLists)[lod][@intCast(index)];
+	return &mapStorageLists[lod][@intCast(index)];
 }
 
 pub fn getLightMapPiece(x: i32, y: i32, voxelSize: u31) ?*LightMap.LightMapFragment {
