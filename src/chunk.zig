@@ -9,7 +9,6 @@ const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 
 pub const chunkShift: u5 = 5;
-pub const chunkShift2: u5 = chunkShift*2;
 pub const chunkSize: u31 = 1 << chunkShift;
 pub const chunkSizeIterator: [chunkSize]u0 = undefined;
 pub const chunkVolume: u31 = 1 << 3*chunkShift;
