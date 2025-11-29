@@ -30,6 +30,8 @@ pub var window: *c.GLFWwindow = undefined;
 pub var vulkanWindow: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
+pub var scrollOffsetInteger: i32 = 0;
+var scrollOffsetFraction: f32 = 0;
 
 pub const Gamepad = struct {
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
@@ -129,7 +131,7 @@ pub const Gamepad = struct {
 				GLFWCallbacks.currentPos[1] = std.math.clamp(GLFWCallbacks.currentPos[1], 0, winSize[1]);
 			}
 		}
-		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4);
+		GLFWCallbacks.scroll(undefined, 0, @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4));
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
 	pub fn isControllerConnected() bool {
@@ -570,6 +572,9 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	fn scroll(_: ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.c) void {
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
+		scrollOffsetFraction += @floatCast(yOffset);
+		scrollOffsetInteger += @intFromFloat(@round(scrollOffsetFraction));
+		scrollOffsetFraction -= @round(scrollOffsetFraction);
 	}
 	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.c) void {
 		const sourceString: []const u8 = switch(source) {
@@ -760,6 +765,7 @@ fn setCursorVisible(visible: bool) void {
 
 pub fn handleEvents(deltaTime: f64) void {
 	scrollOffset = 0;
+	scrollOffsetInteger = 0;
 	c.glfwPollEvents();
 	Gamepad.update(deltaTime);
 }
