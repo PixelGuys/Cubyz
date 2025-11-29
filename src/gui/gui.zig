@@ -671,7 +671,7 @@ pub const inventory = struct { // MARK: inventory
 			}
 			while(time.durationTo(nextCraftingAction).nanoseconds <= 0) {
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
-				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds - minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, 1000);
+				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
 				if(mainGuiButton.modsOnPress.shift) {
 					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {
