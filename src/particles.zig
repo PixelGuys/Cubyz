@@ -177,12 +177,12 @@ pub const ParticleSystem = struct {
 		);
 
 		properties = EmitterProperties{
-			.gravity = .{0, 0, -2},
-			.drag = 0.2,
-			.lifeTimeMin = 10,
+			.gravity = .{0, 0, 0},
+			.drag = 1,
+			.lifeTimeMin = 1,
 			.lifeTimeMax = 10,
-			.velMin = 0.1,
-			.velMax = 0.3,
+			.velMin = 0.5,
+			.velMax = 1,
 			.rotVelMin = std.math.pi*0.2,
 			.rotVelMax = std.math.pi*0.6,
 			.randomizeRotationOnSpawn = true,
