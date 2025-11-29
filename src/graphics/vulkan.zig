@@ -207,16 +207,16 @@ pub fn createInstance() void {
 	}
 
 	var createFlags: u32 = 0;
-	var extensions = std.ArrayList([*c]const u8).initCapacity(main.stackAllocator.allocator, glfwExtensionCount) catch unreachable;
-	defer extensions.deinit(main.stackAllocator.allocator);
-	extensions.appendSlice(main.stackAllocator.allocator, glfwExtensions[0..glfwExtensionCount]) catch unreachable;
+	var extensions = main.List([*c]const u8).init(main.stackAllocator);
+	defer extensions.deinit();
+	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]);
 
 	if(builtin.target.os.tag == .macos) {
 		// NOTE(blackedout): These constants may not be available for other targets because currently only macOS uses higher version headers
-		extensions.appendSlice(main.stackAllocator.allocator, &.{
+		extensions.appendSlice(&.{
 			c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 			c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-		}) catch unreachable;
+		});
 		createFlags |= c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 	}
 
@@ -234,14 +234,15 @@ pub fn createInstance() void {
 
 // MARK: Physical Device
 
-const baseDeviceExtensions = [_][*:0]const u8{
-	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+const deviceExtensions = blk: {
+	const baseDeviceExtensions = [_][*:0]const u8{
+		c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	};
+	if(builtin.target.os.tag == .macos) {
+		break :blk baseDeviceExtensions ++ [_][*:0]const u8{c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME};
+	}
+	break :blk baseDeviceExtensions;
 };
-
-const deviceExtensions = if(builtin.target.os.tag == .macos)
-	baseDeviceExtensions ++ [_][*:0]const u8{c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME}
-else
-	baseDeviceExtensions;
 
 const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
 	.multiDrawIndirect = c.VK_TRUE,
