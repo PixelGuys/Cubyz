@@ -10,7 +10,6 @@
 	.stoneBlock = "cubyz:glacite",
 	.ground_structure = .{
 		"1 cubyz:snow",
-		"1 to 2 cubyz:permafrost",
 	},
 	.parentBiomes = .{
 		.{
