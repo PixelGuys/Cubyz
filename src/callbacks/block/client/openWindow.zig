@@ -24,3 +24,4 @@ pub fn run(self: *@This(), _: main.callbacks.ClientBlockCallback.Params) main.ca
 	main.Window.setMouseGrabbed(false);
 	return .handled;
 }
+pub fn deinit(_: *@This()) void {}

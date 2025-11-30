@@ -22,12 +22,14 @@ fn Callback(_Params: type, list: type) type {
 	return struct {
 		data: *anyopaque,
 		inner: *const fn(self: *anyopaque, params: Params) Result,
+		deinitCallback: *const fn(self: *anyopaque) void,
 
 		pub const Params = _Params;
 
 		const VTable = struct {
 			init: *const fn(zon: main.ZonElement) ?*anyopaque,
 			run: *const fn(self: *anyopaque, params: Params) Result,
+			deinitCallback: *const fn(self: *anyopaque) void,
 		};
 
 		var eventCreationMap: std.StringHashMapUnmanaged(VTable) = .{};
@@ -38,6 +40,7 @@ fn Callback(_Params: type, list: type) type {
 				eventCreationMap.put(main.globalArena.allocator, decl.name, .{
 					.init = main.utils.castFunctionReturnToOptionalAnyopaque(CallbackStruct.init),
 					.run = main.utils.castFunctionSelfToAnyopaque(CallbackStruct.run),
+					.deinitCallback = main.utils.castFunctionSelfToAnyopaque(CallbackStruct.deinit),
 				}) catch unreachable;
 			}
 		}
@@ -54,17 +57,24 @@ fn Callback(_Params: type, list: type) type {
 			return .{
 				.data = vtable.init(zon) orelse return null,
 				.inner = vtable.run,
+				.deinitCallback = vtable.deinitCallback,
 			};
+		}
+		pub fn deinit(self: *@This()) void {
+			self.deinitCallback(self.data);
 		}
 
 		pub const noop: @This() = .{
 			.data = undefined,
 			.inner = &noopCallback,
+			.deinitCallback = &noopDeinitCallback,
 		};
 
 		fn noopCallback(_: *anyopaque, _: Params) Result {
 			return .ignored;
 		}
+
+		fn noopDeinitCallback(_: *anyopaque) void {}
 
 		pub fn run(self: @This(), params: Params) Result {
 			return self.inner(self.data, params);

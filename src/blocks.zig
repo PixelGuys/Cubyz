@@ -75,7 +75,6 @@ var _absorption: [maxBlockCount]u32 = undefined;
 var _onInteract: [maxBlockCount]ClientBlockCallback = undefined;
 var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
 var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
-var _decayProhibitor: [maxBlockCount]bool = undefined;
 var _mode: [maxBlockCount]*const RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
@@ -142,7 +141,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break :blk .noop;
 		};
 	};
-	_decayProhibitor[size] = zon.get(bool, "decayProhibitor", false);
 
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -256,6 +254,13 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 }
 
 pub fn reset() void {
+	for(0..size) |index| {
+		_onBreak[index].deinit();
+		_onTick[index].deinit();
+		_onInteract[index].deinit();
+		_onUpdate[index].deinit();
+		_onTouch[index].deinit();
+	}
 	size = 0;
 	ores = .{};
 	reverseIndices = .{};
@@ -418,9 +423,6 @@ pub const Block = packed struct { // MARK: Block
 	}
 	pub inline fn onUpdate(self: Block) ServerBlockCallback {
 		return _onUpdate[self.typ];
-	}
-	pub inline fn decayProhibitor(self: Block) bool {
-		return _decayProhibitor[self.typ];
 	}
 	pub inline fn mode(self: Block) *const RotationMode {
 		return _mode[self.typ];

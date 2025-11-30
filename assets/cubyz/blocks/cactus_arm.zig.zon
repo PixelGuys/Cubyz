@@ -1,5 +1,8 @@
 .{
-	.tags = .{.choppable, .cuttable},
+	.tags = .{.choppable, .cuttable, .branch},
+	.onUpdate = .{
+		.type = .Decay,
+	},
 	.blockHealth = 2.5,
 	.drops = .{
 		.{.items = .{.auto}},
