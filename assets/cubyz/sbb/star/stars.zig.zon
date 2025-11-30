@@ -15,4 +15,3 @@
 		.{.id = "cubyz:star/blood_star", .chance = 0.01},
 	},
 }
-
