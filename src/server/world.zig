@@ -1019,7 +1019,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.milliTime = self.milliTime.addDuration(.fromMilliseconds(100));
 			if(self.doGameTimeCycle) self.gameTime +%= 1; // gameTime is measured in 100ms.
 		}
-		if(self.lastUnimportantDataSent.durationTo(newTime).toSeconds() < 2) {
+		if(self.lastUnimportantDataSent.durationTo(newTime).toSeconds() > 2) {
 			self.lastUnimportantDataSent = newTime;
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
