@@ -554,6 +554,14 @@ pub const Player = struct { // MARK: Player
 		Player.jumpCoyote = 0;
 	}
 
+	pub fn dropFromHand(mods: main.Window.Key.Modifiers) void {
+		if(mods.shift) {
+			inventory.dropStack(selectedSlot);
+		} else {
+			inventory.dropOne(selectedSlot);
+		}
+	}
+
 	pub fn breakBlock(deltaTime: f64) void {
 		inventory.breakBlock(selectedSlot, deltaTime);
 	}
@@ -582,10 +590,10 @@ pub const Player = struct { // MARK: Player
 
 			if(isCreative()) {
 				const targetSlot = blk: {
-					if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
+					if(inventory.getItem(selectedSlot) == .null) break :blk selectedSlot;
 					// Look for an empty slot
 					for(0..12) |slotIdx| {
-						if(inventory.getItem(slotIdx) == null) {
+						if(inventory.getItem(slotIdx) == .null) {
 							break :blk slotIdx;
 						}
 					}
@@ -624,13 +632,13 @@ pub const World = struct { // MARK: World
 			.conn = try Connection.init(manager, ip, null),
 			.manager = manager,
 			.name = "client",
-			.milliTime = std.time.milliTimestamp(),
+			.milliTime = main.timestamp().toMilliseconds(),
 		};
 		errdefer self.conn.deinit();
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
-		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
+		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
 
@@ -729,7 +737,7 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn update(self: *World) void {
-		const newTime: i64 = std.time.milliTimestamp();
+		const newTime: i64 = main.timestamp().toMilliseconds();
 		while(self.milliTime +% 100 -% newTime < 0) {
 			self.milliTime +%= 100;
 			var curTime = self.gameTime.load(.monotonic);
@@ -746,7 +754,7 @@ pub const World = struct { // MARK: World
 			fog.fogLower = biomeFog.fogLower;
 			fog.fogHigher = biomeFog.fogHigher;
 		}
-		network.Protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
+		network.protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
 	}
 };
 pub var testWorld: World = undefined; // TODO:
@@ -757,12 +765,12 @@ pub var projectionMatrix: Mat4f = Mat4f.identity();
 var biomeFog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 
-var nextBlockPlaceTime: ?i64 = null;
-var nextBlockBreakTime: ?i64 = null;
+var nextBlockPlaceTime: ?std.Io.Timestamp = null;
+var nextBlockBreakTime: ?std.Io.Timestamp = null;
 
 pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
-	const time = std.time.milliTimestamp();
-	nextBlockPlaceTime = time + main.settings.updateRepeatDelay;
+	const time = main.timestamp();
+	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
 	Player.placeBlock(mods);
 }
 
@@ -771,8 +779,8 @@ pub fn releasePlace(_: main.Window.Key.Modifiers) void {
 }
 
 pub fn pressBreak(_: main.Window.Key.Modifiers) void {
-	const time = std.time.milliTimestamp();
-	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
+	const time = main.timestamp();
+	nextBlockBreakTime = time.addDuration(main.settings.updateRepeatDelay);
 	Player.breakBlock(0);
 }
 
@@ -918,23 +926,22 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			inputState.movementForce += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 		}
 
-		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
+		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
 		Player.selectedSlot = @intCast(@mod(newSlot, 12));
-		main.Window.scrollOffset = 0;
 
 		const newPos = Vec2f{
 			@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),
 			@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
-		}*@as(Vec2f, @splat(3.14*settings.controllerSensitivity));
+		}*@as(Vec2f, @splat(std.math.pi*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
+
+	Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
 	if(collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,
 		.max = Player.standingBoundingBoxExtent,
 	}) == null) {
-		Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
-
 		if(Player.onGround) {
 			if(Player.crouching) {
 				Player.crouchPerc += @floatCast(deltaTime*10);
@@ -967,16 +974,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	physics.update(deltaTime, &physicsState, inputState, .client);
 	physicsState.toPlayer();
 
-	const time = std.time.milliTimestamp();
+	const time = main.timestamp();
 	if(nextBlockPlaceTime) |*placeTime| {
-		if(time -% placeTime.* >= 0) {
-			placeTime.* += main.settings.updateRepeatSpeed;
+		if(placeTime.durationTo(time).nanoseconds >= 0) {
+			placeTime.* = placeTime.addDuration(main.settings.updateRepeatSpeed);
 			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {
-		if(time -% breakTime.* >= 0 or !Player.isCreative()) {
-			breakTime.* += main.settings.updateRepeatSpeed;
+		if(breakTime.durationTo(time).nanoseconds >= 0 or !Player.isCreative()) {
+			breakTime.* = breakTime.addDuration(main.settings.updateRepeatSpeed);
 			Player.breakBlock(deltaTime);
 		}
 	}
