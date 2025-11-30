@@ -1137,9 +1137,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			var ch = baseChunk;
 			if(chunkLocation == .inNeighborChunk) {
 				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
-					.wx = baseChunk.super.pos.wx + neighborPos.x & ~@as(i32, chunk.chunkMask),
-					.wy = baseChunk.super.pos.wy + neighborPos.y & ~@as(i32, chunk.chunkMask),
-					.wz = baseChunk.super.pos.wz + neighborPos.z & ~@as(i32, chunk.chunkMask),
+					.wx = baseChunk.super.pos.wx +% pos.x +% neighbor.relX() & ~@as(i32, chunk.chunkMask),
+					.wy = baseChunk.super.pos.wy +% pos.y +% neighbor.relY() & ~@as(i32, chunk.chunkMask),
+					.wz = baseChunk.super.pos.wz +% pos.z +% neighbor.relZ() & ~@as(i32, chunk.chunkMask),
 					.voxelSize = 1,
 				});
 			}
