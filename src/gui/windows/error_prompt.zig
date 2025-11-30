@@ -13,7 +13,7 @@ const VerticalList = @import("../components/VerticalList.zig");
 const Button = @import("../components/Button.zig");
 
 var errorCount: u32 = 0;
-var errorText: []const u8 = "";
+var errorText: ?[]const u8 = null;
 var fileExplorerIcon: Texture = undefined;
 var isOpen: bool = false;
 
@@ -29,12 +29,14 @@ pub var window = GuiWindow{
 
 pub fn init() void {
 	fileExplorerIcon = Texture.initFromFile("assets/cubyz/ui/file_explorer_icon.png");
-	errorText = main.globalAllocator.dupe(u8, "");
 }
 
 pub fn deinit() void {
 	fileExplorerIcon.deinit();
-	main.globalAllocator.free(errorText);
+	if(errorText != null) {
+		main.globalAllocator.free(errorText.?);
+		errorText = null;
+	}
 }
 
 fn openLog(_: usize) void {
@@ -47,7 +49,7 @@ pub fn raiseError(newText: []const u8) void {
 		onClose();
 		onOpen();
 	} else {
-		main.globalAllocator.free(errorText);
+		if(errorText != null) main.globalAllocator.free(errorText.?);
 		errorText = main.globalAllocator.dupe(u8, newText);
 		errorCount = 0;
 		gui.openWindowFromRef(&window);
@@ -70,9 +72,9 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	var str: []const u8 = undefined;
 	if(errorCount == 0) {
-		str = std.fmt.allocPrint(main.stackAllocator.allocator, singleErrorFmtText, .{errorText}) catch unreachable;
+		str = std.fmt.allocPrint(main.stackAllocator.allocator, singleErrorFmtText, .{errorText.?}) catch unreachable;
 	} else {
-		str = std.fmt.allocPrint(main.stackAllocator.allocator, multipleErrorFmtText, .{errorText, errorCount}) catch unreachable;
+		str = std.fmt.allocPrint(main.stackAllocator.allocator, multipleErrorFmtText, .{errorText.?, errorCount}) catch unreachable;
 	}
 	defer main.stackAllocator.free(str);
 	list.add(Label.init(.{padding, 16 + padding}, 256, str, .center));
