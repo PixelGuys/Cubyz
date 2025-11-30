@@ -1,5 +1,7 @@
 .{
-	.properties = .{},
+	.properties = .{
+		.mountain,
+	},
 	.chance = 0.015,
 	.minHeight = 80,
 	.maxHeight = 256,
