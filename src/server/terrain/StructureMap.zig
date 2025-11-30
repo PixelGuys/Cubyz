@@ -73,7 +73,7 @@ pub const StructureMapFragment = struct {
 	}
 
 	pub fn deferredDeinit(self: *StructureMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	fn finishGeneration(self: *StructureMapFragment) void {

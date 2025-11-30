@@ -722,7 +722,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn deferredDeinit(self: *ChunkMesh) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn scheduleLightRefresh(pos: chunk.ChunkPosition) void {
@@ -732,10 +732,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		pos: chunk.ChunkPosition,
 
 		pub const vtable = main.utils.ThreadPool.VTable{
-			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-			.run = main.utils.castFunctionSelfToAnyopaque(run),
-			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 			.taskType = .misc,
 		};
 
