@@ -2,41 +2,52 @@ const builtin = @import("builtin");
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const assets = @import("assets.zig");
-const Block = @import("blocks.zig").Block;
-const chunk = @import("chunk.zig");
-const entity = @import("entity.zig");
-const particles = @import("particles.zig");
-const items = @import("items.zig");
-const Inventory = items.Inventory;
-const ItemStack = items.ItemStack;
-const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
-const game = @import("game.zig");
-const settings = @import("settings.zig");
-const renderer = @import("renderer.zig");
-const utils = @import("utils.zig");
-const vec = @import("vec.zig");
-const Vec3d = vec.Vec3d;
-const Vec3f = vec.Vec3f;
-const Vec3i = vec.Vec3i;
+const game = main.game;
+const settings = main.settings;
+const utils = main.utils;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const BlockUpdate = renderer.mesh_storage.BlockUpdate;
+
+pub const protocols = @import("network/protocols.zig");
 
 // TODO: Might want to use SSL or something similar to encode the message
 
 const ms = 1_000;
 inline fn networkTimestamp() i64 {
-	return std.time.microTimestamp();
+	return @truncate(@divTrunc(main.timestamp().toNanoseconds(), 1000));
 }
 
 const Socket = struct {
+	const ws2 = @cImport({
+		@cInclude("winsock2.h");
+	});
 	const posix = std.posix;
-	socketID: posix.socket_t,
+	socketID: if(builtin.os.tag == .windows) ws2.SOCKET else posix.socket_t,
+
+	fn windowsError(err: c_int) !void {
+		if(err == 0) return;
+		switch(err) {
+			ws2.WSASYSNOTREADY => return error.WSASYSNOTREADY,
+			ws2.WSAVERNOTSUPPORTED => return error.WSAVERNOTSUPPORTED,
+			ws2.WSAEINPROGRESS => return error.WSAEINPROGRESS,
+			ws2.WSAEPROCLIM => return error.WSAEPROCLIM,
+			ws2.WSAEFAULT => return error.WSAEFAULT,
+			ws2.WSANOTINITIALISED => return error.WSANOTINITIALISED,
+			ws2.WSAENETDOWN => return error.WSAENETDOWN,
+			ws2.WSAEACCES => return error.WSAEACCES,
+			ws2.WSAEADDRINUSE => return error.WSAEADDRINUSE,
+			ws2.WSAEADDRNOTAVAIL => return error.WSAEADDRNOTAVAIL,
+			ws2.WSAEINVAL => return error.WSAEINVAL,
+			ws2.WSAENOBUFS => return error.WSAENOBUFS,
+			ws2.WSAENOTSOCK => return error.WSAENOTSOCK,
+			else => return error.UNKNOWN,
+		}
+	}
 
 	fn startup() void {
 		if(builtin.os.tag == .windows) {
-			_ = std.os.windows.WSAStartup(2, 2) catch |err| {
+			var data: ws2.WSADATA = undefined;
+			windowsError(ws2.WSAStartup(0x0202, &data)) catch |err| {
 				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
 				@panic("Could not init networking.");
 			};
@@ -45,19 +56,40 @@ const Socket = struct {
 
 	fn init(localPort: u16) !Socket {
 		const self = Socket{
-			.socketID = try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP),
+			.socketID = blk: {
+				if(builtin.os.tag == .windows) {
+					const socket = ws2.socket(ws2.AF_INET, ws2.SOCK_DGRAM, ws2.IPPROTO_UDP);
+					if(socket == ws2.INVALID_SOCKET) {
+						try windowsError(ws2.WSAGetLastError());
+						return error.UNKNOWN;
+					}
+					break :blk socket;
+				} else {
+					break :blk try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
+				}
+			},
 		};
 		errdefer self.deinit();
 		const bindingAddr = posix.sockaddr.in{
 			.port = @byteSwap(localPort),
 			.addr = 0,
 		};
-		try posix.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
+		if(builtin.os.tag == .windows) {
+			if(ws2.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == ws2.SOCKET_ERROR) {
+				try windowsError(ws2.WSAGetLastError());
+			}
+		} else {
+			try posix.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
+		}
 		return self;
 	}
 
 	fn deinit(self: Socket) void {
-		posix.close(self.socketID);
+		if(builtin.os.tag == .windows) {
+			_ = ws2.closesocket(self.socketID);
+		} else {
+			posix.close(self.socketID);
+		}
 	}
 
 	fn send(self: Socket, data: []const u8, destination: Address) void {
@@ -65,19 +97,17 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		if(builtin.os.tag == .windows) { // TODO: Upstream error, fix after next Zig update after #24466 is merged
-			const sendto = struct {
-				extern "c" fn sendto(sockfd: posix.system.fd_t, buf: *const anyopaque, len: usize, flags: u32, dest_addr: ?*const posix.system.sockaddr, addrlen: posix.system.socklen_t) c_int;
-			}.sendto;
-			const result = sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
-			if(result < 0) {
-				std.log.info("Got error while sending to {f}: {s}", .{destination, @tagName(std.os.windows.ws2_32.WSAGetLastError())});
+		if(builtin.os.tag == .windows) {
+			const result = ws2.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			if(result == ws2.SOCKET_ERROR) {
+				const err: anyerror = if(windowsError(ws2.WSAGetLastError())) error.Unknown else |err| err;
+				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 			} else {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);
 			}
 		} else {
 			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-				std.log.info("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
+				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 				return;
 			});
 		}
@@ -85,20 +115,14 @@ const Socket = struct {
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
 		if(builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
-			var pfd = [1]posix.pollfd{
+			var pfd = [1]ws2.pollfd{
 				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
 			};
-			const length = std.os.windows.ws2_32.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
-			if(length == std.os.windows.ws2_32.SOCKET_ERROR) {
-				switch(std.os.windows.ws2_32.WSAGetLastError()) {
-					.WSANOTINITIALISED => unreachable,
-					.WSAENETDOWN => return error.NetworkSubsystemFailed,
-					.WSAENOBUFS => return error.SystemResources,
-					// TODO: handle more errors
-					else => |err| return std.os.windows.unexpectedWSAError(err),
-				}
+			const length = ws2.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
+			if(length == ws2.SOCKET_ERROR) {
+				try windowsError(ws2.WSAGetLastError());
 			} else if(length == 0) {
-				std.Thread.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
+				main.io.sleep(.fromMilliseconds(1), .awake) catch {}; // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
 			}
 		} else {
@@ -109,40 +133,64 @@ const Socket = struct {
 			if(length == 0) return error.Timeout;
 		}
 		var addr: posix.sockaddr.in = undefined;
-		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-		const length = try posix.recvfrom(self.socketID, buffer, 0, @ptrCast(&addr), &addrLen);
+		const length: usize = blk: {
+			if(builtin.os.tag == .windows) {
+				var addrLen: c_int = @sizeOf(posix.sockaddr.in);
+				const result = ws2.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
+				if(result == ws2.SOCKET_ERROR) {
+					try windowsError(ws2.WSAGetLastError());
+				}
+				break :blk @intCast(result);
+			} else {
+				var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+				break :blk try posix.recvfrom(self.socketID, buffer, 0, @ptrCast(&addr), &addrLen);
+			}
+		};
 		resultAddress.ip = addr.addr;
 		resultAddress.port = @byteSwap(addr.port);
 		return buffer[0..length];
 	}
 
-	fn resolveIP(addr: []const u8) !u32 {
-		const list = try std.net.getAddressList(main.stackAllocator.allocator, addr, settings.defaultPort);
-		defer list.deinit();
-		return list.addrs[0].in.sa.addr;
+	fn resolveIP(name: []const u8) !u32 {
+		var nameBuf: [255]u8 = undefined;
+		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
+		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
+		std.Io.net.HostName.lookup(.{.bytes = name}, main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
+		while(true) {
+			const entry = resultQueue.getOneUncancelable(main.io);
+			switch(entry) {
+				.address => |addr| {
+					if(addr != .ip4) continue;
+					return std.mem.bytesToValue(u32, addr.ip4.bytes[0..4]);
+				},
+				.canonical_name => {},
+				.end => |err| {
+					try err;
+					break;
+				},
+			}
+		}
+		return error.ReachedEndWithoutFindingAnything;
 	}
 
 	fn getPort(self: Socket) !u16 {
 		var addr: posix.sockaddr.in = undefined;
-		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-		try posix.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+		if(builtin.os.tag == .windows) {
+			var addrLen: c_int = @sizeOf(posix.sockaddr.in);
+			if(ws2.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == ws2.SOCKET_ERROR) {
+				try windowsError(ws2.WSAGetLastError());
+			}
+		} else {
+			var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+			try posix.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+		}
 		return @byteSwap(addr.port);
 	}
 };
 
 pub fn init() void {
 	Socket.startup();
-	inline for(@typeInfo(Protocols).@"struct".decls) |decl| {
-		if(@TypeOf(@field(Protocols, decl.name)) == type) {
-			const id = @field(Protocols, decl.name).id;
-			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {
-				Protocols.list[id] = @field(Protocols, decl.name).receive;
-				Protocols.isAsynchronous[id] = @field(Protocols, decl.name).asynchronous;
-			} else {
-				std.log.err("Duplicate list id {}.", .{id});
-			}
-		}
-	}
+	protocols.init();
 }
 
 pub const Address = struct {
@@ -169,7 +217,7 @@ const Request = struct {
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
 /// Reference: https://datatracker.ietf.org/doc/html/rfc5389
-const STUN = struct { // MARK: STUN
+const stun = struct { // MARK: stun
 	const ipServerList = [_][]const u8{
 		"stun.12voip.com:3478",
 		"stun.1und1.de:3478",
@@ -275,7 +323,7 @@ const STUN = struct { // MARK: STUN
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
-		std.mem.writeInt(i128, seed[0..16], std.time.nanoTimestamp(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
+		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
 		for(0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
@@ -292,7 +340,7 @@ const STUN = struct { // MARK: STUN
 			const ip = splitter.first();
 			const serverAddress = Address{
 				.ip = Socket.resolveIP(ip) catch |err| {
-					std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
+					std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{ip, @errorName(err)});
 					continue;
 				},
 				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
@@ -433,6 +481,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if(online) {
 			result.makeOnline();
 		}
+		if(main.settings.launchConfig.headlessServer) {
+			result.allowNewConnections.store(true, .monotonic);
+		}
 		return result;
 	}
 
@@ -459,7 +510,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn makeOnline(self: *ConnectionManager) void {
 		if(!self.online.load(.acquire)) {
-			self.externalAddress = STUN.requestAddress(self);
+			self.externalAddress = stun.requestAddress(self);
 			self.online.store(true, .release);
 		}
 	}
@@ -646,752 +697,6 @@ const UnconfirmedPacket = struct {
 	id: u32,
 };
 
-// MARK: Protocols
-pub const Protocols = struct {
-	pub var list: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
-	pub var isAsynchronous: [256]bool = @splat(false);
-	pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
-	pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
-
-	pub const keepAlive: u8 = 0;
-	pub const important: u8 = 0xff;
-	pub const handShake = struct {
-		pub const id: u8 = 1;
-		pub const asynchronous = false;
-
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const newState = try reader.readEnum(Connection.HandShakeState);
-			if(@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
-				conn.handShakeState.store(newState, .monotonic);
-				switch(newState) {
-					.userData => {
-						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-						defer zon.deinit(main.stackAllocator);
-						const name = zon.get([]const u8, "name", "unnamed");
-						if(name.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(name) > 50) {
-							std.log.err("Player has too long name with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(name), name.len});
-							return error.Invalid;
-						}
-						const version = zon.get([]const u8, "version", "unknown");
-						std.log.info("User {s} joined using version {s}", .{name, version});
-
-						if(!try main.settings.version.isCompatibleClientVersion(version)) {
-							std.log.warn("Version incompatible with server version {s}", .{main.settings.version.version});
-							return error.IncompatibleVersion;
-						}
-
-						{
-							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
-							defer main.stackAllocator.free(path);
-							var dir = try main.files.cubyzDir().openIterableDir(path);
-							defer dir.close();
-							var arrayList = main.List(u8).init(main.stackAllocator);
-							defer arrayList.deinit();
-							arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
-							try utils.Compression.pack(dir, arrayList.writer());
-							conn.send(.fast, id, arrayList.items);
-						}
-
-						conn.user.?.initPlayer(name);
-						const zonObject = ZonElement.initObject(main.stackAllocator);
-						defer zonObject.deinit(main.stackAllocator);
-						zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
-						zonObject.put("player_id", conn.user.?.id);
-						zonObject.put("spawn", main.server.world.?.spawn);
-						zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
-						zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
-						zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
-						zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
-
-						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
-						defer main.stackAllocator.free(outData);
-						conn.send(.fast, id, outData);
-						conn.handShakeState.store(.serverData, .monotonic);
-						main.server.connect(conn.user.?);
-					},
-					.assets => {
-						std.log.info("Received assets.", .{});
-						main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
-						var dir = try main.files.cubyzDir().openDir("serverAssets");
-						defer dir.close();
-						try utils.Compression.unpack(dir, reader.remaining);
-					},
-					.serverData => {
-						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-						defer zon.deinit(main.stackAllocator);
-						try conn.manager.world.?.finishHandshake(zon);
-						conn.handShakeState.store(.complete, .monotonic);
-						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
-					},
-					.start, .complete => {},
-				}
-			} else {
-				// Ignore packages that refer to an unexpected state. Normally those might be packages that were resent by the other side.
-			}
-		}
-
-		pub fn serverSide(conn: *Connection) void {
-			conn.handShakeState.store(.start, .monotonic);
-		}
-
-		pub fn clientSide(conn: *Connection, name: []const u8) !void {
-			const zonObject = ZonElement.initObject(main.stackAllocator);
-			defer zonObject.deinit(main.stackAllocator);
-			zonObject.putOwnedString("version", settings.version.version);
-			zonObject.putOwnedString("name", name);
-			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
-			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
-			defer main.stackAllocator.free(data);
-			conn.send(.fast, id, data);
-
-			conn.mutex.lock();
-			conn.handShakeWaiting.wait(&conn.mutex);
-			if(conn.connectionState.load(.monotonic) == .disconnectDesired) return error.DisconnectedByServer;
-			conn.mutex.unlock();
-		}
-	};
-	pub const chunkRequest = struct {
-		pub const id: u8 = 2;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const basePosition = try reader.readVec(Vec3i);
-			conn.user.?.clientUpdatePos = basePosition;
-			conn.user.?.renderDistance = try reader.readInt(u16);
-			while(reader.remaining.len >= 4) {
-				const x: i32 = try reader.readInt(i8);
-				const y: i32 = try reader.readInt(i8);
-				const z: i32 = try reader.readInt(i8);
-				const voxelSizeShift: u5 = try reader.readInt(u5);
-				const positionMask = ~((@as(i32, 1) << voxelSizeShift + chunk.chunkShift) - 1);
-				const request = chunk.ChunkPosition{
-					.wx = (x << voxelSizeShift + chunk.chunkShift) +% (basePosition[0] & positionMask),
-					.wy = (y << voxelSizeShift + chunk.chunkShift) +% (basePosition[1] & positionMask),
-					.wz = (z << voxelSizeShift + chunk.chunkShift) +% (basePosition[2] & positionMask),
-					.voxelSize = @as(u31, 1) << voxelSizeShift,
-				};
-				if(conn.user) |user| {
-					user.increaseRefCount();
-					main.server.world.?.queueChunkAndDecreaseRefCount(request, user);
-				}
-			}
-		}
-		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
-			if(requests.len == 0) return;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 14 + 4*requests.len);
-			defer writer.deinit();
-			writer.writeVec(Vec3i, basePosition);
-			writer.writeInt(u16, renderDistance);
-			for(requests) |req| {
-				const voxelSizeShift: u5 = std.math.log2_int(u31, req.voxelSize);
-				const positionMask = ~((@as(i32, 1) << voxelSizeShift + chunk.chunkShift) - 1);
-				writer.writeInt(i8, @intCast((req.wx -% (basePosition[0] & positionMask)) >> voxelSizeShift + chunk.chunkShift));
-				writer.writeInt(i8, @intCast((req.wy -% (basePosition[1] & positionMask)) >> voxelSizeShift + chunk.chunkShift));
-				writer.writeInt(i8, @intCast((req.wz -% (basePosition[2] & positionMask)) >> voxelSizeShift + chunk.chunkShift));
-				writer.writeInt(u5, voxelSizeShift);
-			}
-			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
-		}
-	};
-	pub const chunkTransmission = struct {
-		pub const id: u8 = 3;
-		pub const asynchronous = true;
-		fn receive(_: *Connection, reader: *utils.BinaryReader) !void {
-			const pos = chunk.ChunkPosition{
-				.wx = try reader.readInt(i32),
-				.wy = try reader.readInt(i32),
-				.wz = try reader.readInt(i32),
-				.voxelSize = try reader.readInt(u31),
-			};
-			const ch = chunk.Chunk.init(pos);
-			try main.server.storage.ChunkCompression.loadChunk(ch, .client, reader.remaining);
-			renderer.mesh_storage.updateChunkMesh(ch);
-		}
-		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
-			ch.mutex.lock();
-			const chunkData = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &ch.super, .toClient, ch.super.pos.voxelSize != 1);
-			ch.mutex.unlock();
-			defer main.stackAllocator.free(chunkData);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, chunkData.len + 16);
-			defer writer.deinit();
-			writer.writeInt(i32, ch.super.pos.wx);
-			writer.writeInt(i32, ch.super.pos.wy);
-			writer.writeInt(i32, ch.super.pos.wz);
-			writer.writeInt(u31, ch.super.pos.voxelSize);
-			writer.writeSlice(chunkData);
-			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
-		}
-		pub fn sendChunk(conn: *Connection, ch: *chunk.ServerChunk) void {
-			sendChunkOverTheNetwork(conn, ch);
-		}
-	};
-	pub const playerPosition = struct {
-		pub const id: u8 = 4;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			try conn.user.?.receiveData(reader);
-		}
-		var lastPositionSent: u16 = 0;
-		pub fn send(conn: *Connection, playerPos: Vec3d, playerVel: Vec3d, time: u16) void {
-			if(time -% lastPositionSent < 50) {
-				return; // Only send at most once every 50 ms.
-			}
-			lastPositionSent = time;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 62);
-			defer writer.deinit();
-			writer.writeInt(u64, @bitCast(playerPos[0]));
-			writer.writeInt(u64, @bitCast(playerPos[1]));
-			writer.writeInt(u64, @bitCast(playerPos[2]));
-			writer.writeInt(u64, @bitCast(playerVel[0]));
-			writer.writeInt(u64, @bitCast(playerVel[1]));
-			writer.writeInt(u64, @bitCast(playerVel[2]));
-			writer.writeInt(u32, @bitCast(game.camera.rotation[0]));
-			writer.writeInt(u32, @bitCast(game.camera.rotation[1]));
-			writer.writeInt(u32, @bitCast(game.camera.rotation[2]));
-			writer.writeInt(u16, time);
-			conn.send(.lossy, id, writer.data.items);
-		}
-	};
-	pub const entityPosition = struct {
-		pub const id: u8 = 6;
-		pub const asynchronous = false;
-		const type_entity: u8 = 0;
-		const type_item: u8 = 1;
-		const Type = enum(u8) {
-			noVelocityEntity = 0,
-			f16VelocityEntity = 1,
-			f32VelocityEntity = 2,
-			noVelocityItem = 3,
-			f16VelocityItem = 4,
-			f32VelocityItem = 5,
-		};
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(conn.isServerSide()) return error.InvalidSide;
-			if(conn.manager.world) |world| {
-				const time = try reader.readInt(i16);
-				const playerPos = try reader.readVec(Vec3d);
-				var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
-				defer entityData.deinit();
-				var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
-				defer itemData.deinit();
-				while(reader.remaining.len != 0) {
-					const typ = try reader.readEnum(Type);
-					switch(typ) {
-						.noVelocityEntity, .f16VelocityEntity, .f32VelocityEntity => {
-							entityData.append(.{
-								.vel = switch(typ) {
-									.noVelocityEntity => @splat(0),
-									.f16VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f16))),
-									.f32VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f32))),
-									else => unreachable,
-								},
-								.id = try reader.readInt(u32),
-								.pos = playerPos + try reader.readVec(Vec3f),
-								.rot = try reader.readVec(Vec3f),
-							});
-						},
-						.noVelocityItem, .f16VelocityItem, .f32VelocityItem => {
-							itemData.append(.{
-								.vel = switch(typ) {
-									.noVelocityItem => @splat(0),
-									.f16VelocityItem => @floatCast(try reader.readVec(@Vector(3, f16))),
-									.f32VelocityItem => @floatCast(try reader.readVec(Vec3f)),
-									else => unreachable,
-								},
-								.index = try reader.readInt(u16),
-								.pos = playerPos + try reader.readVec(Vec3f),
-							});
-						},
-					}
-				}
-				main.entity.ClientEntityManager.serverUpdate(time, entityData.items);
-				world.itemDrops.readPosition(time, itemData.items);
-			}
-		}
-		pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
-			var writer = utils.BinaryWriter.init(main.stackAllocator);
-			defer writer.deinit();
-
-			writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
-			writer.writeVec(Vec3d, playerPos);
-			for(entityData) |data| {
-				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
-				if(velocityMagnitudeSqr < 1e-6*1e-6) {
-					writer.writeEnum(Type, .noVelocityEntity);
-				} else if(velocityMagnitudeSqr > 1000*1000) {
-					writer.writeEnum(Type, .f32VelocityEntity);
-					writer.writeVec(Vec3f, @floatCast(data.vel));
-				} else {
-					writer.writeEnum(Type, .f16VelocityEntity);
-					writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
-				}
-				writer.writeInt(u32, data.id);
-				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
-				writer.writeVec(Vec3f, data.rot);
-			}
-			for(itemData) |data| {
-				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
-				if(velocityMagnitudeSqr < 1e-6*1e-6) {
-					writer.writeEnum(Type, .noVelocityItem);
-				} else if(velocityMagnitudeSqr > 1000*1000) {
-					writer.writeEnum(Type, .f32VelocityItem);
-					writer.writeVec(Vec3f, @floatCast(data.vel));
-				} else {
-					writer.writeEnum(Type, .f16VelocityItem);
-					writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
-				}
-				writer.writeInt(u16, data.index);
-				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
-			}
-			conn.send(.lossy, id, writer.data.items);
-		}
-	};
-	pub const blockUpdate = struct {
-		pub const id: u8 = 7;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(conn.isServerSide()) {
-				return error.InvalidPacket;
-			}
-			while(reader.remaining.len != 0) {
-				renderer.mesh_storage.updateBlock(.{
-					.x = try reader.readInt(i32),
-					.y = try reader.readInt(i32),
-					.z = try reader.readInt(i32),
-					.newBlock = Block.fromInt(try reader.readInt(u32)),
-					.blockEntityData = try reader.readSlice(try reader.readInt(usize)),
-				});
-			}
-		}
-		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
-			defer writer.deinit();
-
-			for(updates) |update| {
-				writer.writeInt(i32, update.x);
-				writer.writeInt(i32, update.y);
-				writer.writeInt(i32, update.z);
-				writer.writeInt(u32, update.newBlock.toInt());
-				writer.writeInt(usize, update.blockEntityData.len);
-				writer.writeSlice(update.blockEntityData);
-			}
-			conn.send(.fast, id, writer.data.items);
-		}
-	};
-	pub const entity = struct {
-		pub const id: u8 = 8;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const zonArray = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-			defer zonArray.deinit(main.stackAllocator);
-			var i: u32 = 0;
-			while(i < zonArray.array.items.len) : (i += 1) {
-				const elem = zonArray.array.items[i];
-				switch(elem) {
-					.int => {
-						main.entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
-					},
-					.object => {
-						main.entity.ClientEntityManager.addEntity(elem);
-					},
-					.null => {
-						i += 1;
-						break;
-					},
-					else => {
-						std.log.err("Unrecognized zon parameters for protocol {}: {s}", .{id, reader.remaining});
-					},
-				}
-			}
-			while(i < zonArray.array.items.len) : (i += 1) {
-				const elem: ZonElement = zonArray.array.items[i];
-				if(elem == .int) {
-					conn.manager.world.?.itemDrops.remove(elem.as(u16, 0));
-				} else if(!elem.getChild("array").isNull()) {
-					conn.manager.world.?.itemDrops.loadFrom(elem);
-				} else {
-					conn.manager.world.?.itemDrops.addFromZon(elem);
-				}
-			}
-		}
-		pub fn send(conn: *Connection, msg: []const u8) void {
-			conn.send(.fast, id, msg);
-		}
-	};
-	pub const genericUpdate = struct {
-		pub const id: u8 = 9;
-		pub const asynchronous = false;
-
-		const UpdateType = enum(u8) {
-			gamemode = 0,
-			teleport = 1,
-			worldEditPos = 2,
-			time = 3,
-			biome = 4,
-			particles = 5,
-		};
-
-		const WorldEditPosition = enum(u2) {
-			selectedPos1 = 0,
-			selectedPos2 = 1,
-			clear = 2,
-		};
-
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			switch(try reader.readEnum(UpdateType)) {
-				.gamemode => {
-					if(conn.isServerSide()) return error.InvalidPacket;
-					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
-				},
-				.teleport => {
-					if(conn.isServerSide()) return error.InvalidPacket;
-					game.Player.setPosBlocking(try reader.readVec(Vec3d));
-				},
-				.worldEditPos => {
-					const typ = try reader.readEnum(WorldEditPosition);
-					const pos: ?Vec3i = switch(typ) {
-						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
-						.clear => null,
-					};
-					if(conn.isServerSide()) {
-						switch(typ) {
-							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
-							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
-							.clear => {
-								conn.user.?.worldEditData.selectionPosition1 = null;
-								conn.user.?.worldEditData.selectionPosition2 = null;
-							},
-						}
-					} else {
-						switch(typ) {
-							.selectedPos1 => game.Player.selectionPosition1 = pos,
-							.selectedPos2 => game.Player.selectionPosition2 = pos,
-							.clear => {
-								game.Player.selectionPosition1 = null;
-								game.Player.selectionPosition2 = null;
-							},
-						}
-					}
-				},
-				.time => {
-					if(conn.manager.world) |world| {
-						const expectedTime = try reader.readInt(i64);
-
-						var curTime = world.gameTime.load(.monotonic);
-						if(@abs(curTime -% expectedTime) >= 10) {
-							world.gameTime.store(expectedTime, .monotonic);
-						} else if(curTime < expectedTime) { // world.gameTime++
-							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
-								curTime = actualTime;
-							}
-						} else { // world.gameTime--
-							while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .monotonic, .monotonic)) |actualTime| {
-								curTime = actualTime;
-							}
-						}
-					}
-				},
-				.biome => {
-					if(conn.manager.world) |world| {
-						const biomeId = try reader.readInt(u32);
-
-						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
-						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
-						if(oldBiome != newBiome) {
-							main.audio.setMusic(newBiome.preferredMusic);
-						}
-					}
-				},
-				.particles => {
-					if(conn.manager.world) |_| {
-						const sliceSize = try reader.readInt(u16);
-						const particleId = try reader.readSlice(sliceSize);
-						const pos = try reader.readVec(Vec3d);
-						const collides = try reader.readBool();
-						const count = try reader.readInt(u32);
-
-						const emitter: particles.Emitter = .init(particleId, collides);
-						particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
-					}
-				},
-			}
-		}
-
-		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
-			conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
-		}
-
-		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
-			defer writer.deinit();
-
-			writer.writeEnum(UpdateType, .teleport);
-			writer.writeVec(Vec3d, pos);
-
-			conn.send(.fast, id, writer.data.items);
-		}
-
-		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
-			defer writer.deinit();
-
-			writer.writeEnum(UpdateType, .worldEditPos);
-			writer.writeEnum(WorldEditPosition, posType);
-			if(maybePos) |pos| {
-				writer.writeVec(Vec3i, pos);
-			}
-
-			conn.send(.fast, id, writer.data.items);
-		}
-
-		pub fn sendBiome(conn: *Connection, biomeIndex: u32) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
-			defer writer.deinit();
-
-			writer.writeEnum(UpdateType, .biome);
-			writer.writeInt(u32, biomeIndex);
-
-			conn.send(.fast, id, writer.data.items);
-		}
-
-		pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
-			const bufferSize = particleId.len*8 + 32;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
-			defer writer.deinit();
-
-			writer.writeEnum(UpdateType, .particles);
-			writer.writeInt(u16, @intCast(particleId.len));
-			writer.writeSlice(particleId);
-			writer.writeVec(Vec3d, pos);
-			writer.writeBool(collides);
-			writer.writeInt(u32, count);
-
-			conn.send(.fast, id, writer.data.items);
-		}
-
-		pub fn sendTime(conn: *Connection, world: *const main.server.ServerWorld) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
-			defer writer.deinit();
-
-			writer.writeEnum(UpdateType, .time);
-			writer.writeInt(i64, world.gameTime);
-
-			conn.send(.fast, id, writer.data.items);
-		}
-	};
-	pub const chat = struct {
-		pub const id: u8 = 10;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const msg = reader.remaining;
-			if(conn.user) |user| {
-				if(msg.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(msg) > 1000) {
-					std.log.err("Received too long chat message with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(msg), msg.len});
-					return error.Invalid;
-				}
-				main.server.messageFrom(msg, user);
-			} else {
-				main.gui.windowlist.chat.addMessage(msg);
-			}
-		}
-
-		pub fn send(conn: *Connection, msg: []const u8) void {
-			conn.send(.lossy, id, msg);
-		}
-	};
-	pub const lightMapRequest = struct {
-		pub const id: u8 = 11;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			while(reader.remaining.len >= 9) {
-				const wx = try reader.readInt(i32);
-				const wy = try reader.readInt(i32);
-				const voxelSizeShift = try reader.readInt(u5);
-				const request = main.server.terrain.SurfaceMap.MapFragmentPosition{
-					.wx = wx,
-					.wy = wy,
-					.voxelSize = @as(u31, 1) << voxelSizeShift,
-					.voxelSizeShift = voxelSizeShift,
-				};
-				if(conn.user) |user| {
-					user.increaseRefCount();
-					main.server.world.?.queueLightMapAndDecreaseRefCount(request, user);
-				}
-			}
-		}
-		pub fn sendRequest(conn: *Connection, requests: []main.server.terrain.SurfaceMap.MapFragmentPosition) void {
-			if(requests.len == 0) return;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9*requests.len);
-			defer writer.deinit();
-			for(requests) |req| {
-				writer.writeInt(i32, req.wx);
-				writer.writeInt(i32, req.wy);
-				writer.writeInt(u8, req.voxelSizeShift);
-			}
-			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
-		}
-	};
-	pub const lightMapTransmission = struct {
-		pub const id: u8 = 12;
-		pub const asynchronous = true;
-		fn receive(_: *Connection, reader: *utils.BinaryReader) !void {
-			const wx = try reader.readInt(i32);
-			const wy = try reader.readInt(i32);
-			const voxelSizeShift = try reader.readInt(u5);
-			const pos = main.server.terrain.SurfaceMap.MapFragmentPosition{
-				.wx = wx,
-				.wy = wy,
-				.voxelSize = @as(u31, 1) << voxelSizeShift,
-				.voxelSizeShift = voxelSizeShift,
-			};
-			const _inflatedData = main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2);
-			defer main.stackAllocator.free(_inflatedData);
-			const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, reader.remaining);
-			if(_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2) {
-				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, reader.remaining, _inflatedData[0.._inflatedLen]});
-				return error.Invalid;
-			}
-			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
-			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
-			map.init(pos.wx, pos.wy, pos.voxelSize);
-			for(&map.startHeight) |*val| {
-				val.* = try ligthMapReader.readInt(i16);
-			}
-			renderer.mesh_storage.updateLightMap(map);
-		}
-		pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) void {
-			var ligthMapWriter = utils.BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(@TypeOf(map.startHeight)));
-			defer ligthMapWriter.deinit();
-			for(&map.startHeight) |val| {
-				ligthMapWriter.writeInt(i16, val);
-			}
-			const compressedData = utils.Compression.deflate(main.stackAllocator, ligthMapWriter.data.items, .default);
-			defer main.stackAllocator.free(compressedData);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9 + compressedData.len);
-			defer writer.deinit();
-			writer.writeInt(i32, map.pos.wx);
-			writer.writeInt(i32, map.pos.wy);
-			writer.writeInt(u8, map.pos.voxelSizeShift);
-			writer.writeSlice(compressedData);
-			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
-		}
-	};
-	pub const inventory = struct {
-		pub const id: u8 = 13;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(conn.user) |user| {
-				if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-				items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
-					if(err != error.InventoryNotFound) return err;
-					sendFailure(conn);
-				};
-			} else {
-				const typ = try reader.readInt(u8);
-				if(typ == 0xff) { // Confirmation
-					try items.Inventory.Sync.ClientSide.receiveConfirmation(reader);
-				} else if(typ == 0xfe) { // Failure
-					items.Inventory.Sync.ClientSide.receiveFailure();
-				} else {
-					try items.Inventory.Sync.ClientSide.receiveSyncOperation(reader);
-				}
-			}
-		}
-		pub fn sendCommand(conn: *Connection, payloadType: items.Inventory.Command.PayloadType, _data: []const u8) void {
-			std.debug.assert(conn.user == null);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
-			defer writer.deinit();
-			writer.writeEnum(items.Inventory.Command.PayloadType, payloadType);
-			std.debug.assert(writer.data.items[0] != 0xff);
-			writer.writeSlice(_data);
-			conn.send(.fast, id, writer.data.items);
-		}
-		pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.isServerSide());
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
-			defer writer.deinit();
-			writer.writeInt(u8, 0xff);
-			writer.writeSlice(_data);
-			conn.send(.fast, id, writer.data.items);
-		}
-		pub fn sendFailure(conn: *Connection) void {
-			std.debug.assert(conn.isServerSide());
-			conn.send(.fast, id, &.{0xfe});
-		}
-		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.isServerSide());
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
-			defer writer.deinit();
-			writer.writeInt(u8, 0);
-			writer.writeSlice(_data);
-			conn.send(.fast, id, writer.data.items);
-		}
-	};
-	pub const blockEntityUpdate = struct {
-		pub const id: u8 = 14;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(!conn.isServerSide()) return error.Invalid;
-
-			const pos = try reader.readVec(Vec3i);
-			const blockType = try reader.readInt(u16);
-			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
-			defer simChunk.decreaseRefCount();
-			const ch = simChunk.chunk.load(.unordered) orelse return;
-			ch.mutex.lock();
-			defer ch.mutex.unlock();
-			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
-			if(block.typ != blockType) return;
-			const blockEntity = block.blockEntity() orelse return;
-			try blockEntity.updateServerData(pos, &ch.super, .{.update = reader});
-			ch.setChanged();
-
-			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
-		}
-
-		pub fn sendClientDataUpdateToServer(conn: *Connection, pos: Vec3i) void {
-			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
-			mesh.mutex.lock();
-			defer mesh.mutex.unlock();
-			const index = mesh.chunk.getLocalBlockIndex(pos);
-			const block = mesh.chunk.data.getValue(index);
-			const blockEntity = block.blockEntity() orelse return;
-
-			var writer = utils.BinaryWriter.init(main.stackAllocator);
-			defer writer.deinit();
-			writer.writeVec(Vec3i, pos);
-			writer.writeInt(u16, block.typ);
-			blockEntity.getClientToServerData(pos, mesh.chunk, &writer);
-
-			conn.send(.fast, id, writer.data.items);
-		}
-
-		fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *main.block_entity.BlockEntityType) void {
-			var writer = utils.BinaryWriter.init(main.stackAllocator);
-			defer writer.deinit();
-			blockEntity.getServerToClientData(pos, ch, &writer);
-
-			const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
-
-			for(users) |user| {
-				blockUpdate.send(user.conn, &.{.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = writer.data.items}});
-			}
-		}
-
-		pub fn sendServerDataUpdateToClients(pos: Vec3i) void {
-			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
-			defer simChunk.decreaseRefCount();
-			const ch = simChunk.chunk.load(.unordered) orelse return;
-			ch.mutex.lock();
-			defer ch.mutex.unlock();
-			const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
-			const blockEntity = block.blockEntity() orelse return;
-
-			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
-		}
-	};
-};
-
 pub const Connection = struct { // MARK: Connection
 	const maxMtu: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
@@ -1571,19 +876,7 @@ pub const Connection = struct { // MARK: Connection
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				const protocolReceive = Protocols.list[protocolIndex] orelse return error.Invalid;
-
-				if(Protocols.isAsynchronous[protocolIndex]) {
-					ProtocolTask.schedule(conn, protocolIndex, self.protocolBuffer.items);
-				} else {
-					var reader = utils.BinaryReader.init(self.protocolBuffer.items);
-					protocolReceive(conn, &reader) catch |err| {
-						std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, self.protocolBuffer.items});
-						return err;
-					};
-				}
-
-				_ = Protocols.bytesReceived[protocolIndex].fetchAdd(self.protocolBuffer.items.len, .monotonic);
+				try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
 				self.protocolBuffer.clearRetainingCapacity();
 				if(self.protocolBuffer.items.len > 1 << 24) {
 					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
@@ -1864,7 +1157,7 @@ pub const Connection = struct { // MARK: Connection
 		disconnectDesired,
 	};
 
-	const HandShakeState = enum(u8) {
+	pub const HandShakeState = enum(u8) {
 		start = 0,
 		userData = 1,
 		assets = 2,
@@ -1966,7 +1259,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
-		_ = Protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
+		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
@@ -1988,7 +1281,7 @@ pub const Connection = struct { // MARK: Connection
 		return self.connectionState.load(.unordered) == .connected;
 	}
 
-	fn isServerSide(conn: *Connection) bool {
+	pub fn isServerSide(conn: *Connection) bool {
 		return conn.user != null;
 	}
 
@@ -2077,7 +1370,7 @@ pub const Connection = struct { // MARK: Connection
 		self.tryReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
 			if(@errorReturnTrace()) |trace| {
-				std.log.info("{f}", .{trace});
+				std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
 			}
 			std.log.debug("Packet data: {any}", .{data});
 			self.disconnect();
@@ -2271,7 +1564,7 @@ pub const Connection = struct { // MARK: Connection
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
-			std.Thread.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
@@ -2281,50 +1574,5 @@ pub const Connection = struct { // MARK: Connection
 			main.exitToMenu(undefined);
 		}
 		std.log.info("Disconnected", .{});
-	}
-};
-
-const ProtocolTask = struct {
-	conn: *Connection,
-	protocol: u8,
-	data: []const u8,
-
-	const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.utils.castFunctionSelfToAnyopaque(run),
-		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
-		.taskType = .misc,
-	};
-
-	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
-		const task = main.globalAllocator.create(ProtocolTask);
-		task.* = ProtocolTask{
-			.conn = conn,
-			.protocol = protocol,
-			.data = main.globalAllocator.dupe(u8, data),
-		};
-		main.threadPool.addTask(task, &vtable);
-	}
-
-	pub fn getPriority(_: *ProtocolTask) f32 {
-		return std.math.floatMax(f32);
-	}
-
-	pub fn isStillNeeded(_: *ProtocolTask) bool {
-		return true;
-	}
-
-	pub fn run(self: *ProtocolTask) void {
-		defer self.clean();
-		var reader = utils.BinaryReader.init(self.data);
-		Protocols.list[self.protocol].?(self.conn, &reader) catch |err| {
-			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
-		};
-	}
-
-	pub fn clean(self: *ProtocolTask) void {
-		main.globalAllocator.free(self.data);
-		main.globalAllocator.destroy(self);
 	}
 };

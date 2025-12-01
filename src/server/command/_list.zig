@@ -4,6 +4,7 @@ pub const help = @import("help.zig");
 pub const invite = @import("invite.zig");
 pub const kill = @import("kill.zig");
 pub const particles = @import("particles.zig");
+pub const tickspeed = @import("tickspeed.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
 

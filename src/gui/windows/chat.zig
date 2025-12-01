@@ -205,7 +205,7 @@ pub fn onClose() void {
 
 pub fn update() void {
 	if(!messageQueue.isEmpty()) {
-		const currentTime: i32 = @truncate(std.time.milliTimestamp());
+		const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
 		while(messageQueue.popFront()) |msg| {
 			history.append(Label.init(.{0, 0}, 256, msg, .left));
 			main.globalAllocator.free(msg);
@@ -214,7 +214,7 @@ pub fn update() void {
 		refresh();
 	}
 
-	const currentTime: i32 = @truncate(std.time.milliTimestamp());
+	const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
 	while(fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
 		fadeOutEnd += 1;
 	}
@@ -257,7 +257,7 @@ pub fn sendMessage(_: usize) void {
 				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
 			}
 
-			main.network.Protocols.chat.send(main.game.world.?.conn, data);
+			main.network.protocols.chat.send(main.game.world.?.conn, data);
 			input.clear();
 		}
 	}

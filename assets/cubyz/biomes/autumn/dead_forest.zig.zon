@@ -65,9 +65,9 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:dead_leaves",
-			.log = "cubyz:dead_leaves",
-			.top = "cubyz:dead_leaves",
+			.leaves = "cubyz:leaves/dead",
+			.log = "cubyz:leaves/dead",
+			.top = "cubyz:leaves/dead",
 			.chance = 0.8,
 			.type = .round,
 			.height = 0,

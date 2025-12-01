@@ -1,0 +1,9 @@
+.{
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x1C1C38,
+	.texture = "cubyz:leaves/yellow",
+	.lodReplacement = "cubyz:leaves/opaque/yellow",
+	.opaqueVariant = "cubyz:leaves/opaque/yellow",
+}

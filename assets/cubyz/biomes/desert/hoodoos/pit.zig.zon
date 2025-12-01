@@ -1,0 +1,26 @@
+.{
+	.properties = .{},
+	.minRadius = 16,
+	.maxRadius = 32,
+	.minHeightLimit = 1,
+	.chance = 0,
+	.minHeight = 1,
+	.maxHeight = 10,
+	.rivers = false,
+	.roughness = 1,
+	.stoneBlock = "cubyz:sandstone",
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rock/hoodoo/small_medium",
+			.placeMode = .degradable,
+			.chance = 0.08,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:desert/hoodoos/base",
+			.chance = 12,
+		},
+	},
+}
