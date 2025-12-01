@@ -1,5 +1,5 @@
 .{
-	.tags = .{.choppable, .cuttable, .mushroom},
+	.tags = .{.choppable, .cuttable, .mushroom, .branch},
 	.blockHealth = 3,
 	.bounciness = 1.0,
 	.drops = .{
