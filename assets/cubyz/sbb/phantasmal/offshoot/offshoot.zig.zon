@@ -1,0 +1,20 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_0", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_1", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_2", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_3", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_4", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_5", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_6", .chance = 0.5},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_7", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_8", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_9", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_10", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_11", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_12", .chance = 0.08},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_13", .chance = 1.2},
+		.{.id = "cubyz:phantasmal/offshoot/offshoot_14", .chance = 0.8},
+		.{.id = null, .chance = 0.3},
+	},
+}

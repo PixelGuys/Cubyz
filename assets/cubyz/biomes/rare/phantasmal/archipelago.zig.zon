@@ -17,7 +17,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:phantasmal_pillars/phantasmal_pillars",
+			.structure = "cubyz:phantasmal/phantasmal_pillars",
 			.placeMode = .degradable,
 			.chance = 0.05,
 		},
@@ -44,7 +44,7 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:bubble/bubble",
+			.structure = "cubyz:phantasmal/bubble/bubble",
 			.chance = 0.05,
 			.rotation = 0,
 		},

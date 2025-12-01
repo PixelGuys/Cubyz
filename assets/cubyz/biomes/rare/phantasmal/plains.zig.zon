@@ -11,7 +11,6 @@
 	.roughness = 5,
 	.rivers = true,
 
-
 	.ground_structure = .{
 		"0 to 1 cubyz:obsidian",
 		"15 cubyz:chalk/black",
@@ -20,13 +19,13 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:phantasmal_pillars/phantasmal_pillars",
+			.structure = "cubyz:phantasmal/phantasmal_pillars",
 			.placeMode = .degradable,
 			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:star/stars",
+			.structure = "cubyz:phantasmal/star/stars",
 			.chance = 0.03,
 		},
 		.{

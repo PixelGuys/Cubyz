@@ -17,7 +17,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:phantasmal_pillars/phantasmal_pillars",
+			.structure = "cubyz:phantasmal/phantasmal_pillars",
 			.placeMode = .degradable,
 			.chance = 0.1,
 		},
@@ -51,13 +51,13 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:auroras/aurorahigh",
+			.structure = "cubyz:phantasmal/auroras/aurorahigh",
 			.chance = 0.015,
 			.rotation = 0,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:auroras/auroralow",
+			.structure = "cubyz:phantasmal/auroras/auroralow",
 			.rotation = 0,
 			.chance = 0.015,
 		},
