@@ -188,10 +188,10 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		source: Source,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-			.run = main.utils.castFunctionSelfToAnyopaque(run),
-			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 			.taskType = .chunkgen,
 		};
 
@@ -248,10 +248,10 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		source: ?*User,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-			.run = main.utils.castFunctionSelfToAnyopaque(run),
-			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 			.taskType = .misc,
 		};
 
@@ -615,10 +615,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		storeMaps: bool,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-			.run = main.utils.castFunctionSelfToAnyopaque(run),
-			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 			.taskType = .chunkgen,
 		};
 
