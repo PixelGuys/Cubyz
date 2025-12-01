@@ -12,7 +12,7 @@ const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
-const StringIndexedVTables = main.utils.meta.StringIndexedVTables;
+const StringIndexedVTables = main.meta.StringIndexedVTables;
 
 const list = @import("rotation");
 
