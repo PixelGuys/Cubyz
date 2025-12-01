@@ -1189,6 +1189,21 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return null;
 	}
 	pub fn triggerNeighborBlockUpdates(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
+		{
+			const pos = Vec3i{
+				wx,
+				wy,
+				wz,
+			};
+			if(self.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |ch| {
+				defer ch.decreaseRefCount();
+				ch.blockUpdateSystem.add(.{
+					.x = @truncate(@as(u32, @bitCast(pos[0]))),
+					.y = @truncate(@as(u32, @bitCast(pos[1]))),
+					.z = @truncate(@as(u32, @bitCast(pos[2]))),
+				});
+			}
+		}
 		for(chunk.Neighbor.iterable) |value| {
 			const pos = Vec3i{
 				wx + value.relX(),

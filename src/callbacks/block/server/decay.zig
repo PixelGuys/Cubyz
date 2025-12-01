@@ -112,14 +112,13 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		if(bd.thinTree != 0) {
 			//thinTree branches only depend on the block below them.
 			if(Server.world) |world| {
-				if(world.getBlock(wx, wy, wz -% 1)) |below| {
-					if(below.viewThrough() and below.mode() != main.rotation.getByID("cubyz:branch")) {
-						//remove block
-						main.items.Inventory.Sync.ServerSide.mutex.lock();
-						defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
-						if(world.cmpxchgBlock(wx, wy, wz, params.block, self.decayReplacement) == null) {
-							return .handled;
-						}
+				const connectBelow = bd.isConnected(main.chunk.Neighbor.dirDown);
+				if(!connectBelow) {
+					//remove block
+					main.items.Inventory.Sync.ServerSide.mutex.lock();
+					defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+					if(world.cmpxchgBlock(wx, wy, wz, params.block, self.decayReplacement) == null) {
+						return .handled;
 					}
 				}
 			}
