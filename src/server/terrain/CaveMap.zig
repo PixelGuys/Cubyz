@@ -41,7 +41,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	}
 
 	pub fn deferredDeinit(self: *CaveMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	fn getIndex(x: i32, y: i32) usize {
