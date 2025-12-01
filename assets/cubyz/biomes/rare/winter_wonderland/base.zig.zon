@@ -11,7 +11,7 @@
 	.minRadius = 256,
 	.maxRadius = 320,
 	.hills = 15,
-	.mountains = 20,
+	.mountains = 5,
 	.stoneBlock = "cubyz:glacite",
 	.chance = 0.5,
 	.ground_structure = .{
