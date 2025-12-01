@@ -66,19 +66,6 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 		};
 	}
 
-	/// Finds the neighbor that a vector is most pointing in.
-	pub fn fromVec(Type: type, vector: @Vector(3, Type)) Neighbor {
-		const maxExtent = @reduce(.Max, @abs(vector));
-		inline for(0..3) |i| {
-			if(@abs(vector[i]) == maxExtent) {
-				var pos = Vec3i{0, 0, 0};
-				pos[i] = if(vector[i] > 0.0) 1.0 else -1.0;
-				return fromRelPos(pos).?;
-			}
-		}
-		unreachable;
-	}
-
 	/// Index to bitMask for bitmap direction data
 	pub inline fn bitMask(self: Neighbor) u6 {
 		return @as(u6, 1) << @intFromEnum(self);

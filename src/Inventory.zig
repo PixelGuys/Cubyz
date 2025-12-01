@@ -1731,7 +1731,7 @@ pub const Command = struct { // MARK: Command
 		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
 
 		const BlockDropLocation = struct {
-			dir: Neighbor,
+			normalDir: Vec3f,
 			min: Vec3f,
 			max: Vec3f,
 
@@ -1770,14 +1770,14 @@ pub const Command = struct { // MARK: Command
 			fn directionOffset(self: BlockDropLocation) Vec3d {
 				return half + self.direction()*half;
 			}
-			inline fn direction(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(self.dir.relPos());
+			inline fn direction(self: BlockDropLocation) Vec3f {
+				return self.normalDir;
 			}
-			inline fn major(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(@abs(self.dir.relPos()));
+			inline fn major(self: BlockDropLocation) Vec3f {
+				return @abs(self.normalDir);
 			}
-			inline fn minor(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(self.dir.orthogonalComponents());
+			inline fn minor(self: BlockDropLocation) Vec3f {
+				return Vec3f{1.0, 1.0, 1.0} - @abs(self.normalDir);
 			}
 			fn dropDir(self: BlockDropLocation) Vec3f {
 				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
@@ -1876,7 +1876,7 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: UpdateBlock, writer: *utils.BinaryWriter) void {
 			self.source.write(writer);
 			writer.writeVec(Vec3i, self.pos);
-			writer.writeEnum(Neighbor, self.dropLocation.dir);
+			writer.writeVec(Vec3f, self.dropLocation.normalDir);
 			writer.writeVec(Vec3f, self.dropLocation.min);
 			writer.writeVec(Vec3f, self.dropLocation.max);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
@@ -1888,7 +1888,7 @@ pub const Command = struct { // MARK: Command
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.pos = try reader.readVec(Vec3i),
 				.dropLocation = .{
-					.dir = try reader.readEnum(Neighbor),
+					.normalDir = try reader.readVec(Vec3f),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),
 				},

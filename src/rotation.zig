@@ -19,7 +19,7 @@ pub const RayIntersectionResult = struct {
 	distance: f32,
 	min: Vec3f,
 	max: Vec3f,
-	face: Neighbor,
+	normal: Vec3f,
 };
 
 pub const Degrees = enum(u2) {
@@ -59,7 +59,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn rayModelIntersection(modelIndex: ModelIndex, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			const modelData = modelIndex.model();
 			var minimum: ?f32 = null;
-			var face: ?Neighbor = null;
+			var normal: ?Vec3f = null;
 			var quadList: main.List(main.models.QuadInfo) = .init(main.stackAllocator);
 			defer quadList.deinit();
 			modelData.getRawFaces(&quadList);
@@ -69,13 +69,13 @@ pub const RotationMode = struct { // MARK: RotationMode
 				if(rayTriangleIntersection(relativePlayerPos, playerDir, triangle1)) |distance| {
 					if(minimum == null or distance < minimum.?) {
 						minimum = distance;
-						face = Neighbor.fromVec(f32, quad.normalVec());
+						normal = quad.normalVec();
 					}
 				}
 				if(rayTriangleIntersection(relativePlayerPos, playerDir, triangle2)) |distance| {
 					if(minimum == null or distance < minimum.?) {
 						minimum = distance;
-						face = Neighbor.fromVec(f32, quad.normalVec());
+						normal = quad.normalVec();
 					}
 				}
 			}
@@ -84,7 +84,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 					.distance = minimum.?,
 					.min = modelData.min,
 					.max = modelData.max,
-					.face = face.?,
+					.normal = normal.?,
 				};
 			}
 			return null;
