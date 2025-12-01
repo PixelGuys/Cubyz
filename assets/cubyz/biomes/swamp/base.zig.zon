@@ -13,7 +13,6 @@
 	.roughness = 3,
 	.hills = 1,
 	.chance = 1.0,
-	.music = "cubyz:leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"4 to 5 cubyz:mud",

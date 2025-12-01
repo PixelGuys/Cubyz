@@ -5,6 +5,7 @@
 		.dry,
 		.barren,
 	},
+	.music = "cubyz:TotalDemented/Kubis",
 	.minHeightLimit = 7,
 	.minHeight = 80,
 	.maxHeight = 256,

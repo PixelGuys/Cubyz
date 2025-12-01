@@ -5,7 +5,7 @@
 	.chance = 0.05,
 	.fogDensity = 2,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:Gray_Vibes/Amb",
 
 	.structures = .{
 		.{

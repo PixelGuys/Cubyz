@@ -10,7 +10,7 @@
 
 	.soilCreep = 1.5,
 
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:TotalDemented/Midnight_Melody",
 
 	.parentBiomes = .{
 		.{

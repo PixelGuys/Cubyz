@@ -12,7 +12,7 @@
 	.roughness = 10,
 	.hills = 10,
 
-	.music = "cubyz:leaves",
+	.music = "cubyz:TotalDemented/Leaves",
 
 	.validPlayerSpawn = true,
 

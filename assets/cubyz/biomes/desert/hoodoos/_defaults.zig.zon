@@ -1,4 +1,5 @@
 .{
+	.music = "cubyz:TotalDemented/Kubis",
 	.properties = .{
 		.hot,
 		.dry,

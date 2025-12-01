@@ -12,6 +12,9 @@
 	.roughness = 10,
 	.hills = 10,
 	.validPlayerSpawn = true,
+
+	.music = "cubyz:TotalDemented/Leaves",
+
 	.ground_structure = .{
 		"0 to 1 cubyz:grass",
 		"2 to 3 cubyz:soil",
