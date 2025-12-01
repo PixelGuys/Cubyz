@@ -1,6 +1,6 @@
 .{
 	.onUpdate = .{
-		.type = .Decay,
+		.type = .decay,
 		.prevention = .{.log, .branch},
 	},
 	.rotation = "cubyz:decayable",
