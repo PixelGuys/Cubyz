@@ -3,6 +3,7 @@
 		.cold,
 		.wet,
 	},
+	.roughness = 0,
 	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,
@@ -18,6 +19,12 @@
 		"1 to 2 cubyz:permafrost",
 	},
 	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy_cane/thick/small",
+			.placeMode = .degradable,
+			.chance = 0.03,
+		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:candy_cane/thin/small",
@@ -39,15 +46,6 @@
 			.variation = 4,
 			.depth = 1,
 			.smoothness = 0.5,
-		},
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:permafrost",
-			.chance = 0.01,
-			.width = 6,
-			.variation = 4,
-			.depth = 1,
-			.smoothness = 0.3,
 		},
 		.{
 			.id = "cubyz:boulder",
