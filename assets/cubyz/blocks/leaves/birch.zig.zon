@@ -1,0 +1,9 @@
+.{
+	.drops = .{
+		.{.items = .{.auto}},
+		.{.chance = 0.1, .items = .{"cubyz:apple"}},
+	},
+	.texture = "cubyz:leaves/birch",
+	.lodReplacement = "cubyz:leaves/opaque/birch",
+	.opaqueVariant = "cubyz:leaves/opaque/birch",
+}

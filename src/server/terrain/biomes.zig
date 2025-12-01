@@ -59,9 +59,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
-		self.loadModel = main.utils.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
-		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
-		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
+		self.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
+		self.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate);
+		self.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {
 				return hashGeneric(ptr.*);
 			}
@@ -349,7 +349,7 @@ pub const Biome = struct { // MARK: Biome
 			.maxHeightLimit = zon.get(i32, "maxHeightLimit", std.math.maxInt(i32)),
 			.smoothBeaches = zon.get(bool, "smoothBeaches", false),
 			.supportsRivers = zon.get(bool, "rivers", false),
-			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:cubyz")),
+			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:TotalDemented/Cubyz")),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),

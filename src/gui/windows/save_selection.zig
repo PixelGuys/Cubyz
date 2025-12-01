@@ -53,7 +53,7 @@ pub fn openWorld(name: []const u8) void {
 	};
 
 	std.log.info("Opening world {s}", .{name});
-	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name, clientConnection.localPort}) catch |err| {
+	main.server.thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, clientConnection.localPort}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
@@ -62,7 +62,7 @@ pub fn openWorld(name: []const u8) void {
 	};
 
 	while(!main.server.running.load(.acquire)) {
-		std.Thread.sleep(1_000_000);
+		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		main.heap.GarbageCollection.syncPoint();
 	}
 	clientConnection.world = &main.game.testWorld;

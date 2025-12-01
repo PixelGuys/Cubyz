@@ -34,4 +34,5 @@
 		},
 		.texture = "branch/willow.png",
 	},
+	.decayProhibitor = true,
 }

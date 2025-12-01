@@ -44,10 +44,10 @@ pub fn render() void {
 		y += 8;
 		draw.print("External header overhead: {}kiB", .{network.Connection.externalHeaderOverhead.load(.monotonic) >> 10}, 0, y, 8, .left);
 		y += 8;
-		inline for(@typeInfo(network.Protocols).@"struct".decls) |decl| {
-			if(@TypeOf(@field(network.Protocols, decl.name)) == type) {
-				const id = @field(network.Protocols, decl.name).id;
-				draw.print("{s}: received {}kiB sent {}kiB", .{decl.name, network.Protocols.bytesReceived[id].load(.monotonic) >> 10, network.Protocols.bytesSent[id].load(.monotonic) >> 10}, 0, y, 8, .left);
+		inline for(@typeInfo(network.protocols).@"struct".decls) |decl| {
+			if(@TypeOf(@field(network.protocols, decl.name)) == type) {
+				const id = @field(network.protocols, decl.name).id;
+				draw.print("{s}: received {}kiB sent {}kiB", .{decl.name, network.protocols.bytesReceived[id].load(.monotonic) >> 10, network.protocols.bytesSent[id].load(.monotonic) >> 10}, 0, y, 8, .left);
 				y += 8;
 			}
 		}

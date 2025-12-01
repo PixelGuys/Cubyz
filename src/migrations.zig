@@ -83,6 +83,18 @@ fn register(
 	}
 }
 
+pub fn applySingle(comptime typ: MigrationType, assetName: []const u8) []const u8 {
+	const migrations = switch(typ) {
+		.block => blockMigrations,
+		.item => itemMigrations,
+		.biome => biomeMigrations,
+	};
+
+	const newAssetName = migrations.get(assetName) orelse return assetName;
+	std.log.info("Migrating {s} {s} -> {s}", .{@tagName(typ), assetName, newAssetName});
+	return newAssetName;
+}
+
 pub fn apply(comptime typ: MigrationType, palette: *Palette) void {
 	const migrations = switch(typ) {
 		.block => blockMigrations,
