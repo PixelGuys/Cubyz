@@ -153,7 +153,6 @@ pub const ClientEntityManager = struct {
 		mutex.lock();
 		defer mutex.unlock();
 
-		// this value is relative to the fov-y and window size
 		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
 		const fontBaseSize = 128.0;
 		const fontMinScreenSize = 16.0;
