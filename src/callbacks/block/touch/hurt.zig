@@ -29,4 +29,3 @@ pub fn run(self: *@This(), params: main.callbacks.BlockTouchCallback.Params) mai
 	main.items.Inventory.Sync.addHealth(-damage, self.damageType, .client, main.game.Player.id);
 	return .handled;
 }
-pub fn deinit(_: *@This()) void {}

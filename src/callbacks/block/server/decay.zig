@@ -24,14 +24,11 @@ pub fn init(zon: ZonElement) ?*@This() {
 		if(tagNames == .array) {
 			for(tagNames.array.items) |value| {
 				const tagName = value.as(?[]const u8, null) orelse continue;
-				result.prevention.append(main.globalAllocator, main.Tag.find(tagName));
+				result.prevention.append(main.worldArena, main.Tag.find(tagName));
 			}
 		}
 	}
 	return result;
-}
-pub fn deinit(self: *@This()) void {
-	self.prevention.deinit(main.globalAllocator);
 }
 fn getIndexInCheckArray(relativePosition: Vec3i, checkRange: comptime_int) usize {
 	const checkLength = checkRange*2 + 1;
