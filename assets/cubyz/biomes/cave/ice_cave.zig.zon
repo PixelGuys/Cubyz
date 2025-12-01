@@ -8,7 +8,7 @@
 	.fogColor = 0xbabfbf,
 	.stoneBlock = "cubyz:glacite",
 
-		.music = "cubyz:ikabodBTW/Chimes",
+	.music = "cubyz:ikabodBTW/Chimes",
 
 	.ground_structure = .{
 		"cubyz:ice",
