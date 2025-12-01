@@ -60,7 +60,7 @@ pub fn StringIndexedVTables(VTable: type, TypeList: type) type {
 					}
 					if(!@hasDecl(Type, field.name)) {
 						if(field.default_value_ptr) |default_| {
-							const default: *const field.type = @alignCast(@ptrCast(default_));
+							const default: *const field.type = @ptrCast(@alignCast(default_));
 							if(field.type == @TypeOf(default)) {
 								@field(result, field.name) = default;
 							} else {
