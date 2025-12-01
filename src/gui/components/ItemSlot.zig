@@ -178,7 +178,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 						.tool => |tool| item == .tool and item.tool.type == tool.type,
 					};
 					if(eql) {
-						draw.setColor(0x150000ff);
+						draw.setColor(0x111111ff);
 						draw.rect(self.pos, self.size);
 					}
 				}
