@@ -47,6 +47,8 @@ pub var playerName: []const u8 = "";
 
 pub var lastUsedIPAddress: []const u8 = "";
 
+pub var hideIpAddresses: bool = true;
+
 pub var guiScale: ?f32 = null;
 
 pub var musicVolume: f32 = 1;
