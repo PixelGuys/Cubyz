@@ -188,10 +188,10 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		source: Source,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-			.run = main.utils.castFunctionSelfToAnyopaque(run),
-			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 			.taskType = .chunkgen,
 		};
 
@@ -248,10 +248,10 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		source: ?*User,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-			.run = main.utils.castFunctionSelfToAnyopaque(run),
-			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 			.taskType = .misc,
 		};
 
@@ -615,10 +615,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		storeMaps: bool,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-			.run = main.utils.castFunctionSelfToAnyopaque(run),
-			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 			.taskType = .chunkgen,
 		};
 
@@ -1019,7 +1019,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.milliTime = self.milliTime.addDuration(.fromMilliseconds(100));
 			if(self.doGameTimeCycle) self.gameTime +%= 1; // gameTime is measured in 100ms.
 		}
-		if(self.lastUnimportantDataSent.durationTo(newTime).toSeconds() < 2) {
+		if(self.lastUnimportantDataSent.durationTo(newTime).toSeconds() > 2) {
 			self.lastUnimportantDataSent = newTime;
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -1137,9 +1137,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			var ch = baseChunk;
 			if(chunkLocation == .inNeighborChunk) {
 				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
-					.wx = baseChunk.super.pos.wx + neighborPos.x & ~@as(i32, chunk.chunkMask),
-					.wy = baseChunk.super.pos.wy + neighborPos.y & ~@as(i32, chunk.chunkMask),
-					.wz = baseChunk.super.pos.wz + neighborPos.z & ~@as(i32, chunk.chunkMask),
+					.wx = baseChunk.super.pos.wx +% pos.x +% neighbor.relX() & ~@as(i32, chunk.chunkMask),
+					.wy = baseChunk.super.pos.wy +% pos.y +% neighbor.relY() & ~@as(i32, chunk.chunkMask),
+					.wz = baseChunk.super.pos.wz +% pos.z +% neighbor.relZ() & ~@as(i32, chunk.chunkMask),
 					.voxelSize = 1,
 				});
 			}
