@@ -109,6 +109,22 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		const bd = Branch.BranchData.init(params.block.data);
 		if(bd.placedByHuman != 0)
 			return .ignored;
+		if(bd.thinTree != 0) {
+			//thinTree branches only depend on the block below them.
+			if(Server.world) |world| {
+				if(world.getBlock(wx, wy, wz -% 1)) |below| {
+					if(below.viewThrough() and below.mode() != main.rotation.getByID("cubyz:branch")) {
+						//remove block
+						main.items.Inventory.Sync.ServerSide.mutex.lock();
+						defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+						if(world.cmpxchgBlock(wx, wy, wz, params.block, self.decayReplacement) == null) {
+							return .handled;
+						}
+					}
+				}
+			}
+			return .ignored;
+		}
 	} else {
 		std.log.err("Expected {s} to have cubyz:decayable or cubyz:branch as rotation", .{params.block.id()});
 	}
