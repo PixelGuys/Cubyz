@@ -360,7 +360,7 @@ fn setHotbarSlot(i: comptime_int) *const fn(Window.Key.Modifiers) void {
 
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
-	pub var keys = [_]Window.Key{
+	pub const defaultKeys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
@@ -439,6 +439,12 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
 	};
+
+	pub var keys = defaultKeys;
+
+	pub fn resetKeysToDefault() void {
+		std.mem.copyForwards(Window.Key, &keys, &defaultKeys);
+	}
 
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
 		for(&keys) |*_key| {
