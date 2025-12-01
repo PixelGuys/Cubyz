@@ -21,7 +21,13 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:candy_cane/thick/small",
+			.structure = "cubyz:candy_cane/large",
+			.placeMode = .degradable,
+			.chance = 0.02,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy_cane/thick",
 			.placeMode = .degradable,
 			.chance = 0.03,
 		},
@@ -36,6 +42,18 @@
 			.structure = "cubyz:candy_cane/thin/big",
 			.placeMode = .degradable,
 			.chance = 0.03,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/loblolly",
+			.placeMode = .degradable,
+			.chance = 0.006,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.006,
 		},
 		.{
 			.id = "cubyz:ground_patch",
