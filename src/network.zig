@@ -489,7 +489,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn deinit(self: *ConnectionManager) void {
 		for(self.connections.items) |conn| {
-			conn.disconnect();
+			conn.disconnect(.expectedClose, "Server stopped.");
 		}
 
 		self.running.store(false, .monotonic);
@@ -1133,6 +1133,16 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
+	pub const disconnectMessageMaxSize = 512;
+	pub const DisconnectReason = enum(u8) { // MARK: DisconnectReason
+		expectedClose = 0,
+		kicked = 1,
+		badPacket = 2,
+		alreadyConnected = 3,
+		timeout = 4,
+		incorrectVersion = 5,
+	};
+
 	const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
 		fast = 1,
@@ -1249,7 +1259,9 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect();
+		if(self.connectionState.load(.monotonic) != .disconnectDesired) {
+			self.disconnect(.expectedClose, null);
+		}
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
 		self.lossyChannel.deinit();
 		self.fastChannel.deinit();
@@ -1270,7 +1282,7 @@ pub const Connection = struct { // MARK: Connection
 			else => comptime unreachable,
 		} catch {
 			std.log.err("Cannot send any more packets. Disconnecting", .{});
-			self.disconnect();
+			self.disconnect(.badPacket, null);
 		};
 	}
 
@@ -1373,7 +1385,7 @@ pub const Connection = struct { // MARK: Connection
 				std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
 			}
 			std.log.debug("Packet data: {any}", .{data});
-			self.disconnect();
+			self.disconnect(.badPacket, null);
 		};
 	}
 
@@ -1421,7 +1433,7 @@ pub const Connection = struct { // MARK: Connection
 							main.server.disconnect(user);
 						} else {
 							std.log.err("Server reconnected?", .{});
-							self.disconnect();
+							self.disconnect(.alreadyConnected, null);
 						}
 						return;
 					}
@@ -1479,7 +1491,13 @@ pub const Connection = struct { // MARK: Connection
 			.init => unreachable,
 			.keepalive => {},
 			.disconnect => {
-				self.disconnect();
+				const reason = try reader.readEnum(DisconnectReason);
+				const sliceLength = try reader.readVarInt(u32);
+				var slice: ?[]u8 = null;
+				if(sliceLength < disconnectMessageMaxSize) { // Guard against malicious server sending a too large data
+					slice = @constCast(try reader.readSlice(sliceLength));
+				}
+				self.disconnect(reason, slice);
 			},
 		}
 		self.lastConnection = networkTimestamp();
@@ -1515,7 +1533,7 @@ pub const Connection = struct { // MARK: Connection
 			.connected => {
 				if(timestamp -% self.lastConnection -% settings.connectionTimeout > 0) {
 					std.log.info("timeout", .{});
-					self.disconnect();
+					self.disconnect(.timeout, null);
 					return;
 				}
 			},
@@ -1560,8 +1578,23 @@ pub const Connection = struct { // MARK: Connection
 		}
 	}
 
-	pub fn disconnect(self: *Connection) void {
-		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
+	pub fn disconnect(self: *Connection, reason: DisconnectReason, reasonMessage: ?[]const u8) void {
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.mtuEstimate);
+		defer writer.deinit();
+		writer.writeEnum(ChannelId, .disconnect);
+		writer.writeEnum(DisconnectReason, reason);
+		if(reasonMessage) |rM| {
+			if(rM.len < disconnectMessageMaxSize) {
+				writer.writeVarInt(u32, @intCast(rM.len));
+				writer.writeSlice(rM);
+			} else {
+				writer.writeVarInt(u32, 0);
+			}
+		} else {
+			writer.writeVarInt(u32, 0);
+		}
+
+		self.manager.send(writer.data.items, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
@@ -1571,8 +1604,9 @@ pub const Connection = struct { // MARK: Connection
 			main.server.disconnect(user);
 		} else {
 			self.handShakeWaiting.broadcast();
+			main.gui.windowlist.disconnected.setDisconnectedReason(reason, reasonMessage);
 			main.exitToMenu(undefined);
 		}
-		std.log.info("Disconnected", .{});
+		std.log.info("Disconnected, reasoncode: {s}, reasonmessage: {s}", .{@tagName(reason), reasonMessage orelse ""});
 	}
 };
