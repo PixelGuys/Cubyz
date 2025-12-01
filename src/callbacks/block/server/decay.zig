@@ -75,7 +75,7 @@ fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i3
 
 			// it is the same type of leaf? continue search! (Don't do it for branches. We've got isConnected instead!)
 			if(!sourceIsBranch and log.typ != leaf.typ) continue;
-			if(sourceIsBranch and log.mode() != branchRotation) return true;
+			if(sourceIsBranch and log.mode() != branchRotation and !log.viewThrough()) return true;
 			const branchData = Branch.BranchData.init(log.data);
 
 			for(main.chunk.Neighbor.iterable) |offset| {
