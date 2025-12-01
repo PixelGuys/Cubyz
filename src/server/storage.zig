@@ -407,9 +407,9 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 		var iterator = ch.blockPosToEntityDataMap.iterator();
 		while(iterator.next()) |entry| {
-			const index = entry.key_ptr.*;
+			const pos = entry.key_ptr.*;
 			const blockEntityIndex = entry.value_ptr.*;
-			const block = ch.data.getValue(index);
+			const block = ch.data.getValue(pos.toIndex());
 			const blockEntity = block.blockEntity() orelse continue;
 
 			var tempWriter = BinaryWriter.init(main.stackAllocator);
@@ -423,7 +423,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 			if(tempWriter.data.items.len == 0) continue;
 
-			writer.writeInt(u16, @intCast(index));
+			writer.writeInt(u15, pos.toIndex());
 			writer.writeVarInt(usize, tempWriter.data.items.len);
 			writer.writeSlice(tempWriter.data.items);
 		}
@@ -436,25 +436,25 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		std.debug.assert(compressionAlgo == .raw);
 
 		while(reader.remaining.len != 0) {
-			const index = try reader.readInt(u16);
-			const pos = ch.getGlobalBlockPosFromIndex(index);
+			const pos: chunk.BlockPos = .fromIndex(try reader.readInt(u15));
+			const globalPos = ch.localToGlobalPosition(pos);
 			const dataLength = try reader.readVarInt(usize);
 
 			const blockEntityData = try reader.readSlice(dataLength);
-			const block = ch.data.getValue(index);
+			const block = ch.data.getValue(pos.toIndex());
 			const blockEntity = block.blockEntity() orelse {
-				std.log.err("Could not load BlockEntity at position {} for block {s}: Block has no block entity", .{pos, block.id()});
+				std.log.err("Could not load BlockEntity at position {} for block {s}: Block has no block entity", .{globalPos, block.id()});
 				continue;
 			};
 
 			var tempReader = BinaryReader.init(blockEntityData);
 			if(side == .server) {
-				blockEntity.onLoadServer(pos, ch, &tempReader) catch |err| {
-					std.log.err("Could not load BlockEntity at position {} for block {s}: {s}", .{pos, block.id(), @errorName(err)});
+				blockEntity.onLoadServer(globalPos, ch, &tempReader) catch |err| {
+					std.log.err("Could not load BlockEntity at position {} for block {s}: {s}", .{globalPos, block.id(), @errorName(err)});
 					continue;
 				};
 			} else {
-				try blockEntity.onLoadClient(pos, ch, &tempReader);
+				try blockEntity.onLoadClient(globalPos, ch, &tempReader);
 			}
 		}
 	}

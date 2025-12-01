@@ -1019,7 +1019,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.milliTime = self.milliTime.addDuration(.fromMilliseconds(100));
 			if(self.doGameTimeCycle) self.gameTime +%= 1; // gameTime is measured in 100ms.
 		}
-		if(self.lastUnimportantDataSent.durationTo(newTime).toSeconds() < 2) {
+		if(self.lastUnimportantDataSent.durationTo(newTime).toSeconds() > 2) {
 			self.lastUnimportantDataSent = newTime;
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -1120,11 +1120,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		main.utils.assertLocked(&main.items.Inventory.Sync.ServerSide.mutex); // Block entities with inventories need this mutex to be locked
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
-		const x: u5 = @intCast(wx & chunk.chunkMask);
-		const y: u5 = @intCast(wy & chunk.chunkMask);
-		const z: u5 = @intCast(wz & chunk.chunkMask);
+		const pos: chunk.BlockPos = .fromWorldCoords(wx, wy, wz);
 		baseChunk.mutex.lock();
-		const currentBlock = baseChunk.getBlock(x, y, z);
+		const currentBlock = baseChunk.getBlock(pos.x, pos.y, pos.z);
 		if(oldBlock != null) {
 			if(oldBlock.? != currentBlock) {
 				baseChunk.mutex.unlock();
@@ -1135,15 +1133,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		var newBlock = _newBlock;
 		for(chunk.Neighbor.iterable) |neighbor| {
-			const nx = x + neighbor.relX();
-			const ny = y + neighbor.relY();
-			const nz = z + neighbor.relZ();
+			const neighborPos, const chunkLocation = pos.neighbor(neighbor);
 			var ch = baseChunk;
-			if(!ch.liesInChunk(nx, ny, nz)) {
+			if(chunkLocation == .inNeighborChunk) {
 				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
-					.wx = baseChunk.super.pos.wx + nx & ~@as(i32, chunk.chunkMask),
-					.wy = baseChunk.super.pos.wy + ny & ~@as(i32, chunk.chunkMask),
-					.wz = baseChunk.super.pos.wz + nz & ~@as(i32, chunk.chunkMask),
+					.wx = baseChunk.super.pos.wx +% pos.x +% neighbor.relX() & ~@as(i32, chunk.chunkMask),
+					.wy = baseChunk.super.pos.wy +% pos.y +% neighbor.relY() & ~@as(i32, chunk.chunkMask),
+					.wz = baseChunk.super.pos.wz +% pos.z +% neighbor.relZ() & ~@as(i32, chunk.chunkMask),
 					.voxelSize = 1,
 				});
 			}
@@ -1154,9 +1150,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			ch.mutex.lock();
 			defer ch.mutex.unlock();
 
-			var neighborBlock = ch.getBlock(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
+			var neighborBlock = ch.getBlock(neighborPos.x, neighborPos.y, neighborPos.z);
 			if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-				ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
+				ch.updateBlockAndSetChanged(neighborPos.x, neighborPos.y, neighborPos.z, neighborBlock);
 			}
 			if(newBlock.mode().dependsOnNeighbors) {
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlock);
@@ -1170,7 +1166,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
 			};
 		}
-		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
+		baseChunk.updateBlockAndSetChanged(pos.x, pos.y, pos.z, newBlock);
 
 		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -1184,9 +1180,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				_ = block.onBreak().run(.{
 					.block = block,
 					.chunk = baseChunk,
-					.x = x,
-					.y = y,
-					.z = z,
+					.blockPos = pos,
 				});
 			}
 		}

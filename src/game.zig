@@ -590,10 +590,10 @@ pub const Player = struct { // MARK: Player
 
 			if(isCreative()) {
 				const targetSlot = blk: {
-					if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
+					if(inventory.getItem(selectedSlot) == .null) break :blk selectedSlot;
 					// Look for an empty slot
 					for(0..12) |slotIdx| {
-						if(inventory.getItem(slotIdx) == null) {
+						if(inventory.getItem(slotIdx) == .null) {
 							break :blk slotIdx;
 						}
 					}
@@ -925,9 +925,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 		}
 
-		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
+		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
 		Player.selectedSlot = @intCast(@mod(newSlot, 12));
-		main.Window.scrollOffset = 0;
 
 		const newPos = Vec2f{
 			@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),

@@ -70,10 +70,10 @@ fn BlockEntityDataStorage(T: type) type {
 				defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
 				break :blk nextIndex;
 			};
-			const blockIndex = chunk.getLocalBlockIndex(pos);
+			const localPos = chunk.getLocalBlockPos(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
-			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex) catch unreachable;
+			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, localPos, dataIndex) catch unreachable;
 			chunk.blockPosToEntityDataMapMutex.unlock();
 			return dataIndex;
 		}
@@ -93,10 +93,10 @@ fn BlockEntityDataStorage(T: type) type {
 			mutex.lock();
 			defer mutex.unlock();
 
-			const blockIndex = chunk.getLocalBlockIndex(pos);
+			const localPos = chunk.getLocalBlockPos(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
-			const entityNullable = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex);
+			const entityNullable = chunk.blockPosToEntityDataMap.fetchRemove(localPos);
 			chunk.blockPosToEntityDataMapMutex.unlock();
 
 			const entry = entityNullable orelse return null;
@@ -112,12 +112,12 @@ fn BlockEntityDataStorage(T: type) type {
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			main.utils.assertLocked(&mutex);
 
-			const blockIndex = chunk.getLocalBlockIndex(pos);
+			const localPos = chunk.getLocalBlockPos(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
 			defer chunk.blockPosToEntityDataMapMutex.unlock();
 
-			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse return null;
+			const dataIndex = chunk.blockPosToEntityDataMap.get(localPos) orelse return null;
 			return storage.get(dataIndex);
 		}
 		pub const GetOrPutResult = struct {
@@ -340,7 +340,7 @@ pub const BlockEntityTypeList = struct {
 			}
 			data.valuePtr.* = .{
 				.blockPos = pos,
-				.block = chunk.data.getValue(chunk.getLocalBlockIndex(pos)),
+				.block = chunk.data.getValue(chunk.getLocalBlockPos(pos).toIndex()),
 				.renderedTexture = null,
 				.text = main.globalAllocator.dupe(u8, event.update.remaining),
 			};
@@ -400,8 +400,8 @@ pub const BlockEntityTypeList = struct {
 				const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 				mesh.mutex.lock();
 				defer mesh.mutex.unlock();
-				const index = mesh.chunk.getLocalBlockIndex(pos);
-				const block = mesh.chunk.data.getValue(index);
+				const localPos = mesh.chunk.getLocalBlockPos(pos);
+				const block = mesh.chunk.data.getValue(localPos.toIndex());
 				const blockEntity = block.blockEntity() orelse return;
 				if(!std.mem.eql(u8, blockEntity.id, "sign")) return;
 
@@ -414,7 +414,7 @@ pub const BlockEntityTypeList = struct {
 				}
 				data.valuePtr.* = .{
 					.blockPos = pos,
-					.block = mesh.chunk.data.getValue(mesh.chunk.getLocalBlockIndex(pos)),
+					.block = mesh.chunk.data.getValue(localPos.toIndex()),
 					.renderedTexture = null,
 					.text = main.globalAllocator.dupe(u8, newText),
 				};

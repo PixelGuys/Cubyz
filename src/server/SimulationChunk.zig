@@ -61,15 +61,12 @@ pub fn update(self: *SimulationChunk, randomTickSpeed: u32) void {
 
 fn tickBlocksInChunk(_chunk: *ServerChunk, randomTickSpeed: u32) void {
 	for(0..randomTickSpeed) |_| {
-		const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
-
-		const x: i32 = blockIndex >> main.chunk.chunkShift2 & main.chunk.chunkMask;
-		const y: i32 = blockIndex >> main.chunk.chunkShift & main.chunk.chunkMask;
-		const z: i32 = blockIndex & main.chunk.chunkMask;
+		const blockIndex = main.random.nextInt(u15, &main.seed);
+		const pos = main.chunk.BlockPos.fromIndex(blockIndex);
 
 		_chunk.mutex.lock();
-		const block = _chunk.getBlock(x, y, z);
+		const block = _chunk.getBlock(pos.x, pos.y, pos.z);
 		_chunk.mutex.unlock();
-		_ = block.onTick().run(.{.block = block, .chunk = _chunk, .x = x, .y = y, .z = z});
+		_ = block.onTick().run(.{.block = block, .chunk = _chunk, .blockPos = pos});
 	}
 }

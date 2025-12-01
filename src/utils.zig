@@ -970,7 +970,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					break;
 				}
 			}
-			main.io.sleep(.fromMilliseconds(1000000), .awake) catch {};
+			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		}
 	}
 

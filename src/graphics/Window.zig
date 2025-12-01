@@ -11,7 +11,14 @@ const vulkan = @import("vulkan.zig");
 
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
-	@cInclude("glad/vulkan.h");
+
+	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
+	if(builtin.target.os.tag == .macos) {
+		@cInclude("vulkan/vulkan.h");
+		@cInclude("vulkan/vulkan_beta.h");
+	} else {
+		@cInclude("glad/vulkan.h");
+	}
 	@cInclude("GLFW/glfw3.h");
 });
 
@@ -23,6 +30,8 @@ pub var window: *c.GLFWwindow = undefined;
 pub var vulkanWindow: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
+pub var scrollOffsetInteger: i32 = 0;
+var scrollOffsetFraction: f32 = 0;
 
 pub const Gamepad = struct {
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
@@ -122,7 +131,7 @@ pub const Gamepad = struct {
 				GLFWCallbacks.currentPos[1] = std.math.clamp(GLFWCallbacks.currentPos[1], 0, winSize[1]);
 			}
 		}
-		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4);
+		GLFWCallbacks.scroll(undefined, 0, @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4));
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
 	pub fn isControllerConnected() bool {
@@ -563,6 +572,9 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	fn scroll(_: ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.c) void {
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
+		scrollOffsetFraction += @floatCast(yOffset);
+		scrollOffsetInteger += @intFromFloat(@round(scrollOffsetFraction));
+		scrollOffsetFraction -= @round(scrollOffsetFraction);
 	}
 	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.c) void {
 		const sourceString: []const u8 = switch(source) {
@@ -671,6 +683,14 @@ pub fn setClipboardString(string: []const u8) void {
 pub fn init() void { // MARK: init()
 	_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
 
+	if(builtin.target.os.tag == .macos) {
+		// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
+		// and GLFW's default attempt to load it dynamically would fail. Instead, tell GLFW where it can find the loader functions directly.
+		c.glfwInitVulkanLoader(c.vkGetInstanceProcAddr);
+
+		c.glfwInitHint(c.GLFW_COCOA_CHDIR_RESOURCES, c.GLFW_FALSE);
+	}
+
 	if(c.glfwInit() == 0) {
 		@panic("Failed to initialize GLFW");
 	}
@@ -745,6 +765,7 @@ fn setCursorVisible(visible: bool) void {
 
 pub fn handleEvents(deltaTime: f64) void {
 	scrollOffset = 0;
+	scrollOffsetInteger = 0;
 	c.glfwPollEvents();
 	Gamepad.update(deltaTime);
 }
