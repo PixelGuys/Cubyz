@@ -80,6 +80,10 @@ pub const RotationMode = struct { // MARK: RotationMode
 				}
 			}
 			if(minimum != null) {
+				// Invert the normal if the player is behind the face (eg. cross model)
+				if(vec.dot(normal.?, relativePlayerPos) < 0.0) {
+					normal = -normal.?;
+				}
 				return .{
 					.distance = minimum.?,
 					.min = modelData.min,
