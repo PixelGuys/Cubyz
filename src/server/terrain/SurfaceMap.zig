@@ -85,7 +85,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	pub fn deferredDeinit(self: *MapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn getBiome(self: *MapFragment, wx: i32, wy: i32) *const Biome {
@@ -188,7 +188,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, self.heightMap[x][y]);
 		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, (if(originalData) |map| map else &self.heightMap)[x][y]);
 
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, writer.data.items, .fast);
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, writer.data.items, .fastest); // Using fast to increase performance of the regenerating map LODs step
 		defer main.stackAllocator.free(compressedData);
 
 		var outputWriter = BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(StorageHeader) + compressedData.len);

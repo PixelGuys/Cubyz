@@ -108,7 +108,8 @@ pub fn update() void {
 }
 
 pub fn render() void {
-	const currentResult = inv._items[25].item orelse return;
+	const currentResult = inv._items[25].item;
+	if(currentResult == .null) return;
 
 	const offsetX = 5*ItemSlot.sizeWithBorder + 20;
 	const offsetY = 4*ItemSlot.sizeWithBorder;

@@ -134,7 +134,8 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		self.texture.?.bindTo(0);
 		draw.boundImage(self.pos, self.size);
 	}
-	if(self.inventory.getItem(self.itemSlot)) |item| {
+	const item = self.inventory.getItem(self.itemSlot);
+	if(item != .null) {
 		const itemTexture = item.getTexture();
 		itemTexture.bindTo(0);
 		draw.setColor(0xff000000);

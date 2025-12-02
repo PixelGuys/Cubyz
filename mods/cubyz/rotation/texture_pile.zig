@@ -69,7 +69,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i,
 	return true;
 }
 
-pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+pub fn onBlockBreaking(_: main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 	if(currentData.data == 0) {
 		currentData.* = .{.typ = 0, .data = 0};
 	} else {
@@ -78,7 +78,7 @@ pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Bl
 }
 
 fn isItemBlock(block: Block, item: main.items.ItemStack) bool {
-	return item.item != null and item.item.? == .baseItem and item.item.?.baseItem.block() == block.typ;
+	return item.item == .baseItem and item.item.baseItem.block() == block.typ;
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {

@@ -59,7 +59,7 @@ pub const ClimateMapFragment = struct {
 	}
 
 	pub fn deferredDeinit(self: *ClimateMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn hashCode(wx: i32, wy: i32) u32 {

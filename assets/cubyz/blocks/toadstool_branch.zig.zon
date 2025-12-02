@@ -34,4 +34,5 @@
 		},
 		.texture = "branch/toadstool.png",
 	},
+	.decayProhibitor = true,
 }

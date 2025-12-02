@@ -59,9 +59,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
-		self.loadModel = main.utils.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
-		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
-		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
+		self.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
+		self.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate);
+		self.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {
 				return hashGeneric(ptr.*);
 			}

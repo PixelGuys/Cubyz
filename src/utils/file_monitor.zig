@@ -135,7 +135,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		defer triggeredCallbacks.deinit();
 		var offset: usize = 0;
 		while(offset < available) {
-			const eventPtr: *const c.inotify_event = @alignCast(@ptrCast(events.ptr[offset..]));
+			const eventPtr: *const c.inotify_event = @ptrCast(@alignCast(events.ptr[offset..]));
 			defer offset += @sizeOf(c.inotify_event) + eventPtr.len;
 
 			const callback = callbacks.get(eventPtr.wd) orelse continue;

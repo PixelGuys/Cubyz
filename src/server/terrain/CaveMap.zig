@@ -41,7 +41,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	}
 
 	pub fn deferredDeinit(self: *CaveMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	fn getIndex(x: i32, y: i32) usize {
@@ -77,7 +77,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	pub fn getColumnData(self: *CaveMapFragment, _relX: i32, _relY: i32) u64 {
 		const relX = _relX >> self.voxelShift;
 		const relY = _relY >> self.voxelShift;
-		return (&self.data)[getIndex(relX, relY)]; // TODO: #13938
+		return self.data[getIndex(relX, relY)];
 	}
 };
 

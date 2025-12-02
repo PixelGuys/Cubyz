@@ -813,7 +813,7 @@ pub const Tool = struct { // MARK: Tool
 
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
-		self.tooltip.writer().print(
+		self.tooltip.print(
 			\\{s}
 			\\{d:.2} swings/s
 			\\Damage: {d:.2}
@@ -824,7 +824,7 @@ pub const Tool = struct { // MARK: Tool
 			self.damage,
 			self.durability,
 			std.math.lossyCast(u32, self.maxDurability),
-		}) catch unreachable;
+		});
 		if(self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
 			for(self.modifiers) |modifier| {
@@ -865,11 +865,13 @@ pub const Tool = struct { // MARK: Tool
 const ItemType = enum(u7) {
 	baseItem,
 	tool,
+	null,
 };
 
 pub const Item = union(ItemType) { // MARK: Item
 	baseItem: BaseItemIndex,
 	tool: *Tool,
+	null: void,
 
 	pub fn init(zon: ZonElement) !Item {
 		if(BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
@@ -883,7 +885,7 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn deinit(self: Item) void {
 		switch(self) {
-			.baseItem => {},
+			.baseItem, .null => {},
 			.tool => |_tool| {
 				_tool.deinit();
 			},
@@ -892,7 +894,7 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn clone(self: Item) Item {
 		switch(self) {
-			.baseItem => return self,
+			.baseItem, .null => return self,
 			.tool => |tool| {
 				return .{.tool = tool.clone()};
 			},
@@ -907,6 +909,9 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => {
 				return 1;
 			},
+			.null => {
+				return 0;
+			},
 		}
 	}
 
@@ -918,6 +923,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				zonObject.put("tool", _tool.save(allocator));
 			},
+			.null => unreachable,
 		}
 	}
 
@@ -930,6 +936,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => {
 				return .{.tool = try Tool.fromBytes(reader)};
 			},
+			.null => unreachable,
 		}
 	}
 
@@ -938,21 +945,19 @@ pub const Item = union(ItemType) { // MARK: Item
 		switch(self) {
 			.baseItem => writer.writeEnum(BaseItemIndex, self.baseItem),
 			.tool => |tool| tool.toBytes(writer),
+			.null => unreachable,
 		}
 	}
 
 	pub fn getTexture(self: Item) graphics.Texture {
-		switch(self) {
-			.baseItem => |_baseItem| {
-				return _baseItem.getTexture();
-			},
-			.tool => |_tool| {
-				return _tool.getTexture();
-			},
-		}
+		return switch(self) {
+			.baseItem => |_baseItem| _baseItem.getTexture(),
+			.tool => |_tool| _tool.getTexture(),
+			.null => unreachable,
+		};
 	}
 
-	pub fn id(self: Item) []const u8 {
+	pub fn id(self: Item) ?[]const u8 {
 		switch(self) {
 			.tool => |tool| {
 				return tool.type.id();
@@ -960,10 +965,11 @@ pub const Item = union(ItemType) { // MARK: Item
 			.baseItem => |item| {
 				return item.id();
 			},
+			.null => return null,
 		}
 	}
 
-	pub fn getTooltip(self: Item) []const u8 {
+	pub fn getTooltip(self: Item) ?[]const u8 {
 		switch(self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.getTooltip();
@@ -971,6 +977,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				return _tool.getTooltip();
 			},
+			.null => return null,
 		}
 	}
 
@@ -982,20 +989,20 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => |_tool| {
 				return _tool.image;
 			},
+			.null => unreachable,
 		}
 	}
 
 	pub fn hashCode(self: Item) u32 {
-		switch(self) {
-			inline else => |item| {
-				return item.hashCode();
-			},
-		}
+		return switch(self) {
+			.null => unreachable,
+			inline else => |item| item.hashCode(),
+		};
 	}
 };
 
 pub const ItemStack = struct { // MARK: ItemStack
-	item: ?Item = null,
+	item: Item = .null,
 	amount: u16 = 0,
 
 	pub fn load(zon: ZonElement) !ItemStack {
@@ -1006,15 +1013,12 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn deinit(self: *ItemStack) void {
-		if(self.item) |item| {
-			item.deinit();
-		}
+		self.item.deinit();
 	}
 
 	pub fn clone(self: *const ItemStack) ItemStack {
-		const item = self.item orelse return .{};
 		return .{
-			.item = item.clone(),
+			.item = self.item.clone(),
 			.amount = self.amount,
 		};
 	}
@@ -1024,8 +1028,8 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn storeToZon(self: *const ItemStack, allocator: NeverFailingAllocator, zonObject: ZonElement) void {
-		if(self.item) |item| {
-			item.insertIntoZon(allocator, zonObject);
+		if(self.item != .null) {
+			self.item.insertIntoZon(allocator, zonObject);
 			zonObject.put("amount", self.amount);
 		}
 	}
@@ -1043,9 +1047,9 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn toBytes(self: *const ItemStack, writer: *BinaryWriter) void {
-		if(self.item) |item| {
+		if(self.item != .null) {
 			writer.writeVarInt(u16, self.amount);
-			item.toBytes(writer);
+			self.item.toBytes(writer);
 		} else {
 			writer.writeVarInt(u16, 0);
 		}
@@ -1106,9 +1110,9 @@ pub fn globalInit() void {
 	inline for(@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
 		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
 		modifierRestrictions.put(main.globalArena.allocator, decl.name, &.{
-			.satisfied = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
-			.loadFromZon = comptime main.utils.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
-			.printTooltip = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
+			.satisfied = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
+			.loadFromZon = comptime main.meta.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
+			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
 	Inventory.Sync.ClientSide.init();
@@ -1235,12 +1239,12 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 	const recipe = Recipe{
 		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
 		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
-		.resultItem = output.item.?.baseItem,
+		.resultItem = output.item.baseItem,
 		.resultAmount = output.amount,
 	};
 	for(inputs, 0..) |inputZon, i| {
 		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.?.baseItem;
+		recipe.sourceItems[i] = input.item.baseItem;
 		recipe.sourceAmounts[i] = input.amount;
 	}
 	return recipe;

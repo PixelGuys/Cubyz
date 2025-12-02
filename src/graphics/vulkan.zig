@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const c = main.Window.c;
@@ -132,18 +133,25 @@ var presentQueue: c.VkQueue = undefined;
 // MARK: init
 
 pub fn init(window: ?*c.GLFWwindow) !void {
-	if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	// NOTE(blackedout): glad is currently not used on macOS
+	if(builtin.target.os.tag != .macos) {
+		if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	createInstance();
 	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
 	try pickPhysicalDevice();
-	if(c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	if(builtin.target.os.tag != .macos) {
+		if(c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	createLogicalDevice();
-	if(c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	if(builtin.target.os.tag != .macos) {
+		if(c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	SwapChain.init();
 }
@@ -187,6 +195,9 @@ pub fn createInstance() void {
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	if(glfwExtensions == null) {
+		@panic("glfwGetRequiredInstanceExtensions returned a null pointer. This may be a problem with your Vulkan driver.");
+	}
 
 	const availableExtensions = enumerateInstanceExtensionProperties(main.stackAllocator, null);
 	defer main.stackAllocator.free(availableExtensions);
@@ -195,11 +206,26 @@ pub fn createInstance() void {
 		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
 	}
 
+	var createFlags: u32 = 0;
+	var extensions = main.List([*c]const u8).init(main.stackAllocator);
+	defer extensions.deinit();
+	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]);
+
+	if(builtin.target.os.tag == .macos) {
+		// NOTE(blackedout): These constants may not be available for other targets because currently only macOS uses higher version headers
+		extensions.appendSlice(&.{
+			c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+			c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+		});
+		createFlags |= c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+	}
+
 	const createInfo = c.VkInstanceCreateInfo{
 		.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.flags = createFlags,
 		.pApplicationInfo = &appInfo,
-		.enabledExtensionCount = glfwExtensionCount,
-		.ppEnabledExtensionNames = glfwExtensions,
+		.enabledExtensionCount = @intCast(extensions.items.len),
+		.ppEnabledExtensionNames = extensions.items.ptr,
 		.ppEnabledLayerNames = validationLayers.ptr,
 		.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
 	};
@@ -208,8 +234,14 @@ pub fn createInstance() void {
 
 // MARK: Physical Device
 
-const deviceExtensions = [_][*:0]const u8{
-	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+const deviceExtensions = blk: {
+	const baseDeviceExtensions = [_][*:0]const u8{
+		c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	};
+	if(builtin.target.os.tag == .macos) {
+		break :blk baseDeviceExtensions ++ [_][*:0]const u8{c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME};
+	}
+	break :blk baseDeviceExtensions;
 };
 
 const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
