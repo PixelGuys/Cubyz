@@ -42,7 +42,7 @@ var itemSlots: [12]*ItemSlot = undefined;
 pub fn onOpen() void {
 	const list = HorizontalList.init();
 	for(0..12) |i| {
-		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(i), .{.custom = hotbarSlotTexture}, .normal);
+		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.hotbar, @intCast(i), .{.custom = hotbarSlotTexture}, .normal);
 		list.add(itemSlots[i]);
 	}
 	list.finish(.{0, 0}, .center);
