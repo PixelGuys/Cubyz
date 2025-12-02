@@ -153,13 +153,18 @@ pub const ClientEntityManager = struct {
 		mutex.lock();
 		defer mutex.unlock();
 
+		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
+		const fontBaseSize = 128.0;
+		const fontMinScreenSize = 16.0;
+		const fontScreenSize = fontBaseSize*screenUnits;
+
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
 				@floatCast(pos3d[1]),
-				@floatCast(pos3d[2] + 1.0),
+				@floatCast(pos3d[2] + 1.1),
 				1,
 			};
 
@@ -169,11 +174,15 @@ pub const ClientEntityManager = struct {
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
-			graphics.draw.setColor(0xff000000);
+			const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
+			const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
+			graphics.draw.setColor(alpha << 24);
+
 			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
 			defer buf.deinit();
-			const size = buf.calculateLineBreaks(32, 1024);
-			buf.render(xCenter - size[0]/2, yCenter - size[1], 32);
+			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
+			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
+			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
 
