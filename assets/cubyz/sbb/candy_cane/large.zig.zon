@@ -4,6 +4,8 @@
 		.{.id = "cubyz:candy_cane/large/stem/9"},
 		.{.id = "cubyz:candy_cane/large/stem/10"},
 		.{.id = "cubyz:candy_cane/large/stem/11"},
+		.{.id = "cubyz:candy_cane/large/stem/12"},
+		.{.id = "cubyz:candy_cane/large/stem/13"},
 	},
 	.children = .{
 		.red = "cubyz:candy_cane/large/top",
