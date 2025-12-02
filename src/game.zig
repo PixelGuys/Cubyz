@@ -595,7 +595,7 @@ pub const Player = struct { // MARK: Player
 					if(hotbar.getItem(selectedSlot) == .null) break :blk selectedSlot;
 					// Look for an empty slot
 					for(0..12) |slotIdx| {
-						if(hotbar.getItem(slotIdx) == null) {
+						if(hotbar.getItem(slotIdx) == .null) {
 							break :blk slotIdx;
 						}
 					}
