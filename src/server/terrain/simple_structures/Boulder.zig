@@ -64,7 +64,7 @@ pub fn generate(self: *Boulder, _: GenerationMode, x: i32, y: i32, z: i32, chunk
 				}
 				potential *= radius*radius/4/numberOfPoints;
 				if(potential >= 1) {
-					chunk.updateBlockInGeneration(px, py, pz, self.block);
+					chunk.updateBlock(.replace, .noSetChanged, px, py, pz, self.block);
 				}
 			}
 		}

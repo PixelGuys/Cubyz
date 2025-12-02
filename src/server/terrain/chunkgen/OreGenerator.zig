@@ -103,7 +103,7 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 						if((1 - distSqr)*ore.density >= random.nextFloat(&veinSeed)) {
 							const stoneBlock = chunk.getBlock(curX, curY, curZ);
 							if(chunk.getBlock(curX, curY, curZ).allowOres()) {
-								chunk.updateBlockInGeneration(curX, curY, curZ, .{.typ = ore.blockType, .data = stoneBlock.typ});
+								chunk.updateBlock(.replace, .noSetChanged, curX, curY, curZ, .{.typ = ore.blockType, .data = stoneBlock.typ});
 							}
 						}
 					}
