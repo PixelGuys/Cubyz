@@ -41,13 +41,13 @@ pub fn generate(self: *SimpleVegetation, _: GenerationMode, x: i32, y: i32, z: i
 	if(isCeiling) {
 		while(pz >= z - height) : (pz -= chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, self.block);
+				chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x, y, pz, self.block);
 			}
 		}
 	} else {
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, self.block);
+				chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x, y, pz, self.block);
 			}
 		}
 	}

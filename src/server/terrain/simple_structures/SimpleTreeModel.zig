@@ -62,7 +62,7 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 		var pz: i32 = chunk.startIndex(z);
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, if(pz == z + height - 1) self.topWoodBlock else self.woodBlock);
+				chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x, y, pz, if(pz == z + height - 1) self.topWoodBlock else self.woodBlock);
 
 				if(self.branched) {
 					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
@@ -80,13 +80,13 @@ pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, ch
 	_ = seed;
 
 	if(d == 0 and chunk.liesInChunk(x + 1, y, z)) {
-		chunk.updateBlockIfDegradable(x + 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 2});
+		chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x + 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 2});
 	} else if(d == 1 and chunk.liesInChunk(x - 1, y, z)) {
-		chunk.updateBlockIfDegradable(x - 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 3});
+		chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x - 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 3});
 	} else if(d == 2 and chunk.liesInChunk(x, y + 1, z)) {
-		chunk.updateBlockIfDegradable(x, y + 1, z, .{.typ = self.topWoodBlock.typ, .data = 4});
+		chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x, y + 1, z, .{.typ = self.topWoodBlock.typ, .data = 4});
 	} else if(d == 3 and chunk.liesInChunk(x, y - 1, z)) {
-		chunk.updateBlockIfDegradable(x, y - 1, z, .{.typ = self.topWoodBlock.typ, .data = 5});
+		chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x, y - 1, z, .{.typ = self.topWoodBlock.typ, .data = 5});
 	}
 }
 
@@ -104,10 +104,10 @@ pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i3
 	if(chunk.super.pos.voxelSize >= 16) {
 		// Ensures that even at lowest resolution some leaves are rendered for smaller trees.
 		if(chunk.liesInChunk(x, y, z)) {
-			chunk.updateBlockIfDegradable(x, y, z, self.leavesBlock);
+			chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x, y, z, self.leavesBlock);
 		}
 		if(chunk.liesInChunk(x, y, z + chunk.super.pos.voxelSize)) {
-			chunk.updateBlockIfDegradable(x, y, z + chunk.super.pos.voxelSize, self.leavesBlock);
+			chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x, y, z + chunk.super.pos.voxelSize, self.leavesBlock);
 		}
 	}
 
@@ -124,7 +124,7 @@ pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i3
 					var py = chunk.startIndex(y + 1 - j);
 					while(py < y + j) : (py += chunk.super.pos.voxelSize) {
 						if(chunk.liesInChunk(px, py, pz))
-							chunk.updateBlockIfDegradable(px, py, pz, self.leavesBlock);
+							chunk.updateBlock(.replaceIfDegradable, .noSetChanged, px, py, pz, self.leavesBlock);
 					}
 				}
 			}
@@ -146,7 +146,7 @@ pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i3
 					while(py < y + ceilRadius) : (py += chunk.super.pos.voxelSize) {
 						const distSqr = @as(f32, @floatFromInt((pz - center)*(pz - center)))*invLeafElongationSqr + @as(f32, @floatFromInt((px - x)*(px - x) + (py - y)*(py - y)));
 						if(chunk.liesInChunk(px, py, pz) and distSqr < radiusSqr and (distSqr < randomRadiusSqr or random.nextInt(u1, seed) != 0)) { // TODO: Use another seed to make this more reliable!
-							chunk.updateBlockIfDegradable(px, py, pz, self.leavesBlock);
+							chunk.updateBlock(.replaceIfDegradable, .noSetChanged, px, py, pz, self.leavesBlock);
 						}
 					}
 				}

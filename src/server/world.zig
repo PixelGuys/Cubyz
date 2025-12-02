@@ -1152,7 +1152,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			var neighborBlock = ch.getBlock(neighborPos.x, neighborPos.y, neighborPos.z);
 			if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-				ch.updateBlockAndSetChanged(neighborPos.x, neighborPos.y, neighborPos.z, neighborBlock);
+				ch.updateBlock(.replace, .setChanged, neighborPos.x, neighborPos.y, neighborPos.z, neighborBlock);
 			}
 			if(newBlock.mode().dependsOnNeighbors) {
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlock);
@@ -1166,7 +1166,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
 			};
 		}
-		baseChunk.updateBlockAndSetChanged(pos.x, pos.y, pos.z, newBlock);
+		baseChunk.updateBlock(.replace, .setChanged, pos.x, pos.y, pos.z, newBlock);
 
 		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);

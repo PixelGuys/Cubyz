@@ -481,7 +481,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 					continue;
 				}
 				if(chunk.liesInChunk(x, y, depth)) {
-					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
+					chunk.updateBlock(.replace, .noSetChanged, x, y, depth, blockStack.block);
 				}
 				depth -%= chunk.super.pos.voxelSize;
 				if(depth -% minDepth <= 0)

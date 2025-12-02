@@ -133,7 +133,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 											break;
 										}
 									}
-									chunk.updateBlockInGeneration(x, y, z, block);
+									chunk.updateBlock(.replace, .noSetChanged, x, y, z, block);
 								}
 								z += chunk.super.pos.voxelSize;
 							}

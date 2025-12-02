@@ -37,7 +37,7 @@ pub fn loadModel(parameters: ZonElement) ?*FallenTree {
 
 pub fn generateStump(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk) void {
 	if(chunk.liesInChunk(x, y, z))
-		chunk.updateBlockIfDegradable(x, y, z, .{.typ = self.woodBlock, .data = 0});
+		chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x, y, z, .{.typ = self.woodBlock, .data = 0});
 }
 
 pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, seed: *u64) void {
@@ -96,7 +96,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 		const v: i32 = @intCast(val);
 		if(chunk.liesInChunk(x + dx*(v + 2), y + dy*(v + 2), z)) {
 			const typ = if(v == (length - 1)) self.topWoodBlock else self.woodBlock;
-			chunk.updateBlockIfDegradable(x + dx*(v + 2), y + dy*(v + 2), z, .{.typ = typ, .data = @intCast(d.? + 2)});
+			chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x + dx*(v + 2), y + dy*(v + 2), z, .{.typ = typ, .data = @intCast(d.? + 2)});
 		}
 	}
 }

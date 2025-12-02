@@ -86,7 +86,7 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				startHeight = chunk.startIndex(startHeight + chunk.super.pos.voxelSize);
 				if(@abs(startHeight -% baseHeight) > 5) continue;
 				if(chunk.liesInChunk(px, py, startHeight)) {
-					chunk.updateBlockInGeneration(px, py, startHeight, self.block);
+					chunk.updateBlock(.replace, .noSetChanged, px, py, startHeight, self.block);
 				}
 			}
 		}

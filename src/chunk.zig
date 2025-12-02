@@ -463,33 +463,39 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		return self.super.data.getValue(pos.toIndex());
 	}
 
+	pub const UpdateMode = enum {
+		/// Always update the block.
+		replace,
+		/// Updates if current value is air or the current block is degradable.
+		replaceIfDegradable,
+	};
+
+	pub const SetChanged = enum {
+		/// Mark the chunk as changed.
+		setChanged,
+		/// Should be used in generation to prevent accidently storing the update as changes.
+		noSetChanged,
+	};
+
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockAndSetChanged(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
+	pub fn updateBlock(self: *ServerChunk, mode: UpdateMode, shouldSetChanged: SetChanged, x: i32, y: i32, z: i32, newBlock: Block) void {
 		main.utils.assertLocked(&self.mutex);
 		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
-		self.super.data.setValue(pos.toIndex(), newBlock);
-		self.shouldStoreNeighbors = true;
-		self.setChanged();
-	}
-
-	/// Updates a block if current value is air or the current block is degradable.
-	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockIfDegradable(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
-		main.utils.assertLocked(&self.mutex);
-		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
-		const oldBlock = self.super.data.getValue(pos.toIndex());
-		if(oldBlock.typ == 0 or oldBlock.degradable()) {
+		const shouldUpdate = switch(mode) {
+			.replace => true,
+			.replaceIfDegradable => blk: {
+				const oldBlock = self.super.data.getValue(pos.toIndex());
+				break :blk oldBlock.typ == 0 or oldBlock.degradable();
+			},
+		};
+		if(shouldUpdate) {
 			self.super.data.setValue(pos.toIndex(), newBlock);
+			if(shouldSetChanged == .setChanged) {
+				self.shouldStoreNeighbors = true;
+				self.setChanged();
+			}
 		}
-	}
-
-	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
-	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockInGeneration(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
-		main.utils.assertLocked(&self.mutex);
-		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
-		self.super.data.setValue(pos.toIndex(), newBlock);
 	}
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
