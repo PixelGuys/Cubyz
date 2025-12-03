@@ -2,6 +2,7 @@
 	.properties = .{
 		.cold,
 		.wet,
+		.barren,
 	},
 	.roughness = 1,
 	.fogDensity = 1.5,
