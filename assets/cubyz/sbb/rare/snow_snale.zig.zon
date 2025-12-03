@@ -1,0 +1,8 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/snow_snale/small/0"},
+		.{.id = "cubyz:rare/snow_snale/small/1"},
+		.{.id = "cubyz:rare/snow_snale/medium", .chance = 0.8},
+		.{.id = "cubyz:rare/snow_snale/large", .chance = 0.4},
+	},
+}

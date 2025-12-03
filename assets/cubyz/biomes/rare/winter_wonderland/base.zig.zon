@@ -1,4 +1,5 @@
 .{
+	.chance = 0.02,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.structures = .{
@@ -37,23 +38,6 @@
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
 			.chance = 0.006,
-		},
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:ice",
-			.generationMode = .water_surface,
-			.chance = 0.9,
-			.width = 8,
-			.variation = 4,
-			.depth = 1,
-			.smoothness = 0.5,
-		},
-		.{
-			.id = "cubyz:boulder",
-			.chance = 0.01,
-			.block = "cubyz:snow",
-			.size = 5,
-			.size_variance = 2,
 		},
 	},
 }
