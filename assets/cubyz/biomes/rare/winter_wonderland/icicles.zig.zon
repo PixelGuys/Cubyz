@@ -1,0 +1,41 @@
+.{
+	.minRadius = 16,
+	.maxRadius = 40,
+	.chance = 0,
+	.keepOriginalTerrain = 1,
+	.ground_structure = .{
+		"1 to 2 cubyz:frost",
+		"1 to 2 cubyz:permafrost",
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/winter_wonderland/base",
+			.chance = 9,
+		},
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:ice",
+			.chance = 0.7,
+			.width = 4,
+			.variation = 5,
+			.depth = 1,
+			.smoothness = 1,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:ice",
+			.chance = 0.9,
+			.size = 4,
+			.size_variation = 5,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:ice",
+			.chance = 0.7,
+			.size = 8,
+			.size_variation = 5,
+		},
+	},
+}
