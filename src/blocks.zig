@@ -76,7 +76,7 @@ var _onInteract: [maxBlockCount]ClientBlockCallback = undefined;
 var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
 var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
 var _decayProhibitor: [maxBlockCount]bool = undefined;
-var _mode: [maxBlockCount]*RotationMode = undefined;
+var _mode: [maxBlockCount]*const RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
@@ -90,7 +90,7 @@ var _mobility: [maxBlockCount]f32 = undefined;
 var _allowOres: [maxBlockCount]bool = undefined;
 var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
 var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
-var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
+var _blockEntity: [maxBlockCount]?*const BlockEntityType = undefined;
 
 var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
@@ -422,7 +422,7 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn decayProhibitor(self: Block) bool {
 		return _decayProhibitor[self.typ];
 	}
-	pub inline fn mode(self: Block) *RotationMode {
+	pub inline fn mode(self: Block) *const RotationMode {
 		return _mode[self.typ];
 	}
 
@@ -474,7 +474,7 @@ pub const Block = packed struct { // MARK: Block
 		return _onTouch[self.typ];
 	}
 
-	pub fn blockEntity(self: Block) ?*BlockEntityType {
+	pub fn blockEntity(self: Block) ?*const BlockEntityType {
 		return _blockEntity[self.typ];
 	}
 

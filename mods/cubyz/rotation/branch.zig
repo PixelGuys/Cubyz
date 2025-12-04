@@ -408,7 +408,7 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 	return resultBitMask;
 }
 
-pub fn onBlockBreaking(_: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+pub fn onBlockBreaking(_: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	if(closestRay(currentData.*, relativePlayerPos, playerDir)) |directionBitMask| {
 		// If player destroys a central part of branch block, branch block is completely destroyed.
 		if(directionBitMask == 0) {

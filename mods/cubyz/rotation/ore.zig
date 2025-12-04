@@ -68,7 +68,7 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, _: main.items.ItemStac
 	return .{.yes_costsItems = 1};
 }
 
-pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+pub fn onBlockBreaking(_: main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 	currentData.typ = currentData.data;
 	currentData.data = 0;
 }

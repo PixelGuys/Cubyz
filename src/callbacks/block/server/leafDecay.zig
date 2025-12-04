@@ -70,9 +70,9 @@ fn foundWayToLog(world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: 
 	return false;
 }
 pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
-	const wx = params.chunk.super.pos.wx + params.x;
-	const wy = params.chunk.super.pos.wy + params.y;
-	const wz = params.chunk.super.pos.wz + params.z;
+	const wx = params.chunk.super.pos.wx + params.blockPos.x;
+	const wy = params.chunk.super.pos.wy + params.blockPos.y;
+	const wz = params.chunk.super.pos.wz + params.blockPos.z;
 
 	if(params.block.mode() == main.rotation.getByID("cubyz:decayable")) {
 		if(params.block.data != 0)

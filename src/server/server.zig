@@ -442,9 +442,13 @@ fn update() void { // MARK: update()
 	}
 }
 
-pub fn start(name: []const u8, port: ?u16) void {
+pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
+	startFromExistingThread(name, port);
+}
+
+pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 	init(name, port);
 	defer deinit();

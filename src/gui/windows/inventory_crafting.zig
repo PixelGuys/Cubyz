@@ -47,18 +47,16 @@ pub fn deinit() void {
 }
 
 fn addItemStackToAvailable(itemStack: ItemStack) void {
-	if(itemStack.item) |item| {
-		if(item == .baseItem) {
-			const baseItem = item.baseItem;
-			for(availableItems.items, 0..) |alreadyPresent, i| {
-				if(baseItem == alreadyPresent) {
-					itemAmount.items[i] += itemStack.amount;
-					return;
-				}
+	if(itemStack.item == .baseItem) {
+		const baseItem = itemStack.item.baseItem;
+		for(availableItems.items, 0..) |alreadyPresent, i| {
+			if(baseItem == alreadyPresent) {
+				itemAmount.items[i] += itemStack.amount;
+				return;
 			}
-			availableItems.append(baseItem);
-			itemAmount.append(itemStack.amount);
 		}
+		availableItems.append(baseItem);
+		itemAmount.append(itemStack.amount);
 	}
 }
 
@@ -132,7 +130,7 @@ fn refresh() void {
 		return;
 	}
 	if(window.rootComponent) |*comp| {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.utils.castFunctionSelfToAnyopaque(VerticalList.deinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.meta.castFunctionSelfToAnyopaque(VerticalList.deinit)});
 	}
 	if(list.children.items.len == 0) {
 		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));
