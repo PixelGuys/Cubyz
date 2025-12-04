@@ -38,7 +38,7 @@ fn getIndexInCheckArray(relativePosition: Vec3i, checkRange: comptime_int) usize
 	const arrayIndexZ = relativePosition[2] + checkRange;
 	return @as(usize, @intCast((arrayIndexX*checkLength + arrayIndexY)*checkLength + arrayIndexZ));
 }
-fn isDecayPreventer(self: *@This(), log: Block) bool {
+fn preventsDecay(self: *@This(), log: Block) bool {
 	for(self.prevention.items) |tag| {
 		if(log.hasTag(tag))
 			return true;
@@ -69,7 +69,7 @@ fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i3
 		// get the (potential) log
 		if(world.getBlock(value[0] +% wx, value[1] +% wy, value[2] +% wz)) |log| {
 			// it is a log ? end search.
-			if(self.isDecayPreventer(log)) {
+			if(self.preventsDecay(log)) {
 				return true;
 			}
 
@@ -116,7 +116,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	if(Server.world) |world| {
 		if(world.getBlock(wx, wy, wz)) |leaf| {
 			// check if there is any log in the proximity?^
-			if(foundWayToLog(self, world, leaf, wx, wy, wz))
+			if(self.foundWayToLog(world, leaf, wx, wy, wz))
 				return .ignored;
 
 			// no, there is no log in proximity
