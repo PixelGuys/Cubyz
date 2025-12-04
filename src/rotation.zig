@@ -177,6 +177,7 @@ pub fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat
 	}
 }
 
+/// Modified from https://en.wikipedia.org/wiki/Möller–Trumbore_intersection_algorithm#Implementations
 fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) ?f32 {
 	const e1 = triangle[1] - triangle[0];
 	const e2 = triangle[2] - triangle[0];
