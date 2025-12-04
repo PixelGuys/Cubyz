@@ -354,7 +354,7 @@ pub fn generateData(
 		currentData.setConnection(neighbor.?, targetVal);
 
 		currentData.placedByHuman = true;
-		const result: u16 = @as(u7, @bitCast(currentData));
+		const result: u7 = @bitCast(currentData);
 		if(result == currentBlock.data) return false;
 
 		currentBlock.data = result;
@@ -377,7 +377,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 		currentData.setConnection(neighbor, false);
 	}
 
-	const result: u16 = @as(u7, @bitCast(currentData));
+	const result: u7 = @bitCast(currentData);
 	if(result == block.data) return false;
 
 	block.data = result;
