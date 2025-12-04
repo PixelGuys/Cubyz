@@ -11,6 +11,8 @@ const Branch = main.rotation.list.@"cubyz:branch";
 
 decayReplacement: blocks.Block,
 prevention: main.ListUnmanaged(main.Tag) = .{},
+branchRotation: *const main.rotation.RotationMode,
+decayRotation: *const main.rotation.RotationMode,
 
 pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
@@ -28,6 +30,9 @@ pub fn init(zon: ZonElement) ?*@This() {
 			}
 		}
 	}
+	//branchRotation
+	result.branchRotation = main.rotation.getByID("cubyz:branch");
+	result.decayRotation = main.rotation.getByID("cubyz:decayable");
 	return result;
 }
 fn getIndexInCheckArray(relativePosition: Vec3i, checkRange: comptime_int) usize {
@@ -62,8 +67,7 @@ fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i3
 	queue.pushBack(Vec3i{0, 0, 0});
 	checked[getIndexInCheckArray(Vec3i{0, 0, 0}, checkRange)] = true;
 
-	const branchRotation = main.rotation.getByID("cubyz:branch");
-	const sourceIsBranch = leaf.mode() == branchRotation;
+	const sourceIsBranch = leaf.mode() == self.branchRotation;
 
 	while(queue.popFront()) |value| {
 		// get the (potential) log
@@ -75,7 +79,7 @@ fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i3
 
 			// it is the same type of leaf? continue search! (Don't do it for branches. We've got isConnected instead!)
 			if(!sourceIsBranch and log.typ != leaf.typ) continue;
-			if(sourceIsBranch and log.mode() != branchRotation and !log.viewThrough()) return true;
+			if(sourceIsBranch and log.mode() != self.branchRotation and !log.viewThrough()) return true;
 			const branchData = Branch.BranchData.init(log.data);
 
 			for(main.chunk.Neighbor.iterable) |offset| {
@@ -102,10 +106,10 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const wy = params.chunk.super.pos.wy + params.blockPos.y;
 	const wz = params.chunk.super.pos.wz + params.blockPos.z;
 
-	if(params.block.mode() == main.rotation.getByID("cubyz:decayable")) {
+	if(params.block.mode() == self.decayRotation) {
 		if(params.block.data != 0)
 			return .ignored;
-	} else if(params.block.mode() == main.rotation.getByID("cubyz:branch")) {
+	} else if(params.block.mode() == self.branchRotation) {
 		const bd = Branch.BranchData.init(params.block.data);
 		if(bd.placedByHuman)
 			return .ignored;
