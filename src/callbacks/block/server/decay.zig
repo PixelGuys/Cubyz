@@ -107,7 +107,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 			return .ignored;
 	} else if(params.block.mode() == main.rotation.getByID("cubyz:branch")) {
 		const bd = Branch.BranchData.init(params.block.data);
-		if(bd.placedByHuman != 0)
+		if(bd.placedByHuman)
 			return .ignored;
 	} else {
 		std.log.err("Expected {s} to have cubyz:decayable or cubyz:branch as rotation", .{params.block.id()});
