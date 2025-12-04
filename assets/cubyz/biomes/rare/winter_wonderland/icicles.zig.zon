@@ -10,7 +10,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:rare/winter_wonderland/base",
-			.chance = 9,
+			.chance = 8,
 		},
 	},
 	.structures = .{

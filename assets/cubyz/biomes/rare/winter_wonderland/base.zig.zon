@@ -1,5 +1,5 @@
 .{
-	.chance = 0.02,
+	.chance = 0.01,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.structures = .{
@@ -7,25 +7,25 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:candy_cane/large",
 			.placeMode = .degradable,
-			.chance = 0.02,
+			.chance = 0.01,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:candy_cane/thick",
 			.placeMode = .degradable,
-			.chance = 0.03,
+			.chance = 0.02,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:candy_cane/thin/small",
 			.placeMode = .degradable,
-			.chance = 0.04,
+			.chance = 0.03,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:candy_cane/thin/big",
 			.placeMode = .degradable,
-			.chance = 0.03,
+			.chance = 0.02,
 		},
 		.{
 			.id = "cubyz:sbb",
