@@ -32,7 +32,7 @@ pub fn init(zon: ZonElement) ?*@This() {
 			result.prevention = prevention;
 		}
 	}
-	//branchRotation
+	// branchRotation
 	result.branchRotation = main.rotation.getByID("cubyz:branch");
 	result.decayRotation = main.rotation.getByID("cubyz:decayable");
 	return result;
