@@ -10,7 +10,7 @@ const Server = main.server;
 const Branch = main.rotation.list.@"cubyz:branch";
 
 decayReplacement: blocks.Block,
-prevention: main.ListUnmanaged(main.Tag) = .{},
+prevention: []main.Tag,
 branchRotation: *const main.rotation.RotationMode,
 decayRotation: *const main.rotation.RotationMode,
 
@@ -21,12 +21,13 @@ pub fn init(zon: ZonElement) ?*@This() {
 		result.decayReplacement = main.blocks.parseBlock(blockname);
 	} else result.decayReplacement = main.blocks.Block.air;
 	// prevention
-	result.prevention = .{};
+	result.prevention = &.{};
 	if(zon.getChildOrNull("prevention")) |tagNames| {
 		if(tagNames == .array) {
-			for(tagNames.array.items) |value| {
-				const tagName = value.as(?[]const u8, null) orelse continue;
-				result.prevention.append(main.worldArena, main.Tag.find(tagName));
+			result.prevention = main.worldArena.alloc(main.Tag, tagNames.array.items.len);
+			for(tagNames.array.items, 0..) |value, index| {
+				const tagName = value.as(?[]const u8, null) orelse @panic("Invalid tagName.");
+				result.prevention[index] = main.Tag.find(tagName);
 			}
 		}
 	}
@@ -44,7 +45,7 @@ fn getIndexInCheckArray(relativePosition: Vec3i, checkRange: comptime_int) usize
 	return @as(usize, @intCast((arrayIndexX*checkLength + arrayIndexY)*checkLength + arrayIndexZ));
 }
 fn preventsDecay(self: *@This(), log: Block) bool {
-	for(self.prevention.items) |tag| {
+	for(self.prevention) |tag| {
 		if(log.hasTag(tag))
 			return true;
 	}

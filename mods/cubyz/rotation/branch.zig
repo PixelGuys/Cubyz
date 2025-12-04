@@ -38,7 +38,7 @@ pub const BranchData = packed struct(u7) {
 	placedByHuman: bool,
 
 	pub inline fn init(blockData: u16) BranchData {
-		return @bitCast(@as(u7,@truncate(blockData)));
+		return @bitCast(@as(u7, @truncate(blockData)));
 	}
 
 	pub inline fn isConnected(self: @This(), neighbor: Neighbor) bool {
