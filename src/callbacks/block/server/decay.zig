@@ -10,7 +10,7 @@ const Server = main.server;
 const Branch = main.rotation.list.@"cubyz:branch";
 
 decayReplacement: blocks.Block,
-prevention: []main.Tag,
+prevention: []const main.Tag,
 branchRotation: *const main.rotation.RotationMode,
 decayRotation: *const main.rotation.RotationMode,
 
@@ -24,11 +24,12 @@ pub fn init(zon: ZonElement) ?*@This() {
 	result.prevention = &.{};
 	if(zon.getChildOrNull("prevention")) |tagNames| {
 		if(tagNames == .array) {
-			result.prevention = main.worldArena.alloc(main.Tag, tagNames.array.items.len);
+			var prevention = main.worldArena.alloc(main.Tag, tagNames.array.items.len);
 			for(tagNames.array.items, 0..) |value, index| {
 				const tagName = value.as(?[]const u8, null) orelse @panic("Invalid tagName.");
-				result.prevention[index] = main.Tag.find(tagName);
+				prevention[index] = main.Tag.find(tagName);
 			}
+			result.prevention = prevention;
 		}
 	}
 	//branchRotation
