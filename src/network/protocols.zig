@@ -73,10 +73,10 @@ const ProtocolTask = struct { // MARK: ProtocolTask
 	data: []const u8,
 
 	const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.utils.castFunctionSelfToAnyopaque(run),
-		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+		.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+		.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+		.run = main.meta.castFunctionSelfToAnyopaque(run),
+		.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 		.taskType = .misc,
 	};
 
@@ -174,11 +174,11 @@ pub const handShake = struct { // MARK: handShake
 						defer main.stackAllocator.free(path);
 						var dir = try main.files.cubyzDir().openIterableDir(path);
 						defer dir.close();
-						var arrayList = main.List(u8).init(main.stackAllocator);
-						defer arrayList.deinit();
-						arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
-						try utils.Compression.pack(dir, arrayList.writer());
-						conn.send(.fast, id, arrayList.items);
+						var writer = try std.Io.Writer.Allocating.initCapacity(main.stackAllocator.allocator, 16);
+						defer writer.deinit();
+						try writer.writer.writeByte(@intFromEnum(Connection.HandShakeState.assets));
+						try utils.Compression.pack(dir, &writer.writer);
+						conn.send(.fast, id, writer.written());
 					}
 
 					conn.user.?.initPlayer(name);
@@ -394,7 +394,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
+		writer.writeInt(i16, @truncate(main.timestamp().toMilliseconds()));
 		writer.writeVec(Vec3d, playerPos);
 		for(entityData) |data| {
 			const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
@@ -866,8 +866,8 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 		mesh.mutex.lock();
 		defer mesh.mutex.unlock();
-		const index = mesh.chunk.getLocalBlockIndex(pos);
-		const block = mesh.chunk.data.getValue(index);
+		const localPos = mesh.chunk.getLocalBlockPos(pos);
+		const block = mesh.chunk.data.getValue(localPos.toIndex());
 		const blockEntity = block.blockEntity() orelse return;
 
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
@@ -879,7 +879,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		conn.send(.fast, id, writer.data.items);
 	}
 
-	fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *main.block_entity.BlockEntityType) void {
+	fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *const main.block_entity.BlockEntityType) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 		blockEntity.getServerToClientData(pos, ch, &writer);
