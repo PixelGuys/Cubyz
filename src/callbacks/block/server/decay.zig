@@ -24,7 +24,7 @@ pub fn init(zon: ZonElement) ?*@This() {
 	result.prevention = &.{};
 	if(zon.getChildOrNull("prevention")) |tagNames| {
 		if(tagNames == .array) {
-			var prevention = main.worldArena.alloc(main.Tag, tagNames.array.items.len);
+			const prevention = main.worldArena.alloc(main.Tag, tagNames.array.items.len);
 			for(tagNames.array.items, 0..) |value, index| {
 				const tagName = value.as(?[]const u8, null) orelse @panic("Invalid tagName.");
 				prevention[index] = main.Tag.find(tagName);
