@@ -872,12 +872,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			player.pos = @floatFromInt(self.spawn);
 
 			main.items.Inventory.Sync.setGamemode(user, self.defaultGamemode);
-			main.items.Inventory.Sync.setSpawn(user, @as(Vec3d, @floatFromInt(self.spawn)));
+			main.network.protocols.genericUpdate.sendSpawnPoint(user.conn, @as(Vec3d, @floatFromInt(self.spawn)));
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
-			main.items.Inventory.Sync.setSpawn(user, playerData.get(Vec3d, "playerSpawnPos", @as(Vec3d, @floatFromInt(self.spawn))));
+			main.network.protocols.genericUpdate.sendSpawnPoint(user.conn, playerData.get(Vec3d, "playerSpawnPos", @as(Vec3d, @floatFromInt(self.spawn))));
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
