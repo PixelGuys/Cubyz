@@ -1765,7 +1765,10 @@ pub const Command = struct { // MARK: Command
 			}
 			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
+				const minorValues = minors(self);
+				const minor1Offset = @as(Vec3f, @splat(vec.dot(self.randomOffset(), minorValues[0])))*minorValues[0];
+				const minor2Offset = @as(Vec3f, @splat(vec.dot(self.randomOffset(), minorValues[1])))*minorValues[1];
+				return pos + minor1Offset + minor2Offset + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
 			}
 			fn directionOffset(self: BlockDropLocation) Vec3d {
 				return half + self.direction()*half;
@@ -1776,8 +1779,10 @@ pub const Command = struct { // MARK: Command
 			inline fn major(self: BlockDropLocation) Vec3f {
 				return @abs(self.normalDir);
 			}
-			inline fn minor(self: BlockDropLocation) Vec3f {
-				return Vec3f{1.0, 1.0, 1.0} - @abs(self.normalDir);
+			inline fn minors(self: BlockDropLocation) struct {Vec3f, Vec3f} {
+				const minor1 = vec.cross(self.normalDir, if( @reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0});
+				const minor2 = vec.cross(self.normalDir, minor1);
+				return .{minor1, minor2};
 			}
 			fn dropDir(self: BlockDropLocation) Vec3f {
 				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
