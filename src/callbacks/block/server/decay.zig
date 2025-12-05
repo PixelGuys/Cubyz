@@ -25,10 +25,10 @@ pub fn init(zon: ZonElement) ?*@This() {
 	if(zon.getChildOrNull("prevention")) |tagNames| {
 		if(tagNames == .array) {
 			const prevention = main.worldArena.alloc(main.Tag, tagNames.array.items.len);
-			var index:usize = 0;
+			var index: usize = 0;
 			for(tagNames.array.items) |value| {
 				const tagName = value.as(?[]const u8, null) orelse {
-					std.log.err("Invalid TagName for decay prevention.",.{});
+					std.log.err("Invalid TagName for decay prevention.", .{});
 					continue;
 				};
 				prevention[index] = main.Tag.find(tagName);
