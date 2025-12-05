@@ -589,7 +589,11 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		switch(try reader.readEnum(UpdateType)) {
-			.gamemode, .teleport, .time, .biome, .particles, .setSpawn => return error.InvalidSide,
+			.gamemode, .teleport, .time, .biome, .particles => return error.InvalidSide,
+			.setSpawn => {
+				if(!conn.isServerSide()) return error.InvalidPacket;
+				conn.user.?.playerSpawnPos = (try reader.readVec(Vec3d));
+			},
 			.worldEditPos => {
 				const typ = try reader.readEnum(WorldEditPosition);
 				const pos: ?Vec3i = switch(typ) {
