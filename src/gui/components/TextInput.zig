@@ -13,15 +13,12 @@ const GuiComponent = gui.GuiComponent;
 const Button = GuiComponent.Button;
 const ScrollBar = GuiComponent.ScrollBar;
 
-const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-
 const TextInput = @This();
 
 const scrollBarWidth = 5;
 const border: f32 = 3;
 const fontSize: f32 = 16;
 const blinkDuration: std.Io.Duration = .fromMilliseconds(500);
-const obfuscationChar = "∗".*;
 
 var texture: Texture = undefined;
 
@@ -479,16 +476,6 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	self.ensureCursorVisibility();
 }
 
-pub fn obfuscateString(string: []const u8, allocator: NeverFailingAllocator) []const u8 {
-	const len = std.unicode.utf8CountCodepoints(string) catch 0;
-	const obfuscated = allocator.alloc(u8, len*obfuscationChar.len);
-	var i: usize = 0;
-	while(i < obfuscated.len) : (i += obfuscationChar.len) {
-		@memcpy(obfuscated[i .. i + obfuscationChar.len], &obfuscationChar);
-	}
-	return obfuscated;
-}
-
 fn ensureCursorVisibility(self: *TextInput) void {
 	self.showCusor = true;
 	self.lastBlinkTime = main.timestamp();
@@ -509,7 +496,7 @@ fn ensureCursorVisibility(self: *TextInput) void {
 
 fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
 	if(!self.obfuscated) return pos;
-	const obfuscatedPos = (std.unicode.utf8CountCodepoints(self.currentString.items[0..pos]) catch 0)*obfuscationChar.len;
+	const obfuscatedPos = (std.unicode.utf8CountCodepoints(self.currentString.items[0..pos]) catch 0)*main.utils.obfuscationChar.len;
 	return @intCast(obfuscatedPos);
 }
 
@@ -526,7 +513,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	var textPos = Vec2f{border, border};
 	var textSize = self.textSize;
 	const textBuffer = if(self.obfuscated) blk: {
-		const obfuscatedString = obfuscateString(self.currentString.items, main.stackAllocator);
+		const obfuscatedString = main.utils.obfuscateString(main.stackAllocator, self.currentString.items);
 		defer main.stackAllocator.free(obfuscatedString);
 
 		var newTextBuffer = TextBuffer.init(main.stackAllocator, obfuscatedString, .{}, true, .left);

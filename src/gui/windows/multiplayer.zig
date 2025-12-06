@@ -132,7 +132,7 @@ pub fn update() void {
 		gotIpAddress.store(false, .monotonic);
 
 		if(main.settings.streamerMode) {
-			const obfuscatedIp = TextInput.obfuscateString(ipAddress, main.stackAllocator);
+			const obfuscatedIp = main.utils.obfuscateString(main.stackAllocator, ipAddress);
 			defer main.stackAllocator.free(obfuscatedIp);
 			ipAddressLabel.updateText(obfuscatedIp);
 		} else {
