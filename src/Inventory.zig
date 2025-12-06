@@ -21,7 +21,7 @@ const ToolTypeIndex = main.items.ToolTypeIndex;
 
 const Gamemode = main.game.Gamemode;
 
-const Side = enum {client, server};
+pub const Side = enum {client, server};
 
 pub const InventoryId = enum(u32) {_};
 
@@ -507,6 +507,13 @@ pub const Sync = struct { // MARK: Sync
 			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
 		}
 	}
+	pub fn useItem(source: Command.InventoryAndSlot, side: Side) void {
+		if(side == .client) {
+			Sync.ClientSide.executeCommand(.{.useItem = .{.source = source}});
+		} else {
+			Sync.ServerSide.executeCommand(.{.useItem = .{.source = source}}, null);
+		}
+	}
 
 	pub fn getInventory(id: InventoryId, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
@@ -538,6 +545,7 @@ pub const Command = struct { // MARK: Command
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
+		useItem = 12,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -552,6 +560,7 @@ pub const Command = struct { // MARK: Command
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
+		useItem: UseItem,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -564,7 +573,7 @@ pub const Command = struct { // MARK: Command
 		addEnergy = 6,
 	};
 
-	const InventoryAndSlot = struct {
+	pub const InventoryAndSlot = struct {
 		inv: Inventory,
 		slot: u32,
 
@@ -588,44 +597,36 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const BaseOperation = union(BaseOperationType) {
-		move: struct {
-			dest: InventoryAndSlot,
-			source: InventoryAndSlot,
-			amount: u16,
-		},
-		swap: struct {
-			dest: InventoryAndSlot,
-			source: InventoryAndSlot,
-		},
-		delete: struct {
-			source: InventoryAndSlot,
-			item: Item = undefined,
-			amount: u16,
-		},
-		create: struct {
-			dest: InventoryAndSlot,
-			item: Item,
-			amount: u16,
-		},
-		useDurability: struct {
-			source: InventoryAndSlot,
-			item: main.items.Item = undefined,
-			durability: u31,
-			previousDurability: u32 = undefined,
-		},
-		addHealth: struct {
-			target: ?*main.server.User,
-			health: f32,
-			cause: main.game.DamageType,
-			previous: f32,
-		},
-		addEnergy: struct {
-			target: ?*main.server.User,
-			energy: f32,
-			previous: f32,
-		},
-	};
+	const BaseOperation = union(BaseOperationType) {move: struct {
+		dest: InventoryAndSlot,
+		source: InventoryAndSlot,
+		amount: u16,
+	}, swap: struct {
+		dest: InventoryAndSlot,
+		source: InventoryAndSlot,
+	}, delete: struct {
+		source: InventoryAndSlot,
+		item: Item = undefined,
+		amount: u16,
+	}, create: struct {
+		dest: InventoryAndSlot,
+		item: Item,
+		amount: u16,
+	}, useDurability: struct {
+		source: InventoryAndSlot,
+		item: main.items.Item = undefined,
+		durability: u31,
+		previousDurability: u32 = undefined,
+	}, addHealth: struct {
+		target: ?*main.server.User,
+		health: f32,
+		cause: main.game.DamageType,
+		previous: f32,
+	}, addEnergy: struct {
+		target: ?*main.server.User,
+		energy: f32,
+		previous: f32,
+	}};
 
 	const SyncOperationType = enum(u8) {
 		create = 0,
@@ -979,7 +980,7 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void { // MARK: executeBaseOperation()
+	pub fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void { // MARK: executeBaseOperation()
 		var op = _op;
 		switch(op) {
 			.move => |info| {
@@ -1944,6 +1945,34 @@ pub const Command = struct { // MARK: Command
 				.cause = try reader.readEnum(main.game.DamageType),
 			};
 			if(user.?.id != result.target) return error.Invalid;
+			return result;
+		}
+	};
+
+	const UseItem = struct { // MARK: UseItem
+		source: InventoryAndSlot,
+
+		pub fn run(self: UseItem, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+			if(self.source.inv.type != .normal) return;
+			const stack = self.source.ref();
+
+			switch(stack.item) {
+				.baseItem => |baseItem| {
+					_ = baseItem.onUse().run(.{.stack = stack, .source = self.source, .allocator = allocator, .cmd = cmd, .side = side, .user = user, .gamemode = gamemode});
+				},
+				.tool => {},
+				.null => {},
+			}
+		}
+
+		fn serialize(self: UseItem, writer: *utils.BinaryWriter) void {
+			self.source.write(writer);
+		}
+
+		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !UseItem {
+			const result: UseItem = .{
+				.source = try InventoryAndSlot.read(reader, side, user),
+			};
 			return result;
 		}
 	};

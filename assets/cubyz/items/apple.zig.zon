@@ -1,4 +1,7 @@
 .{
 	.texture = "apple.png",
-	.food = 4,
+	.onUse = .{
+		.type = .eat,
+		.food = 4,
+	},
 }
