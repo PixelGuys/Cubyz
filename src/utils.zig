@@ -2218,3 +2218,15 @@ pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);
 }
+
+pub const obfuscationChar = "∗".*;
+
+pub fn obfuscateString(allocator: NeverFailingAllocator, string: []const u8) []const u8 {
+	const len = std.unicode.utf8CountCodepoints(string) catch 0;
+	const obfuscated = allocator.alloc(u8, len*obfuscationChar.len);
+	var i: usize = 0;
+	while(i < obfuscated.len) : (i += obfuscationChar.len) {
+		@memcpy(obfuscated[i .. i + obfuscationChar.len], &obfuscationChar);
+	}
+	return obfuscated;
+}
