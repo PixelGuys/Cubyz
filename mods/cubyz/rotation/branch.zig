@@ -33,12 +33,13 @@ const HashMapKey = struct {
 		return std.mem.eql(u8, val1.shellModelId, val2.shellModelId);
 	}
 };
-pub const BranchData = packed struct(u7) {
+pub const BranchData = packed struct(u8) {
 	enabledConnections: u6,
 	placedByHuman: bool,
+	thinTree: bool,
 
 	pub inline fn init(blockData: u16) BranchData {
-		return @bitCast(@as(u7, @truncate(blockData)));
+		return @bitCast(@as(u8, @truncate(blockData)));
 	}
 
 	pub inline fn isConnected(self: @This(), neighbor: Neighbor) bool {
@@ -354,7 +355,7 @@ pub fn generateData(
 		currentData.setConnection(neighbor.?, targetVal);
 
 		currentData.placedByHuman = true;
-		const result: u7 = @bitCast(currentData);
+		const result: u8 = @bitCast(currentData);
 		if(result == currentBlock.data) return false;
 
 		currentBlock.data = result;
@@ -377,7 +378,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 		currentData.setConnection(neighbor, false);
 	}
 
-	const result: u7 = @bitCast(currentData);
+	const result: u8 = @bitCast(currentData);
 	if(result == block.data) return false;
 
 	block.data = result;
