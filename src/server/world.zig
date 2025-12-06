@@ -1190,11 +1190,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 	pub fn triggerNeighborBlockUpdates(self: *ServerWorld, wx: i32, wy: i32, wz: i32) void {
 		{
-			const pos = Vec3i{
-				wx,
-				wy,
-				wz,
-			};
+			const pos = Vec3i{wx, wy, wz};
 			if(self.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |ch| {
 				defer ch.decreaseRefCount();
 				ch.blockUpdateSystem.add(.{
