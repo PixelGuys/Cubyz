@@ -7,6 +7,9 @@
 	.fogDensity = 20,
 	.fogColor = 0xbabfbf,
 	.stoneBlock = "cubyz:glacite",
+
+	.music = "cubyz:ikabodBTW/Chimes",
+
 	.ground_structure = .{
 		"cubyz:ice",
 		"7 to 8 cubyz:frost",

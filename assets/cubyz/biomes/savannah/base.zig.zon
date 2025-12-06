@@ -12,7 +12,6 @@
 	.maxRadius = 320,
 	.hills = 6,
 	.validPlayerSpawn = true,
-	.music = "cubyz:EasternThought",
 	.ground_structure = .{
 		"7 to 8 cubyz:limestone",
 	},

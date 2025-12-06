@@ -12,7 +12,7 @@
 	.hills = 15,
 	.roughness = 15,
 	.mountains = 15,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:Sinanimea/Sunrise",
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",

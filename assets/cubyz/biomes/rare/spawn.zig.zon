@@ -10,7 +10,7 @@
 	.maxRadius = 320,
 	.roughness = 10,
 	.hills = 10,
-	.music = "cubyz:leaves",
+	.music = "cubyz:Gray_Vibes/Mornings",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",

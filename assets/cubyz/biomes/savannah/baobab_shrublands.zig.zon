@@ -15,8 +15,6 @@
 	.rivers = true,
 	.chance = 0.5,
 
-	.music = "cubyz:EasternThought",
-
 	.stoneBlock = "cubyz:limestone",
 
 	.ground_structure = .{

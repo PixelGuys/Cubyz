@@ -6,6 +6,8 @@
 
 	.fogDensity = 10,
 
+	.music = "cubyz:TotalDemented/Vitreous",
+
 	.stoneBlock = "cubyz:marble",
 	.structures = .{
 		.{

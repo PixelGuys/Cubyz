@@ -10,7 +10,6 @@
 	.chance = 0,
 	.roughness = 4,
 	.hills = 3,
-	.music = "cubyz:leaves",
 	.ground_structure = .{
 		"4 to 5 cubyz:mud",
 	},

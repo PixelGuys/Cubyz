@@ -8,7 +8,6 @@
 	.maxRadius = 240,
 	.hills = 15,
 	.validPlayerSpawn = false,
-	.music = "cubyz:EasternThought",
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",

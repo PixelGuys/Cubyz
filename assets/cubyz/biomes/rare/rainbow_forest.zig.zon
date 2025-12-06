@@ -13,7 +13,7 @@
 
 	.chance = 0.01,
 
-	.music = "cubyz:leaves",
+	.music = "cubyz:lukedukeshoot/Gormless",
 
 	.validPlayerSpawn = true,
 

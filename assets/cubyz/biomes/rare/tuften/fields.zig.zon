@@ -10,7 +10,7 @@
 	.roughness = 1,
 	.hills = 15,
 	.chance = 0.02,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:Chrythm/Chrythm_Cubyz",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",

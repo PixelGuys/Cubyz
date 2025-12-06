@@ -9,6 +9,9 @@
 	.maxHeight = 40,
 	.roughness = 1,
 	.hills = 3,
+
+	.music = "cubyz:TotalDemented/Kubis",
+
 	.ground_structure = .{
 		"4 to 5 cubyz:limestone",
 	},

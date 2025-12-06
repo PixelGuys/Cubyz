@@ -5,7 +5,7 @@
 	.smoothBeaches = true,
 	.roughness = 1,
 	.hills = 6,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:Sinanimea/Sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"1 cubyz:dry_grass",

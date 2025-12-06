@@ -9,7 +9,7 @@
 
 	.caves = -0.1,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:TotalDemented/Vitreous",
 
 	.structures = .{
 		.{

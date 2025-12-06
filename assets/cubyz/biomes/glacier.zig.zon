@@ -16,6 +16,8 @@
 	.mountains = 50,
 	.hills = 50,
 
+	.music = "cubyz:ikabodBTW/Gust",
+
 	.ground_structure = .{
 		"3 to 5 cubyz:snow",
 		"4 cubyz:frost",

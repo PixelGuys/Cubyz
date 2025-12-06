@@ -13,6 +13,8 @@
 
 	.rivers = true,
 
+	.music = "cubyz:Mrmayman/Out_of_Breath",
+
 	.ground_structure = .{
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",

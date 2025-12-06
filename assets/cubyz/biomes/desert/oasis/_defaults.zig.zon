@@ -2,7 +2,7 @@
 	.properties = .{
 		.hot,
 	},
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:TotalDemented/Kubis",
 	.chance = 0,
 	.fogDensity = 1.5,
 	.fogColor = 0xe9f2e2,

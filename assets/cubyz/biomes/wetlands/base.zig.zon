@@ -11,7 +11,6 @@
 	.hills = 7.5,
 	.minRadius = 256,
 	.maxRadius = 320,
-	.music = "cubyz:sunrise",
 	.ground_structure = .{
 		"cubyz:lush_grass",
 		"5 to 7 cubyz:mud",

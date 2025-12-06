@@ -9,6 +9,8 @@
 	.maxHeight = 256,
 	.smoothBeaches = true,
 
+	.music = "cubyz:TotalDemented/Kubis",
+
 	.roughness = 10,
 	.mountains = 100,
 	.stoneBlock = "cubyz:limestone",
