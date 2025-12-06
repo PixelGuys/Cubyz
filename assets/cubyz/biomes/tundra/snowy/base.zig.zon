@@ -1,8 +1,8 @@
 .{
-	.minHeightLimit = 7,
-	.minHeight = 22,
-	.maxHeight = 40,
-	.maxHeightLimit = 60,
+	.minHeightLimit = 2,
+	.minHeight = 14,
+	.maxHeight = 30,
+	.maxHeightLimit = 40,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.hills = 15,
