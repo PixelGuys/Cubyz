@@ -1,0 +1,19 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_0", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_1", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_2", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_3", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_4", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_5", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_6", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_7", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_8", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/small/small_pillar_9", .chance = 1},
+		.{.id = null, .chance = 2.3},
+	},
+	.children = .{
+		.white = "cubyz:phantasmal_pillars/offshoot/offshoot",
+		.purple = "cubyz:phantasmal_pillars/top/top",
+	},
+}
