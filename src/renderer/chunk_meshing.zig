@@ -1313,10 +1313,12 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.opaqueMesh.uploadData(self.isNeighborLod);
 		self.transparentMesh.uploadData(self.isNeighborLod);
 
+		self.mutex.lock();
 		if(self.lightListNeedsUpload) {
 			self.lightListNeedsUpload = false;
 			lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].uploadData(self.lightList, &self.lightAllocation);
 		}
+		self.mutex.unlock();
 
 		self.uploadChunkPosition();
 	}

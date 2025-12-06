@@ -592,18 +592,16 @@ pub fn main() void { // MARK: main()
 pub fn clientMain() void { // MARK: clientMain()
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
-	} else {
+	} else if(settings.launchConfig.autoEnterWorld.len == 0) {
 		gui.openWindow("main");
+	} else {
+		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
 	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
-
-	if(settings.launchConfig.autoEnterWorld.len != 0) {
-		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
-	}
 
 	audio.setMusic("cubyz:TotalDemented/Cubyz");
 
