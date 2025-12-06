@@ -25,16 +25,14 @@ pub fn init(zon: ZonElement) ?*@This() {
 	if(zon.getChildOrNull("prevention")) |tagNames| {
 		if(tagNames == .array) {
 			var prevention = main.ListUnmanaged(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
-			var index: usize = 0;
 			for(tagNames.array.items) |value| {
 				const tagName = value.as(?[]const u8, null) orelse {
 					std.log.err("Invalid TagName for decay prevention.", .{});
 					continue;
 				};
 				prevention.appendAssumeCapacity(main.Tag.find(tagName));
-				index += 1;
 			}
-			result.prevention = prevention.items[0..index];
+			result.prevention = prevention.items;
 		}
 	}
 	// branchRotation
