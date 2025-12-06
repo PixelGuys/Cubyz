@@ -45,6 +45,8 @@ pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
 
+pub var streamerMode: bool = false;
+
 pub var lastUsedIPAddress: []const u8 = "";
 
 pub var guiScale: ?f32 = null;

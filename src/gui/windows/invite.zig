@@ -71,6 +71,7 @@ pub fn onOpen() void {
 	list.add(ipAddressLabel);
 	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &invite}, .{});
+	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.callback = &invite}));
 	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
@@ -105,6 +106,13 @@ pub fn onClose() void {
 pub fn update() void {
 	if(gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
-		ipAddressLabel.updateText(ipAddress);
+
+		if(main.settings.streamerMode) {
+			const obfuscatedIp = TextInput.obfuscateString(ipAddress, main.stackAllocator);
+			defer main.stackAllocator.free(obfuscatedIp);
+			ipAddressLabel.updateText(obfuscatedIp);
+		} else {
+			ipAddressLabel.updateText(ipAddress);
+		}
 	}
 }
