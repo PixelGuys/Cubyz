@@ -36,7 +36,7 @@ const HashMapKey = struct {
 pub const BranchData = packed struct(u8) {
 	enabledConnections: u6,
 	placedByHuman: bool,
-	thinTree:bool,
+	thinTree: bool,
 
 	pub inline fn init(blockData: u16) BranchData {
 		return @bitCast(@as(u8, @truncate(blockData)));
