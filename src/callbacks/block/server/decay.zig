@@ -114,12 +114,12 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		const bd = Branch.BranchData.init(params.block.data);
 		if(bd.placedByHuman)
 			return .ignored;
-		if(bd.thinTree != 0) {
-			//thinTree branches only depend on the block below them.
+		if(bd.thinTree) {
+			// thinTree branches only depend on the block below them.
 			if(Server.world) |world| {
 				const connectBelow = bd.isConnected(main.chunk.Neighbor.dirDown);
 				if(!connectBelow) {
-					//remove block
+					// remove block
 					main.items.Inventory.Sync.ServerSide.mutex.lock();
 					defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 					if(world.cmpxchgBlock(wx, wy, wz, params.block, self.decayReplacement) == null) {
