@@ -101,6 +101,7 @@ pub const User = struct { // MARK: User
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
 	lastSaveTime: std.Io.Timestamp = .fromNanoseconds(0),
+	lastHealthRegenTime: std.Io.Timestamp = .fromNanoseconds(0),
 	name: []const u8 = "",
 	renderDistance: u16 = undefined,
 	clientUpdatePos: Vec3i = .{0, 0, 0},
@@ -256,6 +257,7 @@ pub const User = struct { // MARK: User
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
+		self.regenateHealth();
 		const saveTime = main.timestamp();
 		if(self.lastSaveTime.durationTo(saveTime).toSeconds() > 5) {
 			world.?.savePlayer(self) catch |err| {
@@ -265,6 +267,18 @@ pub const User = struct { // MARK: User
 		}
 
 		self.loadUnloadChunks();
+	}
+
+	pub fn regenateHealth(self: *User) void {
+		const healthRegenTime = main.timestamp();
+		if(self.lastHealthRegenTime.durationTo(healthRegenTime).toSeconds() > 5 and self.player.energy > 0) {
+			// give 1 Health every 5 seconds
+			main.items.Inventory.Sync.addHealth(1, .heal, .server, self.id);
+
+			// but take only 1/4 food for it.
+			main.items.Inventory.Sync.addEnergy(-0.25, .server, self.id);
+			self.lastHealthRegenTime = healthRegenTime;
+		}
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {

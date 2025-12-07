@@ -24,15 +24,14 @@ pub fn run(self: *@This(), params: main.callbacks.UseItemCallback.Params) main.c
 	if(stack.amount < 1)
 		return .ignored;
 
-	const previous = if(side == .server) user.?.player.health else main.game.Player.super.health;
-	const maxHealth = if(side == .server) user.?.player.maxHealth else main.game.Player.super.maxHealth;
-	if(self.food > 0 and previous >= maxHealth)
+	const previous = if(side == .server) user.?.player.energy else main.game.Player.super.energy;
+	const maxEnergy = if(side == .server) user.?.player.maxEnergy else main.game.Player.super.maxEnergy;
+	if(self.food > 0 and previous >= maxEnergy)
 		return .ignored;
 
-	cmd.executeBaseOperation(allocator, .{.addHealth = .{
+	cmd.executeBaseOperation(allocator, .{.addEnergy = .{
 		.target = user,
-		.health = self.food,
-		.cause = .heal,
+		.energy = self.food,
 		.previous = previous,
 	}}, side);
 

@@ -550,8 +550,8 @@ pub const Player = struct { // MARK: Player
 		Player.super.pos = world.?.spawn;
 		Player.super.vel = .{0, 0, 0};
 
-		Player.super.health = Player.super.maxHealth;
-		Player.super.energy = Player.super.maxEnergy;
+		Player.super.health = Player.super.maxHealth/2;
+		Player.super.energy = 0;
 
 		Player.eye = .{};
 		Player.jumpCoyote = 0;
