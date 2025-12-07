@@ -10,6 +10,7 @@ const ZonElement = main.ZonElement;
 const Server = main.server;
 const Branch = main.rotation.list.@"cubyz:branch";
 
+shouldDrop:bool,
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
 
@@ -19,6 +20,8 @@ pub fn init(zon: ZonElement) ?*@This() {
 	if(zon.get(?[]const u8, "replacement", null)) |blockname| {
 		result.decayReplacement = main.blocks.parseBlock(blockname);
 	} else result.decayReplacement = main.blocks.Block.air;
+	// shouldDrop
+	result.shouldDrop = zon.get(bool, "shouldDrop", true);
 	// prevention
 	result.prevention = &.{};
 	if(zon.getChildOrNull("prevention")) |tagNames| {
@@ -129,10 +132,12 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
-				for(params.block.blockDrops()) |drop| {
-					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						for(drop.items) |stack| {
-							main.server.world.?.drop(stack.clone(), Vec3d{@floatFromInt(wx), @floatFromInt(wy), @floatFromInt(wz)}, Vec3d{0, 0, 1}, 4);
+				if(self.shouldDrop){
+					for(params.block.blockDrops()) |drop| {
+						if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
+							for(drop.items) |stack| {
+								main.server.world.?.drop(stack.clone(), Vec3d{@floatFromInt(wx), @floatFromInt(wy), @floatFromInt(wz)}, Vec3d{0, 0, 1}, 4);
+							}
 						}
 					}
 				}
