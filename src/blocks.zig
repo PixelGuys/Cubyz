@@ -444,7 +444,7 @@ pub const Block = packed struct { // MARK: Block
 		return _climbable[self.typ];
 	}
 
-		pub inline fn climbingSpeed(self: Block) f32 {
+	pub inline fn climbingSpeed(self: Block) f32 {
 		return _climbingSpeed[self.typ];
 	}
 
