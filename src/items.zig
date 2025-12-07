@@ -936,7 +936,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			.tool => {
 				return .{.tool = try Tool.fromBytes(reader)};
 			},
-			.null => unreachable,
+			.null => return error.UnexpectedItemType, // null should be handled at the call-site
 		}
 	}
 

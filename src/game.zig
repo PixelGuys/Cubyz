@@ -529,7 +529,7 @@ pub const Player = struct { // MARK: Player
 		if(onGround) {
 			return .{0, 0, 0.6};
 		} else {
-			return .{0, 0, 0.1};
+			return .{0, 0, 0.08};
 		}
 	}
 
@@ -843,7 +843,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	var movementSpeed: f64 = 0;
 
 	if(main.Window.grabbed) {
-		const walkingSpeed: f64 = if(Player.crouching) 2 else 4;
+		const walkingSpeed: f64 = if(Player.crouching) 2.5 else 4.5;
 		if(KeyBoard.key("forward").value > 0.0) {
 			if(KeyBoard.key("sprint").pressed and !Player.crouching) {
 				if(Player.isGhost.load(.monotonic)) {

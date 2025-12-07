@@ -25,6 +25,7 @@ var texture: Texture = undefined;
 pos: Vec2f,
 size: Vec2f,
 pressed: bool = false,
+obfuscated: bool = false,
 cursor: ?u32 = null,
 selectionStart: ?u32 = null,
 currentString: main.List(u8),
@@ -493,6 +494,12 @@ fn ensureCursorVisibility(self: *TextInput) void {
 	}
 }
 
+fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
+	if(!self.obfuscated) return pos;
+	const obfuscatedPos = (std.unicode.utf8CountCodepoints(self.currentString.items[0..pos]) catch 0)*main.utils.obfuscationChar.len;
+	return @intCast(obfuscatedPos);
+}
+
 pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
@@ -504,21 +511,34 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	defer draw.restoreClip(oldClip);
 
 	var textPos = Vec2f{border, border};
-	if(self.textSize[1] > self.maxHeight - 2*border) {
-		const diff = self.textSize[1] - (self.maxHeight - 2*border);
+	var textSize = self.textSize;
+	const textBuffer = if(self.obfuscated) blk: {
+		const obfuscatedString = main.utils.obfuscateString(main.stackAllocator, self.currentString.items);
+		defer main.stackAllocator.free(obfuscatedString);
+
+		var newTextBuffer = TextBuffer.init(main.stackAllocator, obfuscatedString, .{}, true, .left);
+		textSize = newTextBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
+		break :blk newTextBuffer;
+	} else self.textBuffer;
+	defer if(self.obfuscated) textBuffer.deinit();
+
+	if(textSize[1] > self.maxHeight - 2*border) {
+		const diff = textSize[1] - (self.maxHeight - 2*border);
 		textPos[1] -= diff*self.scrollBar.currentState;
 		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
 		self.scrollBar.render(mousePosition - self.pos);
 	}
-	self.textBuffer.render(textPos[0], textPos[1], fontSize);
+	textBuffer.render(textPos[0], textPos[1], fontSize);
 	if(self.pressed) {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}
-	if(self.cursor) |cursor| {
-		const cursorPos = textPos + self.textBuffer.indexToCursorPos(cursor);
-		if(self.selectionStart) |selectionStart| {
+	if(self.cursor) |_cursor| {
+		const cursor = self.getRenderCursorPos(_cursor);
+		const cursorPos = textPos + textBuffer.indexToCursorPos(cursor);
+		if(self.selectionStart) |_selectionStart| {
+			const selectionStart = self.getRenderCursorPos(_selectionStart);
 			draw.setColor(0x440000ff);
-			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
+			textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 
 		const currentTime = main.timestamp();

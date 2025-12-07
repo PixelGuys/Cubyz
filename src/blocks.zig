@@ -75,7 +75,6 @@ var _absorption: [maxBlockCount]u32 = undefined;
 var _onInteract: [maxBlockCount]ClientBlockCallback = undefined;
 var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
 var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
-var _decayProhibitor: [maxBlockCount]bool = undefined;
 var _mode: [maxBlockCount]*const RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
@@ -123,26 +122,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
-	_onInteract[size] = blk: {
-		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
-			std.log.err("Failed to load onInteract event for block {s}", .{id});
-			break :blk .noop;
-		};
-	};
-
-	_onBreak[size] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
-			std.log.err("Failed to load onBreak event for block {s}", .{id});
-			break :blk .noop;
-		};
-	};
-	_onUpdate[size] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
-			std.log.err("Failed to load onUpdate event for block {s}", .{id});
-			break :blk .noop;
-		};
-	};
-	_decayProhibitor[size] = zon.get(bool, "decayProhibitor", false);
 
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -155,18 +134,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_onTick[size] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop) orelse {
-			std.log.err("Failed to load onTick event for block {s}", .{id});
-			break :blk .noop;
-		};
-	};
-	_onTouch[size] = blk: {
-		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop) orelse {
-			std.log.err("Failed to load onTouch event for block {s}", .{id});
-			break :blk .noop;
-		};
-	};
 
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
@@ -242,15 +209,46 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
+fn registerCallbacks(typ: u16, zon: ZonElement) void {
+	_onInteract[typ] = blk: {
+		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onInteract event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onBreak[typ] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onBreak event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onUpdate[typ] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onUpdate event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onTick[typ] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onTick event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onTouch[typ] = blk: {
+		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onTouch event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+}
+
 pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
-	}
-	i = 0;
-	while(i < size) : (i += 1) {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
+		registerCallbacks(i, zonElements.get(_id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 }
@@ -418,9 +416,6 @@ pub const Block = packed struct { // MARK: Block
 	}
 	pub inline fn onUpdate(self: Block) ServerBlockCallback {
 		return _onUpdate[self.typ];
-	}
-	pub inline fn decayProhibitor(self: Block) bool {
-		return _decayProhibitor[self.typ];
 	}
 	pub inline fn mode(self: Block) *const RotationMode {
 		return _mode[self.typ];
