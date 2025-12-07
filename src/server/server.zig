@@ -257,7 +257,7 @@ pub const User = struct { // MARK: User
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
-		self.regenateHealth();
+		self.regenerateHealth();
 		const saveTime = main.timestamp();
 		if(self.lastSaveTime.durationTo(saveTime).toSeconds() > 5) {
 			world.?.savePlayer(self) catch |err| {
@@ -269,9 +269,9 @@ pub const User = struct { // MARK: User
 		self.loadUnloadChunks();
 	}
 
-	pub fn regenateHealth(self: *User) void {
+	pub fn regenerateHealth(self: *User) void {
 		const healthRegenTime = main.timestamp();
-		if(self.lastHealthRegenTime.durationTo(healthRegenTime).toSeconds() > 5 and self.player.energy > 0) {
+		if(self.lastHealthRegenTime.durationTo(healthRegenTime).toSeconds() > 5 and self.player.energy > 0 and self.player.health < self.player.maxHealth) {
 			// give 1 Health every 5 seconds
 			main.items.Inventory.Sync.addHealth(1, .heal, .server, self.id);
 
