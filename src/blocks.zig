@@ -158,7 +158,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	return @intCast(size);
 }
 
-pub fn loadBlockDrop(autoName: ?[]const u8, zon: ZonElement) []BlockDrop {
+pub fn loadBlockDrop(autoName: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
