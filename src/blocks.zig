@@ -448,7 +448,6 @@ pub const Block = packed struct { // MARK: Block
 		return _climbingSpeed[self.typ];
 	}
 
-
 	pub inline fn friction(self: Block) f32 {
 		return _friction[self.typ];
 	}
