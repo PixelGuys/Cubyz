@@ -12,6 +12,6 @@
 	.transparent = true,
 	.collide = false,
 	.climbable = true,
-	.climbingSpeed = 50,
+	.climbingSpeed = 100,
 	.texture = "cubyz:rope",
 }
