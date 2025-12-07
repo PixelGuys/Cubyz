@@ -165,7 +165,7 @@ pub fn loadBlockDrop(autoName: ?[]const u8, zon: ZonElement) []BlockDrop {
 	for(drops, 0..) |blockDrop, i| {
 		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
-		var resultItems = main.List(main.items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
+		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
 
 		for(itemZons) |itemZon| {
@@ -187,7 +187,7 @@ pub fn loadBlockDrop(autoName: ?[]const u8, zon: ZonElement) []BlockDrop {
 				} else std.log.err("'auto' is not implemented yet", .{});
 			}
 
-			const item = main.items.BaseItemIndex.fromId(name) orelse continue;
+			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 		blockDrops[i].items = main.worldArena.dupe(main.items.ItemStack, resultItems.items);
