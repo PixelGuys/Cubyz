@@ -39,6 +39,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 
 		const baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
+		const climbingFriction = 10;
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
@@ -54,7 +55,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			}
 
 			if(isClimbing and !Player.isFlying.load(.monotonic)) { // High friction while climbing
-				frictionCoefficient = 5;
+				frictionCoefficient = climbingFriction;
 			}
 			const v_0 = Player.super.vel[i];
 			const a = acc[i];
