@@ -879,7 +879,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				movementSpeed = @max(movementSpeed, climbingSpeed);
 				movementDir[2] -= climbingSpeed;
 			}
-			} else {
+		} else {
 			// Normal Controls
 			if(KeyBoard.key("forward").value > 0.0) {
 				if(KeyBoard.key("sprint").pressed and !Player.crouching) {
