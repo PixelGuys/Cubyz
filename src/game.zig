@@ -845,7 +845,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if(main.Window.grabbed) {
 		const walkingSpeed: f64 = if(Player.crouching) 2.5 else 4.5;
 		const horizontalClimbSpeed = 8;
-		
 		if(isClimbing and !Player.onGround) {
 			// Climbing Controls
 			if(KeyBoard.key("forward").value > 0.0) {
