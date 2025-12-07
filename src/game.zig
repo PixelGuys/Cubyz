@@ -229,6 +229,8 @@ pub const collision = struct {
 		density: f64,
 		maxDensity: f64,
 		mobility: f64,
+		climbable: bool,
+		climbingSpeed: f32
 	};
 
 	fn overlapVolume(a: Box, b: Box) f64 {
@@ -239,6 +241,7 @@ pub const collision = struct {
 	}
 
 	pub fn calculateVolumeProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaults: VolumeProperties) VolumeProperties {
+		
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -255,6 +258,8 @@ pub const collision = struct {
 		var maxDensity: f64 = defaults.maxDensity;
 		var mobilitySum: f64 = 0;
 		var volumeSum: f64 = 0;
+		var climbable: bool = false;
+		var climbingSpeed: f32 = 1;
 
 		var x: i32 = minX;
 		while(x <= maxX) : (x += 1) {
@@ -284,10 +289,14 @@ pub const collision = struct {
 						densitySum += filledVolume*block.density();
 						maxDensity = @max(maxDensity, block.density());
 						mobilitySum += filledVolume*block.mobility();
+						climbable = climbable or block.climbable();
+						climbingSpeed = @max(block.climbingSpeed(), climbingSpeed);
 					} else {
 						invTerminalVelocitySum += gridVolume/defaults.terminalVelocity;
 						densitySum += gridVolume*defaults.density;
 						mobilitySum += gridVolume*defaults.mobility;
+						climbable = defaults.climbable;
+						climbingSpeed = defaults.climbingSpeed;
 					}
 				}
 			}
@@ -298,6 +307,8 @@ pub const collision = struct {
 			.density = densitySum/volumeSum,
 			.maxDensity = maxDensity,
 			.mobility = mobilitySum/volumeSum,
+			.climbable = climbable,
+			.climbingSpeed = climbingSpeed,
 		};
 	}
 
@@ -437,7 +448,7 @@ pub const Player = struct { // MARK: Player
 	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var currentFriction: f32 = 0;
-	pub var volumeProperties: collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobility = 0, .terminalVelocity = 0};
+	pub var volumeProperties: collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobility = 0, .terminalVelocity = 0, .climbable = false, .climbingSpeed = 1.0};
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -524,7 +535,7 @@ pub const Player = struct { // MARK: Player
 		if(onGround) {
 			return .{0, 0, 0.6};
 		} else {
-			return .{0, 0, 0.08};
+			return .{0, 0, 0.1};
 		}
 	}
 
@@ -590,10 +601,10 @@ pub const Player = struct { // MARK: Player
 
 			if(isCreative()) {
 				const targetSlot = blk: {
-					if(inventory.getItem(selectedSlot) == .null) break :blk selectedSlot;
+					if(inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 					// Look for an empty slot
 					for(0..12) |slotIdx| {
-						if(inventory.getItem(slotIdx) == .null) {
+						if(inventory.getItem(slotIdx) == null) {
 							break :blk slotIdx;
 						}
 					}
@@ -632,7 +643,7 @@ pub const World = struct { // MARK: World
 			.conn = try Connection.init(manager, ip, null),
 			.manager = manager,
 			.name = "client",
-			.milliTime = main.timestamp().toMilliseconds(),
+			.milliTime = std.time.milliTimestamp(),
 		};
 		errdefer self.conn.deinit();
 
@@ -737,7 +748,7 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn update(self: *World) void {
-		const newTime: i64 = main.timestamp().toMilliseconds();
+		const newTime: i64 = std.time.milliTimestamp();
 		while(self.milliTime +% 100 -% newTime < 0) {
 			self.milliTime +%= 100;
 			var curTime = self.gameTime.load(.monotonic);
@@ -765,12 +776,12 @@ pub var projectionMatrix: Mat4f = Mat4f.identity();
 var biomeFog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 
-var nextBlockPlaceTime: ?std.Io.Timestamp = null;
-var nextBlockBreakTime: ?std.Io.Timestamp = null;
+var nextBlockPlaceTime: ?i64 = null;
+var nextBlockBreakTime: ?i64 = null;
 
 pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
-	const time = main.timestamp();
-	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
+	const time = std.time.milliTimestamp();
+	nextBlockPlaceTime = time + main.settings.updateRepeatDelay;
 	Player.placeBlock(mods);
 }
 
@@ -779,8 +790,8 @@ pub fn releasePlace(_: main.Window.Key.Modifiers) void {
 }
 
 pub fn pressBreak(_: main.Window.Key.Modifiers) void {
-	const time = main.timestamp();
-	nextBlockBreakTime = time.addDuration(main.settings.updateRepeatDelay);
+	const time = std.time.milliTimestamp();
+	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
 	Player.breakBlock(0);
 }
 
@@ -824,6 +835,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else Player.volumeProperties.mobility;
 	const density = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.density;
 	const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;
+	const isClimbing = if(Player.isFlying.load(.monotonic)) false else Player.volumeProperties.climbable;
+	const climbingSpeed = if(Player.isFlying.load(.monotonic)) 1.0 else Player.volumeProperties.climbingSpeed;
 
 	const baseFrictionCoefficient: f32 = Player.currentFriction;
 	var jumping = false;
@@ -838,81 +851,113 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	var movementSpeed: f64 = 0;
 
 	if(main.Window.grabbed) {
-		const walkingSpeed: f64 = if(Player.crouching) 2.5 else 4.5;
-		if(KeyBoard.key("forward").value > 0.0) {
-			if(KeyBoard.key("sprint").pressed and !Player.crouching) {
-				if(Player.isGhost.load(.monotonic)) {
-					movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
-				} else if(Player.isFlying.load(.monotonic)) {
-					movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
+
+		const walkingSpeed: f64 = if(Player.crouching) 2 else 4;
+		const horizontalClimbSpeed = 8;
+
+		if((isClimbing and !Player.onGround)) {
+			// Climbing Controls
+			if(KeyBoard.key("forward").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed*horizontalClimbSpeed)*KeyBoard.key("forward").value;
+				movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value*4));
+			}
+			if(KeyBoard.key("backward").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed*horizontalClimbSpeed)*KeyBoard.key("backward").value;
+				movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value*4));
+			}
+			if(KeyBoard.key("left").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed*horizontalClimbSpeed)*KeyBoard.key("left").value;
+				movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value*4));
+			}
+			if(KeyBoard.key("right").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed*horizontalClimbSpeed)*KeyBoard.key("right").value;
+				movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value*4));
+			}
+			if(KeyBoard.key("fall").pressed) {
+				movementSpeed = @max(movementSpeed, climbingSpeed);
+				movementDir[2] -= climbingSpeed;
+			}
+			if(KeyBoard.key("jump").pressed) {
+				movementSpeed = @max(movementSpeed, climbingSpeed);
+				movementDir[2] += climbingSpeed;
+			}
+			} else {
+			// Normal Controls
+			if(KeyBoard.key("forward").value > 0.0) {
+				if(KeyBoard.key("sprint").pressed and !Player.crouching) {
+					if(Player.isGhost.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
+					} else if(Player.isFlying.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
+					} else {
+						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
+					}
 				} else {
-					movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
+					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+				}
+			}
+			if(KeyBoard.key("backward").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
+				movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
+			}
+			if(KeyBoard.key("left").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
+				movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
+			}
+			if(KeyBoard.key("right").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
+				movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
+			}
+			if(KeyBoard.key("jump").pressed) {
+				if(Player.isFlying.load(.monotonic)) {
+					if(KeyBoard.key("sprint").pressed) {
+						if(Player.isGhost.load(.monotonic)) {
+							movementSpeed = @max(movementSpeed, 60);
+							movementDir[2] += 60;
+						} else {
+							movementSpeed = @max(movementSpeed, 25);
+							movementDir[2] += 25;
+						}
+					} else {
+						movementSpeed = @max(movementSpeed, 5.5);
+						movementDir[2] += 5.5;
+					}
+				} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
+					jumping = true;
+					Player.jumpCooldown = Player.jumpCooldownConstant;
+					if(!Player.onGround) {
+						Player.eye.coyote = 0;
+					}
+					Player.jumpCoyote = 0;
+				} else if(!KeyBoard.key("fall").pressed) {
+					movementSpeed = @max(movementSpeed, walkingSpeed);
+					movementDir[2] += walkingSpeed;
 				}
 			} else {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
-				movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+				Player.jumpCooldown = 0;
 			}
-		}
-		if(KeyBoard.key("backward").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
-			movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
-		}
-		if(KeyBoard.key("left").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
-			movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
-		}
-		if(KeyBoard.key("right").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
-			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
-		}
-		if(KeyBoard.key("jump").pressed) {
-			if(Player.isFlying.load(.monotonic)) {
-				if(KeyBoard.key("sprint").pressed) {
-					if(Player.isGhost.load(.monotonic)) {
-						movementSpeed = @max(movementSpeed, 60);
-						movementDir[2] += 60;
+			if(KeyBoard.key("fall").pressed) {
+				if(Player.isFlying.load(.monotonic)) {
+					if(KeyBoard.key("sprint").pressed) {
+						if(Player.isGhost.load(.monotonic)) {
+							movementSpeed = @max(movementSpeed, 60);
+							movementDir[2] -= 60;
+						} else {
+							movementSpeed = @max(movementSpeed, 25);
+							movementDir[2] -= 25;
+						}
 					} else {
-						movementSpeed = @max(movementSpeed, 25);
-						movementDir[2] += 25;
+						movementSpeed = @max(movementSpeed, 5.5);
+						movementDir[2] -= 5.5;
 					}
-				} else {
-					movementSpeed = @max(movementSpeed, 5.5);
-					movementDir[2] += 5.5;
+				} else if(!KeyBoard.key("jump").pressed) {
+					movementSpeed = @max(movementSpeed, walkingSpeed);
+					movementDir[2] -= walkingSpeed;
 				}
-			} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
-				jumping = true;
-				Player.jumpCooldown = Player.jumpCooldownConstant;
-				if(!Player.onGround) {
-					Player.eye.coyote = 0;
-				}
-				Player.jumpCoyote = 0;
-			} else if(!KeyBoard.key("fall").pressed) {
-				movementSpeed = @max(movementSpeed, walkingSpeed);
-				movementDir[2] += walkingSpeed;
-			}
-		} else {
-			Player.jumpCooldown = 0;
-		}
-		if(KeyBoard.key("fall").pressed) {
-			if(Player.isFlying.load(.monotonic)) {
-				if(KeyBoard.key("sprint").pressed) {
-					if(Player.isGhost.load(.monotonic)) {
-						movementSpeed = @max(movementSpeed, 60);
-						movementDir[2] -= 60;
-					} else {
-						movementSpeed = @max(movementSpeed, 25);
-						movementDir[2] -= 25;
-					}
-				} else {
-					movementSpeed = @max(movementSpeed, 5.5);
-					movementDir[2] -= 5.5;
-				}
-			} else if(!KeyBoard.key("jump").pressed) {
-				movementSpeed = @max(movementSpeed, walkingSpeed);
-				movementDir[2] -= walkingSpeed;
 			}
 		}
 
@@ -925,13 +970,14 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 		}
 
-		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
+		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
 		Player.selectedSlot = @intCast(@mod(newSlot, 12));
+		main.Window.scrollOffset = 0;
 
 		const newPos = Vec2f{
 			@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),
 			@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
-		}*@as(Vec2f, @splat(std.math.pi*settings.controllerSensitivity));
+		}*@as(Vec2f, @splat(3.14*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
@@ -971,16 +1017,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	physics.update(deltaTime, acc, jumping);
 
-	const time = main.timestamp();
+	const time = std.time.milliTimestamp();
 	if(nextBlockPlaceTime) |*placeTime| {
-		if(placeTime.durationTo(time).nanoseconds >= 0) {
-			placeTime.* = placeTime.addDuration(main.settings.updateRepeatSpeed);
+		if(time -% placeTime.* >= 0) {
+			placeTime.* += main.settings.updateRepeatSpeed;
 			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {
-		if(breakTime.durationTo(time).nanoseconds >= 0 or !Player.isCreative()) {
-			breakTime.* = breakTime.addDuration(main.settings.updateRepeatSpeed);
+		if(time -% breakTime.* >= 0 or !Player.isCreative()) {
+			breakTime.* += main.settings.updateRepeatSpeed;
 			Player.breakBlock(deltaTime);
 		}
 	}
