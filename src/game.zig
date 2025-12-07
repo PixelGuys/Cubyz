@@ -224,14 +224,7 @@ pub const collision = struct {
 		};
 	}
 
-	const VolumeProperties = struct {
-		terminalVelocity: f64,
-		density: f64,
-		maxDensity: f64,
-		mobility: f64,
-		climbable: bool,
-		climbingSpeed: f32
-	};
+	const VolumeProperties = struct {terminalVelocity: f64, density: f64, maxDensity: f64, mobility: f64, climbable: bool, climbingSpeed: f32};
 
 	fn overlapVolume(a: Box, b: Box) f64 {
 		const min = @max(a.min, b.min);
