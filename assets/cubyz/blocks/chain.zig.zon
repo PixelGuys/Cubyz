@@ -12,6 +12,6 @@
 	.transparent = true,
 	.collide = false,
 	.climbable = true,
-	.climbingSpeed = 100,
+	.climbingSpeed = 170,
 	.texture = "cubyz:chain",
 }
