@@ -1,0 +1,14 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 2.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:direction",
+	.model = "cubyz:cross",
+	.transparent = true,
+	.collide = false,
+	.climbable = true,
+	.climbingSpeed = 50,
+	.texture = "cubyz:rope",
+}
