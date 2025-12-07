@@ -12,7 +12,7 @@ const Branch = main.rotation.list.@"cubyz:branch";
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
-blockDrops: ?[]blocks.BlockDrop,
+blockDrops: ?[]const blocks.BlockDrop,
 
 pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
