@@ -140,8 +140,8 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 						for(drop.items) |stack| {
 							const dir2D = main.random.nextPointInUnitCircle(&main.seed);
-							const dir = Vec3f{dir2D[0], dir2D[1], 1};
-							main.server.world.?.drop(stack.clone(), Vec3d{@floatFromInt(wx), @floatFromInt(wy), @floatFromInt(wz)}, dir, 4);
+							const dir = Vec3f{dir2D[0], dir2D[1], 4};
+							main.server.world.?.drop(stack.clone(), Vec3d{@floatFromInt(wx), @floatFromInt(wy), @floatFromInt(wz)}, dir, 1);
 						}
 					}
 				}
