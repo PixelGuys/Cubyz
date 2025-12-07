@@ -5,6 +5,7 @@ const Block = main.blocks.Block;
 const blocks = main.blocks;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const Vec3d = vec.Vec3d;
 const ZonElement = main.ZonElement;
 const Server = main.server;
 const Branch = main.rotation.list.@"cubyz:branch";
@@ -128,6 +129,13 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
+				for(params.block.blockDrops()) |drop| {
+					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
+						for(drop.items) |stack| {
+							main.server.world.?.drop(stack.clone(), Vec3d{@floatFromInt(wx), @floatFromInt(wy), @floatFromInt(wz)}, Vec3d{0, 0, 1}, 4);
+						}
+					}
+				}
 				return .handled;
 			}
 		}
