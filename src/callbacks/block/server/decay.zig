@@ -139,9 +139,20 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 				for(drops) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 						for(drop.items) |stack| {
-							const dir2D = main.random.nextPointInUnitCircle(&main.seed);
-							const dir = Vec3f{dir2D[0], dir2D[1], 4};
-							main.server.world.?.drop(stack.clone(), Vec3d{@floatFromInt(wx), @floatFromInt(wy), @floatFromInt(wz)}, dir, 1);
+							var dir = main.vec.normalize(Vec3f{
+								main.random.nextFloatSigned(&main.seed),
+								main.random.nextFloatSigned(&main.seed),
+								main.random.nextFloatSigned(&main.seed),
+							});
+							//Bias upwards
+							dir[2] += main.random.nextFloat(&main.seed)*4.0;
+							const model = leaf.mode().model(leaf).model();
+							const pos = Vec3f{
+								@as(f32, @floatFromInt(wx)) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
+								@as(f32, @floatFromInt(wy)) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
+								@as(f32, @floatFromInt(wz)) + model.min[2] + main.random.nextFloat(&main.seed)*(model.max[2] - model.min[2]),
+							};
+							main.server.world.?.drop(stack.clone(), pos, dir, 1);
 						}
 					}
 				}
