@@ -158,7 +158,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	return @intCast(size);
 }
 
-pub fn loadBlockDrop(autoName: ?[]const u8, zon: ZonElement) []const BlockDrop {
+pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
@@ -182,8 +182,8 @@ pub fn loadBlockDrop(autoName: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			}
 
 			if(std.mem.eql(u8, name, "auto")) {
-				if(autoName) |auto| {
-					name = auto;
+				if(blockId) |id| {
+					name = id;
 				} else std.log.err("'auto' is not implemented yet", .{});
 			}
 
