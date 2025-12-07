@@ -1,6 +1,9 @@
 .{
 	.tags = .{.mineable},
 	.blockHealth = 2.5,
+	.item = .{
+		.texture = "rope.png",
+	},
 	.drops = .{
 		.{.items = .{.auto}},
 	},
