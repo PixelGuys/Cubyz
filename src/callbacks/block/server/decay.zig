@@ -139,12 +139,8 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 				for(drops) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 						for(drop.items) |stack| {
-							var dir = main.vec.normalize(Vec3f{
-								main.random.nextFloatSigned(&main.seed),
-								main.random.nextFloatSigned(&main.seed),
-								main.random.nextFloatSigned(&main.seed),
-							});
-							//Bias upwards
+							var dir = main.vec.normalize(main.random.nextFloatVectorSigned(f32, &main.seed));
+							// Bias upwards
 							dir[2] += main.random.nextFloat(&main.seed)*4.0;
 							const model = leaf.mode().model(leaf).model();
 							const pos = Vec3f{
