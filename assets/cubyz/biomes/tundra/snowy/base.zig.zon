@@ -1,12 +1,12 @@
 .{
-	.minHeightLimit = 2,
-	.minHeight = 14,
-	.maxHeight = 30,
-	.maxHeightLimit = 40,
+	.minHeightLimit = 0,
+	.minHeight = 18,
+	.maxHeight = 20,
+	.maxHeightLimit = 30,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.hills = 15,
-	.mountains = 20,
+	.mountains = 15,
 	.stoneBlock = "cubyz:glacite",
 	.chance = 0.5,
 	.ground_structure = .{
