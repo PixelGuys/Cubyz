@@ -160,7 +160,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 pub fn loadBlockDrop(autoName: ?[]const u8, zon: ZonElement) []BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
-	var blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
+	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for(drops, 0..) |blockDrop, i| {
 		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
