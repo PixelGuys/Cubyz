@@ -29,7 +29,6 @@ pub fn calculateProperties() void {
 pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: update()
 	var move: Vec3d = .{0, 0, 0};
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
-	
 		const effectiveGravity = gravity*(playerDensity - Player.volumeProperties.density)/playerDensity;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
 		const isClimbing = Player.volumeProperties.climbable and !Player.onGround;
@@ -54,10 +53,10 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				frictionCoefficient = volumeFrictionCoeffecient;
 			}
 
-			if(isClimbing and !Player.isFlying.load(.monotonic)) {
+			if(isClimbing and !Player.isFlying.load(.monotonic)) { // High friction while climbing
 				frictionCoefficient = 5;
 			}
-	
+			
 			const v_0 = Player.super.vel[i];
 			const a = acc[i];
 			// Here the solution can be easily derived:
