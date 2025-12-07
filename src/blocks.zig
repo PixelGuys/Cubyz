@@ -158,14 +158,14 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	return @intCast(size);
 }
 
-fn registerBlockDrop(typ: u16, zon: ZonElement) void {
+pub fn loadBlockDrop(autoName: ?[]const u8, zon: ZonElement) []BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
-	_blockDrops[typ] = main.worldArena.alloc(BlockDrop, drops.len);
+	var blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for(drops, 0..) |blockDrop, i| {
-		_blockDrops[typ][i].chance = blockDrop.get(f32, "chance", 1);
+		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
-		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
+		var resultItems = main.List(main.items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
 
 		for(itemZons) |itemZon| {
@@ -182,15 +182,21 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 			}
 
 			if(std.mem.eql(u8, name, "auto")) {
-				name = _id[typ];
+				if(autoName) |auto| {
+					name = auto;
+				} else std.log.err("'auto' is not implemented yet", .{});
 			}
 
-			const item = items.BaseItemIndex.fromId(name) orelse continue;
+			const item = main.items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
-
-		_blockDrops[typ][i].items = main.worldArena.dupe(items.ItemStack, resultItems.items);
+		blockDrops[i].items = main.worldArena.dupe(main.items.ItemStack, resultItems.items);
 	}
+	return blockDrops;
+}
+
+fn registerBlockDrop(typ: u16, zon: ZonElement) void {
+	_blockDrops[typ] = loadBlockDrop(_id[typ], zon);
 }
 
 fn registerLodReplacement(typ: u16, zon: ZonElement) void {
