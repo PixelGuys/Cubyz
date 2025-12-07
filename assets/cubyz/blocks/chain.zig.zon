@@ -4,6 +4,9 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
+	.item = .{
+		.texture = "chain.png",
+	},
 	.rotation = "cubyz:direction",
 	.model = "cubyz:cross",
 	.transparent = true,
