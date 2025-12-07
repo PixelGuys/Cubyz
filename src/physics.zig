@@ -56,7 +56,6 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			if(isClimbing and !Player.isFlying.load(.monotonic)) { // High friction while climbing
 				frictionCoefficient = 5;
 			}
-			
 			const v_0 = Player.super.vel[i];
 			const a = acc[i];
 			// Here the solution can be easily derived:
