@@ -184,7 +184,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			if(std.mem.eql(u8, name, "auto")) {
 				if(blockId) |id| {
 					name = id;
-				} else std.log.err("'auto' is not implemented yet", .{});
+				} else std.log.err("Cannot use 'auto' in this context", .{});
 			}
 
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
