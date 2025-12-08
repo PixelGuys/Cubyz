@@ -1,7 +1,14 @@
 .{
+	.onUpdate = .{
+		.type = .decay,
+		.prevention = .{.log, .branch},
+		.drops = .{
+			.{.chance = 0.01, .items = .{"cubyz:apple"}},
+		},
+	},
 	.drops = .{
 		.{.items = .{.auto}},
-		.{.chance = 0.1, .items = .{"cubyz:apple"}},
+		.{.chance = 0.01, .items = .{"cubyz:apple"}},
 	},
 	.texture = "cubyz:leaves/oak",
 	.lodReplacement = "cubyz:leaves/opaque/oak",

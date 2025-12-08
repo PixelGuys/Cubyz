@@ -2,6 +2,7 @@
 	.onUpdate = .{
 		.type = .decay,
 		.prevention = .{.log, .branch},
+		.drops = .{},
 	},
 	.rotation = "cubyz:decayable",
 	.tags = .{.cuttable, .leaf},
