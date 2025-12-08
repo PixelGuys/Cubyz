@@ -8,7 +8,7 @@ const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
 const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView;
-const FractalNoise3D = terrain.noise.FractalNoise3D;
+const FractalNoiseZWeighted3D = terrain.noise.FractalNoiseZWeighted3D;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -38,7 +38,11 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
-	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale);
+
+	const noise = Array3D(f32).init(main.stackAllocator, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1);
+	biomeMap.bulkInterpolateValue("zWeight", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, 1.0);
+
+	FractalNoiseZWeighted3D.generateAligned(map.pos.wx, map.pos.wy, map.pos.wz, outerSize, worldSeed, scale, noise);
 	defer noise.deinit(main.stackAllocator);
 	biomeMap.bulkInterpolateValue("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, scale);
 	var x: u31 = 0;
