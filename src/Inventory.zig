@@ -21,7 +21,7 @@ const ToolTypeIndex = main.items.ToolTypeIndex;
 
 const Gamemode = main.game.Gamemode;
 
-const Side = enum {client, server};
+pub const Side = enum {client, server};
 
 pub const InventoryId = enum(u32) {_};
 
@@ -507,6 +507,20 @@ pub const Sync = struct { // MARK: Sync
 			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
 		}
 	}
+	pub fn addEnergy(energy: f32, side: Side, userId: u32) void {
+		if(side == .client) {
+			Sync.ClientSide.executeCommand(.{.addEnergy = .{.target = userId, .energy = energy}});
+		} else {
+			Sync.ServerSide.executeCommand(.{.addEnergy = .{.target = userId, .energy = energy}}, null);
+		}
+	}
+	pub fn useItem(source: Command.InventoryAndSlot, side: Side) void {
+		if(side == .client) {
+			Sync.ClientSide.executeCommand(.{.useItem = .{.source = source}});
+		} else {
+			Sync.ServerSide.executeCommand(.{.useItem = .{.source = source}}, null);
+		}
+	}
 
 	pub fn getInventory(id: InventoryId, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
@@ -538,6 +552,8 @@ pub const Command = struct { // MARK: Command
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
+		addEnergy = 13,
+		useItem = 12,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -552,6 +568,8 @@ pub const Command = struct { // MARK: Command
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
+		addEnergy: AddEnergy,
+		useItem: UseItem,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -564,7 +582,7 @@ pub const Command = struct { // MARK: Command
 		addEnergy = 6,
 	};
 
-	const InventoryAndSlot = struct {
+	pub const InventoryAndSlot = struct {
 		inv: Inventory,
 		slot: u32,
 
@@ -979,7 +997,7 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void { // MARK: executeBaseOperation()
+	pub fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void { // MARK: executeBaseOperation()
 		var op = _op;
 		switch(op) {
 			.move => |info| {
@@ -1944,6 +1962,79 @@ pub const Command = struct { // MARK: Command
 				.cause = try reader.readEnum(main.game.DamageType),
 			};
 			if(user.?.id != result.target) return error.Invalid;
+			return result;
+		}
+	};
+	const AddEnergy = struct { // MARK: AddEnergy
+		target: u32,
+		energy: f32,
+
+		pub fn run(self: AddEnergy, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			var target: ?*main.server.User = null;
+
+			if(side == .server) {
+				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				for(userList) |user| {
+					if(user.id == self.target) {
+						target = user;
+						break;
+					}
+				}
+
+				if(target == null) return error.serverFailure;
+
+				if(target.?.gamemode.raw == .creative) return;
+			} else {
+				if(main.game.Player.gamemode.raw == .creative) return;
+			}
+
+			cmd.executeBaseOperation(allocator, .{.addEnergy = .{
+				.target = target,
+				.energy = self.energy,
+				.previous = if(side == .server) target.?.player.energy else main.game.Player.super.energy,
+			}}, side);
+		}
+
+		fn serialize(self: AddEnergy, writer: *utils.BinaryWriter) void {
+			writer.writeInt(u32, self.target);
+			writer.writeInt(u32, @bitCast(self.energy));
+		}
+
+		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !AddEnergy {
+			const result: AddEnergy = .{
+				.target = try reader.readInt(u32),
+				.energy = @bitCast(try reader.readInt(u32)),
+			};
+			if(user.?.id != result.target or side != .server) return error.Invalid;
+			return result;
+		}
+	};
+
+	const UseItem = struct { // MARK: UseItem
+		source: InventoryAndSlot,
+
+		pub fn run(self: UseItem, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+			if(self.source.inv.type != .normal) return;
+			const stack = self.source.ref();
+
+			switch(stack.item) {
+				.baseItem => |baseItem| {
+					_ = baseItem.onUse().run(.{.stack = stack, .source = self.source, .allocator = allocator, .cmd = cmd, .side = side, .user = user, .gamemode = gamemode});
+				},
+				.tool => {},
+				.null => {},
+			}
+		}
+
+		fn serialize(self: UseItem, writer: *utils.BinaryWriter) void {
+			self.source.write(writer);
+		}
+
+		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !UseItem {
+			const result: UseItem = .{
+				.source = try InventoryAndSlot.read(reader, side, user),
+			};
 			return result;
 		}
 	};
