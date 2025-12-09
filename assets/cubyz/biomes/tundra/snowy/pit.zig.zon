@@ -1,0 +1,31 @@
+.{
+	.properties = .{},
+	.radius = 16,
+	.chance = 0,
+	.minHeight = -2000,
+	.maxHeight = -1000,
+	.keepOriginalTerrain = 0.99,
+	.stoneBlock = "cubyz:glacite",
+	.ground_structure = .{
+		"1 cubyz:snow",
+		"1 to 2 cubyz:permafrost",
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:tundra/snowy/base",
+			.chance = 10,
+		},
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:ice",
+			.generationMode = .water_surface,
+			.chance = 0.9,
+			.width = 8,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
+	},
+}
