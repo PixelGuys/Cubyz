@@ -345,8 +345,31 @@ pub const Sync = struct { // MARK: Sync
 			const payload: Command.Payload = switch(typ) {
 				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try @FieldType(Command.Payload, @tagName(_typ)).deserialize(reader, .server, source)),
 			};
-			executeCommand(payload, source);
+			source.centerChunk.chunkUpdateListMutex.lock();
+			source.centerChunk.scheduleChunkEvent(ChunkEventCallback.directInit(payload, source));
+			source.centerChunk.chunkUpdateListMutex.unlock();
 		}
+
+		const ChunkEventCallback = struct {
+			payload: main.items.Inventory.Command.Payload,
+			source: *main.server.User,
+
+			pub fn directInit(payload: main.items.Inventory.Command.Payload, source: *main.server.User) main.callbacks.ChunkCallback {
+				const result = main.server.tickArena.create(@This());
+				result.* = .{
+					.payload = payload,
+					.source = source,
+				};
+				return .directInit(result);
+			}
+
+			pub fn run(self: *@This(), _: main.callbacks.ChunkCallback.Params) main.callbacks.Result {
+				main.items.Inventory.Sync.ServerSide.mutex.lock();
+				main.items.Inventory.Sync.ServerSide.executeCommand(self.payload, self.source);
+				main.items.Inventory.Sync.ServerSide.mutex.unlock();
+				return .handled;
+			}
+		};
 
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
 			mutex.lock();

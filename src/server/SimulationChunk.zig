@@ -12,6 +12,9 @@ refCount: std.atomic.Value(u32),
 pos: ChunkPosition,
 blockUpdateSystem: BlockUpdateSystem,
 
+chunkUpdateList: main.ListUnmanaged(main.callbacks.ChunkCallback) = .{},
+chunkUpdateListMutex: std.Thread.Mutex = .{},
+
 pub fn initAndIncreaseRefCount(pos: ChunkPosition) *SimulationChunk {
 	const self = main.globalAllocator.create(SimulationChunk);
 	self.* = .{
@@ -53,7 +56,20 @@ pub fn setChunkAndDecreaseRefCount(self: *SimulationChunk, ch: *ServerChunk) voi
 	std.debug.assert(self.chunk.swap(ch, .release) == null);
 }
 
+pub fn scheduleChunkEvent(self: *SimulationChunk, callback: main.callbacks.ChunkCallback) void {
+	main.utils.assertLocked(&self.chunkUpdateListMutex); // Should be locked while doing all the allocations in the tick arena. Otherwise the tick arena may get outdated when the thread is suspended for too long.
+	self.chunkUpdateList.append(main.worldArena, callback);
+}
+
 pub fn update(self: *SimulationChunk, randomTickSpeed: u32) void {
+	self.chunkUpdateListMutex.lock();
+	const list = self.chunkUpdateList;
+	self.chunkUpdateList = .{};
+	self.chunkUpdateListMutex.unlock();
+	for(list.items) |callback| {
+		_ = callback.run(.{.TODO = {}});
+	}
+
 	const serverChunk = self.getChunk() orelse return;
 	tickBlocksInChunk(serverChunk, randomTickSpeed);
 	self.blockUpdateSystem.update(serverChunk);

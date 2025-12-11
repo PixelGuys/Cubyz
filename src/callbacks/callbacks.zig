@@ -10,6 +10,8 @@ pub const ServerBlockCallback = Callback(struct {block: Block, chunk: *main.chun
 
 pub const BlockTouchCallback = Callback(struct {entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64}, @import("block/touch/_list.zig"));
 
+pub const ChunkCallback = Callback(struct {TODO: void}, @import("chunk/_list.zig"));
+
 pub const Result = enum {handled, ignored};
 
 pub fn init() void {
@@ -54,6 +56,13 @@ fn Callback(_Params: type, list: type) type {
 			return .{
 				.data = vtable.init(zon) orelse return null,
 				.inner = vtable.run,
+			};
+		}
+
+		pub fn directInit(child: anytype) @This() {
+			return .{
+				.data = child,
+				.inner = main.meta.castFunctionSelfToAnyopaque(@TypeOf(child.*).run),
 			};
 		}
 

@@ -111,6 +111,7 @@ pub const User = struct { // MARK: User
 	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
+	centerChunk: *SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
@@ -186,6 +187,7 @@ pub const User = struct { // MARK: User
 
 		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
+		self.loadUnloadChunks();
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -237,6 +239,7 @@ pub const User = struct { // MARK: User
 				}
 			}
 		}
+		self.centerChunk = self.loadedChunks[simArrIndex(newPos[0])][simArrIndex(newPos[1])][simArrIndex(newPos[2])];
 	}
 
 	fn loadUnloadChunks(self: *User) void {
