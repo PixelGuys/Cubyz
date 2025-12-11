@@ -50,6 +50,7 @@ pub fn __deinit() void {
 const OptionalCallbacks = struct {
 	onUp: ?gui.Callback = null,
 	onDown: ?gui.Callback = null,
+	onTab: ?gui.Callback = null,
 };
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
@@ -310,6 +311,12 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		}
 		self.ensureCursorVisibility();
 	}
+}
+
+pub fn tab(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+	_ = mods;
+	std.log.info("TAB", .{});
+	if(self.optional.onTab) |cb| cb.run();
 }
 
 fn moveCursorToStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
