@@ -29,6 +29,8 @@ pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
 
+pub var tickArena: main.heap.NeverFailingAllocator = undefined;
+
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
 
@@ -307,6 +309,8 @@ pub var thread: ?std.Thread = null;
 
 fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
+	main.heap.allocators.createServerTickArenas();
+	tickArena = main.heap.allocators.swapServerTickArenas();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = .init(main.globalAllocator);
@@ -361,6 +365,7 @@ fn deinit() void {
 	main.items.Inventory.Sync.ServerSide.deinit();
 
 	command.deinit();
+	main.heap.allocators.destroyServerTickArenas();
 	main.heap.allocators.destroyWorldArena();
 }
 
@@ -464,6 +469,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 			lastTime = newTime;
 		}
 		update();
+		tickArena = main.heap.allocators.swapServerTickArenas();
 	}
 }
 
