@@ -785,6 +785,7 @@ pub fn pressBreak(_: main.Window.Key.Modifiers) void {
 }
 
 pub fn releaseBreak(_: main.Window.Key.Modifiers) void {
+	main.renderer.MeshSelection.stopBreakBlock(main.renderer.MeshSelection.lastSelectedBlockPos);
 	nextBlockBreakTime = null;
 }
 
