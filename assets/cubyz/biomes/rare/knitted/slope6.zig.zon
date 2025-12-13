@@ -1,0 +1,27 @@
+.{
+	.properties = .{.mountain},
+	.radius = 140,
+	.minHeight = 640,
+	.maxHeight = 640,
+	.roughness = 20,
+	.mountains = 20,
+
+	.interpolation = .linear,
+	.chance = 0,
+
+	.music = "cubyz:out_of_breath",
+
+	.parentBiomes = .{
+		.{
+			.id = "rare_biome_rework:knitted/slope5",
+			.chance = 4,
+		},
+	},
+
+	.ground_structure = .{
+		"1 to 3 cubyz:snow",
+	},
+	.maxSubBiomeCount = 1,
+
+	.stoneBlock = "cubyz:glacite",
+}
