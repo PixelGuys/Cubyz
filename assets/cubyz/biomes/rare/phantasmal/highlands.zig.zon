@@ -32,7 +32,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.008,
-			.block = "cubyz:chalk/dark_grey",
+			.block = "cubyz:basalt",
 			.size = 4,
 			.size_variance = 12,
 		},
