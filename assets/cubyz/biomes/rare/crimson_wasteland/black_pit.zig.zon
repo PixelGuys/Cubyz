@@ -46,7 +46,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "rare_biome_rework:crimson_wasteland/base",
+			.id = "cubyz:crimson_wasteland/base",
 			.chance = 24,
 		},
 	},
