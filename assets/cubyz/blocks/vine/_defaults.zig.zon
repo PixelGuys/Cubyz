@@ -1,6 +1,10 @@
 .{
 	.tags = .{.cuttable},
 	.blockHealth = 0.3,
+	.onUpdate = .{
+		.type = .decay,
+		.prevention = .{.leaf, .log, .branch},
+	},
 	.drops = .{
 		.{.items = .{.auto}},
 	},
