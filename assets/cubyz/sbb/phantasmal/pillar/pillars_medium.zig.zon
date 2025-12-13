@@ -10,7 +10,7 @@
 		.{.id = null, .chance = 0.6},
 	},
 	.children = .{
-		.white = "cubyz:phantasmal_pillars/offshoot/offshoot",
-		.purple = "cubyz:phantasmal_pillars/top/top",
+		.white = "cubyz:phantasmal/offshoot/offshoot",
+		.purple = "cubyz:phantasmal/top/top",
 	},
 }
