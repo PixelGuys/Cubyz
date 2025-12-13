@@ -6,13 +6,12 @@
 	.minHeight = 80,
 	.maxHeight = 256,
 	.music = "cubyz:above_the_mist",
-
+	.stoneBlock = "cubyz:chalk/black",
 	.hills = 75,
 	.roughness = 45,
 
 	.ground_structure = .{
 		"0 to 1 cubyz:obsidian",
-		"15 cubyz:chalk/black",
 	},
 	.structures = .{
 		.{

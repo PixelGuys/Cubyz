@@ -11,9 +11,10 @@
 	.roughness = 5,
 	.rivers = true,
 
+	.stoneBlock = "cubyz:chalk/black",
+
 	.ground_structure = .{
 		"0 to 1 cubyz:obsidian",
-		"15 cubyz:chalk/black",
 	},
 
 	.structures = .{

@@ -7,10 +7,9 @@
 
 	.hills = 45,
 	.roughness = 85,
-
+	.stoneBlock = "cubyz:chalk/black",
 	.ground_structure = .{
 		"0 to 2 cubyz:obsidian",
-		"12 cubyz:chalk/black",
 	},
 	.structures = .{
 		.{
