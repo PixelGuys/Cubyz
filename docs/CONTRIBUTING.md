@@ -65,7 +65,6 @@ Cubyz has four main allocators, choose them based on lifetime:
 - global lifetime, things that are used until the end of the game (e.g. mod registry data) → `main.globalArena`
 - world lifetime, things that are used until the player exits the world (e.g. assets/addons) → `main.worldArena`
 - local lifetime, things that are freed at the end of the scope (including local data structures such as lists) → `main.stackAllocator`
-- server tick lifetime, things that are used until the end of the next tick (e.g. block updates and similar short-lived events) → `main.server.tickArena`
 - other lifetime → `main.globalAllocator`
 
 Sometimes it might also make sense to use another arena allocator `allocator.create-/destroyArena()` (when you have many small allocations that share the same lifetime, e.g. dynamic structure data in the structure map), or a `MemoryPool` (if you have many items of the same type that get freed and allocated many times throughout the game).

@@ -15,8 +15,6 @@ pub const allocators = struct { // MARK: allocators
 	pub var worldArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = undefined;
 	var worldArenaOpenCount: usize = 0;
 	var worldArenaMutex: std.Thread.Mutex = .{};
-	var serverTickArenas: [2]ThreadSafeAllocator(NeverFailingArenaAllocator) = undefined;
-	var activeTickArena: usize = 0;
 
 	pub fn deinit() void {
 		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.child.arena.queryCapacity() >> 20});
@@ -46,28 +44,6 @@ pub const allocators = struct { // MARK: allocators
 			worldArenaAllocator.deinit();
 			worldArenaAllocator = undefined;
 		}
-	}
-
-	pub fn createServerTickArenas() void {
-		for(0..serverTickArenas.len) |i| {
-			serverTickArenas[i] = .init(.init(handledGpa.allocator()));
-		}
-	}
-
-	pub fn destroyServerTickArenas() void {
-		for(0..serverTickArenas.len) |i| {
-			serverTickArenas[i].deinit();
-			serverTickArenas[i] = undefined;
-		}
-	}
-
-	pub fn swapServerTickArenas() NeverFailingAllocator {
-		activeTickArena += 1;
-		if(activeTickArena >= serverTickArenas.len) {
-			activeTickArena = 0;
-		}
-		_ = serverTickArenas[activeTickArena].child.reset(.free_all);
-		return serverTickArenas[activeTickArena].allocator();
 	}
 };
 

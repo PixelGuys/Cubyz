@@ -15,16 +15,18 @@ pub fn init() @This() {
 }
 pub fn deinit(self: *@This()) void {
 	self.mutex = undefined;
+	self.list.deinit(main.globalAllocator);
 }
 pub fn add(self: *@This(), position: BlockPos) void {
 	self.mutex.lock();
 	defer self.mutex.unlock();
-	self.list.append(main.server.tickArena, position);
+	self.list.append(main.globalAllocator, position);
 }
 pub fn update(self: *@This(), ch: *main.chunk.ServerChunk) void {
 	// swap
 	self.mutex.lock();
 	const list = self.list;
+	defer list.deinit(main.globalAllocator);
 	self.list = .{};
 	self.mutex.unlock();
 
