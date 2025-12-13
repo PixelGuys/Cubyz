@@ -1,0 +1,38 @@
+.{
+	.minRadius = 32,
+	.maxRadius = 48,
+	.chance = 0,
+	.keepOriginalTerrain = 1,
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy_cane/large",
+			.placeMode = .degradable,
+			.chance = 0.08,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy_cane/thick",
+			.placeMode = .degradable,
+			.chance = 0.3,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy_cane/thin/small",
+			.placeMode = .degradable,
+			.chance = 0.4,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:candy_cane/thin/big",
+			.placeMode = .degradable,
+			.chance = 0.2,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/winter_wonderland/base",
+			.chance = 10,
+		},
+	},
+}

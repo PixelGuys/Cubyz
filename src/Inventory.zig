@@ -292,7 +292,7 @@ pub const Sync = struct { // MARK: Sync
 			freeIdList.append(id);
 		}
 
-		fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
+		pub fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
 			var command = Command{
 				.payload = payload,
 			};
@@ -345,7 +345,7 @@ pub const Sync = struct { // MARK: Sync
 			const payload: Command.Payload = switch(typ) {
 				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try @FieldType(Command.Payload, @tagName(_typ)).deserialize(reader, .server, source)),
 			};
-			executeCommand(payload, source);
+			source.receiveCommand(payload);
 		}
 
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
