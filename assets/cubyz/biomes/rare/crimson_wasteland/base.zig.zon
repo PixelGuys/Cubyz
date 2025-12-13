@@ -76,7 +76,7 @@
 		.{
 			.id = "cubyz:simple_vegetation",
 			.block = "cubyz:basalt",
-			.chance = .4,
+			.chance = 0.4,
 			.height = 3,
 			.height_variation = 2,
 		},
