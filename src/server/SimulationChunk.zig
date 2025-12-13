@@ -58,8 +58,9 @@ pub fn setChunkAndDecreaseRefCount(self: *SimulationChunk, ch: *ServerChunk) voi
 }
 
 pub fn scheduleChunkEvent(self: *SimulationChunk, callback: main.callbacks.ChunkCallback) void {
-	main.utils.assertLocked(&self.chunkUpdateListMutex); // Should be locked while doing all the allocations in the tick arena. Otherwise the tick arena may get outdated when the thread is suspended for too long.
+	self.chunkUpdateListMutex.lock();
 	self.chunkUpdateList.append(main.globalAllocator, callback);
+	self.chunkUpdateListMutex.unlock();
 }
 
 pub fn update(self: *SimulationChunk, randomTickSpeed: u32) void {

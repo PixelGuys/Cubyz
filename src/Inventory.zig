@@ -345,9 +345,7 @@ pub const Sync = struct { // MARK: Sync
 			const payload: Command.Payload = switch(typ) {
 				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try @FieldType(Command.Payload, @tagName(_typ)).deserialize(reader, .server, source)),
 			};
-			source.centerChunk.chunkUpdateListMutex.lock();
 			source.centerChunk.scheduleChunkEvent(ChunkEventCallback.directInit(payload, source));
-			source.centerChunk.chunkUpdateListMutex.unlock();
 		}
 
 		const ChunkEventCallback = struct {
