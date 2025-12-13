@@ -13,7 +13,7 @@
 
 	.parentBiomes = .{
 		.{
-			.id = "rare_biome_rework:knitted/slope4",
+			.id = "cubyz:knitted/slope4",
 			.chance = 3,
 		},
 	},
