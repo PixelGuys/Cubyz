@@ -29,6 +29,7 @@ fn deinit(self: *SimulationChunk) void {
 	std.debug.assert(self.refCount.load(.monotonic) == 0);
 	self.blockUpdateSystem.deinit();
 	if(self.chunk.raw) |ch| ch.decreaseRefCount();
+	self.chunkUpdateList.deinit(main.globalAllocator); // TODO: What happens to unfinished events?
 	main.globalAllocator.destroy(self);
 }
 
@@ -58,12 +59,13 @@ pub fn setChunkAndDecreaseRefCount(self: *SimulationChunk, ch: *ServerChunk) voi
 
 pub fn scheduleChunkEvent(self: *SimulationChunk, callback: main.callbacks.ChunkCallback) void {
 	main.utils.assertLocked(&self.chunkUpdateListMutex); // Should be locked while doing all the allocations in the tick arena. Otherwise the tick arena may get outdated when the thread is suspended for too long.
-	self.chunkUpdateList.append(main.worldArena, callback);
+	self.chunkUpdateList.append(main.globalAllocator, callback);
 }
 
 pub fn update(self: *SimulationChunk, randomTickSpeed: u32) void {
 	self.chunkUpdateListMutex.lock();
 	const list = self.chunkUpdateList;
+	defer list.deinit(main.globalAllocator);
 	self.chunkUpdateList = .{};
 	self.chunkUpdateListMutex.unlock();
 	for(list.items) |callback| {
