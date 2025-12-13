@@ -12,9 +12,6 @@ refCount: std.atomic.Value(u32),
 pos: ChunkPosition,
 blockUpdateSystem: BlockUpdateSystem,
 
-chunkUpdateList: main.ListUnmanaged(main.callbacks.ChunkCallback) = .{},
-chunkUpdateListMutex: std.Thread.Mutex = .{},
-
 pub fn initAndIncreaseRefCount(pos: ChunkPosition) *SimulationChunk {
 	const self = main.globalAllocator.create(SimulationChunk);
 	self.* = .{
@@ -29,7 +26,6 @@ fn deinit(self: *SimulationChunk) void {
 	std.debug.assert(self.refCount.load(.monotonic) == 0);
 	self.blockUpdateSystem.deinit();
 	if(self.chunk.raw) |ch| ch.decreaseRefCount();
-	self.chunkUpdateList.deinit(main.globalAllocator); // TODO: What happens to unfinished events?
 	main.globalAllocator.destroy(self);
 }
 
@@ -57,22 +53,7 @@ pub fn setChunkAndDecreaseRefCount(self: *SimulationChunk, ch: *ServerChunk) voi
 	std.debug.assert(self.chunk.swap(ch, .release) == null);
 }
 
-pub fn scheduleChunkEvent(self: *SimulationChunk, callback: main.callbacks.ChunkCallback) void {
-	self.chunkUpdateListMutex.lock();
-	self.chunkUpdateList.append(main.globalAllocator, callback);
-	self.chunkUpdateListMutex.unlock();
-}
-
 pub fn update(self: *SimulationChunk, randomTickSpeed: u32) void {
-	self.chunkUpdateListMutex.lock();
-	const list = self.chunkUpdateList;
-	defer list.deinit(main.globalAllocator);
-	self.chunkUpdateList = .{};
-	self.chunkUpdateListMutex.unlock();
-	for(list.items) |callback| {
-		_ = callback.run(.{.TODO = {}});
-	}
-
 	const serverChunk = self.getChunk() orelse return;
 	tickBlocksInChunk(serverChunk, randomTickSpeed);
 	self.blockUpdateSystem.update(serverChunk);

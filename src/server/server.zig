@@ -109,7 +109,6 @@ pub const User = struct { // MARK: User
 	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
-	centerChunk: *SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
@@ -126,6 +125,8 @@ pub const User = struct { // MARK: User
 	refCount: Atomic(u32) = .init(1),
 
 	mutex: std.Thread.Mutex = .{},
+
+	inventoryCommands: main.ListUnmanaged(main.items.Inventory.Command.Payload) = .{},
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -162,6 +163,7 @@ pub const User = struct { // MARK: User
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
+		self.inventoryCommands.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -237,7 +239,6 @@ pub const User = struct { // MARK: User
 				}
 			}
 		}
-		self.centerChunk = self.loadedChunks[simArrIndex(newPos[0])][simArrIndex(newPos[1])][simArrIndex(newPos[2])];
 	}
 
 	fn loadUnloadChunks(self: *User) void {
@@ -252,6 +253,18 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn update(self: *User) void {
+		self.mutex.lock();
+		const commands = self.inventoryCommands;
+		defer commands.deinit(main.globalAllocator);
+		self.inventoryCommands = .{};
+		self.mutex.unlock();
+
+		for(commands.items) |commandPayload| {
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			main.items.Inventory.Sync.ServerSide.executeCommand(commandPayload, self);
+			main.items.Inventory.Sync.ServerSide.mutex.unlock();
+		}
+
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
@@ -268,6 +281,12 @@ pub const User = struct { // MARK: User
 		}
 
 		self.loadUnloadChunks();
+	}
+
+	pub fn receiveCommand(self: *User, commandPayload: main.items.Inventory.Command.Payload) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.inventoryCommands.append(main.globalAllocator, commandPayload);
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
