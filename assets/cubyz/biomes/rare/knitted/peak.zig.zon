@@ -22,7 +22,7 @@
 	.maxSubBiomeCount = 1,
 
 	.ground_structure = .{
-		"1 rare_biome_rework:bouncy_slime",
+		"1 cubyz:bouncy_slime",
 		"2 to 3 cubyz:cloth/block/brown",
 	},
 
