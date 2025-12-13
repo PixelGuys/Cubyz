@@ -29,7 +29,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "rare_biome_rework:knitted/peak",
+			.id = "cubyz:knitted/peak",
 			.chance = 6,
 		},
 	},
