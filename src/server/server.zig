@@ -126,6 +126,8 @@ pub const User = struct { // MARK: User
 
 	mutex: std.Thread.Mutex = .{},
 
+	inventoryCommands: main.ListUnmanaged(main.items.Inventory.Command.Payload) = .{},
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
@@ -161,6 +163,7 @@ pub const User = struct { // MARK: User
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
+		self.inventoryCommands.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -184,6 +187,7 @@ pub const User = struct { // MARK: User
 
 		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
+		self.loadUnloadChunks();
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -250,6 +254,18 @@ pub const User = struct { // MARK: User
 
 	pub fn update(self: *User) void {
 		self.mutex.lock();
+		const commands = self.inventoryCommands;
+		defer commands.deinit(main.globalAllocator);
+		self.inventoryCommands = .{};
+		self.mutex.unlock();
+
+		for(commands.items) |commandPayload| {
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			main.items.Inventory.Sync.ServerSide.executeCommand(commandPayload, self);
+			main.items.Inventory.Sync.ServerSide.mutex.unlock();
+		}
+
+		self.mutex.lock();
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
@@ -265,6 +281,12 @@ pub const User = struct { // MARK: User
 		}
 
 		self.loadUnloadChunks();
+	}
+
+	pub fn receiveCommand(self: *User, commandPayload: main.items.Inventory.Command.Payload) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.inventoryCommands.append(main.globalAllocator, commandPayload);
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
@@ -457,7 +479,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 		main.heap.GarbageCollection.syncPoint();
 		const newTime = main.timestamp();
 		if(lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
-			main.io.sleep(lastTime.durationTo(newTime.addDuration(updateTime)), .awake) catch {};
+			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
 			lastTime = lastTime.addDuration(updateTime);
 		} else {
 			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});

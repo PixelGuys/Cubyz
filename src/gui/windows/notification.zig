@@ -19,12 +19,13 @@ const width: f32 = 256;
 var text: []const u8 = "";
 
 pub fn deinit() void {
-	main.stackAllocator.free(text);
+	main.globalAllocator.free(text);
+	text = "";
 }
 
 fn setNotificationText(newText: []const u8) void {
-	main.stackAllocator.free(text);
-	text = main.stackAllocator.dupe(u8, newText);
+	main.globalAllocator.free(text);
+	text = main.globalAllocator.dupe(u8, newText);
 }
 
 pub fn raiseNotification(notifText: []const u8) void {
