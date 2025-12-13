@@ -197,7 +197,6 @@
 			.depth = 3,
 			.smoothness = 0.5,
 		},
-
 		
 		.{
 			.id = "cubyz:simple_tree",
