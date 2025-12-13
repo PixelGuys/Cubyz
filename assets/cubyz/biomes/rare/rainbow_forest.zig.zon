@@ -11,7 +11,7 @@
 	.roughness = 10,
 	.hills = 10,
 
-	.chance = 0.01,
+	.chance = 1,
 
 	.music = "cubyz:leaves",
 

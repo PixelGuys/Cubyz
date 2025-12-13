@@ -1,0 +1,64 @@
+.{
+	.properties = .{.mountain},
+	.radius = 320,
+	.minHeight = 128,
+	.maxHeight = 128,
+
+	.interpolation = .linear,
+	.mountains = 100,
+
+	.chance = 0.01,
+
+	.music = "cubyz:out_of_breath",
+
+	.ground_structure = .{
+		"1 cubyz:grass",
+		"3 to 4 cubyz:dirt",
+	},
+
+	.maxSubBiomeCount = 1,
+
+	.stoneBlock = "cubyz:slate",
+
+	.structures = .{
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:leaves/oak",
+			.log = "cubyz:oak_log",
+			.top = "cubyz:oak_top",
+			.chance = 0.6,
+			.type = .round,
+			.height = 6,
+			.height_variation = 3,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass_vegetation",
+			.chance = 0.4,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.03,
+			.block = "cubyz:slate",
+			.size = 5,
+			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.03,
+			.block = "cubyz:cobblestone",
+			.size = 5,
+			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:fallen_tree",
+			.log = "cubyz:oak_log",
+			.top = "cubyz:oak_log",
+			.height = 6,
+			.height_variation = 3,
+			.chance = 0.0024,
+		},
+	},
+}

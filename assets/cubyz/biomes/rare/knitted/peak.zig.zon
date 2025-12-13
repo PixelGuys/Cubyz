@@ -1,20 +1,41 @@
 .{
-	.properties = .{},
-	.minHeightLimit = 7,
-	.minHeight = 22,
-	.maxHeight = 40,
-	.maxHeightLimit = 50,
-	.smoothBeaches = true,
-	.minRadius = 256,
-	.maxRadius = 320,
+	.properties = .{.mountain},
+	.radius = 90,
+	.minHeight = 500,
+	.maxHeight = 500,
 	.roughness = 1,
 	.hills = 8,
-	.chance = 0.01,
-	.validPlayerSpawn = false,
-	.stoneBlock = "cubyz:cloth/block/grey",
+
+	.interpolation = .smooth,
+	.chance = 0,
+
+	.music = "cubyz:out_of_breath",
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:knitted/slope6",
+			.chance = 5,
+		},
+	},
+
+	.maxSubBiomeCount = 1,
+
 	.ground_structure = .{
+		"1 cubyz:bouncy_slime",
 		"2 to 3 cubyz:cloth/block/brown",
 	},
+
+	.stoneBlock = "cubyz:cloth/block/grey",
+	.stripes = .{
+		.{
+			.direction = .{1, 1, 1},
+			.block = "cubyz:cloth/block/dark_grey",
+			.distance = 6,
+			.offset = 3,
+			.width = 2,
+		},
+	},
+
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
@@ -76,7 +97,7 @@
 			.leaves = "cubyz:cloth/block/white",
 			.log = "cubyz:air",
 			.top = "cubyz:air",
-			.chance = 0.05,
+			.chance = 0.03,
 			.type = .round,
 			.height = 25,
 			.height_variation = 10,
