@@ -2,7 +2,13 @@
 	.onUpdate = .{
 		.type = .decay,
 		.prevention = .{.log, .branch},
-		.drops = .{},
+		.drops = .{
+			.{.chance = 0.01, .items = .{"cubyz:apple"}},
+		},
+	},
+	.drops = .{
+		.{.items = .{.auto}},
+		.{.chance = 0.01, .items = .{"cubyz:apple"}},
 	},
 	.rotation = "cubyz:decayable",
 	.tags = .{.cuttable, .leaf},

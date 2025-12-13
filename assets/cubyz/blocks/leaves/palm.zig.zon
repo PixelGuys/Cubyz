@@ -1,7 +1,4 @@
 .{
-	.drops = .{
-		.{.items = .{.auto}},
-	},
 	.model = "cubyz:cube_hanging_planes",
 	.texture = "cubyz:leaves/palm",
 	.texture12 = "cubyz:leaves/palm_hanging",
