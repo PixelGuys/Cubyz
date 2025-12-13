@@ -10,7 +10,7 @@
 	.{.old = "baobab_leaves", .new = "leaves/baobab"},
 	.{.old = "birch_leaves", .new = "leaves/birch"},
 	.{.old = "dead_leaves", .new = "leaves/dead"},
-	.{.old = "leaves/mahogany", .new = "leaves/mahogany"},
+	.{.old = "mahogany_leaves", .new = "leaves/mahogany"},
 	.{.old = "oak_leaves", .new = "leaves/oak"},
 	.{.old = "palm_leaves", .new = "leaves/palm"},
 	.{.old = "red_leaves", .new = "leaves/red"},
