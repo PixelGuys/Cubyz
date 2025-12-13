@@ -1,0 +1,22 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal/base/small/small_base_0", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/small_base_1", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/small_base_2", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/small_base_3", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/small_base_4", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/small_base_5", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/medium/medium_base_0", .chance = 0.3},
+		.{.id = "cubyz:phantasmal/base/medium/medium_base_1", .chance = 0.3},
+		.{.id = "cubyz:phantasmal/base/medium/medium_base_2", .chance = 0.3},
+		.{.id = "cubyz:phantasmal/base/medium/medium_base_3", .chance = 0.3},
+		.{.id = "cubyz:phantasmal/base/large/large_base_0", .chance = 0.1},
+		.{.id = "cubyz:phantasmal/base/large/large_base_1", .chance = 0.09},
+		.{.id = "cubyz:phantasmal/base/large/large_base_2", .chance = 0.09},
+	},
+	.children = .{
+		.black = "cubyz:phantasmal/pillar/pillars_large",
+		.dark_grey = "cubyz:phantasmal/pillar/pillars_medium",
+		.grey = "cubyz:phantasmal/pillar/pillars_small",
+	},
+}
