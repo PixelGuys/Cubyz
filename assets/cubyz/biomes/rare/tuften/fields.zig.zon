@@ -9,7 +9,7 @@
 	.maxRadius = 320,
 	.roughness = 1,
 	.hills = 15,
-	.chance = 0.02,
+	.chance = 0.01,
 	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{

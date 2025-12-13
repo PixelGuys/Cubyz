@@ -120,9 +120,9 @@ pub fn globalInit() void {
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		BlockGenerator.registerGenerator(@field(list, decl.name));
 	}
-	const t1 = std.time.milliTimestamp();
+	const t1 = main.timestamp();
 	noise.BlueNoise.load();
-	std.log.info("Blue noise took {} ms to load", .{std.time.milliTimestamp() -% t1});
+	std.log.info("Blue noise took {} ms to load", .{t1.durationTo(main.timestamp()).toMilliseconds()});
 }
 
 pub fn globalDeinit() void {

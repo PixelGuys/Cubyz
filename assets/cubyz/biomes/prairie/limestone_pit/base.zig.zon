@@ -1,0 +1,29 @@
+.{
+	.properties = .{
+		.dry,
+		.barren,
+	},
+	.minRadius = 16,
+	.maxRadius = 22,
+	.chance = 0,
+	.minHeight = 30,
+	.maxHeight = 36,
+	.roughness = 1,
+	.hills = 10,
+	.stoneBlock = "cubyz:limestone",
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:prairie/base",
+			.chance = 3,
+		},
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.5,
+			.block = "cubyz:limestone",
+			.size = 2,
+			.size_variance = 9,
+		},
+	},
+}

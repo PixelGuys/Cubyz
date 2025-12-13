@@ -22,13 +22,13 @@ fn printError(msg: []const u8, filePath: []const u8, data: []const u8, charIndex
 		}
 	}
 
-	var startLineChars = std.ArrayList(u8).init(globalAllocator);
-	defer startLineChars.deinit();
+	var startLineChars: std.ArrayList(u8) = .{};
+	defer startLineChars.deinit(globalAllocator);
 	for(data[lineStart..charIndex]) |c| {
 		if(c == '\t') {
-			startLineChars.append('\t') catch {};
+			startLineChars.append(globalAllocator, '\t') catch {};
 		} else {
-			startLineChars.append(' ') catch {};
+			startLineChars.append(globalAllocator, ' ') catch {};
 		}
 	}
 
@@ -38,7 +38,7 @@ fn printError(msg: []const u8, filePath: []const u8, data: []const u8, charIndex
 }
 
 fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
-	const data = try dir.readFileAlloc(globalAllocator, filePath, std.math.maxInt(usize));
+	const data = try dir.readFileAlloc(filePath, globalAllocator, .unlimited);
 	defer globalAllocator.free(data);
 
 	var lineStart: bool = true;

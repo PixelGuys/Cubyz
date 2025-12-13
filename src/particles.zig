@@ -19,8 +19,6 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 
-var seed: u64 = undefined;
-
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
 	var types: main.ListUnmanaged(ParticleType) = .{};
@@ -192,8 +190,6 @@ pub const ParticleSystem = struct {
 		particlesSSBO = SSBO.init();
 		particlesSSBO.createDynamicBuffer(Particle, maxCapacity);
 		particlesSSBO.bind(13);
-
-		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	}
 
 	fn deinit() void {
@@ -295,8 +291,8 @@ pub const ParticleSystem = struct {
 	}
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool) void {
-		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
-		const rot = if(properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.pi*2 else 0;
+		const lifeTime = properties.lifeTimeMin + random.nextFloat(&main.seed)*properties.lifeTimeMax;
+		const rot = if(properties.randomizeRotationOnSpawn) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
 
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
@@ -304,7 +300,7 @@ pub const ParticleSystem = struct {
 			.typ = typ,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
-			.velAndRotationVel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax),
+			.velAndRotationVel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&main.seed)*properties.rotVelMax),
 			.lifeVelocity = 1/lifeTime,
 			.collides = collides,
 		};
@@ -382,10 +378,10 @@ pub const Emitter = struct {
 
 		pub fn spawn(self: SpawnPoint) struct {Vec3d, Vec3f} {
 			const particlePos = self.position;
-			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&main.seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
-				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 			};
 			const particleVel = dir*speed;
 
@@ -402,14 +398,14 @@ pub const Emitter = struct {
 			const spawnPos: Vec3f = @splat(self.radius);
 			var offsetPos: Vec3f = undefined;
 			while(true) {
-				offsetPos = random.nextFloatVectorSigned(3, &seed);
+				offsetPos = random.nextFloatVectorSigned(3, &main.seed);
 				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
 			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
-			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&main.seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
-				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 				.spread => @floatCast(offsetPos),
 			};
 			const particleVel = dir*speed;
@@ -425,12 +421,12 @@ pub const Emitter = struct {
 
 		pub fn spawn(self: SpawnCube) struct {Vec3d, Vec3f} {
 			const spawnPos: Vec3f = self.size;
-			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &seed);
+			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &main.seed);
 			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
-			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&main.seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch(self.mode) {
 				.direction => |dir| dir,
-				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 				.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
 			};
 			const particleVel = dir*speed;
