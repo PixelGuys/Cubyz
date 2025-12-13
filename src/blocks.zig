@@ -85,6 +85,8 @@ var _bounciness: [maxBlockCount]f32 = undefined;
 var _density: [maxBlockCount]f32 = undefined;
 var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
+var _climbable: [maxBlockCount]bool = undefined;
+var _climbingSpeed: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
@@ -134,7 +136,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-
+	_climbable[size] = zon.get(bool, "climbable", false);
+	_climbingSpeed[size] = zon.get(f32, "climbingSpeed", 1.0);
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
 	const oreProperties = zon.getChild("ore");
@@ -441,6 +444,14 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
+	}
+
+	pub inline fn climbable(self: Block) bool {
+		return _climbable[self.typ];
+	}
+
+	pub inline fn climbingSpeed(self: Block) f32 {
+		return _climbingSpeed[self.typ];
 	}
 
 	pub inline fn friction(self: Block) f32 {

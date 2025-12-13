@@ -18,7 +18,7 @@ const playerDensity = 1.2;
 
 pub fn calculateProperties() void {
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
-		Player.volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
+		Player.volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0, .climbable = false, .climbingSpeed = 1.0});
 
 		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
@@ -31,13 +31,15 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		const effectiveGravity = gravity*(playerDensity - Player.volumeProperties.density)/playerDensity;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
+		const isClimbing = Player.volumeProperties.climbable and !Player.onGround;
 		var acc = inputAcc;
-		if(!Player.isFlying.load(.monotonic)) {
+		if(!Player.isFlying.load(.monotonic) and !isClimbing) {
 			acc[2] -= effectiveGravity;
 		}
 
 		const baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
+		const climbingFriction = 10;
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
@@ -50,6 +52,10 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				const jumpVelocity = @sqrt(Player.jumpHeight*gravity*2);
 				Player.super.vel[i] = @max(jumpVelocity, Player.super.vel[i] + jumpVelocity);
 				frictionCoefficient = volumeFrictionCoeffecient;
+			}
+
+			if(isClimbing and !Player.isFlying.load(.monotonic)) { // High friction while climbing
+				frictionCoefficient = climbingFriction;
 			}
 			const v_0 = Player.super.vel[i];
 			const a = acc[i];
