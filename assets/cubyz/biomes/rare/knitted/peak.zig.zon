@@ -6,7 +6,6 @@
 	.roughness = 1,
 	.hills = 8,
 
-
 	.interpolation = .smooth,
 	.chance = 0,
 
