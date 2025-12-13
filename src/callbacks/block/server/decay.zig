@@ -5,12 +5,15 @@ const Block = main.blocks.Block;
 const blocks = main.blocks;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
 const Server = main.server;
 const Branch = main.rotation.list.@"cubyz:branch";
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
+blockDrops: ?[]const blocks.BlockDrop,
 
 pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
@@ -18,6 +21,10 @@ pub fn init(zon: ZonElement) ?*@This() {
 	if(zon.get(?[]const u8, "replacement", null)) |blockname| {
 		result.decayReplacement = main.blocks.parseBlock(blockname);
 	} else result.decayReplacement = main.blocks.Block.air;
+	// custom drop
+	if(zon.getChildOrNull("drops")) |_| {
+		result.blockDrops = blocks.loadBlockDrop(null, zon);
+	} else result.blockDrops = null;
 	// prevention
 	result.prevention = &.{};
 	if(zon.getChildOrNull("prevention")) |tagNames| {
@@ -128,6 +135,23 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
+				const drops = if(self.blockDrops) |blockDrops| blockDrops else params.block.blockDrops();
+				for(drops) |drop| {
+					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
+						for(drop.items) |stack| {
+							var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
+							// Bias upwards
+							dir[2] += main.random.nextFloat(&main.seed)*4.0;
+							const model = leaf.mode().model(leaf).model();
+							const pos = Vec3f{
+								@as(f32, @floatFromInt(wx)) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
+								@as(f32, @floatFromInt(wy)) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
+								@as(f32, @floatFromInt(wz)) + model.min[2] + main.random.nextFloat(&main.seed)*(model.max[2] - model.min[2]),
+							};
+							main.server.world.?.drop(stack.clone(), pos, dir, 1);
+						}
+					}
+				}
 				return .handled;
 			}
 		}

@@ -61,7 +61,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replacable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
-var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
+var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
@@ -158,12 +158,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	return @intCast(size);
 }
 
-fn registerBlockDrop(typ: u16, zon: ZonElement) void {
+pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
-	_blockDrops[typ] = main.worldArena.alloc(BlockDrop, drops.len);
+	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for(drops, 0..) |blockDrop, i| {
-		_blockDrops[typ][i].chance = blockDrop.get(f32, "chance", 1);
+		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
 		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
@@ -182,15 +182,21 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 			}
 
 			if(std.mem.eql(u8, name, "auto")) {
-				name = _id[typ];
+				if(blockId) |id| {
+					name = id;
+				} else std.log.err("Cannot use 'auto' in this context", .{});
 			}
 
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
-
-		_blockDrops[typ][i].items = main.worldArena.dupe(items.ItemStack, resultItems.items);
+		blockDrops[i].items = main.worldArena.dupe(main.items.ItemStack, resultItems.items);
 	}
+	return blockDrops;
+}
+
+fn registerBlockDrop(typ: u16, zon: ZonElement) void {
+	_blockDrops[typ] = loadBlockDrop(_id[typ], zon);
 }
 
 fn registerLodReplacement(typ: u16, zon: ZonElement) void {
@@ -369,7 +375,7 @@ pub const Block = packed struct { // MARK: Block
 		return _selectable[self.typ];
 	}
 
-	pub inline fn blockDrops(self: Block) []BlockDrop {
+	pub inline fn blockDrops(self: Block) []const BlockDrop {
 		return _blockDrops[self.typ];
 	}
 
