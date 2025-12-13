@@ -355,7 +355,7 @@ pub const Sync = struct { // MARK: Sync
 			source: *main.server.User,
 
 			pub fn directInit(payload: main.items.Inventory.Command.Payload, source: *main.server.User) main.callbacks.ChunkCallback {
-				const result = main.server.tickArena.create(@This());
+				const result = main.globalAllocator.create(@This());
 				result.* = .{
 					.payload = payload,
 					.source = source,
@@ -367,6 +367,7 @@ pub const Sync = struct { // MARK: Sync
 				main.items.Inventory.Sync.ServerSide.mutex.lock();
 				main.items.Inventory.Sync.ServerSide.executeCommand(self.payload, self.source);
 				main.items.Inventory.Sync.ServerSide.mutex.unlock();
+				main.globalAllocator.destroy(self);
 				return .handled;
 			}
 		};
