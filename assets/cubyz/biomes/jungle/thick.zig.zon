@@ -5,6 +5,7 @@
 	.maxHeight = 50,
 	.maxHeightLimit = 60,
 	.hills = 10,
+	.radius = 128,
 
 	.ground_structure = .{"cubyz:lush_grass", "3 to 4 cubyz:mud"},
 
@@ -90,10 +91,10 @@
 		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:hibiscus",
-			.chance = 0.01,
-			.width = 8,
+			.chance = 0.02,
+			.width = 6,
 			.variation = 3,
-			.density = 0.1,
+			.density = 0.3,
 			.priority = 0.1,
 		},
 	},

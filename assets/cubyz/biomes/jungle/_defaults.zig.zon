@@ -8,5 +8,6 @@
 	.properties = .{
 		.wet,
 		.hot,
+		.overgrown,
 	},
 }

@@ -53,8 +53,8 @@
 			.log = "cubyz:mahogany_log",
 			.top = "cubyz:mahogany_log",
 			.chance = 0.03,
-			.height = 8,
-			.height_variation = 5,
+			.height = 6,
+			.height_variation = 3,
 		},
 		.{
 			.id = "cubyz:flower_patch",
