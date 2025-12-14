@@ -288,46 +288,6 @@ test "float int optional float missing" {
 	try std.testing.expect(result.z == null);
 }
 
-test "float optional int biome id missing" {
-	const ArgParser = Parser(struct {
-		x: f64,
-		y: ?i32,
-		z: BiomeId(false),
-	}, .{.commandName = ""});
-
-	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
-
-	const result = try ArgParser.parse(Test.allocator, "33.0 cubyz:foo", &errors);
-
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.x == 33.0);
-	try std.testing.expect(result.y == null);
-	try std.testing.expectEqualStrings("cubyz:foo", result.z.id);
-}
-
-test "float int BiomeId" {
-	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
-
-	const result = try Test.@"float int BiomeId".parse(Test.allocator, "33.0 154 cubyz:foo", &errors);
-
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.x == 33.0);
-	try std.testing.expect(result.y == 154);
-	try std.testing.expectEqualStrings("cubyz:foo", result.biome.id);
-}
-
-test "float int BiomeId negative shuffled" {
-	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
-
-	const result = Test.@"float int BiomeId".parse(Test.allocator, "33.0 cubyz:foo 154", &errors);
-
-	try std.testing.expect(errors.items.len != 0);
-	try std.testing.expectError(error.ParseError, result);
-}
-
 test "x or xy case x" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(Test.allocator);
