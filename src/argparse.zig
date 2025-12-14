@@ -201,45 +201,11 @@ pub const AutocompleteResult = struct {
 	}
 };
 
-pub fn BiomeId(comptime checkExists: bool) type {
-	return struct {
-		const Self = @This();
-
-		id: []const u8,
-
-		pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Self {
-			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) {
-				failWithMessage(allocator, errorMessage, "Biome \"{s}\" passed for <{s}> does not exist", .{arg, name});
-				return error.ParseError;
-			}
-			return .{.id = arg};
-		}
-
-		pub fn autocomplete(allocator: NeverFailingAllocator, arg: []const u8) AutocompleteResult {
-			var result: AutocompleteResult = .{};
-			var iterator = main.server.terrain.biomes.biomesById.keyIterator();
-			while(iterator.next()) |biomeId| {
-				const id = biomeId.*;
-				if(!std.mem.startsWith(u8, id, arg)) continue;
-				if(id.len == arg.len) continue;
-				result.suggestions.append(allocator, allocator.dupe(u8, id[arg.len..]));
-			}
-			return result;
-		}
-	};
-}
-
 const Test = struct {
 	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	var allocator = testingAllocator.allocator();
 
 	const OnlyX = Parser(struct {x: f64}, .{.commandName = ""});
-
-	const @"float int BiomeId" = Parser(struct {
-		x: f32,
-		y: u64,
-		biome: BiomeId(false),
-	}, .{.commandName = ""});
 
 	const @"Union X or XY" = Parser(union(enum) {
 		x: struct {x: f64},
