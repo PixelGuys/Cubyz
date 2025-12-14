@@ -9,32 +9,57 @@ pub const Options = struct {
 	commandName: []const u8,
 };
 
+const ResolveMode = enum {
+	Parse,
+	Autocomplete,
+};
+
 pub fn Parser(comptime T: type, comptime options: Options) type {
 	return struct {
 		const Self = @This();
 
 		pub fn parse(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!T {
-			return resolve(false, allocator, args, errorMessage);
+			return resolve(ResolveMode.Parse, allocator, args, errorMessage);
 		}
 
 		pub fn autocomplete(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) AutocompleteResult {
-			return resolve(true, allocator, args, errorMessage);
+			return resolve(ResolveMode.Autocomplete, allocator, args, errorMessage);
 		}
 
-		pub fn resolve(comptime doAutocomplete: bool, allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) if(doAutocomplete) AutocompleteResult else error{ParseError}!T {
+		pub fn resolve(
+			comptime mode: ResolveMode,
+			allocator: NeverFailingAllocator,
+			args: []const u8,
+			errorMessage: *ListUnmanaged(u8),
+		) switch(mode) {
+			.Autocomplete => AutocompleteResult,
+			.Parse => error{ParseError}!T,
+		} {
 			switch(@typeInfo(T)) {
 				inline .@"struct" => |s| {
-					return resolveStruct(doAutocomplete, s, allocator, args, errorMessage);
+					return resolveStruct(mode, s, allocator, args, errorMessage);
 				},
 				inline .@"union" => |u| {
 					if(u.tag_type == null) @compileError("Union must have a tag type");
-					return if(doAutocomplete) autocompleteUnion(u, allocator, args, errorMessage) else parseUnion(u, allocator, args, errorMessage);
+					return switch(mode) {
+						.Autocomplete => autocompleteUnion(u, allocator, args, errorMessage),
+						.Parse => parseUnion(u, allocator, args, errorMessage),
+					};
 				},
 				else => @compileError("Only structs and unions are supported"),
 			}
 		}
 
-		fn resolveStruct(comptime doAutocomplete: bool, comptime s: std.builtin.Type.Struct, allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) if(doAutocomplete) AutocompleteResult else error{ParseError}!T {
+		fn resolveStruct(
+			comptime mode: ResolveMode,
+			comptime s: std.builtin.Type.Struct,
+			allocator: NeverFailingAllocator,
+			args: []const u8,
+			errorMessage: *ListUnmanaged(u8),
+		) switch(mode) {
+			.Autocomplete => AutocompleteResult,
+			.Parse => error{ParseError}!T,
+		} {
 			var result: T = undefined;
 			var split = std.mem.splitScalar(u8, args, ' ');
 
