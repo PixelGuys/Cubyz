@@ -34,7 +34,7 @@ fn discoverIpAddress() void {
 		ipAddress = main.globalAllocator.dupe(u8, @errorName(err));
 		return;
 	};
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{}", .{connection.?.externalAddress}) catch unreachable;
+	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{connection.?.externalAddress}) catch unreachable;
 	gotIpAddress.store(true, .release);
 }
 
@@ -93,6 +93,7 @@ pub fn onOpen() void {
 	list.add(ipAddressLabel);
 	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}, .{});
+	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
 	list.finish(.center);
@@ -129,6 +130,13 @@ pub fn onClose() void {
 pub fn update() void {
 	if(gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
-		ipAddressLabel.updateText(ipAddress);
+
+		if(main.settings.streamerMode) {
+			const obfuscatedIp = main.utils.obfuscateString(main.stackAllocator, ipAddress);
+			defer main.stackAllocator.free(obfuscatedIp);
+			ipAddressLabel.updateText(obfuscatedIp);
+		} else {
+			ipAddressLabel.updateText(ipAddress);
+		}
 	}
 }

@@ -1,5 +1,5 @@
 .{
-	.tags = .{.cloth},
+	.tags = .{.cloth, .cuttable},
 	.blockHealth = 2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -7,4 +7,5 @@
 	.collide = false,
 	.model = "cubyz:carpet",
 	.rotation = "cubyz:carpet",
+	.degradable = true,
 }

@@ -1,5 +1,8 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .wood, .branch},
+	.onUpdate = .{
+		.type = .decay,
+	},
 	.blockHealth = 4,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -17,9 +20,10 @@
 	.texture5 = "cubyz:branch/willow/cross",
 	.item = .{
 		.material = .{
-			.density = 0.5,
-			.elasticity = 3,
-			.hardness = 2.9,
+			.durability = 20,
+			.massDamage = 0.5,
+			.hardnessDamage = 0.45,
+			.swingSpeed = 7.2,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff2a2521, 0xff332d28, 0xff413930, 0xff4f453a, 0xff413930,
@@ -33,4 +37,5 @@
 		},
 		.texture = "branch/willow.png",
 	},
+	.decayProhibitor = true,
 }

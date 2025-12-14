@@ -9,7 +9,6 @@ const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 
 pub const chunkShift: u5 = 5;
-pub const chunkShift2: u5 = chunkShift*2;
 pub const chunkSize: u31 = 1 << chunkShift;
 pub const chunkSizeIterator: [chunkSize]u0 = undefined;
 pub const chunkVolume: u31 = 1 << 3*chunkShift;
@@ -124,7 +123,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub fn extractDirectionComponent(self: Neighbor, in: anytype) @TypeOf(in[0]) {
 		switch(self) {
 			inline else => |val| {
-				return in[@intFromEnum(val.vectorComponent())];
+				return in[@intFromEnum(comptime val.vectorComponent())];
 			},
 		}
 	}
@@ -135,25 +134,6 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 		return arr[@intFromEnum(self)];
 	}
 };
-
-/// Gets the index of a given position inside this chunk.
-pub fn getIndex(x: i32, y: i32, z: i32) u32 {
-	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
-	return (@as(u32, @intCast(x)) << chunkShift2) | (@as(u32, @intCast(y)) << chunkShift) | @as(u32, @intCast(z));
-}
-
-/// Gets the x coordinate from a given index inside this chunk.
-fn extractXFromIndex(index: usize) i32 {
-	return @intCast(index >> chunkShift2 & chunkMask);
-}
-/// Gets the y coordinate from a given index inside this chunk.
-fn extractYFromIndex(index: usize) i32 {
-	return @intCast(index >> chunkShift & chunkMask);
-}
-/// Gets the z coordinate from a given index inside this chunk.
-fn extractZFromIndex(index: usize) i32 {
-	return @intCast(index & chunkMask);
-}
 
 var memoryPool: main.heap.MemoryPool(Chunk) = undefined;
 var serverPool: main.heap.MemoryPool(ServerChunk) = undefined;
@@ -190,6 +170,8 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 				return self.equals(notNull);
 			}
 			return false;
+		} else if(@TypeOf(other) == ChunkPosition) {
+			return self.wx == other.wx and self.wy == other.wy and self.wz == other.wz and self.voxelSize == other.voxelSize;
 		} else if(@TypeOf(other.*) == ServerChunk) {
 			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
 		} else if(@typeInfo(@TypeOf(other)) == .pointer) {
@@ -246,6 +228,56 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	}
 };
 
+/// Position of a block in chunk relative coordinates, 1 unit is equivalent to the voxel size of the chunk.
+pub const BlockPos = packed struct(u15) { // MARK: BlockPos
+	z: u5,
+	y: u5,
+	x: u5,
+
+	pub fn fromCoords(x: u5, y: u5, z: u5) BlockPos {
+		return .{
+			.x = x,
+			.y = y,
+			.z = z,
+		};
+	}
+
+	pub fn fromWorldCoords(wx: i32, wy: i32, wz: i32) BlockPos {
+		return .{
+			.x = @intCast(wx & chunkMask),
+			.y = @intCast(wy & chunkMask),
+			.z = @intCast(wz & chunkMask),
+		};
+	}
+
+	pub fn fromLodCoords(_x: i32, _y: i32, _z: i32, voxelSizeShift: u5) BlockPos {
+		const x = _x >> voxelSizeShift;
+		const y = _y >> voxelSizeShift;
+		const z = _z >> voxelSizeShift;
+		return .fromCoords(@intCast(x), @intCast(y), @intCast(z));
+	}
+
+	pub fn fromIndex(index: u15) BlockPos {
+		return @bitCast(index);
+	}
+
+	pub fn toIndex(self: BlockPos) u15 {
+		return @bitCast(self);
+	}
+
+	pub fn neighbor(self: BlockPos, n: Neighbor) struct {BlockPos, enum {inSameChunk, inNeighborChunk}} {
+		const result: BlockPos, const isInNeighborChunk: bool = switch(n) {
+			.dirUp => .{.fromCoords(self.x, self.y, self.z +% 1), self.z == chunkMask},
+			.dirDown => .{.fromCoords(self.x, self.y, self.z -% 1), self.z == 0},
+			.dirPosY => .{.fromCoords(self.x, self.y +% 1, self.z), self.y == chunkMask},
+			.dirNegY => .{.fromCoords(self.x, self.y -% 1, self.z), self.y == 0},
+			.dirPosX => .{.fromCoords(self.x +% 1, self.y, self.z), self.x == chunkMask},
+			.dirNegX => .{.fromCoords(self.x -% 1, self.y, self.z), self.x == 0},
+		};
+		return .{result, if(isInNeighborChunk) .inNeighborChunk else .inSameChunk};
+	}
+};
+
 pub const Chunk = struct { // MARK: Chunk
 	pos: ChunkPosition,
 	data: main.utils.PaletteCompressedRegion(Block, chunkVolume) = undefined,
@@ -255,7 +287,7 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeMask: i32,
 	widthShift: u5,
 
-	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, main.block_entity.BlockEntityIndex),
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntityIndex),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
@@ -284,7 +316,7 @@ pub const Chunk = struct { // MARK: Chunk
 	fn deinitContent(self: *Chunk) void {
 		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
-		self.data.deinit();
+		self.data.deferredDeinit();
 	}
 
 	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
@@ -292,9 +324,9 @@ pub const Chunk = struct { // MARK: Chunk
 		defer self.blockPosToEntityDataMapMutex.unlock();
 		var iterator = self.blockPosToEntityDataMap.iterator();
 		while(iterator.next()) |elem| {
-			const index = elem.key_ptr.*;
+			const pos = elem.key_ptr.*;
 			const entityDataIndex = elem.value_ptr.*;
-			const block = self.data.getValue(index);
+			const block = self.data.getValue(pos.toIndex());
 			const blockEntity = block.blockEntity() orelse unreachable;
 			switch(side) {
 				.client => {
@@ -310,22 +342,16 @@ pub const Chunk = struct { // MARK: Chunk
 
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlock(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
-		const x = _x >> self.voxelSizeShift;
-		const y = _y >> self.voxelSizeShift;
-		const z = _z >> self.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		self.data.setValue(index, newBlock);
+	pub fn updateBlock(self: *Chunk, x: i32, y: i32, z: i32, newBlock: Block) void {
+		const pos = BlockPos.fromLodCoords(x, y, z, self.voxelSizeShift);
+		self.data.setValue(pos.toIndex(), newBlock);
 	}
 
 	/// Gets a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn getBlock(self: *const Chunk, _x: i32, _y: i32, _z: i32) Block {
-		const x = _x >> self.voxelSizeShift;
-		const y = _y >> self.voxelSizeShift;
-		const z = _z >> self.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		return self.data.getValue(index);
+	pub fn getBlock(self: *const Chunk, x: i32, y: i32, z: i32) Block {
+		const pos = BlockPos.fromLodCoords(x, y, z, self.voxelSizeShift);
+		return self.data.getValue(pos.toIndex());
 	}
 
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
@@ -333,19 +359,20 @@ pub const Chunk = struct { // MARK: Chunk
 		return x >= 0 and x < self.width and y >= 0 and y < self.width and z >= 0 and z < self.width;
 	}
 
-	pub fn getLocalBlockIndex(self: *const Chunk, worldPos: Vec3i) u32 {
-		return getIndex(
-			(worldPos[0] - self.pos.wx) >> self.voxelSizeShift,
-			(worldPos[1] - self.pos.wy) >> self.voxelSizeShift,
-			(worldPos[2] - self.pos.wz) >> self.voxelSizeShift,
+	pub fn getLocalBlockPos(self: *const Chunk, worldPos: Vec3i) BlockPos {
+		return .fromLodCoords(
+			(worldPos[0] - self.pos.wx),
+			(worldPos[1] - self.pos.wy),
+			(worldPos[2] - self.pos.wz),
+			self.voxelSizeShift,
 		);
 	}
 
-	pub fn getGlobalBlockPosFromIndex(self: *const Chunk, index: u16) Vec3i {
+	pub fn localToGlobalPosition(self: *const Chunk, pos: BlockPos) Vec3i {
 		return .{
-			(extractXFromIndex(index) << self.voxelSizeShift) + self.pos.wx,
-			(extractYFromIndex(index) << self.voxelSizeShift) + self.pos.wy,
-			(extractZFromIndex(index) << self.voxelSizeShift) + self.pos.wz,
+			(@as(i32, pos.x) << self.voxelSizeShift) + self.pos.wx,
+			(@as(i32, pos.y) << self.voxelSizeShift) + self.pos.wy,
+			(@as(i32, pos.z) << self.voxelSizeShift) + self.pos.wz,
 		};
 	}
 };
@@ -356,6 +383,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	wasChanged: bool = false,
 	generated: bool = false,
 	wasStored: bool = false,
+	shouldStoreNeighbors: bool = false,
 
 	mutex: std.Thread.Mutex = .{},
 	refCount: std.atomic.Value(u16),
@@ -429,91 +457,49 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	/// Gets a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn getBlock(self: *const ServerChunk, _x: i32, _y: i32, _z: i32) Block {
+	pub fn getBlock(self: *const ServerChunk, x: i32, y: i32, z: i32) Block {
 		main.utils.assertLocked(&self.mutex);
-		const x = _x >> self.super.voxelSizeShift;
-		const y = _y >> self.super.voxelSizeShift;
-		const z = _z >> self.super.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		return self.super.data.getValue(index);
+		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
+		return self.super.data.getValue(pos.toIndex());
 	}
 
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockAndSetChanged(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+	pub fn updateBlockAndSetChanged(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
 		main.utils.assertLocked(&self.mutex);
-		const x = _x >> self.super.voxelSizeShift;
-		const y = _y >> self.super.voxelSizeShift;
-		const z = _z >> self.super.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		self.super.data.setValue(index, newBlock);
-		if(!self.wasChanged and self.super.pos.voxelSize == 1) {
-			self.mutex.unlock();
-			defer self.mutex.lock();
-			// Store all the neighbor chunks as well:
-			var dx: i32 = -@as(i32, chunkSize);
-			while(dx <= chunkSize) : (dx += chunkSize) {
-				var dy: i32 = -@as(i32, chunkSize);
-				while(dy <= chunkSize) : (dy += chunkSize) {
-					var dz: i32 = -@as(i32, chunkSize);
-					while(dz <= chunkSize) : (dz += chunkSize) {
-						if(dx == 0 and dy == 0 and dz == 0) continue;
-						const ch = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
-							.wx = self.super.pos.wx +% dx,
-							.wy = self.super.pos.wy +% dy,
-							.wz = self.super.pos.wz +% dz,
-							.voxelSize = 1,
-						});
-						defer ch.decreaseRefCount();
-						ch.mutex.lock();
-						defer ch.mutex.unlock();
-						if(!ch.wasStored) {
-							ch.setChanged();
-						}
-					}
-				}
-			}
-		}
+		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
+		self.super.data.setValue(pos.toIndex(), newBlock);
+		self.shouldStoreNeighbors = true;
 		self.setChanged();
 	}
 
 	/// Updates a block if current value is air or the current block is degradable.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockIfDegradable(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+	pub fn updateBlockIfDegradable(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
 		main.utils.assertLocked(&self.mutex);
-		const x = _x >> self.super.voxelSizeShift;
-		const y = _y >> self.super.voxelSizeShift;
-		const z = _z >> self.super.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		const oldBlock = self.super.data.getValue(index);
+		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
+		const oldBlock = self.super.data.getValue(pos.toIndex());
 		if(oldBlock.typ == 0 or oldBlock.degradable()) {
-			self.super.data.setValue(index, newBlock);
+			self.super.data.setValue(pos.toIndex(), newBlock);
 		}
 	}
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockInGeneration(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+	pub fn updateBlockInGeneration(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
 		main.utils.assertLocked(&self.mutex);
-		const x = _x >> self.super.voxelSizeShift;
-		const y = _y >> self.super.voxelSizeShift;
-		const z = _z >> self.super.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		self.super.data.setValue(index, newBlock);
+		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
+		self.super.data.setValue(pos.toIndex(), newBlock);
 	}
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockColumnInGeneration(self: *ServerChunk, _x: i32, _y: i32, _zStartInclusive: i32, _zEndInclusive: i32, newBlock: Block) void {
-		std.debug.assert(_zStartInclusive <= _zEndInclusive);
+	pub fn updateBlockColumnInGeneration(self: *ServerChunk, x: i32, y: i32, zStartInclusive: i32, zEndInclusive: i32, newBlock: Block) void {
+		std.debug.assert(zStartInclusive <= zEndInclusive);
 		main.utils.assertLocked(&self.mutex);
-		const x = _x >> self.super.voxelSizeShift;
-		const y = _y >> self.super.voxelSizeShift;
-		const zStartInclusive = _zStartInclusive >> self.super.voxelSizeShift;
-		const zEndInclusive = _zEndInclusive >> self.super.voxelSizeShift;
-		const indexStart = getIndex(x, y, zStartInclusive);
-		const indexEnd = getIndex(x, y, zEndInclusive) + 1;
-		self.super.data.setValueInColumn(indexStart, indexEnd, newBlock);
+		const posStart = BlockPos.fromLodCoords(x, y, zStartInclusive, self.super.voxelSizeShift);
+		const posEnd = BlockPos.fromLodCoords(x, y, zEndInclusive, self.super.voxelSizeShift);
+		self.super.data.setValueInColumn(posStart.toIndex(), @as(usize, posEnd.toIndex()) + 1, newBlock);
 	}
 
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
@@ -540,9 +526,9 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 						while(dy <= 1) : (dy += 1) {
 							var dz: u31 = 0;
 							while(dz <= 1) : (dz += 1) {
-								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
+								const pos = BlockPos.fromCoords(@intCast(x*2 + dx), @intCast(y*2 + dy), @intCast(z*2 + dz));
 								const i = dx*4 + dz*2 + dy;
-								octantBlocks[i] = other.super.data.getValue(index);
+								octantBlocks[i] = other.super.data.getValue(pos.toIndex());
 								octantBlocks[i].typ = octantBlocks[i].lodReplacement();
 								if(octantBlocks[i].typ == 0) {
 									neighborCount[i] = 0;
@@ -551,12 +537,9 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 								var count: u31 = 0;
 								for(Neighbor.iterable) |n| {
-									const nx = x*2 + dx + n.relX();
-									const ny = y*2 + dy + n.relY();
-									const nz = z*2 + dz + n.relZ();
-									if((nx & chunkMask) == nx and (ny & chunkMask) == ny and (nz & chunkMask) == nz) { // If it's inside the chunk.
-										const neighborIndex = getIndex(nx, ny, nz);
-										if(other.super.data.getValue(neighborIndex).transparent()) {
+									const neighborPos, const chunkLocation = pos.neighbor(n);
+									if(chunkLocation == .inSameChunk) {
+										if(other.super.data.getValue(neighborPos.toIndex()).transparent()) {
 											count += 5;
 										}
 									} else {
@@ -578,8 +561,8 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 						}
 					}
 					// Update the block:
-					const thisIndex = getIndex(x + xOffset, y + yOffset, z + zOffset);
-					self.super.data.setValue(thisIndex, block);
+					const thisPos = BlockPos.fromCoords(@intCast(x + xOffset), @intCast(y + yOffset), @intCast(z + zOffset));
+					self.super.data.setValue(thisPos.toIndex(), block);
 				}
 			}
 		}
@@ -590,6 +573,33 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	pub fn save(self: *ServerChunk, world: *main.server.ServerWorld) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
+		if(self.shouldStoreNeighbors and self.super.pos.voxelSize == 1) {
+			// Store all the neighbor chunks as well:
+			self.mutex.unlock();
+			defer self.mutex.lock();
+			var dx: i32 = -@as(i32, chunkSize);
+			while(dx <= chunkSize) : (dx += chunkSize) {
+				var dy: i32 = -@as(i32, chunkSize);
+				while(dy <= chunkSize) : (dy += chunkSize) {
+					var dz: i32 = -@as(i32, chunkSize);
+					while(dz <= chunkSize) : (dz += chunkSize) {
+						if(dx == 0 and dy == 0 and dz == 0) continue;
+						const ch = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
+							.wx = self.super.pos.wx +% dx,
+							.wy = self.super.pos.wy +% dy,
+							.wz = self.super.pos.wz +% dz,
+							.voxelSize = 1,
+						});
+						defer ch.decreaseRefCount();
+						ch.mutex.lock();
+						defer ch.mutex.unlock();
+						if(!ch.wasStored) {
+							ch.setChanged();
+						}
+					}
+				}
+			}
+		}
 		if(!self.wasStored and self.super.pos.voxelSize == 1) {
 			// Store the surrounding map pieces as well:
 			self.mutex.unlock();
@@ -600,8 +610,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				for(0..2) |dy| {
 					const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
 					const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
-					const map = main.server.terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(mapX, mapY, self.super.pos.voxelSize);
-					defer map.decreaseRefCount();
+					const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, self.super.pos.voxelSize);
 					if(!map.wasStored.swap(true, .monotonic)) {
 						map.save(null, .{});
 					}

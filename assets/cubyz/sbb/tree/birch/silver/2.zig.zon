@@ -1,0 +1,13 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/birch/trunk/4"},
+	},
+	.children = .{
+		.crimson = "cubyz:tree/birch/silver/mixed_branch",
+		.blue = "cubyz:tree/birch/silver/top",
+		.yellow = "cubyz:tree/birch/silver/root",
+		.magenta = "cubyz:tree/birch/silver/small_branch",
+		.lime = "cubyz:tree/birch/silver/top",
+		.pink = "cubyz:deco/side",
+	},
+}

@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:mushroom/big/toadstool/large_cap/0"},
+		.{.id = "cubyz:mushroom/big/toadstool/large_cap/1"},
+		.{.id = "cubyz:mushroom/big/toadstool/large_cap/2"},
+		.{.id = "cubyz:mushroom/big/toadstool/large_cap/3"},
+		.{.id = "cubyz:mushroom/big/toadstool/large_cap/4"},
+	},
+}

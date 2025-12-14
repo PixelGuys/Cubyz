@@ -7,6 +7,7 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Vec3i = main.vec.Vec3i;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -21,7 +22,6 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	data: [width*width]u64 = undefined,
 	pos: ChunkPosition,
 	voxelShift: u5,
-	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *CaveMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
 		self.* = .{
@@ -36,6 +36,14 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 		@memset(&self.data, std.math.maxInt(u64));
 	}
 
+	fn privateDeinit(self: *CaveMapFragment) void {
+		memoryPool.destroy(self);
+	}
+
+	pub fn deferredDeinit(self: *CaveMapFragment) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+	}
+
 	fn getIndex(x: i32, y: i32) usize {
 		std.debug.assert(x >= 0 and x < width and y >= 0 and y < width); // Coordinates out of range.
 		return @intCast(x*width + y);
@@ -48,19 +56,6 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 		const maskLower = if(start <= 0) (0) else if(start >= 64) (std.math.maxInt(u64)) else (@as(u64, std.math.maxInt(u64)) >> @intCast(64 - start));
 		const maskUpper = if(end <= 0) (std.math.maxInt(u64)) else if(end >= 64) (0) else (@as(u64, std.math.maxInt(u64)) << @intCast(end));
 		return maskLower | maskUpper;
-	}
-
-	pub fn increaseRefCount(self: *CaveMapFragment) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-	}
-
-	pub fn decreaseRefCount(self: *CaveMapFragment) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
-			memoryPool.destroy(self);
-		}
 	}
 
 	pub fn addRange(self: *CaveMapFragment, _relX: i32, _relY: i32, _start: i32, _end: i32) void {
@@ -82,14 +77,13 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	pub fn getColumnData(self: *CaveMapFragment, _relX: i32, _relY: i32) u64 {
 		const relX = _relX >> self.voxelShift;
 		const relY = _relY >> self.voxelShift;
-		return (&self.data)[getIndex(relX, relY)]; // TODO: #13938
+		return self.data[getIndex(relX, relY)];
 	}
 };
 
 /// A generator for the cave map.
 pub const CaveGenerator = struct { // MARK: CaveGenerator
 	init: *const fn(parameters: ZonElement) void,
-	deinit: *const fn() void,
 	generate: *const fn(map: *CaveMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
@@ -101,7 +95,6 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 	pub fn registerGenerator(comptime Generator: type) void {
 		const self = CaveGenerator{
 			.init = &Generator.init,
-			.deinit = &Generator.deinit,
 			.generate = &Generator.generate,
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,
@@ -129,72 +122,88 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 };
 
 pub const CaveMapView = struct { // MARK: CaveMapView
-	reference: *ServerChunk,
-	fragments: [8]*CaveMapFragment,
+	pos: ChunkPosition,
+	lowerCorner: Vec3i,
+	widthShift: u5,
+	heightShift: u5,
+	fragments: main.utils.Array3D(*CaveMapFragment),
 
-	pub fn init(chunk: *ServerChunk) CaveMapView {
-		const pos = chunk.super.pos;
-		const width = chunk.super.width;
-		return CaveMapView{
-			.reference = chunk,
-			.fragments = [_]*CaveMapFragment{
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy +% width, pos.wz +% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy +% width, pos.wz +% width, pos.voxelSize),
-			},
+	pub fn init(allocator: NeverFailingAllocator, pos: ChunkPosition, size: u31, margin: u31) CaveMapView {
+		const widthShift = std.math.log2_int(u31, pos.voxelSize*CaveMapFragment.width);
+		const heightShift = std.math.log2_int(u31, pos.voxelSize*CaveMapFragment.height);
+		const widthMask = ~@as(i32, (@as(u31, 1) << widthShift) - 1);
+		const heightMask = ~@as(i32, (@as(u31, 1) << heightShift) - 1);
+		const lowerCorner = Vec3i{
+			(pos.wx -% margin) & widthMask,
+			(pos.wy -% margin) & widthMask,
+			(pos.wz -% margin) & heightMask,
 		};
+		const higherCorner = Vec3i{
+			(pos.wx +% margin +% size) & widthMask,
+			(pos.wy +% margin +% size) & widthMask,
+			(pos.wz +% margin +% size) & heightMask,
+		};
+		const result = CaveMapView{
+			.pos = pos,
+			.lowerCorner = lowerCorner,
+			.widthShift = widthShift,
+			.heightShift = heightShift,
+			.fragments = .init(
+				allocator,
+				@intCast((higherCorner[0] -% lowerCorner[0] >> widthShift) + 1),
+				@intCast((higherCorner[1] -% lowerCorner[1] >> widthShift) + 1),
+				@intCast((higherCorner[2] -% lowerCorner[2] >> heightShift) + 1),
+			),
+		};
+		var wx = lowerCorner[0];
+		while(wx -% higherCorner[0] <= 0) : (wx += @as(u31, 1) << widthShift) {
+			var wy = lowerCorner[1];
+			while(wy -% higherCorner[1] <= 0) : (wy += @as(u31, 1) << widthShift) {
+				var wz = lowerCorner[2];
+				while(wz -% higherCorner[2] <= 0) : (wz += @as(u31, 1) << heightShift) {
+					const x: usize = @intCast((wx -% lowerCorner[0]) >> widthShift);
+					const y: usize = @intCast((wy -% lowerCorner[1]) >> widthShift);
+					const z: usize = @intCast((wz -% lowerCorner[2]) >> heightShift);
+					result.fragments.ptr(x, y, z).* = getOrGenerateFragment(wx, wy, wz, pos.voxelSize);
+				}
+			}
+		}
+		return result;
 	}
 
-	pub fn deinit(self: CaveMapView) void {
-		for(self.fragments) |mapFragment| {
-			mapFragment.decreaseRefCount();
-		}
+	pub fn deinit(self: CaveMapView, allocator: NeverFailingAllocator) void {
+		self.fragments.deinit(allocator);
 	}
 
 	pub fn isSolid(self: CaveMapView, relX: i32, relY: i32, relZ: i32) bool {
-		const wx = relX +% self.reference.super.pos.wx;
-		const wy = relY +% self.reference.super.pos.wy;
-		const wz = relZ +% self.reference.super.pos.wz;
-		var index: u8 = 0;
-		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 4;
-		}
-		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 2;
-		}
-		if(wz -% self.fragments[0].pos.wz >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 1;
-		}
-		const fragmentRelX = wx - self.fragments[index].pos.wx;
-		const fragmentRelY = wy - self.fragments[index].pos.wy;
-		const fragmentRelZ = @divFloor(wz - self.fragments[index].pos.wz, self.reference.super.pos.voxelSize);
-		const height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelY);
+		const wx = relX +% self.pos.wx;
+		const wy = relY +% self.pos.wy;
+		const wz = relZ +% self.pos.wz;
+		const x: usize = @intCast((wx -% self.lowerCorner[0]) >> self.widthShift);
+		const y: usize = @intCast((wy -% self.lowerCorner[1]) >> self.widthShift);
+		const z: usize = @intCast((wz -% self.lowerCorner[2]) >> self.heightShift);
+		const fragment = self.fragments.get(x, y, z);
+
+		const fragmentRelX = wx - fragment.pos.wx;
+		const fragmentRelY = wy - fragment.pos.wy;
+		const fragmentRelZ = @divFloor(wz - fragment.pos.wz, self.pos.voxelSize);
+		const height = fragment.getColumnData(fragmentRelX, fragmentRelY);
 		return (height & @as(u64, 1) << @intCast(fragmentRelZ)) != 0;
 	}
 
 	pub fn getHeightData(self: CaveMapView, relX: i32, relY: i32) u32 {
-		const wx = relX +% self.reference.super.pos.wx;
-		const wy = relY +% self.reference.super.pos.wy;
-		var index: u8 = 0;
-		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 4;
-		}
-		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 2;
-		}
-		var deltaZ = self.reference.super.pos.wz -% self.fragments[0].pos.wz;
-		if(deltaZ >= CaveMapFragment.height*self.reference.super.pos.voxelSize) {
-			index += 1;
-			deltaZ -= CaveMapFragment.height*self.reference.super.pos.voxelSize;
-		}
-		const fragmentRelX = wx - self.fragments[index].pos.wx;
-		const fragmentRelY = wy - self.fragments[index].pos.wy;
-		const height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelY);
+		const wx = relX +% self.pos.wx;
+		const wy = relY +% self.pos.wy;
+		const wz = self.pos.wz;
+		const x: usize = @intCast((wx -% self.lowerCorner[0]) >> self.widthShift);
+		const y: usize = @intCast((wy -% self.lowerCorner[1]) >> self.widthShift);
+		const z: usize = @intCast((wz -% self.lowerCorner[2]) >> self.heightShift);
+		const fragment = self.fragments.get(x, y, z);
+
+		const deltaZ = self.pos.wz -% fragment.pos.wz;
+		const fragmentRelX = wx - fragment.pos.wx;
+		const fragmentRelY = wy - fragment.pos.wy;
+		const height = fragment.getColumnData(fragmentRelX, fragmentRelY);
 		if(deltaZ == 0) {
 			return @truncate(height);
 		} else {
@@ -202,94 +211,62 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 		}
 	}
 
-	pub fn findTerrainChangeAbove(self: CaveMapView, relX: i32, relY: i32, z: i32) i32 {
-		const wx = relX +% self.reference.super.pos.wx;
-		const wy = relY +% self.reference.super.pos.wy;
-		var index: u8 = 0;
-		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 4;
+	pub fn findTerrainChangeAbove(self: CaveMapView, relX: i32, relY: i32, relZ: i32) i32 {
+		const wx = relX +% self.pos.wx;
+		const wy = relY +% self.pos.wy;
+		const wz = relZ +% self.pos.wz;
+		const x: usize = @intCast((wx -% self.lowerCorner[0]) >> self.widthShift);
+		const y: usize = @intCast((wy -% self.lowerCorner[1]) >> self.widthShift);
+		const z: usize = @intCast((wz -% self.lowerCorner[2]) >> self.heightShift);
+		const fragment = self.fragments.get(x, y, z);
+
+		const relativeZ = @divFloor(wz -% fragment.pos.wz, self.pos.voxelSize);
+		std.debug.assert(relativeZ >= 0 and relativeZ < CaveMapFragment.height);
+		const fragmentRelX = wx - fragment.pos.wx;
+		const fragmentRelY = wy - fragment.pos.wy;
+		var height: u64 = fragment.getColumnData(fragmentRelX, fragmentRelY) >> @intCast(relativeZ);
+		const startFilled = (height & 1) != 0;
+		if(relativeZ != 0 and z + 1 < self.fragments.height) {
+			height |= self.fragments.get(x, y, z + 1).getColumnData(fragmentRelX, fragmentRelY) << @intCast(CaveMapFragment.height - relativeZ);
 		}
-		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 2;
+		if(startFilled) {
+			height = ~height;
 		}
-		var relativeZ = @divFloor(z +% self.reference.super.pos.wz -% self.fragments[0].pos.wz, self.reference.super.pos.voxelSize);
-		std.debug.assert(relativeZ >= 0 and relativeZ < 2*CaveMapFragment.height);
-		const fragmentRelX = wx - self.fragments[index].pos.wx;
-		const fragmentRelY = wy - self.fragments[index].pos.wy;
-		var height: u64 = 0;
-		var result: i32 = relativeZ;
-		if(relativeZ < CaveMapFragment.height) {
-			// Check the lower part first.
-			height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelY) >> @intCast(relativeZ);
-			const startFilled = (height & 1) != 0;
-			if(relativeZ != 0) {
-				height |= self.fragments[index + 1].getColumnData(fragmentRelX, fragmentRelY) << @intCast(64 - relativeZ);
-			}
-			if(startFilled) {
-				height = ~height;
-			}
-		} else {
-			// Check only the upper part:
-			result = @max(CaveMapFragment.height, result);
-			relativeZ -= CaveMapFragment.height;
-			height = self.fragments[index + 1].getColumnData(fragmentRelX, fragmentRelY);
-			height >>= @intCast(relativeZ);
-			const startFilled = (height & 1) != 0;
-			if(startFilled) {
-				height = ~height;
-			}
-		}
-		result += @ctz(height);
-		return result*self.reference.super.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.super.pos.wz;
+		const result: i32 = relativeZ + @ctz(height);
+		return result*self.pos.voxelSize +% fragment.pos.wz -% self.pos.wz;
 	}
 
-	pub fn findTerrainChangeBelow(self: CaveMapView, relX: i32, relY: i32, z: i32) i32 {
-		const wx = relX +% self.reference.super.pos.wx;
-		const wy = relY +% self.reference.super.pos.wy;
-		var index: u8 = 0;
-		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 4;
+	pub fn findTerrainChangeBelow(self: CaveMapView, relX: i32, relY: i32, relZ: i32) i32 {
+		const wx = relX +% self.pos.wx;
+		const wy = relY +% self.pos.wy;
+		const wz = relZ +% self.pos.wz;
+		const x: usize = @intCast((wx -% self.lowerCorner[0]) >> self.widthShift);
+		const y: usize = @intCast((wy -% self.lowerCorner[1]) >> self.widthShift);
+		const z: usize = @intCast((wz -% self.lowerCorner[2]) >> self.heightShift);
+		const fragment = self.fragments.get(x, y, z);
+
+		const relativeZ = @divFloor(wz -% fragment.pos.wz, self.pos.voxelSize);
+		std.debug.assert(relativeZ >= 0 and relativeZ < CaveMapFragment.height);
+		const fragmentRelX = wx - fragment.pos.wx;
+		const fragmentRelY = wy - fragment.pos.wy;
+		var height: u64 = fragment.getColumnData(fragmentRelX, fragmentRelY) << (CaveMapFragment.height - 1 - @as(u6, @intCast(relativeZ)));
+		const startFilled = height & 1 << 63 != 0;
+		if(relativeZ != CaveMapFragment.height - 1 and z != 0) {
+			height |= self.fragments.get(x, y, z - 1).getColumnData(fragmentRelX, fragmentRelY) >> @as(u6, @intCast(relativeZ + 1));
 		}
-		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
-			index += 2;
+		if(startFilled) {
+			height = ~height;
 		}
-		var relativeZ = @divFloor(z +% self.reference.super.pos.wz -% self.fragments[0].pos.wz, self.reference.super.pos.voxelSize);
-		std.debug.assert(relativeZ >= 0 and relativeZ < 2*CaveMapFragment.height);
-		const fragmentRelX = wx - self.fragments[index].pos.wx;
-		const fragmentRelY = wy - self.fragments[index].pos.wy;
-		var height: u64 = 0;
-		var result: i32 = relativeZ;
-		if(relativeZ >= CaveMapFragment.height) {
-			relativeZ -= CaveMapFragment.height;
-			// Check the upper part first.
-			height = self.fragments[index + 1].getColumnData(fragmentRelX, fragmentRelY) << (63 - @as(u6, @intCast(relativeZ)));
-			const startFilled = height & 1 << 63 != 0;
-			if(relativeZ != CaveMapFragment.height - 1) {
-				height |= self.fragments[index].getColumnData(fragmentRelX, fragmentRelY) >> @as(u6, @intCast(relativeZ + 1));
-			}
-			if(startFilled) {
-				height = ~height;
-			}
-		} else {
-			// Check only the lower part:
-			result = @min(CaveMapFragment.height - 1, result);
-			height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelY);
-			height <<= @intCast(63 - relativeZ);
-			const startFilled = (height & 1 << 63) != 0;
-			if(startFilled) {
-				height = ~height;
-			}
-		}
-		result -= @clz(height);
-		return result*self.reference.super.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.super.pos.wz;
+		const result: i32 = relativeZ - @clz(height);
+		return result*self.pos.voxelSize +% fragment.pos.wz -% self.pos.wz;
 	}
 };
 
 // MARK: cache
-const cacheSize = 1 << 11; // Must be a power of 2!
+const cacheSize = 1 << 12; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
-const associativity = 8; // 512 MiB Cache size
-var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.decreaseRefCount) = .{};
+const associativity = 8; // 1024 MiB Cache size
+var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
 var memoryPool: main.heap.MemoryPool(CaveMapFragment) = undefined;
@@ -300,38 +277,37 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	for(profile.caveGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
-pub fn initGenerators() void {
+pub fn globalInit() void {
 	const list = @import("cavegen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
+	memoryPool = .init(main.globalAllocator);
 }
 
-pub fn deinitGenerators() void {
+pub fn globalDeinit() void {
 	CaveGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
+	memoryPool.deinit();
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
-	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
-	memoryPool.deinit();
 }
 
-fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {
+fn getOrGenerateFragment(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {
 	const compare = ChunkPosition{
 		.wx = wx & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize - 1),
 		.wy = wy & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize - 1),
 		.wz = wz & ~@as(i32, CaveMapFragment.heightMask*voxelSize | voxelSize - 1),
 		.voxelSize = voxelSize,
 	};
-	const result = cache.findOrCreate(compare, cacheInit, CaveMapFragment.increaseRefCount);
+	const result = cache.findOrCreate(compare, cacheInit, null);
 	return result;
 }

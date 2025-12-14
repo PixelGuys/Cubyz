@@ -1,0 +1,48 @@
+.{
+	.properties = .{},
+	.minRadius = 32,
+	.maxRadius = 48,
+	.chance = 0,
+	.minHeight = 1500,
+	.maxHeight = 3000,
+	.keepOriginalTerrain = 0.99,
+	.roughness = 1,
+	.mountains = 50,
+	.hills = 20,
+	.stoneBlock = "cubyz:sandstone",
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rock/hoodoo/small_medium",
+			.placeMode = .degradable,
+			.chance = 0.1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cactus/saguaro",
+			.placeMode = .degradable,
+			.chance = 0.003,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cactus/young",
+			.placeMode = .degradable,
+			.chance = 0.03,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:tussock",
+			.chance = 0.03,
+			.width = 4,
+			.variation = 4,
+			.density = 0.2,
+			.priority = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:desert/hoodoos/base",
+			.chance = 15,
+		},
+	},
+}

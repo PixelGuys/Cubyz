@@ -48,7 +48,8 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 		}
 	};
 	if(data >= 64) return 0;
-	return rotationTable[@intFromEnum(angle)][data];
+	const runtimeTable = rotationTable;
+	return runtimeTable[@intFromEnum(angle)][data];
 }
 
 pub fn init() void {
@@ -125,7 +126,7 @@ pub fn model(block: Block) ModelIndex {
 
 pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, _: ?Neighbor, currentData: *Block, neighbor: Block, _: bool) bool {
 	if(neighbor.mode() == currentData.mode()) parallelPlacing: {
-		const bit = closestRay(.bit, neighbor, null, relativePlayerPos - @as(Vec3f, @floatFromInt(relativeDir)), playerDir);
+		const bit = closestRay(.bit, neighbor, .null, relativePlayerPos - @as(Vec3f, @floatFromInt(relativeDir)), playerDir);
 		const bitData: CarpetData = @bitCast(@as(u6, @truncate(bit)));
 		if((bitData.negX or bitData.posX) and relativeDir[0] != 0) break :parallelPlacing;
 		if((bitData.negY or bitData.posY) and relativeDir[1] != 0) break :parallelPlacing;
@@ -149,7 +150,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, pla
 	}
 }
 
-fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
 	var result: ?RayIntersectionResult = null;
 	var resultBit: u16 = 0;
 	for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
@@ -167,11 +168,11 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 	return result;
 }
 
-pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 	return closestRay(.intersection, block, item, relativePlayerPos, playerDir);
 }
 
-pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
 	currentData.data &= ~bit;
 	if(currentData.data == 0) currentData.typ = 0;

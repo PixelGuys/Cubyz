@@ -1,12 +1,12 @@
 compiler/
 logs/
-saves/
 zig-out/
 zig-cache/
 .zig-cache/
 serverAssets/
 gamecontrollerdb.txt
 gamecontrollerdb.stamp
+launchConfig.zon
 
 test.png
 
@@ -16,3 +16,5 @@ test.png
 /assets/*
 !/assets/cubyz
 !/assets/backgrounds/default_background.png
+/assets/cubyz/music
+/assets/cubyz/fonts

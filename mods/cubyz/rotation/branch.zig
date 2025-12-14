@@ -33,11 +33,12 @@ const HashMapKey = struct {
 		return std.mem.eql(u8, val1.shellModelId, val2.shellModelId);
 	}
 };
-pub const BranchData = packed struct(u6) {
+pub const BranchData = packed struct(u7) {
 	enabledConnections: u6,
+	placedByHuman: bool,
 
 	pub inline fn init(blockData: u16) BranchData {
-		return .{.enabledConnections = @truncate(blockData)};
+		return @bitCast(@as(u7, @truncate(blockData)));
 	}
 
 	pub inline fn isConnected(self: @This(), neighbor: Neighbor) bool {
@@ -107,8 +108,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[3][1] - offY)),
 	};
 
-	var offset: Vec3f = .{0.0, 0.0, 0.0};
-	offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) max else min;
+	const offset: Vec3f = @as(Vec3f, @floatFromInt(@abs(side.relPos())))*@as(Vec3f, @splat(if(side.isPositive()) max else min));
 
 	const res: main.models.QuadInfo = .{
 		.corners = .{
@@ -117,7 +117,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 			corners3d[2] + offset,
 			corners3d[3] + offset,
 		},
-		.cornerUV = originalCorners,
+		.cornerUV = .{originalCorners[0], originalCorners[1], originalCorners[2], originalCorners[3]},
 		.normal = @as(Vec3f, @floatFromInt(side.relPos())),
 		.textureSlot = textureSlotOffset + @intFromEnum(pattern),
 	};
@@ -324,10 +324,11 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 			rotationTable[a][i] = new.enabledConnections;
 		}
 	};
-	if(data >= 0b111111) return 0;
+	if(data > 0b111111) return 0;
 	const rotationIndex = (data & 0b111100) >> 2;
 	const upDownFlags = data & 0b000011;
-	return rotationTable[@intFromEnum(angle)][rotationIndex] | upDownFlags;
+	const runtimeTable = rotationTable;
+	return runtimeTable[@intFromEnum(angle)][rotationIndex] | upDownFlags;
 }
 
 pub fn generateData(
@@ -352,7 +353,8 @@ pub fn generateData(
 		const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 		currentData.setConnection(neighbor.?, targetVal);
 
-		const result: u16 = currentData.enabledConnections;
+		currentData.placedByHuman = true;
+		const result: u7 = @bitCast(currentData);
 		if(result == currentBlock.data) return false;
 
 		currentBlock.data = result;
@@ -375,7 +377,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 		currentData.setConnection(neighbor, false);
 	}
 
-	const result: u16 = currentData.enabledConnections;
+	const result: u7 = @bitCast(currentData);
 	if(result == block.data) return false;
 
 	block.data = result;
@@ -408,7 +410,7 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 	return resultBitMask;
 }
 
-pub fn onBlockBreaking(_: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+pub fn onBlockBreaking(_: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	if(closestRay(currentData.*, relativePlayerPos, playerDir)) |directionBitMask| {
 		// If player destroys a central part of branch block, branch block is completely destroyed.
 		if(directionBitMask == 0) {

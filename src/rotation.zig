@@ -6,13 +6,14 @@ const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const main = @import("main");
 const ModelIndex = main.models.ModelIndex;
+const Tag = main.Tag;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
 
-const list = @import("rotation");
+pub const list = @import("rotation");
 
 pub const RayIntersectionResult = struct {
 	distance: f64,
@@ -52,7 +53,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn modifyBlock(_: *Block, _: u16) bool {
 			return false;
 		}
-		pub fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		pub fn rayIntersection(block: Block, _: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
 		}
 		pub fn rayModelIntersection(modelIndex: ModelIndex, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
@@ -91,7 +92,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			return null;
 		}
-		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+		pub fn onBlockBreaking(_: main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 			currentData.* = .{.typ = 0, .data = 0};
 		}
 		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto {
@@ -99,23 +100,21 @@ pub const RotationMode = struct { // MARK: RotationMode
 			if(oldBlock == newBlock) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
 			if(!oldBlock.replacable()) {
-				var damage: f32 = 1;
-				const isTool = item.item != null and item.item.? == .tool;
+				var damage: f32 = main.game.Player.defaultBlockDamage;
+				const isTool = item.item == .tool;
 				if(isTool) {
-					damage = item.item.?.tool.getBlockDamage(oldBlock);
+					damage = item.item.tool.getBlockDamage(oldBlock);
 				}
 				damage -= oldBlock.blockResistance();
 				if(damage > 0) {
-					if(isTool) {
-						return .{.yes_costsDurability = @intFromFloat(@ceil(oldBlock.blockHealth()/damage))};
+					if(isTool and item.item.tool.isEffectiveOn(oldBlock)) {
+						return .{.yes_costsDurability = 1};
 					} else return .yes;
 				}
 			} else {
-				if(item.item) |_item| {
-					if(_item == .baseItem) {
-						if(_item.baseItem.block() != null and _item.baseItem.block().? == newBlock.typ) {
-							return .{.yes_costsItems = 1};
-						}
+				if(item.item == .baseItem) {
+					if(item.item.baseItem.block() != null and item.item.baseItem.block().? == newBlock.typ) {
+						return .{.yes_costsItems = 1};
 					}
 				}
 				if(newBlock.typ == 0) {
@@ -123,6 +122,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 				}
 			}
 			return .no;
+		}
+		pub fn getBlockTags() []const Tag {
+			return &.{};
 		}
 	};
 
@@ -156,11 +158,13 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	modifyBlock: *const fn(block: *Block, newType: u16) bool = DefaultFunctions.modifyBlock,
 
-	rayIntersection: *const fn(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 
-	onBlockBreaking: *const fn(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
+	onBlockBreaking: *const fn(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 
 	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
+
+	getBlockTags: *const fn() []const Tag = DefaultFunctions.getBlockTags,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -194,7 +198,7 @@ pub fn deinit() void {
 	}
 }
 
-pub fn getByID(id: []const u8) *RotationMode {
+pub fn getByID(id: []const u8) *const RotationMode {
 	if(rotationModes.getPtr(id)) |mode| return mode;
 	std.log.err("Could not find rotation mode {s}. Using cubyz:no_rotation instead.", .{id});
 	return rotationModes.getPtr("cubyz:no_rotation").?;

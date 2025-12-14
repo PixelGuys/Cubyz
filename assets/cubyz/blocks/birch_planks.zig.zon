@@ -1,14 +1,21 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .wood},
 	.blockHealth = 6,
 	.item = .{
 		.material = .{
-			.density = 0.6,
-			.elasticity = 2.75,
-			.hardness = 1.75,
+			.durability = 24,
+			.massDamage = 0.9,
+			.hardnessDamage = 0.9,
+			.swingSpeed = 4.6,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff9b7a5b, 0xffbf9872, 0xffdeb287, 0xfff2c89c, 0xffffdfb7,
+			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 0.4,
+				},
 			},
 		},
 	},

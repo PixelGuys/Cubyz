@@ -16,7 +16,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeToolParameters(tool: *Tool, data: Data) void {
-	tool.swingTime *= 1 - data.strength;
+	tool.swingSpeed /= 1 - data.strength;
 }
 
 pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
@@ -24,5 +24,5 @@ pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.writer().print("#9fffde**Light**#808080 *Decreases swing time by **{d:.0}%", .{data.strength*100}) catch unreachable;
+	outString.print("#9fffde**Light**#808080 *Decreases swing time by **{d:.0}%", .{data.strength*100});
 }

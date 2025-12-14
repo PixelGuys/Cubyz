@@ -51,30 +51,29 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
 
+	if(t.os.tag == .macos) {
+		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/Cubyz.app/Contents/Frameworks/libMoltenVK.dylib");
+		const moltenVkJsonInstall = b.addInstallFile(subPath.path(b, "MoltenVK_icd.json"), "bin/Cubyz.app/Contents/Resources/vulkan/icd.d/MoltenVK_icd.json");
+		exe.step.dependOn(&moltenVkLibInstall.step);
+		exe.step.dependOn(&moltenVkJsonInstall.step);
+
+		const validationLayerLibInstall = b.addInstallFile(subPath.path(b, "libVkLayer_khronos_validation.dylib"), "bin/Cubyz.app/Contents/Frameworks/libVkLayer_khronos_validation.dylib");
+		const validationLayerJsonInstall = b.addInstallFile(subPath.path(b, "VkLayer_khronos_validation.json"), "bin/Cubyz.app/Contents/Resources/vulkan/explicit_layer.d/VkLayer_khronos_validation.json");
+		exe.step.dependOn(&validationLayerLibInstall.step);
+		exe.step.dependOn(&validationLayerJsonInstall.step);
+	}
+
 	if(t.os.tag == .windows) {
-		exe.linkSystemLibrary("ole32");
-		exe.linkSystemLibrary("winmm");
-		exe.linkSystemLibrary("uuid");
+		exe.linkSystemLibrary("crypt32");
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
-	} else if(t.os.tag == .linux) {
-		exe.linkSystemLibrary("asound");
-		exe.linkSystemLibrary("X11");
-		exe.linkSystemLibrary("GL");
 	} else if(t.os.tag == .macos) {
-		exe.linkFramework("AudioUnit");
-		exe.linkFramework("AudioToolbox");
-		exe.linkFramework("CoreAudio");
-		exe.linkFramework("CoreServices");
-		exe.linkFramework("Foundation");
-		exe.linkFramework("IOKit");
 		exe.linkFramework("Cocoa");
+		exe.linkFramework("CoreFoundation");
+		exe.linkFramework("IOKit");
 		exe.linkFramework("QuartzCore");
-		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
-		exe.root_module.addRPathSpecial("@executable_path/../Library");
-		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
-	} else {
+	} else if(t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
 }
@@ -147,7 +146,25 @@ pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions)
 	try makeModFeature(step, "rotation");
 }
 
+fn createLaunchConfig() !void {
+	std.fs.cwd().access("launchConfig.zon", .{}) catch {
+		const launchConfig =
+			\\.{
+			\\    .cubyzDir = "",
+			\\    .autoEnterWorld = "",
+			\\    .headlessServer = false,
+			\\}
+		;
+		try std.fs.cwd().writeFile(.{
+			.data = launchConfig,
+			.sub_path = "launchConfig.zon",
+		});
+	};
+}
+
 pub fn build(b: *std.Build) !void {
+	try createLaunchConfig();
+
 	// Standard target options allows the person running `zig build` to choose
 	// what target to build for. Here we do not override the defaults, which
 	// means any target is allowed, and the default is native. Other options
@@ -158,22 +175,78 @@ pub fn build(b: *std.Build) !void {
 	// between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
 	const optimize = b.standardOptimizeOption(.{});
 
+	const options = b.addOptions();
+	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
+	const version = b.fmt("0.1.0{s}", .{if(isRelease) "" else "-dev"});
+	options.addOption([]const u8, "version", version);
+	options.addOption(bool, "isTaggedRelease", isRelease);
+
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
 
-	const exe = b.addExecutable(.{
-		.name = "Cubyzig",
+	const largeAssets = b.dependency("cubyz_large_assets", .{});
+	b.installDirectory(.{
+		.source_dir = largeAssets.path("music"),
+		.install_subdir = "assets/cubyz/music/",
+		.install_dir = .{.custom = ".."},
+	});
+	b.installDirectory(.{
+		.source_dir = largeAssets.path("fonts"),
+		.install_subdir = "assets/cubyz/fonts/",
+		.install_dir = .{.custom = ".."},
+	});
+
+	const mainModule = b.addModule("main", .{
 		.root_source_file = b.path("src/main.zig"),
 		.target = target,
 		.optimize = optimize,
-		//.sanitize_thread = true,
-		//.use_llvm = false,
 	});
-	exe.root_module.addImport("main", exe.root_module);
+
+	const exe = b.addExecutable(.{
+		.name = "Cubyz",
+		.root_module = mainModule,
+		//.sanitize_thread = true,
+		.use_llvm = true,
+	});
+	exe.root_module.addOptions("build_options", options);
+	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
+
+	if(isRelease and target.result.os.tag == .windows) {
+		exe.subsystem = .Windows;
+	}
 
 	linkLibraries(b, exe, useLocalDeps);
 
-	b.installArtifact(exe);
+	var exeInstallOptions: std.Build.Step.InstallArtifact.Options = .{};
+	if(target.result.os.tag == .macos) {
+		exeInstallOptions = .{
+			.dest_dir = .{.override = .{.custom = "bin/Cubyz.app/Contents/MacOS"}},
+		};
+
+		const plistContents =
+			\\<?xml version="1.0" encoding="UTF-8"?>
+			\\<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+			\\<plist version="1.0">
+			\\<dict>
+			\\    <key>CFBundleIconFile</key>
+			\\    <string>logo</string>
+			\\</dict>
+			\\</plist>
+		;
+
+		const writeFiles = b.addWriteFiles();
+		const plistPath = writeFiles.add("Info.plist", plistContents);
+		const plistInstall = b.addInstallFile(plistPath, "bin/Cubyz.app/Contents/Info.plist");
+		b.getInstallStep().dependOn(&plistInstall.step);
+		const iconsInstall = b.addInstallFile(b.path("assets/cubyz/logo.icns"), "bin/Cubyz.app/Contents/Resources/logo.icns");
+		b.getInstallStep().dependOn(&iconsInstall.step);
+
+		// NOTE(blackedout): This is to make the Vulkan loader search in (bundle)/Contents/Frameworks to find the libs referenced in the manifest files
+		exe.root_module.addRPathSpecial("@loader_path/../Frameworks");
+	}
+
+	const installExe = b.addInstallArtifact(exe, exeInstallOptions);
+	b.getInstallStep().dependOn(&installExe.step);
 
 	const run_cmd = b.addRunArtifact(exe);
 	run_cmd.step.dependOn(b.getInstallStep());
@@ -184,14 +257,20 @@ pub fn build(b: *std.Build) !void {
 	const run_step = b.step("run", "Run the app");
 	run_step.dependOn(&run_cmd.step);
 
-	const exe_tests = b.addTest(.{
-		.root_source_file = b.path("src/main.zig"),
-		.test_runner = .{.path = b.path("test/runner.zig"), .mode = .simple},
+	const dependencyWithTestRunner = b.lazyDependency("cubyz_test_runner", .{
 		.target = target,
 		.optimize = optimize,
+	}) orelse {
+		std.log.info("Downloading cubyz_test_runner dependency.", .{});
+		return;
+	};
+	const exe_tests = b.addTest(.{
+		.root_module = mainModule,
+		.test_runner = .{.path = dependencyWithTestRunner.path("lib/compiler/test_runner.zig"), .mode = .simple},
 	});
 	linkLibraries(b, exe_tests, useLocalDeps);
-	exe_tests.root_module.addImport("main", exe_tests.root_module);
+	exe_tests.root_module.addOptions("build_options", options);
+	exe_tests.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe_tests);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
 
@@ -201,17 +280,16 @@ pub fn build(b: *std.Build) !void {
 	// MARK: Formatter
 
 	const formatter = b.addExecutable(.{
-		.name = "CubyzigFormatter",
-		.root_source_file = b.path("src/formatter/format.zig"),
-		.target = target,
-		.optimize = optimize,
+		.name = "CubyzFormatter",
+		.root_module = b.addModule("format", .{
+			.root_source_file = b.path("src/formatter/format.zig"),
+			.target = target,
+			.optimize = optimize,
+		}),
 	});
 	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
-	formatter.root_module.addAnonymousImport("main", .{
-		.target = target,
-		.optimize = optimize,
-		.root_source_file = b.path("src/main.zig"),
-	});
+	formatter.root_module.addOptions("build_options", options);
+	formatter.root_module.addImport("main", mainModule);
 
 	const formatter_install = b.addInstallArtifact(formatter, .{});
 
@@ -223,28 +301,4 @@ pub fn build(b: *std.Build) !void {
 
 	const formatter_step = b.step("format", "Check the formatting of the code");
 	formatter_step.dependOn(&formatter_cmd.step);
-
-	const zig_fmt = b.addExecutable(.{
-		.name = "zig_fmt",
-		.root_source_file = b.path("src/formatter/fmt.zig"),
-		.target = target,
-		.optimize = optimize,
-	});
-	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
-	zig_fmt.root_module.addAnonymousImport("main", .{
-		.target = target,
-		.optimize = optimize,
-		.root_source_file = b.path("src/main.zig"),
-	});
-
-	const zig_fmt_install = b.addInstallArtifact(zig_fmt, .{});
-
-	const zig_fmt_cmd = b.addRunArtifact(zig_fmt);
-	zig_fmt_cmd.step.dependOn(&zig_fmt_install.step);
-	if(b.args) |args| {
-		zig_fmt_cmd.addArgs(args);
-	}
-
-	const zig_fmt_step = b.step("fmt", "Run the (modified) zig fmt on the code");
-	zig_fmt_step.dependOn(&zig_fmt_cmd.step);
 }

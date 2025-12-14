@@ -2,8 +2,10 @@
 	.properties = .{
 		.mountain,
 	},
+	.minHeightLimit = 7,
 	.minHeight = 80,
 	.maxHeight = 256,
+	.smoothBeaches = true,
 
 	.roughness = 10,
 	.mountains = 100,
@@ -18,7 +20,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
+			.leaves = "cubyz:leaves/oak",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.16,

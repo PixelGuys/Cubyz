@@ -1,12 +1,12 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.mineable},
 	.blockHealth = 7,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.transparent = true,
 	.hasBackFace = true,
-	.absorbedLight = 0xe95825,
+	.absorbedLight = 0xb15635,
 	.model = "cubyz:cube",
 	.texture = "cubyz:ice",
 	.friction = 1,

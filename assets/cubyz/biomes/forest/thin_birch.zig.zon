@@ -1,7 +1,9 @@
 .{
 	.properties = .{},
+	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 24,
+	.maxHeightLimit = 30,
 	.minRadius = 200,
 	.maxRadius = 256,
 	.roughness = 2,
@@ -16,7 +18,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:gravel",
+			.block = "cubyz:moss:cubyz:gravel",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 5,
@@ -25,7 +27,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mossy_cobblestone",
+			.block = "cubyz:moss:cubyz:cobblestone",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 9,
@@ -34,7 +36,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:birch_leaves",
+			.leaves = "cubyz:leaves/birch",
 			.log = "cubyz:birch_branch:0b11",
 			.top = "cubyz:birch_branch:0b11",
 			.chance = 0.7,
@@ -49,7 +51,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:birch_leaves",
+			.leaves = "cubyz:leaves/birch",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.1,
@@ -65,7 +67,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.01,
-			.block = "cubyz:stone",
+			.block = "cubyz:slate",
 			.size = 3,
 			.size_variance = 5,
 		},

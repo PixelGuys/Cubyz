@@ -58,11 +58,11 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn scheduleCommand(command: Command) void {
-		commands.enqueue(command);
+		commands.pushBack(command);
 	}
 
 	fn executeCommands() void {
-		while(commands.dequeue()) |command| {
+		while(commands.popFront()) |command| {
 			switch(command.action) {
 				.open => {
 					executeOpenWindowCommand(command.window);
@@ -134,7 +134,7 @@ pub fn initWindowList() void {
 }
 
 pub fn deinitWindowList() void {
-	windowList.deinit();
+	windowList.clearAndFree();
 	hudWindows.deinit();
 	openWindows.deinit();
 	GuiCommandQueue.deinit();
@@ -183,7 +183,7 @@ pub fn deinit() void {
 }
 
 pub fn save() void { // MARK: save()
-	const guiZon = ZonElement.initObject(main.stackAllocator);
+	var guiZon = ZonElement.initObject(main.stackAllocator);
 	defer guiZon.deinit(main.stackAllocator);
 	for(windowList.items) |window| {
 		const windowZon = ZonElement.initObject(main.stackAllocator);
@@ -215,6 +215,19 @@ pub fn save() void { // MARK: save()
 		}
 		windowZon.put("scale", window.scale);
 		guiZon.put(window.id, windowZon);
+	}
+
+	// Merge with the old settings file to preserve unknown settings.
+	var oldZon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
+		if(err != error.FileNotFound) {
+			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
+		}
+		break :blk .null;
+	};
+	defer oldZon.deinit(main.stackAllocator);
+
+	if(oldZon == .object) {
+		guiZon.join(.preferLeft, oldZon);
 	}
 
 	main.files.cubyzDir().writeZon("gui_layout.zig.zon", guiZon) catch |err| {
@@ -455,10 +468,10 @@ pub const textCallbacks = struct {
 	}
 };
 
-pub fn mainButtonPressed() void {
+pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	inventory.update();
 	selectedWindow = null;
-	selectedTextInput = null;
+	setSelectedTextInput(null);
 	var selectedI: usize = 0;
 	for(openWindows.items, 0..) |window, i| {
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
@@ -473,12 +486,12 @@ pub fn mainButtonPressed() void {
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
-	} else if(main.game.world != null and inventory.carried.getItem(0) == null) {
+	} else if(main.game.world != null and inventory.carried.getItem(0) == .null) {
 		toggleGameMenu();
 	}
 }
 
-pub fn mainButtonReleased() void {
+pub fn mainButtonReleased(_: main.Window.Key.Modifiers) void {
 	inventory.applyChanges(true);
 	const oldWindow = selectedWindow;
 	selectedWindow = null;
@@ -498,11 +511,11 @@ pub fn mainButtonReleased() void {
 	}
 }
 
-pub fn secondaryButtonPressed() void {
+pub fn secondaryButtonPressed(_: main.Window.Key.Modifiers) void {
 	inventory.update();
 }
 
-pub fn secondaryButtonReleased() void {
+pub fn secondaryButtonReleased(_: main.Window.Key.Modifiers) void {
 	inventory.applyChanges(false);
 }
 
@@ -580,6 +593,7 @@ pub fn toggleGameMenu() void {
 			}
 		}
 		reorderWindows = false;
+		selectedWindow = null;
 	}
 }
 
@@ -588,31 +602,30 @@ pub const inventory = struct { // MARK: inventory
 	const Inventory = main.items.Inventory;
 	pub var carried: Inventory = undefined;
 	var carriedItemSlot: *ItemSlot = undefined;
-	var leftClickSlots: List(*ItemSlot) = undefined;
-	var rightClickSlots: List(*ItemSlot) = undefined;
+	var leftClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
+	var rightClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
+	var recipeItem: main.items.Item = .null;
 	var initialized: bool = false;
-	const minCraftingCooldown = 20;
-	const maxCraftingCooldown = 400;
-	var nextCraftingAction: i64 = undefined;
-	var craftingCooldown: u63 = undefined;
-	var startedCrafting: bool = false;
+	const minCraftingCooldown: std.Io.Duration = .fromMilliseconds(20);
+	const maxCraftingCooldown: std.Io.Duration = .fromMilliseconds(400);
+	var nextCraftingAction: std.Io.Timestamp = undefined;
+	var craftingCooldown: std.Io.Duration = undefined;
+	var isCrafting: bool = false;
 
 	pub fn init() void {
-		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id});
-		leftClickSlots = .init(main.globalAllocator);
-		rightClickSlots = .init(main.globalAllocator);
+		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
-		startedCrafting = false;
+		isCrafting = false;
 	}
 
 	pub fn deinit() void {
 		initialized = false;
 		carried.deinit(main.globalAllocator);
 		carriedItemSlot.deinit();
-		leftClickSlots.deinit();
-		rightClickSlots.deinit();
+		leftClickSlots.clearAndFree();
+		rightClickSlots.clearAndFree();
 	}
 
 	pub fn deleteItemSlotReferences(slot: *const ItemSlot) void {
@@ -639,44 +652,70 @@ pub const inventory = struct { // MARK: inventory
 
 	fn update() void {
 		if(!initialized) return;
-		if(hoveredItemSlot) |itemSlot| {
-			if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
-				if(main.KeyBoard.key("mainGuiButton").pressed) {
-					const time = std.time.milliTimestamp();
-					if(!startedCrafting) {
-						startedCrafting = true;
-						craftingCooldown = maxCraftingCooldown;
-						nextCraftingAction = time;
-					}
-					while(time -% nextCraftingAction >= 0) {
-						nextCraftingAction +%= craftingCooldown;
-						craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
-						itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
-					}
-					return;
-				}
-			}
-			if(itemSlot.mode != .normal) return;
+		const itemSlot = hoveredItemSlot orelse {
+			isCrafting = false;
+			return;
+		};
+		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
+		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
-			if(carried.getAmount(0) == 0) return;
-			if(main.KeyBoard.key("mainGuiButton").pressed) {
-				for(leftClickSlots.items) |deliveredSlot| {
-					if(itemSlot == deliveredSlot) {
-						return;
-					}
-				}
-				if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null) {
-					leftClickSlots.append(itemSlot);
-				}
-			} else if(main.KeyBoard.key("secondaryGuiButton").pressed) {
-				for(rightClickSlots.items) |deliveredSlot| {
-					if(itemSlot == deliveredSlot) {
-						return;
-					}
-				}
-				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 1);
-				rightClickSlots.append(itemSlot);
+		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
+			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
+			if(recipeItem == .null and item != .null) recipeItem = item.clone();
+			if(!std.meta.eql(item, recipeItem)) return;
+			const time = main.timestamp();
+			if(!isCrafting) {
+				isCrafting = true;
+				craftingCooldown = maxCraftingCooldown;
+				nextCraftingAction = time;
 			}
+			while(time.durationTo(nextCraftingAction).nanoseconds <= 0) {
+				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
+				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
+				if(mainGuiButton.modsOnPress.shift) {
+					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+				} else {
+					itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
+				}
+			}
+			return;
+		}
+
+		isCrafting = false;
+
+		if(recipeItem != .null) return;
+		if(itemSlot.mode != .normal) return;
+
+		if(mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
+			if(itemSlot.inventory.id == main.game.Player.inventory.id) {
+				var iterator = std.mem.reverseIterator(openWindows.items);
+				while(iterator.next()) |window| {
+					if(window.shiftClickableInventory) |inv| {
+						itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+						break;
+					}
+				}
+			} else {
+				itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+			}
+			return;
+		}
+
+		if(carried.getAmount(0) == 0) return;
+		if(mainGuiButton.pressed) {
+			for(leftClickSlots.items) |deliveredSlot| {
+				if(itemSlot == deliveredSlot) return;
+			}
+			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
+			if(item == .null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.stackSize()) {
+				leftClickSlots.append(itemSlot);
+			}
+		} else if(secondaryGuiButton.pressed) {
+			for(rightClickSlots.items) |deliveredSlot| {
+				if(itemSlot == deliveredSlot) return;
+			}
+			itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
+			rightClickSlots.append(itemSlot);
 		}
 	}
 
@@ -684,10 +723,9 @@ pub const inventory = struct { // MARK: inventory
 		if(!initialized) return;
 		if(main.game.world == null) return;
 		if(leftClick) {
-			if(startedCrafting) {
-				startedCrafting = false;
-				return;
-			}
+			recipeItem.deinit();
+			recipeItem = .null;
+			isCrafting = false;
 			if(leftClickSlots.items.len != 0) {
 				const targetInventories = main.stackAllocator.alloc(Inventory, leftClickSlots.items.len);
 				defer main.stackAllocator.free(targetInventories);
@@ -700,6 +738,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
+				if(hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
 			} else if(!hoveredAWindow) {
 				carried.dropStack(0);
@@ -708,7 +747,12 @@ pub const inventory = struct { // MARK: inventory
 			if(rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
-				hovered.inventory.takeHalf(hovered.itemSlot, carried);
+				if(hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
+				if(hovered.inventory.type == .creative) {
+					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
+				} else {
+					hovered.inventory.takeHalf(hovered.itemSlot, carried);
+				}
 			} else if(!hoveredAWindow) {
 				carried.dropOne(0);
 			}
@@ -721,30 +765,32 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
 		if(carried.getAmount(0) == 0) if(hoveredItemSlot) |hovered| {
-			if(hovered.inventory.getItem(hovered.itemSlot)) |item| {
-				const tooltip = item.getTooltip();
+			if(hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
-				var size = textBuffer.calculateLineBreaks(16, 300);
+				const fontSize = 16;
+				var size = textBuffer.calculateLineBreaks(fontSize, 300);
 				size[0] = 0;
 				for(textBuffer.lineBreaks.items) |lineBreak| {
 					size[0] = @max(size[0], lineBreak.width);
 				}
+				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
+				const xOffset = 18;
+				const padding: f32 = 1;
+				const border: f32 = padding + 1;
 				var pos = mousePos;
-				if(pos[0] + size[0] >= main.Window.getWindowSize()[0]/scale) {
-					pos[0] -= size[0];
+				if(pos[0] + size[0] + border + xOffset >= windowSize[0]) {
+					pos[0] -= size[0] + xOffset;
+				} else {
+					pos[0] += xOffset;
 				}
-				if(pos[1] + size[1] >= main.Window.getWindowSize()[1]/scale) {
-					pos[1] -= size[1];
-				}
-				pos = @max(pos, Vec2f{0, 0});
-				const border1: f32 = 2;
-				const border2: f32 = 1;
+				pos[1] = @min(pos[1] - fontSize, windowSize[1] - size[1] - border);
+				pos = @max(pos, Vec2f{border, border});
 				draw.setColor(0xffffff00);
-				draw.rect(pos - @as(Vec2f, @splat(border1)), size + @as(Vec2f, @splat(2*border1)));
+				draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
 				draw.setColor(0xff000000);
-				draw.rect(pos - @as(Vec2f, @splat(border2)), size + @as(Vec2f, @splat(2*border2)));
-				textBuffer.render(pos[0], pos[1], 16);
+				draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
+				textBuffer.render(pos[0], pos[1], fontSize);
 			}
 		};
 	}

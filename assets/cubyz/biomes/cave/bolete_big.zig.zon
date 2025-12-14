@@ -1,0 +1,46 @@
+.{
+	.isCave = true,
+	.maxHeight = -512,
+	.minHeight = -48250,
+
+	.chance = 0.04,
+
+	.caves = -0.015,
+
+	.music = "cubyz:la_kubisa_caverna",
+	.ground_structure = .{
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:clay",
+			.chance = 0.3,
+			.width = 5,
+			.variation = 5,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:mushroom/big/bolete",
+			.placeMode = .degradable,
+			.chance = 0.15,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:mushroom/small/bolete",
+			.placeMode = .degradable,
+			.chance = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:bolete",
+			.chance = 0.1,
+			.width = 8,
+			.variation = 4,
+			.density = 0.06,
+			.priority = 0.1,
+		},
+	},
+}

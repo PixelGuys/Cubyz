@@ -1,10 +1,11 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.mineable},
 	.blockHealth = 8,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
+	.rotation = "cubyz:stairs",
 	.texture = "cubyz:frost",
 	.friction = 5,
 }

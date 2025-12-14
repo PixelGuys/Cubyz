@@ -5,12 +5,9 @@ const ZonElement = @import("zon.zig").ZonElement;
 const Palette = @import("assets.zig").Palette;
 const Assets = main.assets.Assets;
 
-var arenaAllocator: main.heap.NeverFailingArenaAllocator = undefined;
-const migrationAllocator: main.heap.NeverFailingAllocator = arenaAllocator.allocator();
-
-var blockMigrations: std.StringHashMapUnmanaged([]const u8) = undefined;
-var itemMigrations: std.StringHashMapUnmanaged([]const u8) = undefined;
-var biomeMigrations: std.StringHashMapUnmanaged([]const u8) = undefined;
+var blockMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
+var itemMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
+var biomeMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 
 const MigrationType = enum {
 	block,
@@ -19,7 +16,7 @@ const MigrationType = enum {
 };
 
 pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZonMap) void {
-	std.log.info("Registering {} {s} migrations", .{migrations.count(), @tagName(typ)});
+	std.log.info("Registering {s} migrations for {} addons", .{@tagName(typ), migrations.count()});
 	const collection = switch(typ) {
 		.block => &blockMigrations,
 		.item => &itemMigrations,
@@ -67,23 +64,35 @@ fn register(
 			continue;
 		}
 
-		const oldAssetId = std.fmt.allocPrint(migrationAllocator.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
-		const result = collection.getOrPut(migrationAllocator.allocator, oldAssetId) catch unreachable;
+		const oldAssetId = std.fmt.allocPrint(main.worldArena.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
+		const result = collection.getOrPut(main.worldArena.allocator, oldAssetId) catch unreachable;
 
 		if(result.found_existing) {
 			std.log.err("Skipping name collision in {s} migration: '{s}' -> '{s}:{s}'", .{@tagName(typ), oldAssetId, addonName, newZon});
 			const existingMigration = collection.get(oldAssetId) orelse unreachable;
 			std.log.err("Already mapped to '{s}'", .{existingMigration});
 
-			migrationAllocator.free(oldAssetId);
+			main.worldArena.free(oldAssetId);
 		} else {
-			const newAssetId = std.fmt.allocPrint(migrationAllocator.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
+			const newAssetId = std.fmt.allocPrint(main.worldArena.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
 
 			result.key_ptr.* = oldAssetId;
 			result.value_ptr.* = newAssetId;
 			std.log.info("Registered {s} migration: '{s}' -> '{s}'", .{@tagName(typ), oldAssetId, newAssetId});
 		}
 	}
+}
+
+pub fn applySingle(comptime typ: MigrationType, assetName: []const u8) []const u8 {
+	const migrations = switch(typ) {
+		.block => blockMigrations,
+		.item => itemMigrations,
+		.biome => biomeMigrations,
+	};
+
+	const newAssetName = migrations.get(assetName) orelse return assetName;
+	std.log.info("Migrating {s} {s} -> {s}", .{@tagName(typ), assetName, newAssetName});
+	return newAssetName;
 }
 
 pub fn apply(comptime typ: MigrationType, palette: *Palette) void {
@@ -101,23 +110,8 @@ pub fn apply(comptime typ: MigrationType, palette: *Palette) void {
 	}
 }
 
-pub fn init() void {
-	biomeMigrations = .{};
-	blockMigrations = .{};
-	itemMigrations = .{};
-	arenaAllocator = .init(main.globalAllocator);
-}
-
 pub fn reset() void {
 	biomeMigrations = .{};
 	blockMigrations = .{};
 	itemMigrations = .{};
-	_ = arenaAllocator.reset(.free_all);
-}
-
-pub fn deinit() void {
-	biomeMigrations = undefined;
-	blockMigrations = undefined;
-	itemMigrations = undefined;
-	arenaAllocator.deinit();
 }

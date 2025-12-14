@@ -1,0 +1,7 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/coniferous/branch/normal/1/0"},
+		.{.id = "cubyz:tree/coniferous/branch/normal/1/1"},
+		.{.id = null},
+	},
+}

@@ -11,6 +11,7 @@ const RayIntersectionResult = rotation.RayIntersectionResult;
 const RotationMode = rotation.RotationMode;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
+const Tag = main.Tag;
 const Vec2f = vec.Vec2f;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
@@ -51,7 +52,8 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 		}
 	};
 	if(data >= 256) return 0;
-	return rotationTable[@intFromEnum(angle)][data];
+	const runtimeTable = rotationTable;
+	return runtimeTable[@intFromEnum(angle)][data];
 }
 
 pub fn init() void {}
@@ -272,32 +274,33 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, relativePlay
 	return result;
 }
 
-pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-	if(item) |_item| {
-		switch(_item) {
-			.baseItem => |baseItem| {
-				if(std.mem.eql(u8, baseItem.id(), "cubyz:chisel")) { // Select only one eighth of a block
+pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+	switch(item) {
+		.tool => |tool| {
+			const tags = tool.type.blockTags();
+			for(tags) |tag| {
+				if(tag == .chiselable) {
 					return closestRay(.intersection, block, relativePlayerPos, playerDir);
 				}
-			},
-			else => {},
-		}
+			}
+		},
+		else => {},
 	}
 	return RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir);
 }
 
-pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
-	if(item) |_item| {
-		switch(_item) {
-			.baseItem => |baseItem| {
-				if(std.mem.eql(u8, baseItem.id(), "cubyz:chisel")) { // Break only one eigth of a block
+pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+	switch(item) {
+		.tool => |tool| {
+			for(tool.type.blockTags()) |tag| {
+				if(tag == .chiselable) {
 					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
 					if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
 					return;
 				}
-			},
-			else => {},
-		}
+			}
+		},
+		else => {},
 	}
 	return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 }
@@ -305,8 +308,12 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 	if(oldBlock.data == newBlock.data) return .no;
-	if(item.item != null and item.item.? == .baseItem and std.mem.eql(u8, item.item.?.baseItem.id(), "cubyz:chisel")) {
-		return .yes; // TODO: Durability change, after making the chisel a proper tool.
+	if(item.item == .tool) {
+		return .{.yes_costsDurability = 1};
 	}
 	return .no;
+}
+
+pub fn getBlockTags() []const Tag {
+	return &.{.chiselable};
 }

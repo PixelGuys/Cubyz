@@ -10,25 +10,27 @@ pub const file_monitor = @import("utils/file_monitor.zig");
 pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 
 pub const Compression = struct { // MARK: Compression
-	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.deflate.Level) []u8 {
-		var result = main.List(u8).init(allocator);
-		var comp = std.compress.flate.compressor(result.writer(), .{.level = level}) catch unreachable;
-		_ = comp.write(data) catch unreachable;
-		comp.finish() catch unreachable;
-		return result.toOwnedSlice();
+	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
+		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
+		var buffer: [65536]u8 = undefined;
+		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
+		compress.writer.writeAll(data) catch unreachable;
+		compress.writer.flush() catch unreachable;
+		result.writer.flush() catch unreachable;
+		return result.toOwnedSlice() catch unreachable;
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
-		var streamIn = std.io.fixedBufferStream(data);
-		var decomp = std.compress.flate.decompressor(streamIn.reader());
-		var streamOut = std.io.fixedBufferStream(buf);
-		try decomp.decompress(streamOut.writer());
-		return streamOut.getWritten().len;
+		var reader = std.Io.Reader.fixed(data);
+		var buffer: [65536]u8 = undefined;
+		var decompressor = std.compress.flate.Decompress.init(&reader, .raw, &buffer);
+		return try decompressor.reader.readSliceShort(buf);
 	}
 
-	pub fn pack(sourceDir: std.fs.Dir, writer: anytype) !void {
-		var comp = try std.compress.flate.compressor(writer, .{});
-		var walker = try sourceDir.walk(main.stackAllocator.allocator);
+	pub fn pack(sourceDir: main.files.Dir, writer: *std.Io.Writer) !void {
+		var buffer: [65536]u8 = undefined;
+		var comp = try std.compress.flate.Compress.init(writer, &buffer, .raw, .default);
+		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
@@ -44,25 +46,27 @@ pub const Compression = struct { // MARK: Compression
 				};
 				var len: [4]u8 = undefined;
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), endian);
-				_ = try comp.write(&len);
-				_ = try comp.write(relPath);
+				_ = try comp.writer.write(&len);
+				_ = try comp.writer.write(relPath);
 
-				const fileData = try sourceDir.readFileAlloc(main.stackAllocator.allocator, relPath, std.math.maxInt(usize));
+				const fileData = try sourceDir.read(main.stackAllocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
-				_ = try comp.write(&len);
-				_ = try comp.write(fileData);
+				_ = try comp.writer.write(&len);
+				_ = try comp.writer.write(fileData);
 			}
 		}
-		try comp.finish();
+		try comp.writer.flush();
+		try writer.flush();
 	}
 
-	pub fn unpack(outDir: std.fs.Dir, input: []const u8) !void {
-		var stream = std.io.fixedBufferStream(input);
-		var decomp = std.compress.flate.decompressor(stream.reader());
-		const reader = decomp.reader();
-		const _data = try reader.readAllAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
+	pub fn unpack(outDir: main.files.Dir, input: []const u8) !void {
+		var inputReader = std.Io.Reader.fixed(input);
+		var buffer: [65536]u8 = undefined;
+		var decompressor = std.compress.flate.Decompress.init(&inputReader, .raw, &buffer);
+		const reader = &decompressor.reader;
+		const _data = try reader.allocRemainingAlignedSentinel(main.stackAllocator.allocator, .unlimited, .@"1", null);
 		defer main.stackAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {
@@ -78,7 +82,7 @@ pub const Compression = struct { // MARK: Compression
 			var splitter = std.mem.splitBackwardsScalar(u8, path, '/');
 			_ = splitter.first();
 			try outDir.makePath(splitter.rest());
-			try outDir.writeFile(.{.data = fileData, .sub_path = path});
+			try outDir.write(path, fileData);
 		}
 	}
 };
@@ -338,54 +342,50 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			allocator.destroy(self.mem);
 		}
 
-		pub fn peekFront(self: Self) ?T {
+		pub fn peekBack(self: Self) ?T {
 			if(self.len == 0) return null;
 			return self.mem[self.startIndex + self.len - 1 & mask];
 		}
 
-		pub fn peekBack(self: Self) ?T {
+		pub fn peekFront(self: Self) ?T {
 			if(self.len == 0) return null;
 			return self.mem[self.startIndex];
 		}
 
-		pub fn enqueueFront(self: *Self, elem: T) !void {
+		pub fn pushBack(self: *Self, elem: T) !void {
 			if(self.len >= capacity) return error.OutOfMemory;
-			self.enqueueFrontAssumeCapacity(elem);
+			self.pushBackAssumeCapacity(elem);
 		}
 
-		pub fn forceEnqueueFront(self: *Self, elem: T) ?T {
-			const result = if(self.len >= capacity) self.dequeueBack() else null;
-			self.enqueueFrontAssumeCapacity(elem);
+		pub fn forcePushBack(self: *Self, elem: T) ?T {
+			const result = if(self.len >= capacity) self.popFront() else null;
+			self.pushBackAssumeCapacity(elem);
 			return result;
 		}
 
-		pub fn enqueueFrontAssumeCapacity(self: *Self, elem: T) void {
+		pub fn pushBackAssumeCapacity(self: *Self, elem: T) void {
 			self.mem[self.startIndex + self.len & mask] = elem;
 			self.len += 1;
 		}
 
-		pub fn enqueue(self: *Self, elem: T) !void {
-			return self.enqueueFront(elem);
-		}
-
-		pub fn enqueueBack(self: *Self, elem: T) !void {
+		pub fn pushFront(self: *Self, elem: T) !void {
 			if(self.len >= capacity) return error.OutOfMemory;
-			self.enqueueBackAssumeCapacity(elem);
+			self.pushFrontAssumeCapacity(elem);
 		}
 
-		pub fn enqueueBackAssumeCapacity(self: *Self, elem: T) void {
+		pub fn pushFrontAssumeCapacity(self: *Self, elem: T) void {
 			self.startIndex = (self.startIndex -% 1) & mask;
 			self.mem[self.startIndex] = elem;
 			self.len += 1;
 		}
 
-		pub fn forceEnqueueBack(self: *Self, elem: T) ?T {
-			const result = if(self.len >= capacity) self.dequeueFront() else null;
-			self.enqueueBackAssumeCapacity(elem);
+		pub fn forcePushFront(self: *Self, elem: T) ?T {
+			const result = if(self.len >= capacity) self.popBack() else null;
+			self.pushFrontAssumeCapacity(elem);
 			return result;
 		}
 
-		pub fn enqueueSlice(self: *Self, elems: []const T) !void {
+		pub fn pushBackSlice(self: *Self, elems: []const T) !void {
 			if(elems.len + self.len > capacity) {
 				return error.OutOfMemory;
 			}
@@ -417,17 +417,13 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			}
 		}
 
-		pub fn dequeue(self: *Self) ?T {
-			return self.dequeueBack();
-		}
-
-		pub fn dequeueFront(self: *Self) ?T {
+		pub fn popBack(self: *Self) ?T {
 			if(self.len == 0) return null;
 			self.len -= 1;
 			return self.mem[self.startIndex + self.len & mask];
 		}
 
-		pub fn dequeueBack(self: *Self) ?T {
+		pub fn popFront(self: *Self) ?T {
 			if(self.len == 0) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & mask;
@@ -435,7 +431,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			return result;
 		}
 
-		pub fn dequeueSlice(self: *Self, out: []T) !void {
+		pub fn popSliceFront(self: *Self, out: []T) !void {
 			if(out.len > self.len) return error.OutOfBounds;
 			const start = self.startIndex;
 			const end = start + out.len;
@@ -450,7 +446,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			self.len -= out.len;
 		}
 
-		pub fn discardElements(self: *Self, n: usize) void {
+		pub fn discardElementsFront(self: *Self, n: usize) void {
 			self.len -= n;
 			self.startIndex = (self.startIndex + n) & mask;
 		}
@@ -501,7 +497,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.mask = self.mem.len - 1;
 		}
 
-		pub fn enqueue(self: *Self, elem: T) void {
+		pub fn pushBack(self: *Self, elem: T) void {
 			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
@@ -509,7 +505,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += 1;
 		}
 
-		pub fn enqueueSlice(self: *Self, elems: []const T) void {
+		pub fn pushBackSlice(self: *Self, elems: []const T) void {
 			while(elems.len + self.len > self.mem.len) {
 				self.increaseCapacity();
 			}
@@ -525,7 +521,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += elems.len;
 		}
 
-		pub fn enqueue_back(self: *Self, elem: T) void {
+		pub fn pushFront(self: *Self, elem: T) void {
 			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
@@ -534,28 +530,28 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += 1;
 		}
 
-		pub fn dequeue(self: *Self) ?T {
-			if(self.empty()) return null;
+		pub fn popFront(self: *Self) ?T {
+			if(self.isEmpty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & self.mask;
 			self.len -= 1;
 			return result;
 		}
 
-		pub fn dequeue_front(self: *Self) ?T {
-			if(self.empty()) return null;
+		pub fn popBack(self: *Self) ?T {
+			if(self.isEmpty()) return null;
 			self.len -= 1;
 			return self.mem[self.startIndex + self.len & self.mask];
 		}
 
-		pub fn discard(self: *Self, amount: usize) !void {
+		pub fn discardFront(self: *Self, amount: usize) !void {
 			if(amount > self.len) return error.OutOfBounds;
 			self.startIndex = (self.startIndex + amount) & self.mask;
 			self.len -= amount;
 		}
 
-		pub fn peek(self: *Self) ?T {
-			if(self.empty()) return null;
+		pub fn peekFront(self: *Self) ?T {
+			if(self.isEmpty()) return null;
 			return self.mem[self.startIndex];
 		}
 
@@ -577,7 +573,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return self.mem[(self.startIndex + offset) & self.mask];
 		}
 
-		pub fn empty(self: *Self) bool {
+		pub fn isEmpty(self: *Self) bool {
 			return self.len == 0;
 		}
 
@@ -604,22 +600,22 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 			self.super.deinit();
 		}
 
-		pub fn enqueue(self: *Self, elem: T) void {
+		pub fn pushBack(self: *Self, elem: T) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.super.enqueue(elem);
+			self.super.pushBack(elem);
 		}
 
-		pub fn dequeue(self: *Self) ?T {
+		pub fn popFront(self: *Self) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			return self.super.dequeue();
+			return self.super.popFront();
 		}
 
-		pub fn empty(self: *Self) bool {
+		pub fn isEmpty(self: *Self) bool {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			return self.super.empty();
+			return self.super.isEmpty();
 		}
 	};
 }
@@ -655,7 +651,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.waitingThreads.broadcast();
 			while(self.waitingThreadCount != 0) {
 				self.mutex.unlock();
-				std.time.sleep(1000000);
+				main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 				self.mutex.lock();
 			}
 			self.mutex.unlock();
@@ -749,15 +745,17 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 
 		/// Returns the biggest element and removes it from the heap.
 		/// If empty blocks until a new object is added or the datastructure is closed.
-		pub fn extractMax(self: *@This()) !T {
+		pub fn extractMax(self: *@This()) error{Timeout, Closed}!T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
+
+			const startTime = main.timestamp();
 
 			while(true) {
 				if(self.size == 0) {
 					self.waitingThreadCount += 1;
-					self.waitingThreads.wait(&self.mutex);
-					self.waitingThreadCount -= 1;
+					defer self.waitingThreadCount -= 1;
+					try self.waitingThreads.timedWait(&self.mutex, 10_000_000);
 				} else {
 					const ret = self.array[0];
 					self.removeIndex(0);
@@ -766,6 +764,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 				if(self.closed) {
 					return error.Closed;
 				}
+				if(startTime.durationTo(main.timestamp()).toMilliseconds() > 10) return error.Timeout;
 			}
 		}
 
@@ -834,7 +833,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			return self.*;
 		}
 	};
-	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
+	const refreshTime: std.Io.Duration = .fromMilliseconds(100); // The time after which all priorities get refreshed.
 
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
@@ -899,7 +898,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Wait for active tasks:
 		for(self.currentTasks) |*task| {
 			while(task.load(.monotonic) == vtable) {
-				std.time.sleep(1e6);
+				main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 			}
 		}
 	}
@@ -908,20 +907,24 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
 
-		var lastUpdate = std.time.milliTimestamp();
-		while(true) {
+		var lastUpdate = main.timestamp();
+		outer: while(true) {
+			main.heap.GarbageCollection.syncPoint();
 			{
-				const task = self.loadList.extractMax() catch break;
+				const task = self.loadList.extractMax() catch |err| switch(err) {
+					error.Timeout => continue :outer,
+					error.Closed => break :outer,
+				};
 				self.currentTasks[id].store(task.vtable, .monotonic);
-				const start = std.time.microTimestamp();
+				const start = main.timestamp();
 				task.vtable.run(task.self);
-				const end = std.time.microTimestamp();
-				self.performance.add(task.vtable.taskType, end - start);
+				const end = main.timestamp();
+				self.performance.add(task.vtable.taskType, @intCast(@divTrunc(start.durationTo(end).toNanoseconds(), 1000)));
 				self.currentTasks[id].store(null, .monotonic);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
 			}
 
-			if(id == 0 and std.time.milliTimestamp() -% lastUpdate > refreshTime) {
+			if(id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
 				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
 				defer temporaryTaskList.deinit();
 				while(self.loadList.extractAny()) |task| {
@@ -935,7 +938,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					}
 				}
 				self.loadList.addMany(temporaryTaskList.items);
-				lastUpdate = std.time.milliTimestamp();
+				lastUpdate = main.timestamp();
 			}
 		}
 	}
@@ -966,7 +969,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					break;
 				}
 			}
-			std.time.sleep(1000000);
+			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		}
 	}
 
@@ -990,7 +993,7 @@ pub fn deinitDynamicIntArrayStorage() void {
 pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
 	std.debug.assert(std.math.isPowerOfTwo(size));
 	return struct {
-		data: []align(64) u32 = &.{},
+		data: []align(64) Atomic(u32) = &.{},
 		bitSize: u5 = 0,
 
 		const Self = @This();
@@ -998,12 +1001,12 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 		pub fn initCapacity(bitSize: u5) Self {
 			std.debug.assert(bitSize == 0 or bitSize & bitSize - 1 == 0); // Must be a power of 2
 			return .{
-				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(u32, 64, @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
+				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(Atomic(u32), .@"64", @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
 				.bitSize = bitSize,
 			};
 		}
 
-		pub fn deinit(self: *Self) void {
+		fn deinit(self: *Self) void {
 			dynamicIntArrayAllocator.allocator().free(self.data);
 			self.* = .{};
 		}
@@ -1017,23 +1020,21 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			return result;
 		}
 
-		pub fn resizeOnce(self: *Self) void {
-			const newBitSize = if(self.bitSize != 0) self.bitSize*2 else 1;
-			var newSelf = Self.initCapacity(newBitSize);
+		pub fn resizeOnceFrom(self: *Self, other: *const Self) void {
+			const newBitSize = if(other.bitSize != 0) other.bitSize*2 else 1;
+			std.debug.assert(self.bitSize == newBitSize);
 
-			switch(self.bitSize) {
-				0 => @memset(newSelf.data, 0),
+			switch(other.bitSize) {
+				0 => @memset(self.data, .init(0)),
 				inline 1, 2, 4, 8 => |bits| {
-					for(0..self.data.len) |i| {
-						const oldVal = self.data[i];
-						newSelf.data[2*i] = bitInterleave(bits, oldVal & 0xffff);
-						newSelf.data[2*i + 1] = bitInterleave(bits, oldVal >> 16);
+					for(0..other.data.len) |i| {
+						const oldVal = other.data[i].load(.unordered);
+						self.data[2*i].store(bitInterleave(bits, oldVal & 0xffff), .unordered);
+						self.data[2*i + 1].store(bitInterleave(bits, oldVal >> 16), .unordered);
 					}
 				},
 				else => unreachable,
 			}
-			dynamicIntArrayAllocator.allocator().free(self.data);
-			self.* = newSelf;
 		}
 
 		pub fn getValue(self: *const Self, i: usize) u32 {
@@ -1043,7 +1044,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const intIndex = bitIndex >> 5;
 			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
-			return self.data[intIndex] >> bitOffset & bitMask;
+			return self.data[intIndex].load(.unordered) >> bitOffset & bitMask;
 		}
 
 		pub fn setValue(self: *Self, i: usize, value: u32) void {
@@ -1054,9 +1055,9 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
-			const ptr: *u32 = &self.data[intIndex];
-			ptr.* &= ~(bitMask << bitOffset);
-			ptr.* |= value << bitOffset;
+			const ptr: *Atomic(u32) = &self.data[intIndex];
+			const newValue = (ptr.load(.unordered) & ~(bitMask << bitOffset)) | value << bitOffset;
+			ptr.store(newValue, .unordered);
 		}
 
 		pub fn setAndGetValue(self: *Self, i: usize, value: u32) u32 {
@@ -1067,45 +1068,57 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
-			const ptr: *u32 = &self.data[intIndex];
-			const result = ptr.* >> bitOffset & bitMask;
-			ptr.* &= ~(bitMask << bitOffset);
-			ptr.* |= value << bitOffset;
+			const ptr: *Atomic(u32) = &self.data[intIndex];
+			const oldValue = ptr.load(.unordered);
+			const result = oldValue >> bitOffset & bitMask;
+			const newValue = (oldValue & ~(bitMask << bitOffset)) | value << bitOffset;
+			ptr.store(newValue, .unordered);
 			return result;
 		}
 	};
 }
 
 pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: PaletteCompressedRegion
-	return struct {
+	const Impl = struct {
 		data: DynamicPackedIntArray(size) = .{},
-		palette: []T,
+		palette: []Atomic(T),
 		paletteOccupancy: []u32,
 		paletteLength: u32,
 		activePaletteEntries: u32,
-
+	};
+	return struct {
+		impl: Atomic(*Impl),
 		const Self = @This();
 
 		pub fn init(self: *Self) void {
+			const impl = main.globalAllocator.create(Impl);
 			self.* = .{
-				.palette = main.globalAllocator.alloc(T, 1),
+				.impl = .init(impl),
+			};
+			impl.* = .{
+				.palette = main.globalAllocator.alloc(Atomic(T), 1),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, 1),
 				.paletteLength = 1,
 				.activePaletteEntries = 1,
 			};
-			self.palette[0] = std.mem.zeroes(T);
-			self.paletteOccupancy[0] = size;
+			impl.palette[0] = .init(std.mem.zeroes(T));
+			impl.paletteOccupancy[0] = size;
 		}
 
 		pub fn initCopy(self: *Self, template: *const Self) void {
-			const dataDupe = DynamicPackedIntArray(size).initCapacity(template.data.bitSize);
-			@memcpy(dataDupe.data, template.data.data);
+			const impl = main.globalAllocator.create(Impl);
+			const templateImpl = template.impl.load(.acquire);
+			const dataDupe = DynamicPackedIntArray(size).initCapacity(templateImpl.data.bitSize);
+			@memcpy(dataDupe.data, templateImpl.data.data);
 			self.* = .{
+				.impl = .init(impl),
+			};
+			impl.* = .{
 				.data = dataDupe,
-				.palette = main.globalAllocator.dupe(T, template.palette),
-				.paletteOccupancy = main.globalAllocator.dupe(u32, template.paletteOccupancy),
-				.paletteLength = template.paletteLength,
-				.activePaletteEntries = template.activePaletteEntries,
+				.palette = main.globalAllocator.dupe(Atomic(T), templateImpl.palette),
+				.paletteOccupancy = main.globalAllocator.dupe(u32, templateImpl.paletteOccupancy),
+				.paletteLength = templateImpl.paletteLength,
+				.activePaletteEntries = templateImpl.activePaletteEntries,
 			};
 		}
 
@@ -1113,21 +1126,32 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			std.debug.assert(paletteLength < 0x80000000 and paletteLength > 0);
 			const bitSize: u5 = getTargetBitSize(paletteLength);
 			const bufferLength = @as(u32, 1) << bitSize;
+			const impl = main.globalAllocator.create(Impl);
 			self.* = .{
+				.impl = .init(impl),
+			};
+			impl.* = .{
 				.data = DynamicPackedIntArray(size).initCapacity(bitSize),
-				.palette = main.globalAllocator.alloc(T, bufferLength),
+				.palette = main.globalAllocator.alloc(Atomic(T), bufferLength),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, bufferLength),
 				.paletteLength = paletteLength,
 				.activePaletteEntries = 1,
 			};
-			self.palette[0] = std.mem.zeroes(T);
-			self.paletteOccupancy[0] = size;
+			impl.palette[0] = .init(std.mem.zeroes(T));
+			impl.paletteOccupancy[0] = size;
+			@memset(impl.paletteOccupancy[1..], 0);
+			@memset(impl.data.data, .init(0));
 		}
 
-		pub fn deinit(self: *Self) void {
-			self.data.deinit();
-			main.globalAllocator.free(self.palette);
-			main.globalAllocator.free(self.paletteOccupancy);
+		fn privateDeinit(impl: *Impl) void {
+			impl.data.deinit();
+			main.globalAllocator.free(impl.palette);
+			main.globalAllocator.free(impl.paletteOccupancy);
+			main.globalAllocator.destroy(impl);
+		}
+
+		pub fn deferredDeinit(self: *Self) void {
+			main.heap.GarbageCollection.deferredFree(.{.ptr = self.impl.raw, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 		}
 
 		fn getTargetBitSize(paletteLength: u32) u5 {
@@ -1138,57 +1162,87 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		}
 
 		pub fn getValue(self: *const Self, i: usize) T {
-			return self.palette[self.data.getValue(i)];
+			const impl = self.impl.load(.acquire);
+			return impl.palette[impl.data.getValue(i)].load(.unordered);
+		}
+
+		pub fn palette(self: *const Self) []Atomic(T) {
+			const impl = self.impl.raw;
+			return impl.palette[0..impl.paletteLength];
+		}
+
+		pub fn fillUniform(self: *Self, value: T) void {
+			const impl = self.impl.raw;
+			if(impl.paletteLength == 1) {
+				impl.palette[0].store(value, .unordered);
+				return;
+			}
+			var newSelf: Self = undefined;
+			newSelf.init();
+			newSelf.impl.raw.palette[0] = .init(value);
+			newSelf.impl.raw = self.impl.swap(newSelf.impl.raw, .release);
+			newSelf.deferredDeinit();
 		}
 
 		fn getOrInsertPaletteIndex(noalias self: *Self, val: T) u32 {
-			std.debug.assert(self.paletteLength <= self.palette.len);
+			var impl = self.impl.raw;
+			std.debug.assert(impl.paletteLength <= impl.palette.len);
 			var paletteIndex: u32 = 0;
-			while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
-				if(std.meta.eql(self.palette[paletteIndex], val)) {
+			while(paletteIndex < impl.paletteLength) : (paletteIndex += 1) {
+				if(std.meta.eql(impl.palette[paletteIndex].load(.unordered), val)) {
 					break;
 				}
 			}
-			if(paletteIndex == self.paletteLength) {
-				if(self.paletteLength == self.palette.len) {
-					self.data.resizeOnce();
-					self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
-					const oldLen = self.paletteOccupancy.len;
-					self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
-					@memset(self.paletteOccupancy[oldLen..], 0);
+			if(paletteIndex == impl.paletteLength) {
+				if(impl.paletteLength == impl.palette.len) {
+					var newSelf: Self = undefined;
+					newSelf.initCapacity(impl.paletteLength*2);
+					const newImpl = newSelf.impl.raw;
+					// TODO: Resize stuff
+					newImpl.data.resizeOnceFrom(&impl.data);
+					@memcpy(newImpl.palette[0..impl.palette.len], impl.palette);
+					@memcpy(newImpl.paletteOccupancy[0..impl.paletteOccupancy.len], impl.paletteOccupancy);
+					@memset(newImpl.paletteOccupancy[impl.paletteOccupancy.len..], 0);
+					newImpl.activePaletteEntries = impl.activePaletteEntries;
+					newImpl.paletteLength = impl.paletteLength;
+					newSelf.impl.raw = self.impl.swap(newImpl, .release);
+					newSelf.deferredDeinit();
+					impl = newImpl;
 				}
-				self.palette[paletteIndex] = val;
-				self.paletteLength += 1;
-				std.debug.assert(self.paletteLength <= self.palette.len);
+				impl.palette[paletteIndex].store(val, .unordered);
+				impl.paletteLength += 1;
+				std.debug.assert(impl.paletteLength <= impl.palette.len);
 			}
 			return paletteIndex;
 		}
 
 		pub fn setRawValue(noalias self: *Self, i: usize, paletteIndex: u32) void {
-			const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
+			const impl = self.impl.raw;
+			const previousPaletteIndex = impl.data.setAndGetValue(i, paletteIndex);
 			if(previousPaletteIndex != paletteIndex) {
-				if(self.paletteOccupancy[paletteIndex] == 0) {
-					self.activePaletteEntries += 1;
+				if(impl.paletteOccupancy[paletteIndex] == 0) {
+					impl.activePaletteEntries += 1;
 				}
-				self.paletteOccupancy[paletteIndex] += 1;
-				self.paletteOccupancy[previousPaletteIndex] -= 1;
-				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
-					self.activePaletteEntries -= 1;
+				impl.paletteOccupancy[paletteIndex] += 1;
+				impl.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(impl.paletteOccupancy[previousPaletteIndex] == 0) {
+					impl.activePaletteEntries -= 1;
 				}
 			}
 		}
 
 		pub fn setValue(noalias self: *Self, i: usize, val: T) void {
 			const paletteIndex = self.getOrInsertPaletteIndex(val);
-			const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
+			const impl = self.impl.raw;
+			const previousPaletteIndex = impl.data.setAndGetValue(i, paletteIndex);
 			if(previousPaletteIndex != paletteIndex) {
-				if(self.paletteOccupancy[paletteIndex] == 0) {
-					self.activePaletteEntries += 1;
+				if(impl.paletteOccupancy[paletteIndex] == 0) {
+					impl.activePaletteEntries += 1;
 				}
-				self.paletteOccupancy[paletteIndex] += 1;
-				self.paletteOccupancy[previousPaletteIndex] -= 1;
-				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
-					self.activePaletteEntries -= 1;
+				impl.paletteOccupancy[paletteIndex] += 1;
+				impl.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(impl.paletteOccupancy[previousPaletteIndex] == 0) {
+					impl.activePaletteEntries -= 1;
 				}
 			}
 		}
@@ -1196,52 +1250,57 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		pub fn setValueInColumn(noalias self: *Self, startIndex: usize, endIndex: usize, val: T) void {
 			std.debug.assert(startIndex < endIndex);
 			const paletteIndex = self.getOrInsertPaletteIndex(val);
+			const impl = self.impl.raw;
 			for(startIndex..endIndex) |i| {
-				const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
-				self.paletteOccupancy[previousPaletteIndex] -= 1;
-				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
-					self.activePaletteEntries -= 1;
+				const previousPaletteIndex = impl.data.setAndGetValue(i, paletteIndex);
+				impl.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(impl.paletteOccupancy[previousPaletteIndex] == 0) {
+					impl.activePaletteEntries -= 1;
 				}
 			}
-			if(self.paletteOccupancy[paletteIndex] == 0) {
-				self.activePaletteEntries += 1;
+			if(impl.paletteOccupancy[paletteIndex] == 0) {
+				impl.activePaletteEntries += 1;
 			}
-			self.paletteOccupancy[paletteIndex] += @intCast(endIndex - startIndex);
+			impl.paletteOccupancy[paletteIndex] += @intCast(endIndex - startIndex);
 		}
 
 		pub fn optimizeLayout(self: *Self) void {
-			const newBitSize = getTargetBitSize(@intCast(self.activePaletteEntries));
-			if(self.data.bitSize == newBitSize) return;
+			const impl = self.impl.raw;
+			const newBitSize = getTargetBitSize(@intCast(impl.activePaletteEntries));
+			if(impl.data.bitSize == newBitSize) return;
 
-			var newData = main.utils.DynamicPackedIntArray(size).initCapacity(newBitSize);
-			const paletteMap: []u32 = main.stackAllocator.alloc(u32, self.paletteLength);
+			var newSelf: Self = undefined;
+			newSelf.initCapacity(impl.activePaletteEntries);
+			const newImpl = newSelf.impl.raw;
+			const paletteMap: []u32 = main.stackAllocator.alloc(u32, impl.paletteLength);
 			defer main.stackAllocator.free(paletteMap);
 			{
-				var i: u32 = 0;
-				var len: u32 = self.paletteLength;
-				while(i < len) : (i += 1) outer: {
-					paletteMap[i] = i;
-					if(self.paletteOccupancy[i] == 0) {
-						while(true) {
-							len -= 1;
-							if(self.paletteOccupancy[len] != 0) break;
-							if(len == i) break :outer;
-						}
-						paletteMap[len] = i;
-						self.palette[i] = self.palette[len];
-						self.paletteOccupancy[i] = self.paletteOccupancy[len];
-						self.paletteOccupancy[len] = 0;
+				var iNew: u32 = 0;
+				var iOld: u32 = 0;
+				const len: u32 = impl.paletteLength;
+				while(iOld < len) : ({
+					iNew += 1;
+					iOld += 1;
+				}) outer: {
+					while(impl.paletteOccupancy[iOld] == 0) {
+						iOld += 1;
+						if(iOld >= len) break :outer;
 					}
+					if(iNew >= impl.activePaletteEntries) std.log.err("{} {}", .{iNew, impl.activePaletteEntries});
+					std.debug.assert(iNew < impl.activePaletteEntries);
+					std.debug.assert(iOld < impl.paletteLength);
+					paletteMap[iOld] = iNew;
+					newImpl.palette[iNew] = .init(impl.palette[iOld].load(.unordered));
+					newImpl.paletteOccupancy[iNew] = impl.paletteOccupancy[iOld];
 				}
 			}
 			for(0..size) |i| {
-				newData.setValue(i, paletteMap[self.data.getValue(i)]);
+				newImpl.data.setValue(i, paletteMap[impl.data.getValue(i)]);
 			}
-			self.data.deinit();
-			self.data = newData;
-			self.paletteLength = self.activePaletteEntries;
-			self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
-			self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
+			newImpl.paletteLength = impl.activePaletteEntries;
+			newImpl.activePaletteEntries = impl.activePaletteEntries;
+			newSelf.impl.raw = self.impl.swap(newSelf.impl.raw, .release);
+			newSelf.deferredDeinit();
 		}
 	};
 }
@@ -1518,7 +1577,7 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
-		const currentTime: i16 = @truncate(std.time.milliTimestamp());
+		const currentTime: i16 = @truncate(main.timestamp().toMilliseconds());
 		const timeDifference = currentTime -% time;
 		if(self.firstValue) {
 			self.difference.store(timeDifference, .monotonic);
@@ -1601,13 +1660,13 @@ const endian: std.builtin.Endian = .big;
 pub const BinaryReader = struct {
 	remaining: []const u8,
 
-	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag};
+	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat};
 
 	pub fn init(data: []const u8) BinaryReader {
 		return .{.remaining = data};
 	}
 
-	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
 		const typeInfo = @typeInfo(T).vector;
 		var result: T = undefined;
 		inline for(0..typeInfo.len) |i| {
@@ -1652,14 +1711,21 @@ pub const BinaryReader = struct {
 		return result;
 	}
 
-	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
-		return @as(T, @bitCast(try self.readInt(IntT)));
+		const result: T = @bitCast(try self.readInt(IntT));
+		if(!std.math.isFinite(result)) return error.InvalidFloat;
+		return result;
 	}
 
 	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
 		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
 		return std.meta.intToEnum(T, int);
+	}
+
+	pub fn readBool(self: *BinaryReader) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!bool {
+		const int = try self.readInt(u1);
+		return int != 0;
 	}
 
 	pub fn readUntilDelimiter(self: *BinaryReader, comptime delimiter: u8) ![:delimiter]const u8 {
@@ -1737,6 +1803,10 @@ pub const BinaryWriter = struct {
 		self.writeInt(@typeInfo(T).@"enum".tag_type, @intFromEnum(value));
 	}
 
+	pub fn writeBool(self: *BinaryWriter, value: bool) void {
+		self.writeInt(u1, @intFromBool(value));
+	}
+
 	pub fn writeSlice(self: *BinaryWriter, slice: []const u8) void {
 		self.data.appendSlice(slice);
 	}
@@ -1790,6 +1860,16 @@ const ReadWriteTest = struct {
 		const actual = try reader.readFloat(FloatT);
 
 		try std.testing.expectEqual(expected, actual);
+	}
+	fn testInvalidFloat(comptime FloatT: type, input: FloatT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeFloat(FloatT, input);
+
+		var reader = getReader(writer.data.items);
+		const actual = reader.readFloat(FloatT);
+
+		try std.testing.expectError(error.InvalidFloat, actual);
 	}
 	fn testEnum(comptime EnumT: type, expected: EnumT) !void {
 		var writer = getWriter();
@@ -1864,8 +1944,9 @@ test "read/write float" {
 		try ReadWriteTest.testFloat(floatT, 0.0012443);
 		try ReadWriteTest.testFloat(floatT, 0.0);
 		try ReadWriteTest.testFloat(floatT, 6457.0);
-		try ReadWriteTest.testFloat(floatT, std.math.inf(floatT));
-		try ReadWriteTest.testFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testInvalidFloat(floatT, std.math.nan(floatT));
 		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
 	}
 }
@@ -2133,87 +2214,19 @@ test "SparseSet/reusing" {
 	try std.testing.expectEqual(set.get(firstId).?.*, expectNew);
 }
 
-// MARK: functionPtrCast()
-fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
-	var typeInfo = @typeInfo(Fn);
-	var params = typeInfo.@"fn".params[0..typeInfo.@"fn".params.len].*;
-	if(@sizeOf(params[0].type.?) != @sizeOf(*anyopaque) or @alignOf(params[0].type.?) != @alignOf(*anyopaque)) {
-		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{params[0].type.?}));
-	}
-	params[0].type = *anyopaque;
-	typeInfo.@"fn".params = params[0..];
-	return @Type(typeInfo);
-}
-/// Turns the first parameter into a anyopaque*
-pub fn castFunctionSelfToAnyopaque(function: anytype) *const CastFunctionSelfToAnyopaqueType(@TypeOf(function)) {
-	return @ptrCast(&function);
-}
-
-fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
-	var typeInfo = @typeInfo(Fn);
-	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(*anyopaque)) {
-		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{typeInfo.@"fn".return_type.?}));
-	}
-	typeInfo.@"fn".return_type = *anyopaque;
-	return @Type(typeInfo);
-}
-/// Turns the return parameter into a anyopaque*
-pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
-	return @ptrCast(&function);
-}
-
-// MARK: Callback
-pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
-	return struct {
-		const Self = @This();
-
-		hashMap: std.StringHashMap(*const Function) = undefined,
-
-		pub fn init() Self {
-			var self = Self{.hashMap = .init(main.globalAllocator.allocator)};
-			inline for(@typeInfo(Child).@"struct".decls) |declaration| {
-				if(@TypeOf(@field(Child, declaration.name)) == Function) {
-					std.log.debug("Registered Callback '{s}'", .{declaration.name});
-					self.hashMap.putNoClobber(declaration.name, &@field(Child, declaration.name)) catch unreachable;
-				}
-			}
-			return self;
-		}
-
-		pub fn deinit(self: *Self) void {
-			self.hashMap.deinit();
-		}
-
-		pub fn getFunctionPointer(self: *Self, id: []const u8) ?*const Function {
-			return self.hashMap.get(id);
-		}
-	};
-}
-
-test "NamedCallbacks registers functions" {
-	const TestFunction = fn(_: i32) void;
-	const TestFunctions = struct {
-		// Callback should register this
-		pub fn testFunction(_: i32) void {}
-		pub fn otherTestFunction(_: i32) void {}
-		// Callback should ignore this
-		pub fn wrongSignatureFunction(_: i32, _: bool) void {}
-	};
-	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
-
-	testFunctions = .init();
-	defer testFunctions.deinit();
-
-	try std.testing.expectEqual(2, testFunctions.hashMap.count());
-
-	try std.testing.expectEqual(&TestFunctions.testFunction, testFunctions.getFunctionPointer("testFunction").?);
-	try std.testing.expectEqual(&TestFunctions.otherTestFunction, testFunctions.getFunctionPointer("otherTestFunction").?);
-
-	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("functionTest"));
-	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
-}
-
-pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) void {
+pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);
+}
+
+pub const obfuscationChar = "∗".*;
+
+pub fn obfuscateString(allocator: NeverFailingAllocator, string: []const u8) []const u8 {
+	const len = std.unicode.utf8CountCodepoints(string) catch 0;
+	const obfuscated = allocator.alloc(u8, len*obfuscationChar.len);
+	var i: usize = 0;
+	while(i < obfuscated.len) : (i += obfuscationChar.len) {
+		@memcpy(obfuscated[i .. i + obfuscationChar.len], &obfuscationChar);
+	}
+	return obfuscated;
 }

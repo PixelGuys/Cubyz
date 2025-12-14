@@ -3,15 +3,18 @@ const builtin = @import("builtin");
 
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const Window = @import("graphics/Window.zig");
+
+pub const version = @import("utils/version.zig");
 
 pub const defaultPort: u16 = 47649;
 pub const connectionTimeout = 60_000_000;
 
 pub const entityLookback: i16 = 100;
 
-pub const version = "Cubyz α 0.12.0";
-
 pub const highestSupportedLod: u3 = 5;
+
+pub var lastVersionString: []const u8 = "";
 
 pub var simulationDistance: u16 = 4;
 
@@ -23,8 +26,12 @@ pub var fpsCap: ?u32 = null;
 
 pub var fov: f32 = 70;
 
+pub var vulkanTestingWindow: bool = false;
+
 pub var mouseSensitivity: f32 = 1;
 pub var controllerSensitivity: f32 = 1;
+
+pub var invertMouseY: bool = false;
 
 pub var renderDistance: u16 = 7;
 
@@ -38,6 +45,8 @@ pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
 
+pub var streamerMode: bool = false;
+
 pub var lastUsedIPAddress: []const u8 = "";
 
 pub var guiScale: ?f32 = null;
@@ -48,13 +57,13 @@ pub var leavesQuality: u16 = 2;
 
 pub var @"lod0.5Distance": f32 = 200;
 
-pub var storageTime: i64 = 5000;
+pub var blockContrast: f32 = 0;
 
-pub var updateRepeatSpeed: u31 = 200;
+pub var storageTime: std.Io.Duration = .fromSeconds(5);
 
-pub var updateRepeatDelay: u31 = 500;
+pub var updateRepeatSpeed: std.Io.Duration = .fromMilliseconds(200);
 
-pub var developerAutoEnterWorld: []const u8 = "";
+pub var updateRepeatDelay: std.Io.Duration = .fromMilliseconds(500);
 
 pub var developerGPUInfiniteLoopDetection: bool = false;
 
@@ -74,14 +83,19 @@ pub fn init() void {
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
-			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .@"struct") {
+			const DeclType = @TypeOf(@field(@This(), decl.name));
+			if(@typeInfo(DeclType) == .@"struct") {
+				if(DeclType == std.Io.Duration) {
+					const defaultMilli = @as(f64, @floatFromInt(@field(@This(), decl.name).toNanoseconds()))/1.0e6;
+					@field(@This(), decl.name) = .fromNanoseconds(@intFromFloat(zon.get(f64, decl.name, defaultMilli)*1.0e6));
+					continue;
+				}
 				@compileError("Not implemented yet.");
 			}
-			@field(@This(), decl.name) = zon.get(declType, decl.name, @field(@This(), decl.name));
-			if(@typeInfo(declType) == .pointer) {
-				if(@typeInfo(declType).pointer.size == .slice) {
-					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(declType).pointer.child, @field(@This(), decl.name));
+			@field(@This(), decl.name) = zon.get(DeclType, decl.name, @field(@This(), decl.name));
+			if(@typeInfo(DeclType) == .pointer) {
+				if(@typeInfo(DeclType).pointer.size == .slice) {
+					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(DeclType).pointer.child, @field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
 				}
@@ -98,6 +112,9 @@ pub fn init() void {
 		key.key = keyZon.get(c_int, "key", key.key);
 		key.mouseButton = keyZon.get(c_int, "mouseButton", key.mouseButton);
 		key.scancode = keyZon.get(c_int, "scancode", key.scancode);
+		if(key.isToggling != .never) {
+			key.isToggling = std.meta.stringToEnum(Window.Key.IsToggling, keyZon.get([]const u8, "isToggling", "")) orelse key.isToggling;
+		}
 	}
 }
 
@@ -106,12 +123,13 @@ pub fn deinit() void {
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
-			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .@"struct") {
+			const DeclType = @TypeOf(@field(@This(), decl.name));
+			if(@typeInfo(DeclType) == .@"struct") {
+				if(DeclType == std.Io.Duration) continue;
 				@compileError("Not implemented yet.");
 			}
-			if(@typeInfo(declType) == .pointer) {
-				if(@typeInfo(declType).pointer.size == .slice) {
+			if(@typeInfo(DeclType) == .pointer) {
+				if(@typeInfo(DeclType).pointer.size == .slice) {
 					main.globalAllocator.free(@field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
@@ -122,17 +140,25 @@ pub fn deinit() void {
 }
 
 pub fn save() void {
-	const zonObject = ZonElement.initObject(main.stackAllocator);
+	var zonObject = ZonElement.initObject(main.stackAllocator);
 	defer zonObject.deinit(main.stackAllocator);
 
 	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		if(comptime std.mem.eql(u8, decl.name, "lastVersionString")) {
+			zonObject.put(decl.name, version.version);
+			continue;
+		}
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
-			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .@"struct") {
+			const DeclType = @TypeOf(@field(@This(), decl.name));
+			if(@typeInfo(DeclType) == .@"struct") {
+				if(DeclType == std.Io.Duration) {
+					zonObject.put(decl.name, @as(f64, @floatFromInt(@field(@This(), decl.name).toNanoseconds()))/1.0e6);
+					continue;
+				}
 				@compileError("Not implemented yet.");
 			}
-			if(declType == []const u8) {
+			if(DeclType == []const u8) {
 				zonObject.putOwnedString(decl.name, @field(@This(), decl.name));
 			} else {
 				zonObject.put(decl.name, @field(@This(), decl.name));
@@ -147,12 +173,45 @@ pub fn save() void {
 		keyZon.put("key", key.key);
 		keyZon.put("mouseButton", key.mouseButton);
 		keyZon.put("scancode", key.scancode);
+		if(key.isToggling != .never) {
+			keyZon.put("isToggling", @tagName(key.isToggling));
+		}
 		keyboard.put(key.name, keyZon);
 	}
 	zonObject.put("keyboard", keyboard);
 
-	// Write to file:
+	// Merge with the old settings file to preserve unknown settings.
+	var oldZonObject: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
+		if(err != error.FileNotFound) {
+			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
+		}
+		break :blk .null;
+	};
+	defer oldZonObject.deinit(main.stackAllocator);
+
+	if(oldZonObject == .object) {
+		zonObject.join(.preferLeft, oldZonObject);
+	}
+
 	main.files.cubyzDir().writeZon(settingsFile, zonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }
+
+pub const launchConfig = struct {
+	pub var cubyzDir: []const u8 = "";
+	pub var autoEnterWorld: []const u8 = "";
+	pub var headlessServer: bool = false;
+
+	pub fn init() void {
+		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
+			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
+			break :blk .null;
+		};
+		defer zon.deinit(main.stackAllocator);
+
+		cubyzDir = main.globalArena.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
+		headlessServer = zon.get(bool, "headlessServer", headlessServer);
+		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
+	}
+};

@@ -1,8 +1,10 @@
 /// A collection of things that should make dealing with opengl easier.
 /// Also contains some basic 2d drawing stuff.
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const hbft = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("freetype/ftadvanc.h");
 	@cInclude("freetype/ftbbox.h");
 	@cInclude("freetype/ftbitmap.h");
@@ -30,11 +32,13 @@ const Window = main.Window;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const c = @cImport({
-	@cInclude("glad/glad.h");
-	@cInclude("vulkan/vulkan.h");
+	@cInclude("glad/gl.h");
+	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
+	@cInclude(if(builtin.target.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
 });
 
 pub const stb_image = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("stb/stb_image.h");
 	@cInclude("stb/stb_image_write.h");
 });
@@ -782,8 +786,14 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	};
 
 	pub fn init(allocator: NeverFailingAllocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) TextBuffer {
-		var self: TextBuffer = undefined;
-		self.alignment = alignment;
+		var self: TextBuffer = .{
+			.alignment = alignment,
+			.width = 1e9,
+			.buffer = null,
+			.glyphs = &.{},
+			.lines = .init(allocator),
+			.lineBreaks = .init(allocator),
+		};
 		// Parse the input text:
 		var parser = Parser{
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
@@ -796,12 +806,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer parser.fontEffects.deinit();
 		defer parser.parsedText.deinit();
 		defer parser.characterIndex.deinit();
-		self.lines = .init(allocator);
-		self.lineBreaks = .init(allocator);
 		parser.parse();
 		if(parser.parsedText.items.len == 0) {
 			self.lineBreaks.append(.{.index = 0, .width = 0});
-			self.glyphs = &[0]GlyphData{};
 			return self;
 		}
 
@@ -1370,7 +1377,7 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const source = main.files.read(main.stackAllocator, filename) catch |err| {
+		const source = main.files.cwd().read(main.stackAllocator, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
@@ -1481,7 +1488,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 			fill = c.VK_POLYGON_MODE_FILL,
 			line = c.VK_POLYGON_MODE_LINE,
 			point = c.VK_POLYGON_MODE_POINT,
-			fillRectangleNV = c.VK_POLYGON_MODE_FILL_RECTANGLE_NV,
 		};
 
 		const CullModeFlags = enum(c.VkCullModeFlags) {
@@ -1741,7 +1747,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.fill => c.GL_FILL,
 			.line => c.GL_LINE,
 			.point => c.GL_POINT,
-			else => unreachable,
 		});
 		if(self.rasterState.cullMode != .none) {
 			c.glEnable(c.GL_CULL_FACE);
@@ -1900,6 +1905,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint) void {
+			self.used = 0;
 			self.binding = binding;
 			self.createBuffer(size);
 			self.activeFence = 0;
@@ -1928,12 +1934,11 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		pub fn beginRender(self: *Self) void {
 			self.activeFence += 1;
 			if(self.activeFence == self.fences.len) self.activeFence = 0;
-			const startTime = std.time.milliTimestamp();
+			const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
 			while(self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
 				self.finalFree(allocation);
-				if(std.time.milliTimestamp() -% startTime > 5) break; // TODO: Remove after #1434
+				if(main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
 			}
-			self.fencedFreeLists[self.activeFence].clearRetainingCapacity();
 			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 		}
 
@@ -1961,11 +1966,11 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				return result;
 			} else {
 				std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{@as(usize, self.capacity)*@sizeOf(Entry) >> 20, (@as(usize, self.capacity)*@sizeOf(Entry) >> 20)*2});
+				if(@as(usize, self.capacity)*@sizeOf(Entry)*2 > 1 << 31) @panic("OpenGL 2 GiB buffer size limit reached. Please lower your render distance.");
 				const oldBuffer = self.ssbo;
 				defer oldBuffer.deinit();
 				const oldCapacity = self.capacity;
 				self.createBuffer(self.capacity*|2); // TODO: Is there a way to free the old buffer before creating the new one?
-				if(self.capacity == oldCapacity) @panic("Not enough addressable GPU memory available.");
 				self.used += self.capacity - oldCapacity;
 				self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
 
@@ -2215,11 +2220,11 @@ pub const TextureArray = struct { // MARK: TextureArray
 		for(0..maxLOD) |i| {
 			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
-		var arena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
-		defer arena.deinit();
-		const lodBuffer: [][]Color = arena.allocator().alloc([]Color, maxLOD);
+		const arena = main.stackAllocator.createArena();
+		defer main.stackAllocator.destroyArena(arena);
+		const lodBuffer: [][]Color = arena.alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {
-			buffer.* = arena.allocator().alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
+			buffer.* = arena.alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
 		}
 
 		for(images, 0..) |image, i| {
@@ -2279,7 +2284,6 @@ pub const TextureArray = struct { // MARK: TextureArray
 			}
 		}
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);
-		//glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
@@ -2512,7 +2516,7 @@ pub const Image = struct { // MARK: Image
 	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}", .{path}) catch unreachable; // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		stb_image.stbi_set_flip_vertically_on_load(1);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
@@ -2526,7 +2530,7 @@ pub const Image = struct { // MARK: Image
 	pub fn readUnflippedFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}", .{path}) catch unreachable; // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
@@ -2629,15 +2633,16 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
+	const pos: main.chunk.BlockPos = .fromCoords(1, 1, 1);
 	if(block.hasBackFace()) {
-		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
+		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, true);
 		for(main.chunk.Neighbor.iterable) |neighbor| {
-			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
+			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos, true);
 		}
 	}
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
+	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, false);
 	for(main.chunk.Neighbor.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
+		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos.neighbor(neighbor)[0], false);
 	}
 
 	for(faceData.items) |*face| {

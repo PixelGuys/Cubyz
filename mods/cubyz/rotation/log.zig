@@ -107,8 +107,7 @@ fn rotateQuad(pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(originalCorners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(originalCorners[3][1] - offY)),
 	};
 
-	var offset: Vec3f = .{0.0, 0.0, 0.0};
-	offset[@intFromEnum(side.vectorComponent())] = @floatFromInt(@intFromBool(side.isPositive()));
+	const offset: Vec3f = @floatFromInt(@intFromBool(side.relPos() == Vec3i{1, 1, 1}));
 
 	const res: main.models.QuadInfo = .{
 		.corners = .{
@@ -117,7 +116,7 @@ fn rotateQuad(pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 			corners3d[2] + offset,
 			corners3d[3] + offset,
 		},
-		.cornerUV = corners,
+		.cornerUV = .{corners[0], corners[1], corners[2], corners[3]},
 		.normal = @as(Vec3f, @floatFromInt(side.relPos())),
 		.textureSlot = @intFromEnum(pattern),
 	};
@@ -212,7 +211,7 @@ pub fn generateData(
 			}
 
 			const sidePos = pos + side.relPos();
-			const sideBlock = main.renderer.mesh_storage.getBlock(sidePos[0], sidePos[1], sidePos[2]) orelse continue;
+			const sideBlock = main.renderer.mesh_storage.getBlockFromRenderThread(sidePos[0], sidePos[1], sidePos[2]) orelse continue;
 			const canConnectToSide = currentBlock.mode() == sideBlock.mode() and currentBlock.modeData() == sideBlock.modeData();
 
 			if(canConnectToSide) {
@@ -221,10 +220,7 @@ pub fn generateData(
 			}
 		}
 
-		const result: u16 = currentData.enabledConnections;
-		if(result == currentBlock.data) return false;
-
-		currentBlock.data = result;
+		currentBlock.data = currentData.enabledConnections;
 		return true;
 	}
 	return false;

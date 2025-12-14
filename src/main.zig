@@ -9,6 +9,7 @@ pub const assets = @import("assets.zig");
 pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
+pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
 pub const files = @import("files.zig");
@@ -16,10 +17,11 @@ pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
-pub const JsonElement = @import("json.zig").JsonElement;
+pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
+pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
@@ -47,19 +49,27 @@ const Vec3d = vec.Vec3d;
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
-var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
-var handled_gpa = heap.ErrorHandlingAllocator.init(global_gpa.allocator());
-pub const globalAllocator: heap.NeverFailingAllocator = handled_gpa.allocator();
+pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
+pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
+pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
+var threadedIo: std.Io.Threaded = undefined;
+pub var io: std.Io = threadedIo.io();
 
 pub fn initThreadLocals() void {
-	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+	seed = @bitCast(@as(i64, @truncate(timestamp().nanoseconds)));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
+	heap.GarbageCollection.addThread();
 }
 
 pub fn deinitThreadLocals() void {
 	stackAllocatorBase.deinit();
+	heap.GarbageCollection.removeThread();
+}
+
+pub fn timestamp() std.Io.Timestamp {
+	return (std.Io.Clock.Timestamp.now(io, if(@import("builtin").os.tag == .windows) .real else .awake) catch unreachable).raw; // TODO: On windows the awake time is broken
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -202,7 +212,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 				resultArgs[resultArgs.len - 1] = colorReset;
 			}
 			logToStdErr(formatString, resultArgs);
-			if(level == .err and !openingErrorWindow) {
+			if(level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
 				openingErrorWindow = true;
 				gui.openWindow("error_prompt");
 				openingErrorWindow = false;
@@ -213,7 +223,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 
 fn initLogging() void {
 	logFile = null;
-	std.fs.cwd().makePath("logs") catch |err| {
+	files.cwd().makePath("logs") catch |err| {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
@@ -222,9 +232,9 @@ fn initLogging() void {
 		return;
 	};
 
-	const _timestamp = std.time.timestamp();
+	const _timestamp = (std.Io.Clock.Timestamp.now(io, .real) catch unreachable).raw;
 
-	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp}) catch unreachable;
+	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
 	defer stackAllocator.free(_path_str);
 
 	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
@@ -232,7 +242,7 @@ fn initLogging() void {
 		return;
 	};
 
-	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
+	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
@@ -253,7 +263,6 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
 	(logFile orelse return).writeAll(string) catch {};
 	(logFileTs orelse return).writeAll(string) catch {};
 }
@@ -264,90 +273,87 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	defer allocator.free(string);
-	nosuspend std.io.getStdErr().writeAll(string) catch {};
+	const writer = std.debug.lockStderrWriter(&.{});
+	defer std.debug.unlockStderrWriter();
+	nosuspend writer[0].writeAll(string) catch {};
 }
 
 // MARK: Callbacks
-fn escape() void {
-	if(gui.selectedTextInput != null) {
-		gui.selectedTextInput = null;
-		return;
-	}
+fn escape(mods: Window.Key.Modifiers) void {
+	if(gui.selectedTextInput != null) gui.setSelectedTextInput(null);
+	inventory(mods);
+}
+fn inventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 }
-fn ungrabMouse() void {
+fn ungrabMouse(_: Window.Key.Modifiers) void {
 	if(Window.grabbed) {
 		gui.toggleGameMenu();
 	}
 }
-fn openInventory() void {
-	if(game.world == null) return;
-	gui.toggleGameMenu();
-	gui.openWindow("inventory");
-}
-fn openCreativeInventory() void {
+fn openCreativeInventory(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
-	gui.toggleGameMenu();
+	ungrabMouse(mods);
 	gui.openWindow("creative_inventory");
 }
-fn openSharedInventoryTesting() void {
+fn openChat(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
-	ungrabMouse();
-	gui.openWindow("shared_inventory_testing");
-}
-fn openChat() void {
-	if(game.world == null) return;
-	ungrabMouse();
+	ungrabMouse(mods);
 	gui.openWindow("chat");
 	gui.windowlist.chat.input.select();
 }
-fn openCommand() void {
+fn openCommand(mods: Window.Key.Modifiers) void {
 	if(game.world == null) return;
-	openChat();
+	openChat(mods);
 	gui.windowlist.chat.input.clear();
 	gui.windowlist.chat.input.inputCharacter('/');
 }
-fn takeBackgroundImageFn() void {
+fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
-	const showItem = itemdrop.ItemDisplayManager.showItem;
+
+	const oldHideGui = gui.hideGui;
+	gui.hideGui = true;
+	const oldShowItem = itemdrop.ItemDisplayManager.showItem;
 	itemdrop.ItemDisplayManager.showItem = false;
+
 	renderer.MenuBackGround.takeBackgroundImage();
-	itemdrop.ItemDisplayManager.showItem = showItem;
+
+	gui.hideGui = oldHideGui;
+	itemdrop.ItemDisplayManager.showItem = oldShowItem;
 }
-fn toggleHideGui() void {
+fn toggleHideGui(_: Window.Key.Modifiers) void {
 	gui.hideGui = !gui.hideGui;
 }
-fn toggleHideDisplayItem() void {
+fn toggleHideDisplayItem(_: Window.Key.Modifiers) void {
 	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
 }
-fn toggleDebugOverlay() void {
+fn toggleDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug");
 }
-fn togglePerformanceOverlay() void {
+fn togglePerformanceOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("performance_graph");
 }
-fn toggleGPUPerformanceOverlay() void {
+fn toggleGPUPerformanceOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("gpu_performance_measuring");
 }
-fn toggleNetworkDebugOverlay() void {
+fn toggleNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug_network");
 }
-fn toggleAdvancedNetworkDebugOverlay() void {
+fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug_network_advanced");
 }
-fn cycleHotbarSlot(i: comptime_int) *const fn() void {
+fn cycleHotbarSlot(i: comptime_int) *const fn(Window.Key.Modifiers) void {
 	return &struct {
-		fn set() void {
+		fn set(_: Window.Key.Modifiers) void {
 			game.Player.selectedSlot = @intCast(@mod(@as(i33, game.Player.selectedSlot) + i, 12));
 		}
 	}.set;
 }
-fn setHotbarSlot(i: comptime_int) *const fn() void {
+fn setHotbarSlot(i: comptime_int) *const fn(Window.Key.Modifiers) void {
 	return &struct {
-		fn set() void {
+		fn set(_: Window.Key.Modifiers) void {
 			game.Player.selectedSlot = i - 1;
 		}
 	}.set;
@@ -361,24 +367,24 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
 		.{.name = "backward", .key = c.GLFW_KEY_S, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
 		.{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
-		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
+		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB, .isToggling = .no},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
 		.{.name = "crouch", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
-		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
 		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
+		.{.name = "drop", .key = c.GLFW_KEY_Q, .repeatAction = &game.Player.dropFromHand, .notifyRequirement = .inGame},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
 
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B},
-		.{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &openInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
+		.{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .pressAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "openCommand", .key = c.GLFW_KEY_SLASH, .releaseAction = &openCommand},
@@ -400,10 +406,10 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
 		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
 		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll},
-		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
-		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
-		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
+		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = .{.control = true}},
+		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = .{.control = true}},
+		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = .{.control = true}},
+		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = .{.control = true}},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
 		// Hotbar shortcuts:
@@ -433,18 +439,35 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
-
-		.{.name = "shared_inventory_testing", .key = c.GLFW_KEY_O, .pressAction = &openSharedInventoryTesting},
 	};
 
-	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
+	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
 		for(&keys) |*_key| {
 			if(std.mem.eql(u8, name, _key.name)) {
 				return _key;
 			}
 		}
-		std.log.err("Couldn't find keyboard key with name {s}", .{name});
-		return &.{.name = ""};
+		return null;
+	}
+	pub fn key(name: []const u8) *const Window.Key {
+		return findKey(name) orelse {
+			std.log.err("Couldn't find keyboard key with name {s}", .{name});
+			return &.{.name = ""};
+		};
+	}
+	pub fn setIsToggling(name: []const u8, value: bool) void {
+		if(findKey(name)) |theKey| {
+			if(theKey.isToggling == .never) {
+				std.log.err("Tried setting toggling on non-toggling key with name {s}", .{name});
+				return;
+			}
+			theKey.isToggling = if(value) .yes else .no;
+			if(!value) {
+				theKey.pressed = false;
+			}
+		} else {
+			std.log.err("Couldn't find keyboard key to toggle with name {s}", .{name});
+		}
 	}
 };
 
@@ -456,15 +479,6 @@ pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
 pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
-}
-
-fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
-	if(str.len == 0) return false;
-	if(!std.ascii.isAlphabetic(str[0]) and str[0] != '_') return false;
-	for(str[1..]) |c| {
-		if(!std.ascii.isAlphanumeric(c) and c != '_') return false;
-	}
-	return true;
 }
 
 fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
@@ -482,101 +496,26 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	}
 	return false;
 }
-pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
-	if(isHiddenOrParentHiddenPosix(jsonPath)) {
-		std.log.info("NOT converting {s}.", .{jsonPath});
-		return;
-	}
-	std.log.info("Converting {s}:", .{jsonPath});
-	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
-		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
-		return;
-	};
-	defer stackAllocator.free(jsonString);
-	var zonString = List(u8).init(stackAllocator);
-	defer zonString.deinit();
-	std.log.debug("{s}", .{jsonString});
-
-	var i: usize = 0;
-	while(i < jsonString.len) : (i += 1) {
-		switch(jsonString[i]) {
-			'\"' => {
-				var j = i + 1;
-				while(j < jsonString.len and jsonString[j] != '"') : (j += 1) {}
-				const string = jsonString[i + 1 .. j];
-				if(isValidIdentifierName(string)) {
-					zonString.append('.');
-					zonString.appendSlice(string);
-				} else {
-					zonString.append('"');
-					zonString.appendSlice(string);
-					zonString.append('"');
-				}
-				i = j;
-			},
-			'[', '{' => {
-				zonString.append('.');
-				zonString.append('{');
-			},
-			']', '}' => {
-				zonString.append('}');
-			},
-			':' => {
-				zonString.append('=');
-			},
-			else => |c| {
-				zonString.append(c);
-			},
-		}
-	}
-	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0 .. std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
-	defer stackAllocator.free(zonPath);
-	std.log.info("Outputting to {s}:", .{zonPath});
-	std.log.debug("{s}", .{zonString.items});
-	files.write(zonPath, zonString.items) catch |err| {
-		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
-		return;
-	};
-	std.log.info("Deleting file {s}", .{jsonPath});
-	std.fs.cwd().deleteFile(jsonPath) catch |err| {
-		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
-		return;
-	};
-}
 
 pub fn main() void { // MARK: main()
-	defer if(global_gpa.deinit() == .leak) {
-		std.log.err("Memory leak", .{});
-	};
+	defer heap.allocators.deinit();
+	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
+	threadedIo = .init(globalAllocator.allocator);
+	defer threadedIo.deinit();
 
 	initLogging();
 	defer deinitLogging();
 
-	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
-		file.close();
-		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
-		var dir = std.fs.cwd().openDir(".", .{.iterate = true}) catch |err| {
-			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
-			break :blk;
-		};
-		defer dir.close();
+	std.log.info("Starting game with version {s}", .{settings.version.version});
 
-		var walker = dir.walk(stackAllocator.allocator) catch unreachable;
-		defer walker.deinit();
-		while(walker.next() catch |err| {
-			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
-			break :blk;
-		}) |entry| {
-			if(entry.kind == .file and (std.ascii.endsWithIgnoreCase(entry.basename, ".json") or std.mem.eql(u8, entry.basename, "world.dat")) and !std.ascii.startsWithIgnoreCase(entry.path, "compiler") and !std.ascii.startsWithIgnoreCase(entry.path, ".zig-cache") and !std.ascii.startsWithIgnoreCase(entry.path, ".vscode")) {
-				convertJsonToZon(entry.path);
-			}
-		}
-	} else |_| {}
+	settings.launchConfig.init();
 
-	gui.initWindowList();
-	defer gui.deinitWindowList();
+	const headless = settings.launchConfig.headlessServer;
+
+	if(!headless) gui.initWindowList();
+	defer if(!headless) gui.deinitWindowList();
 
 	files.init();
 	defer files.deinit();
@@ -590,14 +529,14 @@ pub fn main() void { // MARK: main()
 	file_monitor.init();
 	defer file_monitor.deinit();
 
-	Window.init();
-	defer Window.deinit();
+	if(!headless) Window.init();
+	defer if(!headless) Window.deinit();
 
-	graphics.init();
-	defer graphics.deinit();
+	if(!headless) graphics.init();
+	defer if(!headless) graphics.deinit();
 
-	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
-	defer audio.deinit();
+	if(!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
+	defer if(!headless) audio.deinit();
 
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
@@ -608,14 +547,10 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
+	callbacks.init();
+
 	block_entity.init();
 	defer block_entity.deinit();
-
-	blocks.tickFunctions = .init();
-	defer blocks.tickFunctions.deinit();
-
-	blocks.touchFunctions = .init();
-	defer blocks.touchFunctions.deinit();
 
 	models.init();
 	defer models.deinit();
@@ -623,54 +558,56 @@ pub fn main() void { // MARK: main()
 	items.globalInit();
 	defer items.deinit();
 
-	itemdrop.ItemDropRenderer.init();
-	defer itemdrop.ItemDropRenderer.deinit();
-
-	tag.init();
-	defer tag.deinit();
+	if(!headless) itemdrop.ItemDropRenderer.init();
+	defer if(!headless) itemdrop.ItemDropRenderer.deinit();
 
 	assets.init();
-	defer assets.deinit();
 
-	blocks.meshes.init();
-	defer blocks.meshes.deinit();
+	if(!headless) blocks.meshes.init();
+	defer if(!headless) blocks.meshes.deinit();
 
-	renderer.init();
-	defer renderer.deinit();
+	if(!headless) renderer.init();
+	defer if(!headless) renderer.deinit();
 
 	network.init();
 
-	entity.ClientEntityManager.init();
-	defer entity.ClientEntityManager.deinit();
+	if(!headless) entity.ClientEntityManager.init();
+	defer if(!headless) entity.ClientEntityManager.deinit();
 
-	gui.init();
-	defer gui.deinit();
+	if(!headless) gui.init();
+	defer if(!headless) gui.deinit();
 
-	particles.ParticleManager.init();
-	defer particles.ParticleManager.deinit();
+	if(!headless) particles.ParticleManager.init();
+	defer if(!headless) particles.ParticleManager.deinit();
 
+	server.terrain.globalInit();
+	defer server.terrain.globalDeinit();
+
+	if(headless) {
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
+	} else {
+		clientMain();
+	}
+}
+
+pub fn clientMain() void { // MARK: clientMain()
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
-	} else {
+	} else if(settings.launchConfig.autoEnterWorld.len == 0) {
 		gui.openWindow("main");
+	} else {
+		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
-
-	server.terrain.initGenerators();
-	defer server.terrain.deinitGenerators();
 
 	const c = Window.c;
-
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastBeginRendering = std.time.nanoTimestamp();
+	var lastBeginRendering = timestamp();
 
-	if(settings.developerAutoEnterWorld.len != 0) {
-		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
-	}
-
-	audio.setMusic("cubyz:cubyz");
+	audio.setMusic("cubyz:TotalDemented/Cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		heap.GarbageCollection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);
@@ -683,11 +620,11 @@ pub fn main() void { // MARK: main()
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		} else {
-			std.time.sleep(16_000_000);
+			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
 
-		const endRendering = std.time.nanoTimestamp();
-		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+		const endRendering = timestamp();
+		const frameTime = @as(f64, @floatFromInt(endRendering.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
 		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
 			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
 			std.posix.exit(1);
@@ -696,11 +633,11 @@ pub fn main() void { // MARK: main()
 
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
-			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
-			std.time.sleep(sleep);
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering.nanoseconds -% lastBeginRendering.nanoseconds)));
+			io.sleep(.fromNanoseconds(sleep), .awake) catch {};
 		}
-		const begin = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+		const begin = timestamp();
+		const deltaTime = @as(f64, @floatFromInt(begin.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
 		lastDeltaTime.store(deltaTime, .monotonic);
 		lastBeginRendering = begin;
 
@@ -713,7 +650,13 @@ pub fn main() void { // MARK: main()
 		}
 
 		if(!isHidden) {
-			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+			if(game.world != null) {
+				renderer.updateFov(settings.fov);
+				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+			} else {
+				renderer.updateFov(70.0);
+				renderer.MenuBackGround.render(deltaTime);
+			}
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();
@@ -722,12 +665,13 @@ pub fn main() void { // MARK: main()
 
 		if(shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
+			Window.setMouseGrabbed(false);
 			if(game.world) |world| {
 				world.deinit();
 				game.world = null;
 			}
 			gui.openWindow("main");
-			audio.setMusic("cubyz:cubyz");
+			audio.setMusic("cubyz:TotalDemented/Cubyz");
 		}
 	}
 
@@ -759,6 +703,5 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
-	_ = @import("json.zig");
 	_ = @import("zon.zig");
 }

@@ -1,9 +1,10 @@
 .{
-	.tags = .{.sand},
+	.tags = .{.diggable},
 	.blockHealth = 6.5,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
+	.rotation = "cubyz:stairs",
 	.texture = "cubyz:mud",
 }

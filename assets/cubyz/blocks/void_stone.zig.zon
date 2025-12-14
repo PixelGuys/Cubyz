@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone, .voidStone},
+	.tags = .{.stone, .mineable, .voidStone},
 	.blockHealth = 60,
 	.blockResistance = 5,
 	.drops = .{
@@ -7,9 +7,10 @@
 	},
 	.item = .{
 		.material = .{
-			.density = 6.0,
-			.elasticity = 2.0,
-			.hardness = 8.0,
+			.durability = 200,
+			.massDamage = 3.0,
+			.hardnessDamage = 7.0,
+			.swingSpeed = 4.7,
 			.textureRoughness = 1.0,
 			.colors = .{
 				0xff030308, 0xff0D0C11, 0xff151420, 0xff1C1A2B, 0xff28253D,

@@ -2,9 +2,12 @@
 	.properties = .{
 		.cold,
 	},
-	.chance = 0.33,
+	.chance = 0.5,
+	.minHeightLimit = 7,
 	.minHeight = 25,
 	.maxHeight = 45,
+	.maxHeightLimit = 60,
+	.smoothBeaches = true,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.roughness = 10,
@@ -42,7 +45,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:yellow_leaves",
+			.leaves = "cubyz:leaves/yellow",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.15,
@@ -56,7 +59,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:red_leaves",
+			.leaves = "cubyz:leaves/red",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.15,
@@ -68,7 +71,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:birch_leaves",
+			.leaves = "cubyz:leaves/birch",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.03,
@@ -82,7 +85,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
+			.leaves = "cubyz:leaves/oak",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.015,

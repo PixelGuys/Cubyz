@@ -116,7 +116,8 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 		}
 	};
 	if(data >= 32) return 0;
-	return rotationTable[@intFromEnum(angle)][data];
+	const runtimeTable = rotationTable;
+	return runtimeTable[@intFromEnum(angle)][data];
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, _: bool) bool {
@@ -167,7 +168,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	return true;
 }
 
-fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
 	var result: ?RayIntersectionResult = null;
 	var resultBit: u16 = 0;
 	for([_]u16{1, 2, 4, 8, 16}) |bit| {
@@ -185,11 +186,11 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 	return result;
 }
 
-pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 	return closestRay(.intersection, block, item, relativePlayerPos, playerDir);
 }
 
-pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
 	currentData.data &= ~bit;
 	if(currentData.data == 0) currentData.typ = 0;
@@ -203,7 +204,7 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 			if(torchAmountChange <= 0) {
 				return .{.yes_dropsItems = @intCast(-torchAmountChange)};
 			} else {
-				if(item.item == null or item.item.? != .baseItem or !std.meta.eql(item.item.?.baseItem.block(), newBlock.typ)) return .no;
+				if(item.item != .baseItem or !std.meta.eql(item.item.baseItem.block(), newBlock.typ)) return .no;
 				return .{.yes_costsItems = @intCast(torchAmountChange)};
 			}
 		},

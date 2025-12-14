@@ -1,0 +1,10 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:cactus/upper/0"},
+		.{.id = "cubyz:cactus/upper/1"},
+		.{.id = "cubyz:cactus/upper/2"},
+	},
+	.children = .{
+		.pink = "cubyz:cactus/flower",
+	},
+}

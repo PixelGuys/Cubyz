@@ -3,8 +3,11 @@
 		.wet,
 		.hot,
 	},
+	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,
+	.maxHeightLimit = 60,
+	.smoothBeaches = true,
 
 	.roughness = 10,
 	.hills = 10,
@@ -21,7 +24,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:mahogany_leaves",
+			.leaves = "cubyz:leaves/mahogany",
 			.log = "cubyz:mahogany_log",
 			.top = "cubyz:mahogany_top",
 			.chance = 0.36,
@@ -33,7 +36,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:mahogany_leaves",
+			.leaves = "cubyz:leaves/mahogany",
 			.log = "cubyz:mahogany_log",
 			.top = "cubyz:mahogany_top",
 			.chance = 0.2,

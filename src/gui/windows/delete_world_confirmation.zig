@@ -32,7 +32,9 @@ pub fn setDeleteWorldName(name: []const u8) void {
 }
 
 fn flawedDeleteWorld(name: []const u8) !void {
-	try main.files.deleteDir("saves", name);
+	const path = std.mem.concat(main.stackAllocator.allocator, u8, &.{"saves/", name}) catch unreachable;
+	defer main.stackAllocator.free(path);
+	try main.files.cubyzDir().deleteTree(path);
 	gui.windowlist.save_selection.needsUpdate = true;
 }
 
@@ -45,7 +47,7 @@ fn deleteWorld(_: usize) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	const text = std.fmt.allocPrint(main.stackAllocator.allocator, "Are you sure you want to delete the world **{s}**", .{deleteWorldName}) catch unreachable;
+	const text = std.fmt.allocPrint(main.stackAllocator.allocator, "Are you sure you want to delete the world **{s}**?", .{deleteWorldName}) catch unreachable;
 	defer main.stackAllocator.free(text);
 	list.add(Label.init(.{0, 0}, 128, text, .center));
 	list.add(Button.initText(.{0, 0}, 128, "Yes", .{.callback = &deleteWorld}));

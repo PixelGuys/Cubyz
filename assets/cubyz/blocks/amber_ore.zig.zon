@@ -1,13 +1,14 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.mineable},
 	.blockHealth = 15,
 	.blockResistance = 3,
 	.item = .{
 		.texture = "amber.png",
 		.material = .{
-			.density = 1.0,
-			.elasticity = 0.25,
-			.hardness = 2.5,
+			.durability = 140,
+			.massDamage = 0.1,
+			.hardnessDamage = 2.3,
+			.swingSpeed = 8.5,
 			.textureRoughness = 0.1,
 			.colors = .{
 				0xff9b3481b, 0xffd35a1c, 0xffee7023, 0xffff9134, 0xffffc14a,

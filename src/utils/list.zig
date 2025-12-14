@@ -209,19 +209,11 @@ pub fn List(comptime T: type) type {
 			}
 		}
 
-		pub const Writer = if(T != u8)
-			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
-				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
-		else
-			std.io.Writer(*@This(), error{}, appendWrite);
-
-		pub fn writer(self: *@This()) Writer {
-			return .{.context = self};
-		}
-
-		fn appendWrite(self: *@This(), m: []const u8) !usize {
-			self.appendSlice(m);
-			return m.len;
+		pub fn print(self: *@This(), comptime fmt: []const u8, args: anytype) void {
+			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator); // TODO: Is there no easier way to make this without an extra copy?
+			defer writer.deinit();
+			writer.writer.print(fmt, args) catch unreachable;
+			self.appendSlice(writer.written());
 		}
 	};
 }
@@ -413,21 +405,6 @@ pub fn ListUnmanaged(comptime T: type) type {
 
 				self.items.len -= len - new_items.len;
 			}
-		}
-
-		pub const Writer = if(T != u8)
-			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
-				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
-		else
-			std.io.Writer(*@This(), error{}, appendWrite);
-
-		pub fn writer(self: *@This()) Writer {
-			return .{.context = self};
-		}
-
-		fn appendWrite(self: *@This(), m: []const u8) !usize {
-			self.appendSlice(m);
-			return m.len;
 		}
 	};
 }

@@ -1,5 +1,5 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .cuttable, .mushroom},
 	.blockHealth = 2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -17,14 +17,22 @@
 	.texture5 = "cubyz:branch/glimmergill/cross",
 	.item = .{
 		.material = .{
-			.density = 0.8,
-			.elasticity = 4.5,
-			.hardness = 2.5,
+			.durability = 260,
+			.massDamage = 1.5,
+			.hardnessDamage = 0.5,
+			.swingSpeed = 4.2,
 			.textureRoughness = 0.5,
 			.colors = .{
 				0xff4a3570, 0xff564085, 0xff684a97, 0xff7555b2, 0xff7555b2,
 			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 0.45,
+				},
+			},
 		},
 		.texture = "branch/glimmergill.png",
 	},
+	.decayProhibitor = true,
 }

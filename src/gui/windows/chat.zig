@@ -57,53 +57,53 @@ pub const History = struct {
 		self.down.deinit(main.globalAllocator);
 	}
 	fn clear(self: *History) void {
-		while(self.up.dequeue()) |msg| {
+		while(self.up.popFront()) |msg| {
 			main.globalAllocator.free(msg);
 		}
-		while(self.down.dequeue()) |msg| {
+		while(self.down.popFront()) |msg| {
 			main.globalAllocator.free(msg);
 		}
 	}
 	fn flushUp(self: *History) void {
-		while(self.down.dequeueFront()) |msg| {
+		while(self.down.popBack()) |msg| {
 			if(msg.len == 0) {
 				continue;
 			}
 
-			if(self.up.forceEnqueueFront(msg)) |old| {
+			if(self.up.forcePushBack(msg)) |old| {
 				main.globalAllocator.free(old);
 			}
 		}
 	}
 	pub fn isDuplicate(self: *History, new: []const u8) bool {
 		if(new.len == 0) return true;
-		if(self.down.peekFront()) |msg| {
+		if(self.down.peekBack()) |msg| {
 			if(std.mem.eql(u8, msg, new)) return true;
 		}
-		if(self.up.peekFront()) |msg| {
+		if(self.up.peekBack()) |msg| {
 			if(std.mem.eql(u8, msg, new)) return true;
 		}
 		return false;
 	}
 	pub fn pushDown(self: *History, new: []const u8) void {
-		if(self.down.forceEnqueueFront(new)) |old| {
+		if(self.down.forcePushBack(new)) |old| {
 			main.globalAllocator.free(old);
 		}
 	}
 	pub fn pushUp(self: *History, new: []const u8) void {
-		if(self.up.forceEnqueueFront(new)) |old| {
+		if(self.up.forcePushBack(new)) |old| {
 			main.globalAllocator.free(old);
 		}
 	}
 	pub fn cycleUp(self: *History) bool {
-		if(self.down.dequeueFront()) |msg| {
+		if(self.down.popBack()) |msg| {
 			self.pushUp(msg);
 			return true;
 		}
 		return false;
 	}
 	pub fn cycleDown(self: *History) void {
-		if(self.up.dequeueFront()) |msg| {
+		if(self.up.popBack()) |msg| {
 			self.pushDown(msg);
 		}
 	}
@@ -121,7 +121,7 @@ pub fn deinit() void {
 		label.deinit();
 	}
 	history.deinit();
-	while(messageQueue.dequeue()) |msg| {
+	while(messageQueue.popFront()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageHistory.deinit();
@@ -173,7 +173,7 @@ pub fn loadNextHistoryEntry(_: usize) void {
 		messageHistory.pushDown(main.globalAllocator.dupe(u8, input.currentString.items));
 		messageHistory.cycleDown();
 	}
-	const msg = messageHistory.down.peekFront() orelse "";
+	const msg = messageHistory.down.peekBack() orelse "";
 	input.setString(msg);
 }
 
@@ -182,7 +182,7 @@ pub fn loadPreviousHistoryEntry(_: usize) void {
 	if(messageHistory.isDuplicate(input.currentString.items)) {} else {
 		messageHistory.pushUp(main.globalAllocator.dupe(u8, input.currentString.items));
 	}
-	const msg = messageHistory.down.peekFront() orelse "";
+	const msg = messageHistory.down.peekBack() orelse "";
 	input.setString(msg);
 }
 
@@ -190,7 +190,7 @@ pub fn onClose() void {
 	while(history.popOrNull()) |label| {
 		label.deinit();
 	}
-	while(messageQueue.dequeue()) |msg| {
+	while(messageQueue.popFront()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageHistory.clear();
@@ -204,9 +204,9 @@ pub fn onClose() void {
 }
 
 pub fn update() void {
-	if(!messageQueue.empty()) {
-		const currentTime: i32 = @truncate(std.time.milliTimestamp());
-		while(messageQueue.dequeue()) |msg| {
+	if(!messageQueue.isEmpty()) {
+		const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
+		while(messageQueue.popFront()) |msg| {
 			history.append(Label.init(.{0, 0}, 256, msg, .left));
 			main.globalAllocator.free(msg);
 			expirationTime.append(currentTime +% messageTimeout);
@@ -214,7 +214,7 @@ pub fn update() void {
 		refresh();
 	}
 
-	const currentTime: i32 = @truncate(std.time.milliTimestamp());
+	const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
 	while(fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
 		fadeOutEnd += 1;
 	}
@@ -243,7 +243,7 @@ pub fn render() void {
 }
 
 pub fn addMessage(msg: []const u8) void {
-	messageQueue.enqueue(main.globalAllocator.dupe(u8, msg));
+	messageQueue.pushBack(main.globalAllocator.dupe(u8, msg));
 }
 
 pub fn sendMessage(_: usize) void {
@@ -257,7 +257,7 @@ pub fn sendMessage(_: usize) void {
 				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
 			}
 
-			main.network.Protocols.chat.send(main.game.world.?.conn, data);
+			main.network.protocols.chat.send(main.game.world.?.conn, data);
 			input.clear();
 		}
 	}

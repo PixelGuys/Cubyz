@@ -1,5 +1,8 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .wood, .branch},
+	.onUpdate = .{
+		.type = .decay,
+	},
 	.blockHealth = 4,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -17,6 +20,10 @@
 	.texture5 = "cubyz:branch/birch/cross",
 	.item = .{
 		.material = .{
+			.durability = 24,
+			.massDamage = 0.45,
+			.hardnessDamage = 0.45,
+			.swingSpeed = 6.9,
 			.density = 0.3,
 			.elasticity = 3.5,
 			.hardness = 1.25,
@@ -33,4 +40,5 @@
 		},
 		.texture = "branch/birch.png",
 	},
+	.decayProhibitor = true,
 }

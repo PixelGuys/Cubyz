@@ -22,23 +22,25 @@ pub const BlockEntityIndex = main.utils.DenseId(u32);
 
 const UpdateEvent = union(enum) {
 	remove: void,
-	createOrUpdate: *BinaryReader,
+	update: *BinaryReader,
 };
+
+pub const ErrorSet = BinaryReader.AllErrors || error{Invalid};
 
 pub const BlockEntityType = struct {
 	id: []const u8,
 	vtable: VTable,
 
 	const VTable = struct {
-		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
+		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void,
 		onUnloadClient: *const fn(dataIndex: BlockEntityIndex) void,
-		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
+		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void,
 		onUnloadServer: *const fn(dataIndex: BlockEntityIndex) void,
 		onStoreServerToDisk: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onStoreServerToClient: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
-		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) EventStatus,
-		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void,
-		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void,
+		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) main.callbacks.Result,
+		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
+		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
 		getServerToClientData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
@@ -57,44 +59,39 @@ pub const BlockEntityType = struct {
 		}
 		return class;
 	}
-	pub inline fn onLoadClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+	pub inline fn onLoadClient(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 		return self.vtable.onLoadClient(pos, chunk, reader);
 	}
-	pub inline fn onUnloadClient(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
+	pub inline fn onUnloadClient(self: *const BlockEntityType, dataIndex: BlockEntityIndex) void {
 		return self.vtable.onUnloadClient(dataIndex);
 	}
-	pub inline fn onLoadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+	pub inline fn onLoadServer(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 		return self.vtable.onLoadServer(pos, chunk, reader);
 	}
-	pub inline fn onUnloadServer(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
+	pub inline fn onUnloadServer(self: *const BlockEntityType, dataIndex: BlockEntityIndex) void {
 		return self.vtable.onUnloadServer(dataIndex);
 	}
-	pub inline fn onStoreServerToDisk(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+	pub inline fn onStoreServerToDisk(self: *const BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToDisk(dataIndex, writer);
 	}
-	pub inline fn onStoreServerToClient(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+	pub inline fn onStoreServerToClient(self: *const BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(dataIndex, writer);
 	}
-	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) EventStatus {
+	pub inline fn onInteract(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
 		return self.vtable.onInteract(pos, chunk);
 	}
-	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+	pub inline fn updateClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateClientData(pos, chunk, event);
 	}
-	pub inline fn updateServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+	pub inline fn updateServerData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateServerData(pos, chunk, event);
 	}
-	pub inline fn getServerToClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+	pub inline fn getServerToClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getServerToClientData(pos, chunk, writer);
 	}
-	pub inline fn getClientToServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+	pub inline fn getClientToServerData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getClientToServerData(pos, chunk, writer);
 	}
-};
-
-pub const EventStatus = enum {
-	handled,
-	ignored,
 };
 
 fn BlockEntityDataStorage(T: type) type {
@@ -124,10 +121,10 @@ fn BlockEntityDataStorage(T: type) type {
 				defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
 				break :blk nextIndex;
 			};
-			const blockIndex = chunk.getLocalBlockIndex(pos);
+			const localPos = chunk.getLocalBlockPos(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
-			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex) catch unreachable;
+			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, localPos, dataIndex) catch unreachable;
 			chunk.blockPosToEntityDataMapMutex.unlock();
 			return dataIndex;
 		}
@@ -147,10 +144,10 @@ fn BlockEntityDataStorage(T: type) type {
 			mutex.lock();
 			defer mutex.unlock();
 
-			const blockIndex = chunk.getLocalBlockIndex(pos);
+			const localPos = chunk.getLocalBlockPos(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
-			const entityNullable = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex);
+			const entityNullable = chunk.blockPosToEntityDataMap.fetchRemove(localPos);
 			chunk.blockPosToEntityDataMapMutex.unlock();
 
 			const entry = entityNullable orelse return null;
@@ -166,15 +163,12 @@ fn BlockEntityDataStorage(T: type) type {
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			main.utils.assertLocked(&mutex);
 
-			const blockIndex = chunk.getLocalBlockIndex(pos);
+			const localPos = chunk.getLocalBlockPos(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
 			defer chunk.blockPosToEntityDataMapMutex.unlock();
 
-			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse {
-				std.log.warn("Couldn't get entity data of block at position {}", .{pos});
-				return null;
-			};
+			const dataIndex = chunk.blockPosToEntityDataMap.get(localPos) orelse return null;
 			return storage.get(dataIndex);
 		}
 		pub const GetOrPutResult = struct {
@@ -193,11 +187,10 @@ fn BlockEntityDataStorage(T: type) type {
 
 pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
-		const StorageServer = BlockEntityDataStorage(
-			struct {
-				id: ?u32,
-			},
-		);
+		const inventorySize = 20;
+		const StorageServer = BlockEntityDataStorage(struct {
+			invId: main.items.Inventory.InventoryId,
+		});
 
 		pub const id = "chest";
 		pub fn init() void {
@@ -210,20 +203,55 @@ pub const BlockEntityTypes = struct {
 			StorageServer.reset();
 		}
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
+		fn onInventoryUpdateCallback(source: main.items.Inventory.Source) void {
+			const pos = source.blockInventory;
+			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			defer simChunk.decreaseRefCount();
+			const ch = simChunk.getChunk() orelse return;
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			ch.setChanged();
+		}
+
+		const inventoryCallbacks = main.items.Inventory.Callbacks{
+			.onUpdateCallback = &onInventoryUpdateCallback,
+		};
+
+		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) ErrorSet!void {}
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
-		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
-		}
-		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
-		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
-		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
-			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
-			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .normal, .{.blockInventory = pos});
+			const data = StorageServer.getOrPut(pos, chunk);
+			std.debug.assert(!data.foundExisting);
+			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, inventoryCallbacks);
+		}
+
+		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+			StorageServer.mutex.lock();
+			const data = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			StorageServer.mutex.unlock();
+			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.invId);
+		}
+		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const data = StorageServer.getByIndex(dataIndex) orelse return;
+
+			const inv = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.invId);
+			var isEmpty: bool = true;
+			for(inv._items) |item| {
+				if(item.amount != 0) isEmpty = false;
+			}
+			if(isEmpty) return;
+			inv.toBytes(writer);
+		}
+		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
+		pub fn onInteract(pos: Vec3i, _: *Chunk) main.callbacks.Result {
+			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+
+			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, .{});
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
@@ -232,8 +260,23 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
-		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
-		pub fn updateServerData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
+		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+			switch(event) {
+				.remove => {
+					const chest = StorageServer.remove(pos, chunk) orelse return;
+					main.items.Inventory.Sync.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
+				},
+				.update => |_| {
+					StorageServer.mutex.lock();
+					defer StorageServer.mutex.unlock();
+					const data = StorageServer.getOrPut(pos, chunk);
+					if(data.foundExisting) return;
+					var reader = BinaryReader.init(&.{});
+					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
+				},
+			}
+		}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
@@ -284,16 +327,17 @@ pub const BlockEntityTypes = struct {
 			StorageServer.init();
 			StorageClient.init();
 			textureDeinitList = .init(main.globalAllocator);
-
-			pipeline = graphics.Pipeline.init(
-				"assets/cubyz/shaders/block_entity/sign.vert",
-				"assets/cubyz/shaders/block_entity/sign.frag",
-				"",
-				&uniforms,
-				.{},
-				.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
-				.{.attachments = &.{.alphaBlending}},
-			);
+			if(!main.settings.launchConfig.headlessServer) {
+				pipeline = graphics.Pipeline.init(
+					"assets/cubyz/shaders/block_entity/sign.vert",
+					"assets/cubyz/shaders/block_entity/sign.frag",
+					"",
+					&uniforms,
+					.{},
+					.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
+					.{.attachments = &.{.alphaBlending}},
+				);
+			}
 		}
 		pub fn deinit() void {
 			while(textureDeinitList.popOrNull()) |texture| {
@@ -321,9 +365,7 @@ pub const BlockEntityTypes = struct {
 			const entry = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 			main.globalAllocator.free(entry.text);
 		}
-		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
-			if(main.KeyBoard.key("shift").pressed) return .ignored;
-
+		pub fn onInteract(pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 			const data = StorageClient.get(pos, chunk);
@@ -332,11 +374,11 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
-		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
-			return updateClientData(pos, chunk, .{.createOrUpdate = reader});
+		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
+			return updateClientData(pos, chunk, .{.update = reader});
 		}
-		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
+		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+			if(event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageClient.remove(pos, chunk) orelse return;
 				entry.deinit();
 				return;
@@ -351,17 +393,17 @@ pub const BlockEntityTypes = struct {
 			}
 			data.valuePtr.* = .{
 				.blockPos = pos,
-				.block = chunk.data.getValue(chunk.getLocalBlockIndex(pos)),
+				.block = chunk.data.getValue(chunk.getLocalBlockPos(pos).toIndex()),
 				.renderedTexture = null,
-				.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining),
+				.text = main.globalAllocator.dupe(u8, event.update.remaining),
 			};
 		}
 
-		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
-			return updateServerData(pos, chunk, .{.createOrUpdate = reader});
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
+			return updateServerData(pos, chunk, .{.update = reader});
 		}
-		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
-			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+			if(event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageServer.remove(pos, chunk) orelse return;
 				main.globalAllocator.free(entry.text);
 				return;
@@ -370,9 +412,16 @@ pub const BlockEntityTypes = struct {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 
+			const newText = event.update.remaining;
+
+			if(!std.unicode.utf8ValidateSlice(newText)) {
+				std.log.err("Received sign text with invalid UTF-8 characters.", .{});
+				return error.Invalid;
+			}
+
 			const data = StorageServer.getOrPut(pos, chunk);
 			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
-			data.valuePtr.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining);
+			data.valuePtr.text = main.globalAllocator.dupe(u8, event.update.remaining);
 		}
 
 		pub const onStoreServerToClient = onStoreServerToDisk;
@@ -401,12 +450,11 @@ pub const BlockEntityTypes = struct {
 
 		pub fn updateTextFromClient(pos: Vec3i, newText: []const u8) void {
 			{
-				const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(pos, 1)) orelse return;
-				defer mesh.decreaseRefCount();
+				const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 				mesh.mutex.lock();
 				defer mesh.mutex.unlock();
-				const index = mesh.chunk.getLocalBlockIndex(pos);
-				const block = mesh.chunk.data.getValue(index);
+				const localPos = mesh.chunk.getLocalBlockPos(pos);
+				const block = mesh.chunk.data.getValue(localPos.toIndex());
 				const blockEntity = block.blockEntity() orelse return;
 				if(!std.mem.eql(u8, blockEntity.id, id)) return;
 
@@ -419,13 +467,13 @@ pub const BlockEntityTypes = struct {
 				}
 				data.valuePtr.* = .{
 					.blockPos = pos,
-					.block = mesh.chunk.data.getValue(mesh.chunk.getLocalBlockIndex(pos)),
+					.block = mesh.chunk.data.getValue(localPos.toIndex()),
 					.renderedTexture = null,
 					.text = main.globalAllocator.dupe(u8, newText),
 				};
 			}
 
-			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 		}
 
 		pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
@@ -478,12 +526,7 @@ pub const BlockEntityTypes = struct {
 				signData.renderedTexture.?.bindTo(0);
 
 				c.glUniform1i(uniforms.quadIndex, @intFromEnum(quad));
-				const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
-				defer mesh.decreaseRefCount();
-				mesh.lightingData[0].lock.lockRead();
-				defer mesh.lightingData[0].lock.unlockRead();
-				mesh.lightingData[1].lock.lockRead();
-				defer mesh.lightingData[1].lock.unlockRead();
+				const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
 				const light: [4]u32 = main.renderer.chunk_meshing.PrimitiveMesh.getLight(mesh, signData.blockPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, 0, quad);
 				c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
 				c.glUniform3i(uniforms.chunkPos, signData.blockPos[0] & ~main.chunk.chunkMask, signData.blockPos[1] & ~main.chunk.chunkMask, signData.blockPos[2] & ~main.chunk.chunkMask);
@@ -518,7 +561,7 @@ pub fn deinit() void {
 	blockyEntityTypes.deinit(main.globalAllocator.allocator);
 }
 
-pub fn getByID(_id: ?[]const u8) ?*BlockEntityType {
+pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 	const id = _id orelse return null;
 	if(blockyEntityTypes.getPtr(id)) |cls| return cls;
 	std.log.err("BlockEntityType with id '{s}' not found", .{id});

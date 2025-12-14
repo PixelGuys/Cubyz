@@ -54,7 +54,7 @@ fn toggleTool(_: usize) void {
 }
 
 fn openInventory() void {
-	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other);
+	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -108,14 +108,15 @@ pub fn update() void {
 }
 
 pub fn render() void {
-	const currentResult = inv._items[25].item orelse return;
+	const currentResult = inv._items[25].item;
+	if(currentResult == .null) return;
 
 	const offsetX = 5*ItemSlot.sizeWithBorder + 20;
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
 	main.graphics.draw.print("{s}{} durability", .{if(currentResult.tool.maxDurability != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.tool.maxDurability))}, offsetX, offsetY, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{1.0/currentResult.tool.swingTime}, offsetX, offsetY + fontSize, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.tool.swingSpeed}, offsetX, offsetY + fontSize, fontSize, .left);
 	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.tool.damage}, offsetX, offsetY + 2*fontSize, fontSize, .left);
 }
 

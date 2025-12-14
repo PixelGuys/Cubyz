@@ -6,7 +6,7 @@ fail () {
 
 echo "Detecting Zig compiler..."
 
-BASE_VERSION=$(< .zig-version)
+BASE_VERSION=$(< .zigversion)
 
 case "$(uname -s)" in
 "Darwin")
@@ -33,7 +33,7 @@ then
 	esac
 fi
 
-VERSION=zig-$OS-$ARCH-$BASE_VERSION
+VERSION=zig-$ARCH-$OS-$BASE_VERSION
 
 mkdir -p compiler/zig
 touch compiler/version.txt
@@ -46,7 +46,7 @@ if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
 	rm -r compiler/zig
 	mkdir compiler/zig
 	echo "Downloading $VERSION..."
-	wget -O compiler/archive.tar.xz https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/$BASE_VERSION/"$VERSION".tar.xz
+	curl -o compiler/archive.tar.xz -L -f -S https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/$BASE_VERSION/"$VERSION".tar.xz
 	if [ $? != 0 ]
 	then
 		echo "Failed to download the Zig compiler."
@@ -55,8 +55,6 @@ if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
 	echo "Extracting tar file..."
 	tar --xz -xf compiler/archive.tar.xz --directory compiler/zig --strip-components 1
 	rm compiler/archive.tar.xz
-	echo "Patching lib/std/zig/render.zig..."
-	wget -O compiler/zig/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/$BASE_VERSION/render.zig
 	echo "$VERSION" > compiler/version.txt
 	echo "Done updating Zig."
 else

@@ -9,7 +9,7 @@
 
 	.music = "cubyz:leaves",
 
-	.stoneBlock = "cubyz:stone",
+	.stoneBlock = "cubyz:slate",
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
@@ -17,7 +17,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
+			.leaves = "cubyz:leaves/oak",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.32,

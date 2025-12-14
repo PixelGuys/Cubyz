@@ -3,8 +3,10 @@
 		.wet,
 		.hot,
 	},
+	.minHeightLimit = 0,
 	.minHeight = 1,
 	.maxHeight = 1,
+	.maxHeightLimit = 5,
 	.roughness = 2,
 	.hills = 7.5,
 	.minRadius = 256,
@@ -14,6 +16,7 @@
 		"cubyz:lush_grass",
 		"5 to 7 cubyz:mud",
 	},
+	.chance = 0.5,
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
@@ -26,7 +29,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:willow_leaves",
+			.leaves = "cubyz:leaves/willow",
 			.log = "cubyz:willow_log",
 			.top = "cubyz:willow_top",
 			.chance = 0.02,
@@ -41,7 +44,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:willow_leaves",
+			.leaves = "cubyz:leaves/willow",
 			.log = "cubyz:willow_log",
 			.top = "cubyz:willow_top",
 			.chance = 0.02,

@@ -1,0 +1,36 @@
+.{
+	.tags = .{.stone, .mineable, .slate},
+	.blockHealth = 30,
+	.blockResistance = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.material = .{
+			.durability = 60,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.9,
+			.swingSpeed = 3.2,
+			.textureRoughness = 1.0,
+			.colors = .{
+				0xff444444, 0xff626262, 0xff7A7876, 0xff878583, 0xff9c9996,
+			},
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .slate,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+	.allowOres = true,
+	.rotation = "cubyz:stairs",
+	.model = "cubyz:cube",
+	.texture = "cubyz:slate",
+}

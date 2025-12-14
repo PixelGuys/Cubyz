@@ -1,8 +1,0 @@
-.{
-	.blueprint = "cubyz:tree/coniferous/stem/extender/0",
-	.children = .{
-		.white = .{
-			.{.structure = null},
-		},
-	},
-}

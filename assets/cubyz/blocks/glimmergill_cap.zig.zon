@@ -1,10 +1,12 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .cuttable, .mushroom},
 	.blockHealth = 3,
+	.bounciness = 0.5,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
+	.rotation = "cubyz:stairs",
 	.emittedLight = 0x594587,
 	.texture = "cubyz:glimmergill_cap",
 }

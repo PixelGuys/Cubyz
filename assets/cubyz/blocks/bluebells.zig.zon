@@ -1,0 +1,17 @@
+.{
+	.tags = .{.cuttable},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x121012,
+	.collide = false,
+	.model = "cubyz:cross",
+	.texture = "cubyz:bluebells",
+	.item = .{
+		.texture = "bluebells.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

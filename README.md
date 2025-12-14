@@ -25,6 +25,7 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 
 
 # Run Cubyz
+### This section is about compiling a dev version, if you just want a precompiled version, go to [releases](https://github.com/PixelGuys/Cubyz/releases)
 ## The Easy Way (no tools needed)
 1. Download the latest [source code](https://codeload.github.com/PixelGuys/Cubyz/zip/refs/heads/master)
 2. Extract the zip file
@@ -36,12 +37,6 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 - If you see an error message in the terminal, please report it in the [Issues](https://github.com/PixelGuys/Cubyz/issues) tab or on the [Discord server](https://discord.gg/XtqCRRG).
 - Otherwise you can always ask for help on the Discord server. If you are unable to get it compiling on your machine, you can also ask on the Discord server and we may compile a release for you.
 
-#### Note for Linux Users:
-I also had to install a few `-dev` packages for the compilation to work:
-```
-sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
-```
-
 ## The Better Way
 1. Install Git
 2. Clone this repository `git clone https://github.com/pixelguys/Cubyz`
@@ -50,10 +45,10 @@ sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-de
 
 # Contributing
 ### Code
-Check out the [Contributing Guidelines](https://github.com/PixelGuys/Cubyz/blob/master/CONTRIBUTING.md)
+Check out the [Contributing Guidelines](https://github.com/PixelGuys/Cubyz/blob/master/docs/CONTRIBUTING.md)
 
 ### Gameplay Additions
-Check out the [Game Design Principles](https://github.com/PixelGuys/Cubyz/blob/master/GAME_DESIGN_PRINCIPLES.md)
+Check out the [Game Design Principles](https://github.com/PixelGuys/Cubyz/blob/master/docs/GAME_DESIGN_PRINCIPLES.md)
 
 ### Textures
 If you want to add new textures, make sure they fit the style of the game. It's recommended that you have baseline skills in pixel art before attempting to make textures. A great collection of tutorials can be found [here](https://lospec.com/pixel-art-tutorials)
@@ -65,9 +60,9 @@ If any of the following points are ignored, your texture will be rejected:
 4. Reference other block textures to see how colours & contrast is used. Test your textures ingame alongside other blocks.
 5. Blocks should tile smoothly. Avoid creating seams or repetitive patterns.
 6. Use hue shifting conservatively. Take the material into account when choosing colours.
-7. Items have full, coloured, 1-pixel outlines. It should be shaded so that the side in light (top left) is brighter, while the side in shadow (bottom right) is darker. 
+7. Items have full, coloured, 1-pixel outlines. It should be shaded so that the side in light (top left) is brighter, while the side in shadow (bottom right) is darker.
 8. Items should have higher contrast than their block counterparts.
 
-Your texture may be edited or replaced to ensure a consistent art style throughout the game. 
+Your texture may be edited or replaced to ensure a consistent art style throughout the game.
 
 For further information, ask <img src="https://avatars.githubusercontent.com/u/122191047" width="20" height="20">[careeoki](https://github.com/careeoki) on [Discord](https://discord.gg/XtqCRRG). She has made a majority of the art for Cubyz.

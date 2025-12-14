@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const utils = main.utils;
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -61,6 +62,8 @@ hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a
 closeIfMouseIsGrabbed: bool = false,
 closeable: bool = true,
 isHud: bool = false,
+
+shiftClickableInventory: ?main.items.Inventory = null,
 
 /// Called every frame.
 renderFn: *const fn() void = &defaultFunction,
@@ -162,39 +165,41 @@ pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
 	const zoomInPos = zoomOutPos - iconWidth*self.scale;
 	return .{closePos, zoomOutPos, zoomInPos};
 }
+
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
-	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
-		if(self.showTitleBar or gui.reorderWindows) {
-			const btnPos = self.getButtonPositions();
-			const closePos = btnPos[0];
-			const zoomOutPos = btnPos[1];
-			const zoomInPos = btnPos[2];
-			if(mousePosition[0] - self.pos[0] > zoomInPos) {
-				if(mousePosition[0] - self.pos[0] > zoomOutPos) {
-					if(mousePosition[0] - self.pos[0] > closePos) {
-						// Close
-						if(self.closeable) gui.closeWindowFromRef(self);
-					} else {
-						// Zoom out
-						if(self.scale > 1) {
-							self.scale -= 0.5;
-						} else {
-							self.scale -= 0.25;
-						}
-						self.scale = @max(self.scale, 0.25);
-						gui.updateWindowPositions();
-						gui.save();
-					}
+	if(grabPosition != null and grabbedWindow == self and (self.showTitleBar or gui.reorderWindows)) {
+		const btnPos = self.getButtonPositions();
+		const closePos = btnPos[0];
+		const zoomOutPos = btnPos[1];
+		const zoomInPos = btnPos[2];
+		const mousePositionRelative = mousePosition - self.pos;
+		const grabPositionRelative = if(grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
+
+		if(mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
+			if(mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
+				// Zoom in
+				if(self.scale >= 1) {
+					self.scale += 0.5;
 				} else {
-					// Zoom in
-					if(self.scale >= 1) {
-						self.scale += 0.5;
-					} else {
-						self.scale += 0.25;
-					}
-					gui.updateWindowPositions();
-					gui.save();
+					self.scale += 0.25;
 				}
+				gui.updateWindowPositions();
+				gui.save();
+			}
+			if(mousePositionRelative[0] > zoomOutPos and mousePositionRelative[0] <= closePos and grabPositionRelative[0] > zoomOutPos and grabPositionRelative[0] <= closePos) {
+				// Zoom out
+				if(self.scale > 1) {
+					self.scale -= 0.5;
+				} else {
+					self.scale -= 0.25;
+				}
+				self.scale = @max(self.scale, 0.25);
+				gui.updateWindowPositions();
+				gui.save();
+			}
+			if(mousePositionRelative[0] > closePos and grabPositionRelative[0] > closePos) {
+				// Close
+				if(self.closeable) gui.closeWindowFromRef(self);
 			}
 		}
 	}
@@ -230,7 +235,7 @@ fn detectCycles(self: *GuiWindow, other: *GuiWindow) bool {
 }
 
 fn snapToOtherWindow(self: *GuiWindow) void {
-	for(&self.relativePosition, 0..) |*relPos, i| {
+	inline for(&self.relativePosition, 0..) |*relPos, i| {
 		var minDist: f32 = snapDistance;
 		var minWindow: ?*GuiWindow = null;
 		var selfAttachment: AttachmentPoint = undefined;
@@ -265,7 +270,7 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 
 fn positionRelativeToFrame(self: *GuiWindow) void {
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(&self.relativePosition, 0..) |*relPos, i| {
+	inline for(&self.relativePosition, 0..) |*relPos, i| {
 		// Snap to the center:
 		if(@abs(self.pos[i] + self.size[i] - windowSize[i]/2) <= snapDistance) {
 			relPos.* = .{.attachedToFrame = .{
@@ -294,7 +299,7 @@ fn positionRelativeToFrame(self: *GuiWindow) void {
 	}
 }
 
-fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usize) void {
+fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, comptime i: usize) void {
 	const otherSize = other.size;
 	const relPos = &self.relativePosition[i];
 	// Snap to the center:
@@ -386,7 +391,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 	}
 	self.size = self.contentSize*@as(Vec2f, @splat(self.scale));
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(self.relativePosition, 0..) |relPos, i| {
+	inline for(self.relativePosition, 0..) |relPos, i| {
 		switch(relPos) {
 			.ratio => |ratio| {
 				self.pos[i] = windowSize[i]*ratio - self.size[i]/2;
@@ -434,10 +439,10 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 fn drawOrientationLines(self: *const GuiWindow) void {
 	draw.setColor(0x80000000);
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	for(self.relativePosition, 0..) |relPos, i| {
+	inline for(self.relativePosition, 0..) |relPos, i| _continue: {
 		switch(relPos) {
 			.ratio, .relativeToWindow => {
-				continue;
+				break :_continue;
 			},
 			.attachedToFrame => |attachedToFrame| {
 				const pos = switch(attachedToFrame.otherAttachmentPoint) {

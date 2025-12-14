@@ -1,5 +1,8 @@
 .{
-	.tags = .{.wood},
+	.tags = .{.choppable, .cuttable, .branch},
+	.onUpdate = .{
+		.type = .decay,
+	},
 	.blockHealth = 2.5,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -15,11 +18,17 @@
 	.texture3 = "cubyz:branch/cactus/bend",
 	.texture4 = "cubyz:branch/cactus/intersection",
 	.texture5 = "cubyz:branch/cactus/cross",
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 0.5,
+		.damageType = .spiky,
+	},
 	.item = .{
 		.material = .{
-			.density = 0.8,
-			.elasticity = 3.0,
-			.hardness = 1.5,
+			.durability = 50,
+			.massDamage = 1.0,
+			.hardnessDamage = 1.5,
+			.swingSpeed = 5.6,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff4f6923, 0xff687630, 0xff74842d, 0xff879b2e, 0xff74842d,

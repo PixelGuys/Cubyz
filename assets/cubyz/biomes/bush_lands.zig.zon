@@ -2,8 +2,11 @@
 	.properties = .{
 		.hot,
 	},
+	.minHeightLimit = 7,
 	.minHeight = 24,
 	.maxHeight = 60,
+	.smoothBeaches = true,
+	.maxHeightLimit = 100,
 	.minRadius = 256,
 	.maxRadius = 320,
 	.roughness = 20,
@@ -19,7 +22,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
+			.leaves = "cubyz:leaves/oak",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.16,
