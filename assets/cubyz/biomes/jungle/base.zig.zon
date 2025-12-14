@@ -3,7 +3,6 @@
 	.minHeight = 30,
 	.maxHeight = 50,
 	.maxHeightLimit = 60,
-	.roughness = 10,
 	.hills = 12,
 
 	.ground_structure = .{"cubyz:lush_grass", "3 to 4 cubyz:mud"},
@@ -42,7 +41,7 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:mud",
-			.chance = 0.15,
+			.chance = 0.07,
 			.width = 5,
 			.variation = 6,
 			.depth = 2,
@@ -78,8 +77,8 @@
 		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:hibiscus",
-			.chance = 0.03,
-			.width = 8,
+			.chance = 0.04,
+			.width = 6,
 			.variation = 3,
 			.density = 0.1,
 			.priority = 0.1,
