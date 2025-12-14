@@ -1,7 +1,13 @@
-name: 'Close stale issues and PRs'
+name: "Close stale issues and PRs"
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs daily at 00:00
+    - cron: "0 0 * * *" # Runs daily at 00:00
+
+permissions:
+  actions: write
+  contents: write
+  issues: read
+  pull-requests: write
 
 jobs:
   stale:
@@ -9,9 +15,13 @@ jobs:
     steps:
       - uses: actions/stale@v10
         with:
-          stale-pr-message: 'This PR is stale because it has been open 28 days with no activity. Remove stale label or comment or this will be closed in 7 days.'
-          close-pr-message: 'This PR was closed because it has been stalled for 7 days with no activity.'
-          days-before-issue-stale: -1  # Never close issues
+          stale-pr-message: "This PR is stale because it has been open 28 days with no activity. Remove stale label or comment or this will be closed in 7 days."
+          close-pr-message: "This PR was closed because it has been stalled for 7 days with no activity."
+          days-before-issue-stale: -1 # Never close issues
           days-before-pr-stale: 28
           days-before-issue-close: -1
           days-before-pr-close: 7
+          stale-issue-label: stale
+          stale-pr-label: stale
+          delete-branch: true
+          debug-only: true
