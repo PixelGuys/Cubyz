@@ -6,33 +6,45 @@ const User = main.server.User;
 pub const description = "Get or set the server time.";
 pub const usage = "/time\n/time <day/night>\n/time <time>\n/time <start/stop>";
 
+const Args = union(enum) {
+	@"/time <day/night>": struct {phase: enum {day, night}},
+	@"/time <start/stop>": struct {command: enum {start, stop}},
+	@"/time <number>": struct {number: i64},
+};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/time"});
+
 pub fn execute(args: []const u8, source: *User) void {
-	var split = std.mem.splitScalar(u8, args, ' ');
-	if(split.next()) |arg| blk: {
-		if(arg.len == 0) break :blk;
-		var gameTime: i64 = undefined;
-		if(std.ascii.eqlIgnoreCase(arg, "day")) {
-			gameTime = 0;
-		} else if(std.ascii.eqlIgnoreCase(arg, "night")) {
-			gameTime = main.server.ServerWorld.dayCycle/2;
-		} else if(std.ascii.eqlIgnoreCase(arg, "start")) {
-			main.server.world.?.doGameTimeCycle = true;
-			return;
-		} else if(std.ascii.eqlIgnoreCase(arg, "stop")) {
-			main.server.world.?.doGameTimeCycle = false;
-			return;
-		} else {
-			gameTime = std.fmt.parseInt(i64, arg, 0) catch {
-				source.sendMessage("#ff0000Expected i64 number, found \"{s}\"", .{arg});
-				return;
-			};
-		}
-		if(split.next() != null) {
-			source.sendMessage("#ff0000Too many arguments for command /time", .{});
-			return;
-		}
-		main.server.world.?.gameTime = gameTime;
+	var errorMessage: main.ListUnmanaged(u8) = .{};
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
+	};
+
+	const gameTime: i64 = switch(result) {
+		.@"/time <day/night>" => |params| switch(params.phase) {
+			.day => 0,
+			.night => main.server.ServerWorld.dayCycle/2,
+		},
+		.@"/time <start/stop>" => |params| {
+			switch(params.command) {
+				.start => {
+					main.server.world.?.doGameTimeCycle = true;
+					source.sendMessage("#ffff00Time started.", .{});
+					return;
+				},
+				.stop => {
+					main.server.world.?.doGameTimeCycle = false;
+					source.sendMessage("#ffff00Time stopped.", .{});
+					return;
+				},
+			}
+		},
+		.@"/time <number>" => |params| params.number,
+	};
+
+	main.server.world.?.gameTime = gameTime;
 	source.sendMessage("#ffff00{}", .{main.server.world.?.gameTime});
 }
