@@ -114,7 +114,7 @@ pub const Dir = struct {
 		const tempPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.tmp0", .{path}) catch unreachable;
 		defer main.stackAllocator.free(tempPath);
 
-		self.dir.writeFile(.{.data = data, .sub_path = tempPath}) catch |err| return err;
+		try self.dir.writeFile(.{.data = data, .sub_path = tempPath});
 
 		return self.dir.rename(tempPath, path);
 	}
