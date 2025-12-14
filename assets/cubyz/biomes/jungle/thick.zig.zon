@@ -5,7 +5,7 @@
 	.maxHeight = 50,
 	.maxHeightLimit = 60,
 	.hills = 10,
-	.radius = 128,
+	.radius = 160,
 
 	.ground_structure = .{"cubyz:lush_grass", "3 to 4 cubyz:mud"},
 
