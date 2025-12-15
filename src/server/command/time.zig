@@ -30,6 +30,8 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 
 	const gameTime: i64 = switch(result) {
+		.@"/time" => main.server.world.?.gameTime,
+		.@"/time <number>" => |params| params.number,
 		.@"/time <phase>" => |params| switch(params.phase) {
 			.day => 0,
 			.night => main.server.ServerWorld.dayCycle/2,
@@ -48,8 +50,6 @@ pub fn execute(args: []const u8, source: *User) void {
 				},
 			}
 		},
-		.@"/time <number>" => |params| params.number,
-		.@"/time" => main.server.world.?.gameTime,
 	};
 
 	main.server.world.?.gameTime = gameTime;
