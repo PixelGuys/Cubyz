@@ -126,7 +126,7 @@ pub const User = struct { // MARK: User
 
 	mutex: std.Thread.Mutex = .{},
 
-	inventoryCommands: main.ListUnmanaged(main.items.Inventory.Command.Payload) = .{},
+	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -163,6 +163,9 @@ pub const User = struct { // MARK: User
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
+		for(self.inventoryCommands.items) |commandData| {
+			main.globalAllocator.free(commandData);
+		}
 		self.inventoryCommands.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
 	}
@@ -259,10 +262,18 @@ pub const User = struct { // MARK: User
 		self.inventoryCommands = .{};
 		self.mutex.unlock();
 
-		for(commands.items) |commandPayload| {
-			main.items.Inventory.Sync.ServerSide.mutex.lock();
-			main.items.Inventory.Sync.ServerSide.executeCommand(commandPayload, self);
-			main.items.Inventory.Sync.ServerSide.mutex.unlock();
+		for(commands.items) |commandData| {
+			defer main.globalAllocator.free(commandData);
+			var reader: BinaryReader = .init(commandData);
+			main.items.Inventory.Sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+				if(err == error.InventoryNotFound) {
+					main.network.protocols.inventory.sendFailure(self.conn);
+				} else {
+					std.log.err("Got error while executing user command: {s}. Disconnecting.", .{@errorName(err)});
+					std.log.debug("Command data: {any}", .{commandData});
+					self.conn.disconnect();
+				}
+			};
 		}
 
 		self.mutex.lock();
@@ -283,10 +294,10 @@ pub const User = struct { // MARK: User
 		self.loadUnloadChunks();
 	}
 
-	pub fn receiveCommand(self: *User, commandPayload: main.items.Inventory.Command.Payload) void {
+	pub fn receiveCommand(self: *User, commandData: []const u8) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		self.inventoryCommands.append(main.globalAllocator, commandPayload);
+		self.inventoryCommands.append(main.globalAllocator, main.globalAllocator.dupe(u8, commandData));
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {

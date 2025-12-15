@@ -791,10 +791,7 @@ pub const inventory = struct { // MARK: inventory
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const user = conn.user.?;
 		if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-		items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
-			if(err != error.InventoryNotFound) return err;
-			sendFailure(conn);
-		};
+		items.Inventory.Sync.ServerSide.receiveCommand(user, reader);
 	}
 	pub fn sendCommand(conn: *Connection, payloadType: items.Inventory.Command.PayloadType, _data: []const u8) void {
 		std.debug.assert(conn.user == null);
