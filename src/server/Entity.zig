@@ -22,7 +22,7 @@ pub fn loadFrom(self: *@This(), zon: ZonElement) void {
 	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
 	self.health = zon.get(f32, "health", self.maxHealth);
-	self.energy = zon.get(f32, "energy", self.maxEnergy);
+	self.energy = zon.get(f32, "energy", 0);
 }
 
 pub fn save(self: *@This(), allocator: NeverFailingAllocator) ZonElement {
