@@ -242,7 +242,7 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
-	pub inline fn onUse(self: BaseItemIndex) main.callbacks.UseItemCallback {
+	pub fn onUse(self: BaseItemIndex) main.callbacks.UseItemCallback {
 		return itemList[@intFromEnum(self)].onUse;
 	}
 };
