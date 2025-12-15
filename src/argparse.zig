@@ -86,7 +86,10 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				}
 			}
 
-			if(split.next() != null or nextArgument != null) {
+			const isLeftoverArgumentWhitespace = nextArgument == null or main.utils.all(std.ascii.isWhitespace, nextArgument.?);
+			const areUnusedArgumentsWhitespace = main.utils.all(std.ascii.isWhitespace, split.rest());
+
+			if(!isLeftoverArgumentWhitespace or !areUnusedArgumentsWhitespace) {
 				failWithMessage(allocator, errorMessage, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
@@ -116,7 +119,8 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 						return error.ParseError;
 					};
 					return std.meta.stringToEnum(Field, arg) orelse {
-						failWithMessage(allocator, errorMessage, "Expected one of {} for <{s}>, found \"{s}\"", .{.{std.meta.fieldNames(Field)}, name, arg});
+						const str = main.meta.concatComptime("/", std.meta.fieldNames(Field));
+						failWithMessage(allocator, errorMessage, "Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
 						return error.ParseError;
 					};
 				},
@@ -176,7 +180,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				tempErrorMessage.appendSlice(allocator, field.name);
 				tempErrorMessage.append(allocator, '\n');
 
-				const result = Parser(field.type, options).resolve(false, allocator, args, &tempErrorMessage);
+				const result = Parser(field.type, options).resolve(.Parse, allocator, args, &tempErrorMessage);
 				if(result != error.ParseError) {
 					return @unionInit(T, field.name, result catch unreachable);
 				}
