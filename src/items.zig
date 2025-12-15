@@ -243,7 +243,7 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
 	pub inline fn onUse(self: BaseItemIndex) main.callbacks.UseItemCallback {
-		return itemList[@intFromEnum(self)]._onUse;
+		return itemList[@intFromEnum(self)].onUse;
 	}
 };
 
@@ -254,7 +254,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	name: []const u8,
 	tags: []const Tag,
 	tooltip: []const u8,
-	_onUse: main.callbacks.UseItemCallback,
+	onUse: main.callbacks.UseItemCallback,
 
 	stackSize: u16,
 	material: ?Material,
@@ -305,7 +305,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			_ = tooltip.swapRemove(tooltip.items.len - 1);
 		}
 		self.tooltip = tooltip.toOwnedSlice();
-		self._onUse = blk: {
+		self.onUse = blk: {
 			break :blk main.callbacks.UseItemCallback.init(zon.getChildOrNull("onUse") orelse break :blk .noop) orelse {
 				std.log.err("Failed to load onUse event for item {s}", .{id});
 				break :blk .noop;

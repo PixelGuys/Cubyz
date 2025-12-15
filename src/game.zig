@@ -550,7 +550,7 @@ pub const Player = struct { // MARK: Player
 		Player.super.pos = world.?.spawn;
 		Player.super.vel = .{0, 0, 0};
 
-		Player.super.health = Player.super.maxHealth/2;
+		Player.super.health = Player.super.maxHealth;
 		Player.super.energy = 0;
 
 		Player.eye = .{};
@@ -771,14 +771,14 @@ pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .densi
 var nextBlockPlaceTime: ?std.Io.Timestamp = null;
 var nextBlockBreakTime: ?std.Io.Timestamp = null;
 
-pub fn pressSecondary(mods: main.Window.Key.Modifiers) void {
+pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
 	const time = main.timestamp();
 	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
 	Player.useItem(mods);
 	Player.placeBlock(mods);
 }
 
-pub fn releaseSecondary(_: main.Window.Key.Modifiers) void {
+pub fn releasePlace(_: main.Window.Key.Modifiers) void {
 	nextBlockPlaceTime = null;
 }
 

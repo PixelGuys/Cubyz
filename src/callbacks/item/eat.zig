@@ -2,11 +2,11 @@ const std = @import("std");
 
 const main = @import("main");
 
-food: f32,
+energy: f32,
 pub fn init(zon: main.ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
-		.food = zon.get(f32, "food", 1.0),
+		.energy = zon.get(f32, "food", 1.0),
 	};
 	return result;
 }
@@ -26,12 +26,12 @@ pub fn run(self: *@This(), params: main.callbacks.UseItemCallback.Params) main.c
 
 	const previous = if(side == .server) user.?.player.energy else main.game.Player.super.energy;
 	const maxEnergy = if(side == .server) user.?.player.maxEnergy else main.game.Player.super.maxEnergy;
-	if(self.food > 0 and previous >= maxEnergy)
+	if(self.energy > 0 and previous >= maxEnergy)
 		return .ignored;
 
 	cmd.executeBaseOperation(allocator, .{.addEnergy = .{
 		.target = user,
-		.energy = self.food,
+		.energy = self.energy,
 		.previous = previous,
 	}}, side);
 
