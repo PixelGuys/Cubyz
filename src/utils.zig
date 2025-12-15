@@ -1195,6 +1195,10 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			}
 			if(paletteIndex == impl.paletteLength) {
 				if(impl.paletteLength == impl.palette.len) {
+					if(impl.data.bitSize == 16) {
+						self.optimizeLayoutInternal();
+						return self.getOrInsertPaletteIndex(val);
+					}
 					var newSelf: Self = undefined;
 					newSelf.initCapacity(impl.paletteLength*2);
 					const newImpl = newSelf.impl.raw;
@@ -1268,7 +1272,11 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			const impl = self.impl.raw;
 			const newBitSize = getTargetBitSize(@intCast(impl.activePaletteEntries));
 			if(impl.data.bitSize == newBitSize) return;
+			self.optimizeLayoutInternal();
+		}
 
+		fn optimizeLayoutInternal(self: *Self) void {
+			const impl = self.impl.raw;
 			var newSelf: Self = undefined;
 			newSelf.initCapacity(impl.activePaletteEntries);
 			const newImpl = newSelf.impl.raw;
