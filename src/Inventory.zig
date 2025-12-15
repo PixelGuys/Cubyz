@@ -552,8 +552,8 @@ pub const Command = struct { // MARK: Command
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
-		addEnergy = 13,
-		useItem = 12,
+		addEnergy = 12,
+		useItem = 13,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,

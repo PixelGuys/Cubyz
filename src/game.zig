@@ -979,7 +979,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if(nextBlockPlaceTime) |*placeTime| {
 		if(placeTime.durationTo(time).nanoseconds >= 0) {
 			placeTime.* = placeTime.addDuration(main.settings.updateRepeatSpeed);
-			Player.placeBlock(main.KeyBoard.key("use and place").modsOnPress);
+			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {
