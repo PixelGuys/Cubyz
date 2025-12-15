@@ -1,26 +1,7 @@
 .{
-	.isCave = true,
-	.maxHeight = -512,
-	.minHeight = -48250,
-
 	.chance = 0.04,
-
 	.caves = -0.015,
-
-	.music = "cubyz:la_kubisa_caverna",
-	.ground_structure = .{
-		"2 to 3 cubyz:soil",
-	},
 	.structures = .{
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:clay",
-			.chance = 0.3,
-			.width = 5,
-			.variation = 5,
-			.depth = 1,
-			.smoothness = 0.5,
-		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:mushroom/big/bolete",
