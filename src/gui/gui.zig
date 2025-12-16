@@ -104,17 +104,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 };
 
-pub const Callback = struct {
-	callback: ?*const fn(usize) void = null,
-	arg: usize = 0,
-
-	pub fn run(self: Callback) void {
-		if(self.callback) |callback| {
-			callback(self.arg);
-		}
-	}
-};
-
 pub fn initWindowList() void {
 	GuiCommandQueue.init();
 	windowList = .init(main.globalAllocator);
@@ -362,14 +351,8 @@ pub fn openHud() void {
 	reorderWindows = false;
 }
 
-fn openWindowCallbackFunction(windowPtr: usize) void {
-	openWindowFromRef(@ptrFromInt(windowPtr));
-}
-pub fn openWindowCallback(comptime id: []const u8) Callback {
-	return .{
-		.callback = &openWindowCallbackFunction,
-		.arg = @intFromPtr(&@field(windowlist, id).window),
-	};
+pub fn openWindowCallback(comptime id: []const u8) main.callbacks.SimpleCallback {
+	return .initWithPtr(openWindowFromRef, &@field(windowlist, id).window);
 }
 
 pub fn closeWindowFromRef(window: *GuiWindow) void {
