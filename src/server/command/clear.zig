@@ -21,7 +21,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			main.items.Inventory.Sync.ServerSide.clearPlayerInventory(source);
 		} else if(std.ascii.eqlIgnoreCase(arg, "chat")) {
 			main.gui.windowlist.chat.clearChat();
-		} else if(std.ascii.eqlIgnoreCase(arg, "history")) {
+		} else if(std.ascii.eqlIgnoreCase(arg, "chatHistory")) {
 			main.gui.windowlist.chat.messageHistory.clear();
 		} else {
 			source.sendMessage("#ff0000Expected either inventory, chat or history, found \"{s}\"", .{arg});
