@@ -511,12 +511,18 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		time = 3,
 		biome = 4,
 		particles = 5,
+		clear = 6,
 	};
 
 	const WorldEditPosition = enum(u2) {
 		selectedPos1 = 0,
 		selectedPos2 = 1,
 		clear = 2,
+	};
+
+	const ClearType = enum(u1) {
+		chat = 0,
+		chatHistory = 1,
 	};
 
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -579,12 +585,19 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				const emitter: particles.Emitter = .init(particleId, collides);
 				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 			},
+			.clear => {
+				const typ = try reader.readEnum(ClearType);
+				switch(typ) {
+					.chat => main.gui.windowlist.chat.clearChat(),
+					.chatHistory => main.gui.windowlist.chat.messageHistory.clear(),
+				}
+			},
 		}
 	}
 
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		switch(try reader.readEnum(UpdateType)) {
-			.gamemode, .teleport, .time, .biome, .particles => return error.InvalidSide,
+			.gamemode, .teleport, .time, .biome, .particles, .clear => return error.InvalidSide,
 			.worldEditPos => {
 				const typ = try reader.readEnum(WorldEditPosition);
 				const pos: ?Vec3i = switch(typ) {
@@ -663,6 +676,10 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		writer.writeInt(i64, world.gameTime);
 
 		conn.send(.fast, id, writer.data.items);
+	}
+
+	pub fn sendClear(conn: *Connection, cleartype: ClearType) void {
+		conn.send(.fast, id, &.{@intFromEnum(UpdateType.clear), @intFromEnum(cleartype)});
 	}
 };
 

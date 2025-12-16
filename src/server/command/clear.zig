@@ -20,9 +20,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		if(std.ascii.eqlIgnoreCase(arg, "inventory")) {
 			main.items.Inventory.Sync.ServerSide.clearPlayerInventory(source);
 		} else if(std.ascii.eqlIgnoreCase(arg, "chat")) {
-			main.gui.windowlist.chat.clearChat();
+			main.network.protocols.genericUpdate.sendClear(source.conn, .chat);
 		} else if(std.ascii.eqlIgnoreCase(arg, "chatHistory")) {
-			main.gui.windowlist.chat.messageHistory.clear();
+			main.network.protocols.genericUpdate.sendClear(source.conn, .chatHistory);
 		} else {
 			source.sendMessage("#ff0000Expected either inventory, chat or chatHistory, found \"{s}\"", .{arg});
 		}

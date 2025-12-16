@@ -116,6 +116,7 @@ pub fn clearChat() void {
 	historyStart = 0;
 	fadeOutEnd = 0;
 	expirationTime.clearRetainingCapacity();
+	refresh();
 }
 
 pub fn init() void {
