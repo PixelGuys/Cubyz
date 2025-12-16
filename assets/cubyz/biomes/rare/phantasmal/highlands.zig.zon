@@ -5,7 +5,7 @@
 	.chance = 0.015,
 	.minHeight = 80,
 	.maxHeight = 256,
-	.music = "cubyz:above_the_mist",
+	.music = "cubyz:cubyz",
 	.stoneBlock = "cubyz:chalk/black",
 	.hills = 75,
 	.roughness = 45,
