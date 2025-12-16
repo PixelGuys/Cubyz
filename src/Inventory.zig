@@ -292,7 +292,7 @@ pub const Sync = struct { // MARK: Sync
 			freeIdList.append(id);
 		}
 
-		pub fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
+		fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
 			var command = Command{
 				.payload = payload,
 			};
@@ -337,7 +337,7 @@ pub const Sync = struct { // MARK: Sync
 			};
 		}
 
-		pub fn receiveCommand(source: *main.server.User, reader: *utils.BinaryReader) !void {
+		pub fn executeUserCommand(source: *main.server.User, reader: *utils.BinaryReader) !void {
 			mutex.lock();
 			defer mutex.unlock();
 			const typ = try reader.readEnum(Command.PayloadType);
@@ -345,7 +345,11 @@ pub const Sync = struct { // MARK: Sync
 			const payload: Command.Payload = switch(typ) {
 				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try @FieldType(Command.Payload, @tagName(_typ)).deserialize(reader, .server, source)),
 			};
-			source.receiveCommand(payload);
+			executeCommand(payload, source);
+		}
+
+		pub fn receiveCommand(source: *main.server.User, reader: *utils.BinaryReader) void {
+			source.receiveCommand(reader.remaining);
 		}
 
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {

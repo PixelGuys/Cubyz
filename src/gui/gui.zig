@@ -78,7 +78,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
-				_ = openWindows.swapRemove(i);
+				_ = openWindows.orderedRemove(i);
 				openWindows.appendAssumeCapacity(window);
 				selectedWindow = null;
 				return;
