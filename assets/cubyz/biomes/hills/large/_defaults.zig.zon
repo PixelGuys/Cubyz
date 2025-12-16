@@ -1,0 +1,16 @@
+.{
+	.minHeightLimit = 16,
+	.minHeight = 30,
+	.maxHeight = 90,
+	.maxHeightLimit = 100,
+	.smoothBeaches = true,
+	.minRadius = 128,
+	.maxRadius = 256,
+	.roughness = 3,
+	.hills = 40,
+	.mountains = 10,
+	.soilCreep = 1.5,
+	.chance = 1,
+	.music = "cubyz:sunrise",
+	.validPlayerSpawn = true,
+}
