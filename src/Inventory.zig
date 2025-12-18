@@ -834,7 +834,7 @@ pub const Command = struct { // MARK: Command
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
 		switch(self.payload) {
 			inline else => |payload| {
-				try payload.run(allocator, self, side, user, gamemode);
+				try payload.run(.{.allocator = allocator, .cmd = self, .side = side, .user = user, .gamemode = gamemode});
 			},
 		}
 	}
@@ -1147,11 +1147,23 @@ pub const Command = struct { // MARK: Command
 		std.debug.assert(remainingAmount == 0);
 	}
 
+	const Context = struct {
+		allocator: NeverFailingAllocator,
+		cmd: *Command,
+		side: Side,
+		user: ?*main.server.User,
+		gamemode: Gamemode,
+
+		fn execute(self: Context, _op: BaseOperation) void {
+			return self.cmd.executeBaseOperation(self.allocator, _op, self.side);
+		}
+	};
+
 	const Open = struct { // MARK: Open
 		inv: Inventory,
 		source: Source,
 
-		fn run(_: Open, _: NeverFailingAllocator, _: *Command, _: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {}
+		fn run(_: Open, _: Context) error{serverFailure}!void {}
 
 		fn finalize(self: Open, side: Side, reader: *utils.BinaryReader) !void {
 			if(side != .client) return;
@@ -1249,7 +1261,7 @@ pub const Command = struct { // MARK: Command
 		inv: Inventory,
 		allocator: NeverFailingAllocator,
 
-		fn run(_: Close, _: NeverFailingAllocator, _: *Command, _: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {}
+		fn run(_: Close, _: Context) error{serverFailure}!void {}
 
 		fn finalize(self: Close, side: Side, reader: *utils.BinaryReader) !void {
 			if(side != .client) return;
@@ -1276,25 +1288,25 @@ pub const Command = struct { // MARK: Command
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 
-		fn run(self: DepositOrSwap, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.source.inv.type == .normal);
 			if(self.dest.inv.type == .creative) {
-				try FillFromCreative.run(.{.dest = self.source, .item = self.dest.ref().item}, allocator, cmd, side, user, gamemode);
+				try FillFromCreative.run(.{.dest = self.source, .item = self.dest.ref().item}, ctx);
 				return;
 			}
 			if(self.dest.inv.type == .crafting) {
-				cmd.tryCraftingTo(allocator, self.source.inv, self.dest, side, user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, self.source.inv, self.dest, ctx.side, ctx.user);
 				return;
 			}
 			if(self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled) return;
 			if(self.dest.inv.type == .workbench and self.dest.slot == 25) {
 				if(self.source.ref().item == .null and self.dest.ref().item != .null) {
-					cmd.executeBaseOperation(allocator, .{.move = .{
+					ctx.execute(.{.move = .{
 						.dest = self.source,
 						.source = self.dest,
 						.amount = 1,
-					}}, side);
-					cmd.removeToolCraftingIngredients(allocator, self.dest.inv, side);
+					}});
+					ctx.cmd.removeToolCraftingIngredients(ctx.allocator, self.dest.inv, ctx.side);
 				}
 				return;
 			}
@@ -1306,19 +1318,19 @@ pub const Command = struct { // MARK: Command
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest.ref().amount >= itemDest.stackSize()) return;
 					const amount = @min(itemDest.stackSize() - self.dest.ref().amount, self.source.ref().amount);
-					cmd.executeBaseOperation(allocator, .{.move = .{
+					ctx.execute(.{.move = .{
 						.dest = self.dest,
 						.source = self.source,
 						.amount = amount,
-					}}, side);
+					}});
 					return;
 				}
 			}
 			if(self.source.inv.type == .workbench and !canPutIntoWorkbench(self.dest)) return;
-			cmd.executeBaseOperation(allocator, .{.swap = .{
+			ctx.execute(.{.swap = .{
 				.dest = self.dest,
 				.source = self.source,
-			}}, side);
+			}});
 		}
 
 		fn serialize(self: DepositOrSwap, writer: *utils.BinaryWriter) void {
@@ -1339,7 +1351,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		fn run(self: Deposit, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
 			if(self.source.inv.type != .normal and (self.source.inv.type != .creative or self.dest.inv.type != .normal)) return error.serverFailure;
 			if(self.dest.inv.type == .crafting) return;
 			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
@@ -1351,7 +1363,7 @@ pub const Command = struct { // MARK: Command
 				if(std.meta.eql(self.dest.ref().item, itemSource)) {
 					amount = @min(self.dest.ref().amount + self.amount, itemSource.stackSize());
 				}
-				try FillFromCreative.run(.{.dest = self.dest, .item = itemSource, .amount = amount}, allocator, cmd, side, user, gamemode);
+				try FillFromCreative.run(.{.dest = self.dest, .item = itemSource, .amount = amount}, ctx);
 				return;
 			}
 			const itemDest = self.dest.ref().item;
@@ -1359,19 +1371,19 @@ pub const Command = struct { // MARK: Command
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest.ref().amount >= itemDest.stackSize()) return;
 					const amount = @min(itemDest.stackSize() - self.dest.ref().amount, self.source.ref().amount, self.amount);
-					cmd.executeBaseOperation(allocator, .{.move = .{
+					ctx.execute(.{.move = .{
 						.dest = self.dest,
 						.source = self.source,
 						.amount = amount,
-					}}, side);
+					}});
 				}
 			} else {
 				const amount = @min(self.amount, self.source.ref().amount);
-				cmd.executeBaseOperation(allocator, .{.move = .{
+				ctx.execute(.{.move = .{
 					.dest = self.dest,
 					.source = self.source,
 					.amount = amount,
-				}}, side);
+				}});
 			}
 		}
 
@@ -1394,28 +1406,28 @@ pub const Command = struct { // MARK: Command
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 
-		fn run(self: TakeHalf, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
 			if(self.source.inv.type == .creative) {
 				if(self.dest.ref().item == .null) {
 					const item = self.source.ref().item;
-					try FillFromCreative.run(.{.dest = self.dest, .item = item}, allocator, cmd, side, user, gamemode);
+					try FillFromCreative.run(.{.dest = self.dest, .item = item}, ctx);
 				}
 				return;
 			}
 			if(self.source.inv.type == .crafting) {
-				cmd.tryCraftingTo(allocator, self.dest.inv, self.source, side, user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, self.dest.inv, self.source, ctx.side, ctx.user);
 				return;
 			}
 			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				if(self.dest.ref().item == .null and self.source.ref().item != .null) {
-					cmd.executeBaseOperation(allocator, .{.move = .{
+					ctx.execute(.{.move = .{
 						.dest = self.dest,
 						.source = self.source,
 						.amount = 1,
-					}}, side);
-					cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
+					}});
+					ctx.cmd.removeToolCraftingIngredients(ctx.allocator, self.source.inv, ctx.side);
 				}
 				return;
 			}
@@ -1427,18 +1439,18 @@ pub const Command = struct { // MARK: Command
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest.ref().amount >= itemDest.stackSize()) return;
 					const amount = @min(itemDest.stackSize() - self.dest.ref().amount, desiredAmount);
-					cmd.executeBaseOperation(allocator, .{.move = .{
+					ctx.execute(.{.move = .{
 						.dest = self.dest,
 						.source = self.source,
 						.amount = amount,
-					}}, side);
+					}});
 				}
 			} else {
-				cmd.executeBaseOperation(allocator, .{.move = .{
+				ctx.execute(.{.move = .{
 					.dest = self.dest,
 					.source = self.source,
 					.amount = desiredAmount,
-				}}, side);
+				}});
 			}
 		}
 
@@ -1459,7 +1471,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		desiredAmount: u16 = 0xffff,
 
-		fn run(self: Drop, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		fn run(self: Drop, ctx: Context) error{serverFailure}!void {
 			if(self.source.inv.type == .creative) return;
 			if(self.source.ref().item == .null) return;
 			if(self.source.inv.type == .crafting) {
@@ -1472,29 +1484,29 @@ pub const Command = struct { // MARK: Command
 					.source = undefined,
 					.callbacks = .{},
 				};
-				cmd.tryCraftingTo(allocator, temp, self.source, side, user);
-				std.debug.assert(cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
+				ctx.cmd.tryCraftingTo(ctx.allocator, temp, self.source, ctx.side, ctx.user);
+				std.debug.assert(ctx.cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != .null) {
-					if(side == .server) {
-						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-						main.server.world.?.dropWithCooldown(_items[0], user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+					if(ctx.side == .server) {
+						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -ctx.user.?.player.rot[0]), -ctx.user.?.player.rot[2]);
+						main.server.world.?.dropWithCooldown(_items[0], ctx.user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
 					}
 				}
 				return;
 			}
 			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
-				cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
+				ctx.cmd.removeToolCraftingIngredients(ctx.allocator, self.source.inv, ctx.side);
 			}
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
-			if(side == .server) {
-				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+			if(ctx.side == .server) {
+				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -ctx.user.?.player.rot[0]), -ctx.user.?.player.rot[2]);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, ctx.user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
 			}
-			cmd.executeBaseOperation(allocator, .{.delete = .{
+			ctx.execute(.{.delete = .{
 				.source = self.source,
 				.amount = amount,
-			}}, side);
+			}});
 		}
 
 		fn serialize(self: Drop, writer: *utils.BinaryWriter) void {
@@ -1517,23 +1529,23 @@ pub const Command = struct { // MARK: Command
 		item: Item,
 		amount: u16 = 0,
 
-		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, mode: Gamemode) error{serverFailure}!void {
+		fn run(self: FillFromCreative, ctx: Context) error{serverFailure}!void {
 			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
-			if(side == .server and user != null and mode != .creative) return;
-			if(side == .client and mode != .creative) return;
+			if(ctx.side == .server and ctx.user != null and ctx.gamemode != .creative) return;
+			if(ctx.side == .client and ctx.gamemode != .creative) return;
 
 			if(!self.dest.ref().empty()) {
-				cmd.executeBaseOperation(allocator, .{.delete = .{
+				ctx.execute(.{.delete = .{
 					.source = self.dest,
 					.amount = self.dest.ref().amount,
-				}}, side);
+				}});
 			}
 			if(self.item != .null) {
-				cmd.executeBaseOperation(allocator, .{.create = .{
+				ctx.execute(.{.create = .{
 					.dest = self.dest,
 					.item = self.item,
 					.amount = if(self.amount == 0) self.item.stackSize() else self.amount,
-				}}, side);
+				}});
 			}
 		}
 
@@ -1572,7 +1584,7 @@ pub const Command = struct { // MARK: Command
 		source: Inventory,
 		dropLocation: Vec3d,
 
-		pub fn run(self: DepositOrDrop, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		pub fn run(self: DepositOrDrop, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.dest.type == .normal);
 			if(self.source.type == .creative) return;
 			if(self.source.type == .crafting) return;
@@ -1583,11 +1595,11 @@ pub const Command = struct { // MARK: Command
 				for(self.dest._items, 0..) |*destStack, destSlot| {
 					if(std.meta.eql(destStack.item, sourceStack.item)) {
 						const amount = @min(destStack.item.stackSize() - destStack.amount, sourceStack.amount);
-						cmd.executeBaseOperation(allocator, .{.move = .{
+						ctx.execute(.{.move = .{
 							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
 							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
 							.amount = amount,
-						}}, side);
+						}});
 						if(sourceStack.amount == 0) {
 							continue :outer;
 						}
@@ -1595,21 +1607,21 @@ pub const Command = struct { // MARK: Command
 				}
 				for(self.dest._items, 0..) |*destStack, destSlot| {
 					if(destStack.item == .null) {
-						cmd.executeBaseOperation(allocator, .{.swap = .{
+						ctx.execute(.{.swap = .{
 							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
 							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
-						}}, side);
+						}});
 						continue :outer;
 					}
 				}
-				if(side == .server) {
-					const direction = if(user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
+				if(ctx.side == .server) {
+					const direction = if(ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
 					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 20);
 				}
-				cmd.executeBaseOperation(allocator, .{.delete = .{
+				ctx.execute(.{.delete = .{
 					.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
 					.amount = self.source._items[sourceSlot].amount,
-				}}, side);
+				}});
 			}
 		}
 
@@ -1634,12 +1646,12 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
 			if(self.dest.type == .creative) return;
 			if(self.dest.type == .crafting) return;
 			if(self.dest.type == .workbench) return;
 			if(self.source.inv.type == .crafting) {
-				cmd.tryCraftingTo(allocator, self.dest, self.source, side, user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, self.dest, self.source, ctx.side, ctx.user);
 				return;
 			}
 			const sourceStack = self.source.ref();
@@ -1655,21 +1667,21 @@ pub const Command = struct { // MARK: Command
 				if(std.meta.eql(destStack.item, sourceStack.item)) {
 					const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 					if(amount == 0) continue;
-					cmd.executeBaseOperation(allocator, .{.move = .{
+					ctx.execute(.{.move = .{
 						.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
 						.source = self.source,
 						.amount = amount,
-					}}, side);
+					}});
 					remainingAmount -= amount;
 					if(remainingAmount == 0) break;
 				}
 			}
 			if(remainingAmount > 0 and selectedEmptySlot != null) {
-				cmd.executeBaseOperation(allocator, .{.move = .{
+				ctx.execute(.{.move = .{
 					.dest = .{.inv = self.dest, .slot = selectedEmptySlot.?},
 					.source = self.source,
 					.amount = remainingAmount,
-				}}, side);
+				}});
 			}
 		}
 
@@ -1692,7 +1704,7 @@ pub const Command = struct { // MARK: Command
 	const Clear = struct { // MARK: Clear
 		inv: Inventory,
 
-		pub fn run(self: Clear, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		pub fn run(self: Clear, ctx: Context) error{serverFailure}!void {
 			if(self.inv.type == .creative) return;
 			if(self.inv.type == .crafting) return;
 			var items = self.inv._items;
@@ -1700,10 +1712,10 @@ pub const Command = struct { // MARK: Command
 			for(items, 0..) |stack, slot| {
 				if(stack.item == .null) continue;
 
-				cmd.executeBaseOperation(allocator, .{.delete = .{
+				ctx.execute(.{.delete = .{
 					.source = .{.inv = self.inv, .slot = @intCast(slot)},
 					.amount = stack.amount,
-				}}, side);
+				}});
 			}
 		}
 
@@ -1796,13 +1808,13 @@ pub const Command = struct { // MARK: Command
 			}
 		};
 
-		fn run(self: UpdateBlock, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
 			if(self.source.inv.type != .normal) return;
 
 			const stack = self.source.ref();
 
 			var shouldDropSourceBlockOnSuccess: bool = true;
-			const costOfChange = if(gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess) else .yes;
+			const costOfChange = if(ctx.gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess) else .yes;
 
 			// Check if we can change it:
 			if(!switch(costOfChange) {
@@ -1812,25 +1824,25 @@ pub const Command = struct { // MARK: Command
 				.yes_costsItems => |amount| stack.amount >= amount,
 				.yes_dropsItems => true,
 			}) {
-				if(side == .server) {
+				if(ctx.side == .server) {
 					// Inform the client of the actual block:
 					var writer = main.utils.BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
 					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
 				}
 				return;
 			}
 
-			if(side == .server) {
+			if(ctx.side == .server) {
 				if(main.server.world.?.cmpxchgBlock(self.pos[0], self.pos[1], self.pos[2], self.oldBlock, self.newBlock) != null) {
 					// Inform the client of the actual block:
 					var writer = main.utils.BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
 					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
 					return error.serverFailure;
 				}
 			}
@@ -1840,19 +1852,19 @@ pub const Command = struct { // MARK: Command
 				.no => unreachable,
 				.yes => {},
 				.yes_costsDurability => |durability| {
-					cmd.executeBaseOperation(allocator, .{.useDurability = .{
+					ctx.execute(.{.useDurability = .{
 						.source = self.source,
 						.durability = durability,
-					}}, side);
+					}});
 				},
 				.yes_costsItems => |amount| {
-					cmd.executeBaseOperation(allocator, .{.delete = .{
+					ctx.execute(.{.delete = .{
 						.source = self.source,
 						.amount = amount,
-					}}, side);
+					}});
 				},
 				.yes_dropsItems => |amount| {
-					if(side == .server and gamemode != .creative) {
+					if(ctx.side == .server and ctx.gamemode != .creative) {
 						for(0..amount) |_| {
 							for(self.newBlock.blockDrops()) |drop| {
 								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
@@ -1864,7 +1876,7 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 
-			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
+			if(ctx.side == .server and ctx.gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 						self.dropLocation.drop(self.pos, self.newBlock, drop);
@@ -1903,10 +1915,10 @@ pub const Command = struct { // MARK: Command
 		health: f32,
 		cause: main.game.DamageType,
 
-		pub fn run(self: AddHealth, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		pub fn run(self: AddHealth, ctx: Context) error{serverFailure}!void {
 			var target: ?*main.server.User = null;
 
-			if(side == .server) {
+			if(ctx.side == .server) {
 				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 				for(userList) |user| {
@@ -1923,12 +1935,12 @@ pub const Command = struct { // MARK: Command
 				if(main.game.Player.gamemode.raw == .creative) return;
 			}
 
-			cmd.executeBaseOperation(allocator, .{.addHealth = .{
+			ctx.execute(.{.addHealth = .{
 				.target = target,
 				.health = self.health,
 				.cause = self.cause,
-				.previous = if(side == .server) target.?.player.health else main.game.Player.super.health,
-			}}, side);
+				.previous = if(ctx.side == .server) target.?.player.health else main.game.Player.super.health,
+			}});
 		}
 
 		fn serialize(self: AddHealth, writer: *utils.BinaryWriter) void {
