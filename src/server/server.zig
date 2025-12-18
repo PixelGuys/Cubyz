@@ -27,7 +27,7 @@ pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 
-const command = @import("command/_command.zig");
+pub const command = @import("command/_command.zig");
 
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
@@ -317,7 +317,7 @@ pub const User = struct { // MARK: User
 		defer main.stackAllocator.free(msg);
 		self.sendRawMessage(msg);
 	}
-	fn sendRawMessage(self: *User, msg: []const u8) void {
+	pub fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.protocols.chat.send(self.conn, msg);
 	}
 };
@@ -597,16 +597,7 @@ pub fn connectInternal(user: *User) void {
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
-	if(msg[0] == '/') { // Command.
-		if(world.?.allowCheats) {
-			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
-			command.execute(msg[1..], source);
-		} else {
-			source.sendRawMessage("Commands are not allowed because cheats are disabled");
-		}
-	} else {
-		main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
-	}
+	main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
 }
 
 fn sendRawMessage(msg: []const u8) void {
