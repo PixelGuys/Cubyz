@@ -44,7 +44,7 @@ fn chooseSeed(seedStr: []const u8) u64 {
 	}
 }
 
-fn gamemodeCallback(_: usize) void {
+fn gamemodeCallback() void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(gamemode));
 }
@@ -57,7 +57,7 @@ fn testingModeCallback(enabled: bool) void {
 	testingMode = enabled;
 }
 
-fn createWorld(_: usize) void {
+fn createWorld() void {
 	const worldName = nameInput.currentString.items;
 	const worldSeed = chooseSeed(seedInput.currentString.items);
 
@@ -88,10 +88,10 @@ pub fn onOpen() void {
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
 	defer main.stackAllocator.free(name);
-	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
+	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.onNewline = .init(createWorld)});
 	list.add(nameInput);
 
-	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
+	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .init(gamemodeCallback));
 	list.add(gamemodeInput);
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
@@ -101,14 +101,14 @@ pub fn onOpen() void {
 	}
 
 	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .left);
-	seedInput = TextInput.init(.{0, 0}, 128 - 48, 22, "", .{.callback = &createWorld}, .{});
+	seedInput = TextInput.init(.{0, 0}, 128 - 48, 22, "", .{.onNewline = .init(createWorld)});
 	const seedRow = HorizontalList.init();
 	seedRow.add(seedLabel);
 	seedRow.add(seedInput);
 	seedRow.finish(.{0, 0}, .center);
 	list.add(seedRow);
 
-	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
+	list.add(Button.initText(.{0, 0}, 128, "Create World", .init(createWorld)));
 
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

@@ -75,3 +75,43 @@ fn Callback(_Params: type, list: type) type {
 		}
 	};
 }
+
+pub const SimpleCallback = struct {
+	data: *anyopaque = undefined,
+	inner: ?*const fn(*anyopaque) void = null,
+
+	fn genericWrapper(callbackFunction: fn() void) *const fn(*anyopaque) void {
+		return &struct {
+			fn wrapper(_: *anyopaque) void {
+				callbackFunction();
+			}
+		}.wrapper;
+	}
+
+	pub fn init(comptime callbackFunction: fn() void) SimpleCallback {
+		return .{
+			.inner = genericWrapper(callbackFunction),
+		};
+	}
+
+	pub fn initWithPtr(callbackFunction: anytype, data: *anyopaque) SimpleCallback {
+		return .{
+			.inner = main.meta.castFunctionSelfToAnyopaque(callbackFunction),
+			.data = data,
+		};
+	}
+
+	pub fn initWithInt(callbackFunction: fn(usize) void, data: usize) SimpleCallback {
+		@setRuntimeSafety(false);
+		return .{
+			.inner = @ptrCast(&callbackFunction),
+			.data = @ptrFromInt(data),
+		};
+	}
+
+	pub fn run(self: SimpleCallback) void {
+		if(self.inner) |callback| {
+			callback(self.data);
+		}
+	}
+};

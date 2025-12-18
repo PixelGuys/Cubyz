@@ -479,7 +479,7 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
-pub fn exitToMenu(_: usize) void {
+pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
