@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 
 energy: f32,
+
 pub fn init(zon: main.ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
@@ -16,9 +17,7 @@ pub fn run(self: *@This(), params: main.callbacks.UseItemCallback.Params) main.c
 	const allocator = params.allocator;
 	const user = params.user;
 	const side = params.side;
-	const gamemode = params.gamemode;
-	const source = params.source;
-	const stack = params.stack;
+	const stack = params.source.ref();
 
 	// enough items there?
 	if(stack.amount < 1)
@@ -36,10 +35,10 @@ pub fn run(self: *@This(), params: main.callbacks.UseItemCallback.Params) main.c
 	}}, side);
 
 	// Apply inventory changes:
-	if(gamemode == .creative) return .handled;
+	if(params.gamemode == .creative) return .handled;
 
 	cmd.executeBaseOperation(allocator, .{.delete = .{
-		.source = source,
+		.source = params.source,
 		.amount = 1,
 	}}, side);
 	return .handled;

@@ -11,7 +11,7 @@ pub const ServerBlockCallback = Callback(struct {block: Block, chunk: *main.chun
 
 pub const BlockTouchCallback = Callback(struct {entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64}, @import("block/touch/_list.zig"));
 
-pub const UseItemCallback = Callback(struct {stack: *main.items.ItemStack, source: Inventory.Command.InventoryAndSlot, allocator: main.heap.NeverFailingAllocator, cmd: *Inventory.Command, side: Inventory.Side, user: ?*main.server.User, gamemode: main.game.Gamemode}, @import("item/_list.zig"));
+pub const UseItemCallback = Callback(struct {cmd: *Inventory.Command, source: Inventory.Command.InventoryAndSlot, allocator: main.heap.NeverFailingAllocator, side: Inventory.Side, user: ?*main.server.User, gamemode: main.game.Gamemode}, @import("item/_list.zig"));
 
 pub const Result = enum {handled, ignored};
 
