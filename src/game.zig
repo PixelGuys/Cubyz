@@ -528,8 +528,17 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn useItem(_: main.Window.Key.Modifiers) void {
+	pub fn useItem(_: main.Window.Key.Modifiers) bool {
+		const item = inventory.getItem(selectedSlot);
 		main.items.Inventory.Sync.useItem(.{.inv = inventory, .slot = selectedSlot}, .client);
+		switch(item) {
+			.baseItem => {
+				return !item.baseItem.onUse().isNoop();
+			},
+			.null => {},
+			.tool => {},
+		}
+		return false;
 	}
 	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
 		if(main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
@@ -774,8 +783,9 @@ var nextBlockBreakTime: ?std.Io.Timestamp = null;
 pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
 	const time = main.timestamp();
 	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
-	Player.useItem(mods);
-	Player.placeBlock(mods);
+	if(!Player.useItem(mods)) {
+		Player.placeBlock(mods);
+	}
 }
 
 pub fn releasePlace(_: main.Window.Key.Modifiers) void {
