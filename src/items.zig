@@ -285,7 +285,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
 		};
 		self.texture = null;
-		self.foodValue = zon.get(f32, "food", 0);
+		self.foodValue = zon.get(f32, "energy", 0);
 
 		var tooltip: main.List(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);

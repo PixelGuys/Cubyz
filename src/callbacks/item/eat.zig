@@ -7,7 +7,7 @@ energy: f32,
 pub fn init(zon: main.ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
-		.energy = zon.get(f32, "food", 1.0),
+		.energy = zon.get(f32, "energy", 1.0),
 	};
 	return result;
 }

@@ -2,6 +2,6 @@
 	.texture = "apple.png",
 	.onUse = .{
 		.type = .eat,
-		.food = 0.5,
+		.energy = 0.5,
 	},
 }
