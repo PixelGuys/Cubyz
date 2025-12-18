@@ -251,6 +251,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	image: graphics.Image,
 	texture: ?graphics.Texture, // TODO: Properly deinit
 	id: []const u8,
+	zon: ZonElement,
 	name: []const u8,
 	tags: []const Tag,
 	tooltip: []const u8,
@@ -262,6 +263,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	foodValue: f32, // TODO: Effects.
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
+		self.zon = zon.clone(allocator);
 		self.id = allocator.dupe(u8, id);
 		if(texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
@@ -305,9 +307,13 @@ pub const BaseItem = struct { // MARK: BaseItem
 			_ = tooltip.swapRemove(tooltip.items.len - 1);
 		}
 		self.tooltip = tooltip.toOwnedSlice();
+		self.onUse = .noop;
+	}
+
+	pub fn finalize(self: *BaseItem) void {
 		self.onUse = blk: {
-			break :blk main.callbacks.UseItemCallback.init(zon.getChildOrNull("onUse") orelse break :blk .noop) orelse {
-				std.log.err("Failed to load onUse event for item {s}", .{id});
+			break :blk main.callbacks.UseItemCallback.init(self.zon.getChildOrNull("onUse") orelse break :blk .noop) orelse {
+				std.log.err("Failed to load onUse event for item {s}", .{self.id});
 				break :blk .noop;
 			};
 		};
