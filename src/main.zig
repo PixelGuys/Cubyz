@@ -612,6 +612,7 @@ pub fn clientMain() void { // MARK: clientMain()
 
 	audio.setMusic("cubyz:TotalDemented/Cubyz");
 
+	var lastSecond = timestamp();
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		heap.GarbageCollection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
@@ -649,7 +650,10 @@ pub fn clientMain() void { // MARK: clientMain()
 		}
 		const begin = timestamp();
 		const deltaTime = @as(f64, @floatFromInt(begin.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
-		lastDeltaTime.store(deltaTime, .monotonic);
+		if(lastSecond.durationTo(begin).toMilliseconds() > 1000) {
+			lastSecond = begin;
+			lastDeltaTime.store(deltaTime, .monotonic); 
+		}
 		lastBeginRendering = begin;
 
 		Window.handleEvents(deltaTime);
