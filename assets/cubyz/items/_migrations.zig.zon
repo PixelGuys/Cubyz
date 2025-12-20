@@ -17,4 +17,8 @@
 	.{.old = "willow_leaves", .new = "leaves/willow"},
 	.{.old = "yellow_leaves", .new = "leaves/yellow"},
 	.{.old = "pine_needles", .new = "leaves/pine"},
+	.{.old = "basalt", .new = "basalt/base"},
+	.{.old = "basalt_bricks", .new = "basalt/bricks"},
+	.{.old = "basalt_tile", .new = "basalt/tile"},
+	.{.old = "basalt_wall", .new = "basalt/wall"},
 }
