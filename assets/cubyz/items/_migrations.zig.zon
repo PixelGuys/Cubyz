@@ -37,4 +37,8 @@
 	.{.old = "marble_bricks", .new = "marble/bricks"},
 	.{.old = "marble_tile", .new = "marble/tile"},
 	.{.old = "marble_wall", .new = "marble/wall"},
+	.{.old = "sandstone", .new = "sandstone/base"},
+	.{.old = "sandstone_bricks", .new = "sandstone/bricks"},
+	.{.old = "sandstone_tile", .new = "sandstone/tile"},
+	.{.old = "sandstone_wall", .new = "sandstone/wall"},
 }
