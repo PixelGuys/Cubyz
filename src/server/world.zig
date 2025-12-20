@@ -455,7 +455,7 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("name", self.world.name);
 		worldData.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.world.tickSpeed.load(.monotonic));
-		// TODO: Save entities
+
 		try self.dir.writeZon("world.zig.zon", worldData);
 	}
 };
