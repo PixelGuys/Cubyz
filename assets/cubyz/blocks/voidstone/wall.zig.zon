@@ -1,9 +1,4 @@
 .{
-	.tags = .{.stone, .mineable, .voidStone},
-	.blockHealth = 30,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
 	.rotation = "cubyz:fence",
 	.model = "cubyz:wall",
 	.texture = "cubyz:void_stone_wall",
