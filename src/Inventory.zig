@@ -1971,13 +1971,14 @@ pub const Command = struct { // MARK: Command
 			main.globalAllocator.free(self.message);
 		}
 
-		pub fn run(self: ChatCommand, _: NeverFailingAllocator, _: *Command, side: Side, source: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
-			if(side == .server and source != null) {
+		pub fn run(self: ChatCommand, ctx: Context) error{serverFailure}!void {
+			if(ctx.side == .server) {
+				const user = ctx.user orelse return;
 				if(main.server.world.?.allowCheats) {
-					std.log.info("User \"{s}\" executed command \"{s}\"", .{source.?.name, self.message}); // TODO use color \033[0;32m
-					main.server.command.execute(self.message, source.?);
+					std.log.info("User \"{s}\" executed command \"{s}\"", .{user.name, self.message}); // TODO use color \033[0;32m
+					main.server.command.execute(self.message, user);
 				} else {
-					source.?.sendRawMessage("Commands are not allowed because cheats are disabled");
+					user.sendRawMessage("Commands are not allowed because cheats are disabled");
 				}
 			}
 		}
