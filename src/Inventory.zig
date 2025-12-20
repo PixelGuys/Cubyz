@@ -1974,7 +1974,7 @@ pub const Command = struct { // MARK: Command
 		pub fn run(self: ChatCommand, _: NeverFailingAllocator, _: *Command, side: Side, source: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
 			if(side == .server and source != null) {
 				if(main.server.world.?.allowCheats) {
-					std.log.info("User \"{s}\" executed command \"{s}\"", .{if(source) |s| s.name else "null", self.message}); // TODO use color \033[0;32m
+					std.log.info("User \"{s}\" executed command \"{s}\"", .{source.?.name, self.message}); // TODO use color \033[0;32m
 					main.server.command.execute(self.message, source.?);
 				} else {
 					source.?.sendRawMessage("Commands are not allowed because cheats are disabled");
