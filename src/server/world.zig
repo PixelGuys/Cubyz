@@ -425,23 +425,18 @@ const WorldIO = struct { // MARK: WorldIO
 		self.dir.close();
 	}
 
-	/// Load the seed, which is needed before custom item and ore generation.
-	pub fn loadWorldSeed(self: WorldIO) !u64 {
+	pub fn loadWorldData(self: WorldIO) !void {
 		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
 		defer worldData.deinit(main.stackAllocator);
+
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
 		}
-		return worldData.get(?u64, "seed", null) orelse {
+		self.world.seed = worldData.get(?u64, "seed", null) orelse {
 			std.log.err("Cannot load world. World has no seed!", .{});
 			return error.NoSeed;
 		};
-	}
-
-	pub fn loadWorldData(self: WorldIO) !void {
-		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
-		defer worldData.deinit(main.stackAllocator);
 
 		self.world.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.world.gameTime = worldData.get(i64, "gameTime", 0);
@@ -561,7 +556,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.allowCheats = gamerules.get(bool, "cheats", true);
 		self.testingMode = gamerules.get(bool, "testingMode", false);
 
-		self.seed = try self.wio.loadWorldSeed();
+		try self.wio.loadWorldData();
 
 		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
@@ -766,8 +761,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn generate(self: *ServerWorld) !void {
-		try self.wio.loadWorldData(); // load data here in order for entities to also be loaded.
-
 		if(@reduce(.And, self.spawn == Vec3i{0, 0, 0})) {
 			var seed: u64 = self.seed ^ 275892235728371;
 			std.log.info("Finding spawn position...", .{});
