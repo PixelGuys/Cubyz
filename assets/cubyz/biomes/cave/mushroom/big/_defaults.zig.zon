@@ -1,0 +1,20 @@
+.{
+	.isCave = true,
+	.maxHeight = -512,
+	.minHeight = -48250,
+	.music = "cubyz:la_kubisa_caverna",
+	.ground_structure = .{
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:clay",
+			.chance = 0.3,
+			.width = 5,
+			.variation = 5,
+			.depth = 2,
+			.smoothness = 0.5,
+		},
+	},
+}
