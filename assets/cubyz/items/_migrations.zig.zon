@@ -25,4 +25,8 @@
 	.{.old = "ferrock_bricks", .new = "ferrock/bricks"},
 	.{.old = "ferrock_tiles", .new = "ferrock/tile"},
 	.{.old = "ferrock_wall", .new = "ferrock/wall"},
+	.{.old = "glacite", .new = "glacite/base"},
+	.{.old = "glacite_bricks", .new = "glacite/bricks"},
+	.{.old = "glacite_tile", .new = "glacite/tile"},
+	.{.old = "glacite_wall", .new = "glacite/wall"},
 }
