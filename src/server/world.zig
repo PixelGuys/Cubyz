@@ -425,10 +425,7 @@ const WorldIO = struct { // MARK: WorldIO
 		self.dir.close();
 	}
 
-	pub fn loadWorldData(self: WorldIO) !void {
-		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
-		defer worldData.deinit(main.stackAllocator);
-
+	pub fn loadWorldData(self: WorldIO, worldData: ZonElement) !void {
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
@@ -558,7 +555,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.allowCheats = gamerules.get(bool, "cheats", true);
 		self.testingMode = gamerules.get(bool, "testingMode", false);
 
-		try self.wio.loadWorldData();
+		const worldData = try dir.readToZon(arena, "world.zig.zon");
+		try self.wio.loadWorldData(worldData);
 
 		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
