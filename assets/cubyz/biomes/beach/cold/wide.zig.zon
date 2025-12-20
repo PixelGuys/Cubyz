@@ -29,14 +29,14 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.03,
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.size = 5,
 			.size_variance = 4,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.01,
-			.block = "cubyz:moss:cubyz:slate",
+			.block = "cubyz:moss:cubyz:slate/base",
 			.size = 5,
 			.size_variance = 4,
 		},
