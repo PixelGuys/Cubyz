@@ -527,14 +527,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer main.stackAllocator.destroyArena(arena);
 		var generatorSettings: ZonElement = undefined;
 
+		const dir = try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path}));
+
 		if(nullGeneratorSettings) |_generatorSettings| {
 			generatorSettings = _generatorSettings;
 			// Store generator settings:
-			try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/generatorSettings.zig.zon", .{path}), generatorSettings);
+			try dir.writeZon("generatorSettings.zig.zon", generatorSettings);
 		} else { // Read the generator settings:
-			generatorSettings = try files.cubyzDir().readToZon(arena, try std.fmt.allocPrint(arena.allocator, "saves/{s}/generatorSettings.zig.zon", .{path}));
+			generatorSettings = try dir.readToZon(arena, "generatorSettings.zig.zon");
 		}
-		self.wio = WorldIO.init(try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path})), self);
+		self.wio = WorldIO.init(dir, self);
 		errdefer self.wio.deinit();
 
 		self.blockPalette = try loadPalette(arena, path, "palette", "cubyz:air");
@@ -551,7 +553,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		errdefer main.assets.unloadAssets();
 
-		var gamerules = files.cubyzDir().readToZon(arena, try std.fmt.allocPrint(arena.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arena);
+		var gamerules = dir.readToZon(arena, "gamerules.zig.zon") catch ZonElement.initObject(arena);
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
 		self.testingMode = gamerules.get(bool, "testingMode", false);
@@ -560,10 +562,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
-		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/palette.zig.zon", .{path}), self.blockPalette.storeToZon(arena));
-		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arena));
-		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arena));
-		try files.cubyzDir().writeZon(try std.fmt.allocPrint(arena.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arena));
+		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
+		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
+		try dir.writeZon("tool_palette.zig.zon", self.toolPalette.storeToZon(arena));
+		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();
