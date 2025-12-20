@@ -1,15 +1,15 @@
 .{
 	.{
-		.inputs = .{"cubyz:{item}"},
-		.output = "cubyz:{item}_tile",
+		.inputs = .{"cubyz:{item}/base"},
+		.output = "cubyz:{item}/tile",
 	},
 	.{
-		.inputs = .{"cubyz:{item}"},
-		.output = "cubyz:{item}_bricks",
+		.inputs = .{"cubyz:{item}/base"},
+		.output = "cubyz:{item}/bricks",
 	},
 	.{
-		.inputs = .{"cubyz:{item}"},
-		.output = "2 cubyz:{item}_wall",
+		.inputs = .{"cubyz:{item}/base"},
+		.output = "2 cubyz:{item}/wall",
 	},
 	.{
 		.inputs = .{"cubyz:slate/base"},
