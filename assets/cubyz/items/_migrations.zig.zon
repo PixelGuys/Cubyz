@@ -21,4 +21,8 @@
 	.{.old = "basalt_bricks", .new = "basalt/bricks"},
 	.{.old = "basalt_tile", .new = "basalt/tile"},
 	.{.old = "basalt_wall", .new = "basalt/wall"},
+	.{.old = "ferrock", .new = "ferrock/base"},
+	.{.old = "ferrock_bricks", .new = "ferrock/bricks"},
+	.{.old = "ferrock_tiles", .new = "ferrock/tile"},
+	.{.old = "ferrock_wall", .new = "ferrock/wall"},
 }
