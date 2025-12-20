@@ -447,7 +447,7 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
-		const worldData = ZonElement.initObject(main.stackAllocator);
+		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
 		defer worldData.deinit(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
 		worldData.put("seed", self.world.seed);
