@@ -27,7 +27,7 @@
 			.width = 1,
 		},
 	},
-	.stoneBlock = "cubyz:limestone",
+	.stoneBlock = "cubyz:limestone/base",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:savannah/base",

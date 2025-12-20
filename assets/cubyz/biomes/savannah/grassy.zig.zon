@@ -17,7 +17,7 @@
 	.music = "cubyz:EasternThought",
 	.ground_structure = .{
 		"cubyz:dry_grass",
-		"7 to 8 cubyz:limestone",
+		"7 to 8 cubyz:limestone/base",
 	},
 	.structures = .{
 		.{
