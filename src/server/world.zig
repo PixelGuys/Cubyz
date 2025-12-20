@@ -411,18 +411,12 @@ pub const worldDataVersion: u32 = 2;
 
 const WorldIO = struct { // MARK: WorldIO
 
-	dir: files.Dir,
 	world: *ServerWorld,
 
-	pub fn init(dir: files.Dir, world: *ServerWorld) WorldIO {
+	pub fn init(world: *ServerWorld) WorldIO {
 		return WorldIO{
-			.dir = dir,
 			.world = world,
 		};
-	}
-
-	pub fn deinit(self: *WorldIO) void {
-		self.dir.close();
 	}
 
 	pub fn loadWorldData(self: WorldIO, worldData: ZonElement) !void {
@@ -444,7 +438,9 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
-		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{self.world.path}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		const worldData = try files.cubyzDir().readToZon(main.stackAllocator, path);
 		defer worldData.deinit(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
 		worldData.put("seed", self.world.seed);
@@ -456,7 +452,7 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.world.tickSpeed.load(.monotonic));
 
-		try self.dir.writeZon("world.zig.zon", worldData);
+		try files.cubyzDir().writeZon(path, worldData);
 	}
 };
 
@@ -524,7 +520,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer main.stackAllocator.destroyArena(arena);
 		var generatorSettings: ZonElement = undefined;
 
-		const dir = try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path}));
+		var dir = try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path}));
+		defer dir.close();
 
 		if(nullGeneratorSettings) |_generatorSettings| {
 			generatorSettings = _generatorSettings;
@@ -533,8 +530,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else { // Read the generator settings:
 			generatorSettings = try dir.readToZon(arena, "generatorSettings.zig.zon");
 		}
-		self.wio = WorldIO.init(dir, self);
-		errdefer self.wio.deinit();
+		self.wio = WorldIO.init(self);
 
 		self.blockPalette = try loadPalette(arena, path, "palette", "cubyz:air");
 		errdefer self.blockPalette.deinit();
@@ -599,7 +595,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
-		self.wio.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
