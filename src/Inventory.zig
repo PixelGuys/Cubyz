@@ -457,8 +457,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn clearPlayerInventory(user: *main.server.User) void {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			while(inventoryIdIterator.next()) |inventoryId| {
 				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
@@ -497,8 +496,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn setGamemode(user: *main.server.User, gamemode: Gamemode) void {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			user.gamemode.store(gamemode, .monotonic);
 			main.network.protocols.genericUpdate.sendGamemode(user.conn, gamemode);
 		}
@@ -542,6 +540,7 @@ pub const Command = struct { // MARK: Command
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
+		chatCommand = 12,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -556,6 +555,7 @@ pub const Command = struct { // MARK: Command
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
+		chatCommand: ChatCommand,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -1961,6 +1961,38 @@ pub const Command = struct { // MARK: Command
 			};
 			if(user.?.id != result.target) return error.Invalid;
 			return result;
+		}
+	};
+
+	const ChatCommand = struct { // MARK: ChatCommand
+		message: []const u8,
+
+		fn finalize(self: ChatCommand, _: Side, _: *utils.BinaryReader) !void {
+			main.globalAllocator.free(self.message);
+		}
+
+		pub fn run(self: ChatCommand, ctx: Context) error{serverFailure}!void {
+			if(ctx.side == .server) {
+				const user = ctx.user orelse return;
+				if(main.server.world.?.allowCheats) {
+					std.log.info("User \"{s}\" executed command \"{s}\"", .{user.name, self.message}); // TODO use color \033[0;32m
+					main.server.command.execute(self.message, user);
+				} else {
+					user.sendRawMessage("Commands are not allowed because cheats are disabled");
+				}
+			}
+		}
+
+		fn serialize(self: ChatCommand, writer: *utils.BinaryWriter) void {
+			writer.writeVarInt(usize, self.message.len);
+			writer.writeSlice(self.message);
+		}
+
+		fn deserialize(reader: *utils.BinaryReader, _: Side, _: ?*main.server.User) !ChatCommand {
+			const len = try reader.readVarInt(usize);
+			return .{
+				.message = main.globalAllocator.dupe(u8, try reader.readSlice(len)),
+			};
 		}
 	};
 };
