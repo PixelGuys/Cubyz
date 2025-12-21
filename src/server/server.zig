@@ -475,7 +475,12 @@ fn update() void { // MARK: update()
 	}
 
 	while(userDeinitList.popFront()) |user| {
-		user.decreaseRefCount();
+		if(user.refCount.load(.unordered) == 1) {
+			user.decreaseRefCount();
+		} else {
+			userDeinitList.pushBack(user);
+			break;
+		}
 	}
 }
 
