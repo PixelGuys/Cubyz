@@ -27,7 +27,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:moss:cubyz:cobblestone",
+			.block = "cubyz:moss:cubyz:slate/cobble",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 9,

@@ -55,6 +55,7 @@
 	.{.old = "sandstone_wall", .new = "sandstone/wall"},
 	.{.old = "slate", .new = "slate/base"},
 	.{.old = "slate_bricks", .new = "slate/bricks"},
+	.{.old = "cobblestone", .new = "slate/cobble"},
 	.{.old = "slate_tile", .new = "slate/tile"},
 	.{.old = "slate_wall", .new = "slate/wall"},
 	.{.old = "terracotta", .new = "terracotta/base"},

@@ -12,7 +12,7 @@
 		.output = "2 cubyz:{item}/wall",
 	},
 	.{
-		.inputs = .{"cubyz:slate/base"},
-		.output = "cubyz:cobblestone",
+		.inputs = .{"cubyz:{item}/base"},
+		.output = "cubyz:{item}/cobble",
 	},
 }

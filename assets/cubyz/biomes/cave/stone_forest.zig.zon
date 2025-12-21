@@ -16,7 +16,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:cobblestone",
+			.block = "cubyz:slate/cobble",
 			.size = 5,
 			.size_variance = 3,
 		},
@@ -36,7 +36,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cobblestone",
+			.leaves = "cubyz:slate/cobble",
 			.log = "cubyz:slate/base",
 			.top = "cubyz:slate/base",
 			.chance = 0.16,
