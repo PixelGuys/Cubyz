@@ -476,9 +476,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		if(nullGeneratorSettings) |_generatorSettings| {
 			generatorSettings = _generatorSettings;
-			// Store generator settings:
 			try dir.writeZon("generatorSettings.zig.zon", generatorSettings);
-		} else { // Read the generator settings:
+		} else {
 			generatorSettings = try dir.readToZon(arena, "generatorSettings.zig.zon");
 		}
 
