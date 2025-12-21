@@ -5,7 +5,7 @@
 	},
 	.{
 		.inputs = .{"cubyz:coal_ore", "8 cubyz:clay"},
-		.output = "8 cubyz:terracotta",
+		.output = "8 cubyz:terracotta/base",
 	},
 	.{
 		.inputs = .{"cubyz:coal_ore", "8 cubyz:sand"},
