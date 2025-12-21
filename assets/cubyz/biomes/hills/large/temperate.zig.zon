@@ -8,7 +8,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.005,
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.size = 5,
 			.size_variance = 1,
 		},
