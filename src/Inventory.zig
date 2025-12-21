@@ -187,7 +187,7 @@ pub const Sync = struct { // MARK: Sync
 			const Managed = enum {internallyManaged, externallyManaged};
 
 			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed, callbacks: Callbacks) ServerInventory {
-				threadContext.assertCorrectContext(.server);
+				main.utils.assertLocked(&inventoryCreationMutex);
 				return .{
 					.inv = Inventory._init(main.globalAllocator, len, typ, source, .server, callbacks),
 					.users = .{},
@@ -245,19 +245,20 @@ pub const Sync = struct { // MARK: Sync
 			}
 		};
 
-		var inventories: main.List(ServerInventory) = undefined;
+		var inventories: main.utils.VirtualList(ServerInventory, 1 << 24) = undefined;
 		var maxId: InventoryId = @enumFromInt(0);
 		var freeIdList: main.List(InventoryId) = undefined;
+		var inventoryCreationMutex: std.Thread.Mutex = .{};
 
 		pub fn init() void {
 			threadContext = .server;
-			inventories = .initCapacity(main.globalAllocator, 256);
+			inventories = .init();
 			freeIdList = .init(main.globalAllocator);
 		}
 
 		pub fn deinit() void {
 			threadContext.assertCorrectContext(.server);
-			for(inventories.items) |inv| {
+			for(inventories.items()) |inv| {
 				if(inv.source != .alreadyFreed) {
 					std.log.err("Leaked inventory with source {}", .{inv.source});
 				}
@@ -280,7 +281,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn nextId() InventoryId {
-			threadContext.assertCorrectContext(.server);
+			main.utils.assertLocked(&inventoryCreationMutex);
 			if(freeIdList.popOrNull()) |id| {
 				return id;
 			}
@@ -291,6 +292,8 @@ pub const Sync = struct { // MARK: Sync
 
 		fn freeId(id: InventoryId) void {
 			threadContext.assertCorrectContext(.server);
+			inventoryCreationMutex.lock();
+			defer inventoryCreationMutex.unlock();
 			freeIdList.append(id);
 		}
 
@@ -354,23 +357,24 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
-			threadContext.assertCorrectContext(.server);
+			inventoryCreationMutex.lock();
+			defer inventoryCreationMutex.unlock();
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged, callbacks);
-			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
+			inventories.items()[@intFromEnum(inventory.inv.id)] = inventory;
 			inventory.inv.fromBytes(data);
 			return inventory.inv.id;
 		}
 
 		pub fn destroyExternallyManagedInventory(invId: InventoryId) void {
 			threadContext.assertCorrectContext(.server);
-			std.debug.assert(inventories.items[@intFromEnum(invId)].managed == .externallyManaged);
-			inventories.items[@intFromEnum(invId)].deinit();
+			std.debug.assert(inventories.items()[@intFromEnum(invId)].managed == .externallyManaged);
+			inventories.items()[@intFromEnum(invId)].deinit();
 		}
 
 		pub fn destroyAndDropExternallyManagedInventory(invId: InventoryId, pos: Vec3i) void {
 			threadContext.assertCorrectContext(.server);
-			std.debug.assert(inventories.items[@intFromEnum(invId)].managed == .externallyManaged);
-			const inv = &inventories.items[@intFromEnum(invId)];
+			std.debug.assert(inventories.items()[@intFromEnum(invId)].managed == .externallyManaged);
+			const inv = &inventories.items()[@intFromEnum(invId)];
 			for(inv.inv._items) |*itemStack| {
 				if(itemStack.amount == 0) continue;
 				main.server.world.?.drop(
@@ -397,7 +401,9 @@ pub const Sync = struct { // MARK: Sync
 						},
 						else => {},
 					}
-					for(inventories.items) |*inv| {
+					inventoryCreationMutex.lock();
+					defer inventoryCreationMutex.unlock();
+					for(inventories.items()) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
 							return;
@@ -408,10 +414,13 @@ pub const Sync = struct { // MARK: Sync
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
-			const inventory = ServerInventory.init(len, typ, source, .internallyManaged, .{});
 
-			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
-			inventories.items[@intFromEnum(inventory.inv.id)].addUser(user, clientId);
+			inventoryCreationMutex.lock();
+			const inventory = ServerInventory.init(len, typ, source, .internallyManaged, .{});
+			inventoryCreationMutex.unlock();
+
+			inventories.items()[@intFromEnum(inventory.inv.id)] = inventory;
+			inventories.items()[@intFromEnum(inventory.inv.id)].addUser(user, clientId);
 
 			switch(source) {
 				.blockInventory => unreachable, // Should be loaded by the block entity
@@ -432,18 +441,20 @@ pub const Sync = struct { // MARK: Sync
 		fn closeInventory(user: *main.server.User, clientId: InventoryId) !void {
 			threadContext.assertCorrectContext(.server);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return error.InventoryNotFound;
-			inventories.items[@intFromEnum(serverId)].removeUser(user, clientId);
+			inventories.items()[@intFromEnum(serverId)].removeUser(user, clientId);
 		}
 
 		fn getInventory(user: *main.server.User, clientId: InventoryId) ?Inventory {
 			threadContext.assertCorrectContext(.server);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
-			return inventories.items[@intFromEnum(serverId)].inv;
+			return inventories.items()[@intFromEnum(serverId)].inv;
 		}
 
 		pub fn getInventoryFromSource(source: Source) ?Inventory {
 			threadContext.assertCorrectContext(.server);
-			for(inventories.items) |inv| {
+			inventoryCreationMutex.lock();
+			defer inventoryCreationMutex.unlock();
+			for(inventories.items()) |inv| {
 				if(std.meta.eql(inv.source, source)) {
 					return inv.inv;
 				}
@@ -453,15 +464,15 @@ pub const Sync = struct { // MARK: Sync
 
 		pub fn getInventoryFromId(serverId: InventoryId) Inventory {
 			threadContext.assertCorrectContext(.server);
-			return inventories.items[@intFromEnum(serverId)].inv;
+			return inventories.items()[@intFromEnum(serverId)].inv;
 		}
 
 		pub fn clearPlayerInventory(user: *main.server.User) void {
 			threadContext.assertCorrectContext(.server);
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			while(inventoryIdIterator.next()) |inventoryId| {
-				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
-					executeCommand(.{.clear = .{.inv = inventories.items[@intFromEnum(inventoryId.*)].inv}}, null);
+				if(inventories.items()[@intFromEnum(inventoryId.*)].source == .playerInventory) {
+					executeCommand(.{.clear = .{.inv = inventories.items()[@intFromEnum(inventoryId.*)].inv}}, null);
 				}
 			}
 		}
@@ -471,8 +482,8 @@ pub const Sync = struct { // MARK: Sync
 			threadContext.assertCorrectContext(.server);
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			outer: while(inventoryIdIterator.next()) |inventoryId| {
-				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
-					const inv = inventories.items[@intFromEnum(inventoryId.*)].inv;
+				if(inventories.items()[@intFromEnum(inventoryId.*)].source == .playerInventory) {
+					const inv = inventories.items()[@intFromEnum(inventoryId.*)].inv;
 					for(inv._items, 0..) |invStack, slot| {
 						if(std.meta.eql(invStack.item, itemStack.item)) {
 							const amount = @min(itemStack.item.stackSize() - invStack.amount, itemStack.amount);
@@ -719,7 +730,7 @@ pub const Command = struct { // MARK: Command
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch(self) {
 				inline .create, .delete, .useDurability => |data| {
-					const users = Sync.ServerSide.inventories.items[@intFromEnum(data.inv.inv.id)].users.items;
+					const users = Sync.ServerSide.inventories.items()[@intFromEnum(data.inv.inv.id)].users.items;
 					const result = allocator.alloc(*main.server.User, users.len);
 					for(0..users.len) |i| {
 						result[i] = users[i].user;
@@ -1096,7 +1107,7 @@ pub const Command = struct { // MARK: Command
 				if(user) |_user| {
 					var it = _user.inventoryClientToServerIdMap.valueIterator();
 					while(it.next()) |serverId| {
-						const serverInventory = &Sync.ServerSide.inventories.items[@intFromEnum(serverId.*)];
+						const serverInventory = &Sync.ServerSide.inventories.items()[@intFromEnum(serverId.*)];
 						if(serverInventory.source == .playerInventory)
 							break :blk serverInventory.inv;
 					}
