@@ -150,7 +150,6 @@ pub const Blueprint = struct {
 	};
 
 	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
-		main.utils.assertLocked(&main.items.Inventory.Sync.ServerSide.mutex);
 		const startX = pos[0];
 		const startY = pos[1];
 		const startZ = pos[2];

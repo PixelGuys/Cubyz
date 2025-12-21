@@ -871,15 +871,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
-			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			main.items.Inventory.Sync.setGamemode(user, self.defaultGamemode);
-			main.items.Inventory.Sync.ServerSide.mutex.unlock();
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
-			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
-			main.items.Inventory.Sync.ServerSide.mutex.unlock();
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
@@ -936,8 +932,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
-			main.items.Inventory.Sync.ServerSide.mutex.lock();
-			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+			main.items.Inventory.threadContext.assertCorrectContext(.server);
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
 				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
@@ -1121,7 +1116,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	/// Returns the actual block on failure
 	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
-		main.utils.assertLocked(&main.items.Inventory.Sync.ServerSide.mutex); // Block entities with inventories need this mutex to be locked
+		main.items.Inventory.threadContext.assertCorrectContext(.server);
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
 		const pos: chunk.BlockPos = .fromWorldCoords(wx, wy, wz);

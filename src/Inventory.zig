@@ -90,6 +90,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn freeId(id: InventoryId) void {
+			threadContext.assertCorrectContext(.client);
 			main.utils.assertLocked(&mutex);
 			freeIdList.append(id);
 		}
@@ -186,7 +187,7 @@ pub const Sync = struct { // MARK: Sync
 			const Managed = enum {internallyManaged, externallyManaged};
 
 			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed, callbacks: Callbacks) ServerInventory {
-				main.utils.assertLocked(&mutex);
+				threadContext.assertCorrectContext(.server);
 				return .{
 					.inv = Inventory._init(main.globalAllocator, len, typ, source, .server, callbacks),
 					.users = .{},
@@ -196,7 +197,7 @@ pub const Sync = struct { // MARK: Sync
 			}
 
 			fn deinit(self: *ServerInventory) void {
-				main.utils.assertLocked(&mutex);
+				threadContext.assertCorrectContext(.server);
 				while(self.users.items.len != 0) {
 					self.removeUser(self.users.items[0].user, self.users.items[0].cliendId);
 				}
@@ -208,7 +209,7 @@ pub const Sync = struct { // MARK: Sync
 			}
 
 			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
-				main.utils.assertLocked(&mutex);
+				threadContext.assertCorrectContext(.server);
 				self.users.append(main.globalAllocator, .{.user = user, .cliendId = clientId});
 				user.inventoryClientToServerIdMap.put(clientId, self.inv.id) catch unreachable;
 				if(self.users.items.len == 1) {
@@ -219,7 +220,7 @@ pub const Sync = struct { // MARK: Sync
 			}
 
 			fn removeUser(self: *ServerInventory, user: *main.server.User, clientId: InventoryId) void {
-				main.utils.assertLocked(&mutex);
+				threadContext.assertCorrectContext(.server);
 				var index: usize = undefined;
 				for(self.users.items, 0..) |userData, i| {
 					if(userData.user == user) {
@@ -243,18 +244,19 @@ pub const Sync = struct { // MARK: Sync
 				}
 			}
 		};
-		pub var mutex: std.Thread.Mutex = .{};
 
 		var inventories: main.List(ServerInventory) = undefined;
 		var maxId: InventoryId = @enumFromInt(0);
 		var freeIdList: main.List(InventoryId) = undefined;
 
 		pub fn init() void {
+			threadContext = .server;
 			inventories = .initCapacity(main.globalAllocator, 256);
 			freeIdList = .init(main.globalAllocator);
 		}
 
 		pub fn deinit() void {
+			threadContext.assertCorrectContext(.server);
 			for(inventories.items) |inv| {
 				if(inv.source != .alreadyFreed) {
 					std.log.err("Leaked inventory with source {}", .{inv.source});
@@ -264,11 +266,11 @@ pub const Sync = struct { // MARK: Sync
 			freeIdList.deinit();
 			inventories.deinit();
 			maxId = @enumFromInt(0);
+			threadContext = .other;
 		}
 
 		pub fn disconnectUser(user: *main.server.User) void {
-			mutex.lock();
-			defer mutex.unlock();
+			threadContext.assertCorrectContext(.server);
 			while(true) {
 				// Reinitializing the iterator in the loop to allow for removal:
 				var iter = user.inventoryClientToServerIdMap.keyIterator();
@@ -278,7 +280,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn nextId() InventoryId {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			if(freeIdList.popOrNull()) |id| {
 				return id;
 			}
@@ -288,7 +290,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn freeId(id: InventoryId) void {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			freeIdList.append(id);
 		}
 
@@ -338,8 +340,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn executeUserCommand(source: *main.server.User, reader: *utils.BinaryReader) !void {
-			mutex.lock();
-			defer mutex.unlock();
+			threadContext.assertCorrectContext(.server);
 			const typ = try reader.readEnum(Command.PayloadType);
 			@setEvalBranchQuota(100000);
 			const payload: Command.Payload = switch(typ) {
@@ -353,8 +354,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
-			mutex.lock();
-			defer mutex.unlock();
+			threadContext.assertCorrectContext(.server);
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged, callbacks);
 			inventories.items[@intFromEnum(inventory.inv.id)] = inventory;
 			inventory.inv.fromBytes(data);
@@ -362,14 +362,13 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn destroyExternallyManagedInventory(invId: InventoryId) void {
-			mutex.lock();
-			defer mutex.unlock();
+			threadContext.assertCorrectContext(.server);
 			std.debug.assert(inventories.items[@intFromEnum(invId)].managed == .externallyManaged);
 			inventories.items[@intFromEnum(invId)].deinit();
 		}
 
 		pub fn destroyAndDropExternallyManagedInventory(invId: InventoryId, pos: Vec3i) void {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			std.debug.assert(inventories.items[@intFromEnum(invId)].managed == .externallyManaged);
 			const inv = &inventories.items[@intFromEnum(invId)];
 			for(inv.inv._items) |*itemStack| {
@@ -386,7 +385,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			switch(source) {
 				.recipe, .blockInventory, .playerInventory, .hand => {
 					switch(source) {
@@ -431,19 +430,19 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn closeInventory(user: *main.server.User, clientId: InventoryId) !void {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return error.InventoryNotFound;
 			inventories.items[@intFromEnum(serverId)].removeUser(user, clientId);
 		}
 
 		fn getInventory(user: *main.server.User, clientId: InventoryId) ?Inventory {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
 			return inventories.items[@intFromEnum(serverId)].inv;
 		}
 
 		pub fn getInventoryFromSource(source: Source) ?Inventory {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			for(inventories.items) |inv| {
 				if(std.meta.eql(inv.source, source)) {
 					return inv.inv;
@@ -453,11 +452,12 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn getInventoryFromId(serverId: InventoryId) Inventory {
+			threadContext.assertCorrectContext(.server);
 			return inventories.items[@intFromEnum(serverId)].inv;
 		}
 
 		pub fn clearPlayerInventory(user: *main.server.User) void {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			while(inventoryIdIterator.next()) |inventoryId| {
 				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
@@ -468,8 +468,7 @@ pub const Sync = struct { // MARK: Sync
 
 		pub fn tryCollectingToPlayerInventory(user: *main.server.User, itemStack: *ItemStack) void {
 			if(itemStack.item == .null) return;
-			mutex.lock();
-			defer mutex.unlock();
+			threadContext.assertCorrectContext(.server);
 			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 			outer: while(inventoryIdIterator.next()) |inventoryId| {
 				if(inventories.items[@intFromEnum(inventoryId.*)].source == .playerInventory) {
@@ -496,13 +495,14 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn setGamemode(user: *main.server.User, gamemode: Gamemode) void {
-			main.utils.assertLocked(&mutex);
+			threadContext.assertCorrectContext(.server);
 			user.gamemode.store(gamemode, .monotonic);
 			main.network.protocols.genericUpdate.sendGamemode(user.conn, gamemode);
 		}
 	};
 
 	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
+		threadContext.assertCorrectContext(side);
 		if(side == .client) {
 			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
 		} else {
@@ -511,6 +511,7 @@ pub const Sync = struct { // MARK: Sync
 	}
 
 	pub fn getInventory(id: InventoryId, side: Side, user: ?*main.server.User) ?Inventory {
+		threadContext.assertCorrectContext(side);
 		return switch(side) {
 			.client => ClientSide.getInventory(id),
 			.server => ServerSide.getInventory(user.?, id),
@@ -835,6 +836,7 @@ pub const Command = struct { // MARK: Command
 	}
 
 	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void { // MARK: do()
+		threadContext.assertCorrectContext(side);
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
 		switch(self.payload) {
 			inline else => |payload| {
@@ -844,6 +846,7 @@ pub const Command = struct { // MARK: Command
 	}
 
 	fn undo(self: *Command) void {
+		threadContext.assertCorrectContext(.client);
 		// Iterating in reverse order!
 		while(self.baseOperations.popOrNull()) |step| {
 			switch(step) {
@@ -984,6 +987,7 @@ pub const Command = struct { // MARK: Command
 	}
 
 	fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void { // MARK: executeBaseOperation()
+		threadContext.assertCorrectContext(side);
 		var op = _op;
 		switch(op) {
 			.move => |info| {
@@ -1995,6 +1999,23 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 	};
+};
+
+pub threadlocal var threadContext: ThreadContext = .other;
+pub const ThreadContext = enum { // MARK: ThreadContext
+	other,
+	server,
+
+	pub fn assertCorrectContext(self: ThreadContext, side: Side) void {
+		switch(side) {
+			.server => {
+				std.debug.assert(self == .server);
+			},
+			.client => {
+				main.utils.assertLocked(&Sync.ClientSide.mutex);
+			},
+		}
+	}
 };
 
 const SourceType = enum(u8) {
