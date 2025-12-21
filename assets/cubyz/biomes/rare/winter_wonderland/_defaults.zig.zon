@@ -10,7 +10,7 @@
 	.maxHeightLimit = 60,
 	.hills = 15,
 	.mountains = 8,
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:glacite/base",
 	.ground_structure = .{
 		"2 to 3 cubyz:snow",
 		"1 to 2 cubyz:permafrost",
