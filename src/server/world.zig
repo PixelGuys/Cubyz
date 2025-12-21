@@ -501,7 +501,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.testingMode = gamerules.get(bool, "testingMode", false);
 
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
-		try self.loadWorldData(worldData);
+		try self.loadWorldConfig(worldData);
 
 		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
@@ -549,7 +549,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		main.globalAllocator.destroy(self);
 	}
 
-	pub fn loadWorldData(self: *ServerWorld, worldData: ZonElement) !void { // MARK: loadWorldData
+	pub fn loadWorldConfig(self: *ServerWorld, worldData: ZonElement) !void { // MARK: loadWorldConfig
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
@@ -567,7 +567,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
 	}
 
-	pub fn saveWorldData(self: *ServerWorld) !void {
+	pub fn saveWorldConfig(self: *ServerWorld) !void {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		const worldData = try files.cubyzDir().readToZon(main.stackAllocator, path);
@@ -811,7 +811,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				};
 			}
 		}
-		try self.saveWorldData();
+		try self.saveWorldConfig();
 		loadItemDrops: {
 			const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
 			defer main.stackAllocator.free(itemsPath);
@@ -935,7 +935,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn forceSave(self: *ServerWorld) !void {
 		// TODO: Save chunks and player data
-		try self.saveWorldData();
+		try self.saveWorldConfig();
 
 		try self.saveAllPlayers();
 
