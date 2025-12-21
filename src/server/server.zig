@@ -183,12 +183,16 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn setName(self: *User, name: []const u8) void {
+		std.debug.assert(self.name.len == 0);
+		self.name = main.globalAllocator.dupe(u8, name);
+	}
+
 	var freeId: u32 = 0;
-	pub fn initPlayer(self: *User, name: []const u8) void {
+	pub fn initPlayer(self: *User) void {
 		self.id = freeId;
 		freeId += 1;
 
-		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
 		self.loadUnloadChunks();
 	}
@@ -546,6 +550,7 @@ pub fn connect(user: *User) void {
 }
 
 pub fn connectInternal(user: *User) void {
+	user.initPlayer();
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -593,6 +598,7 @@ pub fn connectInternal(user: *User) void {
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
+	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	user.conn.handShakeState.store(.complete, .monotonic);
 }
 
