@@ -593,6 +593,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// block drops:
 	blocks_zig.finishBlocks(worldAssets.blocks);
 
+	// Finalize all item (setting their callbacks)
+	for(0..main.items.itemListSize) |i| {
+		main.items.itemList[i].finalize();
+	}
+
 	iterator = worldAssets.recipes.iterator();
 	while(iterator.next()) |entry| {
 		registerRecipesFromZon(entry.value_ptr.*);

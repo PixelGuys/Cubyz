@@ -4,11 +4,14 @@ const main = @import("main");
 const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const Inventory = main.items.Inventory;
 
 pub const ClientBlockCallback = Callback(struct {block: Block, blockPos: Vec3i}, @import("block/client/_list.zig"));
 pub const ServerBlockCallback = Callback(struct {block: Block, chunk: *main.chunk.ServerChunk, blockPos: main.chunk.BlockPos}, @import("block/server/_list.zig"));
 
 pub const BlockTouchCallback = Callback(struct {entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64}, @import("block/touch/_list.zig"));
+
+pub const UseItemCallback = Callback(struct {cmd: *Inventory.Command, source: Inventory.Command.InventoryAndSlot, allocator: main.heap.NeverFailingAllocator, side: Inventory.Side, user: ?*main.server.User, gamemode: main.game.Gamemode}, @import("item/_list.zig"));
 
 pub const Result = enum {handled, ignored};
 
@@ -16,6 +19,7 @@ pub fn init() void {
 	ClientBlockCallback.globalInit();
 	ServerBlockCallback.globalInit();
 	BlockTouchCallback.globalInit();
+	UseItemCallback.globalInit();
 }
 
 fn Callback(_Params: type, list: type) type {
