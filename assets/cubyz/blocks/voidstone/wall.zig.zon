@@ -1,10 +1,10 @@
 .{
 	.rotation = "cubyz:fence",
 	.model = "cubyz:wall",
-	.texture = "cubyz:void_stone_wall",
-	.texture_top = "cubyz:void_stone_wall_top",
-	.texture_bottom = "cubyz:void_stone_wall_top",
+	.texture = "cubyz:voidstone/wall",
+	.texture_top = "cubyz:voidstone/wall_top",
+	.texture_bottom = "cubyz:voidstone/wall_top",
 	.item = .{
-		.texture = "wall/void_stone.png",
+		.texture = "wall/voidstone.png",
 	},
 }
