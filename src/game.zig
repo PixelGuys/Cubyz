@@ -842,30 +842,30 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		if(KeyBoard.key("forward").value > 0.0) {
 			if(KeyBoard.key("sprint").pressed and !Player.crouching) {
 				if(Player.isGhost.load(.monotonic)) {
-					movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
+					movementSpeed = @max(movementSpeed, 128*KeyBoard.key("forward").value);
 					movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
 				} else if(Player.isFlying.load(.monotonic)) {
-					movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
+					movementSpeed = @max(movementSpeed, 32*KeyBoard.key("forward").value);
 					movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
 				} else {
-					movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
+					movementSpeed = @max(movementSpeed, 8*KeyBoard.key("forward").value);
 					movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 				}
 			} else {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
+				movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("forward").value);
 				movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 			}
 		}
 		if(KeyBoard.key("backward").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
+			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("backward").value);
 			movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
 		}
 		if(KeyBoard.key("left").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
+			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("left").value);
 			movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
 		}
 		if(KeyBoard.key("right").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
+			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("right").value);
 			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 		}
 		if(KeyBoard.key("jump").pressed) {

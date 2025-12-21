@@ -37,10 +37,25 @@ pub const Gamepad = struct {
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 	var controllerConnectedPreviously: bool = false;
-	fn applyDeadzone(value: f32) f32 {
+	fn applyDeadzone(state: *c.GLFWgamepadstate, axis: usize) void {
+		const value = state.axes[axis];
 		const minValue = settings.controllerAxisDeadzone;
 		const maxRange = 1.0 - minValue;
-		return (value*maxRange) + minValue;
+		state.axes[axis] = std.math.sign(value)*(@max(0, @abs(value) - minValue))/maxRange;
+	}
+	fn applyDeadzones2D(state: *c.GLFWgamepadstate, xAxis: usize, yAxis: usize) void {
+		var axisVec: Vec2f = .{state.axes[xAxis], state.axes[yAxis]};
+		const length: Vec2f = @splat(vec.length(axisVec));
+		const minValue: Vec2f = @splat(settings.controllerAxisDeadzone);
+		const maxRange: Vec2f = @splat((1.0 - minValue[0])*length[0]);
+
+		axisVec = axisVec*(@max(Vec2f{0, 0}, length - minValue))/maxRange;
+		if (vec.lengthSquare(axisVec) > 1) {
+			axisVec = vec.normalize(axisVec);
+		}
+
+		state.axes[xAxis] = axisVec[0];
+		state.axes[yAxis] = axisVec[1];
 	}
 	pub fn update(delta: f64) void {
 		if(!controllerConnectedPreviously and isControllerConnected()) {
@@ -66,7 +81,11 @@ pub const Gamepad = struct {
 					_ = gamepadState.remove(jid);
 				}
 			}
-			const newState: c.GLFWgamepadstate = if(gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
+			const newState: *c.GLFWgamepadstate = gamepadState.get(jid) orelse continue;
+			applyDeadzones2D(newState, c.GLFW_GAMEPAD_AXIS_LEFT_X, c.GLFW_GAMEPAD_AXIS_LEFT_Y);
+			applyDeadzones2D(newState, c.GLFW_GAMEPAD_AXIS_RIGHT_X, c.GLFW_GAMEPAD_AXIS_RIGHT_Y);
+			applyDeadzone(newState, c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER);
+			applyDeadzone(newState, c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER);
 			if(nextGamepadListener != null) {
 				for(0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
 					if((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
@@ -78,8 +97,8 @@ pub const Gamepad = struct {
 			}
 			if(nextGamepadListener != null) {
 				for(0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
-					const newAxis = applyDeadzone(newState.axes[axis]);
-					const oldAxis = applyDeadzone(oldState.axes[axis]);
+					const newAxis = newState.axes[axis];
+					const oldAxis = oldState.axes[axis];
 					if(newAxis != 0 and oldAxis == 0) {
 						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.axes[axis] > 0}, -1);
 						nextGamepadListener = null;
@@ -100,8 +119,8 @@ pub const Gamepad = struct {
 				} else {
 					const axis = key.gamepadAxis.?.axis;
 					const positive = key.gamepadAxis.?.positive;
-					var newAxis = applyDeadzone(newState.axes[@intCast(axis)]);
-					var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
+					var newAxis = newState.axes[@intCast(axis)];
+					var oldAxis = oldState.axes[@intCast(axis)];
 					if(!positive) {
 						newAxis *= -1.0;
 						oldAxis *= -1.0;
@@ -130,8 +149,8 @@ pub const Gamepad = struct {
 				GLFWCallbacks.currentPos[0] = std.math.clamp(GLFWCallbacks.currentPos[0], 0, winSize[0]);
 				GLFWCallbacks.currentPos[1] = std.math.clamp(GLFWCallbacks.currentPos[1], 0, winSize[1]);
 			}
+			GLFWCallbacks.scroll(undefined, 0, @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4));
 		}
-		GLFWCallbacks.scroll(undefined, 0, @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4));
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
 	pub fn isControllerConnected() bool {
@@ -213,7 +232,7 @@ pub const Gamepad = struct {
 		}
 	};
 	pub fn downloadControllerMappings() void {
-		if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
+		// if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
 		const curTimestamp: i96 = (std.Io.Clock.Timestamp.now(main.io, .real) catch unreachable).raw.nanoseconds;
 		const timestamp: i96 = blk: {
