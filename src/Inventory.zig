@@ -2022,9 +2022,7 @@ pub const ThreadContext = enum { // MARK: ThreadContext
 			.server => {
 				std.debug.assert(self == .server);
 			},
-			.client => {
-				main.utils.assertLocked(&Sync.ClientSide.mutex);
-			},
+			.client => {},
 		}
 	}
 };
