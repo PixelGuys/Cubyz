@@ -126,6 +126,8 @@ pub const User = struct { // MARK: User
 
 	mutex: std.Thread.Mutex = .{},
 
+	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
@@ -161,6 +163,10 @@ pub const User = struct { // MARK: User
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
+		for(self.inventoryCommands.items) |commandData| {
+			main.globalAllocator.free(commandData);
+		}
+		self.inventoryCommands.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -184,6 +190,7 @@ pub const User = struct { // MARK: User
 
 		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
+		self.loadUnloadChunks();
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -250,6 +257,26 @@ pub const User = struct { // MARK: User
 
 	pub fn update(self: *User) void {
 		self.mutex.lock();
+		const commands = self.inventoryCommands;
+		defer commands.deinit(main.globalAllocator);
+		self.inventoryCommands = .{};
+		self.mutex.unlock();
+
+		for(commands.items) |commandData| {
+			defer main.globalAllocator.free(commandData);
+			var reader: BinaryReader = .init(commandData);
+			main.items.Inventory.Sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+				if(err == error.InventoryNotFound) {
+					main.network.protocols.inventory.sendFailure(self.conn);
+				} else {
+					std.log.err("Got error while executing user command: {s}. Disconnecting.", .{@errorName(err)});
+					std.log.debug("Command data: {any}", .{commandData});
+					self.conn.disconnect();
+				}
+			};
+		}
+
+		self.mutex.lock();
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
@@ -265,6 +292,12 @@ pub const User = struct { // MARK: User
 		}
 
 		self.loadUnloadChunks();
+	}
+
+	pub fn receiveCommand(self: *User, commandData: []const u8) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.inventoryCommands.append(main.globalAllocator, main.globalAllocator.dupe(u8, commandData));
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
@@ -442,9 +475,13 @@ fn update() void { // MARK: update()
 	}
 }
 
-pub fn start(name: []const u8, port: ?u16) void {
+pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
+	startFromExistingThread(name, port);
+}
+
+pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 	init(name, port);
 	defer deinit();
@@ -453,7 +490,7 @@ pub fn start(name: []const u8, port: ?u16) void {
 		main.heap.GarbageCollection.syncPoint();
 		const newTime = main.timestamp();
 		if(lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
-			main.io.sleep(lastTime.durationTo(newTime.addDuration(updateTime)), .awake) catch {};
+			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
 			lastTime = lastTime.addDuration(updateTime);
 		} else {
 			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});

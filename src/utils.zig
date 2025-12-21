@@ -969,7 +969,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					break;
 				}
 			}
-			main.io.sleep(.fromMilliseconds(1000000), .awake) catch {};
+			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		}
 	}
 
@@ -1151,7 +1151,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		}
 
 		pub fn deferredDeinit(self: *Self) void {
-			main.heap.GarbageCollection.deferredFree(.{.ptr = self.impl.raw, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+			main.heap.GarbageCollection.deferredFree(.{.ptr = self.impl.raw, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 		}
 
 		fn getTargetBitSize(paletteLength: u32) u5 {
@@ -1195,6 +1195,10 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			}
 			if(paletteIndex == impl.paletteLength) {
 				if(impl.paletteLength == impl.palette.len) {
+					if(impl.data.bitSize == 16) {
+						self.optimizeLayoutInternal();
+						return self.getOrInsertPaletteIndex(val);
+					}
 					var newSelf: Self = undefined;
 					newSelf.initCapacity(impl.paletteLength*2);
 					const newImpl = newSelf.impl.raw;
@@ -1268,7 +1272,11 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			const impl = self.impl.raw;
 			const newBitSize = getTargetBitSize(@intCast(impl.activePaletteEntries));
 			if(impl.data.bitSize == newBitSize) return;
+			self.optimizeLayoutInternal();
+		}
 
+		fn optimizeLayoutInternal(self: *Self) void {
+			const impl = self.impl.raw;
 			var newSelf: Self = undefined;
 			newSelf.initCapacity(impl.activePaletteEntries);
 			const newImpl = newSelf.impl.raw;
@@ -2214,48 +2222,19 @@ test "SparseSet/reusing" {
 	try std.testing.expectEqual(set.get(firstId).?.*, expectNew);
 }
 
-// MARK: functionPtrCast()
-fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
-	var typeInfo = @typeInfo(Fn);
-	var params = typeInfo.@"fn".params[0..typeInfo.@"fn".params.len].*;
-	if(@sizeOf(params[0].type.?) != @sizeOf(*anyopaque) or @alignOf(params[0].type.?) != @alignOf(*anyopaque)) {
-		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{params[0].type.?}));
-	}
-	params[0].type = *anyopaque;
-	typeInfo.@"fn".params = params[0..];
-	return @Type(typeInfo);
-}
-/// Turns the first parameter into a anyopaque*
-pub fn castFunctionSelfToAnyopaque(function: anytype) *const CastFunctionSelfToAnyopaqueType(@TypeOf(function)) {
-	return @ptrCast(&function);
-}
-
-fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
-	var typeInfo = @typeInfo(Fn);
-	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(*anyopaque) or @typeInfo(typeInfo.@"fn".return_type.?) == .optional) {
-		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{typeInfo.@"fn".return_type.?}));
-	}
-	typeInfo.@"fn".return_type = *anyopaque;
-	return @Type(typeInfo);
-}
-
-fn CastFunctionReturnToOptionalAnyopaqueType(Fn: type) type {
-	var typeInfo = @typeInfo(Fn);
-	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(?*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(?*anyopaque) or @typeInfo(typeInfo.@"fn".return_type.?) != .optional) {
-		@compileError(std.fmt.comptimePrint("Cannot convert {} to ?*anyopaque", .{typeInfo.@"fn".return_type.?}));
-	}
-	typeInfo.@"fn".return_type = ?*anyopaque;
-	return @Type(typeInfo);
-}
-/// Turns the return parameter into a anyopaque*
-pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
-	return @ptrCast(&function);
-}
-pub fn castFunctionReturnToOptionalAnyopaque(function: anytype) *const CastFunctionReturnToOptionalAnyopaqueType(@TypeOf(function)) {
-	return @ptrCast(&function);
-}
-
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);
+}
+
+pub const obfuscationChar = "∗".*;
+
+pub fn obfuscateString(allocator: NeverFailingAllocator, string: []const u8) []const u8 {
+	const len = std.unicode.utf8CountCodepoints(string) catch 0;
+	const obfuscated = allocator.alloc(u8, len*obfuscationChar.len);
+	var i: usize = 0;
+	while(i < obfuscated.len) : (i += obfuscationChar.len) {
+		@memcpy(obfuscated[i .. i + obfuscationChar.len], &obfuscationChar);
+	}
+	return obfuscated;
 }

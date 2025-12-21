@@ -10,7 +10,7 @@
 	.ground_structure = .{
 		"1 cubyz:dry_grass",
 		"1 to 2 cubyz:dirt",
-		"3 to 4 cubyz:limestone",
+		"3 to 4 cubyz:limestone/base",
 	},
 	.structures = .{
 		.{
@@ -44,14 +44,14 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.05,
-			.block = "cubyz:limestone",
+			.block = "cubyz:limestone/base",
 			.size = 3,
 			.size_variance = 6,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.01,
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.size = 3,
 			.size_variance = 4,
 		},

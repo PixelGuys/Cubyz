@@ -6,7 +6,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 pub const ClientBlockCallback = Callback(struct {block: Block, blockPos: Vec3i}, @import("block/client/_list.zig"));
-pub const ServerBlockCallback = Callback(struct {block: Block, chunk: *main.chunk.ServerChunk, x: i32, y: i32, z: i32}, @import("block/server/_list.zig"));
+pub const ServerBlockCallback = Callback(struct {block: Block, chunk: *main.chunk.ServerChunk, blockPos: main.chunk.BlockPos}, @import("block/server/_list.zig"));
 
 pub const BlockTouchCallback = Callback(struct {entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64}, @import("block/touch/_list.zig"));
 
@@ -36,8 +36,8 @@ fn Callback(_Params: type, list: type) type {
 			inline for(@typeInfo(list).@"struct".decls) |decl| {
 				const CallbackStruct = @field(list, decl.name);
 				eventCreationMap.put(main.globalArena.allocator, decl.name, .{
-					.init = main.utils.castFunctionReturnToOptionalAnyopaque(CallbackStruct.init),
-					.run = main.utils.castFunctionSelfToAnyopaque(CallbackStruct.run),
+					.init = main.meta.castFunctionReturnToOptionalAnyopaque(CallbackStruct.init),
+					.run = main.meta.castFunctionSelfToAnyopaque(CallbackStruct.run),
 				}) catch unreachable;
 			}
 		}
@@ -75,3 +75,43 @@ fn Callback(_Params: type, list: type) type {
 		}
 	};
 }
+
+pub const SimpleCallback = struct {
+	data: *anyopaque = undefined,
+	inner: ?*const fn(*anyopaque) void = null,
+
+	fn genericWrapper(callbackFunction: fn() void) *const fn(*anyopaque) void {
+		return &struct {
+			fn wrapper(_: *anyopaque) void {
+				callbackFunction();
+			}
+		}.wrapper;
+	}
+
+	pub fn init(comptime callbackFunction: fn() void) SimpleCallback {
+		return .{
+			.inner = genericWrapper(callbackFunction),
+		};
+	}
+
+	pub fn initWithPtr(callbackFunction: anytype, data: *anyopaque) SimpleCallback {
+		return .{
+			.inner = main.meta.castFunctionSelfToAnyopaque(callbackFunction),
+			.data = data,
+		};
+	}
+
+	pub fn initWithInt(callbackFunction: fn(usize) void, data: usize) SimpleCallback {
+		@setRuntimeSafety(false);
+		return .{
+			.inner = @ptrCast(&callbackFunction),
+			.data = @ptrFromInt(data),
+		};
+	}
+
+	pub fn run(self: SimpleCallback) void {
+		if(self.inner) |callback| {
+			callback(self.data);
+		}
+	}
+};

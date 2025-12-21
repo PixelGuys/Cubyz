@@ -166,7 +166,7 @@ fn getMapPiecePointer(x: i32, y: i32, voxelSize: u31) *Atomic(?*LightMap.LightMa
 	xIndex &= storageMask;
 	yIndex &= storageMask;
 	const index = xIndex*storageSize + yIndex;
-	return &(&mapStorageLists)[lod][@intCast(index)];
+	return &mapStorageLists[lod][@intCast(index)];
 }
 
 pub fn getLightMapPiece(x: i32, y: i32, voxelSize: u31) ?*LightMap.LightMapFragment {
@@ -860,14 +860,14 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	mesh: *chunk.Chunk,
 
 	pub const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.utils.castFunctionSelfToAnyopaque(run),
-		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+		.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+		.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+		.run = main.meta.castFunctionSelfToAnyopaque(run),
+		.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 		.taskType = .meshgenAndLighting,
 	};
 
-	pub fn schedule(mesh: *chunk.Chunk) void {
+	fn schedule(mesh: *chunk.Chunk) void {
 		const task = main.globalAllocator.create(MeshGenerationTask);
 		task.* = MeshGenerationTask{
 			.mesh = mesh,
@@ -894,6 +894,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {
+		self.mesh.unloadBlockEntities(.client);
 		self.mesh.deinit();
 		main.globalAllocator.destroy(self);
 	}

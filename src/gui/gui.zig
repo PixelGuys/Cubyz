@@ -78,7 +78,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
-				_ = openWindows.swapRemove(i);
+				_ = openWindows.orderedRemove(i);
 				openWindows.appendAssumeCapacity(window);
 				selectedWindow = null;
 				return;
@@ -100,17 +100,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 				window.onCloseFn();
 				break;
 			}
-		}
-	}
-};
-
-pub const Callback = struct {
-	callback: ?*const fn(usize) void = null,
-	arg: usize = 0,
-
-	pub fn run(self: Callback) void {
-		if(self.callback) |callback| {
-			callback(self.arg);
 		}
 	}
 };
@@ -362,14 +351,8 @@ pub fn openHud() void {
 	reorderWindows = false;
 }
 
-fn openWindowCallbackFunction(windowPtr: usize) void {
-	openWindowFromRef(@ptrFromInt(windowPtr));
-}
-pub fn openWindowCallback(comptime id: []const u8) Callback {
-	return .{
-		.callback = &openWindowCallbackFunction,
-		.arg = @intFromPtr(&@field(windowlist, id).window),
-	};
+pub fn openWindowCallback(comptime id: []const u8) main.callbacks.SimpleCallback {
+	return .initWithPtr(openWindowFromRef, &@field(windowlist, id).window);
 }
 
 pub fn closeWindowFromRef(window: *GuiWindow) void {
@@ -486,7 +469,7 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
-	} else if(main.game.world != null and inventory.carried.getItem(0) == null) {
+	} else if(main.game.world != null and inventory.carried.getItem(0) == .null) {
 		toggleGameMenu();
 	}
 }
@@ -604,7 +587,7 @@ pub const inventory = struct { // MARK: inventory
 	var carriedItemSlot: *ItemSlot = undefined;
 	var leftClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
 	var rightClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
-	var recipeItem: ?main.items.Item = null;
+	var recipeItem: main.items.Item = .null;
 	var initialized: bool = false;
 	const minCraftingCooldown: std.Io.Duration = .fromMilliseconds(20);
 	const maxCraftingCooldown: std.Io.Duration = .fromMilliseconds(400);
@@ -659,9 +642,9 @@ pub const inventory = struct { // MARK: inventory
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
-		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != null or itemSlot.pressed)) {
+		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if(recipeItem == null and item != null) recipeItem = item.?.clone();
+			if(recipeItem == .null and item != .null) recipeItem = item.clone();
 			if(!std.meta.eql(item, recipeItem)) return;
 			const time = main.timestamp();
 			if(!isCrafting) {
@@ -671,7 +654,7 @@ pub const inventory = struct { // MARK: inventory
 			}
 			while(time.durationTo(nextCraftingAction).nanoseconds <= 0) {
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
-				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds - minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, 1000);
+				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
 				if(mainGuiButton.modsOnPress.shift) {
 					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {
@@ -683,7 +666,7 @@ pub const inventory = struct { // MARK: inventory
 
 		isCrafting = false;
 
-		if(recipeItem != null) return;
+		if(recipeItem != .null) return;
 		if(itemSlot.mode != .normal) return;
 
 		if(mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
@@ -707,7 +690,7 @@ pub const inventory = struct { // MARK: inventory
 				if(itemSlot == deliveredSlot) return;
 			}
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if(item == null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.?.stackSize()) {
+			if(item == .null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.stackSize()) {
 				leftClickSlots.append(itemSlot);
 			}
 		} else if(secondaryGuiButton.pressed) {
@@ -723,8 +706,8 @@ pub const inventory = struct { // MARK: inventory
 		if(!initialized) return;
 		if(main.game.world == null) return;
 		if(leftClick) {
-			if(recipeItem) |item| item.deinit();
-			recipeItem = null;
+			recipeItem.deinit();
+			recipeItem = .null;
 			isCrafting = false;
 			if(leftClickSlots.items.len != 0) {
 				const targetInventories = main.stackAllocator.alloc(Inventory, leftClickSlots.items.len);
@@ -765,8 +748,7 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
 		if(carried.getAmount(0) == 0) if(hoveredItemSlot) |hovered| {
-			if(hovered.inventory.getItem(hovered.itemSlot)) |item| {
-				const tooltip = item.getTooltip();
+			if(hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
 				const fontSize = 16;

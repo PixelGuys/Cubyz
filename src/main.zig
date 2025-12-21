@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
@@ -16,6 +17,7 @@ pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
+pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
@@ -277,9 +279,14 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 }
 
 // MARK: Callbacks
-fn escape(_: Window.Key.Modifiers) void {
+fn escape(mods: Window.Key.Modifiers) void {
 	if(gui.selectedTextInput != null) gui.setSelectedTextInput(null);
+	inventory(mods);
+}
+fn inventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
+	gui.openWindow("inventory");
+	gui.openWindow("hotbar");
 	gui.toggleGameMenu();
 }
 fn ungrabMouse(_: Window.Key.Modifiers) void {
@@ -379,6 +386,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B},
+		.{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .pressAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "openCommand", .key = c.GLFW_KEY_SLASH, .releaseAction = &openCommand},
@@ -471,7 +479,7 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
-pub fn exitToMenu(_: usize) void {
+pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
@@ -503,6 +511,10 @@ pub fn main() void { // MARK: main()
 	defer deinitLogging();
 
 	std.log.info("Starting game with version {s}", .{settings.version.version});
+
+	if(builtin.os.tag == .windows) {
+		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
+	}
 
 	settings.launchConfig.init();
 
@@ -578,7 +590,7 @@ pub fn main() void { // MARK: main()
 	defer server.terrain.globalDeinit();
 
 	if(headless) {
-		server.start(settings.launchConfig.autoEnterWorld, null);
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		clientMain();
 	}
@@ -587,18 +599,16 @@ pub fn main() void { // MARK: main()
 pub fn clientMain() void { // MARK: clientMain()
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
-	} else {
+	} else if(settings.launchConfig.autoEnterWorld.len == 0) {
 		gui.openWindow("main");
+	} else {
+		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
 	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
-
-	if(settings.launchConfig.autoEnterWorld.len != 0) {
-		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
-	}
 
 	audio.setMusic("cubyz:TotalDemented/Cubyz");
 
@@ -630,7 +640,12 @@ pub fn clientMain() void { // MARK: clientMain()
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering.nanoseconds -% lastBeginRendering.nanoseconds)));
-			io.sleep(.fromNanoseconds(sleep), .awake) catch {};
+			if(builtin.os.tag == .windows and minFrameTime < 20_000_000) { // Windows can oversleep a lot, so we waste power instead
+				const targetTime = timestamp().addDuration(.fromNanoseconds(sleep));
+				while(timestamp().durationTo(targetTime).nanoseconds > 0) {}
+			} else {
+				io.sleep(.fromNanoseconds(sleep), .awake) catch {};
+			}
 		}
 		const begin = timestamp();
 		const deltaTime = @as(f64, @floatFromInt(begin.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;

@@ -33,11 +33,12 @@ const HashMapKey = struct {
 		return std.mem.eql(u8, val1.shellModelId, val2.shellModelId);
 	}
 };
-pub const BranchData = packed struct(u6) {
+pub const BranchData = packed struct(u7) {
 	enabledConnections: u6,
+	placedByHuman: bool,
 
 	pub inline fn init(blockData: u16) BranchData {
-		return .{.enabledConnections = @truncate(blockData)};
+		return @bitCast(@as(u7, @truncate(blockData)));
 	}
 
 	pub inline fn isConnected(self: @This(), neighbor: Neighbor) bool {
@@ -352,7 +353,8 @@ pub fn generateData(
 		const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 		currentData.setConnection(neighbor.?, targetVal);
 
-		const result: u16 = currentData.enabledConnections;
+		currentData.placedByHuman = true;
+		const result: u7 = @bitCast(currentData);
 		if(result == currentBlock.data) return false;
 
 		currentBlock.data = result;
@@ -375,7 +377,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 		currentData.setConnection(neighbor, false);
 	}
 
-	const result: u16 = currentData.enabledConnections;
+	const result: u7 = @bitCast(currentData);
 	if(result == block.data) return false;
 
 	block.data = result;
@@ -408,7 +410,7 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 	return resultBitMask;
 }
 
-pub fn onBlockBreaking(_: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+pub fn onBlockBreaking(_: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	if(closestRay(currentData.*, relativePlayerPos, playerDir)) |directionBitMask| {
 		// If player destroys a central part of branch block, branch block is completely destroyed.
 		if(directionBitMask == 0) {

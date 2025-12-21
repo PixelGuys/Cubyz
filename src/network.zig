@@ -641,6 +641,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		defer main.deinitThreadLocals();
 
 		var lastTime: i64 = networkTimestamp();
+		var lastExternalPacketTime = lastTime;
 		while(self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
@@ -653,8 +654,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				} else if(err == error.ConnectionResetByPeer) {
 					std.log.err("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
 				} else {
-					std.log.err("Got error on receive: {s}", .{@errorName(err)});
-					@panic("Network failed.");
+					std.log.warn("Got error on receive: {s}", .{@errorName(err)});
 				}
 			}
 			const curTime: i64 = networkTimestamp();
@@ -681,7 +681,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 					self.mutex.lock();
 					i += 1;
 				}
-				if(self.connections.items.len == 0 and self.online.load(.acquire)) {
+				if(self.connections.items.len == 0 and self.online.load(.acquire) and curTime -% lastExternalPacketTime > 1000*ms) {
+					lastExternalPacketTime = curTime;
 					// Send a message to external ip, to keep the port open:
 					const data = [1]u8{0};
 					self.socket.send(&data, self.externalAddress);
@@ -1571,7 +1572,7 @@ pub const Connection = struct { // MARK: Connection
 			main.server.disconnect(user);
 		} else {
 			self.handShakeWaiting.broadcast();
-			main.exitToMenu(undefined);
+			main.exitToMenu();
 		}
 		std.log.info("Disconnected", .{});
 	}

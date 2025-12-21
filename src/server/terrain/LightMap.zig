@@ -31,7 +31,7 @@ pub const LightMapFragment = struct {
 	}
 
 	pub fn deferredDeinit(self: *LightMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn getHeight(self: *LightMapFragment, wx: i32, wy: i32) i32 {
