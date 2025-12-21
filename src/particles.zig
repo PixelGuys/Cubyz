@@ -20,6 +20,7 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const Vec2f = vec.Vec2f;
+const RandomRange = main.utils.RandomRange;
 
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
@@ -64,13 +65,13 @@ pub const ParticleManager = struct {
 		};
 
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
+		var rotVel = RandomRange(f32).parse("rotationVelocity", .{20, 60}, zon);
+		rotVel.min = std.math.pi/180.0;
+		rotVel.max = std.math.pi/180.0;
 		const particleTypeLocal = ParticleTypeLocal{
-			.density = if(zon.get(?f32, "density", null)) |v| @splat(v) else zon.get(Vec2f, "density", .{2, 3}),
-			.rotVel = (if(zon.get(?f32, "rotationVelocity", null)) |v|
-				@as(Vec2f, @splat(v))
-			else
-				zon.get(Vec2f, "rotationVelocity", .{20, 60}))*@as(Vec2f, @splat(std.math.pi/180.0)),
-			.dragCoefficient = if(zon.get(?f32, "dragCoefficient", null)) |v| @splat(v) else zon.get(Vec2f, "dragCoefficient", .{0.5, 0.6}),
+			.density = RandomRange(f32).parse("density", .{2, 3}, zon),
+			.rotVel = rotVel,
+			.dragCoefficient = RandomRange(f32).parse("dragCoefficient", .{0.5, 0.6}, zon),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -298,11 +299,11 @@ pub const ParticleSystem = struct {
 	}
 
 	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
-		const lifeTime = properties.lifeTime[0] + (properties.lifeTime[1] - properties.lifeTime[0])*random.nextFloat(&main.seed);
-		const density = particleType.density[0] + (particleType.density[1] - particleType.density[0])*random.nextFloat(&main.seed);
+		const lifeTime = properties.lifeTime.get();
+		const density = particleType.density.get();
 		const rot = if(properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
-		const rotVel = (particleType.rotVel[0] + (particleType.rotVel[1] - particleType.rotVel[0])*random.nextFloatSigned(&main.seed));
-		const dragCoeff = particleType.dragCoefficient[0] + (particleType.dragCoefficient[1] - particleType.dragCoefficient[0])*random.nextFloat(&main.seed);
+		const rotVel = particleType.rotVel.get();
+		const dragCoeff = particleType.dragCoefficient.get();
 
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
@@ -360,14 +361,14 @@ pub const ParticleSystem = struct {
 };
 
 pub const EmitterProperties = struct {
-	velocity: Vec2f,
-	lifeTime: Vec2f,
+	speed: RandomRange(f32),
+	lifeTime: RandomRange(f32),
 	randomizeRotation: bool,
 
 	pub fn parse(zon: ZonElement) EmitterProperties {
 		return EmitterProperties{
-			.velocity = if(zon.get(?f32, "velocity", null)) |v| @splat(v) else zon.get(Vec2f, "velocity", .{1, 1.5}),
-			.lifeTime = if(zon.get(?f32, "lifeTime", null)) |v| @splat(v) else zon.get(Vec2f, "lifeTime", .{0.75, 1}),
+			.speed = RandomRange(f32).parse("speed", .{1, 1.5}, zon),
+			.lifeTime = RandomRange(f32).parse("lifeTime", .{0.75, 1}, zon),
 			.randomizeRotation = zon.get(bool, "randomRotate", true),
 		};
 	}
@@ -422,7 +423,7 @@ pub const Emitter = struct {
 	pub const SpawnPoint = struct {
 		pub fn spawn(_: SpawnPoint, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct {Vec3d, Vec3f} {
 			const particlePos = pos;
-			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
+			const speed: Vec3f = @splat(properties.speed.get());
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| vec.normalize(dir),
 				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
@@ -448,7 +449,7 @@ pub const Emitter = struct {
 				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
-			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
+			const speed: Vec3f = @splat(properties.speed.get());
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| vec.normalize(dir),
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
@@ -473,7 +474,7 @@ pub const Emitter = struct {
 			const spawnPos: Vec3f = self.size;
 			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &main.seed);
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
-			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
+			const speed: Vec3f = @splat(properties.speed.get());
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| vec.normalize(dir),
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
@@ -542,9 +543,9 @@ pub const ParticleType = struct {
 };
 
 pub const ParticleTypeLocal = struct {
-	density: Vec2f,
-	rotVel: Vec2f,
-	dragCoefficient: Vec2f,
+	density: RandomRange(f32),
+	rotVel: RandomRange(f32),
+	dragCoefficient: RandomRange(f32),
 };
 
 pub const Particle = extern struct {

@@ -5,6 +5,8 @@ const builtin = @import("builtin");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const random = main.random;
+const ZonElement = @import("zon.zig").ZonElement;
 
 pub const file_monitor = @import("utils/file_monitor.zig");
 pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
@@ -1609,6 +1611,33 @@ pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 	if(builtin.mode == .Debug) {
 		std.debug.assert(!@constCast(lock).tryLock());
 	}
+}
+
+pub fn RandomRange(comptime T: type) type {
+	return struct {
+		min: T = undefined,
+		max: T = undefined,
+		
+		pub fn get(self: @This()) T {
+			return self.min + (self.max - self.min)*random.nextFloat(&main.seed);
+		}
+
+		pub fn parse(name: []const u8, default: @Vector(2, T), zon: ZonElement) @This() {
+			var range = @This(){};
+			const vals: @Vector(2, T) = if(zon.get(?T, name, null)) |v| @splat(v) else zon.get(@Vector(2, T), name, default);
+			
+			range.min = vals[0];
+			range.max = vals[1];
+			return range;
+		}
+
+		pub fn set(default: @Vector(2, T)) @This() {
+			var range = @This(){};
+			range.min = default[0];
+			range.max = default[1];
+			return range;
+		}
+	};
 }
 
 /// A read-write lock with read priority.

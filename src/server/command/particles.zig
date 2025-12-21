@@ -17,7 +17,7 @@ pub const usage =
 	\\  .shape = .sphere,
 	\\  .radius = 5,
 	\\  .mode = .scatter,
-	\\  .velocity = .{0.5, 10},
+	\\  .speed = .{0.5, 10},
 	\\  .lifeTime = .{0.5, 10},
 	\\  .randomRotate = true,
 	\\}
