@@ -50,7 +50,7 @@ pub const Gamepad = struct {
 		const maxRange: Vec2f = @splat((1.0 - minValue[0])*length[0]);
 
 		axisVec = axisVec*(@max(Vec2f{0, 0}, length - minValue))/maxRange;
-		if (vec.lengthSquare(axisVec) > 1) {
+		if(vec.lengthSquare(axisVec) > 1) {
 			axisVec = vec.normalize(axisVec);
 		}
 
