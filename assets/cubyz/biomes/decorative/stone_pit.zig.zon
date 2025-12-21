@@ -6,7 +6,7 @@
 	.maxHeight = -1000,
 	.keepOriginalTerrain = 0.99,
 	.roughness = 1,
-	.stoneBlock = "cubyz:slate",
+	.stoneBlock = "cubyz:slate/base",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:grassland",

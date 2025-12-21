@@ -1572,7 +1572,7 @@ pub const Connection = struct { // MARK: Connection
 			main.server.disconnect(user);
 		} else {
 			self.handShakeWaiting.broadcast();
-			main.exitToMenu(undefined);
+			main.exitToMenu();
 		}
 		std.log.info("Disconnected", .{});
 	}

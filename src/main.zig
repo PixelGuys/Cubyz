@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
@@ -284,6 +285,8 @@ fn escape(mods: Window.Key.Modifiers) void {
 }
 fn inventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
+	gui.openWindow("inventory");
+	gui.openWindow("hotbar");
 	gui.toggleGameMenu();
 }
 fn ungrabMouse(_: Window.Key.Modifiers) void {
@@ -476,7 +479,7 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
-pub fn exitToMenu(_: usize) void {
+pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
@@ -508,6 +511,10 @@ pub fn main() void { // MARK: main()
 	defer deinitLogging();
 
 	std.log.info("Starting game with version {s}", .{settings.version.version});
+
+	if(builtin.os.tag == .windows) {
+		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
+	}
 
 	settings.launchConfig.init();
 
@@ -633,7 +640,12 @@ pub fn clientMain() void { // MARK: clientMain()
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering.nanoseconds -% lastBeginRendering.nanoseconds)));
-			io.sleep(.fromNanoseconds(sleep), .awake) catch {};
+			if(builtin.os.tag == .windows and minFrameTime < 20_000_000) { // Windows can oversleep a lot, so we waste power instead
+				const targetTime = timestamp().addDuration(.fromNanoseconds(sleep));
+				while(timestamp().durationTo(targetTime).nanoseconds > 0) {}
+			} else {
+				io.sleep(.fromNanoseconds(sleep), .awake) catch {};
+			}
 		}
 		const begin = timestamp();
 		const deltaTime = @as(f64, @floatFromInt(begin.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;

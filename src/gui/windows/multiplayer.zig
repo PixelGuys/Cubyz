@@ -45,7 +45,7 @@ fn discoverIpAddressFromNewThread() void {
 	discoverIpAddress();
 }
 
-fn join(_: usize) void {
+fn join() void {
 	if(thread) |_thread| {
 		_thread.join();
 		thread = null;
@@ -81,7 +81,7 @@ fn join(_: usize) void {
 	gui.openHud();
 }
 
-fn copyIp(_: usize) void {
+fn copyIp() void {
 	main.Window.setClipboardString(ipAddress);
 }
 
@@ -91,11 +91,11 @@ pub fn onOpen() void {
 	//                                               255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
 	list.add(ipAddressLabel);
-	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
-	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}, .{});
+	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .init(copyIp)));
+	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.onNewline = .init(join)});
 	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
-	list.add(Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
+	list.add(Button.initText(.{0, 0}, 100, "Join", .init(join)));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
