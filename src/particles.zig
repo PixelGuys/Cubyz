@@ -395,7 +395,7 @@ pub const Emitter = struct {
 	typ: u16 = 0,
 	particleType: ParticleTypeLocal,
 	collides: bool,
-	spawnType: SpawnShape,
+	spawnShape: SpawnShape,
 	properties: EmitterProperties,
 	mode: DirectionMode,
 
@@ -406,7 +406,7 @@ pub const Emitter = struct {
 
 		pub fn spawn(self: SpawnShape, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct {Vec3d, Vec3f} {
 			return switch(self) {
-				inline else => |typ| typ.spawn(pos, properties, mode),
+				inline else => |shape| shape.spawn(pos, properties, mode),
 			};
 		}
 
@@ -414,7 +414,7 @@ pub const Emitter = struct {
 			const typeZon = zon.get([]const u8, "shape", @tagName(SpawnShape.point));
 			const spawnType = std.meta.stringToEnum(std.meta.Tag(SpawnShape), typeZon) orelse return error.InvalidType;
 			return switch(spawnType) {
-				inline else => |typ| @unionInit(SpawnShape, @tagName(typ), try @FieldType(SpawnShape, @tagName(typ)).parse(zon)),
+				inline else => |shape| @unionInit(SpawnShape, @tagName(shape), try @FieldType(SpawnShape, @tagName(shape)).parse(zon)),
 			};
 		}
 	};
@@ -498,7 +498,7 @@ pub const Emitter = struct {
 			.typ = typ,
 			.particleType = ParticleManager.typesLocal.items[typ],
 			.collides = collides,
-			.spawnType = spawnShape,
+			.spawnShape = spawnShape,
 			.properties = properties,
 			.mode = mode,
 		};
@@ -519,7 +519,7 @@ pub const Emitter = struct {
 			.typ = typ,
 			.particleType = ParticleManager.typesLocal.items[typ],
 			.collides = collides,
-			.spawnType = spawnShape,
+			.spawnShape = spawnShape,
 			.properties = EmitterProperties.parse(zon),
 			.mode = mode,
 		};
@@ -528,7 +528,7 @@ pub const Emitter = struct {
 	pub fn spawnParticles(self: Emitter, pos: Vec3d, spawnCount: u32) void {
 		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
 		for(0..count) |_| {
-			const particlePos, const particleVel = self.spawnType.spawn(pos, self.properties, self.mode);
+			const particlePos, const particleVel = self.spawnShape.spawn(pos, self.properties, self.mode);
 
 			ParticleSystem.addParticle(self.typ, self.particleType, particlePos, particleVel, self.collides, self.properties);
 		}
