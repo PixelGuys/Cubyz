@@ -379,52 +379,13 @@ pub const DirectionMode = union(enum(u8)) {
 	// The particle goes in a random direction
 	scatter: void,
 	// The particle goes in the specified direction
-	direction: DirectionData,
-
-	pub const DirectionData = struct {
-		dir: Vec3f,
-		coneAngle: f32,
-
-		pub fn getConeVel(self: DirectionData) Vec3f {
-			if(self.coneAngle == 0) return self.dir;
-
-			const dir = vec.normalize(self.dir);
-
-			var u: Vec3f = if(@abs(self.dir[0]) > 0.7) Vec3f{0, 1, 0} else Vec3f{1, 0, 0};
-			const v: Vec3f = vec.normalize(Vec3f{
-				u[1]*dir[2] - u[2]*dir[1],
-				u[2]*dir[0] - u[0]*dir[2],
-				u[0]*dir[1] - u[1]*dir[0],
-			});
-			u = vec.normalize(Vec3f{
-				dir[1]*v[2] - dir[2]*v[1],
-				dir[2]*v[0] - dir[0]*v[2],
-				dir[0]*v[1] - dir[1]*v[0],
-			});
-
-			var sample: Vec2f = undefined;
-			while(true) {
-				sample = random.nextFloatVectorSigned(2, &main.seed);
-				if(vec.lengthSquare(sample) < 1) break;
-			}
-
-			const cosTheta: f32 = std.math.cos(self.coneAngle);
-			const z: f32 = cosTheta + (1.0 - cosTheta)*random.nextFloat(&main.seed);
-			const scale: f32 = @sqrt(1.0 - z*z);
-
-			return (u*@as(Vec3f, @splat(sample[0]*scale)) + v*@as(Vec3f, @splat(sample[1]*scale)) + dir*@as(Vec3f, @splat(z)));
-		}
-	};
+	direction: Vec3f,
 
 	pub fn parse(zon: ZonElement) !DirectionMode {
 		const dirModeName = zon.get([]const u8, "mode", @tagName(DirectionMode.spread));
 		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.InvalidDirectionMode;
 		return switch(dirMode) {
-			.direction => {
-				const dir = zon.get(Vec3f, "direction", .{0, 0, 1});
-				const coneAngle = zon.get(f32, "coneAngle", 10);
-				return @unionInit(DirectionMode, @tagName(DirectionMode.direction), DirectionData{.dir = dir, .coneAngle = coneAngle});
-			},
+			.direction => @unionInit(DirectionMode, @tagName(DirectionMode.direction), zon.get(Vec3f, "direction", .{0, 0, 1})),
 			inline else => |mode| @unionInit(DirectionMode, @tagName(mode), {}),
 		};
 	}
@@ -463,7 +424,7 @@ pub const Emitter = struct {
 			const particlePos = pos;
 			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
 			const dir: Vec3f = switch(mode) {
-				.direction => |dir| dir.getConeVel(),
+				.direction => |dir| vec.normalize(dir),
 				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 			};
 			const particleVel = dir*speed;
@@ -489,7 +450,7 @@ pub const Emitter = struct {
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
 			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
 			const dir: Vec3f = switch(mode) {
-				.direction => |dir| dir.getConeVel(),
+				.direction => |dir| vec.normalize(dir),
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 				.spread => @floatCast(offsetPos),
 			};
@@ -514,7 +475,7 @@ pub const Emitter = struct {
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
 			const speed: Vec3f = @splat(properties.velocity[0] + random.nextFloat(&main.seed)*properties.velocity[1]);
 			const dir: Vec3f = switch(mode) {
-				.direction => |dir| dir.getConeVel(),
+				.direction => |dir| vec.normalize(dir),
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
 				.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
 			};
