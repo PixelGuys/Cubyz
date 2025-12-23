@@ -71,11 +71,11 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
 	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
 	defer main.stackAllocator.free(saveFolder);
 	try main.files.cubyzDir().makePath(saveFolder);
+
+	const worldInfo = main.ZonElement.initObject(main.stackAllocator);
+	defer worldInfo.deinit(main.stackAllocator);
 	{
-		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldPath}) catch unreachable;
-		defer main.stackAllocator.free(generatorSettingsPath);
 		const generatorSettings = main.ZonElement.initObject(main.stackAllocator);
-		defer generatorSettings.deinit(main.stackAllocator);
 		const climateGenerator = main.ZonElement.initObject(main.stackAllocator);
 		climateGenerator.put("id", "cubyz:noise_based_voronoi"); // TODO: Make this configurable
 		generatorSettings.put("climateGenerator", climateGenerator);
@@ -89,32 +89,27 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
 		climateWavelengths.put("vegetation", 1600);
 		climateWavelengths.put("mountain", 512);
 		generatorSettings.put("climateWavelengths", climateWavelengths);
-		try main.files.cubyzDir().writeZon(generatorSettingsPath, generatorSettings);
+		worldInfo.put("generatorSettings", generatorSettings);
+	}
+	{
+		const settings = main.ZonElement.initObject(main.stackAllocator);
+
+		settings.put("default_gamemode", @tagName(worldSettings.defaultGamemode));
+		settings.put("cheats", worldSettings.allowCheats);
+		settings.put("testingMode", worldSettings.testingMode);
+		settings.put("seed", worldSettings.seed);
+
+		worldInfo.put("settings", settings);
 	}
 	{
 		const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(worldInfoPath);
-		const worldInfo = main.ZonElement.initObject(main.stackAllocator);
-		defer worldInfo.deinit(main.stackAllocator);
 
 		worldInfo.put("name", worldName);
 		worldInfo.put("version", worldDataVersion);
 		worldInfo.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
-		worldInfo.put("seed", worldSettings.seed);
 
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
-	}
-	{
-		const gamerulePath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{worldPath}) catch unreachable;
-		defer main.stackAllocator.free(gamerulePath);
-		const gamerules = main.ZonElement.initObject(main.stackAllocator);
-		defer gamerules.deinit(main.stackAllocator);
-
-		gamerules.put("default_gamemode", @tagName(worldSettings.defaultGamemode));
-		gamerules.put("cheats", worldSettings.allowCheats);
-		gamerules.put("testingMode", worldSettings.testingMode);
-
-		try main.files.cubyzDir().writeZon(gamerulePath, gamerules);
 	}
 	{ // Make assets subfolder
 		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldPath}) catch unreachable;
