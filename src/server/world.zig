@@ -407,7 +407,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 };
 
-pub const worldDataVersion: u32 = 2;
+pub const worldDataVersion: u32 = 3;
 
 pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -473,8 +473,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var dir = try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path}));
 		defer dir.close();
 
-		const generatorSettings = try dir.readToZon(arena, "generatorSettings.zig.zon");
-
 		self.blockPalette = try loadPalette(arena, path, "palette", "cubyz:air");
 		errdefer self.blockPalette.deinit();
 
@@ -499,7 +497,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try dir.writeZon("tool_palette.zig.zon", self.toolPalette.storeToZon(arena));
 		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
 
-		self.chunkManager = try ChunkManager.init(self, generatorSettings);
+		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 		return self;
 	}
@@ -539,11 +537,35 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn loadWorldConfig(self: *ServerWorld, arena: NeverFailingAllocator, dir: main.files.Dir, worldData: ZonElement) !void { // MARK: loadWorldConfig
+		if(worldData.get(u32, "version", 0) == 2) {
+			std.log.info("Migrating old world with world version 2 to version 3", .{});
+
+			const gamerules = try dir.readToZon(arena, "gamerules.zig.zon");
+			const settings = ZonElement.initObject(arena);
+			settings.put("defaultGamemode", gamerules.getChild("default_gamemode"));
+			settings.put("allowCheats", gamerules.getChild("cheats"));
+			settings.put("testingMode", gamerules.getChild("testingMode"));
+			settings.put("seed", worldData.get(?u64, "seed", null) orelse {
+				std.log.err("Cannot migrate world. World has no seed!", .{});
+				return error.NoSeed;
+			});
+			worldData.put("settings", settings);
+
+			const generatorSettings = try dir.readToZon(arena, "generatorSettings.zig.zon");
+			worldData.put("generatorSettings", generatorSettings);
+
+			worldData.put("version", 3);
+			try dir.writeZon("world.zig.zon", worldData);
+			try dir.deleteFile("gamerules.zig.zon");
+			try dir.deleteFile("generatorSettings.zig.zon");
+		}
+
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
 		}
-		self.seed = worldData.get(?u64, "seed", null) orelse {
+		const settings = worldData.getChild("settings");
+		self.seed = settings.get(?u64, "seed", null) orelse {
 			std.log.err("Cannot load world. World has no seed!", .{});
 			return error.NoSeed;
 		};
@@ -555,10 +577,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
 
-		const gamerules = dir.readToZon(arena, "gamerules.zig.zon") catch ZonElement.initObject(arena);
-		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
-		self.allowCheats = gamerules.get(bool, "cheats", true);
-		self.testingMode = gamerules.get(bool, "testingMode", false);
+		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, settings.get([]const u8, "default_gamemode", "creative")) orelse .creative;
+		self.allowCheats = settings.get(bool, "cheats", true);
+		self.testingMode = settings.get(bool, "testingMode", false);
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
