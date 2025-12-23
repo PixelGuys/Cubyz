@@ -353,7 +353,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 	main.items.Inventory.Sync.ServerSide.init();
 
-	world = ServerWorld.init(name, null) catch |err| {
+	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};

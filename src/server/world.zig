@@ -453,7 +453,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		milliTimeStamp: i64,
 	};
 
-	pub fn init(path: []const u8, nullGeneratorSettings: ?ZonElement) !*ServerWorld { // MARK: init()
+	pub fn init(path: []const u8) !*ServerWorld { // MARK: init()
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
@@ -469,17 +469,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
-		var generatorSettings: ZonElement = undefined;
 
 		var dir = try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path}));
 		defer dir.close();
 
-		if(nullGeneratorSettings) |_generatorSettings| {
-			generatorSettings = _generatorSettings;
-			try dir.writeZon("generatorSettings.zig.zon", generatorSettings);
-		} else {
-			generatorSettings = try dir.readToZon(arena, "generatorSettings.zig.zon");
-		}
+		const generatorSettings = try dir.readToZon(arena, "generatorSettings.zig.zon");
 
 		self.blockPalette = try loadPalette(arena, path, "palette", "cubyz:air");
 		errdefer self.blockPalette.deinit();
