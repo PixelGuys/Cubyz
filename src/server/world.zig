@@ -489,13 +489,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		errdefer main.assets.unloadAssets();
 
-		var gamerules = dir.readToZon(arena, "gamerules.zig.zon") catch ZonElement.initObject(arena);
-		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
-		self.allowCheats = gamerules.get(bool, "cheats", true);
-		self.testingMode = gamerules.get(bool, "testingMode", false);
-
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
-		try self.loadWorldConfig(worldData);
+		try self.loadWorldConfig(arena, dir, worldData);
 
 		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
@@ -543,7 +538,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		main.globalAllocator.destroy(self);
 	}
 
-	pub fn loadWorldConfig(self: *ServerWorld, worldData: ZonElement) !void { // MARK: loadWorldConfig
+	pub fn loadWorldConfig(self: *ServerWorld, arena: NeverFailingAllocator, dir: main.files.Dir, worldData: ZonElement) !void { // MARK: loadWorldConfig
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
@@ -559,6 +554,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
+
+		const gamerules = dir.readToZon(arena, "gamerules.zig.zon") catch ZonElement.initObject(arena);
+		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
+		self.allowCheats = gamerules.get(bool, "cheats", true);
+		self.testingMode = gamerules.get(bool, "testingMode", false);
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
