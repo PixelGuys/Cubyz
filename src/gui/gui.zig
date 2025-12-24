@@ -459,7 +459,7 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	for(openWindows.items, 0..) |window, i| {
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		mousePosition -= window.pos;
-		if(@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
+		if(@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size) and (!window.clickThrough or reorderWindows)) {
 			selectedWindow = window;
 			selectedI = i;
 		}
@@ -530,7 +530,7 @@ pub fn updateAndRenderGui() void {
 		while(i != 0) {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
-			if(GuiComponent.contains(window.pos, window.size, mousePos)) {
+			if(GuiComponent.contains(window.pos, window.size, mousePos) and !window.clickThrough) {
 				window.updateHovered(mousePos);
 				hoveredAWindow = true;
 				break;
