@@ -64,10 +64,7 @@ pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, ch
 					const dist = vec.lengthSquare(Vec3f{@as(f32, @floatFromInt(x3)) - relX, @as(f32, @floatFromInt(y3)) - relY, @as(f32, @floatFromInt(z3)) - z2});
 					if(dist < size*size) {
 						if(x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width and z3 >= 0 and z3 < chunk.super.width) {
-							const block: main.blocks.Block = chunk.getBlock(x3, y3, z3);
-							if(block.typ == 0 or block.degradable()) {
-								chunk.updateBlockInGeneration(x3, y3, z3, self.block);
-							}
+							chunk.updateBlock(.replaceIfDegradable, .noSetChanged, x3, y3, z3, self.block);
 						}
 					}
 				}
