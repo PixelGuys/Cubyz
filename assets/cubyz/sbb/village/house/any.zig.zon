@@ -1,0 +1,7 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:village/house/house", .chance = 0.2},
+		.{.id = null, .chance = 0.8},
+	},
+	.snapping = .bottom,
+}

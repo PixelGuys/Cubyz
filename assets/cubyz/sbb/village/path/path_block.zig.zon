@@ -1,0 +1,8 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:village/path/path_block", .chance = 0.6},
+		.{.id = null, .chance = 0.4},
+	},
+	.snapping = .bottom,
+	.originOffset = .{0, 0, -1},
+}
