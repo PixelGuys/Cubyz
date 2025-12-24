@@ -6,7 +6,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
 pub const ZonElement = union(enum) { // MARK: Zon
-	int: i64,
+	int: i128,
 	float: f64,
 	string: []const u8,
 	stringOwned: []const u8,
@@ -210,8 +210,8 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			.void => return .null,
 			.null => return .null,
 			.bool => return .{.bool = value},
-			.int, .comptime_int => return .{.int = @intCast(value)},
-			.float, .comptime_float => return .{.float = @floatCast(value)},
+			.int, .comptime_int => return .{.int = value},
+			.float, .comptime_float => return .{.float = value},
 			.@"union" => {
 				if(@TypeOf(value) == ZonElement) {
 					return value;
@@ -487,7 +487,7 @@ const Parser = struct { // MARK: Parser
 		} else if(chars[index.*] == '+') {
 			index.* += 1;
 		}
-		var intPart: i64 = 0;
+		var intPart: i128 = 0;
 		if(index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'x') {
 			// Parse hex int
 			index.* += 2;

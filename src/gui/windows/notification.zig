@@ -34,14 +34,14 @@ pub fn raiseNotification(notifText: []const u8) void {
 	main.gui.openWindow("notification");
 }
 
-fn ack(_: usize) void {
+fn ack() void {
 	gui.closeWindowFromRef(&window);
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{0, 0}, width, text, .center));
-	list.add(Button.initText(.{0, 0}, 100, "OK", .{.callback = &ack}));
+	list.add(Button.initText(.{0, 0}, 100, "OK", .init(ack)));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
