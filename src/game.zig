@@ -987,7 +987,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const biome = world.?.playerBiome.load(.monotonic);
 
-	const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
+	const t = 1 - @as(f32, @floatCast(@exp(-0.1*deltaTime)));
 
 	biomeFog.fogColor = (biome.fogColor - biomeFog.fogColor)*@as(Vec3f, @splat(t)) + biomeFog.fogColor;
 	biomeFog.skyColor = (biome.skyColor - biomeFog.skyColor)*@as(Vec3f, @splat(t)) + biomeFog.skyColor;
