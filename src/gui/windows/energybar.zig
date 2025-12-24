@@ -23,7 +23,7 @@ pub var window = GuiWindow{
 	.showTitleBar = false,
 	.hasBackground = false,
 	.hideIfMouseIsGrabbed = false,
-	.closeable = false,
+	.titleBarButtons = &.{GuiWindow.zoomInButton, GuiWindow.zoomOutButton},
 };
 
 var energyTexture: Texture = undefined;
