@@ -1,0 +1,17 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 2.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.texture = "chain.png",
+	},
+	.rotation = "cubyz:direction",
+	.model = "cubyz:cross",
+	.transparent = true,
+	.collide = false,
+	.climbable = true,
+	.climbingSpeed = 170,
+	.texture = "cubyz:chain",
+}
