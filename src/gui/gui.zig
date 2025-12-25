@@ -369,6 +369,13 @@ pub fn closeWindow(id: []const u8) void {
 	std.log.err("Could not find window with id {s}.", .{id});
 }
 
+pub fn isWindowOpen(id: []const u8) bool {
+	for(openWindows.items) |window| {
+		if(std.mem.eql(u8, window.id, id)) return true;
+	}
+	return false;
+}
+
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
 	if(selectedTextInput) |current| {
 		if(current != newSelectedTextInput) {
