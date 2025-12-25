@@ -180,22 +180,9 @@ pub const handShake = struct { // MARK: handShake
 						try utils.Compression.pack(dir, &writer.writer);
 						conn.send(.fast, id, writer.written());
 					}
+					conn.handShakeState.store(.assets, .monotonic);
 
-					conn.user.?.initPlayer(name);
-					const zonObject = ZonElement.initObject(main.stackAllocator);
-					defer zonObject.deinit(main.stackAllocator);
-					zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
-					zonObject.put("player_id", conn.user.?.id);
-					zonObject.put("spawn", main.server.world.?.spawn);
-					zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
-					zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
-					zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
-					zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
-
-					const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
-					defer main.stackAllocator.free(outData);
-					conn.send(.fast, id, outData);
-					conn.handShakeState.store(.serverData, .monotonic);
+					conn.user.?.setName(name);
 					main.server.connect(conn.user.?);
 				},
 				.assets, .serverData => return error.InvalidSide,
@@ -208,6 +195,22 @@ pub const handShake = struct { // MARK: handShake
 
 	pub fn serverSide(conn: *Connection) void {
 		conn.handShakeState.store(.start, .monotonic);
+	}
+
+	pub fn sendServerPlayerData(conn: *Connection) void {
+		const zonObject = ZonElement.initObject(main.stackAllocator);
+		defer zonObject.deinit(main.stackAllocator);
+		zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
+		zonObject.put("player_id", conn.user.?.id);
+		zonObject.put("spawn", main.server.world.?.spawn);
+		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
+		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
+		zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
+		zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
+
+		const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
+		defer main.stackAllocator.free(outData);
+		conn.send(.fast, id, outData);
 	}
 
 	pub fn clientSide(conn: *Connection, name: []const u8) !void {
