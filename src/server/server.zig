@@ -133,7 +133,6 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -194,6 +193,7 @@ pub const User = struct { // MARK: User
 		freeId += 1;
 
 		world.?.findPlayer(self);
+		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.loadUnloadChunks();
 	}
 
