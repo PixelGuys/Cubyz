@@ -228,7 +228,7 @@ pub const collision = struct {
 		terminalVelocity: f64,
 		density: f64,
 		maxDensity: f64,
-		mobility: f64,
+		mobileFriction: f64,
 	};
 
 	fn overlapVolume(a: Box, b: Box) f64 {
@@ -253,7 +253,7 @@ pub const collision = struct {
 		var invTerminalVelocitySum: f64 = 0;
 		var densitySum: f64 = 0;
 		var maxDensity: f64 = defaults.maxDensity;
-		var mobilitySum: f64 = 0;
+		var mobileFrictionSum: f64 = 0;
 		var volumeSum: f64 = 0;
 
 		var x: i32 = minX;
@@ -278,16 +278,16 @@ pub const collision = struct {
 						const filledVolume = @min(gridVolume, overlapVolume(collisionBox, totalBox));
 						const emptyVolume = gridVolume - filledVolume;
 						invTerminalVelocitySum += emptyVolume/defaults.terminalVelocity;
+						mobileFrictionSum += emptyVolume*defaults.mobileFriction;
 						densitySum += emptyVolume*defaults.density;
-						mobilitySum += emptyVolume*defaults.mobility;
 						invTerminalVelocitySum += filledVolume/block.terminalVelocity();
+						mobileFrictionSum += filledVolume*block.mobility()/block.terminalVelocity();
 						densitySum += filledVolume*block.density();
 						maxDensity = @max(maxDensity, block.density());
-						mobilitySum += filledVolume*block.mobility();
 					} else {
 						invTerminalVelocitySum += gridVolume/defaults.terminalVelocity;
 						densitySum += gridVolume*defaults.density;
-						mobilitySum += gridVolume*defaults.mobility;
+						mobileFrictionSum += gridVolume*defaults.mobileFriction;
 					}
 				}
 			}
@@ -297,7 +297,7 @@ pub const collision = struct {
 			.terminalVelocity = volumeSum/invTerminalVelocitySum,
 			.density = densitySum/volumeSum,
 			.maxDensity = maxDensity,
-			.mobility = mobilitySum/volumeSum,
+			.mobileFriction = mobileFrictionSum/volumeSum,
 		};
 	}
 
@@ -437,7 +437,8 @@ pub const Player = struct { // MARK: Player
 	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var currentFriction: f32 = 0;
-	pub var volumeProperties: collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobility = 0, .terminalVelocity = 0};
+	pub var mobileFriction: f32 = 0;
+	pub var volumeProperties: collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobileFriction = 0, .terminalVelocity = 0};
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -821,15 +822,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
-	const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else Player.volumeProperties.mobility;
 	const density = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.density;
 	const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;
 
-	const baseFrictionCoefficient: f32 = Player.currentFriction;
 	var jumping = false;
 	Player.jumpCooldown -= deltaTime;
 	// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
-	const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
+	const fricMul = speedMultiplier*Player.mobileFriction;
 
 	const horizontalForward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
