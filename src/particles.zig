@@ -65,13 +65,13 @@ pub const ParticleManager = struct {
 		};
 
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
-		var rotVel: RandomRange(f32) = RandomRange(f32).fromZon("rotationVelocity", zon) orelse .init(20, 60);
+		var rotVel: RandomRange(f32) = RandomRange(f32).fromZon(zon.getChild("rotationVelocity")) orelse .init(20, 60);
 		rotVel.min = std.math.pi/180.0;
 		rotVel.max = std.math.pi/180.0;
 		const particleTypeLocal = ParticleTypeLocal{
-			.density = RandomRange(f32).fromZon("density", zon) orelse .init(2, 3),
+			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
 			.rotVel = rotVel,
-			.dragCoefficient = RandomRange(f32).fromZon("dragCoefficient", zon) orelse .init(0.5, 0.6),
+			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -367,8 +367,8 @@ pub const EmitterProperties = struct {
 
 	pub fn parse(zon: ZonElement) EmitterProperties {
 		return EmitterProperties{
-			.speed = RandomRange(f32).fromZon("speed", zon) orelse .init(1, 1.5),
-			.lifeTime = RandomRange(f32).fromZon("lifeTime", zon) orelse .init(0.75, 1),
+			.speed = RandomRange(f32).fromZon(zon.getChild("speed")) orelse .init(1, 1.5),
+			.lifeTime = RandomRange(f32).fromZon(zon.getChild("lifeTime")) orelse .init(0.75, 1),
 			.randomizeRotation = zon.get(bool, "randomRotate", true),
 		};
 	}
