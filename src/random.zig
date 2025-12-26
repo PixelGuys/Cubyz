@@ -139,8 +139,8 @@ pub fn RandomRange(T: type) type {
 
 		pub fn init(min: T, max: T) @This() {
 			return @This(){
-				.min = min, 
-				.max = max, 
+				.min = min,
+				.max = max,
 			};
 		}
 
@@ -151,11 +151,11 @@ pub fn RandomRange(T: type) type {
 		pub fn fromZon(name: []const u8, zon: ZonElement) ?@This() {
 			const vals: ?@Vector(2, T) = if(zon.get(?T, name, null)) |v| @splat(v) else zon.get(?@Vector(2, T), name, null);
 
-			if (vals == null) return null;
+			if(vals == null) return null;
 
 			return @This(){
-				.min = vals.?[0], 
-				.max = vals.?[1], 
+				.min = vals.?[0],
+				.max = vals.?[1],
 			};
 		}
 	};
