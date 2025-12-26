@@ -1,0 +1,36 @@
+.{
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/1",
+			.placeMode = .degradable,
+			.chance = 0.08,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/2",
+			.placeMode = .degradable,
+			.chance = 0.08,
+		},
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:forest/birch_sparse",
+			.chance = 1,
+			.width = 4,
+			.properties = .{.dry},
+		},
+		.{
+			.id = "cubyz:forest/birch_sparse",
+			.chance = 1,
+			.width = 4,
+			.properties = .{.barren},
+		},
+		.{
+			.id = "cubyz:forest/birch_sparse",
+			.chance = 1,
+			.width = 2,
+			.properties = .{.ocean},
+		},
+	},
+}

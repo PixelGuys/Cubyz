@@ -1,0 +1,18 @@
+.{
+	.chance = 0,
+	.keepOriginalTerrain = 1,
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/1",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/2",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+	},
+}
