@@ -1,0 +1,14 @@
+.{
+	.properties = .{},
+	.minHeightLimit = 7,
+	.smoothBeaches = true,
+	.minRadius = 256,
+	.maxRadius = 320,
+	.roughness = 10,
+	.music = "cubyz:leaves",
+	.validPlayerSpawn = true,
+	.ground_structure = .{
+		"cubyz:grass",
+		"2 to 3 cubyz:soil",
+	},
+}

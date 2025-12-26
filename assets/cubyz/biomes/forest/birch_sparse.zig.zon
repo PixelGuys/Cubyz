@@ -1,4 +1,6 @@
 .{
+	.chance = 0,
+	.keepOriginalTerrain = 1,
 	.properties = .{},
 	.minHeightLimit = 7,
 	.minHeight = 20,
@@ -9,7 +11,6 @@
 	.maxRadius = 256,
 	.roughness = 10,
 	.hills = 12,
-	.chance = 0.66,
 	.music = "cubyz:leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
@@ -30,13 +31,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/birch/silver/1",
 			.placeMode = .degradable,
-			.chance = 0.08,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/birch/silver/2",
 			.placeMode = .degradable,
-			.chance = 0.08,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
@@ -99,26 +100,6 @@
 			.variation = 3,
 			.density = 0.1,
 			.priority = 0.1,
-		},
-	},
-	.transitionBiomes = .{
-		.{
-			.id = "cubyz:forest/birch_sparse",
-			.chance = 1,
-			.width = 4,
-			.properties = .{.dry},
-		},
-		.{
-			.id = "cubyz:forest/birch_sparse",
-			.chance = 1,
-			.width = 4,
-			.properties = .{.barren},
-		},
-		.{
-			.id = "cubyz:forest/birch_sparse",
-			.chance = 1,
-			.width = 2,
-			.properties = .{.ocean},
 		},
 	},
 }

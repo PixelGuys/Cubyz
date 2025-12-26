@@ -1,20 +1,8 @@
 .{
-	.properties = .{},
-	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 45,
 	.maxHeightLimit = 55,
-	.smoothBeaches = true,
-	.minRadius = 256,
-	.maxRadius = 320,
-	.roughness = 10,
 	.hills = 12,
-	.music = "cubyz:leaves",
-	.validPlayerSpawn = true,
-	.ground_structure = .{
-		"cubyz:grass",
-		"2 to 3 cubyz:soil",
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -122,6 +110,26 @@
 			.variation = 3,
 			.density = 0.1,
 			.priority = 0.1,
+		},
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:forest/mixed/oak_pine_sparse",
+			.chance = 1,
+			.width = 4,
+			.properties = .{.barren},
+		},
+		.{
+			.id = "cubyz:forest/mixed/oak_pine_sparse",
+			.chance = 1,
+			.width = 4,
+			.properties = .{.dry},
+		},
+		.{
+			.id = "cubyz:forest/mixed/oak_pine_sparse",
+			.chance = 1,
+			.width = 2,
+			.properties = .{.ocean},
 		},
 	},
 }

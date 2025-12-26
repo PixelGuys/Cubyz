@@ -1,4 +1,6 @@
 .{
+	.chance = 0,
+	.keepOriginalTerrain = 1,
 	.properties = .{},
 	.minHeightLimit = 7,
 	.minHeight = 20,
@@ -8,7 +10,6 @@
 	.maxRadius = 128,
 	.roughness = 2,
 	.hills = 2,
-	.chance = 0.33,
 	.music = "cubyz:leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
@@ -39,7 +40,7 @@
 			.leaves = "cubyz:leaves/birch",
 			.log = "cubyz:birch_branch:0b11",
 			.top = "cubyz:birch_branch:0b11",
-			.chance = 0.7,
+			.chance = 0.1,
 			.type = .round,
 			.height = 14,
 			.height_variation = 6,
@@ -54,7 +55,7 @@
 			.leaves = "cubyz:leaves/birch",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
-			.chance = 0.1,
+			.chance = 0.05,
 			.type = .round,
 			.height = 10,
 			.height_variation = 8,
@@ -88,26 +89,6 @@
 			.variation = 8,
 			.density = 0.1,
 			.priority = 0.1,
-		},
-	},
-	.transitionBiomes = .{
-		.{
-			.id = "cubyz:forest/thin_birch_sparse",
-			.chance = 1,
-			.width = 2,
-			.properties = .{.dry},
-		},
-		.{
-			.id = "cubyz:forest/thin_birch_sparse",
-			.chance = 1,
-			.width = 2,
-			.properties = .{.barren},
-		},
-		.{
-			.id = "cubyz:forest/thin_birch_sparse",
-			.chance = 1,
-			.width = 1,
-			.properties = .{.ocean},
 		},
 	},
 }

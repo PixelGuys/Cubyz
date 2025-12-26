@@ -101,4 +101,24 @@
 			.priority = 0.1,
 		},
 	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:taiga/cold_sparse",
+			.chance = 1,
+			.width = 4,
+			.properties = .{.dry},
+		},
+		.{
+			.id = "cubyz:taiga/cold_sparse",
+			.chance = 1,
+			.width = 4,
+			.properties = .{.barren},
+		},
+		.{
+			.id = "cubyz:taiga/cold_sparse",
+			.chance = 1,
+			.width = 2,
+			.properties = .{.ocean},
+		},
+	},
 }
