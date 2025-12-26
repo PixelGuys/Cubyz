@@ -31,4 +31,6 @@
 	.{.old = "forest/mixed/oak_birch_clearing", .new = "forest/mixed/oak_birch/clearing"},
 	.{.old = "forest/birch", .new = "forest/birch/base"},
 	.{.old = "forest/thin_birch", .new = "forest/birch/thin/base"},
+	.{.old = "autumn/forest", .new = "autumn/forest/base"},
+	.{.old = "autumn/mixed_forest", .new = "autumn/mixed_forest/base"},
 }

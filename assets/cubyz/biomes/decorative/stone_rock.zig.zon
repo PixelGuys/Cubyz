@@ -11,11 +11,11 @@
 	.stoneBlock = "cubyz:slate/base",
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:autumn/forest",
+			.id = "cubyz:autumn/forest/base",
 			.chance = 2,
 		},
 		.{
-			.id = "cubyz:autumn/mixed_forest",
+			.id = "cubyz:autumn/mixed_forest/base",
 			.chance = 2,
 		},
 		.{

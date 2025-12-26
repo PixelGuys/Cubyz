@@ -96,19 +96,19 @@
 	},
 	.transitionBiomes = .{
 		.{
-			.id = "cubyz:autumn/mixed_forest_sparse",
+			.id = "cubyz:autumn/mixed_forest/sparse",
 			.chance = 1,
 			.width = 4,
 			.properties = .{.dry},
 		},
 		.{
-			.id = "cubyz:autumn/mixed_forest_sparse",
+			.id = "cubyz:autumn/mixed_forest/sparse",
 			.chance = 1,
 			.width = 4,
 			.properties = .{.barren},
 		},
 		.{
-			.id = "cubyz:autumn/mixed_forest_sparse",
+			.id = "cubyz:autumn/mixed_forest/sparse",
 			.chance = 1,
 			.width = 2,
 			.properties = .{.ocean},

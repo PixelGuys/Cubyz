@@ -17,11 +17,11 @@
 			.chance = 12,
 		},
 		.{
-			.id = "cubyz:autumn/mixed_forest",
+			.id = "cubyz:autumn/mixed_forest/base",
 			.chance = 4,
 		},
 		.{
-			.id = "cubyz:autumn/forest",
+			.id = "cubyz:autumn/forest/base",
 			.chance = 6,
 		},
 		.{
