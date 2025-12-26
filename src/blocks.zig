@@ -130,7 +130,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_bounciness[size] = zon.get(f32, "bounciness", 0.0);
-	_density[size] = zon.get(f32, "density", 0.001);
+	_density[size] = zon.get(f32, "density", main.physics.airDensity);
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
