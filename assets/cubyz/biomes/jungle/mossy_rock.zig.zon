@@ -37,6 +37,10 @@
 	},
 	.parentBiomes = .{
 		.{
+			.id = "cubyz:jungle/sparse",
+			.chance = 5,
+		},
+		.{
 			.id = "cubyz:jungle/base",
 			.chance = 4,
 		},
