@@ -15,19 +15,19 @@
 	},
 	.transitionBiomes = .{
 		.{
-			.id = "cubyz:forest/birch_sparse",
+			.id = "cubyz:forest/birch/sparse",
 			.chance = 1,
 			.width = 4,
 			.properties = .{.dry},
 		},
 		.{
-			.id = "cubyz:forest/birch_sparse",
+			.id = "cubyz:forest/birch/sparse",
 			.chance = 1,
 			.width = 4,
 			.properties = .{.barren},
 		},
 		.{
-			.id = "cubyz:forest/birch_sparse",
+			.id = "cubyz:forest/birch/sparse",
 			.chance = 1,
 			.width = 2,
 			.properties = .{.ocean},

@@ -1,17 +1,9 @@
 .{
 	.chance = 0,
-	.properties = .{},
 	.radius = 32,
 	.minHeight = 22,
 	.maxHeight = 40,
-	.roughness = 1,
 	.hills = 5,
-	.music = "cubyz:sunrise",
-	.validPlayerSpawn = true,
-	.ground_structure = .{
-		"cubyz:grass",
-		"2 to 3 cubyz:soil",
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
@@ -43,37 +35,10 @@
 			.height = 1,
 			.height_variation = 0,
 		},
-		.{
-			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
-			.chance = 0.008,
-			.width = 6,
-			.variation = 3,
-			.density = 0.3,
-			.priority = 0.1,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.block = "cubyz:daffodil",
-			.chance = 0.01,
-			.width = 6,
-			.variation = 3,
-			.density = 0.1,
-			.priority = 0.1,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.block = "cubyz:castilleja",
-			.chance = 0.006,
-			.width = 8,
-			.variation = 3,
-			.density = 0.1,
-			.priority = 0.1,
-		},
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:forest/mixed/oak_birch",
+			.id = "cubyz:forest/mixed/oak_birch/base",
 			.chance = 0.25,
 		},
 	},
