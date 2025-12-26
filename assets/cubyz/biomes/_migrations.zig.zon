@@ -33,4 +33,5 @@
 	.{.old = "forest/thin_birch", .new = "forest/birch/thin/base"},
 	.{.old = "autumn/forest", .new = "autumn/forest/base"},
 	.{.old = "autumn/mixed_forest", .new = "autumn/mixed_forest/base"},
+	.{.old = "taiga/cold", .new = "taiga/cold/base"},
 }

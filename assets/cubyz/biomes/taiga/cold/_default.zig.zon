@@ -22,24 +22,6 @@
 	.stoneBlock = "cubyz:glacite/base",
 	.structures = .{
 		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/pine/eastern_white",
-			.placeMode = .degradable,
-			.chance = 0.15,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/pine/young_tree",
-			.placeMode = .degradable,
-			.chance = 0.2,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/standalone_roots",
-			.placeMode = .degradable,
-			.chance = 0.01,
-		},
-		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:bolete",
 			.chance = 0.01,
@@ -99,26 +81,6 @@
 			.variation = 3,
 			.density = 0.4,
 			.priority = 0.1,
-		},
-	},
-	.transitionBiomes = .{
-		.{
-			.id = "cubyz:taiga/cold_sparse",
-			.chance = 1,
-			.width = 4,
-			.properties = .{.dry},
-		},
-		.{
-			.id = "cubyz:taiga/cold_sparse",
-			.chance = 1,
-			.width = 4,
-			.properties = .{.barren},
-		},
-		.{
-			.id = "cubyz:taiga/cold_sparse",
-			.chance = 1,
-			.width = 2,
-			.properties = .{.ocean},
 		},
 	},
 }
