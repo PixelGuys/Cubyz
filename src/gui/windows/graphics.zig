@@ -28,14 +28,14 @@ const resolutions = [_]u16{25, 50, 100};
 
 const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 
+const FPSPresets = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
+
 fn fpsCapRound(newValue: f32) ?u32 {
-	if(newValue < 144.0) {
-		return @as(u32, @intFromFloat(newValue/5.0))*5;
-	} else if(newValue < 149.0) {
-		return 144;
-	} else {
-		return null;
+	for(FPSPresets) |value| {
+		if(@as(u16, @intFromFloat(newValue)) <= value)
+			return value;
 	}
+	return null;
 }
 
 fn fpsCapFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
@@ -125,7 +125,7 @@ fn vulkanTestingWindowCallback(newValue: bool) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 154), &fpsCapCallback, &fpsCapFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 500.0, @floatFromInt(settings.fpsCap orelse 500), &fpsCapCallback, &fpsCapFormatter));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLOD1 Distance: ", "{} chunks", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
 	if(main.game.world == null) {
 		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffHighest LOD: ", "{s}", &lodValues, @min(settings.highestLod, settings.highestSupportedLod), &highestLodCallback));
