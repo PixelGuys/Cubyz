@@ -1,23 +1,6 @@
 .{
-	.properties = .{
-		.cold,
-	},
-	.chance = 0.5,
-	.minHeightLimit = 7,
 	.minHeight = 30,
 	.maxHeight = 50,
-	.maxHeightLimit = 60,
-	.smoothBeaches = true,
-	.minRadius = 256,
-	.maxRadius = 320,
-	.roughness = 10,
-	.hills = 10,
-	.music = "cubyz:leaves",
-	.validPlayerSpawn = true,
-	.ground_structure = .{
-		"cubyz:grass",
-		"2 to 3 cubyz:soil",
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
