@@ -27,18 +27,6 @@
 			.smoothness = 0.5,
 		},
 		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/birch/silver/1",
-			.placeMode = .degradable,
-			.chance = 0.1,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/birch/silver/2",
-			.placeMode = .degradable,
-			.chance = 0.1,
-		},
-		.{
 			.id = "cubyz:fallen_tree",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_log",

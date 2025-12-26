@@ -1,48 +1,30 @@
 .{
+	.chance = 0,
+	.keepOriginalTerrain = 1,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/loblolly",
 			.placeMode = .degradable,
-			.chance = 0.15,
+			.chance = 0.06,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/eastern_white",
 			.placeMode = .degradable,
-			.chance = 0.15,
+			.chance = 0.06,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
-			.chance = 0.1,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/standalone_roots",
 			.placeMode = .degradable,
-			.chance = 0.1,
-		},
-	},
-	.transitionBiomes = .{
-		.{
-			.id = "cubyz:taiga/sparse",
-			.chance = 1,
-			.width = 4,
-			.properties = .{.dry},
-		},
-		.{
-			.id = "cubyz:taiga/sparse",
-			.chance = 1,
-			.width = 4,
-			.properties = .{.barren},
-		},
-		.{
-			.id = "cubyz:taiga/sparse",
-			.chance = 1,
-			.width = 2,
-			.properties = .{.ocean},
+			.chance = 0.05,
 		},
 	},
 }
