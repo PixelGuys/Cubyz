@@ -73,10 +73,10 @@ const ProtocolTask = struct { // MARK: ProtocolTask
 	data: []const u8,
 
 	const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.utils.castFunctionSelfToAnyopaque(run),
-		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+		.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+		.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+		.run = main.meta.castFunctionSelfToAnyopaque(run),
+		.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 		.taskType = .misc,
 	};
 
@@ -174,28 +174,15 @@ pub const handShake = struct { // MARK: handShake
 						defer main.stackAllocator.free(path);
 						var dir = try main.files.cubyzDir().openIterableDir(path);
 						defer dir.close();
-						var arrayList = main.List(u8).init(main.stackAllocator);
-						defer arrayList.deinit();
-						arrayList.append(@intFromEnum(Connection.HandShakeState.assets));
-						try utils.Compression.pack(dir, arrayList.writer());
-						conn.send(.fast, id, arrayList.items);
+						var writer = try std.Io.Writer.Allocating.initCapacity(main.stackAllocator.allocator, 16);
+						defer writer.deinit();
+						try writer.writer.writeByte(@intFromEnum(Connection.HandShakeState.assets));
+						try utils.Compression.pack(dir, &writer.writer);
+						conn.send(.fast, id, writer.written());
 					}
+					conn.handShakeState.store(.assets, .monotonic);
 
-					conn.user.?.initPlayer(name);
-					const zonObject = ZonElement.initObject(main.stackAllocator);
-					defer zonObject.deinit(main.stackAllocator);
-					zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
-					zonObject.put("player_id", conn.user.?.id);
-					zonObject.put("spawn", main.server.world.?.spawn);
-					zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
-					zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
-					zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
-					zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
-
-					const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
-					defer main.stackAllocator.free(outData);
-					conn.send(.fast, id, outData);
-					conn.handShakeState.store(.serverData, .monotonic);
+					conn.user.?.setName(name);
 					main.server.connect(conn.user.?);
 				},
 				.assets, .serverData => return error.InvalidSide,
@@ -208,6 +195,22 @@ pub const handShake = struct { // MARK: handShake
 
 	pub fn serverSide(conn: *Connection) void {
 		conn.handShakeState.store(.start, .monotonic);
+	}
+
+	pub fn sendServerPlayerData(conn: *Connection) void {
+		const zonObject = ZonElement.initObject(main.stackAllocator);
+		defer zonObject.deinit(main.stackAllocator);
+		zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
+		zonObject.put("player_id", conn.user.?.id);
+		zonObject.put("spawn", main.server.world.?.spawn);
+		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
+		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
+		zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
+		zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
+
+		const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
+		defer main.stackAllocator.free(outData);
+		conn.send(.fast, id, outData);
 	}
 
 	pub fn clientSide(conn: *Connection, name: []const u8) !void {
@@ -394,7 +397,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
+		writer.writeInt(i16, @truncate(main.timestamp().toMilliseconds()));
 		writer.writeVec(Vec3d, playerPos);
 		for(entityData) |data| {
 			const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
@@ -570,13 +573,28 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				}
 			},
 			.particles => {
-				const sliceSize = try reader.readInt(u16);
-				const particleId = try reader.readSlice(sliceSize);
+				const particleIdLen = try reader.readVarInt(u16);
+				const particleId = try reader.readSlice(particleIdLen);
 				const pos = try reader.readVec(Vec3d);
 				const collides = try reader.readBool();
-				const count = try reader.readInt(u32);
+				const count = try reader.readVarInt(u32);
+				const spawnZonLen = try reader.readVarInt(usize);
+				const spawnZon = try reader.readSlice(spawnZonLen);
 
-				const emitter: particles.Emitter = .init(particleId, collides);
+				var emitter: particles.Emitter = undefined;
+				if(spawnZonLen != 0) {
+					const zon = ZonElement.parseFromString(main.stackAllocator, null, spawnZon);
+					defer zon.deinit(main.stackAllocator);
+					emitter = .initFromZon(particleId, collides, zon);
+				} else {
+					const emitterProperties = particles.EmitterProperties{
+						.speed = .init(1, 1.5),
+						.lifeTime = .init(0.75, 1),
+						.randomizeRotation = true,
+					};
+					emitter = .init(particleId, collides, .{.point = .{}}, emitterProperties, .spread);
+				}
+
 				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 			},
 		}
@@ -640,17 +658,19 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		conn.send(.fast, id, writer.data.items);
 	}
 
-	pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
+	pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32, spawnZon: []const u8) void {
 		const bufferSize = particleId.len*8 + 32;
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
 		defer writer.deinit();
 
 		writer.writeEnum(UpdateType, .particles);
-		writer.writeInt(u16, @intCast(particleId.len));
+		writer.writeVarInt(u16, @intCast(particleId.len));
 		writer.writeSlice(particleId);
 		writer.writeVec(Vec3d, pos);
 		writer.writeBool(collides);
-		writer.writeInt(u32, count);
+		writer.writeVarInt(u32, count);
+		writer.writeVarInt(usize, spawnZon.len);
+		writer.writeSlice(spawnZon);
 
 		conn.send(.fast, id, writer.data.items);
 	}
@@ -791,10 +811,7 @@ pub const inventory = struct { // MARK: inventory
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const user = conn.user.?;
 		if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-		items.Inventory.Sync.ServerSide.receiveCommand(user, reader) catch |err| {
-			if(err != error.InventoryNotFound) return err;
-			sendFailure(conn);
-		};
+		items.Inventory.Sync.ServerSide.receiveCommand(user, reader);
 	}
 	pub fn sendCommand(conn: *Connection, payloadType: items.Inventory.Command.PayloadType, _data: []const u8) void {
 		std.debug.assert(conn.user == null);
@@ -851,8 +868,8 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
 		mesh.mutex.lock();
 		defer mesh.mutex.unlock();
-		const index = mesh.chunk.getLocalBlockIndex(pos);
-		const block = mesh.chunk.data.getValue(index);
+		const localPos = mesh.chunk.getLocalBlockPos(pos);
+		const block = mesh.chunk.data.getValue(localPos.toIndex());
 		const blockEntity = block.blockEntity() orelse return;
 
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
@@ -864,7 +881,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		conn.send(.fast, id, writer.data.items);
 	}
 
-	fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *main.block_entity.BlockEntityType) void {
+	fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *const main.block_entity.BlockEntityType) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 		blockEntity.getServerToClientData(pos, ch, &writer);

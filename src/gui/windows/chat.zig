@@ -160,11 +160,11 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{.onUp = .{.callback = loadNextHistoryEntry}, .onDown = .{.callback = loadPreviousHistoryEntry}});
+	input = TextInput.init(.{0, 0}, 256, 32, "", .{.onNewline = .init(sendMessage), .onUp = .init(loadNextHistoryEntry), .onDown = .init(loadPreviousHistoryEntry)});
 	refresh();
 }
 
-pub fn loadNextHistoryEntry(_: usize) void {
+pub fn loadNextHistoryEntry() void {
 	const isSuccess = messageHistory.cycleUp();
 	if(messageHistory.isDuplicate(input.currentString.items)) {
 		if(isSuccess) messageHistory.cycleDown();
@@ -177,7 +177,7 @@ pub fn loadNextHistoryEntry(_: usize) void {
 	input.setString(msg);
 }
 
-pub fn loadPreviousHistoryEntry(_: usize) void {
+pub fn loadPreviousHistoryEntry() void {
 	_ = messageHistory.cycleUp();
 	if(messageHistory.isDuplicate(input.currentString.items)) {} else {
 		messageHistory.pushUp(main.globalAllocator.dupe(u8, input.currentString.items));
@@ -205,7 +205,7 @@ pub fn onClose() void {
 
 pub fn update() void {
 	if(!messageQueue.isEmpty()) {
-		const currentTime: i32 = @truncate(std.time.milliTimestamp());
+		const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
 		while(messageQueue.popFront()) |msg| {
 			history.append(Label.init(.{0, 0}, 256, msg, .left));
 			main.globalAllocator.free(msg);
@@ -214,7 +214,7 @@ pub fn update() void {
 		refresh();
 	}
 
-	const currentTime: i32 = @truncate(std.time.milliTimestamp());
+	const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
 	while(fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
 		fadeOutEnd += 1;
 	}
@@ -246,7 +246,7 @@ pub fn addMessage(msg: []const u8) void {
 	messageQueue.pushBack(main.globalAllocator.dupe(u8, msg));
 }
 
-pub fn sendMessage(_: usize) void {
+pub fn sendMessage() void {
 	if(input.currentString.items.len != 0) {
 		const data = input.currentString.items;
 		if(data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
@@ -257,7 +257,11 @@ pub fn sendMessage(_: usize) void {
 				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
 			}
 
-			main.network.protocols.chat.send(main.game.world.?.conn, data);
+			if(input.currentString.items[0] == '/') {
+				main.items.Inventory.Sync.ClientSide.executeCommand(.{.chatCommand = .{.message = main.globalAllocator.dupe(u8, input.currentString.items[1..])}});
+			} else {
+				main.network.protocols.chat.send(main.game.world.?.conn, data);
+			}
 			input.clear();
 		}
 	}

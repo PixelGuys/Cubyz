@@ -53,7 +53,7 @@ pub fn openWorld(name: []const u8) void {
 	};
 
 	std.log.info("Opening world {s}", .{name});
-	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name, clientConnection.localPort}) catch |err| {
+	main.server.thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, clientConnection.localPort}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
@@ -62,7 +62,7 @@ pub fn openWorld(name: []const u8) void {
 	};
 
 	while(!main.server.running.load(.acquire)) {
-		std.Thread.sleep(1_000_000);
+		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		main.heap.GarbageCollection.syncPoint();
 	}
 	clientConnection.world = &main.game.testWorld;
@@ -148,9 +148,9 @@ pub fn onOpen() void {
 
 	for(worldList.items, 0..) |worldInfo, i| {
 		const row = HorizontalList.init();
-		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .{.callback = &openWorldWrap, .arg = i}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &deleteWorld, .arg = i}));
+		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .initWithInt(openWorldWrap, i)));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .initWithInt(openFolder, i)));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .initWithInt(deleteWorld, i)));
 		row.finish(.{0, 0}, .center);
 		list.add(row);
 	}

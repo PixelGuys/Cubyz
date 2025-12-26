@@ -1,13 +1,13 @@
 const std = @import("std");
 
 const main = @import("main");
+const BlockPos = main.chunk.BlockPos;
 const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-pub const BlockPosition = struct {x: u5, y: u5, z: u5};
-list: main.ListUnmanaged(BlockPosition) = .{},
+list: main.ListUnmanaged(BlockPos) = .{},
 mutex: std.Thread.Mutex = .{},
 
 pub fn init() @This() {
@@ -17,7 +17,7 @@ pub fn deinit(self: *@This()) void {
 	self.mutex = undefined;
 	self.list.deinit(main.globalAllocator);
 }
-pub fn add(self: *@This(), position: BlockPosition) void {
+pub fn add(self: *@This(), position: BlockPos) void {
 	self.mutex.lock();
 	defer self.mutex.unlock();
 	self.list.append(main.globalAllocator, position);
@@ -39,9 +39,7 @@ pub fn update(self: *@This(), ch: *main.chunk.ServerChunk) void {
 		_ = block.onUpdate().run(.{
 			.block = block,
 			.chunk = ch,
-			.x = event.x,
-			.y = event.y,
-			.z = event.z,
+			.blockPos = event,
 		});
 	}
 }

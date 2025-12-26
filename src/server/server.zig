@@ -19,13 +19,15 @@ const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 
+pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 
-const command = @import("command/_command.zig");
+pub const command = @import("command/_command.zig");
 
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
@@ -98,7 +100,7 @@ pub const User = struct { // MARK: User
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
-	lastSaveTime: i64 = 0,
+	lastSaveTime: std.Io.Timestamp = .fromNanoseconds(0),
 	name: []const u8 = "",
 	renderDistance: u16 = undefined,
 	clientUpdatePos: Vec3i = .{0, 0, 0},
@@ -106,7 +108,7 @@ pub const User = struct { // MARK: User
 	isLocal: bool = false,
 	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
-	loadedChunks: [simulationSize][simulationSize][simulationSize]*@import("world.zig").EntityChunk = undefined,
+	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
@@ -124,12 +126,13 @@ pub const User = struct { // MARK: User
 
 	mutex: std.Thread.Mutex = .{},
 
+	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -159,6 +162,10 @@ pub const User = struct { // MARK: User
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
+		for(self.inventoryCommands.items) |commandData| {
+			main.globalAllocator.free(commandData);
+		}
+		self.inventoryCommands.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -175,13 +182,19 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn setName(self: *User, name: []const u8) void {
+		std.debug.assert(self.name.len == 0);
+		self.name = main.globalAllocator.dupe(u8, name);
+	}
+
 	var freeId: u32 = 0;
-	pub fn initPlayer(self: *User, name: []const u8) void {
+	pub fn initPlayer(self: *User) void {
 		self.id = freeId;
 		freeId += 1;
 
-		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
+		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		self.loadUnloadChunks();
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -228,7 +241,7 @@ pub const User = struct { // MARK: User
 				while(z != newBoxEnd[2]) : (z +%= chunk.chunkSize) {
 					const inZDistance = z -% lastBoxStart[2] >= 0 and z -% lastBoxEnd[2] < 0;
 					if(!inXDistance or !inYDistance or !inZDistance) {
-						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = @TypeOf(world.?.chunkManager).getOrGenerateEntityChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = world_zig.ChunkManager.getOrGenerateSimulationChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 					}
 				}
 			}
@@ -248,14 +261,34 @@ pub const User = struct { // MARK: User
 
 	pub fn update(self: *User) void {
 		self.mutex.lock();
+		const commands = self.inventoryCommands;
+		defer commands.deinit(main.globalAllocator);
+		self.inventoryCommands = .{};
+		self.mutex.unlock();
+
+		for(commands.items) |commandData| {
+			defer main.globalAllocator.free(commandData);
+			var reader: BinaryReader = .init(commandData);
+			main.items.Inventory.Sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+				if(err == error.InventoryNotFound) {
+					main.network.protocols.inventory.sendFailure(self.conn);
+				} else {
+					std.log.err("Got error while executing user command: {s}. Disconnecting.", .{@errorName(err)});
+					std.log.debug("Command data: {any}", .{commandData});
+					self.conn.disconnect();
+				}
+			};
+		}
+
+		self.mutex.lock();
 		defer self.mutex.unlock();
-		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
+		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
-		const saveTime = std.time.milliTimestamp();
-		if(saveTime -% self.lastSaveTime > 5000) {
+		const saveTime = main.timestamp();
+		if(self.lastSaveTime.durationTo(saveTime).toSeconds() > 5) {
 			world.?.savePlayer(self) catch |err| {
 				std.log.err("Failed to save player {s}: {s}", .{self.name, @errorName(err)});
 			};
@@ -263,6 +296,12 @@ pub const User = struct { // MARK: User
 		}
 
 		self.loadUnloadChunks();
+	}
+
+	pub fn receiveCommand(self: *User, commandData: []const u8) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.inventoryCommands.append(main.globalAllocator, main.globalAllocator.dupe(u8, commandData));
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
@@ -282,13 +321,13 @@ pub const User = struct { // MARK: User
 		defer main.stackAllocator.free(msg);
 		self.sendRawMessage(msg);
 	}
-	fn sendRawMessage(self: *User, msg: []const u8) void {
+	pub fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.protocols.chat.send(self.conn, msg);
 	}
 };
 
 pub const updatesPerSec: u32 = 20;
-const updateNanoTime: u32 = 1000000000/20;
+const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
 var userMutex: std.Thread.Mutex = .{};
@@ -299,7 +338,7 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
-var lastTime: i128 = undefined;
+var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
 
@@ -310,7 +349,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
-	lastTime = std.time.nanoTimestamp();
+	lastTime = main.timestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
@@ -318,7 +357,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 	main.items.Inventory.Sync.ServerSide.init();
 
-	world = ServerWorld.init(name, null) catch |err| {
+	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
@@ -436,25 +475,34 @@ fn update() void { // MARK: update()
 	}
 
 	while(userDeinitList.popFront()) |user| {
-		user.decreaseRefCount();
+		if(user.refCount.load(.unordered) == 1) {
+			user.decreaseRefCount();
+		} else {
+			userDeinitList.pushBack(user);
+			break;
+		}
 	}
 }
 
-pub fn start(name: []const u8, port: ?u16) void {
+pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
+	startFromExistingThread(name, port);
+}
+
+pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 	init(name, port);
 	defer deinit();
 	running.store(true, .release);
 	while(running.load(.monotonic)) {
 		main.heap.GarbageCollection.syncPoint();
-		const newTime = std.time.nanoTimestamp();
-		if(newTime -% lastTime < updateNanoTime) {
-			std.Thread.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
-			lastTime +%= updateNanoTime;
+		const newTime = main.timestamp();
+		if(lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
+			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
+			lastTime = lastTime.addDuration(updateTime);
 		} else {
-			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime -% lastTime -% updateNanoTime))/1000000.0});
+			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
 			lastTime = newTime;
 		}
 		update();
@@ -507,6 +555,7 @@ pub fn connect(user: *User) void {
 }
 
 pub fn connectInternal(user: *User) void {
+	user.initPlayer();
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -554,20 +603,12 @@ pub fn connectInternal(user: *User) void {
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
+	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	user.conn.handShakeState.store(.complete, .monotonic);
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
-	if(msg[0] == '/') { // Command.
-		if(world.?.allowCheats) {
-			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
-			command.execute(msg[1..], source);
-		} else {
-			source.sendRawMessage("Commands are not allowed because cheats are disabled");
-		}
-	} else {
-		main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
-	}
+	main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
 }
 
 fn sendRawMessage(msg: []const u8) void {

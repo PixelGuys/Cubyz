@@ -324,7 +324,7 @@ const GenerationStructure = struct {
 				while(y < max[1]) : (y += 1) {
 					const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 					if(distSquare < relRadius*relRadius) {
-						if((&map.map)[@intFromFloat(x)][@intFromFloat(y)].biome != parentBiome) {
+						if(map.map[@intFromFloat(x)][@intFromFloat(y)].biome != parentBiome) {
 							return error.biomeMismatch;
 						}
 					}

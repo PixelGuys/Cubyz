@@ -1,0 +1,27 @@
+.{
+	.chance = 0.02,
+	.caves = -0.02,
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:mushroom/big/glimmergill",
+			.placeMode = .degradable,
+			.chance = 0.15,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:mushroom/small/glimmergill",
+			.placeMode = .degradable,
+			.chance = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:glimmergill",
+			.chance = 0.15,
+			.width = 8,
+			.variation = 4,
+			.density = 0.06,
+			.priority = 0.1,
+		},
+	},
+}

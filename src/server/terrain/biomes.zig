@@ -59,9 +59,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
-		self.loadModel = main.utils.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
-		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
-		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
+		self.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
+		self.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate);
+		self.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {
 				return hashGeneric(ptr.*);
 			}
@@ -325,7 +325,7 @@ pub const Biome = struct { // MARK: Biome
 			.isCave = zon.get(bool, "isCave", false),
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
-			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate")),
+			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate/base")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
 			.skyColor = blk: {
 				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
