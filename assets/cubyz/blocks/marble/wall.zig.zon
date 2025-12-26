@@ -1,9 +1,9 @@
 .{
 	.rotation = "cubyz:fence",
 	.model = "cubyz:wall",
-	.texture = "cubyz:marble_wall",
-	.texture_top = "cubyz:marble_wall_top",
-	.texture_bottom = "cubyz:marble_wall_top",
+	.texture = "cubyz:marble/wall",
+	.texture_top = "cubyz:marble/wall_top",
+	.texture_bottom = "cubyz:marble/wall_top",
 	.item = .{
 		.texture = "wall/marble.png",
 	},

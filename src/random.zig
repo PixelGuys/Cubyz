@@ -28,7 +28,7 @@ pub fn nextInt(comptime T: type, seed: *u64) T {
 	if(@bitSizeOf(T) > 32) {
 		var result: T = 0;
 		for(0..(@bitSizeOf(T) + 31)/32) |_| {
-			result = result << 5 | next(u32, seed);
+			result = result << 32 | next(u32, seed);
 		}
 		return result;
 	} else {

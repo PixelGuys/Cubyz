@@ -132,8 +132,6 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 				return .ignored;
 
 			// no, there is no log in proximity
-			main.items.Inventory.Sync.ServerSide.mutex.lock();
-			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
 				const drops = if(self.blockDrops) |blockDrops| blockDrops else params.block.blockDrops();
 				for(drops) |drop| {

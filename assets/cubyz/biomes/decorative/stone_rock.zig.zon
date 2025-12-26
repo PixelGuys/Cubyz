@@ -58,5 +58,13 @@
 			.id = "cubyz:rare/tuften/fields",
 			.chance = 3,
 		},
+		.{
+			.id = "cubyz:hills/temperate",
+			.chance = 3,
+		},
+		.{
+			.id = "cubyz:hills/cold",
+			.chance = 3,
+		},
 	},
 }

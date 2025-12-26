@@ -301,13 +301,13 @@ fn openCreativeInventory(mods: Window.Key.Modifiers) void {
 	gui.openWindow("creative_inventory");
 }
 fn openChat(mods: Window.Key.Modifiers) void {
-	if(game.world == null) return;
+	if(!gui.isWindowOpen("chat")) return;
 	ungrabMouse(mods);
 	gui.openWindow("chat");
 	gui.windowlist.chat.input.select();
 }
 fn openCommand(mods: Window.Key.Modifiers) void {
-	if(game.world == null) return;
+	if(!gui.isWindowOpen("chat")) return;
 	openChat(mods);
 	gui.windowlist.chat.input.clear();
 	gui.windowlist.chat.input.inputCharacter('/');

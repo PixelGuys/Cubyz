@@ -1,5 +1,5 @@
 .{
 	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
-	.texture = "cubyz:slate_tile",
+	.texture = "cubyz:slate/tile",
 }
