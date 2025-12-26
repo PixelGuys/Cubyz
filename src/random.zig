@@ -157,6 +157,6 @@ pub fn RandomRange(T: type) type {
 
 		pub fn get(self: @This(), seed: *u64) T {
 			return self.min + (self.max - self.min)*nextFloat(seed);
-		}		
+		}
 	};
 }
