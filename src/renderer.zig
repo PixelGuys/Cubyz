@@ -891,7 +891,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var posBeforeBlock: Vec3i = undefined;
 	var neighborOfSelection: chunk.Neighbor = undefined;
 	pub var selectedBlockPos: ?Vec3i = null;
-	var lastSelectedBlockPos: Vec3i = undefined;
+	pub var lastSelectedBlockPos: Vec3i = undefined;
 	var currentBlockProgress: f32 = 0;
 	var currentSwingProgress: f32 = 0;
 	var currentSwingTime: f32 = 0;
@@ -1036,7 +1036,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 		}
 	}
-
+	pub fn stopBreakBlock(pos: Vec3i) void {
+		if(@reduce(.And, lastSelectedBlockPos == pos)) {
+			mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+			currentBlockProgress = 0;
+		}
+	}
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		if(selectedBlockPos) |selectedPos| {
 			const stack = inventory.getStack(slot);
