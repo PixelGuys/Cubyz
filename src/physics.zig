@@ -12,7 +12,6 @@ const particles = @import("particles.zig");
 const Player = main.game.Player;
 const collision = main.game.collision;
 const camera = main.game.camera;
-const RandomRange = main.utils.RandomRange;
 
 pub const gravity = 30.0;
 pub const airTerminalVelocity = 90.0;
@@ -244,8 +243,8 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				const spawnShape = particles.Emitter.SpawnShape{.cube = .{.size = .{0.3, 0.3, 0}}};
 				const dirMode = particles.DirectionMode.scatter;
 				const emitterProps = particles.EmitterProperties{
-					.speed = RandomRange(f32).set(.{1, 1.5}),
-					.lifeTime = RandomRange(f32).set(.{0.4, 0.7}),
+					.speed = .init(1, 1.5),
+					.lifeTime = .init(0.4, 0.7),
 					.randomizeRotation = true,
 				};
 				const emitter = particles.Emitter.init("cubyz:poof", true, spawnShape, emitterProps, dirMode);

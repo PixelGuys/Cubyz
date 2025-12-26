@@ -12,6 +12,7 @@ const c = graphics.c;
 const game = @import("game.zig");
 const ZonElement = @import("zon.zig").ZonElement;
 const random = @import("random.zig");
+const RandomRange = random.RandomRange;
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
@@ -20,7 +21,6 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const Vec2f = vec.Vec2f;
-const RandomRange = main.utils.RandomRange;
 
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
@@ -65,13 +65,13 @@ pub const ParticleManager = struct {
 		};
 
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
-		var rotVel = RandomRange(f32).parse("rotationVelocity", .{20, 60}, zon);
+		var rotVel: RandomRange(f32) = RandomRange(f32).fromZon("rotationVelocity", zon) orelse .init(20, 60);
 		rotVel.min = std.math.pi/180.0;
 		rotVel.max = std.math.pi/180.0;
 		const particleTypeLocal = ParticleTypeLocal{
-			.density = RandomRange(f32).parse("density", .{2, 3}, zon),
+			.density = RandomRange(f32).fromZon("density", zon) orelse .init(2, 3),
 			.rotVel = rotVel,
-			.dragCoefficient = RandomRange(f32).parse("dragCoefficient", .{0.5, 0.6}, zon),
+			.dragCoefficient = RandomRange(f32).fromZon("dragCoefficient", zon) orelse .init(0.5, 0.6),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -299,11 +299,11 @@ pub const ParticleSystem = struct {
 	}
 
 	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
-		const lifeTime = properties.lifeTime.get();
-		const density = particleType.density.get();
+		const lifeTime = properties.lifeTime.get(&main.seed);
+		const density = particleType.density.get(&main.seed);
 		const rot = if(properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
-		const rotVel = particleType.rotVel.get();
-		const dragCoeff = particleType.dragCoefficient.get();
+		const rotVel = particleType.rotVel.get(&main.seed);
+		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
 
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
@@ -367,8 +367,8 @@ pub const EmitterProperties = struct {
 
 	pub fn parse(zon: ZonElement) EmitterProperties {
 		return EmitterProperties{
-			.speed = RandomRange(f32).parse("speed", .{1, 1.5}, zon),
-			.lifeTime = RandomRange(f32).parse("lifeTime", .{0.75, 1}, zon),
+			.speed = RandomRange(f32).fromZon("speed", zon) orelse .init(1, 1.5),
+			.lifeTime = RandomRange(f32).fromZon("lifeTime", zon) orelse .init(0.75, 1),
 			.randomizeRotation = zon.get(bool, "randomRotate", true),
 		};
 	}
@@ -423,7 +423,7 @@ pub const Emitter = struct {
 	pub const SpawnPoint = struct {
 		pub fn spawn(_: SpawnPoint, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct {Vec3d, Vec3f} {
 			const particlePos = pos;
-			const speed: Vec3f = @splat(properties.speed.get());
+			const speed: Vec3f = @splat(properties.speed.get(&main.seed));
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| vec.normalize(dir),
 				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
@@ -449,7 +449,7 @@ pub const Emitter = struct {
 				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
-			const speed: Vec3f = @splat(properties.speed.get());
+			const speed: Vec3f = @splat(properties.speed.get(&main.seed));
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| vec.normalize(dir),
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
@@ -474,7 +474,7 @@ pub const Emitter = struct {
 			const spawnPos: Vec3f = self.size;
 			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &main.seed);
 			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
-			const speed: Vec3f = @splat(properties.speed.get());
+			const speed: Vec3f = @splat(properties.speed.get(&main.seed));
 			const dir: Vec3f = switch(mode) {
 				.direction => |dir| vec.normalize(dir),
 				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),

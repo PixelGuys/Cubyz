@@ -11,7 +11,6 @@ const game = main.game;
 const settings = main.settings;
 const renderer = main.renderer;
 const utils = main.utils;
-const RandomRange = utils.RandomRange;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -586,8 +585,8 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 					emitter = .initFromZon(particleId, collides, zon);
 				} else {
 					const emitterProperties = particles.EmitterProperties{
-						.speed = RandomRange(f32).set(.{1, 1.5}),
-						.lifeTime = RandomRange(f32).set(.{0.75, 1}),
+						.speed = .init(1, 1.5),
+						.lifeTime = .init(0.75, 1),
 						.randomizeRotation = true,
 					};
 					emitter = .init(particleId, collides, .{.point = .{}}, emitterProperties, .spread);

@@ -24,7 +24,6 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
-const RandomRange = main.utils.RandomRange;
 
 pub const chunk_meshing = @import("renderer/chunk_meshing.zig");
 pub const mesh_storage = @import("renderer/mesh_storage.zig");
@@ -1109,8 +1108,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				const spawnShape = particles.Emitter.SpawnShape{.cube = .{.size = .{0.5, 0.5, 0.5}}};
 				const dirMode = particles.DirectionMode.spread;
 				const emitterProps = particles.EmitterProperties{
-					.speed = RandomRange(f32).set(.{2, 3}),
-					.lifeTime = RandomRange(f32).set(.{0.4, 0.7}),
+					.speed = .init(2, 3),
+					.lifeTime = .init(0.4, 0.7),
 					.randomizeRotation = false,
 				};
 				const emitter = particles.Emitter.init("cubyz:flame", false, spawnShape, emitterProps, dirMode);
