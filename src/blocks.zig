@@ -257,6 +257,7 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 		registerCallbacks(i, zonElements.get(_id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
+	meshes.finishTextureLoading();
 }
 
 pub fn reset() void {
@@ -504,13 +505,13 @@ pub const meshes = struct { // MARK: meshes
 	var loadedMeshes: u32 = 0;
 
 	var textureIDs: main.ListUnmanaged([]const u8) = .{};
-	var animation: main.ListUnmanaged(AnimationData) = .{};
+	var animationData: []AnimationData = &.{};
 	var blockTextures: main.ListUnmanaged(Image) = .{};
 	var emissionTextures: main.ListUnmanaged(Image) = .{};
 	var reflectivityTextures: main.ListUnmanaged(Image) = .{};
 	var absorptionTextures: main.ListUnmanaged(Image) = .{};
 	var textureFogData: main.ListUnmanaged(FogData) = .{};
-	pub var textureOcclusionData: main.ListUnmanaged(bool) = .{};
+	pub var textureOcclusionData: []std.atomic.Value(bool) = &.{};
 
 	pub var blockBreakingTextures: main.ListUnmanaged(u16) = .{};
 
@@ -576,13 +577,13 @@ pub const meshes = struct { // MARK: meshes
 		meshes.size = 0;
 		loadedMeshes = 0;
 		textureIDs = .{};
-		animation = .{};
+		animationData = &.{};
 		blockTextures = .{};
 		emissionTextures = .{};
 		reflectivityTextures = .{};
 		absorptionTextures = .{};
 		textureFogData = .{};
-		textureOcclusionData = .{};
+		textureOcclusionData = &.{};
 		blockBreakingTextures = .{};
 	}
 
@@ -595,11 +596,11 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub inline fn fogDensity(block: Block) f32 {
-		return textureFogData.items[animation.items[textureIndices[block.typ][0]].startFrame].fogDensity;
+		return textureFogData.items[animationData[textureIndices[block.typ][0]].startFrame].fogDensity;
 	}
 
 	pub inline fn fogColor(block: Block) u32 {
-		return textureFogData.items[animation.items[textureIndices[block.typ][0]].startFrame].fogColor;
+		return textureFogData.items[animationData[textureIndices[block.typ][0]].startFrame].fogColor;
 	}
 
 	pub inline fn hasFog(block: Block) bool {
@@ -636,7 +637,7 @@ pub const meshes = struct { // MARK: meshes
 		return result;
 	}
 
-	fn readTextureData(_path: []const u8) void {
+	fn readTextureData(index: usize, _path: []const u8) void {
 		const path = _path[0 .. _path.len - ".png".len];
 		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
 		defer main.stackAllocator.free(textureInfoPath);
@@ -644,7 +645,7 @@ pub const meshes = struct { // MARK: meshes
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
-		animation.append(main.worldArena, .{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
+		animationData[index] = .{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime};
 		const base = readTextureFile(path, ".png", Image.defaultImage);
 		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
 		const reflectivity = readTextureFile(path, "_reflectivity.png", Image.emptyImage);
@@ -659,10 +660,10 @@ pub const meshes = struct { // MARK: meshes
 				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
 			});
 		}
-		textureOcclusionData.append(main.worldArena, textureInfoZon.get(bool, "hasOcclusion", true));
+		textureOcclusionData[index].store(textureInfoZon.get(bool, "hasOcclusion", true), .unordered);
 	}
 
-	pub fn readTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
+	pub fn findTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
 		const textureId = _textureId orelse return error.NotFound;
 		var result: u16 = undefined;
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
@@ -693,18 +694,17 @@ pub const meshes = struct { // MARK: meshes
 		result = @intCast(textureIDs.items.len);
 
 		textureIDs.append(main.worldArena, main.worldArena.dupe(u8, path));
-		readTextureData(path);
 		return result;
 	}
 
 	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: *[16]u16) void {
-		const defaultIndex = readTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
+		const defaultIndex = findTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
 		inline for(textureIndicesRef, 0..) |*ref, i| {
 			var textureId = zon.get(?[]const u8, std.fmt.comptimePrint("texture{}", .{i}), null);
 			if(i < sideNames.len) {
 				textureId = zon.get(?[]const u8, sideNames[i], textureId);
 			}
-			ref.* = readTexture(textureId, assetFolder) catch defaultIndex;
+			ref.* = findTexture(textureId, assetFolder) catch defaultIndex;
 		}
 	}
 
@@ -732,16 +732,24 @@ pub const meshes = struct { // MARK: meshes
 
 			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
 			defer main.stackAllocator.free(id);
-			blockBreakingTextures.append(main.worldArena, readTexture(id, assetFolder) catch break);
+			blockBreakingTextures.append(main.worldArena, findTexture(id, assetFolder) catch break);
 		}
 	}
 
 	pub fn preProcessAnimationData(time: u32) void {
 		animationComputePipeline.bind();
 		graphics.c.glUniform1ui(animationUniforms.time, time);
-		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animation.items.len));
-		graphics.c.glDispatchCompute(@intCast(@divFloor(animation.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
+		graphics.c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
+	}
+
+	fn finishTextureLoading() void {
+		animationData = main.worldArena.alloc(AnimationData, textureIDs.items.len);
+		textureOcclusionData = main.worldArena.alloc(std.atomic.Value(bool), textureIDs.items.len);
+		for(textureIDs.items, 0..) |path, i| {
+			readTextureData(i, path);
+		}
 	}
 
 	pub fn reloadTextures(_: usize) void {
@@ -750,9 +758,8 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearRetainingCapacity();
-		textureOcclusionData.clearRetainingCapacity();
-		for(textureIDs.items) |path| {
-			readTextureData(path);
+		for(textureIDs.items, 0..) |path, i| {
+			readTextureData(i, path);
 		}
 		generateTextureArray();
 	}
@@ -793,10 +800,10 @@ pub const meshes = struct { // MARK: meshes
 		if(fogSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		animationSSBO = SSBO.initStatic(AnimationData, animation.items);
+		animationSSBO = SSBO.initStatic(AnimationData, animationData);
 		animationSSBO.?.bind(0);
 
-		animatedTextureSSBO = SSBO.initStaticSize(u32, animation.items.len);
+		animatedTextureSSBO = SSBO.initStaticSize(u32, animationData.len);
 		animatedTextureSSBO.?.bind(1);
 		fogSSBO = SSBO.initStatic(FogData, textureFogData.items);
 		fogSSBO.?.bind(7);
