@@ -94,10 +94,10 @@ pub fn onOpen() void {
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .init(gamemodeCallback));
 	list.add(gamemodeInput);
 
-	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
+	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", allowCheats, &allowCheatsCallback));
 
 	if(!build_options.isTaggedRelease) {
-		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
+		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", testingMode, &testingModeCallback));
 	}
 
 	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .left);
