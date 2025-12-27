@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
-pub const description = "Clears your <inventory/chat>";
+pub const description = "Clears your inventory/chat";
 pub const usage = "/clear <inventory/chat>";
 
 pub fn execute(args: []const u8, source: *User) void {
