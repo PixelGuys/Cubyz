@@ -13,7 +13,6 @@
 	.chance = 0,
 	.soilCreep = 1,
 	.music = "cubyz:sunrise",
-	.validPlayerSpawn = true,
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
