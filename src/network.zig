@@ -27,17 +27,17 @@ const Socket = struct {
 	fn windowsError(err: c_int) !void {
 		if(err == 0) return;
 		switch(err) {
-			ws2.WSASYSNOTREADY => return error.WSASYSNOTREADY,
-			ws2.WSAVERNOTSUPPORTED => return error.WSAVERNOTSUPPORTED,
+			ws2.WSASYSNOTREADY => return error.NetworkDown,
+			ws2.WSAVERNOTSUPPORTED => return error.VersionUnsupported,
 			ws2.WSAEINPROGRESS => return error.BlockingOperationInProgress,
-			ws2.WSAEPROCLIM => return error.WSAEPROCLIM,
-			ws2.WSAEFAULT => return error.WSAEFAULT,
-			ws2.WSANOTINITIALISED => return error.WSANOTINITIALISED,
+			ws2.WSAEPROCLIM => return error.ProcessFdQutaExceeded,
+			ws2.WSAEFAULT => unreachable,
+			ws2.WSANOTINITIALISED => unreachable,
 			ws2.WSAENETDOWN => return error.NetworkDown,
 			ws2.WSAEACCES => return error.AccessDenied,
 			ws2.WSAEADDRINUSE => return error.AddressInUse,
 			ws2.WSAEADDRNOTAVAIL => return error.AddressNotAvailable,
-			ws2.WSAEINVAL => return error.SocketNotBound,
+			ws2.WSAEINVAL => return error.AlreadyBound,
 			ws2.WSAENOBUFS => return error.SystemResources,
 			ws2.WSAENOTSOCK => return error.FileDescriptorNotASocket,
 			else => return error.UNKNOWN,
