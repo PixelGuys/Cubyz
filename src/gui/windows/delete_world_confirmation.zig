@@ -38,7 +38,7 @@ fn flawedDeleteWorld(name: []const u8) !void {
 	gui.windowlist.save_selection.needsUpdate = true;
 }
 
-fn deleteWorld(_: usize) void {
+fn deleteWorld() void {
 	flawedDeleteWorld(deleteWorldName) catch |err| {
 		std.log.err("Encountered error while deleting world \"{s}\": {s}", .{deleteWorldName, @errorName(err)});
 	};
@@ -47,10 +47,10 @@ fn deleteWorld(_: usize) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	const text = std.fmt.allocPrint(main.stackAllocator.allocator, "Are you sure you want to delete the world **{s}**", .{deleteWorldName}) catch unreachable;
+	const text = std.fmt.allocPrint(main.stackAllocator.allocator, "Are you sure you want to delete the world **{s}**?", .{deleteWorldName}) catch unreachable;
 	defer main.stackAllocator.free(text);
 	list.add(Label.init(.{0, 0}, 128, text, .center));
-	list.add(Button.initText(.{0, 0}, 128, "Yes", .{.callback = &deleteWorld}));
+	list.add(Button.initText(.{0, 0}, 128, "Yes", .init(deleteWorld)));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

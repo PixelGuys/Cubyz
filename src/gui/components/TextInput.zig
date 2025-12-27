@@ -18,13 +18,14 @@ const TextInput = @This();
 const scrollBarWidth = 5;
 const border: f32 = 3;
 const fontSize: f32 = 16;
-const blinkDurationMs: i64 = 500;
+const blinkDuration: std.Io.Duration = .fromMilliseconds(500);
 
 var texture: Texture = undefined;
 
 pos: Vec2f,
 size: Vec2f,
 pressed: bool = false,
+obfuscated: bool = false,
 cursor: ?u32 = null,
 selectionStart: ?u32 = null,
 currentString: main.List(u8),
@@ -33,9 +34,8 @@ maxWidth: f32,
 maxHeight: f32,
 textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
-onNewline: gui.Callback,
-optional: OptionalCallbacks,
-lastBlinkTime: i64 = 0,
+callbacks: Callbacks,
+lastBlinkTime: std.Io.Timestamp = .fromNanoseconds(0),
 showCusor: bool = true,
 
 pub fn __init() void {
@@ -46,12 +46,13 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-const OptionalCallbacks = struct {
-	onUp: ?gui.Callback = null,
-	onDown: ?gui.Callback = null,
+const Callbacks = struct {
+	onNewline: main.callbacks.SimpleCallback,
+	onUp: main.callbacks.SimpleCallback = .{},
+	onDown: main.callbacks.SimpleCallback = .{},
 };
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, callbacks: Callbacks) *TextInput {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(TextInput);
 	self.* = TextInput{
@@ -62,8 +63,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
-		.onNewline = onNewline,
-		.optional = optional,
+		.callbacks = callbacks,
 	};
 	self.currentString.appendSlice(text);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
@@ -279,7 +279,7 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				self.selectionStart = null;
 			} else {
 				if(self.moveCursorVertically(1) == .same) {
-					if(self.optional.onDown) |cb| cb.run();
+					self.callbacks.onDown.run();
 				}
 			}
 		}
@@ -303,7 +303,7 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				self.selectionStart = null;
 			} else {
 				if(self.moveCursorVertically(-1) == .same) {
-					if(self.optional.onUp) |cb| cb.run();
+					self.callbacks.onUp.run();
 				}
 			}
 		}
@@ -467,8 +467,8 @@ pub fn cut(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if(!mods.shift and self.onNewline.callback != null) {
-		self.onNewline.run();
+	if(!mods.shift and self.callbacks.onNewline.inner != null) {
+		self.callbacks.onNewline.run();
 		return;
 	}
 	self.inputCharacter('\n');
@@ -477,7 +477,7 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 
 fn ensureCursorVisibility(self: *TextInput) void {
 	self.showCusor = true;
-	self.lastBlinkTime = std.time.milliTimestamp();
+	self.lastBlinkTime = main.timestamp();
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		var y: f32 = 0;
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
@@ -493,6 +493,12 @@ fn ensureCursorVisibility(self: *TextInput) void {
 	}
 }
 
+fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
+	if(!self.obfuscated) return pos;
+	const obfuscatedPos = (std.unicode.utf8CountCodepoints(self.currentString.items[0..pos]) catch 0)*main.utils.obfuscationChar.len;
+	return @intCast(obfuscatedPos);
+}
+
 pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
@@ -504,26 +510,39 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	defer draw.restoreClip(oldClip);
 
 	var textPos = Vec2f{border, border};
-	if(self.textSize[1] > self.maxHeight - 2*border) {
-		const diff = self.textSize[1] - (self.maxHeight - 2*border);
+	var textSize = self.textSize;
+	const textBuffer = if(self.obfuscated) blk: {
+		const obfuscatedString = main.utils.obfuscateString(main.stackAllocator, self.currentString.items);
+		defer main.stackAllocator.free(obfuscatedString);
+
+		var newTextBuffer = TextBuffer.init(main.stackAllocator, obfuscatedString, .{}, true, .left);
+		textSize = newTextBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
+		break :blk newTextBuffer;
+	} else self.textBuffer;
+	defer if(self.obfuscated) textBuffer.deinit();
+
+	if(textSize[1] > self.maxHeight - 2*border) {
+		const diff = textSize[1] - (self.maxHeight - 2*border);
 		textPos[1] -= diff*self.scrollBar.currentState;
 		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
 		self.scrollBar.render(mousePosition - self.pos);
 	}
-	self.textBuffer.render(textPos[0], textPos[1], fontSize);
+	textBuffer.render(textPos[0], textPos[1], fontSize);
 	if(self.pressed) {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}
-	if(self.cursor) |cursor| {
-		const cursorPos = textPos + self.textBuffer.indexToCursorPos(cursor);
-		if(self.selectionStart) |selectionStart| {
+	if(self.cursor) |_cursor| {
+		const cursor = self.getRenderCursorPos(_cursor);
+		const cursorPos = textPos + textBuffer.indexToCursorPos(cursor);
+		if(self.selectionStart) |_selectionStart| {
+			const selectionStart = self.getRenderCursorPos(_selectionStart);
 			draw.setColor(0x440000ff);
-			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
+			textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 
-		const milliTime = std.time.milliTimestamp();
-		if(milliTime -% self.lastBlinkTime > blinkDurationMs) {
-			self.lastBlinkTime = milliTime;
+		const currentTime = main.timestamp();
+		if(self.lastBlinkTime.durationTo(currentTime).nanoseconds > blinkDuration.nanoseconds) {
+			self.lastBlinkTime = currentTime;
 			self.showCusor = !self.showCusor;
 		}
 

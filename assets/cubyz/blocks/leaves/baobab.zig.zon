@@ -1,0 +1,5 @@
+.{
+	.texture = "cubyz:leaves/baobab",
+	.lodReplacement = "cubyz:leaves/opaque/baobab",
+	.opaqueVariant = "cubyz:leaves/opaque/baobab",
+}

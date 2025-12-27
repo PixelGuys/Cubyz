@@ -39,12 +39,12 @@ pub fn onOpen() void {
 			const row = HorizontalList.init();
 			if(connection.user.?.name.len != 0) {
 				row.add(Label.init(.{0, 0}, 200, connection.user.?.name, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Kick", .{.callback = @ptrCast(&kick), .arg = @intFromPtr(connection)}));
+				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithPtr(kick, connection)));
 			} else {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.remoteAddress}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				row.add(Label.init(.{0, 0}, 200, ip, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Cancel", .{.callback = @ptrCast(&kick), .arg = @intFromPtr(connection)}));
+				row.add(Button.initText(.{0, 0}, 100, "Cancel", .initWithPtr(kick, connection)));
 			}
 			list.add(row);
 		}
