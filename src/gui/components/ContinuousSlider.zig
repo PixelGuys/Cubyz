@@ -80,7 +80,8 @@ pub fn toComponent(self: *ContinuousSlider) GuiComponent {
 fn setButtonPosFromValue(self: *ContinuousSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = self.maxValue - self.minValue;
-	self.button.pos[0] = 1.5*border + range*(self.currentValue - self.minValue)/len;
+	const val = std.math.clamp(self.currentValue, self.minValue, self.maxValue);
+	self.button.pos[0] = 1.5*border + range*(val - self.minValue)/len;
 	self.updateLabel(self.currentValue, self.size[0]);
 }
 
