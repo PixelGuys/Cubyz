@@ -284,7 +284,6 @@ fn escape(mods: Window.Key.Modifiers) void {
 		gui.hideGui = false;
 		return;
 	}
-
 	openInventory(mods);
 }
 
