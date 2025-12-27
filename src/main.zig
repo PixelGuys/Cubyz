@@ -41,6 +41,8 @@ pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 pub const MultiArray = @import("utils/list.zig").MultiArray;
 
+pub const windowsHighResTimer = @import("utils/windows_high_res_timer.zig");
+
 const file_monitor = utils.file_monitor;
 
 const Vec2f = vec.Vec2f;
@@ -513,8 +515,11 @@ pub fn main() void { // MARK: main()
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
 	if(builtin.os.tag == .windows) {
-		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
+		windowsHighResTimer.init();
 	}
+	defer if(builtin.os.tag == .windows) {
+		windowsHighResTimer.deinit();
+	};
 
 	settings.launchConfig.init();
 
@@ -631,7 +636,8 @@ pub fn clientMain() void { // MARK: clientMain()
 		}
 
 		const endRendering = timestamp();
-		const frameTime = @as(f64, @floatFromInt(endRendering.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
+		const frameDuration = lastBeginRendering.durationTo(endRendering);
+		const frameTime = @as(f64, @floatFromInt(frameDuration.nanoseconds))/1.0e9;
 		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
 			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
 			std.posix.exit(1);
@@ -640,17 +646,18 @@ pub fn clientMain() void { // MARK: clientMain()
 
 		if(settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
-			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering.nanoseconds -% lastBeginRendering.nanoseconds)));
-			if(builtin.os.tag == .windows and minFrameTime < 20_000_000) { // Windows can oversleep a lot, so we waste power instead
-				const targetTime = timestamp().addDuration(.fromNanoseconds(sleep));
-				while(timestamp().durationTo(targetTime).nanoseconds > 0) {}
-			} else {
-				io.sleep(.fromNanoseconds(sleep), .awake) catch {};
+			const sleepDuration = endRendering.durationTo(lastBeginRendering.addDuration(.fromNanoseconds(minFrameTime)));
+			if(sleepDuration.nanoseconds > 0) {
+				if(builtin.os.tag == .windows) {
+					windowsHighResTimer.sleep(sleepDuration);
+				} else {
+					io.sleep(sleepDuration, .awake) catch {};
+				}
 			}
 		}
 		const begin = timestamp();
 		const deltaTime = @as(f64, @floatFromInt(begin.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
-		if(lastSecond.durationTo(begin).toMilliseconds() > 1000) {
+		if(lastSecond.durationTo(begin).toSeconds() >= 1) {
 			lastSecond = begin;
 			lastDeltaTime.store(deltaTime, .monotonic); 
 		}
