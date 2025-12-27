@@ -1,7 +1,26 @@
 .{
+	.isCave = true,
+	.maxHeight = -512,
+	.minHeight = -48250,
+
 	.chance = 0.02,
+
 	.caves = -0.02,
+
+	.music = "cubyz:la_kubisa_caverna",
+	.ground_structure = .{
+		"2 to 3 cubyz:soil",
+	},
 	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:clay",
+			.chance = 0.3,
+			.width = 5,
+			.variation = 5,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:mushroom/big/glimmergill",
@@ -22,6 +41,22 @@
 			.variation = 4,
 			.density = 0.06,
 			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:vine/glimmer_worms",
+			.generationMode = .ceiling,
+			.chance = 0.4,
+			.height = 9,
+			.height_variation = 7,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:vine/glimmer_worms",
+			.generationMode = .ceiling,
+			.chance = 0.2,
+			.height = 15,
+			.height_variation = 8,
 		},
 	},
 }
