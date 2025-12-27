@@ -522,7 +522,6 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 
 	const ClearType = enum(u1) {
 		chat = 0,
-		chatHistory = 1,
 	};
 
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -589,7 +588,6 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				const typ = try reader.readEnum(ClearType);
 				switch(typ) {
 					.chat => main.gui.windowlist.chat.clearChat(),
-					.chatHistory => main.gui.windowlist.chat.messageHistory.clear(),
 				}
 			},
 		}

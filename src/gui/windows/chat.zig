@@ -39,7 +39,7 @@ var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
 pub var input: *TextInput = undefined;
 var hideInput: bool = true;
-pub var messageHistory: History = undefined;
+var messageHistory: History = undefined;
 
 pub const History = struct {
 	up: FixedSizeCircularBuffer([]const u8, reusableHistoryMaxSize),
@@ -56,7 +56,7 @@ pub const History = struct {
 		self.up.deinit(main.globalAllocator);
 		self.down.deinit(main.globalAllocator);
 	}
-	pub fn clear(self: *History) void {
+	fn clear(self: *History) void {
 		while(self.up.popFront()) |msg| {
 			main.globalAllocator.free(msg);
 		}
