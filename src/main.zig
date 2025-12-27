@@ -280,15 +280,20 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 // MARK: Callbacks
 fn escape(mods: Window.Key.Modifiers) void {
+	if(gui.hideGui) {
+		gui.hideGui = false;
+		return;
+	}
+
+	openInventory(mods);
+}
+
+fn openInventory(mods: Window.Key.Modifiers) void {
 	if(gui.selectedTextInput != null) gui.setSelectedTextInput(null);
 	inventory(mods);
 }
 fn inventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
-	if(gui.hideGui) {
-		gui.hideGui = false;
-		return;
-	}
 	gui.openWindow("inventory");
 	gui.openWindow("hotbar");
 	gui.toggleGameMenu();
@@ -390,7 +395,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B},
-		.{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
+		.{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &openInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .pressAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "openCommand", .key = c.GLFW_KEY_SLASH, .releaseAction = &openCommand},
