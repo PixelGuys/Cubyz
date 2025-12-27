@@ -285,6 +285,10 @@ fn escape(mods: Window.Key.Modifiers) void {
 }
 fn inventory(_: Window.Key.Modifiers) void {
 	if(game.world == null) return;
+	if(gui.hideGui) {
+		gui.hideGui = false;
+		return;
+	}
 	gui.openWindow("inventory");
 	gui.openWindow("hotbar");
 	gui.toggleGameMenu();
