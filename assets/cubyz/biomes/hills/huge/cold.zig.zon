@@ -6,13 +6,29 @@
 	},
 	.structures = .{
 		.{
+			.id = "cubyz:boulder",
+			.chance = 0.01,
+			.block = "cubyz:slate/base",
+			.size = 3,
+			.size_variance = 1,
+		},
+		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:pebbles:cubyz:cold_grass",
-			.chance = 0.015,
+			.chance = 0.02,
 			.width = 3,
 			.variation = 3,
 			.depth = 1,
 			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:slate/base",
+			.chance = 0.015,
+			.width = 8,
+			.variation = 4,
+			.depth = 3,
+			.smoothness = 0.5,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
