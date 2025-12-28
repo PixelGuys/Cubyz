@@ -2323,7 +2323,7 @@ pub const Texture = struct { // MARK: Texture
 
 		var curSize: u31 = largestSize;
 		while(curSize != 0) : (curSize /= 2) {
-			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_SRGB8_ALPHA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
 
 		curSize = largestSize;
@@ -2364,7 +2364,7 @@ pub const Texture = struct { // MARK: Texture
 	pub fn generate(self: Texture, image: Image) void {
 		self.bind();
 
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_SRGB8_ALPHA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
@@ -2703,7 +2703,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = undefined;
 	finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
-	finalFrameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA8);
+	finalFrameBuffer.updateSize(textureSize, textureSize, c.GL_SRGB8_ALPHA8);
 	finalFrameBuffer.bind();
 	const texture = Texture{.textureID = finalFrameBuffer.texture};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
@@ -2711,16 +2711,25 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	c.glUniform1i(block_texture.uniforms.transparent, if(block.transparent()) c.GL_TRUE else c.GL_FALSE);
 	frameBuffer.bindTexture(c.GL_TEXTURE3);
 
-	c.glEnable(c.GL_FRAMEBUFFER_SRGB);
-
 	c.glBindVertexArray(draw.rectVAO);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-
-	c.glDisable(c.GL_FRAMEBUFFER_SRGB);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 	c.glViewport(0, 0, main.Window.width, main.Window.height);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	return texture;
+}
+
+fn srgbChannelToLinear(srgbChannel: f32) f32 {
+	if(srgbChannel <= 0.04045) return srgbChannel/12.92;
+	return std.math.pow(f32, (srgbChannel + 0.055)/1.055, 2.4);
+}
+
+pub fn srgbToLinear(srgb: Vec3f) Vec3f {
+	return .{
+		srgbChannelToLinear(srgb[0]),
+		srgbChannelToLinear(srgb[1]),
+		srgbChannelToLinear(srgb[2]),
+	};
 }

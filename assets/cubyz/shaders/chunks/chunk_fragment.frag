@@ -51,8 +51,9 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 	return texture(reflectionMap, v);
 }
 
-float gamma(float val) {
-	return pow(val, 2.2);
+float srgbToLinear(float srgbChannel) {
+	if(srgbChannel <= 0.04045) return srgbChannel/12.92;
+	return pow((srgbChannel + 0.055)/1.055, 2.4);
 }
 
 void main() {
@@ -60,7 +61,7 @@ void main() {
 	float normalVariation = lightVariation(normal);
 	vec3 textureCoords = vec3(uv, animatedTextureIndex);
 
-	float reflectivity = gamma(texture(reflectivityAndAbsorptionSampler, textureCoords).a);
+	float reflectivity = srgbToLinear(texture(reflectivityAndAbsorptionSampler, textureCoords).a);
 	float fresnelReflection = (1 + dot(normalize(direction), normal));
 	fresnelReflection *= fresnelReflection;
 	fresnelReflection *= min(1, 2*reflectivity); // Limit it to 2*reflectivity to avoid making every block reflective.

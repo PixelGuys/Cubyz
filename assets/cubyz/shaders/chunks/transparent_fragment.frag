@@ -130,8 +130,17 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 	return texture(reflectionMap, v);
 }
 
-float gamma(float val) {
-	return pow(val, 2.2);
+float srgbToLinear(float srgbChannel) {
+	if(srgbChannel <= 0.04045) return srgbChannel/12.92;
+	return pow((srgbChannel + 0.055)/1.055, 2.4);
+}
+
+vec3 srgbToLinear(vec3 srgb) {
+	return vec3(
+		srgbToLinear(srgb.r),
+		srgbToLinear(srgb.g),
+		srgbToLinear(srgb.b)
+	);
 }
 
 void main() {
@@ -142,11 +151,11 @@ void main() {
 	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
 	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fogData[int(animatedTextureIndex)].fogDensity, 1e10, 1e10);
 	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
-	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
+	vec3 fogColor = srgbToLinear(unpackColor(fogData[int(animatedTextureIndex)].fogColor));
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 
-	float reflectivity = gamma(texture(reflectivityAndAbsorptionSampler, textureCoords).a);
+	float reflectivity = srgbToLinear(texture(reflectivityAndAbsorptionSampler, textureCoords).a);
 	float fresnelReflection = (1 + dot(normalize(direction), normal));
 	fresnelReflection *= fresnelReflection;
 	fresnelReflection *= min(1, 2*reflectivity); // Limit it to 2*reflectivity to avoid making every block reflective.

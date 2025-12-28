@@ -330,7 +330,7 @@ pub const Biome = struct { // MARK: Biome
 			.skyColor = blk: {
 				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
 			},
-			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
+			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0/2.2,
 			.fogLower = zon.get(f32, "fogLower", 100.0),
 			.fogHigher = zon.get(f32, "fogHigher", 1000.0),
 			.roughness = zon.get(f32, "roughness", 0),

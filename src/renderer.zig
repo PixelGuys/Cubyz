@@ -153,7 +153,7 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	ambient[2] = @max(0.1, game.world.?.ambientLight);
 
 	itemdrop.ItemDisplayManager.update(deltaTime);
-	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
+	renderWorld(game.world.?, ambient, graphics.srgbToLinear(game.fog.skyColor), playerPosition);
 	const startTime = main.timestamp();
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
@@ -299,13 +299,15 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
 	if(!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
+		const fogColor = graphics.srgbToLinear(game.fog.fogColor);
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&fogColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
 		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
 	} else {
-		const fogColor = blocks.meshes.fogColor(playerBlock);
-		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+		const fogColorInt = blocks.meshes.fogColor(playerBlock);
+		const fogColor = graphics.srgbToLinear(Vec3f{@floatFromInt(fogColorInt >> 16 & 255), @floatFromInt(fogColorInt >> 8 & 255), @floatFromInt(fogColorInt >> 0 & 255)}/Vec3f{255, 255, 255});
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&fogColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
 		c.glUniform1f(deferredUniforms.@"fog.fogLower", 1e10);
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", 1e10);
@@ -319,12 +321,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
-	c.glEnable(c.GL_FRAMEBUFFER_SRGB);
-
 	c.glBindVertexArray(graphics.draw.rectVAO);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-
-	c.glDisable(c.GL_FRAMEBUFFER_SRGB);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
@@ -402,13 +400,15 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		if(!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
+			const fogColor = graphics.srgbToLinear(game.fog.fogColor);
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&fogColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
 		} else {
-			const fogColor = blocks.meshes.fogColor(playerBlock);
-			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+			const fogColorInt = blocks.meshes.fogColor(playerBlock);
+			const fogColor = graphics.srgbToLinear(Vec3f{@floatFromInt(fogColorInt >> 16 & 255), @floatFromInt(fogColorInt >> 8 & 255), @floatFromInt(fogColorInt >> 0 & 255)}/Vec3f{255, 255, 255});
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&fogColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
 			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", 1e10);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", 1e10);
