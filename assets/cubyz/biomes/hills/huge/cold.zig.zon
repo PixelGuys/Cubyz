@@ -7,7 +7,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.01,
+			.chance = 0.015,
 			.block = "cubyz:slate/base",
 			.size = 3,
 			.size_variance = 1,
@@ -16,7 +16,7 @@
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:pebbles:cubyz:cold_grass",
 			.chance = 0.02,
-			.width = 3,
+			.width = 4,
 			.variation = 3,
 			.depth = 1,
 			.smoothness = 0.1,
