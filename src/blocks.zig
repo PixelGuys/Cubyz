@@ -27,6 +27,7 @@ const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
+const Vec3f = main.vec.Vec3f;
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
@@ -97,6 +98,13 @@ var size: u32 = 0;
 
 pub var ores: main.ListUnmanaged(Ore) = .{};
 
+pub fn transformLightFromSrgb(in: u32) u32 {
+	const srgb = @as(Vec3f, @floatFromInt(@Vector(3, u32){in >> 16 & 255, in >> 8 & 255, in & 255}))/@as(Vec3f, @splat(255));
+	const linear = main.graphics.srgbToLinear(srgb);
+	const bytes: @Vector(3, u8) = @intFromFloat(@round(linear*@as(Vec3f, @splat(255))));
+	return @as(u32, bytes[0]) << 16 | @as(u32, bytes[1]) << 8 | bytes[2];
+}
+
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
 	reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
@@ -117,8 +125,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		}
 	}
 
-	_light[size] = zon.get(u32, "emittedLight", 0);
-	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
+	_light[size] = transformLightFromSrgb(zon.get(u32, "emittedLight", 0));
+	_absorption[size] = transformLightFromSrgb(zon.get(u32, "absorbedLight", 0xffffff));
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
