@@ -319,8 +319,12 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
+	c.glEnable(c.GL_FRAMEBUFFER_SRGB);
+
 	c.glBindVertexArray(graphics.draw.rectVAO);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+
+	c.glDisable(c.GL_FRAMEBUFFER_SRGB);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 

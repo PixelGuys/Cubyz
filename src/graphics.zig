@@ -2197,7 +2197,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 	}
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
+	pub fn generate(self: TextureArray, images: []Image, transformFunction: enum{linear, srgb}, mipmapping: bool, alphaCorrectMipmapping: bool) void {
 		var maxWidth: u31 = 1;
 		var maxHeight: u31 = 1;
 		for(images) |image| {
@@ -2217,8 +2217,12 @@ pub const TextureArray = struct { // MARK: TextureArray
 		self.bind();
 
 		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
+		const format = switch(transformFunction) {
+			.linear => c.GL_RGBA8,
+			.srgb => c.GL_SRGB8_ALPHA8,
+		};
 		for(0..maxLOD) |i| {
-			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), format, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
@@ -2707,8 +2711,12 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	c.glUniform1i(block_texture.uniforms.transparent, if(block.transparent()) c.GL_TRUE else c.GL_FALSE);
 	frameBuffer.bindTexture(c.GL_TEXTURE3);
 
+	c.glEnable(c.GL_FRAMEBUFFER_SRGB);
+
 	c.glBindVertexArray(draw.rectVAO);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+
+	c.glDisable(c.GL_FRAMEBUFFER_SRGB);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 

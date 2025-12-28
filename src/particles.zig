@@ -136,8 +136,8 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn generateTextureArray() void {
-		textureArray.generate(textures.items, true, true);
-		emissionTextureArray.generate(emissionTextures.items, true, false);
+		textureArray.generate(textures.items, .srgb, true, true);
+		emissionTextureArray.generate(emissionTextures.items, .linear, true, false);
 
 		particleTypesSSBO.bufferData(ParticleType, ParticleManager.types.items);
 		particleTypesSSBO.bind(14);

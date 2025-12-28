@@ -766,9 +766,9 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn generateTextureArray() void {
 		const c = graphics.c;
-		blockTextureArray.generate(blockTextures.items, true, true);
+		blockTextureArray.generate(blockTextures.items, .srgb, true, true);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
-		emissionTextureArray.generate(emissionTextures.items, true, false);
+		emissionTextureArray.generate(emissionTextures.items, .linear, true, false);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		const reflectivityAndAbsorptionTextures = main.stackAllocator.alloc(Image, reflectivityTextures.items.len);
 		defer main.stackAllocator.free(reflectivityAndAbsorptionTextures);
@@ -787,7 +787,7 @@ pub const meshes = struct { // MARK: meshes
 				}
 			}
 		}
-		reflectivityAndAbsorptionTextureArray.generate(reflectivityAndAbsorptionTextures, true, false);
+		reflectivityAndAbsorptionTextureArray.generate(reflectivityAndAbsorptionTextures, .srgb, true, false);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
 		// Also generate additional buffers:

@@ -130,6 +130,10 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 	return texture(reflectionMap, v);
 }
 
+float gamma(float val) {
+	return pow(val, 2.2);
+}
+
 void main() {
 	float animatedTextureIndex = animatedTexture[textureIndex];
 	vec3 textureCoords = vec3(uv, animatedTextureIndex);
@@ -142,7 +146,7 @@ void main() {
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 
-	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
+	float reflectivity = gamma(texture(reflectivityAndAbsorptionSampler, textureCoords).a);
 	float fresnelReflection = (1 + dot(normalize(direction), normal));
 	fresnelReflection *= fresnelReflection;
 	fresnelReflection *= min(1, 2*reflectivity); // Limit it to 2*reflectivity to avoid making every block reflective.
