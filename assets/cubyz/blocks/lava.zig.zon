@@ -9,9 +9,9 @@
 	.collide = false,
 	.absorbedLight = 0x0084ff,
 	.emittedLight = 0xff7b00,
-	.density = 2.5,
-	.terminalVelocity = 1,
-	.mobility = 0.001,
+	.density = 3,
+	.terminalVelocity = 0.8,
+	.mobility = 0.1,
 	.model = "cubyz:cube",
 	.texture = "cubyz:lava",
 	.onTouch = .{
