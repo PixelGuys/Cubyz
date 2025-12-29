@@ -232,7 +232,7 @@ pub const Gamepad = struct {
 		}
 	};
 	pub fn downloadControllerMappings() void {
-		// if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
+		if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
 		const curTimestamp: i96 = (std.Io.Clock.Timestamp.now(main.io, .real) catch unreachable).raw.nanoseconds;
 		const timestamp: i96 = blk: {
