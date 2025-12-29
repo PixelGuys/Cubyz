@@ -56,7 +56,7 @@ pos: Vec2f,
 size: Vec2f,
 pressed: bool = false,
 hovered: bool = false,
-onAction: gui.Callback,
+onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
 
 pub fn __init() void {
@@ -83,7 +83,7 @@ pub fn __deinit() void {
 
 fn defaultOnAction(_: usize) void {}
 
-pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback) *Button {
+pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: main.callbacks.SimpleCallback) *Button {
 	const label = Label.init(undefined, width - 3*border, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
@@ -95,7 +95,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: gui.Callback) *Button {
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: main.callbacks.SimpleCallback) *Button {
 	const icon = Icon.init(undefined, iconSize, iconTexture, hasShadow);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{

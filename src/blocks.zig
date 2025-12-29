@@ -21,6 +21,9 @@ const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
 const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
+const ClientBlockCallback = main.callbacks.ClientBlockCallback;
+const ServerBlockCallback = main.callbacks.ServerBlockCallback;
+const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
@@ -58,7 +61,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replacable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
-var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
+var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
@@ -68,9 +71,11 @@ var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
-/// GUI that is opened on click.
-var _gui: [maxBlockCount][]u8 = undefined;
-var _mode: [maxBlockCount]*RotationMode = undefined;
+
+var _onInteract: [maxBlockCount]ClientBlockCallback = undefined;
+var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
+var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
+var _mode: [maxBlockCount]*const RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
@@ -82,9 +87,9 @@ var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
-var _tickEvent: [maxBlockCount]?TickEvent = undefined;
-var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
-var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
+var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
+var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
+var _blockEntity: [maxBlockCount]?*const BlockEntityType = undefined;
 
 var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
@@ -99,8 +104,11 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
+	const rotation_tags = _mode[size].getBlockTags();
+	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
+	defer main.stackAllocator.free(block_tags);
+	_blockTags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
 
-	_blockTags[size] = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	for(_blockTags[size]) |tag| {
 		if(tag == Tag.sbbChild) {
@@ -108,12 +116,13 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			break;
 		}
 	}
+
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
 	_replacable[size] = zon.get(bool, "replacable", false);
-	_gui[size] = main.worldArena.dupe(u8, zon.get([]const u8, "gui", ""));
+
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -125,15 +134,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
 	_mobility[size] = zon.get(f32, "mobility", 1.0);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
-
-	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
-		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
-		if(_function == null) {
-			std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
-		}
-		break :blk _function;
-	} else null;
 
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
@@ -158,12 +158,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	return @intCast(size);
 }
 
-fn registerBlockDrop(typ: u16, zon: ZonElement) void {
+pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
-	_blockDrops[typ] = main.worldArena.alloc(BlockDrop, drops.len);
+	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for(drops, 0..) |blockDrop, i| {
-		_blockDrops[typ][i].chance = blockDrop.get(f32, "chance", 1);
+		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
 		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
@@ -182,15 +182,21 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 			}
 
 			if(std.mem.eql(u8, name, "auto")) {
-				name = _id[typ];
+				if(blockId) |id| {
+					name = id;
+				} else std.log.err("Cannot use 'auto' in this context", .{});
 			}
 
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
-
-		_blockDrops[typ][i].items = main.worldArena.dupe(items.ItemStack, resultItems.items);
+		blockDrops[i].items = main.worldArena.dupe(main.items.ItemStack, resultItems.items);
 	}
+	return blockDrops;
+}
+
+fn registerBlockDrop(typ: u16, zon: ZonElement) void {
+	_blockDrops[typ] = loadBlockDrop(_id[typ], zon);
 }
 
 fn registerLodReplacement(typ: u16, zon: ZonElement) void {
@@ -209,17 +215,49 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
+fn registerCallbacks(typ: u16, zon: ZonElement) void {
+	_onInteract[typ] = blk: {
+		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onInteract event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onBreak[typ] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onBreak event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onUpdate[typ] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onUpdate event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onTick[typ] = blk: {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onTick event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onTouch[typ] = blk: {
+		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onTouch event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+}
+
 pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
-	}
-	i = 0;
-	while(i < size) : (i += 1) {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
+		registerCallbacks(i, zonElements.get(_id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
+	meshes.finishTextureLoading();
 }
 
 pub fn reset() void {
@@ -273,6 +311,14 @@ pub fn getBlockById(idAndData: []const u8) !u16 {
 	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
 	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
 	const id = idAndData[0..blockIdEndIndex];
+	return reverseIndices.get(id) orelse return error.NotFound;
+}
+
+pub fn getBlockByIdWithMigrations(idAndData: []const u8) !u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
+	var id = idAndData[0..blockIdEndIndex];
+	id = main.migrations.applySingle(.block, id);
 	return reverseIndices.get(id) orelse return error.NotFound;
 }
 
@@ -330,7 +376,7 @@ pub const Block = packed struct { // MARK: Block
 		return _selectable[self.typ];
 	}
 
-	pub inline fn blockDrops(self: Block) []BlockDrop {
+	pub inline fn blockDrops(self: Block) []const BlockDrop {
 		return _blockDrops[self.typ];
 	}
 
@@ -369,12 +415,16 @@ pub const Block = packed struct { // MARK: Block
 		return _absorption[self.typ];
 	}
 
-	/// GUI that is opened on click.
-	pub inline fn gui(self: Block) []u8 {
-		return _gui[self.typ];
+	pub inline fn onInteract(self: Block) ClientBlockCallback {
+		return _onInteract[self.typ];
 	}
-
-	pub inline fn mode(self: Block) *RotationMode {
+	pub inline fn onBreak(self: Block) ServerBlockCallback {
+		return _onBreak[self.typ];
+	}
+	pub inline fn onUpdate(self: Block) ServerBlockCallback {
+		return _onUpdate[self.typ];
+	}
+	pub inline fn mode(self: Block) *const RotationMode {
 		return _mode[self.typ];
 	}
 
@@ -418,15 +468,15 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub inline fn tickEvent(self: Block) ?TickEvent {
-		return _tickEvent[self.typ];
+	pub inline fn onTick(self: Block) ServerBlockCallback {
+		return _onTick[self.typ];
 	}
 
-	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
-		return _touchFunction[self.typ];
+	pub inline fn onTouch(self: Block) BlockTouchCallback {
+		return _onTouch[self.typ];
 	}
 
-	pub fn blockEntity(self: Block) ?*BlockEntityType {
+	pub fn blockEntity(self: Block) ?*const BlockEntityType {
 		return _blockEntity[self.typ];
 	}
 
@@ -434,49 +484,6 @@ pub const Block = packed struct { // MARK: Block
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 };
-
-// MARK: Tick
-pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
-pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
-pub const TickFunctions = struct {
-	pub fn replaceWithCobble(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
-		const cobblestone = parseBlock("cubyz:cobblestone");
-
-		const wx = _chunk.super.pos.wx + x;
-		const wy = _chunk.super.pos.wy + y;
-		const wz = _chunk.super.pos.wz + z;
-
-		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
-	}
-};
-
-pub const TickEvent = struct {
-	function: *const TickFunction,
-	chance: f32,
-
-	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
-		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
-
-		const function = tickFunctions.getFunctionPointer(functionName) orelse {
-			std.log.err("Could not find TickFunction {s}.", .{functionName});
-			return null;
-		};
-
-		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
-	}
-
-	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
-			self.function(block, _chunk, x, y, z);
-		}
-	}
-};
-
-// MARK: Touch
-pub var touchFunctions: utils.NamedCallbacks(TouchFunctions, TouchFunction) = undefined;
-pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
-pub const TouchFunctions = struct {};
 
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
@@ -498,13 +505,13 @@ pub const meshes = struct { // MARK: meshes
 	var loadedMeshes: u32 = 0;
 
 	var textureIDs: main.ListUnmanaged([]const u8) = .{};
-	var animation: main.ListUnmanaged(AnimationData) = .{};
+	var animationData: []AnimationData = &.{};
 	var blockTextures: main.ListUnmanaged(Image) = .{};
 	var emissionTextures: main.ListUnmanaged(Image) = .{};
 	var reflectivityTextures: main.ListUnmanaged(Image) = .{};
 	var absorptionTextures: main.ListUnmanaged(Image) = .{};
 	var textureFogData: main.ListUnmanaged(FogData) = .{};
-	pub var textureOcclusionData: main.ListUnmanaged(bool) = .{};
+	pub var textureOcclusionData: []std.atomic.Value(bool) = &.{};
 
 	pub var blockBreakingTextures: main.ListUnmanaged(u16) = .{};
 
@@ -570,13 +577,13 @@ pub const meshes = struct { // MARK: meshes
 		meshes.size = 0;
 		loadedMeshes = 0;
 		textureIDs = .{};
-		animation = .{};
+		animationData = &.{};
 		blockTextures = .{};
 		emissionTextures = .{};
 		reflectivityTextures = .{};
 		absorptionTextures = .{};
 		textureFogData = .{};
-		textureOcclusionData = .{};
+		textureOcclusionData = &.{};
 		blockBreakingTextures = .{};
 	}
 
@@ -589,11 +596,11 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub inline fn fogDensity(block: Block) f32 {
-		return textureFogData.items[animation.items[textureIndices[block.typ][0]].startFrame].fogDensity;
+		return textureFogData.items[animationData[textureIndices[block.typ][0]].startFrame].fogDensity;
 	}
 
 	pub inline fn fogColor(block: Block) u32 {
-		return textureFogData.items[animation.items[textureIndices[block.typ][0]].startFrame].fogColor;
+		return textureFogData.items[animationData[textureIndices[block.typ][0]].startFrame].fogColor;
 	}
 
 	pub inline fn hasFog(block: Block) bool {
@@ -630,7 +637,7 @@ pub const meshes = struct { // MARK: meshes
 		return result;
 	}
 
-	fn readTextureData(_path: []const u8) void {
+	fn readTextureData(index: usize, _path: []const u8) void {
 		const path = _path[0 .. _path.len - ".png".len];
 		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
 		defer main.stackAllocator.free(textureInfoPath);
@@ -638,7 +645,7 @@ pub const meshes = struct { // MARK: meshes
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
-		animation.append(main.worldArena, .{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
+		animationData[index] = .{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime};
 		const base = readTextureFile(path, ".png", Image.defaultImage);
 		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
 		const reflectivity = readTextureFile(path, "_reflectivity.png", Image.emptyImage);
@@ -653,10 +660,10 @@ pub const meshes = struct { // MARK: meshes
 				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
 			});
 		}
-		textureOcclusionData.append(main.worldArena, textureInfoZon.get(bool, "hasOcclusion", true));
+		textureOcclusionData[index].store(textureInfoZon.get(bool, "hasOcclusion", true), .unordered);
 	}
 
-	pub fn readTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
+	pub fn findTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
 		const textureId = _textureId orelse return error.NotFound;
 		var result: u16 = undefined;
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
@@ -687,18 +694,17 @@ pub const meshes = struct { // MARK: meshes
 		result = @intCast(textureIDs.items.len);
 
 		textureIDs.append(main.worldArena, main.worldArena.dupe(u8, path));
-		readTextureData(path);
 		return result;
 	}
 
 	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: *[16]u16) void {
-		const defaultIndex = readTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
+		const defaultIndex = findTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
 		inline for(textureIndicesRef, 0..) |*ref, i| {
 			var textureId = zon.get(?[]const u8, std.fmt.comptimePrint("texture{}", .{i}), null);
 			if(i < sideNames.len) {
 				textureId = zon.get(?[]const u8, sideNames[i], textureId);
 			}
-			ref.* = readTexture(textureId, assetFolder) catch defaultIndex;
+			ref.* = findTexture(textureId, assetFolder) catch defaultIndex;
 		}
 	}
 
@@ -726,16 +732,24 @@ pub const meshes = struct { // MARK: meshes
 
 			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
 			defer main.stackAllocator.free(id);
-			blockBreakingTextures.append(main.worldArena, readTexture(id, assetFolder) catch break);
+			blockBreakingTextures.append(main.worldArena, findTexture(id, assetFolder) catch break);
 		}
 	}
 
 	pub fn preProcessAnimationData(time: u32) void {
 		animationComputePipeline.bind();
 		graphics.c.glUniform1ui(animationUniforms.time, time);
-		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animation.items.len));
-		graphics.c.glDispatchCompute(@intCast(@divFloor(animation.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
+		graphics.c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
+	}
+
+	fn finishTextureLoading() void {
+		animationData = main.worldArena.alloc(AnimationData, textureIDs.items.len);
+		textureOcclusionData = main.worldArena.alloc(std.atomic.Value(bool), textureIDs.items.len);
+		for(textureIDs.items, 0..) |path, i| {
+			readTextureData(i, path);
+		}
 	}
 
 	pub fn reloadTextures(_: usize) void {
@@ -744,9 +758,8 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearRetainingCapacity();
-		textureOcclusionData.clearRetainingCapacity();
-		for(textureIDs.items) |path| {
-			readTextureData(path);
+		for(textureIDs.items, 0..) |path, i| {
+			readTextureData(i, path);
 		}
 		generateTextureArray();
 	}
@@ -787,10 +800,10 @@ pub const meshes = struct { // MARK: meshes
 		if(fogSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		animationSSBO = SSBO.initStatic(AnimationData, animation.items);
+		animationSSBO = SSBO.initStatic(AnimationData, animationData);
 		animationSSBO.?.bind(0);
 
-		animatedTextureSSBO = SSBO.initStaticSize(u32, animation.items.len);
+		animatedTextureSSBO = SSBO.initStaticSize(u32, animationData.len);
 		animatedTextureSSBO.?.bind(1);
 		fogSSBO = SSBO.initStatic(FogData, textureFogData.items);
 		fogSSBO.?.bind(7);

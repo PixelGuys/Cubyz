@@ -11,7 +11,14 @@ const vulkan = @import("vulkan.zig");
 
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
-	@cInclude("glad/vulkan.h");
+
+	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
+	if(builtin.target.os.tag == .macos) {
+		@cInclude("vulkan/vulkan.h");
+		@cInclude("vulkan/vulkan_beta.h");
+	} else {
+		@cInclude("glad/vulkan.h");
+	}
 	@cInclude("GLFW/glfw3.h");
 });
 
@@ -23,15 +30,32 @@ pub var window: *c.GLFWwindow = undefined;
 pub var vulkanWindow: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
+pub var scrollOffsetInteger: i32 = 0;
+var scrollOffsetFraction: f32 = 0;
 
 pub const Gamepad = struct {
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 	var controllerConnectedPreviously: bool = false;
-	fn applyDeadzone(value: f32) f32 {
+	fn applyDeadzone(state: *c.GLFWgamepadstate, axis: usize) void {
+		const value = state.axes[axis];
 		const minValue = settings.controllerAxisDeadzone;
 		const maxRange = 1.0 - minValue;
-		return (value*maxRange) + minValue;
+		state.axes[axis] = std.math.sign(value)*(@max(0, @abs(value) - minValue))/maxRange;
+	}
+	fn applyDeadzones2D(state: *c.GLFWgamepadstate, xAxis: usize, yAxis: usize) void {
+		var axisVec: Vec2f = .{state.axes[xAxis], state.axes[yAxis]};
+		const length: Vec2f = @splat(vec.length(axisVec));
+		const minValue: Vec2f = @splat(settings.controllerAxisDeadzone);
+		const maxRange: Vec2f = @splat((1.0 - minValue[0])*length[0]);
+
+		axisVec = axisVec*(@max(Vec2f{0, 0}, length - minValue))/maxRange;
+		if(vec.lengthSquare(axisVec) > 1) {
+			axisVec = vec.normalize(axisVec);
+		}
+
+		state.axes[xAxis] = axisVec[0];
+		state.axes[yAxis] = axisVec[1];
 	}
 	pub fn update(delta: f64) void {
 		if(!controllerConnectedPreviously and isControllerConnected()) {
@@ -57,7 +81,11 @@ pub const Gamepad = struct {
 					_ = gamepadState.remove(jid);
 				}
 			}
-			const newState: c.GLFWgamepadstate = if(gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
+			const newState: *c.GLFWgamepadstate = gamepadState.get(jid) orelse continue;
+			applyDeadzones2D(newState, c.GLFW_GAMEPAD_AXIS_LEFT_X, c.GLFW_GAMEPAD_AXIS_LEFT_Y);
+			applyDeadzones2D(newState, c.GLFW_GAMEPAD_AXIS_RIGHT_X, c.GLFW_GAMEPAD_AXIS_RIGHT_Y);
+			applyDeadzone(newState, c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER);
+			applyDeadzone(newState, c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER);
 			if(nextGamepadListener != null) {
 				for(0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
 					if((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
@@ -69,8 +97,8 @@ pub const Gamepad = struct {
 			}
 			if(nextGamepadListener != null) {
 				for(0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
-					const newAxis = applyDeadzone(newState.axes[axis]);
-					const oldAxis = applyDeadzone(oldState.axes[axis]);
+					const newAxis = newState.axes[axis];
+					const oldAxis = oldState.axes[axis];
 					if(newAxis != 0 and oldAxis == 0) {
 						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.axes[axis] > 0}, -1);
 						nextGamepadListener = null;
@@ -91,8 +119,8 @@ pub const Gamepad = struct {
 				} else {
 					const axis = key.gamepadAxis.?.axis;
 					const positive = key.gamepadAxis.?.positive;
-					var newAxis = applyDeadzone(newState.axes[@intCast(axis)]);
-					var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
+					var newAxis = newState.axes[@intCast(axis)];
+					var oldAxis = oldState.axes[@intCast(axis)];
 					if(!positive) {
 						newAxis *= -1.0;
 						oldAxis *= -1.0;
@@ -121,8 +149,8 @@ pub const Gamepad = struct {
 				GLFWCallbacks.currentPos[0] = std.math.clamp(GLFWCallbacks.currentPos[0], 0, winSize[0]);
 				GLFWCallbacks.currentPos[1] = std.math.clamp(GLFWCallbacks.currentPos[1], 0, winSize[1]);
 			}
+			GLFWCallbacks.scroll(undefined, 0, @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4));
 		}
-		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4);
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
 	pub fn isControllerConnected() bool {
@@ -135,10 +163,10 @@ pub const Gamepad = struct {
 		curTimestamp: i128,
 		var running = std.atomic.Value(bool).init(false);
 		const vtable = main.utils.ThreadPool.VTable{
-			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-			.run = main.utils.castFunctionSelfToAnyopaque(run),
-			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
 		};
 
 		pub fn schedule(curTimestamp: i128) void {
@@ -167,15 +195,15 @@ pub const Gamepad = struct {
 		pub fn run(self: *ControllerMappingDownloadTask) void {
 			std.log.info("Starting controller mapping download...", .{});
 			defer self.clean();
-			var client: std.http.Client = .{.allocator = main.stackAllocator.allocator};
+			var client: std.http.Client = .{.allocator = main.stackAllocator.allocator, .io = main.io};
 			defer client.deinit();
-			var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
-			defer list.deinit();
+			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator);
+			defer writer.deinit();
 			defer controllerMappingsDownloaded.store(true, std.builtin.AtomicOrder.release);
 			const fetchResult = client.fetch(.{
 				.method = .GET,
 				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
-				.response_storage = .{.dynamic = &list},
+				.response_writer = &writer.writer,
 			}) catch |err| {
 				std.log.err("Failed to download controller mappings: {s}", .{@errorName(err)});
 				return;
@@ -184,7 +212,7 @@ pub const Gamepad = struct {
 				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
 				return;
 			}
-			files.cwd().write("./gamecontrollerdb.txt", list.items) catch |err| {
+			files.cwd().write("./gamecontrollerdb.txt", writer.written()) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
@@ -206,11 +234,11 @@ pub const Gamepad = struct {
 	pub fn downloadControllerMappings() void {
 		if(builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
-		const curTimestamp = std.time.nanoTimestamp();
-		const timestamp: i128 = blk: {
+		const curTimestamp: i96 = (std.Io.Clock.Timestamp.now(main.io, .real) catch unreachable).raw.nanoseconds;
+		const timestamp: i96 = blk: {
 			const stamp = files.cwd().read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
 			defer main.stackAllocator.free(stamp);
-			break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
+			break :blk std.fmt.parseInt(i96, stamp, 16) catch 0;
 		};
 		const delta = curTimestamp -% timestamp;
 		needsDownload = delta >= 7*std.time.ns_per_day;
@@ -279,8 +307,8 @@ pub const Key = struct { // MARK: Key
 	gamepadButton: c_int = -1,
 	mouseButton: c_int = -1,
 	scancode: c_int = 0,
-	releaseAction: ?*const fn() void = null,
-	pressAction: ?*const fn() void = null,
+	releaseAction: ?*const fn(Modifiers) void = null,
+	pressAction: ?*const fn(Modifiers) void = null,
 	repeatAction: ?*const fn(Modifiers) void = null,
 	notifyRequirement: Requirement = .always,
 	grabbedOnPress: bool = false,
@@ -460,8 +488,8 @@ pub const Key = struct { // MARK: Key
 		if(!self.requiredModifiers.satisfiedBy(mods)) return;
 		if(textKeyPressedInTextField and self.requiredModifiers.isEmpty()) return; // Don't send events for keys that are used in writing letters.
 		switch(typ) {
-			.press => if(self.pressAction) |a| a(),
-			.release => if(self.releaseAction) |a| a(),
+			.press => if(self.pressAction) |a| a(mods),
+			.release => if(self.releaseAction) |a| a(mods),
 			.repeat => if(self.repeatAction) |a| a(mods),
 		}
 	}
@@ -563,6 +591,9 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	fn scroll(_: ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.c) void {
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
+		scrollOffsetFraction += @floatCast(yOffset);
+		scrollOffsetInteger += @intFromFloat(@round(scrollOffsetFraction));
+		scrollOffsetFraction -= @round(scrollOffsetFraction);
 	}
 	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.c) void {
 		const sourceString: []const u8 = switch(source) {
@@ -632,8 +663,8 @@ fn releaseButtonsOnGrabChange(grab: bool) void {
 	for(&main.KeyBoard.keys) |*key| {
 		if(key.notifyRequirement == state and key.pressed) {
 			key.pressed = false;
+			if(key.releaseAction) |rel| rel(key.modsOnPress);
 			key.modsOnPress = .{};
-			if(key.releaseAction) |rel| rel();
 		}
 	}
 }
@@ -670,6 +701,14 @@ pub fn setClipboardString(string: []const u8) void {
 
 pub fn init() void { // MARK: init()
 	_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
+
+	if(builtin.target.os.tag == .macos) {
+		// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
+		// and GLFW's default attempt to load it dynamically would fail. Instead, tell GLFW where it can find the loader functions directly.
+		c.glfwInitVulkanLoader(c.vkGetInstanceProcAddr);
+
+		c.glfwInitHint(c.GLFW_COCOA_CHDIR_RESOURCES, c.GLFW_FALSE);
+	}
 
 	if(c.glfwInit() == 0) {
 		@panic("Failed to initialize GLFW");
@@ -745,6 +784,7 @@ fn setCursorVisible(visible: bool) void {
 
 pub fn handleEvents(deltaTime: f64) void {
 	scrollOffset = 0;
+	scrollOffsetInteger = 0;
 	c.glfwPollEvents();
 	Gamepad.update(deltaTime);
 }
@@ -753,7 +793,7 @@ var oldX: c_int = 0;
 var oldY: c_int = 0;
 var oldWidth: c_int = 0;
 var oldHeight: c_int = 0;
-pub fn toggleFullscreen() void {
+pub fn toggleFullscreen(_: Key.Modifiers) void {
 	isFullscreen = !isFullscreen;
 	if(isFullscreen) {
 		c.glfwGetWindowPos(window, &oldX, &oldY);

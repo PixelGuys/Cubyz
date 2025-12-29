@@ -20,7 +20,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		water_surface,
 	};
 	const VTable = struct {
-		loadModel: *const fn(parameters: ZonElement) *anyopaque,
+		loadModel: *const fn(parameters: ZonElement) ?*anyopaque,
 		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
@@ -38,9 +38,13 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
 		};
+		const vtableModel = vtable.loadModel(parameters) orelse {
+			std.log.err("Error occurred while loading structure with id '{s}'. Dropping model from biome.", .{id});
+			return null;
+		};
 		return SimpleStructureModel{
 			.vtable = vtable,
-			.data = vtable.loadModel(parameters),
+			.data = vtableModel,
 			.chance = parameters.get(f32, "chance", 0.1),
 			.priority = parameters.get(f32, "priority", 1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
@@ -55,9 +59,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
-		self.loadModel = main.utils.castFunctionReturnToAnyopaque(Generator.loadModel);
-		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
-		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
+		self.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
+		self.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate);
+		self.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {
 				return hashGeneric(ptr.*);
 			}
@@ -321,7 +325,7 @@ pub const Biome = struct { // MARK: Biome
 			.isCave = zon.get(bool, "isCave", false),
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
-			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate")),
+			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate/base")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
 			.skyColor = blk: {
 				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
@@ -345,11 +349,17 @@ pub const Biome = struct { // MARK: Biome
 			.maxHeightLimit = zon.get(i32, "maxHeightLimit", std.math.maxInt(i32)),
 			.smoothBeaches = zon.get(bool, "smoothBeaches", false),
 			.supportsRivers = zon.get(bool, "rivers", false),
-			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:cubyz")),
+			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:TotalDemented/Cubyz")),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
+		if(minRadius > maxRadius) {
+			std.log.err("Biome {s} has invalid radius range ({d}, {d})", .{self.id, minRadius, maxRadius});
+		}
+		if(minRadius < terrain.SurfaceMap.MapFragment.biomeSize/2) {
+			std.log.err("Biome {s} has radius {d}, smaller than grid resolution. It should be at least {d}", .{self.id, minRadius, terrain.SurfaceMap.MapFragment.biomeSize/2});
+		}
 		if(self.minHeight > self.maxHeight) {
 			std.log.err("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
 		}
