@@ -437,6 +437,7 @@ fn update() void { // MARK: update()
 
 	while(userConnectList.popFront()) |user| {
 		connectInternal(user);
+		user.decreaseRefCount();
 	}
 
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -551,6 +552,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 }
 
 pub fn connect(user: *User) void {
+	user.increaseRefCount();
 	userConnectList.pushBack(user);
 }
 
