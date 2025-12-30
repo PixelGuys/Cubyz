@@ -12,6 +12,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	var z: ?f64 = null;
 	var split = std.mem.splitScalar(u8, args, ' ');
 	while(split.next()) |arg| {
+		if(arg.len == 0) break;
 		const num: f64 = std.fmt.parseFloat(f64, arg) catch {
 			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
 			return;
@@ -28,7 +29,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		}
 	}
 	if(x == null or y == null) {
-		source.sendMessage("#ff0000Too few arguments for command /setspawn", .{});
+		source.sendMessage("#ffff00{}", .{source.spawnPos});
 		return;
 	}
 	if(z == null) {
