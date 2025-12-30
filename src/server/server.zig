@@ -112,7 +112,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	playerSpawnPos: Vec3d = .{0, 0, 0},
+	spawnPos: Vec3d = .{0, 0, 0},
 	worldEditData: WorldEditData = undefined,
 
 	lastSentBiomeId: u32 = 0xffffffff,

@@ -174,7 +174,6 @@ pub const Sync = struct { // MARK: Sync
 				commands.pushBack(cmd);
 			}
 		}
-
 	};
 
 	pub const ServerSide = struct { // MARK: ServerSide
@@ -503,7 +502,7 @@ pub const Sync = struct { // MARK: Sync
 		fn setSpawn(user: *main.server.User, newSpawnPoint: Vec3d) void {
 			mutex.lock();
 			defer mutex.unlock();
-			user.playerSpawnPos = newSpawnPoint;
+			user.spawnPos = newSpawnPoint;
 		}
 	};
 
@@ -531,7 +530,7 @@ pub const Sync = struct { // MARK: Sync
 	}
 
 	pub fn setSpawn(user: ?*main.server.User, newSpawnPoint: Vec3d) void {
-if(user != null) {
+		if(user != null) {
 			ServerSide.setSpawn(user.?, newSpawnPoint);
 		}
 	}
@@ -670,7 +669,7 @@ pub const Command = struct { // MARK: Command
 		},
 		kill: struct {
 			target: ?*main.server.User,
-                        spawnPoint: Vec3d,
+			spawnPoint: Vec3d,
 		},
 		energy: struct {
 			target: ?*main.server.User,
@@ -787,7 +786,7 @@ pub const Command = struct { // MARK: Command
 				.kill => {
 					return .{.kill = .{
 						.target = null,
-                                                .spawnPoint = try reader.readVec(Vec3d),
+						.spawnPoint = try reader.readVec(Vec3d),
 					}};
 				},
 				.energy => {
@@ -822,8 +821,8 @@ pub const Command = struct { // MARK: Command
 					writer.writeFloat(f32, health.health);
 				},
 				.kill => |kill| {
-                                    writer.writeVec(Vec3d, kill.spawnPoint);  
-                                },
+					writer.writeVec(Vec3d, kill.spawnPoint);
+				},
 				.energy => |energy| {
 					writer.writeFloat(f32, energy.energy);
 				},
@@ -1042,7 +1041,7 @@ pub const Command = struct { // MARK: Command
 
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
-                                                        .spawnPoint = info.target.?.playerSpawnPos,
+							.spawnPoint = info.target.?.spawnPos,
 						}});
 					} else {
 						self.syncOperations.append(allocator, .{.health = .{
