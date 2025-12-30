@@ -4,7 +4,7 @@ const main = @import("main");
 const User = main.server.User;
 
 pub const description = "Sets the spawn point for the player";
-pub const usage = "/setSpawn";
+pub const usage = "/spawn";
 
 pub fn execute(args: []const u8, source: *User) void {
 	var x: ?f64 = null;

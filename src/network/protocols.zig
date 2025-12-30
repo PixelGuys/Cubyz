@@ -511,7 +511,6 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		time = 3,
 		biome = 4,
 		particles = 5,
-		setSpawn = 6,
 	};
 
 	const WorldEditPosition = enum(u2) {
@@ -580,16 +579,12 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				const emitter: particles.Emitter = .init(particleId, collides);
 				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 			},
-			.setSpawn => {
-				if(conn.isServerSide()) return error.InvalidPacket;
-				game.Player.setSpawn(try reader.readVec(Vec3d));
-			},
 		}
 	}
 
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		switch(try reader.readEnum(UpdateType)) {
-			.gamemode, .teleport, .time, .biome, .particles, .setSpawn => return error.InvalidSide,
+			.gamemode, .teleport, .time, .biome, .particles => return error.InvalidSide,
 			.worldEditPos => {
 				const typ = try reader.readEnum(WorldEditPosition);
 				const pos: ?Vec3i = switch(typ) {
@@ -610,16 +605,6 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 
 	pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
 		conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
-	}
-
-	pub fn sendSpawnPoint(conn: *Connection, pos: Vec3d) void {
-		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
-		defer writer.deinit();
-
-		writer.writeEnum(UpdateType, .setSpawn);
-		writer.writeVec(Vec3d, pos);
-
-		conn.send(.fast, id, writer.data.items);
 	}
 
 	pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {

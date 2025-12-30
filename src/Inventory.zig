@@ -175,23 +175,6 @@ pub const Sync = struct { // MARK: Sync
 			}
 		}
 
-		fn setSpawn(newSpawnPoint: Vec3d) void {
-			mutex.lock();
-			defer mutex.unlock();
-			main.game.Player.setSpawn(newSpawnPoint);
-			var tempData = main.List(Command).init(main.stackAllocator);
-			defer tempData.deinit();
-			while(commands.popBack()) |_cmd| {
-				var cmd = _cmd;
-				cmd.undo();
-				tempData.append(cmd);
-			}
-			while(tempData.popOrNull()) |_cmd| {
-				var cmd = _cmd;
-				cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
-				commands.pushBack(cmd);
-			}
-		}
 	};
 
 	pub const ServerSide = struct { // MARK: ServerSide
@@ -521,7 +504,6 @@ pub const Sync = struct { // MARK: Sync
 			mutex.lock();
 			defer mutex.unlock();
 			user.playerSpawnPos = newSpawnPoint;
-			main.network.protocols.genericUpdate.sendSpawnPoint(user.conn, newSpawnPoint);
 		}
 	};
 
@@ -549,9 +531,7 @@ pub const Sync = struct { // MARK: Sync
 	}
 
 	pub fn setSpawn(user: ?*main.server.User, newSpawnPoint: Vec3d) void {
-		if(user == null) {
-			ClientSide.setSpawn(newSpawnPoint);
-		} else {
+if(user != null) {
 			ServerSide.setSpawn(user.?, newSpawnPoint);
 		}
 	}
@@ -690,6 +670,7 @@ pub const Command = struct { // MARK: Command
 		},
 		kill: struct {
 			target: ?*main.server.User,
+                        spawnPoint: Vec3d,
 		},
 		energy: struct {
 			target: ?*main.server.User,
@@ -735,8 +716,8 @@ pub const Command = struct { // MARK: Command
 				.health => |health| {
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + health.health, 0, main.game.Player.super.maxHealth);
 				},
-				.kill => {
-					main.game.Player.kill();
+				.kill => |kill| {
+					main.game.Player.kill(kill.spawnPoint);
 				},
 				.energy => |energy| {
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + energy.energy, 0, main.game.Player.super.maxEnergy);
@@ -806,6 +787,7 @@ pub const Command = struct { // MARK: Command
 				.kill => {
 					return .{.kill = .{
 						.target = null,
+                                                .spawnPoint = try reader.readVec(Vec3d),
 					}};
 				},
 				.energy => {
@@ -839,7 +821,9 @@ pub const Command = struct { // MARK: Command
 				.health => |health| {
 					writer.writeFloat(f32, health.health);
 				},
-				.kill => {},
+				.kill => |kill| {
+                                    writer.writeVec(Vec3d, kill.spawnPoint);  
+                                },
 				.energy => |energy| {
 					writer.writeFloat(f32, energy.energy);
 				},
@@ -1058,6 +1042,7 @@ pub const Command = struct { // MARK: Command
 
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
+                                                        .spawnPoint = info.target.?.playerSpawnPos,
 						}});
 					} else {
 						self.syncOperations.append(allocator, .{.health = .{

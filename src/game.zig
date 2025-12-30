@@ -420,7 +420,6 @@ pub const Player = struct { // MARK: Player
 		desiredPos: Vec3d = .{0, 0, 1.7 - standingBoundingBoxExtent[2]},
 	};
 	pub var super: main.server.Entity = .{};
-	pub var playerSpawnPos: Vec3d = .{0, 0, 0};
 	pub var eye: EyeData = .{};
 	pub var crouching: bool = false;
 	pub var id: u32 = 0;
@@ -513,10 +512,6 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn setSpawn(newSpawnpoint: Vec3d) void {
-		playerSpawnPos = newSpawnpoint;
-	}
-
 	pub fn isCreative() bool {
 		return gamemode.load(.monotonic) == .creative;
 	}
@@ -548,8 +543,8 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn kill() void {
-		Player.super.pos = Player.playerSpawnPos;
+	pub fn kill(spawnPos: Vec3d) void {
+		Player.super.pos = spawnPos;
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
