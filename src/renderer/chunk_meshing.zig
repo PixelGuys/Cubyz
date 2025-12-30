@@ -34,6 +34,7 @@ const UniformStruct = struct {
 	screenSize: c_int,
 	ambientLight: c_int,
 	contrast: c_int,
+	lightGamma: c_int,
 	@"fog.color": c_int,
 	@"fog.density": c_int,
 	@"fog.fogLower": c_int,
@@ -185,6 +186,8 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
 	c.glUniform1f(locations.contrast, main.settings.blockContrast);
+
+	c.glUniform1f(locations.lightGamma, main.settings.lightGamma);
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
 

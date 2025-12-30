@@ -15,6 +15,7 @@ layout(location = 1) uniform mat4 projectionMatrix;
 layout(location = 2) uniform mat4 viewMatrix;
 layout(location = 3) uniform ivec3 playerPositionInteger;
 layout(location = 4) uniform vec3 playerPositionFraction;
+layout(location = 14) uniform float lightGamma;
 
 struct FaceData {
 	int encodedPositionAndLightIndex;
@@ -86,6 +87,7 @@ void main() {
 		fullLight >> 0 & 31u
 	);
 	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
+	light = pow(light, vec3(1.0/lightGamma));
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
 
 	textureIndex = textureAndQuad & 65535;
