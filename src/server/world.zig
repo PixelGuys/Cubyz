@@ -572,8 +572,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
 
-		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, settings.get([]const u8, "default_gamemode", "creative")) orelse .creative;
-		self.allowCheats = settings.get(bool, "cheats", true);
+		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, settings.get([]const u8, "defaultGamemode", "creative")) orelse .creative;
+		self.allowCheats = settings.get(bool, "allowCheats", true);
 		self.testingMode = settings.get(bool, "testingMode", false);
 	}
 
