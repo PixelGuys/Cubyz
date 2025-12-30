@@ -2,7 +2,7 @@
 	.properties = .{},
 	.ground_structure = .{
 		"cubyz:grass",
-		"2 to 3 cubyz:soil",
+		"1 to 2 cubyz:soil",
 	},
 	.structures = .{
 		.{
