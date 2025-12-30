@@ -59,6 +59,8 @@ pub var @"lod0.5Distance": f32 = 200;
 
 pub var blockContrast: f32 = 0;
 
+pub var nightBrightness: f32 = 0.5;
+
 pub var storageTime: std.Io.Duration = .fromSeconds(5);
 
 pub var updateRepeatSpeed: std.Io.Duration = .fromMilliseconds(200);
