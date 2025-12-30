@@ -38,5 +38,5 @@ pub fn execute(args: []const u8, source: *User) void {
 	y = std.math.clamp(y.?, -1e9, 1e9);
 	z = std.math.clamp(z.?, -1e9, 1e9);
 
-	main.items.Inventory.Sync.setSpawn(source, .{x.?, y.?, z.?});
+	source.spawnPos = .{x.?, y.?, z.?};
 }

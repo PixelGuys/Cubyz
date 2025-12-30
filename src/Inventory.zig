@@ -498,12 +498,6 @@ pub const Sync = struct { // MARK: Sync
 			user.gamemode.store(gamemode, .monotonic);
 			main.network.protocols.genericUpdate.sendGamemode(user.conn, gamemode);
 		}
-
-		fn setSpawn(user: *main.server.User, newSpawnPoint: Vec3d) void {
-			mutex.lock();
-			defer mutex.unlock();
-			user.spawnPos = newSpawnPoint;
-		}
 	};
 
 	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
@@ -526,12 +520,6 @@ pub const Sync = struct { // MARK: Sync
 			ClientSide.setGamemode(gamemode);
 		} else {
 			ServerSide.setGamemode(user.?, gamemode);
-		}
-	}
-
-	pub fn setSpawn(user: ?*main.server.User, newSpawnPoint: Vec3d) void {
-		if(user != null) {
-			ServerSide.setSpawn(user.?, newSpawnPoint);
 		}
 	}
 };
