@@ -16,7 +16,16 @@
 			.modifiers = .{
 				.{
 					.id = "fragile",
-					.strength = 0.20,
+					.strength = 0.2,
+				},
+				.{
+					.id = "powerful",
+					.strength = 0.25,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 3,
+					},
 				},
 			},
 		},
