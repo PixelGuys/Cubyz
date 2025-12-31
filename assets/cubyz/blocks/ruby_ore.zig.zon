@@ -24,7 +24,7 @@
 					.restriction = .{
 						.id = .encased,
 						.tag = .precious,
-						.amount = 3,
+						.amount = 2,
 					},
 				},
 			},
