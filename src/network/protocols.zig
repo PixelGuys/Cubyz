@@ -677,7 +677,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 	}
 
 	pub fn sendClear(conn: *Connection, cleartype: ClearType) void {
-		conn.send(.fast, id, &.{@intFromEnum(UpdateType.clear), @intFromEnum(cleartype)});
+		conn.send(.lossy, id, &.{@intFromEnum(UpdateType.clear), @intFromEnum(cleartype)}); //TODO change channel afer #1879
 	}
 };
 
