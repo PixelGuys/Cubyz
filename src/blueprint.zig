@@ -110,15 +110,18 @@ pub const Blueprint = struct {
 		return .{.success = self};
 	}
 
-	pub const PasteMode = enum {all, degradable};
+	pub const PasteMode = enum {
+		all,
+		degradable,
+		fn asUpdateMode(self: PasteMode) ServerChunk.UpdateMode {
+			return switch(self) {
+				.all => .replace,
+				.degradable => .replaceIfDegradable,
+			};
+		}
+	};
 
 	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode) void {
-		switch(mode) {
-			inline else => |comptimeMode| _pasteInGeneration(self, pos, chunk, comptimeMode),
-		}
-	}
-
-	fn _pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, comptime mode: PasteMode) void {
 		const indexEndX: i32 = @min(@as(i32, chunk.super.width) - pos[0], @as(i32, @intCast(self.blocks.width)));
 		const indexEndY: i32 = @min(@as(i32, chunk.super.width) - pos[1], @as(i32, @intCast(self.blocks.depth)));
 		const indexEndZ: i32 = @min(@as(i32, chunk.super.width) - pos[2], @as(i32, @intCast(self.blocks.height)));
@@ -136,10 +139,7 @@ pub const Blueprint = struct {
 					const chunkX = indexX + pos[0];
 					const chunkY = indexY + pos[1];
 					const chunkZ = indexZ + pos[2];
-					switch(mode) {
-						.all => chunk.updateBlockInGeneration(chunkX, chunkY, chunkZ, block),
-						.degradable => chunk.updateBlockIfDegradable(chunkX, chunkY, chunkZ, block),
-					}
+					chunk.updateBlock(mode.asUpdateMode(), .noSetChanged, chunkX, chunkY, chunkZ, block);
 				}
 			}
 		}
