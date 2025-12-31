@@ -568,6 +568,10 @@ pub fn updateAndRenderGui() void {
 }
 
 pub fn toggleGameMenu() void {
+	if(hideGui) {
+		hideGui = false;
+		return;
+	}
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
 	if(main.Window.grabbed) { // Take of the currently held item stack and close some windows
 		main.game.Player.inventory.depositOrDrop(inventory.carried);
