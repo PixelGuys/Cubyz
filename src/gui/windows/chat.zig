@@ -109,6 +109,16 @@ pub const History = struct {
 	}
 };
 
+pub fn clearChat() void {
+	while(history.popOrNull()) |label| {
+		label.deinit();
+	}
+	historyStart = 0;
+	fadeOutEnd = 0;
+	expirationTime.clearRetainingCapacity();
+	refresh();
+}
+
 pub fn init() void {
 	history = .init(main.globalAllocator);
 	messageHistory = .init();
@@ -187,16 +197,11 @@ pub fn loadPreviousHistoryEntry() void {
 }
 
 pub fn onClose() void {
-	while(history.popOrNull()) |label| {
-		label.deinit();
-	}
+	clearChat();
 	while(messageQueue.popFront()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageHistory.clear();
-	expirationTime.clearRetainingCapacity();
-	historyStart = 0;
-	fadeOutEnd = 0;
 	input.deinit();
 	window.rootComponent.?.verticalList.children.clearRetainingCapacity();
 	window.rootComponent.?.deinit();
