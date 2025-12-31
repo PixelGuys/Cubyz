@@ -16,15 +16,7 @@
 			.modifiers = .{
 				.{
 					.id = "fragile",
-					.strength = 0.45,
-					.restriction = .{
-						.id = .not,
-						.child = .{
-							.id = .encased,
-							.tag = .precious,
-							.amount = 4,
-						},
-					},
+					.strength = 0.20,
 				},
 			},
 		},
