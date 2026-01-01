@@ -66,8 +66,8 @@ pub const ParticleManager = struct {
 
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
 		var rotVel: RandomRange(f32) = RandomRange(f32).fromZon(zon.getChild("rotationVelocity")) orelse .init(20, 60);
-		rotVel.min = std.math.pi/180.0;
-		rotVel.max = std.math.pi/180.0;
+		rotVel.min = std.math.degreesToRadians(rotVel.min);
+		rotVel.max = std.math.degreesToRadians(rotVel.max);
 		const particleTypeLocal = ParticleTypeLocal{
 			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
 			.rotVel = rotVel,
@@ -386,7 +386,7 @@ pub const DirectionMode = union(enum) {
 		const dirModeName = zon.get([]const u8, "mode", @tagName(DirectionMode.spread));
 		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.InvalidDirectionMode;
 		return switch(dirMode) {
-			.direction => @unionInit(DirectionMode, @tagName(DirectionMode.direction), zon.get(Vec3f, "direction", .{0, 0, 1})),
+			.direction => .{.direction = zon.get(Vec3f, "direction", .{0, 0, 1})},
 			inline else => |mode| @unionInit(DirectionMode, @tagName(mode), {}),
 		};
 	}
