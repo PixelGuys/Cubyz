@@ -870,6 +870,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const player = &user.player;
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
+
 			main.items.Inventory.Sync.setGamemode(user, self.defaultGamemode);
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
