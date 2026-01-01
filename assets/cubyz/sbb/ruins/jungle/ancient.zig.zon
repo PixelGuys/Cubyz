@@ -1,0 +1,5 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:ruins/jungle/ancient/0"},
+	},
+}
