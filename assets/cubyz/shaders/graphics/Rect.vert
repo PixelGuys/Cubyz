@@ -11,6 +11,19 @@ layout(location = 2) uniform vec2 screen;
 
 layout(location = 3) uniform int rectColor;
 
+float srgbToLinear(float srgbChannel) {
+	if(srgbChannel <= 0.04045) return srgbChannel/12.92;
+	return pow((srgbChannel + 0.055)/1.055, 2.4);
+}
+
+vec3 srgbToLinear(vec3 srgb) {
+	return vec3(
+		srgbToLinear(srgb.r),
+		srgbToLinear(srgb.g),
+		srgbToLinear(srgb.b)
+	);
+}
+
 void main() {
 	// Convert to opengl coordinates:
 	vec2 position_percentage = (start + vertex_pos*size)/screen;
@@ -19,5 +32,5 @@ void main() {
 
 	gl_Position = vec4(position, 0, 1);
 
-	color = vec4((rectColor & 0xff0000)>>16, (rectColor & 0xff00)>>8, rectColor & 0xff, (rectColor>>24) & 255)/255.0;;
+	color = vec4(srgbToLinear(vec3((rectColor & 0xff0000)>>16, (rectColor & 0xff00)>>8, rectColor & 0xff)/255.0), float((rectColor>>24) & 255)/255.0);
 }

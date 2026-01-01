@@ -608,6 +608,7 @@ pub fn clientMain() void { // MARK: clientMain()
 
 	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
+	c.glEnable(c.GL_FRAMEBUFFER_SRGB);
 	var lastBeginRendering = timestamp();
 
 	audio.setMusic("cubyz:TotalDemented/Cubyz");
