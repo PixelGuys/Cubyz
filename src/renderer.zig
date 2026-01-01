@@ -1103,17 +1103,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			if(newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
-
-				// EXAMPLE CODE!! WILL BE REMOVED BEFORE MERGING
-				const spawnShape = particles.Emitter.SpawnShape{.cube = .{.size = .{0.5, 0.5, 0.5}}};
-				const dirMode = particles.DirectionMode.spread;
-				const emitterProps = particles.EmitterProperties{
-					.speed = .init(2, 3),
-					.lifeTime = .init(0.4, 0.7),
-					.randomizeRotation = false,
-				};
-				const emitter = particles.Emitter.init("cubyz:flame", false, spawnShape, emitterProps, dirMode);
-				emitter.spawnParticles(@as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5}, 100);
 			}
 		}
 	}
