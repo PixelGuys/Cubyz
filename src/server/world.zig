@@ -94,8 +94,8 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
 	{
 		const settings = main.ZonElement.initObject(main.stackAllocator);
 
-		settings.put("default_gamemode", @tagName(worldSettings.defaultGamemode));
-		settings.put("cheats", worldSettings.allowCheats);
+		settings.put("defaultGamemode", @tagName(worldSettings.defaultGamemode));
+		settings.put("allowCheats", worldSettings.allowCheats);
 		settings.put("testingMode", worldSettings.testingMode);
 		settings.put("seed", worldSettings.seed);
 
@@ -402,7 +402,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 };
 
-pub const worldDataVersion: u32 = 3;
+pub const worldDataVersion: u32 = 4;
 
 pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -532,7 +532,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn loadWorldConfig(self: *ServerWorld, arena: NeverFailingAllocator, dir: main.files.Dir, worldData: ZonElement) !void { // MARK: loadWorldConfig
-		if(worldData.get(u32, "version", 0) == 2) {
+		if(worldData.get(u32, "version", 0) == 2) { // TODO: #2458
 			std.log.info("Migrating old world with world version 2 to version 3", .{});
 
 			const gamerules = try dir.readToZon(arena, "gamerules.zig.zon");
@@ -553,6 +553,20 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			try dir.writeZon("world.zig.zon", worldData);
 			try dir.deleteFile("gamerules.zig.zon");
 			try dir.deleteFile("generatorSettings.zig.zon");
+		}
+
+		if(worldData.get(u32, "version", 0) == 3) { // TODO: #2458
+			// In version 0.1.0 these values were written incorrectly
+			const settings = worldData.getChild("settings");
+			if(settings.removeChild("default_gamemode")) |gamemode| {
+				settings.put("defaultGamemode", gamemode);
+			}
+			if(settings.removeChild("cheats")) |allowCheats| {
+				settings.put("allowCheats", allowCheats);
+			}
+
+			worldData.put("version", 4);
+			try dir.writeZon("world.zig.zon", worldData);
 		}
 
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
