@@ -578,13 +578,28 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				}
 			},
 			.particles => {
-				const sliceSize = try reader.readInt(u16);
-				const particleId = try reader.readSlice(sliceSize);
+				const particleIdLen = try reader.readVarInt(u16);
+				const particleId = try reader.readSlice(particleIdLen);
 				const pos = try reader.readVec(Vec3d);
 				const collides = try reader.readBool();
-				const count = try reader.readInt(u32);
+				const count = try reader.readVarInt(u32);
+				const spawnZonLen = try reader.readVarInt(usize);
+				const spawnZon = try reader.readSlice(spawnZonLen);
 
-				const emitter: particles.Emitter = .init(particleId, collides);
+				var emitter: particles.Emitter = undefined;
+				if(spawnZonLen != 0) {
+					const zon = ZonElement.parseFromString(main.stackAllocator, null, spawnZon);
+					defer zon.deinit(main.stackAllocator);
+					emitter = .initFromZon(particleId, collides, zon);
+				} else {
+					const emitterProperties = particles.EmitterProperties{
+						.speed = .init(1, 1.5),
+						.lifeTime = .init(0.75, 1),
+						.randomizeRotation = true,
+					};
+					emitter = .init(particleId, collides, .{.point = .{}}, emitterProperties, .spread);
+				}
+
 				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
 			},
 			.clear => {
@@ -654,17 +669,19 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		conn.send(.fast, id, writer.data.items);
 	}
 
-	pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32) void {
+	pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32, spawnZon: []const u8) void {
 		const bufferSize = particleId.len*8 + 32;
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, bufferSize);
 		defer writer.deinit();
 
 		writer.writeEnum(UpdateType, .particles);
-		writer.writeInt(u16, @intCast(particleId.len));
+		writer.writeVarInt(u16, @intCast(particleId.len));
 		writer.writeSlice(particleId);
 		writer.writeVec(Vec3d, pos);
 		writer.writeBool(collides);
-		writer.writeInt(u32, count);
+		writer.writeVarInt(u32, count);
+		writer.writeVarInt(usize, spawnZon.len);
+		writer.writeSlice(spawnZon);
 
 		conn.send(.fast, id, writer.data.items);
 	}

@@ -5,6 +5,8 @@ const Vec2f = main.vec.Vec2f;
 const Vec2i = main.vec.Vec2i;
 const Vec3i = main.vec.Vec3i;
 
+const ZonElement = @import("zon.zig").ZonElement;
+
 const multiplier: u64 = 0x5deece66d;
 const addend: u64 = 0xb;
 const mask: u64 = (1 << 48) - 1;
@@ -128,4 +130,33 @@ pub fn initSeed2D(worldSeed: u64, pos: Vec2i) u64 {
 	const fac = Vec2i{11248723, 105436839};
 	const seed = @reduce(.Xor, fac*%pos);
 	return @as(u32, @bitCast(seed)) ^ worldSeed;
+}
+
+pub fn RandomRange(T: type) type {
+	return struct {
+		min: T,
+		max: T,
+
+		pub fn init(min: T, max: T) @This() {
+			return .{
+				.min = min,
+				.max = max,
+			};
+		}
+
+		pub fn fromZon(zon: ZonElement) ?@This() {
+			const vals: ?@Vector(2, T) = if(zon.as(?T, null)) |v| @splat(v) else zon.as(?@Vector(2, T), null);
+
+			if(vals == null) return null;
+
+			return .{
+				.min = vals.?[0],
+				.max = vals.?[1],
+			};
+		}
+
+		pub fn get(self: @This(), seed: *u64) T {
+			return self.min + (self.max - self.min)*nextFloat(seed);
+		}
+	};
 }
