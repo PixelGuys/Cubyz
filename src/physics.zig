@@ -238,8 +238,6 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 			}
 
-			
-
 			// Always unstuck upwards for now
 			while(collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
 				Player.super.pos[2] += 1;
