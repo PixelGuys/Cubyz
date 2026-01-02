@@ -65,13 +65,13 @@ pub const ParticleManager = struct {
 		};
 
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
-		var rotVel: RandomRange(f32) = RandomRange(f32).fromZon("rotationVelocity", zon) orelse .init(20, 60);
-		rotVel.min = std.math.pi/180.0;
-		rotVel.max = std.math.pi/180.0;
+		var rotVel: RandomRange(f32) = RandomRange(f32).fromZon(zon.getChild("rotationVelocity")) orelse .init(20, 60);
+		rotVel.min = std.math.degreesToRadians(rotVel.min);
+		rotVel.max = std.math.degreesToRadians(rotVel.max);
 		const particleTypeLocal = ParticleTypeLocal{
-			.density = RandomRange(f32).fromZon("density", zon) orelse .init(2, 3),
+			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
 			.rotVel = rotVel,
-			.dragCoefficient = RandomRange(f32).fromZon("dragCoefficient", zon) orelse .init(0.5, 0.6),
+			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -367,8 +367,8 @@ pub const EmitterProperties = struct {
 
 	pub fn parse(zon: ZonElement) EmitterProperties {
 		return EmitterProperties{
-			.speed = RandomRange(f32).fromZon("speed", zon) orelse .init(1, 1.5),
-			.lifeTime = RandomRange(f32).fromZon("lifeTime", zon) orelse .init(0.75, 1),
+			.speed = RandomRange(f32).fromZon(zon.getChild("speed")) orelse .init(1, 1.5),
+			.lifeTime = RandomRange(f32).fromZon(zon.getChild("lifeTime")) orelse .init(0.75, 1),
 			.randomizeRotation = zon.get(bool, "randomRotate", true),
 		};
 	}
@@ -386,7 +386,7 @@ pub const DirectionMode = union(enum) {
 		const dirModeName = zon.get([]const u8, "mode", @tagName(DirectionMode.spread));
 		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.InvalidDirectionMode;
 		return switch(dirMode) {
-			.direction => @unionInit(DirectionMode, @tagName(DirectionMode.direction), zon.get(Vec3f, "direction", .{0, 0, 1})),
+			.direction => .{.direction = zon.get(Vec3f, "direction", .{0, 0, 1})},
 			inline else => |mode| @unionInit(DirectionMode, @tagName(mode), {}),
 		};
 	}

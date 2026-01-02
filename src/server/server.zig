@@ -437,6 +437,7 @@ fn update() void { // MARK: update()
 
 	while(userConnectList.popFront()) |user| {
 		connectInternal(user);
+		user.decreaseRefCount();
 	}
 
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -551,11 +552,13 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 }
 
 pub fn connect(user: *User) void {
+	user.increaseRefCount();
 	userConnectList.pushBack(user);
 }
 
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
+	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -603,7 +606,6 @@ pub fn connectInternal(user: *User) void {
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
-	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	user.conn.handShakeState.store(.complete, .monotonic);
 }
 

@@ -39,7 +39,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 			while(dy < main.chunk.chunkSize + 1) : (dy += 1) {
 				const height = biomeMap.getSurfaceHeight(chunk.super.pos.wx +% dx*chunk.super.pos.voxelSize, chunk.super.pos.wy +% dy*chunk.super.pos.voxelSize);
 				maxHeight = @max(maxHeight, height);
-				minHeight = @min(minHeight, height);
+				minHeight = @min(minHeight, height - chunk.super.pos.voxelSize);
 			}
 		}
 		if(minHeight > chunk.super.pos.wz +| chunk.super.width) {
@@ -81,10 +81,10 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 							const move = direction*@as(Vec3i, @splat(@intCast(chunk.super.pos.voxelSize)));
 							if(caveMap.isSolid(x + move[0], y + move[1], z + move[2])) {
 								const diff = caveMap.findTerrainChangeAbove(x + move[0], y + move[1], z + move[2]) - chunk.super.pos.voxelSize - surfaceBlock;
-								maxUp = @max(maxUp, diff);
+								maxUp = @max(maxUp, diff >> chunk.super.voxelSizeShift);
 							} else {
 								const diff = caveMap.findTerrainChangeBelow(x + move[0], y + move[1], z + move[2]) - surfaceBlock;
-								maxDown = @max(maxDown, -diff);
+								maxDown = @max(maxDown, -diff >> chunk.super.voxelSizeShift);
 							}
 						}
 						const slope = @min(maxUp, maxDown);

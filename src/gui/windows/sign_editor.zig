@@ -46,7 +46,7 @@ fn apply() void {
 
 	main.block_entity.BlockEntityTypes.Sign.updateTextFromClient(pos, textComponent.currentString.items);
 
-	gui.closeWindowFromRef(&window);
+	gui.toggleGameMenu();
 }
 
 pub fn onOpen() void {

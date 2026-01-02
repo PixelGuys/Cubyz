@@ -497,7 +497,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		const quadInfo = quadIndex.quadInfo();
 		const extraQuadInfo = quadIndex.extraQuadInfo();
 		const normal = quadInfo.normal;
-		if(!blocks.meshes.textureOcclusionData.items[textureIndex]) { // No ambient occlusion (→ no smooth lighting)
+		if(!blocks.meshes.textureOcclusionData[textureIndex].load(.unordered)) { // No ambient occlusion (→ no smooth lighting)
 			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
 			var rawVals: [6]u5 = undefined;
 			for(0..6) |i| {

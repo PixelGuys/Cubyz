@@ -147,10 +147,9 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	// TODO: player bobbing
 	// TODO: Handle colors and sun position in the world.
 	std.debug.assert(game.world != null);
-	var ambient: Vec3f = undefined;
-	ambient[0] = @max(0.1, game.world.?.ambientLight);
-	ambient[1] = @max(0.1, game.world.?.ambientLight);
-	ambient[2] = @max(0.1, game.world.?.ambientLight);
+
+	const nightColor: Vec3f = .{0.3, 0.4, 0.5};
+	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.ambientLight)));
 
 	itemdrop.ItemDisplayManager.update(deltaTime);
 	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
