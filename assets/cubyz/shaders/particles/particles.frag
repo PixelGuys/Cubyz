@@ -10,14 +10,14 @@ layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionTextureSampler;
 
 
-float ign(ivec2 screenPos)
+float interleavedGradientNoise(ivec2 screenPos)
 {
     return fract(52.9829189f * fract(0.06711056f*float(screenPos.x) + 0.00583715f*float(screenPos.y)));
 }
 
 bool passDitherTest(float alpha) {
 	ivec2 screenPos = ivec2(gl_FragCoord.xy);
-	return alpha > ign(screenPos);
+	return alpha > interleavedGradientNoise(screenPos);
 }
 
 void main() {
