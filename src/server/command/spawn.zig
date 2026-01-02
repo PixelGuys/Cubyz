@@ -3,8 +3,12 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
-pub const description = "Sets the spawn point for the player";
-pub const usage = "/spawn";
+pub const description = "Get or set the player spawnPoint";
+pub const usage = 
+    \\/spawn
+    \\/spawn <x> <y>
+    \\/spawn <x> <y> <z>
+;
 
 pub fn execute(args: []const u8, source: *User) void {
 	var x: ?f64 = null;
