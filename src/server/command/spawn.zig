@@ -4,10 +4,10 @@ const main = @import("main");
 const User = main.server.User;
 
 pub const description = "Get or set the player spawnPoint";
-pub const usage = 
-    \\/spawn
-    \\/spawn <x> <y>
-    \\/spawn <x> <y> <z>
+pub const usage =
+	\\/spawn
+	\\/spawn <x> <y>
+	\\/spawn <x> <y> <z>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
