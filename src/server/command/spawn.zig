@@ -28,7 +28,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		} else if(z == null) {
 			z = num;
 		} else {
-			source.sendMessage("#ff0000Too many arguments for command /setspawn", .{});
+			source.sendMessage("#ff0000Too many arguments for command /spawn", .{});
 			return;
 		}
 	}
