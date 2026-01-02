@@ -1,0 +1,17 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal/star/star_0", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/star_1", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/star_2", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/star_3", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/star_4", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/star_5", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/star_6", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/star_7", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/star_8", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/broken_0", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/broken_1", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/broken_2", .chance = 0.25},
+		.{.id = "cubyz:phantasmal/star/blood_star", .chance = 0.01},
+	},
+}
