@@ -31,16 +31,9 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	var newBlock: Block = params.block;
 
 	if(params.block.mode() == main.rotation.getByID("cubyz:torch")) {
-		var data: main.rotation.list.@"cubyz:torch".TorchData = @bitCast(@as(u5, @truncate(params.block.data)));
-		if(data.center and !neighborSupportive[Neighbor.dirDown.toInt()]) data.center = false;
-		if(data.negX and !neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
-		if(data.posX and !neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
-		if(data.negY and !neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
-		if(data.posY and !neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
-		newBlock.data = @as(u5, @bitCast(data));
-		if(newBlock.data == 0) newBlock.typ = 0;
+		main.rotation.list.@"cubyz:torch".updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
 	} else {
-		std.log.err("Expected {s} to have cubyz:decayable or cubyz:branch as rotation", .{params.block.id()});
+		std.log.err("Expected {s} to have cubyz:torch as rotation", .{params.block.id()});
 	}
 
 	if(newBlock == params.block) return .ignored;
