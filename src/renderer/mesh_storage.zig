@@ -195,7 +195,7 @@ pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 	const mesh = node.mesh.load(.acquire) orelse return null;
 	const pos: chunk.BlockPos = .fromWorldCoords(wx, wy, wz);
-	return mesh.lightingData[1].getValue(pos)[0..3].* ++ mesh.lightingData[0].getValue(pos)[0..3].*;
+	return mesh.lightingData[1].getValue(pos).toArray() ++ mesh.lightingData[0].getValue(pos).toArray();
 }
 
 pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {

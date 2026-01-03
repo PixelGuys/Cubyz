@@ -405,7 +405,11 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	const LightVector = @Vector(8, u16);
 
 	fn getValues(mesh: *ChunkMesh, pos: chunk.BlockPos) LightVector {
-		return mesh.lightingData[1].getValue(pos) ++ mesh.lightingData[0].getValue(pos);
+		const blockLight = mesh.lightingData[0].getValue(pos);
+		const sunLight = mesh.lightingData[1].getValue(pos);
+		const totalLight = @as(u64, sunLight.raw()) | (@as(u64, blockLight.raw()) << 32);
+		std.debug.assert(@import("builtin").cpu.arch.endian() == .little);
+		return @as(@Vector(8, u8), @bitCast(totalLight));
 	}
 
 	noinline fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) LightVector {

@@ -18,7 +18,7 @@ pub fn deinit() void {
 	memoryPool.deinit();
 }
 
-const LightValue = packed struct(u32) {
+pub const LightValue = packed struct(u32) {
 	r: u8,
 	g: u8,
 	b: u8,
@@ -28,12 +28,12 @@ const LightValue = packed struct(u32) {
 		return .{.r = arr[0], .g = arr[1], .b = arr[2]};
 	}
 
-	fn toArray(self: LightValue) [3]u8 {
+	pub fn toArray(self: LightValue) [3]u8 {
 		return .{self.r, self.g, self.b};
 	}
 
-	fn toArray4(self: LightValue) [4]u8 {
-		return .{self.r, self.g, self.b, self.pad};
+	pub fn raw(self: LightValue) u32 {
+		return @bitCast(self);
 	}
 };
 
@@ -77,8 +77,8 @@ pub const ChannelChunk = struct {
 		entries: main.ListUnmanaged(BlockPos),
 	};
 
-	pub fn getValue(self: *ChannelChunk, pos: BlockPos) [4]u8 {
-		return self.data.getValue(pos.toIndex()).toArray4();
+	pub fn getValue(self: *ChannelChunk, pos: BlockPos) LightValue {
+		return self.data.getValue(pos.toIndex());
 	}
 
 	fn calculateIncomingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
