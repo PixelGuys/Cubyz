@@ -31,6 +31,10 @@ const LightValue = packed struct(u32) {
 	fn toArray(self: LightValue) [3]u8 {
 		return .{self.r, self.g, self.b};
 	}
+
+	fn toArray4(self: LightValue) [4]u8 {
+		return .{self.r, self.g, self.b, self.pad};
+	}
 };
 
 fn extractColor(in: u32) [3]u8 {
@@ -73,9 +77,8 @@ pub const ChannelChunk = struct {
 		entries: main.ListUnmanaged(BlockPos),
 	};
 
-	pub fn getValue(self: *ChannelChunk, x: i32, y: i32, z: i32) [3]u8 {
-		const pos = BlockPos.fromCoords(@intCast(x), @intCast(y), @intCast(z));
-		return self.data.getValue(pos.toIndex()).toArray();
+	pub fn getValue(self: *ChannelChunk, pos: BlockPos) [4]u8 {
+		return self.data.getValue(pos.toIndex()).toArray4();
 	}
 
 	fn calculateIncomingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {

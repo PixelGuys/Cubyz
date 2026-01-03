@@ -194,10 +194,8 @@ pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) main.callb
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 	const mesh = node.mesh.load(.acquire) orelse return null;
-	const x = wx & chunk.chunkMask;
-	const y = wy & chunk.chunkMask;
-	const z = wz & chunk.chunkMask;
-	return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
+	const pos: chunk.BlockPos = .fromWorldCoords(wx, wy, wz);
+	return mesh.lightingData[1].getValue(pos)[0..3].* ++ mesh.lightingData[0].getValue(pos)[0..3].*;
 }
 
 pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
