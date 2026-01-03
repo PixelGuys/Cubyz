@@ -412,7 +412,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return @as(@Vector(8, u8), @bitCast(totalLight));
 	}
 
-	noinline fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) LightVector {
+	fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) LightVector {
 		const pos: chunk.BlockPos = .fromCoords(@intCast(x & chunk.chunkMask), @intCast(y & chunk.chunkMask), @intCast(z & chunk.chunkMask));
 		if(x == pos.x and y == pos.y and z == pos.z) {
 			return getValues(parent, pos);
