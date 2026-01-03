@@ -27,7 +27,7 @@
 		},
 	},
 	.ore = .{
-		.veins = 1.5,
+		.veins = 2,
 		.size = 3,
 		.height = 800,
 		.minHeight = -1000,
