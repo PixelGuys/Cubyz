@@ -8,7 +8,7 @@ const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
-const Server = main.server;
+const server = main.server;
 const Branch = main.rotation.list.@"cubyz:branch";
 
 decayReplacement: blocks.Block,
@@ -57,7 +57,7 @@ fn preventsDecay(self: *@This(), log: Block) bool {
 	}
 	return false;
 }
-fn foundWayToLog(self: *@This(), world: *Server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
+fn foundWayToLog(self: *@This(), world: *server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
 
 	// init array to mark already searched blocks.
 	const checkRange = 5;
@@ -125,15 +125,13 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		std.log.err("Expected {s} to have cubyz:decayable or cubyz:branch as rotation", .{params.block.id()});
 	}
 
-	if(Server.world) |world| {
+	if(server.world) |world| {
 		if(world.getBlock(wx, wy, wz)) |leaf| {
 			// check if there is any log in the proximity?^
 			if(self.foundWayToLog(world, leaf, wx, wy, wz))
 				return .ignored;
 
 			// no, there is no log in proximity
-			main.items.Inventory.Sync.ServerSide.mutex.lock();
-			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
 				const drops = if(self.blockDrops) |blockDrops| blockDrops else params.block.blockDrops();
 				for(drops) |drop| {

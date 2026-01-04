@@ -34,8 +34,7 @@ maxWidth: f32,
 maxHeight: f32,
 textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
-onNewline: gui.Callback,
-optional: OptionalCallbacks,
+callbacks: Callbacks,
 lastBlinkTime: std.Io.Timestamp = .fromNanoseconds(0),
 showCusor: bool = true,
 
@@ -47,12 +46,13 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-const OptionalCallbacks = struct {
-	onUp: ?gui.Callback = null,
-	onDown: ?gui.Callback = null,
+const Callbacks = struct {
+	onNewline: main.callbacks.SimpleCallback,
+	onUp: main.callbacks.SimpleCallback = .{},
+	onDown: main.callbacks.SimpleCallback = .{},
 };
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, callbacks: Callbacks) *TextInput {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(TextInput);
 	self.* = TextInput{
@@ -63,8 +63,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
-		.onNewline = onNewline,
-		.optional = optional,
+		.callbacks = callbacks,
 	};
 	self.currentString.appendSlice(text);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
@@ -280,7 +279,7 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				self.selectionStart = null;
 			} else {
 				if(self.moveCursorVertically(1) == .same) {
-					if(self.optional.onDown) |cb| cb.run();
+					self.callbacks.onDown.run();
 				}
 			}
 		}
@@ -304,7 +303,7 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				self.selectionStart = null;
 			} else {
 				if(self.moveCursorVertically(-1) == .same) {
-					if(self.optional.onUp) |cb| cb.run();
+					self.callbacks.onUp.run();
 				}
 			}
 		}
@@ -468,8 +467,8 @@ pub fn cut(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if(!mods.shift and self.onNewline.callback != null) {
-		self.onNewline.run();
+	if(!mods.shift and self.callbacks.onNewline.inner != null) {
+		self.callbacks.onNewline.run();
 		return;
 	}
 	self.inputCharacter('\n');

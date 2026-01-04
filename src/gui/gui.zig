@@ -104,17 +104,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 };
 
-pub const Callback = struct {
-	callback: ?*const fn(usize) void = null,
-	arg: usize = 0,
-
-	pub fn run(self: Callback) void {
-		if(self.callback) |callback| {
-			callback(self.arg);
-		}
-	}
-};
-
 pub fn initWindowList() void {
 	GuiCommandQueue.init();
 	windowList = .init(main.globalAllocator);
@@ -362,14 +351,8 @@ pub fn openHud() void {
 	reorderWindows = false;
 }
 
-fn openWindowCallbackFunction(windowPtr: usize) void {
-	openWindowFromRef(@ptrFromInt(windowPtr));
-}
-pub fn openWindowCallback(comptime id: []const u8) Callback {
-	return .{
-		.callback = &openWindowCallbackFunction,
-		.arg = @intFromPtr(&@field(windowlist, id).window),
-	};
+pub fn openWindowCallback(comptime id: []const u8) main.callbacks.SimpleCallback {
+	return .initWithPtr(openWindowFromRef, &@field(windowlist, id).window);
 }
 
 pub fn closeWindowFromRef(window: *GuiWindow) void {
@@ -384,6 +367,13 @@ pub fn closeWindow(id: []const u8) void {
 		}
 	}
 	std.log.err("Could not find window with id {s}.", .{id});
+}
+
+pub fn isWindowOpen(id: []const u8) bool {
+	for(openWindows.items) |window| {
+		if(std.mem.eql(u8, window.id, id)) return true;
+	}
+	return false;
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
@@ -579,7 +569,9 @@ pub fn updateAndRenderGui() void {
 
 pub fn toggleGameMenu() void {
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
-	if(main.Window.grabbed) { // Take of the currently held item stack and close some windows
+	if(!main.Window.grabbed) {
+		hideGui = false;
+	} else { // Take of the currently held item stack and close some windows
 		main.game.Player.inventory.depositOrDrop(inventory.carried);
 		hoveredItemSlot = null;
 		var i: usize = 0;
