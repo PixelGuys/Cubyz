@@ -369,6 +369,13 @@ pub fn closeWindow(id: []const u8) void {
 	std.log.err("Could not find window with id {s}.", .{id});
 }
 
+pub fn isWindowOpen(id: []const u8) bool {
+	for(openWindows.items) |window| {
+		if(std.mem.eql(u8, window.id, id)) return true;
+	}
+	return false;
+}
+
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
 	if(selectedTextInput) |current| {
 		if(current != newSelectedTextInput) {
@@ -562,7 +569,9 @@ pub fn updateAndRenderGui() void {
 
 pub fn toggleGameMenu() void {
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
-	if(main.Window.grabbed) { // Take of the currently held item stack and close some windows
+	if(!main.Window.grabbed) {
+		hideGui = false;
+	} else { // Take of the currently held item stack and close some windows
 		main.game.Player.inventory.depositOrDrop(inventory.carried);
 		hoveredItemSlot = null;
 		var i: usize = 0;

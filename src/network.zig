@@ -27,19 +27,19 @@ const Socket = struct {
 	fn windowsError(err: c_int) !void {
 		if(err == 0) return;
 		switch(err) {
-			ws2.WSASYSNOTREADY => return error.WSASYSNOTREADY,
-			ws2.WSAVERNOTSUPPORTED => return error.WSAVERNOTSUPPORTED,
-			ws2.WSAEINPROGRESS => return error.WSAEINPROGRESS,
-			ws2.WSAEPROCLIM => return error.WSAEPROCLIM,
-			ws2.WSAEFAULT => return error.WSAEFAULT,
-			ws2.WSANOTINITIALISED => return error.WSANOTINITIALISED,
-			ws2.WSAENETDOWN => return error.WSAENETDOWN,
-			ws2.WSAEACCES => return error.WSAEACCES,
-			ws2.WSAEADDRINUSE => return error.WSAEADDRINUSE,
-			ws2.WSAEADDRNOTAVAIL => return error.WSAEADDRNOTAVAIL,
-			ws2.WSAEINVAL => return error.WSAEINVAL,
-			ws2.WSAENOBUFS => return error.WSAENOBUFS,
-			ws2.WSAENOTSOCK => return error.WSAENOTSOCK,
+			ws2.WSASYSNOTREADY => return error.NetworkDown,
+			ws2.WSAVERNOTSUPPORTED => return error.VersionUnsupported,
+			ws2.WSAEINPROGRESS => return error.BlockingOperationInProgress,
+			ws2.WSAEPROCLIM => return error.ProcessFdQuotaExceeded,
+			ws2.WSAEFAULT => unreachable,
+			ws2.WSANOTINITIALISED => unreachable,
+			ws2.WSAENETDOWN => return error.NetworkDown,
+			ws2.WSAEACCES => return error.AccessDenied,
+			ws2.WSAEADDRINUSE => return error.AddressInUse,
+			ws2.WSAEADDRNOTAVAIL => return error.AddressNotAvailable,
+			ws2.WSAEINVAL => unreachable,
+			ws2.WSAENOBUFS => return error.SystemResources,
+			ws2.WSAENOTSOCK => return error.FileDescriptorNotASocket,
 			else => return error.UNKNOWN,
 		}
 	}
@@ -627,6 +627,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 					return;
 				};
 				user.decreaseRefCount();
+				user.conn.receive(data);
 			}
 		} else {
 			// TODO: Reduce the number of false alarms in the short period after a disconnect.
@@ -1196,7 +1197,7 @@ pub const Connection = struct { // MARK: Connection
 	connectionState: Atomic(ConnectionState),
 	handShakeState: Atomic(HandShakeState) = .init(.start),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
-	lastConnection: i64,
+	lastConnectionTime: ?i64,
 
 	// To distinguish different connections from the same computer to avoid multiple reconnects
 	connectionIdentifier: i64,
@@ -1212,7 +1213,7 @@ pub const Connection = struct { // MARK: Connection
 			.user = user,
 			.remoteAddress = undefined,
 			.connectionState = .init(if(user != null) .awaitingClientConnection else .awaitingServerResponse),
-			.lastConnection = networkTimestamp(),
+			.lastConnectionTime = null,
 			.nextPacketTimestamp = networkTimestamp(),
 			.nextConfirmationTimestamp = networkTimestamp(),
 			.lastRttSampleTime = networkTimestamp() -% 10_000*ms,
@@ -1380,6 +1381,7 @@ pub const Connection = struct { // MARK: Connection
 
 	fn tryReceive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
+		self.lastConnectionTime = networkTimestamp();
 		var reader = utils.BinaryReader.init(data);
 		const channel = try reader.readEnum(ChannelId);
 		if(channel == .init) {
@@ -1483,13 +1485,17 @@ pub const Connection = struct { // MARK: Connection
 				self.disconnect();
 			},
 		}
-		self.lastConnection = networkTimestamp();
 
 		// TODO: Packet statistics
 	}
 
 	pub fn processNextPackets(self: *Connection) void {
 		const timestamp = networkTimestamp();
+		if(self.lastConnectionTime != null and timestamp -% self.lastConnectionTime.? -% settings.connectionTimeout > 0) {
+			std.log.info("timeout", .{});
+			self.disconnect();
+			return;
+		}
 
 		switch(self.connectionState.load(.monotonic)) {
 			.awaitingClientConnection => {
@@ -1513,13 +1519,7 @@ pub const Connection = struct { // MARK: Connection
 				self.manager.send(writer.data.items, self.remoteAddress, null);
 				return;
 			},
-			.connected => {
-				if(timestamp -% self.lastConnection -% settings.connectionTimeout > 0) {
-					std.log.info("timeout", .{});
-					self.disconnect();
-					return;
-				}
-			},
+			.connected => {},
 			.disconnectDesired => return,
 		}
 

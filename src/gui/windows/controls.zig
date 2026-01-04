@@ -103,7 +103,7 @@ pub fn onOpen() void {
 	list.add(CheckBox.init(.{0, 0}, 256, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
 
 	if(!editingKeyboard) {
-		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
+		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
 	for(&main.KeyBoard.keys) |*key| {
 		const label = Label.init(.{0, 0}, 128, key.name, .left);

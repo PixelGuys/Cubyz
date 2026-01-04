@@ -133,7 +133,6 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -183,13 +182,18 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn setName(self: *User, name: []const u8) void {
+		std.debug.assert(self.name.len == 0);
+		self.name = main.globalAllocator.dupe(u8, name);
+	}
+
 	var freeId: u32 = 0;
-	pub fn initPlayer(self: *User, name: []const u8) void {
+	pub fn initPlayer(self: *User) void {
 		self.id = freeId;
 		freeId += 1;
 
-		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
+		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.loadUnloadChunks();
 	}
 
@@ -353,7 +357,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 	main.items.Inventory.Sync.ServerSide.init();
 
-	world = ServerWorld.init(name, null) catch |err| {
+	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
@@ -433,6 +437,7 @@ fn update() void { // MARK: update()
 
 	while(userConnectList.popFront()) |user| {
 		connectInternal(user);
+		user.decreaseRefCount();
 	}
 
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -471,7 +476,12 @@ fn update() void { // MARK: update()
 	}
 
 	while(userDeinitList.popFront()) |user| {
-		user.decreaseRefCount();
+		if(user.refCount.load(.unordered) == 1) {
+			user.decreaseRefCount();
+		} else {
+			userDeinitList.pushBack(user);
+			break;
+		}
 	}
 }
 
@@ -542,10 +552,13 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 }
 
 pub fn connect(user: *User) void {
+	user.increaseRefCount();
 	userConnectList.pushBack(user);
 }
 
 pub fn connectInternal(user: *User) void {
+	user.initPlayer();
+	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
