@@ -21,7 +21,7 @@
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:phantasmal/star/stars",
-			.chance = 0.03,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:flower_patch",

@@ -3,8 +3,8 @@
 	.fogColor = 0x000C14,
 	.properties = .{.ocean},
 	.chance = 0.01,
-	.minHeight = -128,
-	.maxHeight = -32,
+	.minHeight = -96,
+	.maxHeight = -24,
 	.music = "cubyz:cubyz",
 
 	.hills = 35,
