@@ -1,8 +1,8 @@
 .{
 	.properties = .{.ocean},
 	.chance = 0.01,
-	.minHeight = -64,
-	.maxHeight = 64,
+	.minHeight = -48,
+	.maxHeight = 48,
 	.music = "cubyz:cubyz",
 
 	.hills = 45,
@@ -45,12 +45,37 @@
 			.chance = 0.05,
 			.rotation = 0,
 		},
+	},
+	.transitionBiomes = .{
 		.{
-			.id = "cubyz:boulder",
-			.chance = 0.016,
-			.block = "cubyz:limestone",
-			.size = 5,
-			.size_variance = 10,
+			.id = "cubyz:ocean/cold/base",
+			.chance = 1,
+			.width = 1,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:ocean/cold/base",
+			.chance = 1,
+			.width = 3,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:ocean/temperate/base",
+			.chance = 1,
+			.width = 3,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:ocean/temperate/shelf",
+			.chance = 1,
+			.width = 3,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:ocean/cold/shelf",
+			.chance = 1,
+			.width = 3,
+			.properties = .{.land, .inland},
 		},
 	},
 }
