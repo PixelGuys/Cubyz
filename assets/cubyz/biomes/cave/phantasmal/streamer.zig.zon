@@ -46,14 +46,14 @@
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:phantasmal/auroras/aurorahigh",
-			.chance = 0.015,
+			.chance = 0.02,
 			.rotation = 0,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:phantasmal/auroras/auroralow",
 			.rotation = 0,
-			.chance = 0.015,
+			.chance = 0.025,
 		},
 	},
 }
