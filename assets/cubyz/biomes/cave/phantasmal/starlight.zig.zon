@@ -4,7 +4,6 @@
 	.maxHeight = -50000,
 	.music = "cubyz:cubyz",
 
-
 	.stoneBlock = "cubyz:chalk/black",
 
 	.ground_structure = .{
