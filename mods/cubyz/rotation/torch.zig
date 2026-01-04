@@ -16,7 +16,6 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
 pub const naturalStandard: u16 = 1;
-pub const dependsOnNeighbors = true;
 var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 const TorchData = packed struct(u5) {
 	center: bool,
@@ -139,35 +138,6 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeD
 	}
 }
 
-pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-	const neighborModel = blocks.meshes.model(neighborBlock).model();
-	const neighborSupport = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
-	var currentData: TorchData = @bitCast(@as(u5, @truncate(block.data)));
-	switch(neighbor) {
-		.dirNegX => {
-			currentData.negX = currentData.negX and neighborSupport;
-		},
-		.dirPosX => {
-			currentData.posX = currentData.posX and neighborSupport;
-		},
-		.dirNegY => {
-			currentData.negY = currentData.negY and neighborSupport;
-		},
-		.dirPosY => {
-			currentData.posY = currentData.posY and neighborSupport;
-		},
-		.dirDown => {
-			currentData.center = currentData.center and neighborSupport;
-		},
-		else => {},
-	}
-	const result: u16 = @as(u5, @bitCast(currentData));
-	if(result == block.data) return false;
-	block.data = result;
-	if(result == 0) block.typ = 0;
-	return true;
-}
-
 fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
 	var result: ?RayIntersectionResult = null;
 	var resultBit: u16 = 0;
@@ -209,4 +179,17 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 			}
 		},
 	}
+}
+
+// MARK: non-interface fns
+
+pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
+	var data: main.rotation.list.@"cubyz:torch".TorchData = @bitCast(@as(u5, @truncate(block.data)));
+	if(data.center and !neighborSupportive[Neighbor.dirDown.toInt()]) data.center = false;
+	if(data.negX and !neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
+	if(data.posX and !neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
+	if(data.negY and !neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
+	if(data.posY and !neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
+	block.data = @as(u5, @bitCast(data));
+	if(block.data == 0) block.typ = 0;
 }
