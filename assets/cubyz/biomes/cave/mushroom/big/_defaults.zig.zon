@@ -1,7 +1,7 @@
 .{
 	.isCave = true,
 	.maxHeight = -512,
-	.minHeight = -48250,
+	.minHeight = -40000,
 	.music = "cubyz:la_kubisa_caverna",
 	.ground_structure = .{
 		"2 to 3 cubyz:soil",
