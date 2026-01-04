@@ -1,0 +1,5 @@
+.{
+	.isCave = true,
+	.fogDensity = 35,
+	.fogColor = 0x000C14,
+}
