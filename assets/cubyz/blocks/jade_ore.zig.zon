@@ -29,8 +29,7 @@
 	.ore = .{
 		.veins = 2,
 		.size = 3,
-		.height = 800,
-		.minHeight = -1000,
+		.minHeight = 400,
 		.density = 0.15,
 	},
 	.drops = .{
