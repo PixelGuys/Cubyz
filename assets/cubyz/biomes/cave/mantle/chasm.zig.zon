@@ -1,17 +1,13 @@
 .{
-	.chance = 1,
+	.chance = 0.5,
 	.caves = -0.03,
-	.soilCreep = 2,
-	.ground_structure = .{
-		"2 cubyz:lava",
-	},
 	.stripes = .{
 		.{
 			.direction = .{4, 1, 3},
 			.block = "cubyz:magma",
 			.distance = 32,
 			.offset = 5,
-			.width = 4,
+			.width = 2,
 		},
 		.{
 			.direction = .{2, 2.5, 3},
@@ -30,13 +26,6 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:stalagmite",
-			.block = "cubyz:mantle/base",
-			.chance = 0.2,
-			.size = 4,
-			.size_variation = 6,
-		},
-		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:magma",
 			.chance = 0.05,
@@ -47,19 +36,10 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mantle/base",
+			.block = "cubyz:lava",
 			.chance = 0.05,
 			.width = 4,
 			.variation = 2,
-			.depth = 2,
-			.smoothness = 1,
-		},
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:mantle/base",
-			.chance = 0.08,
-			.width = 6,
-			.variation = 5,
 			.depth = 2,
 			.smoothness = 1,
 		},

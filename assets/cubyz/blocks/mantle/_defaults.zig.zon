@@ -7,19 +7,15 @@
 	},
 	.item = .{
 		.material = .{
-			.durability = 200,
-			.massDamage = 3.0,
-			.hardnessDamage = 7.0,
-			.swingSpeed = 4.7,
+			.durability = 300,
+			.massDamage = 4.0,
+			.hardnessDamage = 6.0,
+			.swingSpeed = 5.0,
 			.textureRoughness = 1.0,
 			.colors = .{
-				0xff030308, 0xff0D0C11, 0xff151420, 0xff1C1A2B, 0xff28253D,
+				0xff402622, 0xff4f2e27, 0xff663831, 0xff77463b, 0xff835243,
 			},
 			.modifiers = .{
-				.{
-					.id = "durable",
-					.strength = 0.1,
-				},
 				.{
 					.id = "good_at",
 					.strength = 0.5,
