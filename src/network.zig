@@ -138,8 +138,6 @@ const stun = struct { // MARK: stun
 	const MAGIC_COOKIE = [_]u8{0x21, 0x12, 0xA4, 0x42};
 
 	fn requestAddress(connection: *ConnectionManager) Address {
-		std.debug.print("WHAT? requestAddress\n", .{});
-		defer std.debug.print("1.DONE\n", .{});
 		var oldAddress: ?Address = null;
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
 		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
@@ -429,7 +427,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 
 	fn onReceive(self: *ConnectionManager, data: []const u8, source: Address) void {
-		//std.debug.print("recieed: {any}", .{data});
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
 
