@@ -20,7 +20,7 @@ inline fn networkTimestamp() i64 {
 const Socket = std.Io.net.Socket;
 
 pub fn init() void {
-	//Socket.startup();
+	//Socket.startup(); //TODOFIX
 	protocols.init();
 }
 
