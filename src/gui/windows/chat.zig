@@ -109,6 +109,16 @@ pub const History = struct {
 	}
 };
 
+pub fn clearChat() void {
+	while(history.popOrNull()) |label| {
+		label.deinit();
+	}
+	historyStart = 0;
+	fadeOutEnd = 0;
+	expirationTime.clearRetainingCapacity();
+	refresh();
+}
+
 pub fn init() void {
 	history = .init(main.globalAllocator);
 	messageHistory = .init();
@@ -187,16 +197,11 @@ pub fn loadPreviousHistoryEntry() void {
 }
 
 pub fn onClose() void {
-	while(history.popOrNull()) |label| {
-		label.deinit();
-	}
+	clearChat();
 	while(messageQueue.popFront()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageHistory.clear();
-	expirationTime.clearRetainingCapacity();
-	historyStart = 0;
-	fadeOutEnd = 0;
 	input.deinit();
 	window.rootComponent.?.verticalList.children.clearRetainingCapacity();
 	window.rootComponent.?.deinit();
@@ -257,7 +262,11 @@ pub fn sendMessage() void {
 				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
 			}
 
-			main.network.protocols.chat.send(main.game.world.?.conn, data);
+			if(input.currentString.items[0] == '/') {
+				main.items.Inventory.Sync.ClientSide.executeCommand(.{.chatCommand = .{.message = main.globalAllocator.dupe(u8, input.currentString.items[1..])}});
+			} else {
+				main.network.protocols.chat.send(main.game.world.?.conn, data);
+			}
 			input.clear();
 		}
 	}

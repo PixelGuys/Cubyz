@@ -464,6 +464,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 					return;
 				};
 				user.decreaseRefCount();
+				user.conn.receive(data);
 			}
 		} else {
 			// TODO: Reduce the number of false alarms in the short period after a disconnect.
@@ -1032,7 +1033,7 @@ pub const Connection = struct { // MARK: Connection
 	connectionState: Atomic(ConnectionState),
 	handShakeState: Atomic(HandShakeState) = .init(.start),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
-	lastConnection: i64,
+	lastConnectionTime: ?i64,
 
 	// To distinguish different connections from the same computer to avoid multiple reconnects
 	connectionIdentifier: i64,
@@ -1048,7 +1049,7 @@ pub const Connection = struct { // MARK: Connection
 			.user = user,
 			.remoteAddress = undefined,
 			.connectionState = .init(if(user != null) .awaitingClientConnection else .awaitingServerResponse),
-			.lastConnection = networkTimestamp(),
+			.lastConnectionTime = null,
 			.nextPacketTimestamp = networkTimestamp(),
 			.nextConfirmationTimestamp = networkTimestamp(),
 			.lastRttSampleTime = networkTimestamp() -% 10_000*ms,
@@ -1208,6 +1209,7 @@ pub const Connection = struct { // MARK: Connection
 
 	fn tryReceive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
+		self.lastConnectionTime = networkTimestamp();
 		var reader = utils.BinaryReader.init(data);
 		const channel = try reader.readEnum(ChannelId);
 		if(channel == .init) {
@@ -1311,13 +1313,17 @@ pub const Connection = struct { // MARK: Connection
 				self.disconnect();
 			},
 		}
-		self.lastConnection = networkTimestamp();
 
 		// TODO: Packet statistics
 	}
 
 	pub fn processNextPackets(self: *Connection) void {
 		const timestamp = networkTimestamp();
+		if(self.lastConnectionTime != null and timestamp -% self.lastConnectionTime.? -% settings.connectionTimeout > 0) {
+			std.log.info("timeout", .{});
+			self.disconnect();
+			return;
+		}
 
 		switch(self.connectionState.load(.monotonic)) {
 			.awaitingClientConnection => {
@@ -1341,13 +1347,7 @@ pub const Connection = struct { // MARK: Connection
 				self.manager.send(writer.data.items, self.remoteAddress, null);
 				return;
 			},
-			.connected => {
-				if(timestamp -% self.lastConnection -% settings.connectionTimeout > 0) {
-					std.log.info("timeout", .{});
-					self.disconnect();
-					return;
-				}
-			},
+			.connected => {},
 			.disconnectDesired => return,
 		}
 
