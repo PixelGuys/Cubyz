@@ -234,7 +234,7 @@ const stun = struct { // MARK: stun
 	}
 };
 
-//if I try to use the normal setPort method I get an error: else prong requierd when switching on type '*Io.net.IpAddress'
+//if I try to use the normal setPort method I get an error: else prong requierd when switching on type '*Io.net.IpAddress' Tracking issue on codeberg: #30716
 //The only difference is a.* instead of a
 fn setPort(a: *Address, port: u16) void {
 	switch(a.*) {
