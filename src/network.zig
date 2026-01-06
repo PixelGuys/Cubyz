@@ -20,7 +20,6 @@ inline fn networkTimestamp() i64 {
 const Socket = std.Io.net.Socket;
 
 pub fn init() void {
-	//Socket.startup(); //TODOFIX
 	protocols.init();
 }
 
@@ -235,9 +234,11 @@ const stun = struct { // MARK: stun
 	}
 };
 
-fn setPort(address: *Address, port: u16) void {
-	switch(address.*) {
-		inline .ip4, .ip6 => |*a| a.port = port,
+//if I try to use the normal setPort method I get an error: else prong requierd when switching on type '*Io.net.IpAddress'
+//The only difference is a.* instead of a
+fn setPort(a: *Address, port: u16) void {
+	switch(a.*) {
+		inline .ip4, .ip6 => |*x| x.port = port,
 	}
 }
 
