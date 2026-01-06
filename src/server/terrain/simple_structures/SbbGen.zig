@@ -53,20 +53,20 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, seed);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, null, self.rotation.getInitialRotation(seed), chunk, seed);
 }
 
-fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
+fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
 	const blueprints = &(structure.getBlueprints(seed).* orelse return);
 
 	const origin = blueprints[0].originBlock;
-	const blueprintRotation = rotation.apply(alignDirections(origin.direction(), placementDirection) catch |err| {
-		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
+	const blueprintRotation = rotation.apply(alignDirections(origin.direction(), placementDirection orelse origin.direction()) catch |err| {
+		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection orelse origin.direction()), @errorName(err)});
 		return;
 	});
 	const rotated = &blueprints[@intFromEnum(blueprintRotation)];
 	const rotatedOrigin = rotated.originBlock.pos();
-	const pastePosition = placementPosition - rotatedOrigin - placementDirection.relPos();
+	const pastePosition = placementPosition - rotatedOrigin - (placementDirection orelse origin.direction()).relPos();
 
 	rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
 
