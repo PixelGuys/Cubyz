@@ -40,7 +40,6 @@ pub const heap = @import("utils/heap.zig");
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 pub const MultiArray = @import("utils/list.zig").MultiArray;
-
 pub const windowsHighResTimer = @import("utils/windows_high_res_timer.zig");
 
 const file_monitor = utils.file_monitor;

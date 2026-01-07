@@ -12,13 +12,20 @@ pub fn init() void {
     std.debug.assert(builtin.os.tag == .windows);
 
 	_ = NtQueryTimerResolution(&minResolution, &maxResolution, &initialResolution);
-	_ = NtSetTimerResolution(@max(10000, maxResolution), 1, &currentResolution);
+	_ = NtSetTimerResolution(10000,  1, &currentResolution);
 	
     if(initialResolution != currentResolution) {
-		const initialMs = @as(f32, @floatFromInt(initialResolution))/10000;
-		const currentMs = @as(f32, @floatFromInt(currentResolution))/10000;
-    	std.log.info("Changed system timer resolution from {d:.1} to {d:.1}ms.", .{initialMs, currentMs});
+		const initialMs = @as(f32, @floatFromInt(initialResolution))/10_000;
+		const currentMs = @as(f32, @floatFromInt(currentResolution))/10_000;
+    	std.log.info("Changed system timer resolution from {d:.1}ms to {d:.1}ms.", .{initialMs, currentMs});
 	}
+	
+    //const highPriorityClass = 0x00000080;
+	//if (SetPriorityClass(windows.GetCurrentProcess(), highPriorityClass) == 0) {
+    //    std.log.warn("Failed to set process priority to High", .{});
+    //} else {
+    //    std.log.debug("Process priority set to High", .{});
+   // }
 }
 
 pub fn deinit() void {
@@ -31,17 +38,24 @@ pub fn sleep(sleepDuration: std.Io.Duration) void {
     std.debug.assert(builtin.os.tag == .windows);
 
     const start = main.timestamp();
-    const targetTime = main.timestamp().addDuration(sleepDuration);
 
-	// The timer uses 100ns units
-	const sleepTime = @divFloor(@as(windows.LARGE_INTEGER, @intCast(sleepDuration.nanoseconds)), 10000);
-	_ = NtDelayExecution(windows.FALSE, -sleepTime); // Negative for relative time
+	var delayInterval = -(@divFloor(@as(windows.LARGE_INTEGER, @intCast(sleepDuration.nanoseconds)), 100) - currentResolution);
+	if(delayInterval < 0) {
+		_ = NtDelayExecution(windows.FALSE, &delayInterval);
+	}
 
     const end = main.timestamp();
-    if(main.timestamp().durationTo(targetTime).nanoseconds < 0) {
-        std.log.warn("Desired sleep: {d}, Actual sleep: {d}", .{sleepDuration.nanoseconds, start.durationTo(end).nanoseconds});
+    if(start.durationTo(end).nanoseconds - sleepDuration.nanoseconds > 1_000_000) {
+		const desired = @as(f64, @floatFromInt(sleepDuration.nanoseconds)) / 1_000_000;
+		const actual = @as(f64, @floatFromInt(start.durationTo(end).nanoseconds)) / 1_000_000;
+		_ = NtQueryTimerResolution(&minResolution, &maxResolution, &currentResolution);
+        std.log.debug("Desired sleep: {d:.1}ms, Actual sleep: {d:.1}ms, Timer resolution: {d}", .{desired, actual, currentResolution});
     }
-	while(main.timestamp().durationTo(targetTime).nanoseconds > 0) {}
+
+    const targetTime = start.addDuration(sleepDuration);
+	while(main.timestamp().durationTo(targetTime).nanoseconds > 0) {
+		std.atomic.spinLoopHint();
+	}
 }
 
 extern "ntdll" fn NtQueryTimerResolution(
@@ -58,6 +72,10 @@ extern "ntdll" fn NtSetTimerResolution(
 
 extern "ntdll" fn NtDelayExecution(
 	Alertable: windows.BOOLEAN,
-	DelayInterval: std.os.windows.LARGE_INTEGER,
+	DelayInterval: *windows.LARGE_INTEGER,
 ) callconv(.winapi) windows.NTSTATUS;
 
+extern "kernel32" fn SetPriorityClass(
+	hProcess: windows.HANDLE,
+	dwPriorityClass: windows.DWORD
+) callconv(.winapi) c_int;

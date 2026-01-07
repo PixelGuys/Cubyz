@@ -503,7 +503,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 		if(lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
 			const sleepDuration = newTime.durationTo(lastTime.addDuration(updateTime));
 			if(builtin.os.tag == .windows) {
-				main.windowsHighResTimer.sleep(sleepDuration);
+				main.io.sleep(sleepDuration, .awake) catch {};
 			} else {
 				main.io.sleep(sleepDuration, .awake) catch {};
 			}
