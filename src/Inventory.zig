@@ -1735,8 +1735,8 @@ pub const Command = struct { // MARK: Command
 			const destinationsSize = try reader.readInt(u8);
 			var destinations = main.stackAllocator.alloc(Inventory, destinationsSize);
 			errdefer main.stackAllocator.free(destinations);
-			
-                        for(destinations) |*dest| {
+
+			for(destinations) |*dest| {
 				const invId = try reader.readEnum(InventoryId);
 				dest.* = Sync.getInventory(invId, side, user) orelse return error.InventoryNotFound;
 			}
