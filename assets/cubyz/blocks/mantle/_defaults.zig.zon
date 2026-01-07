@@ -13,7 +13,7 @@
 			.swingSpeed = 5.0,
 			.textureRoughness = 1.0,
 			.colors = .{
-				0xff402622, 0xff4f2e27, 0xff663831, 0xff77463b, 0xff835243,
+				0xff4a2623, 0xff5c2c2b, 0xff703b35, 0xff7b423a, 0xff884b3f,
 			},
 			.modifiers = .{
 				.{
