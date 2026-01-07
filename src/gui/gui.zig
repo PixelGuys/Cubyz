@@ -580,7 +580,7 @@ pub fn updateAndRenderGui() void {
 pub fn toggleGameMenu() void {
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
 	if(main.Window.grabbed) { // Take of the currently held item stack and close some windows
-		main.game.Player.hotbar.depositOrDrop(inventory.carried, main.game.Player.mainInventory);
+		main.game.Player.hotbar.depositOrDrop(inventory.carried);
 		hoveredItemSlot = null;
 		var i: usize = 0;
 		while(i < openWindows.items.len) {
@@ -673,7 +673,8 @@ pub const inventory = struct { // MARK: inventory
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
 				if(mainGuiButton.modsOnPress.shift) {
-					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.hotbar, main.game.Player.mainInventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+					var destinations: [2]Inventory = .{main.game.Player.hotbar, main.game.Player.mainInventory};
+					itemSlot.inventory.depositToAny(itemSlot.itemSlot, destinations[0..], itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {
 					itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
 				}
@@ -691,12 +692,14 @@ pub const inventory = struct { // MARK: inventory
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while(iterator.next()) |window| {
 					if(window.shiftClickableInventory) |inv| {
-						itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, null, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+						var destinations: [1]Inventory = .{inv};
+						itemSlot.inventory.depositToAny(itemSlot.itemSlot, destinations[0..], itemSlot.inventory.getAmount(itemSlot.itemSlot));
 						break;
 					}
 				}
 			} else {
-				itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.hotbar, main.game.Player.mainInventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+				var destinations: [2]Inventory = .{main.game.Player.hotbar, main.game.Player.mainInventory};
+				itemSlot.inventory.depositToAny(itemSlot.itemSlot, destinations[0..], itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
 			return;
 		}

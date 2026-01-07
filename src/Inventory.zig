@@ -236,8 +236,7 @@ pub const Sync = struct { // MARK: Sync
 					if(self.managed == .internallyManaged) {
 						if(self.inv.type.shouldDepositToUserOnClose()) {
 							const playerMainInventory = getInventoryFromSource(.{.playerMainInventory = user.id}) orelse @panic("Could not find player main inventory");
-							const playerHotbar = getInventoryFromSource(.{.playerHotbar = user.id}) orelse @panic("Could not find player hotbar");
-							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerMainInventory, .fallback = playerHotbar, .source = self.inv, .dropLocation = user.player.pos}}, null);
+							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerMainInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
 						}
 						self.deinit();
 					}
@@ -1591,7 +1590,6 @@ pub const Command = struct { // MARK: Command
 
 	const DepositOrDrop = struct { // MARK: DepositOrDrop
 		dest: Inventory,
-		fallback: ?Inventory = null,
 		source: Inventory,
 		dropLocation: Vec3d,
 
@@ -1599,41 +1597,30 @@ pub const Command = struct { // MARK: Command
 			std.debug.assert(self.dest.type == .normal);
 			if(self.source.type == .creative) return;
 			if(self.source.type == .crafting) return;
-			if(self.fallback) |fallback| {
-				if(fallback.type != .normal) return;
-			}
 			var sourceItems = self.source._items;
 			if(self.source.type == .workbench) sourceItems = self.source._items[0..25];
 			outer: for(sourceItems, 0..) |*sourceStack, sourceSlot| {
 				if(sourceStack.item == .null) continue;
-				for([2]?Inventory{self.dest, self.fallback}) |_destInv| {
-					if(_destInv) |destInv| {
-						for(destInv._items, 0..) |*destStack, destSlot| {
-							if(std.meta.eql(destStack.item, sourceStack.item)) {
-								const amount = @min(destStack.item.stackSize() - destStack.amount, sourceStack.amount);
-								cmd.executeBaseOperation(allocator, .{.move = .{
-									.dest = .{.inv = destInv, .slot = @intCast(destSlot)},
-									.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
-									.amount = amount,
-								}}, side);
-								if(sourceStack.amount == 0) {
-									continue :outer;
-								}
-							}
+				for(self.dest._items, 0..) |*destStack, destSlot| {
+					if(std.meta.eql(destStack.item, sourceStack.item)) {
+						const amount = @min(destStack.item.stackSize() - destStack.amount, sourceStack.amount);
+						cmd.executeBaseOperation(allocator, .{.move = .{
+							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
+							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
+							.amount = amount,
+						}}, side);
+						if(sourceStack.amount == 0) {
+							continue :outer;
 						}
 					}
 				}
-				for([2]?Inventory{self.dest, self.fallback}) |_destInv| {
-					if(_destInv) |destInv| {
-						for(destInv._items, 0..) |*destStack, destSlot| {
-							if(destStack.item == .null) {
-								cmd.executeBaseOperation(allocator, .{.swap = .{
-									.dest = .{.inv = destInv, .slot = @intCast(destSlot)},
-									.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
-								}}, side);
-								continue :outer;
-							}
-						}
+				for(self.dest._items, 0..) |*destStack, destSlot| {
+					if(destStack.item == .null) {
+						cmd.executeBaseOperation(allocator, .{.swap = .{
+							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
+							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
+						}}, side);
+						continue :outer;
 					}
 				}
 				if(side == .server) {
@@ -1649,18 +1636,14 @@ pub const Command = struct { // MARK: Command
 
 		fn serialize(self: DepositOrDrop, writer: *utils.BinaryWriter) void {
 			writer.writeEnum(InventoryId, self.dest.id);
-			writer.writeEnum(InventoryId, if(self.fallback) |fallback| fallback.id else self.dest.id);
 			writer.writeEnum(InventoryId, self.source.id);
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DepositOrDrop {
 			const destId = try reader.readEnum(InventoryId);
-			var fallbackId: ?InventoryId = try reader.readEnum(InventoryId);
-			if(fallbackId == destId) fallbackId = null;
 			const sourceId = try reader.readEnum(InventoryId);
 			return .{
 				.dest = Sync.getInventory(destId, side, user) orelse return error.InventoryNotFound,
-				.fallback = if(fallbackId) |id| Sync.getInventory(id, side, user) else null,
 				.source = Sync.getInventory(sourceId, side, user) orelse return error.InventoryNotFound,
 				.dropLocation = (user orelse return error.Invalid).player.pos,
 			};
@@ -1668,20 +1651,21 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const DepositToAny = struct { // MARK: DepositToAny
-		dest: Inventory,
-		fallback: ?Inventory,
+		destinations: []Inventory,
+		allocated: bool = false,
 		source: InventoryAndSlot,
 		amount: u16,
 
 		fn run(self: DepositToAny, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
-			if(self.dest.type == .creative) return;
-			if(self.dest.type == .crafting) return;
-			if(self.dest.type == .workbench) return;
-			if(self.fallback) |fallback| {
-				if(fallback.type != .normal) return;
+			defer if(self.allocated) main.stackAllocator.free(self.destinations);
+			if(self.destinations.len == 0) return;
+			for(self.destinations) |dest| {
+				if(dest.type == .creative) return;
+				if(dest.type == .crafting) return;
+				if(dest.type == .workbench) return;
 			}
 			if(self.source.inv.type == .crafting) {
-				cmd.tryCraftingTo(allocator, self.dest, self.source, side, user);
+				cmd.tryCraftingTo(allocator, self.destinations[0], self.source, side, user);
 				return;
 			}
 			const sourceStack = self.source.ref();
@@ -1689,32 +1673,30 @@ pub const Command = struct { // MARK: Command
 			if(self.amount > sourceStack.amount) return;
 
 			var remainingAmount = self.amount;
-			var selectedEmptyInv = false;
+			var selectedEmptyInv: u8 = 0;
 			var selectedEmptySlot: ?u32 = null;
-			outer: for([2]?Inventory{self.dest, self.fallback}) |_destInv| {
-				if(_destInv) |destInv| {
-					for(destInv._items, 0..) |*destStack, destSlot| {
-						if(destStack.item == .null and selectedEmptySlot == null) {
-							selectedEmptyInv = (destInv.source == .playerMainInventory);
-							selectedEmptySlot = @intCast(destSlot);
-						}
-						if(std.meta.eql(destStack.item, sourceStack.item)) {
-							const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
-							if(amount == 0) continue;
-							cmd.executeBaseOperation(allocator, .{.move = .{
-								.dest = .{.inv = destInv, .slot = @intCast(destSlot)},
-								.source = self.source,
-								.amount = amount,
-							}}, side);
-							remainingAmount -= amount;
-							if(remainingAmount == 0) break :outer;
-						}
+			outer: for(self.destinations, 0..) |dest, i| {
+				for(dest._items, 0..) |*destStack, destSlot| {
+					if(destStack.item == .null and selectedEmptySlot == null) {
+						selectedEmptyInv = @as(u8, @intCast(i));
+						selectedEmptySlot = @intCast(destSlot);
+					}
+					if(std.meta.eql(destStack.item, sourceStack.item)) {
+						const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
+						if(amount == 0) continue;
+						cmd.executeBaseOperation(allocator, .{.move = .{
+							.dest = .{.inv = dest, .slot = @intCast(destSlot)},
+							.source = self.source,
+							.amount = amount,
+						}}, side);
+						remainingAmount -= amount;
+						if(remainingAmount == 0) break :outer;
 					}
 				}
 			}
 			if(remainingAmount > 0 and selectedEmptySlot != null) {
 				cmd.executeBaseOperation(allocator, .{.move = .{
-					.dest = .{.inv = if(!selectedEmptyInv) self.dest else self.fallback.?, .slot = selectedEmptySlot.?},
+					.dest = .{.inv = self.destinations[selectedEmptyInv], .slot = selectedEmptySlot.?},
 					.source = self.source,
 					.amount = remainingAmount,
 				}}, side);
@@ -1722,19 +1704,27 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: DepositToAny, writer: *utils.BinaryWriter) void {
-			writer.writeEnum(InventoryId, self.dest.id);
-			writer.writeEnum(InventoryId, if(self.fallback) |fallback| fallback.id else self.dest.id);
+			writer.writeInt(u4, @as(u4, @intCast(self.destinations.len)));
+			for(self.destinations) |dest| {
+				writer.writeEnum(InventoryId, dest.id);
+			}
 			self.source.write(writer);
 			writer.writeInt(u16, self.amount);
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DepositToAny {
-			const destId = try reader.readEnum(InventoryId);
-			var fallbackId: ?InventoryId = try reader.readEnum(InventoryId);
-			if(fallbackId == destId) fallbackId = null;
+			const destinationsSize = try reader.readInt(u4);
+			const destinations = blk: {
+				var list: main.List(Inventory) = .init(main.stackAllocator);
+				for(0..destinationsSize) |_| {
+					const invId = try reader.readEnum(InventoryId);
+					list.append(Sync.getInventory(invId, side, user) orelse return error.InventoryNotFound);
+				}
+				break :blk list.toOwnedSlice();
+			};
 			return .{
-				.dest = Sync.getInventory(destId, side, user) orelse return error.InventoryNotFound,
-				.fallback = if(fallbackId) |id| Sync.getInventory(id, side, user) else null,
+				.destinations = destinations,
+				.allocated = true,
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.amount = try reader.readInt(u16),
 			};
@@ -2140,12 +2130,12 @@ pub fn distribute(carried: Inventory, destinationInventories: []const Inventory,
 	}
 }
 
-pub fn depositOrDrop(dest: Inventory, source: Inventory, fallback: ?Inventory) void {
-	Sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .fallback = fallback, .source = source, .dropLocation = undefined}});
+pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
+	Sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source, .dropLocation = undefined}});
 }
 
-pub fn depositToAny(source: Inventory, sourceSlot: u32, dest: Inventory, fallback: ?Inventory, amount: u16) void {
-	Sync.ClientSide.executeCommand(.{.depositToAny = .{.dest = dest, .fallback = fallback, .source = .{.inv = source, .slot = sourceSlot}, .amount = amount}});
+pub fn depositToAny(source: Inventory, sourceSlot: u32, destinations: []Inventory, amount: u16) void {
+	Sync.ClientSide.executeCommand(.{.depositToAny = .{.destinations = destinations, .source = .{.inv = source, .slot = sourceSlot}, .amount = amount}});
 }
 
 pub fn dropStack(source: Inventory, sourceSlot: u32) void {
