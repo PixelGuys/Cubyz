@@ -665,7 +665,8 @@ pub const inventory = struct { // MARK: inventory
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
 				if(mainGuiButton.modsOnPress.shift) {
-					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+					var destinations = [_]Inventory{main.game.Player.inventory};
+					itemSlot.inventory.depositToAny(itemSlot.itemSlot, destinations[0..], itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {
 					itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
 				}
@@ -683,12 +684,14 @@ pub const inventory = struct { // MARK: inventory
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while(iterator.next()) |window| {
 					if(window.shiftClickableInventory) |inv| {
-						itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+						var destinations = [_]Inventory{inv};
+						itemSlot.inventory.depositToAny(itemSlot.itemSlot, destinations[0..], itemSlot.inventory.getAmount(itemSlot.itemSlot));
 						break;
 					}
 				}
 			} else {
-				itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+				var destinations = [_]Inventory{main.game.Player.inventory};
+				itemSlot.inventory.depositToAny(itemSlot.itemSlot, destinations[0..], itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
 			return;
 		}
