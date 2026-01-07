@@ -1733,16 +1733,16 @@ pub const Command = struct { // MARK: Command
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DepositToAny {
 			const destinationsSize = try reader.readInt(u8);
-			const destinations = blk: {
-				var list: main.List(Inventory) = .init(main.stackAllocator);
-				for(0..destinationsSize) |_| {
-					const invId = try reader.readEnum(InventoryId);
-					list.append(Sync.getInventory(invId, side, user) orelse return error.InventoryNotFound);
-				}
-				break :blk list.toOwnedSlice();
-			};
+			var destinations = main.stackAllocator.alloc(Inventory, destinationsSize);
+			errdefer main.stackAllocator.free(destinations);
+			
+                        for(destinations) |*dest| {
+				const invId = try reader.readEnum(InventoryId);
+				dest.* = Sync.getInventory(invId, side, user) orelse return error.InventoryNotFound;
+			}
+
 			return .{
-				.destinations = destinations,
+				.destinations = destinations[0..],
 				.allocated = true,
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.amount = try reader.readInt(u16),
