@@ -1,9 +1,6 @@
 .{
 	.chance = 0.02,
 	.caves = -0.02,
-	.ground_structure = .{
-		"2 to 3 cubyz:soil",
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
