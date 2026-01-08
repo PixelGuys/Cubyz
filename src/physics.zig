@@ -12,17 +12,19 @@ const Player = main.game.Player;
 const collision = main.game.collision;
 const camera = main.game.camera;
 
-const gravity = 30.0;
-const airTerminalVelocity = 90.0;
+pub const gravity = 30.0;
+pub const airTerminalVelocity = 90.0;
+pub const airDensity = 0.001;
 const playerDensity = 1.2;
 
 pub fn calculateProperties() void {
 	if(main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
-		Player.volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = 0.001, .terminalVelocity = airTerminalVelocity, .maxDensity = 0.001, .mobility = 1.0});
-
+		Player.volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = airDensity, .terminalVelocity = airTerminalVelocity, .maxDensity = airDensity, .mobileFriction = 1.0/airTerminalVelocity});
 		const groundFriction = if(!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
+		const mobileFriction: f32 = @floatCast(gravity*Player.volumeProperties.mobileFriction);
 		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
+		Player.mobileFriction = if(Player.isFlying.load(.monotonic)) 20 else groundFriction + mobileFriction;
 	}
 }
 

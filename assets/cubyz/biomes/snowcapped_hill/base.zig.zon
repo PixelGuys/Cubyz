@@ -17,7 +17,7 @@
 		"1 cubyz:cold_grass",
 		"1 to 3 cubyz:permafrost",
 	},
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:glacite/base",
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -76,7 +76,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.04,
-			.block = "cubyz:glacite",
+			.block = "cubyz:glacite/base",
 			.size = 3,
 			.size_variance = 3,
 		},

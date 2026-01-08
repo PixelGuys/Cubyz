@@ -9,7 +9,7 @@
 
 	.music = "cubyz:leaves",
 
-	.stoneBlock = "cubyz:slate",
+	.stoneBlock = "cubyz:slate/base",
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",

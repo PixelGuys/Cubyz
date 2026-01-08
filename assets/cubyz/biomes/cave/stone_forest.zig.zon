@@ -10,20 +10,20 @@
 
 	.ground_structure = .{
 		"0 to 1 cubyz:gravel",
-		"cubyz:slate",
+		"cubyz:slate/base",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:cobblestone",
+			.block = "cubyz:slate/cobble",
 			.size = 5,
 			.size_variance = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.size = 4,
 			.size_variance = 2,
 		},
@@ -36,9 +36,9 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:cobblestone",
-			.log = "cubyz:slate",
-			.top = "cubyz:slate",
+			.leaves = "cubyz:slate/cobble",
+			.log = "cubyz:slate/base",
+			.top = "cubyz:slate/base",
 			.chance = 0.16,
 			.type = .round,
 			.height = 3,
@@ -46,9 +46,9 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:slate",
-			.log = "cubyz:slate",
-			.top = "cubyz:slate",
+			.leaves = "cubyz:slate/base",
+			.log = "cubyz:slate/base",
+			.top = "cubyz:slate/base",
 			.chance = 0.48,
 			.type = .round,
 			.height = 3,

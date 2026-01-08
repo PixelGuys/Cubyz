@@ -1,0 +1,25 @@
+.{
+	.maxHeight = -64,
+	.minHeight = -1000,
+	.chance = 0.3,
+	.structures = .{
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:toadstool",
+			.chance = 0.15,
+			.width = 6,
+			.variation = 3,
+			.density = 0.04,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:bolete",
+			.chance = 0.15,
+			.width = 6,
+			.variation = 3,
+			.density = 0.04,
+			.priority = 0.1,
+		},
+	},
+}

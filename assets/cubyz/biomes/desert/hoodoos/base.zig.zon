@@ -53,5 +53,5 @@
 			.priority = 0.1,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone",
+	.stoneBlock = "cubyz:sandstone/base",
 }

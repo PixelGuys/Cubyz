@@ -20,5 +20,5 @@
 
 	.maxSubBiomeCount = 1,
 
-	.stoneBlock = "cubyz:basalt",
+	.stoneBlock = "cubyz:basalt/base",
 }

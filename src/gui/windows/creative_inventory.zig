@@ -70,7 +70,7 @@ fn initContent() void {
 		const row = HorizontalList.init();
 		const label = Label.init(.{0, 3}, 56, "Search:", .right);
 
-		searchInput = TextInput.init(.{0, 0}, 288, 22, searchString, .{.callback = &filter}, .{});
+		searchInput = TextInput.init(.{0, 0}, 288, 22, searchString, .{.onNewline = .init(filter)});
 
 		row.add(label);
 		row.add(searchInput);
@@ -134,10 +134,10 @@ fn deinitContent() void {
 
 pub fn update() void {
 	if(std.mem.eql(u8, searchInput.currentString.items, searchString)) return;
-	filter(undefined);
+	filter();
 }
 
-fn filter(_: usize) void {
+fn filter() void {
 	const selectionStart = searchInput.selectionStart;
 	const cursor = searchInput.cursor;
 

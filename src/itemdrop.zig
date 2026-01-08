@@ -721,10 +721,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f) void {
-		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
-			ambientLight*@as(Vec3f, @as(Vec3f, @floatFromInt(Vec3i{light[0], light[1], light[2]}))/@as(Vec3f, @splat(255))),
-			@as(Vec3f, @floatFromInt(Vec3i{light[3], light[4], light[5]}))/@as(Vec3f, @splat(255)),
-		)));
+		const sunLight: Vec3f = ambientLight*@as(Vec3f, @floatFromInt(Vec3i{light[0], light[1], light[2]}))/@as(Vec3f, @splat(255));
+		const blockLight: Vec3f = @as(Vec3f, @floatFromInt(Vec3i{light[3], light[4], light[5]}))/@as(Vec3f, @splat(255));
+		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@min(@sqrt(sunLight*sunLight + blockLight*blockLight), @as(Vec3f, @splat(1)))));
 	}
 
 	fn bindModelUniforms(modelIndex: u31, blockType: u16) void {

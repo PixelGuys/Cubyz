@@ -486,8 +486,10 @@ pub const BlockEntityTypes = struct {
 			for(StorageClient.storage.dense.items) |*signData| {
 				if(signData.renderedTexture != null) continue;
 
+				var oldViewport: [4]c_int = undefined;
+				c.glGetIntegerv(c.GL_VIEWPORT, &oldViewport);
 				c.glViewport(0, 0, textureWidth, textureHeight);
-				defer c.glViewport(0, 0, main.Window.width, main.Window.height);
+				defer c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 
 				var finalFrameBuffer: graphics.FrameBuffer = undefined;
 				finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);

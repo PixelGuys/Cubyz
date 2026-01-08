@@ -9,8 +9,18 @@ pub const usage =
 	\\/particles <id> <x> <y> <z>
 	\\/particles <id> <x> <y> <z> <collides>
 	\\/particles <id> <x> <y> <z> <collides> <count>
+	\\/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>
 	\\
 	\\tip: use "~" to apply current player position coordinate in <x> <y> <z> fields.
+	\\zon example:
+	\\.{
+	\\  .shape = .sphere,
+	\\  .radius = 5,
+	\\  .mode = .scatter,
+	\\  .speed = .{0.5, 10},
+	\\  .lifeTime = .{0.5, 10},
+	\\  .randomRotate = true,
+	\\}
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
@@ -28,7 +38,9 @@ pub fn execute(args: []const u8, source: *User) void {
 }
 
 fn parseArguments(source: *User, args: []const u8) anyerror!void {
-	var split = std.mem.splitScalar(u8, args, ' ');
+	const zonIndex = std.mem.indexOf(u8, args, " .{") orelse args.len;
+	const zonStr = args[zonIndex..];
+	var split = std.mem.splitScalar(u8, std.mem.trimRight(u8, args[0..zonIndex], " "), ' ');
 	const particleId = split.next() orelse return error.TooFewArguments;
 
 	const x = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[0], source);
@@ -36,12 +48,13 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const z = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[2], source);
 	const collides = try parseBool(split.next() orelse "true");
 	const particleCount = try parseNumber(split.next() orelse "1", source);
+
 	if(split.next() != null) return error.TooManyArguments;
 
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for(users) |user| {
-		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, .{x, y, z}, collides, particleCount);
+		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, .{x, y, z}, collides, particleCount, zonStr);
 	}
 }
 

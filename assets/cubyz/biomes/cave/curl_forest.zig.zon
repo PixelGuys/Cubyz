@@ -30,14 +30,14 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:cobblestone",
+			.block = "cubyz:slate/cobble",
 			.size = 4,
 			.size_variance = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.size = 4,
 			.size_variance = 4,
 		},

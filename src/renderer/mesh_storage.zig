@@ -867,7 +867,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 		.taskType = .meshgenAndLighting,
 	};
 
-	pub fn schedule(mesh: *chunk.Chunk) void {
+	fn schedule(mesh: *chunk.Chunk) void {
 		const task = main.globalAllocator.create(MeshGenerationTask);
 		task.* = MeshGenerationTask{
 			.mesh = mesh,
@@ -894,6 +894,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {
+		self.mesh.unloadBlockEntities(.client);
 		self.mesh.deinit();
 		main.globalAllocator.destroy(self);
 	}

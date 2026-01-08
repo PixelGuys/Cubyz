@@ -411,6 +411,9 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	pub fn deinit(self: *ServerChunk) void {
 		std.debug.assert(self.refCount.raw == 0);
+		const oldContext = main.items.Inventory.threadContext;
+		defer main.items.Inventory.threadContext = oldContext;
+		main.items.Inventory.threadContext = .chunkDeiniting;
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}

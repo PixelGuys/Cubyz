@@ -4,6 +4,12 @@
 		.shellModel = "cubyz:cube_hanging_planes",
 		.textureSlotOffset = 6,
 	},
+	.onUpdate = .{
+		.type = .decay,
+		.drops = .{
+			.{.items = .{"cubyz:palm_branch"}},
+		},
+	},
 	.drops = .{
 		.{.items = .{"cubyz:leaves/palm", "cubyz:palm_branch"}},
 	},

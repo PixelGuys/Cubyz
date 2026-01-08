@@ -62,6 +62,10 @@ layout(std430, binding = 6) buffer _chunks
 	ChunkData chunks[];
 };
 
+vec3 square(vec3 x) {
+	return x*x;
+}
+
 void main() {
 	int faceID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
@@ -81,7 +85,7 @@ void main() {
 		fullLight >> 5 & 31u,
 		fullLight >> 0 & 31u
 	);
-	light = max(sunLight*ambientLight, blockLight)/31;
+	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
 
 	textureIndex = textureAndQuad & 65535;

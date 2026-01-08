@@ -6,7 +6,7 @@
 	.caves = -0.02,
 	.fogDensity = 20,
 	.fogColor = 0xbabfbf,
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:glacite/base",
 	.ground_structure = .{
 		"cubyz:ice",
 		"7 to 8 cubyz:frost",

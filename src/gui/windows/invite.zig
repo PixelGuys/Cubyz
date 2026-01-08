@@ -41,7 +41,7 @@ fn discoverIpAddressFromNewThread() void {
 	discoverIpAddress();
 }
 
-fn invite(_: usize) void {
+fn invite() void {
 	if(thread) |_thread| {
 		_thread.join();
 		thread = null;
@@ -55,7 +55,7 @@ fn invite(_: usize) void {
 	user.decreaseRefCount();
 }
 
-fn copyIp(_: usize) void {
+fn copyIp() void {
 	main.Window.setClipboardString(ipAddress);
 }
 
@@ -69,10 +69,11 @@ pub fn onOpen() void {
 	//                                           255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
 	list.add(ipAddressLabel);
-	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
-	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &invite}, .{});
+	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .init(copyIp)));
+	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.onNewline = .init(invite)});
+	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
-	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.callback = &invite}));
+	list.add(Button.initText(.{0, 0}, 100, "Invite", .init(invite)));
 	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
 	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.allowNewConnections.load(.monotonic), &makePublic));
 	list.finish(.center);
@@ -105,6 +106,13 @@ pub fn onClose() void {
 pub fn update() void {
 	if(gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
-		ipAddressLabel.updateText(ipAddress);
+
+		if(main.settings.streamerMode) {
+			const obfuscatedIp = main.utils.obfuscateString(main.stackAllocator, ipAddress);
+			defer main.stackAllocator.free(obfuscatedIp);
+			ipAddressLabel.updateText(obfuscatedIp);
+		} else {
+			ipAddressLabel.updateText(ipAddress);
+		}
 	}
 }

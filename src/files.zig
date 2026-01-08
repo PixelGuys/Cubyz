@@ -111,7 +111,12 @@ pub const Dir = struct {
 	}
 
 	pub fn write(self: Dir, path: []const u8, data: []const u8) !void {
-		return self.dir.writeFile(.{.data = data, .sub_path = path});
+		const tempPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.tmp0", .{path}) catch unreachable;
+		defer main.stackAllocator.free(tempPath);
+
+		try self.dir.writeFile(.{.data = data, .sub_path = tempPath});
+
+		return self.dir.rename(tempPath, path);
 	}
 
 	pub fn writeZon(self: Dir, path: []const u8, zon: ZonElement) !void {
