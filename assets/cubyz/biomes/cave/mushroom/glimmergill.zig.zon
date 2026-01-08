@@ -1,5 +1,7 @@
 .{
 	.chance = 0.05,
+	.maxHeight = -200,
+	.minHeight = -48250,
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
