@@ -100,7 +100,7 @@ pub fn onOpen() void {
 			entryList.appendAssumeCapacity(entry);
 		}
 
-		std.sort.insertion(ZonMapEntry, entryList.items, {}, struct{
+		std.sort.insertion(ZonMapEntry, entryList.items, {}, struct {
 			fn lessThanFn(_: void, lhs: ZonMapEntry, rhs: ZonMapEntry) bool {
 				return std.ascii.lessThanIgnoreCase(lhs.key_ptr.*, rhs.key_ptr.*);
 			}
