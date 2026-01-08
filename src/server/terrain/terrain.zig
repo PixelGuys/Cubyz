@@ -22,7 +22,7 @@ pub const StructureMap = @import("StructureMap.zig");
 
 pub const structure_building_blocks = @import("structure_building_blocks.zig");
 
-pub const GeneratorState = enum{enabled, disabled};
+pub const GeneratorState = enum {enabled, disabled};
 
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {
