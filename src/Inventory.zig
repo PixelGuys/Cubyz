@@ -1715,7 +1715,6 @@ pub const Command = struct { // MARK: Command
 			var remainingAmount = self.amount;
 			var selectedEmptyInv: u8 = 0;
 			var selectedEmptySlot: ?u32 = null;
-			var selectedEmptyInv: u8 = 0;
 			var selectedEmptyInvHasItem = false;
 			outer: for(self.destinations, 0..) |dest, destInv| {
 				var emptySlot: ?u32 = null;
