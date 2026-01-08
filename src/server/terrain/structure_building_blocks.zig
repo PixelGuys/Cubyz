@@ -430,6 +430,10 @@ pub fn getByStringId(stringId: []const u8) ?*StructureBuildingBlock {
 	return null;
 }
 
+pub fn list() []const StructureBuildingBlock {
+	return structureList.items;
+}
+
 pub fn reset() void {
 	childBlockNumericIdMap = .{};
 	childBlockName = .{};

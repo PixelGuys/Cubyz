@@ -1,6 +1,23 @@
 const std = @import("std");
 
 // MARK: functionPtrCast()
+fn CastFunctionSelfToConstAnyopaqueType(Fn: type) type {
+	var typeInfo = @typeInfo(Fn);
+	var params = typeInfo.@"fn".params[0..typeInfo.@"fn".params.len].*;
+	const isMutablePointer = @typeInfo(params[0].type.?) == .pointer and !@typeInfo(params[0].type.?).pointer.is_const;
+	if(@sizeOf(params[0].type.?) != @sizeOf(*const anyopaque) or @alignOf(params[0].type.?) != @alignOf(*const anyopaque) or isMutablePointer) {
+		@compileError(std.fmt.comptimePrint("Cannot convert {} to *const anyopaque", .{params[0].type.?}));
+	}
+	params[0].type = *const anyopaque;
+	typeInfo.@"fn".params = params[0..];
+	return @Type(typeInfo);
+}
+/// Turns the first parameter into a *const anyopaque
+pub fn castFunctionSelfToConstAnyopaque(function: anytype) *const CastFunctionSelfToConstAnyopaqueType(@TypeOf(function)) {
+	return @ptrCast(&function);
+}
+
+// MARK: functionPtrCast()
 fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
 	var typeInfo = @typeInfo(Fn);
 	var params = typeInfo.@"fn".params[0..typeInfo.@"fn".params.len].*;
@@ -11,7 +28,7 @@ fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
 	typeInfo.@"fn".params = params[0..];
 	return @Type(typeInfo);
 }
-/// Turns the first parameter into a anyopaque*
+/// Turns the first parameter into a *anyopaque
 pub fn castFunctionSelfToAnyopaque(function: anytype) *const CastFunctionSelfToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
@@ -33,7 +50,7 @@ fn CastFunctionReturnToOptionalAnyopaqueType(Fn: type) type {
 	typeInfo.@"fn".return_type = ?*anyopaque;
 	return @Type(typeInfo);
 }
-/// Turns the return parameter into a anyopaque*
+/// Turns the return parameter into a *anyopaque
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
