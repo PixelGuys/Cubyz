@@ -5,4 +5,12 @@
 	.fogDensity = 25,
 	.fogColor = 0x51240c,
 	.stoneBlock = "cubyz:mantle/base",
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cave/mantle/stalagmite",
+			.placeMode = .degradable,
+			.chance = 0.06,
+		},
+	},
 }

@@ -1,42 +1,16 @@
 .{
 	.chance = 0.5,
 	.caves = -0.03,
-	.stripes = .{
-		.{
-			.direction = .{4, 1, 3},
-			.block = "cubyz:magma",
-			.distance = 32,
-			.offset = 5,
-			.width = 2,
-		},
-		.{
-			.direction = .{2, 2.5, 3},
-			.block = "cubyz:magma",
-			.distance = 28,
-			.offset = 6,
-			.width = 3,
-		},
-		.{
-			.direction = .{3, 4, 2},
-			.block = "cubyz:magma",
-			.distance = 28,
-			.offset = 7,
-			.width = 2,
-		},
-	},
 	.structures = .{
 		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:magma",
-			.chance = 0.05,
-			.width = 4,
-			.variation = 2,
-			.depth = 2,
-			.smoothness = 1,
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cave/mantle/lava_pool",
+			.placeMode = .degradable,
+			.chance = 0.02,
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:lava",
+			.block = "cubyz:magma",
 			.chance = 0.05,
 			.width = 4,
 			.variation = 2,

@@ -1,21 +1,5 @@
 .{
 	.chance = 0.3,
-	.stripes = .{
-		.{
-			.direction = .{2, 2.5, 3},
-			.block = "cubyz:magma",
-			.distance = 28,
-			.offset = 6,
-			.width = 3,
-		},
-		.{
-			.direction = .{3, 4, 2},
-			.block = "cubyz:magma",
-			.distance = 28,
-			.offset = 7,
-			.width = 2,
-		},
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",

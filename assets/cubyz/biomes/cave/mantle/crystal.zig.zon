@@ -2,29 +2,6 @@
 	.chance = 0.03,
 	.caves = -0.05,
 	.crystals = 32,
-	.stripes = .{
-		.{
-			.direction = .{4, 1, 3},
-			.block = "cubyz:magma",
-			.distance = 32,
-			.offset = 5,
-			.width = 2,
-		},
-		.{
-			.direction = .{2, 2.5, 3},
-			.block = "cubyz:magma",
-			.distance = 28,
-			.offset = 6,
-			.width = 3,
-		},
-		.{
-			.direction = .{3, 4, 2},
-			.block = "cubyz:magma",
-			.distance = 28,
-			.offset = 7,
-			.width = 2,
-		},
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
