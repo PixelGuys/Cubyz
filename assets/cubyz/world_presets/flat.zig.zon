@@ -1,0 +1,29 @@
+.{
+	.climateGenerator = .{
+		.id = "cubyz:single_biome",
+		.biome = "cubyz:development/flat",
+	},
+	.mapGenerator = .{
+		.id = "cubyz:mapgen_v1",
+	},
+	.generators = .{
+		.@"cubyz:ore" = .{
+			.state = .disabled,
+		},
+	},
+	.caveGenerators = .{
+		.@"cubyz:fractal_cave" = .{
+			.state = .disabled,
+		},
+		.@"cubyz:noise_cave" = .{
+			.state = .disabled,
+		},
+	},
+	.climateWavelengths = .{
+		.@"hot_cold" = 2400,
+		.@"land_ocean" = 3200,
+		.@"wet_dry" = 1800,
+		.@"vegetation" = 1600,
+		.@"mountain" = 512,
+	},
+}
