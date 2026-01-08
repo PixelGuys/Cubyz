@@ -6,10 +6,10 @@
 		.id = "cubyz:mapgen_v1",
 	},
 	.climateWavelengths = .{
-		.@"hot_cold" = 2400,
-		.@"land_ocean" = 3200,
-		.@"wet_dry" = 1800,
-		.@"vegetation" = 1600,
-		.@"mountain" = 512,
+		.hot_cold = 2400,
+		.land_ocean = 3200,
+		.wet_dry = 1800,
+		.vegetation = 1600,
+		.mountain = 512,
 	},
 }
