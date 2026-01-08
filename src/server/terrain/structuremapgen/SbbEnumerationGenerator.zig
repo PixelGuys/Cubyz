@@ -26,6 +26,8 @@ pub const priority = 131072;
 
 pub const generatorSeed = 0x7568492764892;
 
+pub const defaultState = .disabled;
+
 var sbbList: []main.server.terrain.biomes.SimpleStructureModel = undefined;
 var signBlock: main.blocks.Block = undefined;
 
@@ -102,42 +104,44 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 			const index: u32 = @intCast(@mod(@divFloor(wpx, 32), @as(i32, @intCast(sbbList.len))));
 			const sbb = &sbbList[index];
 
-			const relZ = 1024 -% map.pos.wz;
-			if(relZ < -32 or relZ >= size + 32) continue;
+			inline for(.{0, 128}) |startZ| blk: {
+				const relZ = startZ -% map.pos.wz;
+				if(relZ < -32 or relZ >= size + 32) break :blk;
 
-			const signRow = wpy & 1023 == 0;
-			if(signRow) {
-				const structure = map.allocator.create(SignGenerator);
-				structure.* = .{
-					.wx = wpx,
-					.wy = wpy,
-					.wz = map.pos.wz +% relZ,
-					.id = @as(*SbbGen, @ptrCast(@alignCast(sbb.data))).structureRef.id,
-				};
-				map.addStructure(.{
-					.internal = .{
-						.data = structure,
-						.generateFn = main.meta.castFunctionSelfToConstAnyopaque(SignGenerator.generate),
-					},
-					.priority = sbb.priority,
-				}, .{px, py, structure.wz -% map.pos.wz}, .{px +% 1, py +% 1, structure.wz -% map.pos.wz +% 1});
-			} else {
-				const structure = map.allocator.create(SimpleStructure);
-				structure.* = .{
-					.wx = wpx,
-					.wy = wpy,
-					.wz = map.pos.wz +% relZ,
-					.seed = worldSeed*%@as(u32, @bitCast(wpy)),
-					.model = sbb,
-					.isCeiling = false,
-				};
-				map.addStructure(.{
-					.internal = .{
-						.data = structure,
-						.generateFn = main.meta.castFunctionSelfToConstAnyopaque(SimpleStructure.generate),
-					},
-					.priority = sbb.priority,
-				}, .{px -% margin, py -% margin, structure.wz -% map.pos.wz -% marginZ}, .{px +% margin, py +% margin, structure.wz -% map.pos.wz +% marginZ});
+				const signRow = wpy & 1023 == 0;
+				if(signRow) {
+					const structure = map.allocator.create(SignGenerator);
+					structure.* = .{
+						.wx = wpx,
+						.wy = wpy,
+						.wz = map.pos.wz +% relZ,
+						.id = @as(*SbbGen, @ptrCast(@alignCast(sbb.data))).structureRef.id,
+					};
+					map.addStructure(.{
+						.internal = .{
+							.data = structure,
+							.generateFn = main.meta.castFunctionSelfToConstAnyopaque(SignGenerator.generate),
+						},
+						.priority = sbb.priority,
+					}, .{px, py, structure.wz -% map.pos.wz}, .{px +% 1, py +% 1, structure.wz -% map.pos.wz +% 1});
+				} else {
+					const structure = map.allocator.create(SimpleStructure);
+					structure.* = .{
+						.wx = wpx,
+						.wy = wpy,
+						.wz = map.pos.wz +% relZ,
+						.seed = worldSeed*%@as(u32, @bitCast(wpy)),
+						.model = sbb,
+						.isCeiling = false,
+					};
+					map.addStructure(.{
+						.internal = .{
+							.data = structure,
+							.generateFn = main.meta.castFunctionSelfToConstAnyopaque(SimpleStructure.generate),
+						},
+						.priority = sbb.priority,
+					}, .{px -% margin, py -% margin, structure.wz -% map.pos.wz -% marginZ}, .{px +% margin, py +% margin, structure.wz -% map.pos.wz +% marginZ});
+				}
 			}
 		}
 	}
