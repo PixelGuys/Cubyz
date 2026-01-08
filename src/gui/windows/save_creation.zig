@@ -100,9 +100,11 @@ pub fn onOpen() void {
 			entryList.appendAssumeCapacity(entry);
 		}
 
-		std.sort.insertion(ZonMapEntry, entryList.items, {}, struct{fn lessThanFn(_: void, lhs: ZonMapEntry, rhs: ZonMapEntry) bool {
-			return std.ascii.lessThanIgnoreCase(lhs.key_ptr.*, rhs.key_ptr.*);
-		}}.lessThanFn);
+		std.sort.insertion(ZonMapEntry, entryList.items, {}, struct{
+			fn lessThanFn(_: void, lhs: ZonMapEntry, rhs: ZonMapEntry) bool {
+				return std.ascii.lessThanIgnoreCase(lhs.key_ptr.*, rhs.key_ptr.*);
+			}
+		}.lessThanFn);
 		worldPresets = entryList.items;
 		for(worldPresets, 0..) |entry, i| {
 			if(std.mem.eql(u8, entry.key_ptr.*, "cubyz:default")) {
