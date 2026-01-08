@@ -72,6 +72,11 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return null;
 	}
 
+	pub fn removeChild(self: *const ZonElement, key: []const u8) ?ZonElement {
+		if(self.* != .object) return null;
+		return (self.object.fetchRemove(key) orelse return null).value;
+	}
+
 	pub fn clone(self: *const ZonElement, allocator: NeverFailingAllocator) ZonElement {
 		return switch(self.*) {
 			.int, .float, .string, .bool, .null => self.*,
@@ -181,6 +186,9 @@ pub const ZonElement = union(enum) { // MARK: Zon
 					}
 				}
 				return result;
+			},
+			.@"enum" => {
+				return std.meta.stringToEnum(T, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
 			},
 			else => {
 				switch(innerType) {

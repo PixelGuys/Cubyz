@@ -197,7 +197,7 @@ pub const Sync = struct { // MARK: Sync
 			}
 
 			fn deinit(self: *ServerInventory) void {
-				threadContext.assertCorrectContext(.server);
+				main.utils.assertLocked(&inventoryCreationMutex);
 				while(self.users.items.len != 0) {
 					self.removeUser(self.users.items[0].user, self.users.items[0].cliendId);
 				}
@@ -239,6 +239,8 @@ pub const Sync = struct { // MARK: Sync
 							const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
 							Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
 						}
+						inventoryCreationMutex.lock();
+						defer inventoryCreationMutex.unlock();
 						self.deinit();
 					}
 				}
@@ -291,9 +293,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn freeId(id: InventoryId) void {
-			threadContext.assertCorrectContext(.server);
-			inventoryCreationMutex.lock();
-			defer inventoryCreationMutex.unlock();
+			main.utils.assertLocked(&inventoryCreationMutex);
 			freeIdList.append(id);
 		}
 
@@ -366,8 +366,15 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn destroyExternallyManagedInventory(invId: InventoryId) void {
-			threadContext.assertCorrectContext(.server);
+			switch(threadContext) {
+				.server => {},
+				.chunkDeiniting => std.debug.assert(inventories.items()[@intFromEnum(invId)].users.items.len == 0), // There should be no users here, since chunks shouldn't be deinited while players are still interacting with them.
+				else => unreachable,
+			}
 			std.debug.assert(inventories.items()[@intFromEnum(invId)].managed == .externallyManaged);
+
+			inventoryCreationMutex.lock();
+			defer inventoryCreationMutex.unlock();
 			inventories.items()[@intFromEnum(invId)].deinit();
 		}
 
@@ -385,6 +392,8 @@ pub const Sync = struct { // MARK: Sync
 				);
 				itemStack.* = .{};
 			}
+			inventoryCreationMutex.lock();
+			defer inventoryCreationMutex.unlock();
 			inv.deinit();
 		}
 
@@ -2016,6 +2025,7 @@ pub threadlocal var threadContext: ThreadContext = .other;
 pub const ThreadContext = enum { // MARK: ThreadContext
 	other,
 	server,
+	chunkDeiniting,
 
 	pub fn assertCorrectContext(self: ThreadContext, side: Side) void {
 		switch(side) {
