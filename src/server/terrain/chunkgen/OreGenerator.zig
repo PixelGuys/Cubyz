@@ -17,6 +17,8 @@ pub const priority = 32768;
 
 pub const generatorSeed = 0x88773787bc9e0105;
 
+pub const defaultState = .enabled;
+
 var ores: []main.blocks.Ore = undefined;
 
 // TODO: Idea:
