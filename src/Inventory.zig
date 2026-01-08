@@ -1675,8 +1675,11 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
+		fn finalize(self: DepositToAny, _: Side, _: *utils.BinaryReader) !void {
+			if(self.owned) main.globalAllocator.free(self.destinations);
+		}
+
 		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
-			defer if(self.owned) main.stackAllocator.free(self.destinations);
 			if(self.destinations.len == 0) return;
 			for(self.destinations) |dest| {
 				if(dest.type == .creative) return;
@@ -1741,8 +1744,8 @@ pub const Command = struct { // MARK: Command
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DepositToAny {
 			const destinationsSize = try reader.readInt(u8);
-			var destinations = main.stackAllocator.alloc(Inventory, destinationsSize);
-			errdefer main.stackAllocator.free(destinations);
+			var destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
+			errdefer main.globalAllocator.free(destinations);
 
 			for(destinations) |*dest| {
 				const invId = try reader.readEnum(InventoryId);
