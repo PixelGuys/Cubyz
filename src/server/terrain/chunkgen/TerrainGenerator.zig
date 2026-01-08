@@ -18,6 +18,8 @@ pub const priority = 1024; // Within Cubyz the first to be executed, but mods mi
 
 pub const generatorSeed = 0x65c7f9fdc0641f94;
 
+pub const defaultState = .enabled;
+
 var air: main.blocks.Block = undefined;
 var stone: main.blocks.Block = undefined;
 var water: main.blocks.Block = undefined;

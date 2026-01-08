@@ -11,6 +11,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const terrain = @import("terrain.zig");
+const GeneratorState = terrain.GeneratorState;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 const StructureInternal = struct {
@@ -128,6 +129,7 @@ pub const StructureMapGenerator = struct {
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
+	defaultState: GeneratorState,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(StructureMapGenerator) = .{};
 
@@ -137,26 +139,28 @@ pub const StructureMapGenerator = struct {
 			.generate = &Generator.generate,
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,
+			.defaultState = Generator.defaultState,
 		};
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []StructureMapGenerator {
-		const list = allocator.alloc(StructureMapGenerator, generatorRegistry.size);
+		var list: main.ListUnmanaged(StructureMapGenerator) = .initCapacity(allocator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
-		var i: usize = 0;
-		while(iterator.next()) |generator| {
-			list[i] = generator.value_ptr.*;
-			list[i].init(settings.getChild(generator.key_ptr.*));
-			i += 1;
+		while(iterator.next()) |generatorEntry| {
+			const generator = generatorEntry.value_ptr.*;
+			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
+			if(generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			generator.init(generatorSettings);
+			list.appendAssumeCapacity(generator);
 		}
 		const lessThan = struct {
 			fn lessThan(_: void, lhs: StructureMapGenerator, rhs: StructureMapGenerator) bool {
 				return lhs.priority < rhs.priority;
 			}
 		}.lessThan;
-		std.sort.insertion(StructureMapGenerator, list, {}, lessThan);
-		return list;
+		std.sort.insertion(StructureMapGenerator, list.items, {}, lessThan);
+		return list.toOwnedSlice(allocator);
 	}
 };
 
