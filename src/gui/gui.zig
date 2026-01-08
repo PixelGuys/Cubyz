@@ -690,7 +690,7 @@ pub const inventory = struct { // MARK: inventory
 					}
 				}
 			} else {
-				var destinations =  [_]Inventory{main.game.Player.hotbar, main.game.Player.mainInventory};
+				var destinations = [_]Inventory{main.game.Player.hotbar, main.game.Player.mainInventory};
 				itemSlot.inventory.depositToAny(itemSlot.itemSlot, destinations[0..], itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
 			return;
