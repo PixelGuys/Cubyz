@@ -1694,13 +1694,16 @@ pub const Command = struct { // MARK: Command
 			var remainingAmount = self.amount;
 			var selectedEmptySlot: ?u32 = null;
 			var selectedEmptyInv: u8 = 0;
-			for(self.destinations, 0..) |dest, destInv| {
+			var selectedEmptyInvHasItem = false;
+			outer: for(self.destinations, 0..) |dest, destInv| {
+				var emptySlot: ?u32 = null;
+				var hasItem = false;
 				for(dest._items, 0..) |*destStack, destSlot| {
-					if(destStack.item == .null and selectedEmptySlot == null) {
-						selectedEmptySlot = @intCast(destSlot);
-						selectedEmptyInv = @intCast(destInv);
+					if(destStack.item == .null and emptySlot == null) {
+						emptySlot = @intCast(destSlot);
 					}
 					if(std.meta.eql(destStack.item, sourceStack.item)) {
+						hasItem = true;
 						const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 						if(amount == 0) continue;
 						ctx.execute(.{.move = .{
@@ -1709,8 +1712,13 @@ pub const Command = struct { // MARK: Command
 							.amount = amount,
 						}});
 						remainingAmount -= amount;
-						if(remainingAmount == 0) break;
+						if(remainingAmount == 0) break :outer;
 					}
+				}
+				if(emptySlot != null and (selectedEmptySlot == null or (hasItem and !selectedEmptyInvHasItem))) {
+					selectedEmptySlot = emptySlot;
+					selectedEmptyInv = @intCast(destInv);
+					selectedEmptyInvHasItem = hasItem;
 				}
 			}
 			if(remainingAmount > 0 and selectedEmptySlot != null) {
