@@ -3,15 +3,6 @@
 	.caves = -0.02,
 	.structures = .{
 		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:clay",
-			.chance = 0.3,
-			.width = 5,
-			.variation = 5,
-			.depth = 1,
-			.smoothness = 0.5,
-		},
-		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:mushroom/big/glimmergill",
 			.placeMode = .degradable,
