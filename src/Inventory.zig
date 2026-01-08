@@ -1671,12 +1671,12 @@ pub const Command = struct { // MARK: Command
 
 	const DepositToAny = struct { // MARK: DepositToAny
 		destinations: []Inventory,
-		allocated: bool = false,
+		owned: bool = false,
 		source: InventoryAndSlot,
 		amount: u16,
 
 		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
-			defer if(self.allocated) main.stackAllocator.free(self.destinations);
+			defer if(self.owned) main.stackAllocator.free(self.destinations);
 			if(self.destinations.len == 0) return;
 			for(self.destinations) |dest| {
 				if(dest.type == .creative) return;
@@ -1743,7 +1743,7 @@ pub const Command = struct { // MARK: Command
 
 			return .{
 				.destinations = destinations[0..],
-				.allocated = true,
+				.owned = true,
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.amount = try reader.readInt(u16),
 			};
