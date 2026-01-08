@@ -57,9 +57,11 @@ pub fn init(parameters: ZonElement) void {
 		}
 	}
 
-	std.sort.insertion(*const StructureBuildingBlock, localSbbList.items, {}, struct{fn lessThanFn(_: void, lhs: *const StructureBuildingBlock, rhs: *const StructureBuildingBlock) bool {
-		return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .lt;
-	}}.lessThanFn);
+	std.sort.insertion(*const StructureBuildingBlock, localSbbList.items, {}, struct {
+		fn lessThanFn(_: void, lhs: *const StructureBuildingBlock, rhs: *const StructureBuildingBlock) bool {
+			return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .lt;
+		}
+	}.lessThanFn);
 
 	sbbList = main.worldArena.alloc(main.server.terrain.biomes.SimpleStructureModel, localSbbList.items.len);
 
