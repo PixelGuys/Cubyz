@@ -3,12 +3,10 @@
 	.fogColor = 0x000C14,
 	.properties = .{.ocean},
 	.chance = 0.01,
-	.maxSubBiomeCount = 10,
 	.minHeight = -80,
 	.maxHeight = -32,
 	.maxHeightLimit = -16,
 	.music = "cubyz:cubyz",
-
 	.hills = 35,
 	.roughness = 75,
 	.stoneBlock = "cubyz:chalk/black",
@@ -52,18 +50,6 @@
 	},
 	.transitionBiomes = .{
 		.{
-			.id = "cubyz:beach/cold/wide",
-			.chance = 0.2,
-			.width = 2,
-			.properties = .{.land, .inland},
-		},
-		.{
-			.id = "cubyz:beach/cold/base",
-			.chance = 1,
-			.width = 1,
-			.properties = .{.land, .inland},
-		},
-		.{
 			.id = "cubyz:beach/warm/wide",
 			.chance = 0.2,
 			.width = 2,
@@ -85,12 +71,6 @@
 			.id = "cubyz:beach/warm/base",
 			.chance = 1,
 			.width = 1,
-			.properties = .{.land, .inland},
-		},
-		.{
-			.id = "cubyz:ocean/temperate/shelf",
-			.chance = 1,
-			.width = 3,
 			.properties = .{.land, .inland},
 		},
 	},
