@@ -1078,10 +1078,29 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 	};
 }
 
+fn alignedFind(T: type, arr: []align(64) T, elem: T) ?usize {
+	const vectorLength = std.simd.suggestVectorLength(T) orelse 1;
+	const TInt = std.meta.Int(.unsigned, @bitSizeOf(T));
+	const Vector = @Vector(vectorLength, TInt);
+	const array: [*]Vector = @ptrCast(arr.ptr);
+	const len = std.math.divCeil(usize, arr.len, vectorLength) catch unreachable;
+	const compare: Vector = @splat(@bitCast(elem));
+	for(0..len) |i| {
+		const boolVec = compare == array[i];
+		const int: std.meta.Int(.unsigned, vectorLength) = @bitCast(boolVec);
+		if(int != 0) {
+			const result = i*vectorLength + @ctz(int);
+			if(result >= arr.len) return null;
+			return result;
+		}
+	}
+	return null;
+}
+
 pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: PaletteCompressedRegion
 	const Impl = struct {
 		data: DynamicPackedIntArray(size) = .{},
-		palette: []Atomic(T),
+		palette: []align(64) Atomic(T),
 		paletteOccupancy: []u32,
 		paletteLength: u32,
 		activePaletteEntries: u32,
@@ -1096,7 +1115,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 				.impl = .init(impl),
 			};
 			impl.* = .{
-				.palette = main.globalAllocator.alloc(Atomic(T), 1),
+				.palette = main.globalAllocator.alignedAlloc(Atomic(T), .@"64", 1),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, 1),
 				.paletteLength = 1,
 				.activePaletteEntries = 1,
@@ -1115,11 +1134,12 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			};
 			impl.* = .{
 				.data = dataDupe,
-				.palette = main.globalAllocator.dupe(Atomic(T), templateImpl.palette),
+				.palette = main.globalAllocator.alignedAlloc(Atomic(T), .@"64", templateImpl.palette.len),
 				.paletteOccupancy = main.globalAllocator.dupe(u32, templateImpl.paletteOccupancy),
 				.paletteLength = templateImpl.paletteLength,
 				.activePaletteEntries = templateImpl.activePaletteEntries,
 			};
+			@memcpy(impl.palette, templateImpl.palette);
 		}
 
 		pub fn initCapacity(self: *Self, paletteLength: u32) void {
@@ -1132,7 +1152,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			};
 			impl.* = .{
 				.data = DynamicPackedIntArray(size).initCapacity(bitSize),
-				.palette = main.globalAllocator.alloc(Atomic(T), bufferLength),
+				.palette = main.globalAllocator.alignedAlloc(Atomic(T), .@"64", bufferLength),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, bufferLength),
 				.paletteLength = paletteLength,
 				.activePaletteEntries = 1,
@@ -1187,12 +1207,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		fn getOrInsertPaletteIndex(noalias self: *Self, val: T) u32 {
 			var impl = self.impl.raw;
 			std.debug.assert(impl.paletteLength <= impl.palette.len);
-			var paletteIndex: u32 = 0;
-			while(paletteIndex < impl.paletteLength) : (paletteIndex += 1) {
-				if(std.meta.eql(impl.palette[paletteIndex].load(.unordered), val)) {
-					break;
-				}
-			}
+			const paletteIndex = alignedFind(Atomic(T), impl.palette[0..impl.paletteLength], .init(val)) orelse impl.paletteLength;
 			if(paletteIndex == impl.paletteLength) {
 				if(impl.paletteLength == impl.palette.len) {
 					if(impl.data.bitSize == 16) {
@@ -1217,7 +1232,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 				impl.paletteLength += 1;
 				std.debug.assert(impl.paletteLength <= impl.palette.len);
 			}
-			return paletteIndex;
+			return @intCast(paletteIndex);
 		}
 
 		pub fn setRawValue(noalias self: *Self, i: usize, paletteIndex: u32) void {
