@@ -1687,7 +1687,6 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
-			if(self.destinations.len == 0) return;
 			for(self.destinations) |dest| {
 				if(dest.type == .creative) return;
 				if(dest.type == .crafting) return;
