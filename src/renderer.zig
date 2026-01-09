@@ -23,6 +23,7 @@ const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
+const Mat3f = vec.Mat3f;
 const Mat4f = vec.Mat4f;
 
 pub const chunk_meshing = @import("renderer/chunk_meshing.zig");
@@ -60,7 +61,7 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
-pub fn init() void {
+pub fn init() void { // MARK: init()
 	deferredRenderPassPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/deferred_render_pass.vert",
 		"assets/cubyz/shaders/deferred_render_pass.frag",
@@ -92,7 +93,7 @@ pub fn init() void {
 	initReflectionCubeMap();
 }
 
-pub fn deinit() void {
+pub fn deinit() void { // MARK: deinit()
 	deferredRenderPassPipeline.deinit();
 	fakeReflectionPipeline.deinit();
 	worldFrameBuffer.deinit();
@@ -105,7 +106,7 @@ pub fn deinit() void {
 	reflectionCubeMap.deinit();
 }
 
-fn initReflectionCubeMap() void {
+fn initReflectionCubeMap() void { // MARK: initReflectionCubeMap()
 	c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
 	var framebuffer: graphics.FrameBuffer = undefined;
 	framebuffer.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
@@ -129,7 +130,7 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
-pub fn updateFov(fov: f32) void {
+pub fn updateFov(fov: f32) void { // MARK: updateFov() & updateViewport()
 	if(lastFov != fov) {
 		lastFov = fov;
 		game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
@@ -143,7 +144,7 @@ pub fn updateViewport(width: u31, height: u31) void {
 	worldFrameBuffer.unbind();
 }
 
-pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
+pub fn render(playerPosition: Vec3d, deltaTime: f64) void { // MARK: render()
 	// TODO: player bobbing
 	// TODO: Handle colors and sun position in the world.
 	std.debug.assert(game.world != null);
@@ -157,7 +158,7 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
 
-pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Vec3f {
+pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Vec3f { // MARK: crosshairDirection()
 	// stolen code from Frustum.init
 	const invRotationMatrix = rotationMatrix.transpose();
 	const cameraDir = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
@@ -466,7 +467,7 @@ const Bloom = struct { // MARK: Bloom
 	}
 };
 
-pub const MenuBackGround = struct {
+pub const MenuBackGround = struct { // MARK: MenuBackground
 	var pipeline: graphics.Pipeline = undefined;
 	var uniforms: struct {
 		viewMatrix: c_int,
@@ -662,7 +663,7 @@ pub const MenuBackGround = struct {
 	}
 };
 
-pub const Skybox = struct {
+pub const Skybox = struct { // MARK: Skybox
 	var starPipeline: graphics.Pipeline = undefined;
 	var starUniforms: struct {
 		mvp: c_int,
@@ -765,11 +766,11 @@ pub const Skybox = struct {
 			const latitude: f32 = @floatCast(std.math.asin(normPos[2]));
 			const longitude: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
 
-			const mat = Mat4f.rotationZ(longitude).mul(Mat4f.rotationX(latitude));
+			const mat = Mat3f.rotationZ(longitude).mul(Mat3f.rotationX(latitude));
 
-			const posA = vec.xyz(mat.mulVec(.{triVertA[0], triVertA[1], triVertA[2], 1.0}));
-			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
-			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
+			const posA = mat.mulVec(triVertA);
+			const posB = mat.mulVec(triVertB);
+			const posC = mat.mulVec(triVertC);
 
 			starData[i*20 ..][0..3].* = posA;
 			starData[i*20 + 4 ..][0..3].* = posB;
