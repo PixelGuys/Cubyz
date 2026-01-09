@@ -40,7 +40,7 @@ pub const heap = @import("utils/heap.zig");
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 pub const MultiArray = @import("utils/list.zig").MultiArray;
-pub const windowsHighResTimer = @import("utils/windows_high_res_timer.zig");
+pub const windowsScheduler = @import("utils/windows_scheduler.zig");
 
 const file_monitor = utils.file_monitor;
 
@@ -514,11 +514,9 @@ pub fn main() void { // MARK: main()
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
 	if(builtin.os.tag == .windows) {
-		windowsHighResTimer.init();
+		windowsScheduler.increaseTimerResolution();
+		windowsScheduler.setPriorityClass(.above_normal);
 	}
-	defer if(builtin.os.tag == .windows) {
-		windowsHighResTimer.deinit();
-	};
 
 	settings.launchConfig.init();
 
@@ -648,7 +646,7 @@ pub fn clientMain() void { // MARK: clientMain()
 			const sleepDuration = endRendering.durationTo(lastBeginRendering.addDuration(.fromNanoseconds(minFrameTime)));
 			if(sleepDuration.nanoseconds > 0) {
 				if(builtin.os.tag == .windows) {
-					windowsHighResTimer.sleep(sleepDuration);
+					windowsScheduler.preciseSleep(sleepDuration);
 				} else {
 					io.sleep(sleepDuration, .awake) catch {};
 				}
