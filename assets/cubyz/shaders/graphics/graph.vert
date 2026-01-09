@@ -12,7 +12,6 @@ layout(std430, binding = 5) buffer _data
 	float data[];
 };
 
-
 void main() {
 	float x = gl_VertexID;
 	float y = -data[(gl_VertexID+offset)%points];
