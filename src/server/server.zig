@@ -1,5 +1,4 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const Atomic = std.atomic.Value;
 
 const main = @import("main");
