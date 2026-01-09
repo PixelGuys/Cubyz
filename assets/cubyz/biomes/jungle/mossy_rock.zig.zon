@@ -7,11 +7,11 @@
 	.roughness = 1,
 	.mountains = 70,
 	.hills = 20,
-	.ground_structure = .{"cubyz:slate"},
+	.ground_structure = .{"cubyz:slate/base"},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:moss:cubyz:cobblestone",
+			.block = "cubyz:moss:cubyz:slate/cobble",
 			.chance = 0.2,
 			.width = 5,
 			.variation = 6,
@@ -20,7 +20,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:moss:cubyz:slate",
+			.block = "cubyz:moss:cubyz:slate/base",
 			.chance = 0.1,
 			.width = 5,
 			.variation = 4,
@@ -29,7 +29,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.chance = 0.1,
 			.size = 4,
 			.size_variation = 3,

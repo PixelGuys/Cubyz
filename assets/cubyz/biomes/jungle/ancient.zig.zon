@@ -36,15 +36,9 @@
 			.chance = 0.03,
 		},
 		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:ruins/jungle/ancient",
-			.placeMode = .degradable,
-			.chance = 0.001,
-		},
-		.{
 			.id = "cubyz:boulder",
 			.chance = 0.03,
-			.block = "cubyz:moss:cubyz:cobblestone",
+			.block = "cubyz:moss:cubyz:slate/cobble",
 			.size = 3,
 			.size_variance = 2,
 		},
