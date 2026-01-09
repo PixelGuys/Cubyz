@@ -544,8 +544,8 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn kill() void {
-		Player.super.pos = world.?.spawn;
+	pub fn kill(spawnPos: Vec3d) void {
+		Player.super.pos = spawnPos;
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
