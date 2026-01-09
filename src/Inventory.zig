@@ -1670,13 +1670,20 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const DepositToAny = struct { // MARK: DepositToAny
-		destinations: []Inventory,
-		allocator: NeverFailingAllocator,
+		destinations: []const Inventory,
 		source: InventoryAndSlot,
 		amount: u16,
 
+		fn init(destinations: []const Inventory, source: InventoryAndSlot, amount: u16) DepositToAny {
+			return .{
+				.destinations = main.globalAllocator.dupe(Inventory, destinations),
+				.source = source,
+				.amount = amount,
+			};
+		}
+
 		fn finalize(self: DepositToAny, _: Side, _: *utils.BinaryReader) !void {
-			self.allocator.free(self.destinations);
+			main.globalAllocator.free(self.destinations);
 		}
 
 		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
@@ -1696,14 +1703,17 @@ pub const Command = struct { // MARK: Command
 
 			var remainingAmount = self.amount;
 			var selectedEmptySlot: ?u32 = null;
-			var selectedEmptyInv: u8 = 0;
-			var selectedEmptyInvHasItem = false;
+			var selectedEmptyInv: usize = 0;
 			outer: for(self.destinations, 0..) |dest, destInv| {
 				var emptySlot: ?u32 = null;
 				var hasItem = false;
 				for(dest._items, 0..) |*destStack, destSlot| {
 					if(destStack.item == .null and emptySlot == null) {
 						emptySlot = @intCast(destSlot);
+						if(selectedEmptySlot == null) {
+							selectedEmptySlot = emptySlot;
+							selectedEmptyInv = destInv;
+						}
 					}
 					if(std.meta.eql(destStack.item, sourceStack.item)) {
 						hasItem = true;
@@ -1718,10 +1728,13 @@ pub const Command = struct { // MARK: Command
 						if(remainingAmount == 0) break :outer;
 					}
 				}
-				if(emptySlot != null and (selectedEmptySlot == null or (hasItem and !selectedEmptyInvHasItem))) {
-					selectedEmptySlot = emptySlot;
-					selectedEmptyInv = @intCast(destInv);
-					selectedEmptyInvHasItem = hasItem;
+				if(emptySlot != null and hasItem) {
+					ctx.execute(.{.move = .{
+						.dest = .{.inv = dest, .slot = emptySlot.?},
+						.source = self.source,
+						.amount = remainingAmount,
+					}});
+					remainingAmount = 0;
 				}
 			}
 			if(remainingAmount > 0 and selectedEmptySlot != null) {
@@ -1734,7 +1747,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: DepositToAny, writer: *utils.BinaryWriter) void {
-			writer.writeInt(u8, @intCast(self.destinations.len));
+			writer.writeVarInt(usize, self.destinations.len);
 			for(self.destinations) |dest| {
 				writer.writeEnum(InventoryId, dest.id);
 			}
@@ -1743,8 +1756,10 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DepositToAny {
-			const destinationsSize = try reader.readInt(u8);
-			var destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
+			const destinationsSize = try reader.readVarInt(usize);
+			if(destinationsSize == 0) return error.Invalid;
+
+			const destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
 			errdefer main.globalAllocator.free(destinations);
 
 			for(destinations) |*dest| {
@@ -1754,7 +1769,6 @@ pub const Command = struct { // MARK: Command
 
 			return .{
 				.destinations = destinations[0..],
-				.allocator = main.globalAllocator,
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.amount = try reader.readInt(u16),
 			};
@@ -2210,8 +2224,8 @@ pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
 	Sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source, .dropLocation = undefined}});
 }
 
-pub fn depositToAny(source: Inventory, sourceSlot: u32, destinations: []Inventory, amount: u16) void {
-	Sync.ClientSide.executeCommand(.{.depositToAny = .{.destinations = main.globalAllocator.dupe(Inventory, destinations), .allocator = main.globalAllocator, .source = .{.inv = source, .slot = sourceSlot}, .amount = amount}});
+pub fn depositToAny(source: Inventory, sourceSlot: u32, destinations: []const Inventory, amount: u16) void {
+	Sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source, .slot = sourceSlot}, amount)});
 }
 
 pub fn dropStack(source: Inventory, sourceSlot: u32) void {
