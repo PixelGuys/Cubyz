@@ -501,12 +501,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 		main.heap.GarbageCollection.syncPoint();
 		const newTime = main.timestamp();
 		if(lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
-			const sleepDuration = newTime.durationTo(lastTime.addDuration(updateTime));
-			if(builtin.os.tag == .windows) {
-				main.io.sleep(sleepDuration, .awake) catch {};
-			} else {
-				main.io.sleep(sleepDuration, .awake) catch {};
-			}
+			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
 			lastTime = lastTime.addDuration(updateTime);
 		} else {
 			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
