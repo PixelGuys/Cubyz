@@ -20,6 +20,6 @@
 	.maxSubBiomeCount = 1,
 
 	.ground_structure = .{
-		"cubyz:cobblestone",
+		"cubyz:slate/cobble",
 	},
 }

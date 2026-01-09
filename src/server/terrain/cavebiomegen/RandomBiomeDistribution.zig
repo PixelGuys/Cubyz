@@ -15,6 +15,8 @@ pub const priority = 1024;
 
 pub const generatorSeed = 765893678349;
 
+pub const defaultState = .enabled;
+
 var caveBiomes: []const Biome = undefined;
 
 pub fn init(parameters: ZonElement) void {

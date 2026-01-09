@@ -22,4 +22,9 @@
 	.{.old = "modern_art", .new = "rare/modern_art"},
 	.{.old = "glass_forest", .new = "rare/glass_forest"},
 	.{.old = "spawn", .new = "rare/spawn"},
+	.{.old = "cave/glimmergill", .new = "cave/mushroom/glimmergill"},
+	.{.old = "cave/glimmergill_big", .new = "cave/mushroom/big/glimmergill"},
+	.{.old = "cave/toadstool_big", .new = "cave/mushroom/big/toadstool"},
+	.{.old = "cave/bolete_big", .new = "cave/mushroom/big/bolete"},
+	.{.old = "flatland", .new = "development/flat"},
 }
