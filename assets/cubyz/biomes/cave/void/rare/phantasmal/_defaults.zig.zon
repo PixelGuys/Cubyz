@@ -6,7 +6,7 @@
 	.music = "cubyz:cubyz",
 	.stoneBlock = "cubyz:chalk/black",
 	.chance = 0.01,
-		.ground_structure = .{
+	.ground_structure = .{
 		"0 to 1 cubyz:obsidian",
 	},
 
