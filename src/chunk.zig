@@ -285,7 +285,6 @@ pub const Chunk = struct { // MARK: Chunk
 	width: u31,
 	voxelSizeShift: u5,
 	voxelSizeMask: i32,
-	widthShift: u5,
 
 	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntityIndex),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
@@ -300,7 +299,6 @@ pub const Chunk = struct { // MARK: Chunk
 			.width = pos.voxelSize*chunkSize,
 			.voxelSizeShift = voxelSizeShift,
 			.voxelSizeMask = pos.voxelSize - 1,
-			.widthShift = voxelSizeShift + chunkShift,
 			.blockPosToEntityDataMap = .{},
 			.blockPosToEntityDataMapMutex = .{},
 		};
@@ -399,7 +397,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.width = pos.voxelSize*chunkSize,
 				.voxelSizeShift = voxelSizeShift,
 				.voxelSizeMask = pos.voxelSize - 1,
-				.widthShift = voxelSizeShift + chunkShift,
 				.blockPosToEntityDataMap = .{},
 				.blockPosToEntityDataMapMutex = .{},
 			},
