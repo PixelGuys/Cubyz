@@ -3,6 +3,6 @@
 	.maxHeight = -40000,
 	.minHeight = -48250,
 	.fogDensity = 25,
-	.fogColor = 0x51240c,
+	.fogColor = 0x3d1a11,
 	.stoneBlock = "cubyz:mantle/base",
 }

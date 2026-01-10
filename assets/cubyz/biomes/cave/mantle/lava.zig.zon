@@ -37,7 +37,7 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:mantle/base",
-			.chance = 0.3,
+			.chance = 0.4,
 			.width = 3,
 			.variation = 2,
 			.depth = 2,

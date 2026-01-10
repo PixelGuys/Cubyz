@@ -17,7 +17,7 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:magma",
-			.chance = 0.05,
+			.chance = 0.04,
 			.width = 4,
 			.variation = 2,
 			.depth = 2,
