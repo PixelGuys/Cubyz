@@ -171,7 +171,7 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 		}
 
 		if(@TypeOf(other) == ChunkPosition)
-			return self.wx == other.wx and self.wy == other.wy and self.wz == other.wz and self.voxelSize == other.voxelSize;
+			return std.meta.eql(self, other);
 
 		if(@TypeOf(other.*) == ServerChunk)
 			return self.equals(other.super.pos);
