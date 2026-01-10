@@ -2,6 +2,12 @@
 	.chance = 0.3,
 	.structures = .{
 		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cave/mantle/stalagmite",
+			.placeMode = .degradable,
+			.chance = 0.06,
+		},
+		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:magma",
 			.chance = 0.05,

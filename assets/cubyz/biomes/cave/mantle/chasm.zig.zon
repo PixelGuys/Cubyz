@@ -4,6 +4,12 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
+			.structure = "cubyz:cave/mantle/stalagmite",
+			.placeMode = .degradable,
+			.chance = 0.06,
+		},
+		.{
+			.id = "cubyz:sbb",
 			.structure = "cubyz:cave/mantle/lava_pool",
 			.placeMode = .degradable,
 			.chance = 0.02,
