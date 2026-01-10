@@ -1,0 +1,14 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal/pillar/large/0", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/large/1", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/large/2", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/large/3", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/large/4", .chance = 1},
+		.{.id = null, .chance = 0.3},
+	},
+	.children = .{
+		.white = "cubyz:phantasmal/offshoot/offshoot",
+		.purple = "cubyz:phantasmal/pillar/top/top",
+	},
+}
