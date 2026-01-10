@@ -51,7 +51,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.008,
-			.block = "cubyz:base/basalt",
+			.block = "cubyz:basalt/base",
 			.size = 5,
 			.size_variance = 15,
 		},
