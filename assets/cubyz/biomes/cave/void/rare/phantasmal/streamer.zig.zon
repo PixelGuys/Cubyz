@@ -1,6 +1,4 @@
 .{
-	.isCave = true,
-	.chance = 0.01,
 	.maxHeight = -50000,
 	.music = "cubyz:cubyz",
 	.stoneBlock = "cubyz:chalk/black",
