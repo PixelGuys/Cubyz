@@ -53,9 +53,9 @@ pub fn onOpen() void {
 	for(0..2) |y| {
 		const row = HorizontalList.init();
 		for(0..10) |x| {
-			const index: usize = 12 + y*10 + x;
-			const slot = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(index), .default, .normal);
-			itemSlots[index - 12] = slot;
+			const index: usize = y*10 + x;
+			const slot = ItemSlot.init(.{0, 0}, Player.mainInventory, @intCast(index), .default, .normal);
+			itemSlots[index] = slot;
 			row.add(slot);
 		}
 		list.add(row);

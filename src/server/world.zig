@@ -860,7 +860,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
-		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
+		user.mainInventory = loadPlayerInventory(main.game.Player.mainInventorySize, playerData.get([]const u8, "playerMainInventory", ""), .{.playerMainInventory = user.id}, path);
+		user.hotbar = loadPlayerInventory(main.game.Player.hotbarSize, playerData.get([]const u8, "playerHotbar", ""), .{.playerHotbar = user.id}, path);
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 	}
 
@@ -916,9 +917,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		{
 			main.items.Inventory.threadContext.assertCorrectContext(.server);
-			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
-				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
-			} else @panic("The player inventory wasn't found. Cannot save player data.");
+			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerMainInventory = user.id})) |inv| {
+				playerZon.put("playerMainInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
+			} else @panic("The player main inventory wasn't found. Cannot save player data.");
+
+			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerHotbar = user.id})) |inv| {
+				playerZon.put("playerHotbar", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
+			} else @panic("The player hotbar wasn't found. Cannot save player data.");
 
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
 				playerZon.put("hand", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
