@@ -166,17 +166,20 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 
 	pub fn equals(self: ChunkPosition, other: anytype) bool {
 		if(@typeInfo(@TypeOf(other)) == .optional) {
-			if(other) |notNull| {
-				return self.equals(notNull);
-			}
+			if(other) |notNull| return self.equals(notNull);
 			return false;
-		} else if(@TypeOf(other) == ChunkPosition) {
+		}
+
+		if(@TypeOf(other) == ChunkPosition)
 			return self.wx == other.wx and self.wy == other.wy and self.wz == other.wz and self.voxelSize == other.voxelSize;
-		} else if(@TypeOf(other.*) == ServerChunk) {
-			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
-		} else if(@typeInfo(@TypeOf(other)) == .pointer) {
-			return self.wx == other.pos.wx and self.wy == other.pos.wy and self.wz == other.pos.wz and self.voxelSize == other.pos.voxelSize;
-		} else @compileError("Unsupported");
+
+		if(@TypeOf(other.*) == ServerChunk)
+			return self.equals(other.super.pos);
+
+		if(@typeInfo(@TypeOf(other)) == .pointer)
+			return self.equals(other.pos);
+
+		@compileError("Unsupported");
 	}
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3i) i64 {
