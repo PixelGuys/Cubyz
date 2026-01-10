@@ -1674,7 +1674,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		fn init(destinations: []const Inventory, source: InventoryAndSlot, amount: u16) DepositToAny {
+		pub fn init(destinations: []const Inventory, source: InventoryAndSlot, amount: u16) DepositToAny {
 			return .{
 				.destinations = main.globalAllocator.dupe(Inventory, destinations),
 				.source = source,
@@ -1702,8 +1702,8 @@ pub const Command = struct { // MARK: Command
 
 			var remainingAmount = self.amount;
 			var selectedEmptySlot: ?u32 = null;
-			var selectedEmptyInv: usize = 0;
-			outer: for(self.destinations, 0..) |dest, destInv| {
+			var selectedEmptyInv: ?Inventory = null;
+			outer: for(self.destinations) |dest| {
 				var emptySlot: ?u32 = null;
 				var hasItem = false;
 				for(dest._items, 0..) |*destStack, destSlot| {
@@ -1711,7 +1711,7 @@ pub const Command = struct { // MARK: Command
 						emptySlot = @intCast(destSlot);
 						if(selectedEmptySlot == null) {
 							selectedEmptySlot = emptySlot;
-							selectedEmptyInv = destInv;
+							selectedEmptyInv = dest;
 						}
 					}
 					if(std.meta.eql(destStack.item, sourceStack.item)) {
@@ -1734,11 +1734,12 @@ pub const Command = struct { // MARK: Command
 						.amount = remainingAmount,
 					}});
 					remainingAmount = 0;
+					break :outer;
 				}
 			}
 			if(remainingAmount > 0 and selectedEmptySlot != null) {
 				ctx.execute(.{.move = .{
-					.dest = .{.inv = self.destinations[selectedEmptyInv], .slot = selectedEmptySlot.?},
+					.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
 					.source = self.source,
 					.amount = remainingAmount,
 				}});
@@ -1757,6 +1758,7 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DepositToAny {
 			const destinationsSize = try reader.readVarInt(usize);
 			if(destinationsSize == 0) return error.Invalid;
+			if(destinationsSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
 
 			const destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
 			errdefer main.globalAllocator.free(destinations);
