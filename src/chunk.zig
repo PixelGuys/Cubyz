@@ -169,15 +169,15 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 			if(other) |notNull| return self.equals(notNull);
 			return false;
 		}
-
-		if(@TypeOf(other) == ChunkPosition)
+		if(@TypeOf(other) == ChunkPosition) {
 			return std.meta.eql(self, other);
-
-		if(@TypeOf(other.*) == ServerChunk)
+		}
+		if(@TypeOf(other.*) == ServerChunk) {
 			return self.equals(other.super.pos);
-
-		if(@typeInfo(@TypeOf(other)) == .pointer)
+		}
+		if(@typeInfo(@TypeOf(other)) == .pointer) {
 			return self.equals(other.pos);
+		}
 
 		@compileError("Unsupported");
 	}
