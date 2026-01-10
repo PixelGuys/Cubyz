@@ -9,6 +9,6 @@
 	},
 	.children = .{
 		.white = "cubyz:phantasmal/offshoot/offshoot",
-		.purple = "cubyz:phantasmal/top/top",
+		.purple = "cubyz:phantasmal/pillar/top/top",
 	},
 }
