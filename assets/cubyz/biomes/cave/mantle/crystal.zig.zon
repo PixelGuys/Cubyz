@@ -1,7 +1,7 @@
 .{
-	.chance = 0.03,
+	.chance = 0.02,
 	.caves = -0.05,
-	.crystals = 32,
+	.crystals = 25,
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
