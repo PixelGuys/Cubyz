@@ -17,6 +17,8 @@ pub const priority = 65537;
 
 pub const generatorSeed = 0x9b450ffb0d415317;
 
+pub const defaultState = .enabled;
+
 const crystalColor = [_][]const u8{
 	"red", "orange", "yellow", "lime", "green", "cyan", "aqua", "blue", "pink", "magenta", "violet", // 8 Base colors
 	"crimson", "viridian", "indigo", "purple", "brown", // 5 darker colors

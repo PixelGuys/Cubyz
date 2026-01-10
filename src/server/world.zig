@@ -65,7 +65,7 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 	return allocator.dupe(u8, resultName);
 }
 
-pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
+pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: ZonElement) !void {
 	const worldPath = findValidFolderName(main.stackAllocator, worldName);
 	defer main.stackAllocator.free(worldPath);
 	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
@@ -74,23 +74,9 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings) !void {
 
 	const worldInfo = main.ZonElement.initObject(main.stackAllocator);
 	defer worldInfo.deinit(main.stackAllocator);
-	{
-		const generatorSettings = main.ZonElement.initObject(main.stackAllocator);
-		const climateGenerator = main.ZonElement.initObject(main.stackAllocator);
-		climateGenerator.put("id", "cubyz:noise_based_voronoi"); // TODO: Make this configurable
-		generatorSettings.put("climateGenerator", climateGenerator);
-		const mapGenerator = main.ZonElement.initObject(main.stackAllocator);
-		mapGenerator.put("id", "cubyz:mapgen_v1"); // TODO: Make this configurable
-		generatorSettings.put("mapGenerator", mapGenerator);
-		const climateWavelengths = main.ZonElement.initObject(main.stackAllocator);
-		climateWavelengths.put("hot_cold", 2400);
-		climateWavelengths.put("land_ocean", 3200);
-		climateWavelengths.put("wet_dry", 1800);
-		climateWavelengths.put("vegetation", 1600);
-		climateWavelengths.put("mountain", 512);
-		generatorSettings.put("climateWavelengths", climateWavelengths);
-		worldInfo.put("generatorSettings", generatorSettings);
-	}
+
+	worldInfo.put("generatorSettings", preset.clone(main.stackAllocator));
+
 	{
 		const settings = main.ZonElement.initObject(main.stackAllocator);
 
