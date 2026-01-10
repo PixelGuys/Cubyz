@@ -1,66 +1,9 @@
 .{
-	.maxHeight = -50000,
-	.music = "cubyz:cubyz",
-
-	.stoneBlock = "cubyz:chalk/black",
-
-	.ground_structure = .{
-		"0 to 1 cubyz:obsidian",
-	},
-
 	.structures = .{
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:phantasmal/phantasmal_pillars",
-			.placeMode = .degradable,
-			.chance = 0.1,
-		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:phantasmal/star/stars",
 			.chance = 0.05,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.block = "cubyz:glimmergill",
-			.chance = 0.02,
-			.width = 8,
-			.variation = 4,
-			.density = 0.06,
-			.priority = 0.15,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:mushroom/small/glimmergill",
-			.placeMode = .degradable,
-			.chance = 0.035,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:mushroom/big/glimmergill",
-			.placeMode = .degradable,
-			.chance = 0.02,
-		},
-		.{
-			.id = "cubyz:boulder",
-			.chance = 0.008,
-			.block = "cubyz:chalk/black",
-			.size = 3,
-			.size_variance = 5,
-		},
-		.{
-			.id = "cubyz:boulder",
-			.chance = 0.008,
-			.block = "cubyz:basalt/base",
-			.size = 5,
-			.size_variance = 8,
-		},
-		.{
-			.id = "cubyz:boulder",
-			.chance = 0.008,
-			.block = "cubyz:obsidian",
-			.size = 2,
-			.size_variance = 4,
 		},
 	},
 }
