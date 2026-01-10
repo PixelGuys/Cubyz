@@ -1,6 +1,6 @@
 .{
 	.maxHeight = -5000,
-	.minHeight = -48000,
+	.minHeight = -48250,
 	.music = "cubyz:cubyz",
 	.stoneBlock = "cubyz:chalk/black",
 

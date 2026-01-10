@@ -1,9 +1,9 @@
 .{
 	.properties = .{.ocean},
 	.chance = 0.01,
-	.minHeight = -96,
-	.maxHeight = -32,
-	.maxHeightLimit = -24,
+	.minHeight = -128,
+	.maxHeight = -64,
+	.maxHeightLimit = -48,
 	.music = "cubyz:cubyz",
 	.hills = 35,
 	.roughness = 55,
