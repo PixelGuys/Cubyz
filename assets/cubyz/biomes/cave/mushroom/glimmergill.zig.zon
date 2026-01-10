@@ -1,6 +1,6 @@
 .{
 	.maxHeight = -200,
-	.minHeight = -48250,
+	.minHeight = -40000,
 	.chance = 0.05,
 	.structures = .{
 		.{

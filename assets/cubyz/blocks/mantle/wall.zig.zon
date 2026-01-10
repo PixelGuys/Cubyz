@@ -1,0 +1,10 @@
+.{
+	.rotation = "cubyz:fence",
+	.model = "cubyz:wall",
+	.texture = "cubyz:mantle/wall",
+	.texture_top = "cubyz:mantle/wall_top",
+	.texture_bottom = "cubyz:mantle/wall_top",
+	.item = .{
+		.texture = "wall/mantle.png",
+	},
+}
