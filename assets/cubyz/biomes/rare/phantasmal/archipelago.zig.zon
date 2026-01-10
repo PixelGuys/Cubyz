@@ -5,7 +5,6 @@
 	.chance = 0.01,
 	.minHeight = -80,
 	.maxHeight = -32,
-	.maxHeightLimit = -16,
 	.music = "cubyz:cubyz",
 	.hills = 35,
 	.roughness = 75,

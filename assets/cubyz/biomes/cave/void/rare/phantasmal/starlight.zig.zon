@@ -53,7 +53,7 @@
 			.chance = 0.008,
 			.block = "cubyz:basalt/base",
 			.size = 5,
-			.size_variance = 15,
+			.size_variance = 8,
 		},
 		.{
 			.id = "cubyz:boulder",

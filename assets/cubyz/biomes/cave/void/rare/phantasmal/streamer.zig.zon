@@ -27,7 +27,7 @@
 			.chance = 0.008,
 			.block = "cubyz:basalt/base",
 			.size = 4,
-			.size_variance = 12,
+			.size_variance = 8,
 		},
 		.{
 			.id = "cubyz:sbb",
