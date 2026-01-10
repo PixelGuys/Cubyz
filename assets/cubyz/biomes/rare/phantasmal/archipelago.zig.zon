@@ -1,13 +1,11 @@
 .{
-	.fogDensity = 3,
-	.fogColor = 0x000C14,
 	.properties = .{.ocean},
 	.chance = 0.01,
-	.minHeight = -80,
-	.maxHeight = -32,
+	.minHeight = -128,
+	.maxHeight = -64,
 	.music = "cubyz:cubyz",
 	.hills = 35,
-	.roughness = 75,
+	.roughness = 55,
 	.stoneBlock = "cubyz:chalk/black",
 	.ground_structure = .{
 		"0 to 2 cubyz:obsidian",
