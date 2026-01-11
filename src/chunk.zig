@@ -178,51 +178,61 @@ pub const Lod = enum(u5) {
 	pub inline fn voxelSize(self: Lod) u31 {
 		return 1 << @intFromEnum(self);
 	}
-	test "Lod.voxelSize() min" {
-		std.debug.assert(Lod.min.voxelSize() == 1);
-	}
-	test "Lod.voxelSize() max" {
-		std.debug.assert(Lod.max.voxelSize() == 32);
-	}
 
 	pub inline fn chunkWidth(self: Lod) u31 {
 		return self.voxelSize()*chunkSize;
 	}
-	test "Lod.chunkWidth() min" {
-		std.debug.assert(Lod.min.chunkWidth() == 32);
-	}
-	test "Lod.chunkWidth() max" {
-		std.debug.assert(Lod.max.chunkWidth() == 1024);
-	}
 
 	pub inline fn voxelSizeShift(self: Lod) u5 {
 		return self.toInt();
-	}
-	test "Lod.voxelSizeShift() min" {
-		std.debug.assert(Lod.min.voxelSizeShift() == 0);
-	}
-	test "Lod.voxelSizeShift() max" {
-		std.debug.assert(Lod.max.voxelSizeShift() == 5);
 	}
 
 	// Mask for converting global coordinates to Lod resolution coordinates.
 	pub inline fn voxelSizeMask(self: Lod) i32 {
 		return ~@as(i32, self.voxelSize() - 1);
 	}
-	test "Lod.voxelSizeMask() min" {
-		std.debug.assert(Lod.min.voxelSizeMask() == ~@as(i32, 0b00000));
-	}
-	test "Lod.voxelSizeMask() max" {
-		std.debug.assert(Lod.max.voxelSizeMask() == ~@as(i32, 0b11111));
-	}
 
 	// Mask for converting global coordinates to chunk local coordinates.
 	pub inline fn localMask(self: Lod) i32 {
 		return ~@as(i32, self.voxelSize()*chunkSize - 1);
 	}
+
+	test "Lod.voxelSize() min" {
+		std.debug.assert(Lod.min.voxelSize() == 1);
+	}
+
+	test "Lod.voxelSize() max" {
+		std.debug.assert(Lod.max.voxelSize() == 32);
+	}
+
+	test "Lod.chunkWidth() min" {
+		std.debug.assert(Lod.min.chunkWidth() == 32);
+	}
+
+	test "Lod.chunkWidth() max" {
+		std.debug.assert(Lod.max.chunkWidth() == 1024);
+	}
+
+	test "Lod.voxelSizeShift() min" {
+		std.debug.assert(Lod.min.voxelSizeShift() == 0);
+	}
+
+	test "Lod.voxelSizeShift() max" {
+		std.debug.assert(Lod.max.voxelSizeShift() == 5);
+	}
+
+	test "Lod.voxelSizeMask() min" {
+		std.debug.assert(Lod.min.voxelSizeMask() == ~@as(i32, 0b00000));
+	}
+
+	test "Lod.voxelSizeMask() max" {
+		std.debug.assert(Lod.max.voxelSizeMask() == ~@as(i32, 0b11111));
+	}
+
 	test "Lod.localMask() min" {
 		std.debug.assert(Lod.min.localMask() == ~@as(i32, 31));
 	}
+
 	test "Lod.localMask() max" {
 		std.debug.assert(Lod.max.localMask() == ~@as(i32, 1023));
 	}
