@@ -9,7 +9,6 @@
 	.ground_structure = .{
 		"0 to 1 cubyz:obsidian",
 	},
-
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -45,5 +44,5 @@
 			.placeMode = .degradable,
 			.chance = 0.02,
 		},
-	}
+	},
 }
