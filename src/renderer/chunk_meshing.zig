@@ -1,5 +1,6 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
+const builtin = @import("builtin");
 
 const main = @import("main");
 const blocks = main.blocks;
@@ -407,8 +408,8 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	fn getValues(mesh: *ChunkMesh, pos: chunk.BlockPos) LightVector {
 		const blockLight = mesh.lightingData[0].getValue(pos);
 		const sunLight = mesh.lightingData[1].getValue(pos);
+		std.debug.assert(builtin.cpu.arch.endian() == .little);
 		const totalLight = @as(u64, sunLight.raw()) | (@as(u64, blockLight.raw()) << 32);
-		std.debug.assert(@import("builtin").cpu.arch.endian() == .little);
 		return @as(@Vector(8, u8), @bitCast(totalLight));
 	}
 
