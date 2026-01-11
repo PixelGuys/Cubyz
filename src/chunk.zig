@@ -202,7 +202,7 @@ pub const Lod = enum(u5) {
 		std.debug.assert(Lod.max().chunkWidth() == (Lod.max().voxelSize()*chunkSize));
 	}
 
-	pub inline fn voxelSizeShift(self: Lod) u31 {
+	pub inline fn voxelSizeShift(self: Lod) u5 {
 		return self.toInt();
 	}
 	test "Lod.voxelSizeShift() min" {
