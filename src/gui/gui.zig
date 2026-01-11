@@ -78,7 +78,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
-				_ = openWindows.swapRemove(i);
+				_ = openWindows.orderedRemove(i);
 				openWindows.appendAssumeCapacity(window);
 				selectedWindow = null;
 				return;
@@ -100,17 +100,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 				window.onCloseFn();
 				break;
 			}
-		}
-	}
-};
-
-pub const Callback = struct {
-	callback: ?*const fn(usize) void = null,
-	arg: usize = 0,
-
-	pub fn run(self: Callback) void {
-		if(self.callback) |callback| {
-			callback(self.arg);
 		}
 	}
 };
@@ -362,14 +351,8 @@ pub fn openHud() void {
 	reorderWindows = false;
 }
 
-fn openWindowCallbackFunction(windowPtr: usize) void {
-	openWindowFromRef(@ptrFromInt(windowPtr));
-}
-pub fn openWindowCallback(comptime id: []const u8) Callback {
-	return .{
-		.callback = &openWindowCallbackFunction,
-		.arg = @intFromPtr(&@field(windowlist, id).window),
-	};
+pub fn openWindowCallback(comptime id: []const u8) main.callbacks.SimpleCallback {
+	return .initWithPtr(openWindowFromRef, &@field(windowlist, id).window);
 }
 
 pub fn closeWindowFromRef(window: *GuiWindow) void {
@@ -384,6 +367,13 @@ pub fn closeWindow(id: []const u8) void {
 		}
 	}
 	std.log.err("Could not find window with id {s}.", .{id});
+}
+
+pub fn isWindowOpen(id: []const u8) bool {
+	for(openWindows.items) |window| {
+		if(std.mem.eql(u8, window.id, id)) return true;
+	}
+	return false;
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
@@ -579,7 +569,9 @@ pub fn updateAndRenderGui() void {
 
 pub fn toggleGameMenu() void {
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
-	if(main.Window.grabbed) { // Take of the currently held item stack and close some windows
+	if(!main.Window.grabbed) {
+		hideGui = false;
+	} else { // Take of the currently held item stack and close some windows
 		main.game.Player.inventory.depositOrDrop(inventory.carried);
 		hoveredItemSlot = null;
 		var i: usize = 0;
@@ -673,7 +665,7 @@ pub const inventory = struct { // MARK: inventory
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
 				if(mainGuiButton.modsOnPress.shift) {
-					itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+					itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {
 					itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
 				}
@@ -691,12 +683,12 @@ pub const inventory = struct { // MARK: inventory
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while(iterator.next()) |window| {
 					if(window.shiftClickableInventory) |inv| {
-						itemSlot.inventory.depositToAny(itemSlot.itemSlot, inv, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+						itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 						break;
 					}
 				}
 			} else {
-				itemSlot.inventory.depositToAny(itemSlot.itemSlot, main.game.Player.inventory, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
 			return;
 		}

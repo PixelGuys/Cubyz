@@ -46,7 +46,7 @@ var toolButton: *Button = undefined;
 
 var needsUpdate: bool = false;
 
-fn toggleTool(_: usize) void {
+fn toggleTool() void {
 	currentToolType += 1;
 	currentToolType %= toolTypes.items.len;
 	toolButton.child.label.updateText(toolTypes.items[currentToolType].id());
@@ -74,7 +74,7 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentToolType].id(), .{.callback = &toggleTool});
+	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentToolType].id(), .init(toggleTool));
 	verticalThing.add(toolButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();

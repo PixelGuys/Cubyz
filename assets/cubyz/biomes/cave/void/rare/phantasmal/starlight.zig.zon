@@ -1,0 +1,9 @@
+.{
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/star/stars",
+			.chance = 0.05,
+		},
+	},
+}

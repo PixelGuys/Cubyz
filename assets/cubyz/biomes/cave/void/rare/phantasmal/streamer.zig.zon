@@ -1,0 +1,16 @@
+.{
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/auroras/high",
+			.chance = 0.03,
+			.rotation = 0,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/auroras/low",
+			.rotation = 0,
+			.chance = 0.04,
+		},
+	},
+}

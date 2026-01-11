@@ -27,7 +27,7 @@ pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 
-const command = @import("command/_command.zig");
+pub const command = @import("command/_command.zig");
 
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
@@ -127,12 +127,13 @@ pub const User = struct { // MARK: User
 
 	mutex: std.Thread.Mutex = .{},
 
+	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -162,6 +163,10 @@ pub const User = struct { // MARK: User
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
+		for(self.inventoryCommands.items) |commandData| {
+			main.globalAllocator.free(commandData);
+		}
+		self.inventoryCommands.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -178,13 +183,19 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn setName(self: *User, name: []const u8) void {
+		std.debug.assert(self.name.len == 0);
+		self.name = main.globalAllocator.dupe(u8, name);
+	}
+
 	var freeId: u32 = 0;
-	pub fn initPlayer(self: *User, name: []const u8) void {
+	pub fn initPlayer(self: *User) void {
 		self.id = freeId;
 		freeId += 1;
 
-		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
+		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		self.loadUnloadChunks();
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -251,6 +262,26 @@ pub const User = struct { // MARK: User
 
 	pub fn update(self: *User) void {
 		self.mutex.lock();
+		const commands = self.inventoryCommands;
+		defer commands.deinit(main.globalAllocator);
+		self.inventoryCommands = .{};
+		self.mutex.unlock();
+
+		for(commands.items) |commandData| {
+			defer main.globalAllocator.free(commandData);
+			var reader: BinaryReader = .init(commandData);
+			main.items.Inventory.Sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+				if(err == error.InventoryNotFound) {
+					main.network.protocols.inventory.sendFailure(self.conn);
+				} else {
+					std.log.err("Got error while executing user command: {s}. Disconnecting.", .{@errorName(err)});
+					std.log.debug("Command data: {any}", .{commandData});
+					self.conn.disconnect();
+				}
+			};
+		}
+
+		self.mutex.lock();
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
@@ -266,6 +297,12 @@ pub const User = struct { // MARK: User
 		}
 
 		self.loadUnloadChunks();
+	}
+
+	pub fn receiveCommand(self: *User, commandData: []const u8) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.inventoryCommands.append(main.globalAllocator, main.globalAllocator.dupe(u8, commandData));
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
@@ -285,7 +322,7 @@ pub const User = struct { // MARK: User
 		defer main.stackAllocator.free(msg);
 		self.sendRawMessage(msg);
 	}
-	fn sendRawMessage(self: *User, msg: []const u8) void {
+	pub fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.protocols.chat.send(self.conn, msg);
 	}
 };
@@ -321,7 +358,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 	main.items.Inventory.Sync.ServerSide.init();
 
-	world = ServerWorld.init(name, null) catch |err| {
+	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
@@ -401,6 +438,7 @@ fn update() void { // MARK: update()
 
 	while(userConnectList.popFront()) |user| {
 		connectInternal(user);
+		user.decreaseRefCount();
 	}
 
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -439,7 +477,12 @@ fn update() void { // MARK: update()
 	}
 
 	while(userDeinitList.popFront()) |user| {
-		user.decreaseRefCount();
+		if(user.refCount.load(.unordered) == 1) {
+			user.decreaseRefCount();
+		} else {
+			userDeinitList.pushBack(user);
+			break;
+		}
 	}
 }
 
@@ -510,10 +553,13 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 }
 
 pub fn connect(user: *User) void {
+	user.increaseRefCount();
 	userConnectList.pushBack(user);
 }
 
 pub fn connectInternal(user: *User) void {
+	user.initPlayer();
+	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -565,16 +611,7 @@ pub fn connectInternal(user: *User) void {
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
-	if(msg[0] == '/') { // Command.
-		if(world.?.allowCheats) {
-			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
-			command.execute(msg[1..], source);
-		} else {
-			source.sendRawMessage("Commands are not allowed because cheats are disabled");
-		}
-	} else {
-		main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
-	}
+	main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
 }
 
 fn sendRawMessage(msg: []const u8) void {
