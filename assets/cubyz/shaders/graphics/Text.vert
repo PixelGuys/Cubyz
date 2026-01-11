@@ -14,6 +14,19 @@ layout(location = 4) uniform int fontEffects;
 
 layout(location = 5) uniform float alpha;
 
+float srgbToLinear(float srgbChannel) {
+	if(srgbChannel <= 0.04045) return srgbChannel/12.92;
+	return pow((srgbChannel + 0.055)/1.055, 2.4);
+}
+
+vec3 srgbToLinear(vec3 srgb) {
+	return vec3(
+		srgbToLinear(srgb.r),
+		srgbToLinear(srgb.g),
+		srgbToLinear(srgb.b)
+	);
+}
+
 vec2 convert2Proportional(vec2 original, vec2 full) {
 	return vec2(original.x/full.x, original.y/full.y);
 }
@@ -33,5 +46,5 @@ void main() {
 
 	gl_Position = vec4(position, 0, 1);
 	frag_face_pos = face_pos;
-	color = vec4(vec3((fontEffects & 0xff0000)>>16, (fontEffects & 0xff00)>>8, fontEffects & 0xff)/255.0, alpha);
+	color = vec4(srgbToLinear(vec3((fontEffects & 0xff0000)>>16, (fontEffects & 0xff00)>>8, fontEffects & 0xff)/255.0), alpha);
 }

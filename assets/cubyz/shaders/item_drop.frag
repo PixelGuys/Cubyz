@@ -42,6 +42,19 @@ layout(std430, binding = 1) buffer _animatedTexture
 	float animatedTexture[];
 };
 
+float srgbToLinear(float srgbChannel) {
+	if(srgbChannel <= 0.04045) return srgbChannel/12.92;
+	return pow((srgbChannel + 0.055)/1.055, 2.4);
+}
+
+vec3 srgbToLinear(vec3 srgb) {
+	return vec3(
+		srgbToLinear(srgb.r),
+		srgbToLinear(srgb.g),
+		srgbToLinear(srgb.b)
+	);
+}
+
 // block drops -------------------------------------------------------------------------------------------------------------------------
 
 float lightVariation(vec3 normal) {
@@ -182,6 +195,7 @@ void mainItemDrop() {
 
 	fragColor = decodeColor(block);
 	fragColor.a = 1; // No transparency supported!
+	fragColor.rgb = srgbToLinear(fragColor.rgb);
 	fragColor = fragColor*vec4(ambientLight*normalVariations[lastNormal], 1);
 }
 
