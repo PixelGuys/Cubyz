@@ -168,6 +168,10 @@ pub const Lod = enum(u5) {
 		return @enumFromInt(maxValue);
 	}
 
+	pub inline fn next(self: Lod) Lod {
+		return @enumFromInt(@intFromEnum(self) + 1);
+	}
+
 	pub inline fn toInt(self: Lod) @typeInfo(Lod).@"enum".tag_type {
 		return @intFromEnum(self);
 	}
