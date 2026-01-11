@@ -149,24 +149,19 @@ pub fn deinit() void {
 }
 
 pub const Lod = enum(u5) {
-	const Self = @This();
+	@"1" = 0,
+	@"2" = 1,
+	@"4" = 2,
+	@"8" = 3,
+	@"16" = 4,
+	@"32" = 5,
 
-	LOD0 = 0,
-	LOD1,
-	LOD2,
-	LOD3,
-	LOD4,
-	LOD5 = 5,
-
-	pub inline fn min() Lod {
-		return @enumFromInt(@typeInfo(Lod).@"enum".fields[0].value);
-	}
-
-	pub inline fn max() Lod {
+	const min: Lod = @enumFromInt(@typeInfo(Lod).@"enum".fields[0].value);
+	const max: Lod = blk: {
 		const fields = @typeInfo(Lod).@"enum".fields;
 		const maxValue = fields[fields.len - 1].value;
-		return @enumFromInt(maxValue);
-	}
+		break :blk @enumFromInt(maxValue);
+	};
 
 	pub inline fn next(self: Lod) Lod {
 		return @enumFromInt(@intFromEnum(self) + 1);
@@ -181,75 +176,55 @@ pub const Lod = enum(u5) {
 	}
 
 	pub inline fn voxelSize(self: Lod) u31 {
-		comptime var table: [Lod.max().toInt() + 1]u31 = @splat(0);
-		comptime for(@typeInfo(Lod).@"enum".fields, 0..) |field, i| {
-			const lod = @as(Lod, @enumFromInt(field.value));
-			table[lod.toInt()] = 1 << i;
-		};
-		return table[self.toInt()];
+		return 1 << @intFromEnum(self);
 	}
 	test "Lod.voxelSize() min" {
-		std.debug.assert(Lod.min().voxelSize() == (1 << Lod.min().toInt()));
+		std.debug.assert(Lod.min.voxelSize() == 1);
 	}
 	test "Lod.voxelSize() max" {
-		std.debug.assert(Lod.max().voxelSize() == (1 << Lod.max().toInt()));
+		std.debug.assert(Lod.max.voxelSize() == 32);
 	}
 
 	pub inline fn chunkWidth(self: Lod) u31 {
-		comptime var table: [Lod.max().toInt() + 1]u31 = @splat(0);
-		comptime for(@typeInfo(Lod).@"enum".fields) |field| {
-			const lod = @as(Lod, @enumFromInt(field.value));
-			table[lod.toInt()] = lod.voxelSize()*chunkSize;
-		};
-		return table[self.toInt()];
+		return self.voxelSize()*chunkSize;
 	}
 	test "Lod.chunkWidth() min" {
-		std.debug.assert(Lod.min().chunkWidth() == (Lod.min().voxelSize()*chunkSize));
+		std.debug.assert(Lod.min.chunkWidth() == 32);
 	}
 	test "Lod.chunkWidth() max" {
-		std.debug.assert(Lod.max().chunkWidth() == (Lod.max().voxelSize()*chunkSize));
+		std.debug.assert(Lod.max.chunkWidth() == 1024);
 	}
 
 	pub inline fn voxelSizeShift(self: Lod) u5 {
 		return self.toInt();
 	}
 	test "Lod.voxelSizeShift() min" {
-		std.debug.assert(Lod.min().voxelSizeShift() == std.math.log2_int(u31, Lod.min().voxelSize()));
+		std.debug.assert(Lod.min.voxelSizeShift() == 0);
 	}
 	test "Lod.voxelSizeShift() max" {
-		std.debug.assert(Lod.max().voxelSizeShift() == std.math.log2_int(u31, Lod.max().voxelSize()));
+		std.debug.assert(Lod.max.voxelSizeShift() == 5);
 	}
 
 	// Mask for converting global coordinates to Lod resolution coordinates.
 	pub inline fn voxelSizeMask(self: Lod) i32 {
-		comptime var table: [Lod.max().toInt() + 1]i32 = @splat(0);
-		comptime for(@typeInfo(Lod).@"enum".fields) |field| {
-			const lod = @as(Lod, @enumFromInt(field.value));
-			table[lod.toInt()] = ~@as(i32, lod.voxelSize() - 1);
-		};
-		return table[self.toInt()];
+		return ~@as(i32, self.voxelSize() - 1);
 	}
 	test "Lod.voxelSizeMask() min" {
-		std.debug.assert(Lod.min().voxelSizeMask() == ~@as(i32, Lod.min().voxelSize() - 1));
+		std.debug.assert(Lod.min.voxelSizeMask() == ~@as(i32, 0b00000));
 	}
 	test "Lod.voxelSizeMask() max" {
-		std.debug.assert(Lod.max().voxelSizeMask() == ~@as(i32, Lod.max().voxelSize() - 1));
+		std.debug.assert(Lod.max.voxelSizeMask() == ~@as(i32, 0b11111));
 	}
 
 	// Mask for converting global coordinates to chunk local coordinates.
-	pub fn localMask(self: Lod) i32 {
-		comptime var table: [Lod.max().toInt() + 1]i32 = @splat(0);
-		comptime for(@typeInfo(Lod).@"enum".fields) |field| {
-			const lod = @as(Lod, @enumFromInt(field.value));
-			table[lod.toInt()] = ~@as(i32, lod.voxelSize()*chunkSize - 1);
-		};
-		return table[self.toInt()];
+	pub inline fn localMask(self: Lod) i32 {
+		return ~@as(i32, self.voxelSize()*chunkSize - 1);
 	}
 	test "Lod.localMask() min" {
-		std.debug.assert(Lod.min().localMask() == ~@as(i32, Lod.min().voxelSize()*chunkSize - 1));
+		std.debug.assert(Lod.min.localMask() == ~@as(i32, 31));
 	}
 	test "Lod.localMask() max" {
-		std.debug.assert(Lod.max().localMask() == ~@as(i32, Lod.max().voxelSize()*chunkSize - 1));
+		std.debug.assert(Lod.max.localMask() == ~@as(i32, 1023));
 	}
 };
 
