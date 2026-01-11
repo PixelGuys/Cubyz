@@ -1,5 +1,5 @@
 .{
-	.chance = 0.5,
+	.chance = 0.7,
 	.caves = -0.03,
 	.structures = .{
 		.{
@@ -22,6 +22,15 @@
 			.variation = 2,
 			.depth = 2,
 			.smoothness = 1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:ash",
+			.chance = 0.1,
+			.width = 5,
+			.variation = 5,
+			.depth = 4,
+			.smoothness = 0.1,
 		},
 	},
 }
