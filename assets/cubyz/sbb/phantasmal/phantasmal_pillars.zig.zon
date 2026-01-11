@@ -15,8 +15,8 @@
 		.{.id = "cubyz:phantasmal/base/large/2", .chance = 0.1},
 	},
 	.children = .{
-		.black = "cubyz:phantasmal/pillar/large",
-		.dark_grey = "cubyz:phantasmal/pillar/medium",
-		.grey = "cubyz:phantasmal/pillar/small",
+		.black = "cubyz:phantasmal/pillar/large/large",
+		.dark_grey = "cubyz:phantasmal/pillar/medium/medium",
+		.grey = "cubyz:phantasmal/pillar/small/small",
 	},
 }
