@@ -1670,16 +1670,30 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const DepositToAny = struct { // MARK: DepositToAny
-		dest: Inventory,
+		destinations: []const Inventory,
 		source: InventoryAndSlot,
 		amount: u16,
 
+		pub fn init(destinations: []const Inventory, source: InventoryAndSlot, amount: u16) DepositToAny {
+			return .{
+				.destinations = main.globalAllocator.dupe(Inventory, destinations),
+				.source = source,
+				.amount = amount,
+			};
+		}
+
+		fn finalize(self: DepositToAny, _: Side, _: *utils.BinaryReader) !void {
+			main.globalAllocator.free(self.destinations);
+		}
+
 		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
-			if(self.dest.type == .creative) return;
-			if(self.dest.type == .crafting) return;
-			if(self.dest.type == .workbench) return;
+			for(self.destinations) |dest| {
+				if(dest.type == .creative) return;
+				if(dest.type == .crafting) return;
+				if(dest.type == .workbench) return;
+			}
 			if(self.source.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.dest, self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations[0], self.source, ctx.side, ctx.user);
 				return;
 			}
 			const sourceStack = self.source.ref();
@@ -1688,25 +1702,44 @@ pub const Command = struct { // MARK: Command
 
 			var remainingAmount = self.amount;
 			var selectedEmptySlot: ?u32 = null;
-			for(self.dest._items, 0..) |*destStack, destSlot| {
-				if(destStack.item == .null and selectedEmptySlot == null) {
-					selectedEmptySlot = @intCast(destSlot);
+			var selectedEmptyInv: ?Inventory = null;
+			outer: for(self.destinations) |dest| {
+				var emptySlot: ?u32 = null;
+				var hasItem = false;
+				for(dest._items, 0..) |*destStack, destSlot| {
+					if(destStack.item == .null and emptySlot == null) {
+						emptySlot = @intCast(destSlot);
+						if(selectedEmptySlot == null) {
+							selectedEmptySlot = emptySlot;
+							selectedEmptyInv = dest;
+						}
+					}
+					if(std.meta.eql(destStack.item, sourceStack.item)) {
+						hasItem = true;
+						const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
+						if(amount == 0) continue;
+						ctx.execute(.{.move = .{
+							.dest = .{.inv = dest, .slot = @intCast(destSlot)},
+							.source = self.source,
+							.amount = amount,
+						}});
+						remainingAmount -= amount;
+						if(remainingAmount == 0) break :outer;
+					}
 				}
-				if(std.meta.eql(destStack.item, sourceStack.item)) {
-					const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
-					if(amount == 0) continue;
+				if(emptySlot != null and hasItem) {
 					ctx.execute(.{.move = .{
-						.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
+						.dest = .{.inv = dest, .slot = emptySlot.?},
 						.source = self.source,
-						.amount = amount,
+						.amount = remainingAmount,
 					}});
-					remainingAmount -= amount;
-					if(remainingAmount == 0) break;
+					remainingAmount = 0;
+					break :outer;
 				}
 			}
 			if(remainingAmount > 0 and selectedEmptySlot != null) {
 				ctx.execute(.{.move = .{
-					.dest = .{.inv = self.dest, .slot = selectedEmptySlot.?},
+					.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
 					.source = self.source,
 					.amount = remainingAmount,
 				}});
@@ -1714,15 +1747,29 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: DepositToAny, writer: *utils.BinaryWriter) void {
-			writer.writeEnum(InventoryId, self.dest.id);
+			writer.writeVarInt(usize, self.destinations.len);
+			for(self.destinations) |dest| {
+				writer.writeEnum(InventoryId, dest.id);
+			}
 			self.source.write(writer);
 			writer.writeInt(u16, self.amount);
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DepositToAny {
-			const destId = try reader.readEnum(InventoryId);
+			const destinationsSize = try reader.readVarInt(usize);
+			if(destinationsSize == 0) return error.Invalid;
+			if(destinationsSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+
+			const destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
+			errdefer main.globalAllocator.free(destinations);
+
+			for(destinations) |*dest| {
+				const invId = try reader.readEnum(InventoryId);
+				dest.* = Sync.getInventory(invId, side, user) orelse return error.InventoryNotFound;
+			}
+
 			return .{
-				.dest = Sync.getInventory(destId, side, user) orelse return error.InventoryNotFound,
+				.destinations = destinations[0..],
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.amount = try reader.readInt(u16),
 			};
@@ -2178,8 +2225,8 @@ pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
 	Sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source, .dropLocation = undefined}});
 }
 
-pub fn depositToAny(source: Inventory, sourceSlot: u32, dest: Inventory, amount: u16) void {
-	Sync.ClientSide.executeCommand(.{.depositToAny = .{.dest = dest, .source = .{.inv = source, .slot = sourceSlot}, .amount = amount}});
+pub fn depositToAny(source: Inventory, sourceSlot: u32, destinations: []const Inventory, amount: u16) void {
+	Sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source, .slot = sourceSlot}, amount)});
 }
 
 pub fn dropStack(source: Inventory, sourceSlot: u32) void {
