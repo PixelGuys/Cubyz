@@ -9,7 +9,7 @@
 		.{.id = "cubyz:phantasmal/bubble/broken_0", .chance = 0.5},
 		.{.id = "cubyz:phantasmal/bubble/broken_1", .chance = 0.5},
 		.{.id = "cubyz:phantasmal/bubble/broken_2", .chance = 0.5},
-		.{.id = "cubyz:phantasmal/bubble/abandoned_bubble", .chance = 0.05},
-		.{.id = "cubyz:phantasmal/bubble/red_bubble", .chance = 0.03},
+		.{.id = "cubyz:phantasmal/bubble/abandoned", .chance = 0.03},
+		.{.id = "cubyz:phantasmal/bubble/red", .chance = 0.02},
 	},
 }
