@@ -61,5 +61,11 @@
 			.width = 1,
 			.properties = .{.land, .inland},
 		},
+		.{
+			.id = "cubyz:ocean/temperate/shelf",
+			.chance = 1,
+			.width = 3,
+			.properties = .{.land, .inland},
+		},
 	},
 }
