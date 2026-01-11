@@ -616,7 +616,6 @@ pub const World = struct { // MARK: World
 	name: []const u8,
 	milliTime: i64,
 	gameTime: Atomic(i64) = .init(0),
-	spawn: Vec3f = undefined,
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
@@ -690,7 +689,6 @@ pub const World = struct { // MARK: World
 		errdefer self.itemPalette.deinit();
 		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
 		errdefer self.toolPalette.deinit();
-		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
