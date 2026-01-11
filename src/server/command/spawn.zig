@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
-pub const description = "Get or set the player spawnPoint";
+pub const description = "Get or set the player spawn point";
 pub const usage =
 	\\/spawn
 	\\/spawn <x> <y>
