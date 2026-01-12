@@ -505,27 +505,30 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			}
 			return packLightValues(rawVals);
 		}
-		var cornerVals: [2][2][2]LightVector = undefined;
-		{
-			var dx: u31 = 0;
-			while(dx <= 1) : (dx += 1) {
-				var dy: u31 = 0;
-				while(dy <= 1) : (dy += 1) {
-					var dz: u31 = 0;
-					while(dz <= 1) : (dz += 1) {
-						cornerVals[dx][dy][dz] = if(extraQuadInfo.alignedNormalDirection) |dir|
-							getCornerLightAligned(parent, blockPos +% Vec3i{dx, dy, dz}, dir)
-						else
-							getCornerLight(parent, blockPos +% Vec3i{dx, dy, dz}, normal);
-					}
-				}
-			}
-		}
 		var rawVals: [4]LightVector = undefined;
 		for(0..4) |i| {
 			const vertexPos: Vec3f = quadInfo.corners[i];
 			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
-			const interp = lightPos - @as(Vec3f, @floatFromInt(blockPos));
+			const containingBlockPos: Vec3i = @intFromFloat(@floor(lightPos));
+			const interp = std.math.clamp(lightPos - @as(Vec3f, @floatFromInt(containingBlockPos)), @as(Vec3f, @splat(0)), @as(Vec3f, @splat(1)));
+
+			var cornerVals: [2][2][2]LightVector = undefined;
+			{
+				var dx: u31 = 0;
+				while(dx <= 1) : (dx += 1) {
+					var dy: u31 = 0;
+					while(dy <= 1) : (dy += 1) {
+						var dz: u31 = 0;
+						while(dz <= 1) : (dz += 1) {
+							cornerVals[dx][dy][dz] = if(extraQuadInfo.alignedNormalDirection) |dir|
+								getCornerLightAligned(parent, containingBlockPos +% Vec3i{dx, dy, dz}, dir)
+							else
+								getCornerLight(parent, containingBlockPos +% Vec3i{dx, dy, dz}, normal);
+						}
+					}
+				}
+			}
+
 			var val: LightVector = @splat(0);
 			for(0..2) |dx| {
 				for(0..2) |dy| {
