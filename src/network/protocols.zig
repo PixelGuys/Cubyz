@@ -202,7 +202,6 @@ pub const handShake = struct { // MARK: handShake
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
 		zonObject.put("player_id", conn.user.?.id);
-		zonObject.put("spawn", main.server.world.?.spawn);
 		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
