@@ -32,8 +32,12 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		}
 	}
-	if(x == null or y == null) {
+	if(x == null) {
 		source.sendMessage("#ffff00{}", .{source.spawnPos});
+		return;
+	}
+	if(y == null) {
+		source.sendMessage("#ff0000Too few arguments for command /spawn", .{});
 		return;
 	}
 	if(z == null) {
