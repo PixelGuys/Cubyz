@@ -1,0 +1,13 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:astral/0"},
+		.{.id = "cubyz:astral/1"},
+		.{.id = "cubyz:astral/2"},
+		.{.id = "cubyz:astral/3"},
+		.{.id = "cubyz:astral/4"},
+		.{.id = "cubyz:astral/5"},
+		.{.id = "cubyz:astral/6"},
+		.{.id = "cubyz:astral/7"},
+		.{.id = "cubyz:astral/8"},
+	},
+}
