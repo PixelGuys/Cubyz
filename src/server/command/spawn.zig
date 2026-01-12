@@ -37,7 +37,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	if(y == null) {
-		source.sendMessage("#ff0000Command /spawn accepts no, two or three arguments but not one", .{});
+		source.sendMessage("#ff0000Invalid number of arguments for /spawn.\nUsage: \n" ++ usage, .{});
 		return;
 	}
 	if(z == null) {
