@@ -191,5 +191,5 @@ pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6
 	if(!neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
 	if(!neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
 	block.data = @as(u5, @bitCast(data));
-	if(block.data == 0) block.typ = 0;
+	if(block.data == 0) block.* = .air;
 }

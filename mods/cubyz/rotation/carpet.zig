@@ -193,5 +193,5 @@ pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6
 	if(!neighborSupportive[Neighbor.dirDown.toInt()]) data.negZ = false;
 	if(!neighborSupportive[Neighbor.dirUp.toInt()]) data.posZ = false;
 	block.data = @as(u6, @bitCast(data));
-	if(block.data == 0) block.typ = 0;
+	if(block.data == 0) block.* = .air;
 }

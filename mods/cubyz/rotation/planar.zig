@@ -74,3 +74,9 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _
 	}
 	return false;
 }
+
+// MARK: non-interface fns
+
+pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
+	if(!neighborSupportive[Neighbor.dirDown.toInt()]) block.* = .air;
+}

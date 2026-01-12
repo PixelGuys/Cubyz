@@ -30,12 +30,14 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	var newBlock: Block = params.block;
 
-	if(params.block.mode() == main.rotation.getByID("cubyz:torch")) {
-		main.rotation.list.@"cubyz:torch".updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
-	} else if(params.block.mode() == main.rotation.getByID("cubyz:carpet")) {
-		main.rotation.list.@"cubyz:carpet".updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
-	} else {
-		std.log.err("Expected {s} to have cubyz:torch as rotation", .{params.block.id()});
+	inline for(comptime std.meta.declarations(main.rotation.list)) |rotationMode| {
+		if(params.block.mode() == main.rotation.getByID(rotationMode.name)) {
+			if(@hasDecl(@field(main.rotation.list, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
+				@field(main.rotation.list, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
+			} else {
+				std.log.err("Rotation mode {s} has no updateBlockFromNeighborConnectivity function and cannot be used for {s} callback", .{rotationMode.name, @typeName(@This())});
+			}
+		}
 	}
 
 	if(newBlock == params.block) return .ignored;
