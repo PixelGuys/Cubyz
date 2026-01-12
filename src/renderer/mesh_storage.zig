@@ -901,6 +901,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 // MARK: updaters
 
 pub fn updateBlock(update: BlockUpdate) void {
+	main.renderer.MeshSelection.stopBreakBlock(.{update.x, update.y, update.z});
 	blockUpdateList.pushBack(BlockUpdate.initManaged(main.globalAllocator, update));
 }
 
