@@ -32,6 +32,8 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	if(params.block.mode() == main.rotation.getByID("cubyz:torch")) {
 		main.rotation.list.@"cubyz:torch".updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
+	} else if(params.block.mode() == main.rotation.getByID("cubyz:carpet")) {
+		main.rotation.list.@"cubyz:carpet".updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
 	} else {
 		std.log.err("Expected {s} to have cubyz:torch as rotation", .{params.block.id()});
 	}

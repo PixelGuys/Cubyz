@@ -184,12 +184,12 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 // MARK: non-interface fns
 
 pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
-	var data: main.rotation.list.@"cubyz:torch".TorchData = @bitCast(@as(u5, @truncate(block.data)));
-	if(data.center and !neighborSupportive[Neighbor.dirDown.toInt()]) data.center = false;
-	if(data.negX and !neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
-	if(data.posX and !neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
-	if(data.negY and !neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
-	if(data.posY and !neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
+	var data: TorchData = @bitCast(@as(u5, @truncate(block.data)));
+	if(!neighborSupportive[Neighbor.dirDown.toInt()]) data.center = false;
+	if(!neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
+	if(!neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
+	if(!neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
+	if(!neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
 	block.data = @as(u5, @bitCast(data));
 	if(block.data == 0) block.typ = 0;
 }
