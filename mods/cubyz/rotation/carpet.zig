@@ -182,6 +182,11 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 	return torch.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 }
 
+pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
+	if(newBlock.typ != oldBlock.typ) return @popCount(oldBlock.data);
+	return @popCount(oldBlock.data) -| @popCount(newBlock.data);
+}
+
 // MARK: non-interface fns
 
 pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {

@@ -168,17 +168,19 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
-		.no, .yes_costsDurability, .yes_dropsItems => return .no,
+		.no, .yes_costsDurability => return .no,
 		.yes, .yes_costsItems => {
 			const torchAmountChange = @as(i32, @popCount(newBlock.data)) - if(oldBlock.typ == newBlock.typ) @as(i32, @popCount(oldBlock.data)) else 0;
-			if(torchAmountChange <= 0) {
-				return .{.yes_dropsItems = @intCast(-torchAmountChange)};
-			} else {
-				if(item.item != .baseItem or !std.meta.eql(item.item.baseItem.block(), newBlock.typ)) return .no;
-				return .{.yes_costsItems = @intCast(torchAmountChange)};
-			}
+			if(torchAmountChange <= 0) return .yes;
+			if(item.item != .baseItem or !std.meta.eql(item.item.baseItem.block(), newBlock.typ)) return .no;
+			return .{.yes_costsItems = @intCast(torchAmountChange)};
 		},
 	}
+}
+
+pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
+	if(newBlock.typ != oldBlock.typ) return @popCount(oldBlock.data);
+	return @popCount(oldBlock.data) -| @popCount(newBlock.data);
 }
 
 // MARK: non-interface fns
