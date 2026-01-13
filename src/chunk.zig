@@ -198,39 +198,39 @@ pub const Lod = enum(u5) {
 	}
 
 	test "Lod.voxelSize() min" {
-		try std.testing.expectEqual(Lod.min.voxelSize(), 1);
+		try std.testing.expectEqual(1, Lod.min.voxelSize());
 	}
 
 	test "Lod.voxelSize() max" {
-		try std.testing.expectEqual(Lod.max.voxelSize(), 32);
+		try std.testing.expectEqual(32, Lod.max.voxelSize());
 	}
 
 	test "Lod.chunkWidth() min" {
-		try std.testing.expectEqual(Lod.min.chunkWidth(), 32);
+		try std.testing.expectEqual(32, Lod.min.chunkWidth());
 	}
 
 	test "Lod.chunkWidth() max" {
-		try std.testing.expectEqual(Lod.max.chunkWidth(), 1024);
+		try std.testing.expectEqual(1024, Lod.max.chunkWidth());
 	}
 
 	test "Lod.voxelSizeShift() min" {
-		try std.testing.expectEqual(Lod.min.voxelSizeShift(), 0);
+		try std.testing.expectEqual(0, Lod.min.voxelSizeShift());
 	}
 
 	test "Lod.voxelSizeShift() max" {
-		try std.testing.expectEqual(Lod.max.voxelSizeShift(), 5);
+		try std.testing.expectEqual(5, Lod.max.voxelSizeShift());
 	}
 
 	test "Lod.voxelSizeMask() min" {
-		try std.testing.expectEqual(Lod.min.voxelSizeMask(), ~@as(i32, 0b00000));
+		try std.testing.expectEqual(~@as(i32, 0b00000), Lod.min.voxelSizeMask());
 	}
 
 	test "Lod.voxelSizeMask() max" {
-		try std.testing.expectEqual(Lod.max.voxelSizeMask(), ~@as(i32, 0b11111));
+		try std.testing.expectEqual(~@as(i32, 0b11111), Lod.max.voxelSizeMask());
 	}
 
 	test "Lod.localMask() min" {
-		try std.testing.expectEqual(Lod.min.localMask(), ~@as(i32, 31));
+		try std.testing.expectEqual(~@as(i32, 31), Lod.min.localMask());
 	}
 
 	test "Lod.localMask() max" {
