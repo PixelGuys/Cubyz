@@ -16,7 +16,6 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
 pub const naturalStandard: u16 = 1;
-pub const dependsOnNeighbors = true;
 var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 const TorchData = packed struct(u5) {
 	center: bool,
@@ -139,35 +138,6 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeD
 	}
 }
 
-pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-	const neighborModel = blocks.meshes.model(neighborBlock).model();
-	const neighborSupport = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
-	var currentData: TorchData = @bitCast(@as(u5, @truncate(block.data)));
-	switch(neighbor) {
-		.dirNegX => {
-			currentData.negX = currentData.negX and neighborSupport;
-		},
-		.dirPosX => {
-			currentData.posX = currentData.posX and neighborSupport;
-		},
-		.dirNegY => {
-			currentData.negY = currentData.negY and neighborSupport;
-		},
-		.dirPosY => {
-			currentData.posY = currentData.posY and neighborSupport;
-		},
-		.dirDown => {
-			currentData.center = currentData.center and neighborSupport;
-		},
-		else => {},
-	}
-	const result: u16 = @as(u5, @bitCast(currentData));
-	if(result == block.data) return false;
-	block.data = result;
-	if(result == 0) block.typ = 0;
-	return true;
-}
-
 fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
 	var result: ?RayIntersectionResult = null;
 	var resultBit: u16 = 0;
@@ -198,15 +168,30 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
-		.no, .yes_costsDurability, .yes_dropsItems => return .no,
+		.no, .yes_costsDurability => return .no,
 		.yes, .yes_costsItems => {
 			const torchAmountChange = @as(i32, @popCount(newBlock.data)) - if(oldBlock.typ == newBlock.typ) @as(i32, @popCount(oldBlock.data)) else 0;
-			if(torchAmountChange <= 0) {
-				return .{.yes_dropsItems = @intCast(-torchAmountChange)};
-			} else {
-				if(item.item != .baseItem or !std.meta.eql(item.item.baseItem.block(), newBlock.typ)) return .no;
-				return .{.yes_costsItems = @intCast(torchAmountChange)};
-			}
+			if(torchAmountChange <= 0) return .yes;
+			if(item.item != .baseItem or !std.meta.eql(item.item.baseItem.block(), newBlock.typ)) return .no;
+			return .{.yes_costsItems = @intCast(torchAmountChange)};
 		},
 	}
+}
+
+pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
+	if(newBlock.typ != oldBlock.typ) return @popCount(oldBlock.data);
+	return @popCount(oldBlock.data) -| @popCount(newBlock.data);
+}
+
+// MARK: non-interface fns
+
+pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
+	var data: TorchData = @bitCast(@as(u5, @truncate(block.data)));
+	if(!neighborSupportive[Neighbor.dirDown.toInt()]) data.center = false;
+	if(!neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
+	if(!neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
+	if(!neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
+	if(!neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
+	block.data = @as(u5, @bitCast(data));
+	if(block.data == 0) block.* = .air;
 }

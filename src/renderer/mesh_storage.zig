@@ -194,10 +194,8 @@ pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) main.callb
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 	const mesh = node.mesh.load(.acquire) orelse return null;
-	const x = wx & chunk.chunkMask;
-	const y = wy & chunk.chunkMask;
-	const z = wz & chunk.chunkMask;
-	return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
+	const pos: chunk.BlockPos = .fromWorldCoords(wx, wy, wz);
+	return mesh.lightingData[1].getValue(pos).toArray() ++ mesh.lightingData[0].getValue(pos).toArray();
 }
 
 pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
@@ -867,7 +865,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 		.taskType = .meshgenAndLighting,
 	};
 
-	pub fn schedule(mesh: *chunk.Chunk) void {
+	fn schedule(mesh: *chunk.Chunk) void {
 		const task = main.globalAllocator.create(MeshGenerationTask);
 		task.* = MeshGenerationTask{
 			.mesh = mesh,
@@ -894,6 +892,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {
+		self.mesh.unloadBlockEntities(.client);
 		self.mesh.deinit();
 		main.globalAllocator.destroy(self);
 	}

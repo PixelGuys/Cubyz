@@ -70,3 +70,10 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i,
 	}
 	return false;
 }
+
+// MARK: non-interface fns
+
+pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
+	if(block.data >= 6) return;
+	if(!neighborSupportive[@as(Neighbor, @enumFromInt(block.data)).reverse().toInt()]) block.* = .air;
+}

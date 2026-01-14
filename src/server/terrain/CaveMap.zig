@@ -10,6 +10,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Vec3i = main.vec.Vec3i;
 
 const terrain = @import("terrain.zig");
+const GeneratorState = terrain.GeneratorState;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 /// Cave data represented in a 1-Bit per block format, where 0 means empty and 1 means not empty.
@@ -89,6 +90,7 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
+	defaultState: GeneratorState,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(CaveGenerator) = .{};
 
@@ -98,26 +100,28 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 			.generate = &Generator.generate,
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,
+			.defaultState = Generator.defaultState,
 		};
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveGenerator {
-		const list = allocator.alloc(CaveGenerator, generatorRegistry.size);
+		var list: main.ListUnmanaged(CaveGenerator) = .initCapacity(allocator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
-		var i: usize = 0;
-		while(iterator.next()) |generator| {
-			list[i] = generator.value_ptr.*;
-			list[i].init(settings.getChild(generator.key_ptr.*));
-			i += 1;
+		while(iterator.next()) |generatorEntry| {
+			const generator = generatorEntry.value_ptr.*;
+			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
+			if(generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			generator.init(generatorSettings);
+			list.appendAssumeCapacity(generator);
 		}
 		const lessThan = struct {
 			fn lessThan(_: void, lhs: CaveGenerator, rhs: CaveGenerator) bool {
 				return lhs.priority < rhs.priority;
 			}
 		}.lessThan;
-		std.sort.insertion(CaveGenerator, list, {}, lessThan);
-		return list;
+		std.sort.insertion(CaveGenerator, list.items, {}, lessThan);
+		return list.toOwnedSlice(allocator);
 	}
 };
 

@@ -1195,6 +1195,10 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			}
 			if(paletteIndex == impl.paletteLength) {
 				if(impl.paletteLength == impl.palette.len) {
+					if(impl.data.bitSize == 16) {
+						self.optimizeLayoutInternal();
+						return self.getOrInsertPaletteIndex(val);
+					}
 					var newSelf: Self = undefined;
 					newSelf.initCapacity(impl.paletteLength*2);
 					const newImpl = newSelf.impl.raw;
@@ -1268,7 +1272,11 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			const impl = self.impl.raw;
 			const newBitSize = getTargetBitSize(@intCast(impl.activePaletteEntries));
 			if(impl.data.bitSize == newBitSize) return;
+			self.optimizeLayoutInternal();
+		}
 
+		fn optimizeLayoutInternal(self: *Self) void {
+			const impl = self.impl.raw;
 			var newSelf: Self = undefined;
 			newSelf.initCapacity(impl.activePaletteEntries);
 			const newImpl = newSelf.impl.raw;
@@ -2217,4 +2225,16 @@ test "SparseSet/reusing" {
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);
+}
+
+pub const obfuscationChar = "∗".*;
+
+pub fn obfuscateString(allocator: NeverFailingAllocator, string: []const u8) []const u8 {
+	const len = std.unicode.utf8CountCodepoints(string) catch 0;
+	const obfuscated = allocator.alloc(u8, len*obfuscationChar.len);
+	var i: usize = 0;
+	while(i < obfuscated.len) : (i += obfuscationChar.len) {
+		@memcpy(obfuscated[i .. i + obfuscationChar.len], &obfuscationChar);
+	}
+	return obfuscated;
 }

@@ -228,7 +228,7 @@ pub const collision = struct {
 		terminalVelocity: f64,
 		density: f64,
 		maxDensity: f64,
-		mobility: f64,
+		mobileFriction: f64,
 	};
 
 	fn overlapVolume(a: Box, b: Box) f64 {
@@ -253,7 +253,7 @@ pub const collision = struct {
 		var invTerminalVelocitySum: f64 = 0;
 		var densitySum: f64 = 0;
 		var maxDensity: f64 = defaults.maxDensity;
-		var mobilitySum: f64 = 0;
+		var mobileFrictionSum: f64 = 0;
 		var volumeSum: f64 = 0;
 
 		var x: i32 = minX;
@@ -278,16 +278,16 @@ pub const collision = struct {
 						const filledVolume = @min(gridVolume, overlapVolume(collisionBox, totalBox));
 						const emptyVolume = gridVolume - filledVolume;
 						invTerminalVelocitySum += emptyVolume/defaults.terminalVelocity;
+						mobileFrictionSum += emptyVolume*defaults.mobileFriction;
 						densitySum += emptyVolume*defaults.density;
-						mobilitySum += emptyVolume*defaults.mobility;
 						invTerminalVelocitySum += filledVolume/block.terminalVelocity();
+						mobileFrictionSum += filledVolume*block.mobility()/block.terminalVelocity();
 						densitySum += filledVolume*block.density();
 						maxDensity = @max(maxDensity, block.density());
-						mobilitySum += filledVolume*block.mobility();
 					} else {
 						invTerminalVelocitySum += gridVolume/defaults.terminalVelocity;
 						densitySum += gridVolume*defaults.density;
-						mobilitySum += gridVolume*defaults.mobility;
+						mobileFrictionSum += gridVolume*defaults.mobileFriction;
 					}
 				}
 			}
@@ -297,7 +297,7 @@ pub const collision = struct {
 			.terminalVelocity = volumeSum/invTerminalVelocitySum,
 			.density = densitySum/volumeSum,
 			.maxDensity = maxDensity,
-			.mobility = mobilitySum/volumeSum,
+			.mobileFriction = mobileFrictionSum/volumeSum,
 		};
 	}
 
@@ -437,7 +437,8 @@ pub const Player = struct { // MARK: Player
 	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var currentFriction: f32 = 0;
-	pub var volumeProperties: collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobility = 0, .terminalVelocity = 0};
+	pub var mobileFriction: f32 = 0;
+	pub var volumeProperties: collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobileFriction = 0, .terminalVelocity = 0};
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -524,7 +525,7 @@ pub const Player = struct { // MARK: Player
 		if(onGround) {
 			return .{0, 0, 0.6};
 		} else {
-			return .{0, 0, 0.1};
+			return .{0, 0, 0.08};
 		}
 	}
 
@@ -543,8 +544,8 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn kill() void {
-		Player.super.pos = world.?.spawn;
+	pub fn kill(spawnPos: Vec3d) void {
+		Player.super.pos = spawnPos;
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
@@ -616,7 +617,6 @@ pub const World = struct { // MARK: World
 	name: []const u8,
 	milliTime: i64,
 	gameTime: Atomic(i64) = .init(0),
-	spawn: Vec3f = undefined,
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
@@ -690,7 +690,6 @@ pub const World = struct { // MARK: World
 		errdefer self.itemPalette.deinit();
 		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
 		errdefer self.toolPalette.deinit();
-		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
@@ -821,15 +820,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
-	const mobility = if(Player.isFlying.load(.monotonic)) 1.0 else Player.volumeProperties.mobility;
 	const density = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.density;
 	const maxDensity = if(Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;
 
-	const baseFrictionCoefficient: f32 = Player.currentFriction;
 	var jumping = false;
 	Player.jumpCooldown -= deltaTime;
 	// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
-	const fricMul = speedMultiplier*baseFrictionCoefficient*if(Player.isFlying.load(.monotonic)) 1.0 else mobility;
+	const fricMul = speedMultiplier*Player.mobileFriction;
 
 	const horizontalForward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
@@ -838,34 +835,34 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	var movementSpeed: f64 = 0;
 
 	if(main.Window.grabbed) {
-		const walkingSpeed: f64 = if(Player.crouching) 2 else 4;
+		const walkingSpeed: f64 = if(Player.crouching) 2.5 else 4.5;
 		if(KeyBoard.key("forward").value > 0.0) {
 			if(KeyBoard.key("sprint").pressed and !Player.crouching) {
 				if(Player.isGhost.load(.monotonic)) {
-					movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
+					movementSpeed = @max(movementSpeed, 128*KeyBoard.key("forward").value);
 					movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
 				} else if(Player.isFlying.load(.monotonic)) {
-					movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
+					movementSpeed = @max(movementSpeed, 32*KeyBoard.key("forward").value);
 					movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
 				} else {
-					movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
+					movementSpeed = @max(movementSpeed, 8*KeyBoard.key("forward").value);
 					movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 				}
 			} else {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
+				movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("forward").value);
 				movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 			}
 		}
 		if(KeyBoard.key("backward").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
+			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("backward").value);
 			movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
 		}
 		if(KeyBoard.key("left").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
+			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("left").value);
 			movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
 		}
 		if(KeyBoard.key("right").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
+			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("right").value);
 			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 		}
 		if(KeyBoard.key("jump").pressed) {

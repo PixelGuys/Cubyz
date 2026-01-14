@@ -6,7 +6,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
 pub const ZonElement = union(enum) { // MARK: Zon
-	int: i64,
+	int: i128,
 	float: f64,
 	string: []const u8,
 	stringOwned: []const u8,
@@ -70,6 +70,11 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	pub fn getChildOrNull(self: *const ZonElement, key: []const u8) ?ZonElement {
 		if(self.* == .object) return self.object.get(key);
 		return null;
+	}
+
+	pub fn removeChild(self: *const ZonElement, key: []const u8) ?ZonElement {
+		if(self.* != .object) return null;
+		return (self.object.fetchRemove(key) orelse return null).value;
 	}
 
 	pub fn clone(self: *const ZonElement, allocator: NeverFailingAllocator) ZonElement {
@@ -182,6 +187,9 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				}
 				return result;
 			},
+			.@"enum" => {
+				return std.meta.stringToEnum(T, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
+			},
 			else => {
 				switch(innerType) {
 					[]const u8 => {
@@ -210,8 +218,8 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			.void => return .null,
 			.null => return .null,
 			.bool => return .{.bool = value},
-			.int, .comptime_int => return .{.int = @intCast(value)},
-			.float, .comptime_float => return .{.float = @floatCast(value)},
+			.int, .comptime_int => return .{.int = value},
+			.float, .comptime_float => return .{.float = value},
 			.@"union" => {
 				if(@TypeOf(value) == ZonElement) {
 					return value;
@@ -487,7 +495,7 @@ const Parser = struct { // MARK: Parser
 		} else if(chars[index.*] == '+') {
 			index.* += 1;
 		}
-		var intPart: i64 = 0;
+		var intPart: i128 = 0;
 		if(index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'x') {
 			// Parse hex int
 			index.* += 2;

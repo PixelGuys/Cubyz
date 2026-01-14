@@ -166,17 +166,20 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 
 	pub fn equals(self: ChunkPosition, other: anytype) bool {
 		if(@typeInfo(@TypeOf(other)) == .optional) {
-			if(other) |notNull| {
-				return self.equals(notNull);
-			}
+			if(other) |notNull| return self.equals(notNull);
 			return false;
-		} else if(@TypeOf(other) == ChunkPosition) {
-			return self.wx == other.wx and self.wy == other.wy and self.wz == other.wz and self.voxelSize == other.voxelSize;
-		} else if(@TypeOf(other.*) == ServerChunk) {
-			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
-		} else if(@typeInfo(@TypeOf(other)) == .pointer) {
-			return self.wx == other.pos.wx and self.wy == other.pos.wy and self.wz == other.pos.wz and self.voxelSize == other.pos.voxelSize;
-		} else @compileError("Unsupported");
+		}
+		if(@TypeOf(other) == ChunkPosition) {
+			return std.meta.eql(self, other);
+		}
+		if(@TypeOf(other.*) == ServerChunk) {
+			return self.equals(other.super.pos);
+		}
+		if(@typeInfo(@TypeOf(other)) == .pointer) {
+			return self.equals(other.pos);
+		}
+
+		@compileError("Unsupported");
 	}
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3i) i64 {
@@ -285,7 +288,6 @@ pub const Chunk = struct { // MARK: Chunk
 	width: u31,
 	voxelSizeShift: u5,
 	voxelSizeMask: i32,
-	widthShift: u5,
 
 	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntityIndex),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
@@ -300,7 +302,6 @@ pub const Chunk = struct { // MARK: Chunk
 			.width = pos.voxelSize*chunkSize,
 			.voxelSizeShift = voxelSizeShift,
 			.voxelSizeMask = pos.voxelSize - 1,
-			.widthShift = voxelSizeShift + chunkShift,
 			.blockPosToEntityDataMap = .{},
 			.blockPosToEntityDataMapMutex = .{},
 		};
@@ -399,7 +400,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.width = pos.voxelSize*chunkSize,
 				.voxelSizeShift = voxelSizeShift,
 				.voxelSizeMask = pos.voxelSize - 1,
-				.widthShift = voxelSizeShift + chunkShift,
 				.blockPosToEntityDataMap = .{},
 				.blockPosToEntityDataMapMutex = .{},
 			},
@@ -411,6 +411,9 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	pub fn deinit(self: *ServerChunk) void {
 		std.debug.assert(self.refCount.raw == 0);
+		const oldContext = main.items.Inventory.threadContext;
+		defer main.items.Inventory.threadContext = oldContext;
+		main.items.Inventory.threadContext = .chunkDeiniting;
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}

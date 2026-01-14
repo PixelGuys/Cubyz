@@ -13,7 +13,7 @@ const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
 
-const list = @import("rotation");
+pub const list = @import("rotation");
 
 pub const RayIntersectionResult = struct {
 	distance: f32,
@@ -124,6 +124,10 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			return .no;
 		}
+		pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
+			if(newBlock.typ != oldBlock.typ) return 1;
+			return 0;
+		}
 		pub fn getBlockTags() []const Tag {
 			return &.{};
 		}
@@ -134,7 +138,6 @@ pub const RotationMode = struct { // MARK: RotationMode
 		yes: void,
 		yes_costsDurability: u16,
 		yes_costsItems: u16,
-		yes_dropsItems: u16,
 	};
 
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
@@ -164,6 +167,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 	onBlockBreaking: *const fn(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 
 	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
+
+	itemDropsOnChange: *const fn(oldBlock: Block, newBlock: Block) u16 = DefaultFunctions.itemDropsOnChange,
 
 	getBlockTags: *const fn() []const Tag = DefaultFunctions.getBlockTags,
 };
