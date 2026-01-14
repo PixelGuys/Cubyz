@@ -100,9 +100,7 @@ const Material = struct { // MARK: Material
 	}
 
 	pub fn printTooltip(self: Material, outString: *main.List(u8)) void {
-		if(self.modifiers.len == 0) {
-			outString.appendSlice("§#808080Material\n");
-		}
+		outString.appendSlice("§#808080Tool Material\n");
 		for(self.modifiers) |modifier| {
 			if(modifier.restriction.vTable == modifierRestrictions.get("always") orelse unreachable) {
 				modifier.printTooltip(outString);
