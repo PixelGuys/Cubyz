@@ -1872,8 +1872,8 @@ pub const Command = struct { // MARK: Command
 				return @abs(self.normalDir);
 			}
 			inline fn minors(self: BlockDropLocation) struct {Vec3f, Vec3f} {
-				const minor1 = vec.cross(self.normalDir, if( @reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0});
-				const minor2 = vec.cross(self.normalDir, minor1);
+				const minor1 = vec.normalize(vec.cross(self.normalDir, if( @reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0}));
+				const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
 				return .{minor1, minor2};
 			}
 			fn dropDir(self: BlockDropLocation) Vec3f {
