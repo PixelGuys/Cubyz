@@ -1,0 +1,13 @@
+.{
+	.properties = .{
+		.hot,
+		.dry,
+		.barren,
+	},
+	.fogDensity = 5.0,
+	.fogColor = 0xb0c47a,
+	.skyColor = 0xbdd48e,
+	.music = "cubyz:TotalDemented/In_the_Depths",
+
+	.stoneBlock = "cubyz:chalk/orange",
+}
