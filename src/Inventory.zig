@@ -1857,9 +1857,9 @@ pub const Command = struct { // MARK: Command
 			}
 			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
-				const minorValues = minors(self);
-				const minor1Offset = @as(Vec3f, @splat(vec.dot(self.randomOffset(), minorValues[0])))*minorValues[0];
-				const minor2Offset = @as(Vec3f, @splat(vec.dot(self.randomOffset(), minorValues[1])))*minorValues[1];
+				const minorVectors = minors(self);
+				const minor1Offset = @as(Vec3f, @splat(vec.dot(self.randomOffset(), minorVectors[0])))*minorVectors[0];
+				const minor2Offset = @as(Vec3f, @splat(vec.dot(self.randomOffset(), minorVectors[1])))*minorVectors[1];
 				return pos + minor1Offset + minor2Offset + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
 			}
 			fn directionOffset(self: BlockDropLocation) Vec3d {
