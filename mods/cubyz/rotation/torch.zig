@@ -168,28 +168,30 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
-		.no, .yes_costsDurability, .yes_dropsItems => return .no,
+		.no, .yes_costsDurability => return .no,
 		.yes, .yes_costsItems => {
 			const torchAmountChange = @as(i32, @popCount(newBlock.data)) - if(oldBlock.typ == newBlock.typ) @as(i32, @popCount(oldBlock.data)) else 0;
-			if(torchAmountChange <= 0) {
-				return .{.yes_dropsItems = @intCast(-torchAmountChange)};
-			} else {
-				if(item.item != .baseItem or !std.meta.eql(item.item.baseItem.block(), newBlock.typ)) return .no;
-				return .{.yes_costsItems = @intCast(torchAmountChange)};
-			}
+			if(torchAmountChange <= 0) return .yes;
+			if(item.item != .baseItem or !std.meta.eql(item.item.baseItem.block(), newBlock.typ)) return .no;
+			return .{.yes_costsItems = @intCast(torchAmountChange)};
 		},
 	}
+}
+
+pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
+	if(newBlock.typ != oldBlock.typ) return @popCount(oldBlock.data);
+	return @popCount(oldBlock.data) -| @popCount(newBlock.data);
 }
 
 // MARK: non-interface fns
 
 pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
-	var data: main.rotation.list.@"cubyz:torch".TorchData = @bitCast(@as(u5, @truncate(block.data)));
-	if(data.center and !neighborSupportive[Neighbor.dirDown.toInt()]) data.center = false;
-	if(data.negX and !neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
-	if(data.posX and !neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
-	if(data.negY and !neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
-	if(data.posY and !neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
+	var data: TorchData = @bitCast(@as(u5, @truncate(block.data)));
+	if(!neighborSupportive[Neighbor.dirDown.toInt()]) data.center = false;
+	if(!neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
+	if(!neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
+	if(!neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
+	if(!neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
 	block.data = @as(u5, @bitCast(data));
-	if(block.data == 0) block.typ = 0;
+	if(block.data == 0) block.* = .air;
 }
