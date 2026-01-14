@@ -12,6 +12,7 @@ const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
+const StringIndexedVTables = main.meta.StringIndexedVTables;
 
 pub const list = @import("rotation");
 
@@ -95,7 +96,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn onBlockBreaking(_: main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 			currentData.* = .{.typ = 0, .data = 0};
 		}
-		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto {
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 			shouldDropSourceBlockOnSuccess.* = true;
 			if(oldBlock == newBlock) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
@@ -172,7 +173,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	getBlockTags: *const fn() []const Tag = DefaultFunctions.getBlockTags,
 };
 
-var rotationModes: std.StringHashMap(RotationMode) = undefined;
+const RotationModes = StringIndexedVTables(RotationMode, list);
 
 pub fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat4f) void {
 	quad.normal = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(quad.normal, 0)));
@@ -184,42 +185,19 @@ pub fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat
 // MARK: init/register
 
 pub fn init() void {
-	rotationModes = .init(main.globalAllocator.allocator);
-	inline for(@typeInfo(list).@"struct".decls) |declaration| {
-		register(declaration.name, @field(list, declaration.name));
-	}
+	RotationModes.callAll("init");
 }
 
 pub fn reset() void {
-	inline for(@typeInfo(list).@"struct".decls) |declaration| {
-		@field(list, declaration.name).reset();
-	}
+	RotationModes.callAll("reset");
 }
 
 pub fn deinit() void {
-	rotationModes.deinit();
-	inline for(@typeInfo(list).@"struct".decls) |declaration| {
-		@field(list, declaration.name).deinit();
-	}
+	RotationModes.callAll("deinit");
 }
 
 pub fn getByID(id: []const u8) *const RotationMode {
-	if(rotationModes.getPtr(id)) |mode| return mode;
+	if(RotationModes.getEntry(id)) |mode| return mode;
 	std.log.err("Could not find rotation mode {s}. Using cubyz:no_rotation instead.", .{id});
-	return rotationModes.getPtr("cubyz:no_rotation").?;
-}
-
-pub fn register(comptime id: []const u8, comptime Mode: type) void {
-	Mode.init();
-	var result: RotationMode = RotationMode{};
-	inline for(@typeInfo(RotationMode).@"struct".fields) |field| {
-		if(@hasDecl(Mode, field.name)) {
-			if(field.type == @TypeOf(@field(Mode, field.name))) {
-				@field(result, field.name) = @field(Mode, field.name);
-			} else {
-				@field(result, field.name) = &@field(Mode, field.name);
-			}
-		}
-	}
-	rotationModes.putNoClobber(id, result) catch unreachable;
+	return RotationModes.getEntry("cubyz:no_rotation").?;
 }
