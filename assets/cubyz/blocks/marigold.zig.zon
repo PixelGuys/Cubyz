@@ -14,4 +14,7 @@
 		.texture = "marigold.png",
 	},
 	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 }

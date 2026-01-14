@@ -1902,7 +1902,6 @@ pub const Command = struct { // MARK: Command
 				.yes => true,
 				.yes_costsDurability => |_| stack.item == .tool,
 				.yes_costsItems => |amount| stack.amount >= amount,
-				.yes_dropsItems => true,
 			}) {
 				if(ctx.side == .server) {
 					// Inform the client of the actual block:
@@ -1943,23 +1942,14 @@ pub const Command = struct { // MARK: Command
 						.amount = amount,
 					}});
 				},
-				.yes_dropsItems => |amount| {
-					if(ctx.side == .server and ctx.gamemode != .creative) {
-						for(0..amount) |_| {
-							for(self.newBlock.blockDrops()) |drop| {
-								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-									self.dropLocation.drop(self.pos, self.newBlock, drop);
-								}
-							}
-						}
-					}
-				},
 			}
-
-			if(ctx.side == .server and ctx.gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
-				for(self.oldBlock.blockDrops()) |drop| {
-					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						self.dropLocation.drop(self.pos, self.newBlock, drop);
+			if(ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
+				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
+				for(0..dropAmount) |_| {
+					for(self.newBlock.blockDrops()) |drop| {
+						if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
+							self.dropLocation.drop(self.pos, self.newBlock, drop);
+						}
 					}
 				}
 			}

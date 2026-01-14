@@ -181,3 +181,22 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	return torch.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 }
+
+pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
+	if(newBlock.typ != oldBlock.typ) return @popCount(oldBlock.data);
+	return @popCount(oldBlock.data) -| @popCount(newBlock.data);
+}
+
+// MARK: non-interface fns
+
+pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
+	var data: CarpetData = @bitCast(@as(u6, @truncate(block.data)));
+	if(!neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
+	if(!neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
+	if(!neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
+	if(!neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
+	if(!neighborSupportive[Neighbor.dirDown.toInt()]) data.negZ = false;
+	if(!neighborSupportive[Neighbor.dirUp.toInt()]) data.posZ = false;
+	block.data = @as(u6, @bitCast(data));
+	if(block.data == 0) block.* = .air;
+}
