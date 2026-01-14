@@ -896,7 +896,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
-	var selectionFace: chunk.Neighbor = undefined;
+	var selectionNormal: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
@@ -932,7 +932,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						selectedBlockPos = voxelPos;
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
-						selectionFace = intersection.face;
+						selectionNormal = intersection.normal;
 						break;
 					}
 				}
@@ -1112,7 +1112,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.source = .{.inv = source, .slot = slot},
 				.pos = .{x, y, z},
 				.dropLocation = .{
-					.dir = selectionFace,
+					.normalDir = selectionNormal,
 					.min = selectionMin,
 					.max = selectionMax,
 				},
