@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.maxHeight = -40000,
+	.maxHeight = -15000,
 	.minHeight = -48250,
 	.fogDensity = 25,
 	.fogColor = 0x3d1a11,

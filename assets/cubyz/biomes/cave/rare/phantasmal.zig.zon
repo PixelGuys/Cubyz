@@ -4,7 +4,7 @@
 	.fogColor = 0x000C14,
 	.chance = 0.01,
 	.maxHeight = -5000,
-	.minHeight = -48250,
+	.minHeight = -15000,
 	.music = "cubyz:cubyz",
 	.stoneBlock = "cubyz:chalk/black",
 
