@@ -781,15 +781,15 @@ pub const Command = struct { // MARK: Command
 
 	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, destinations: []const Inventory, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
 		std.debug.assert(source.inv.type == .crafting);
-                for(destinations) |dest| std.debug.assert(dest.type == .normal);
+		for(destinations) |dest| std.debug.assert(dest.type == .normal);
 		if(source.slot != source.inv._items.len - 1) return;
 		const destinationsCanHold = blk: {
-                    for(destinations) |dest| {
-                        if(dest.canHold(source.ref().*)) break :blk true;
-                    }
-                    break :blk false;
-                };
-                if(!destinationsCanHold) return;
+			for(destinations) |dest| {
+				if(dest.canHold(source.ref().*)) break :blk true;
+			}
+			break :blk false;
+		};
+		if(!destinationsCanHold) return;
 		if(source.ref().item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
 		const playerInventory: Inventory = switch(side) {
