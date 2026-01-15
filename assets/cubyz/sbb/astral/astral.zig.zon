@@ -9,5 +9,12 @@
 		.{.id = "cubyz:astral/6"},
 		.{.id = "cubyz:astral/7"},
 		.{.id = "cubyz:astral/8"},
+		.{.id = "cubyz:astral/9"},
+		.{.id = "cubyz:astral/10"},
+		.{.id = "cubyz:astral/11"},
+		.{.id = "cubyz:astral/l0"},
+		.{.id = "cubyz:astral/l1"},
+		.{.id = "cubyz:astral/l2"},
+		.{.id = "cubyz:astral/l3"},
 	},
 }
