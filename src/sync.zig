@@ -1234,7 +1234,7 @@ pub const Command = struct { // MARK: Command
 					.source = undefined,
 					.callbacks = .{},
 				};
-				ctx.cmd.tryCraftingTo(ctx.allocator, temp, self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, &.{temp}, self.source, ctx.side, ctx.user);
 				std.debug.assert(ctx.cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if (_items[0].item != .null) {
 					if (ctx.side == .server) {
