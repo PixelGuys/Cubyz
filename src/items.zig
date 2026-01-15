@@ -1115,7 +1115,7 @@ pub fn globalInit() void {
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
-	Inventory.Sync.ClientSide.init();
+	Inventory.ClientSide.init();
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
@@ -1280,5 +1280,5 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
-	Inventory.Sync.ClientSide.deinit();
+	Inventory.ClientSide.deinit();
 }

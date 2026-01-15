@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const items = @import("items.zig");
-const Inventory = items.Inventory;
 const main = @import("main");
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
@@ -235,7 +234,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			}
 			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
 			if(damage > 0.01) {
-				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+				main.sync.addHealth(-damage, .fall, .client, Player.id);
 			}
 
 			// Always unstuck upwards for now

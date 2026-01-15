@@ -12,9 +12,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	if(std.ascii.eqlIgnoreCase(args, "survival")) {
-		main.items.Inventory.Sync.setGamemode(source, .survival);
+		main.sync.setGamemode(source, .survival);
 	} else if(std.ascii.eqlIgnoreCase(args, "creative")) {
-		main.items.Inventory.Sync.setGamemode(source, .creative);
+		main.sync.setGamemode(source, .creative);
 	} else {
 		source.sendMessage("#ff0000Invalid argument for command /gamemode. Must be 'survival' or 'creative'.", .{});
 		return;
