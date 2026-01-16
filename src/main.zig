@@ -26,6 +26,7 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+pub const sync = @import("sync.zig");
 pub const particles = @import("particles.zig");
 const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
@@ -563,6 +564,9 @@ pub fn main() void { // MARK: main()
 
 	items.globalInit();
 	defer items.deinit();
+
+	if(!headless) sync.ClientSide.init();
+	defer if(!headless) sync.ClientSide.deinit();
 
 	if(!headless) itemdrop.ItemDropRenderer.init();
 	defer if(!headless) itemdrop.ItemDropRenderer.deinit();

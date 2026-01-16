@@ -18,7 +18,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		}
 		if(std.ascii.eqlIgnoreCase(arg, "inventory")) {
-			main.items.Inventory.Sync.ServerSide.clearPlayerInventory(source);
+			main.items.Inventory.ServerSide.clearPlayerInventory(source);
 		} else if(std.ascii.eqlIgnoreCase(arg, "chat")) {
 			main.network.protocols.genericUpdate.sendClear(source.conn, .chat);
 		} else {

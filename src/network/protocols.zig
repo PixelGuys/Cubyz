@@ -529,7 +529,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		switch(try reader.readEnum(UpdateType)) {
 			.gamemode => {
-				main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
+				main.sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 			},
 			.teleport => {
 				game.Player.setPosBlocking(try reader.readVec(Vec3d));
@@ -815,23 +815,23 @@ pub const inventory = struct { // MARK: inventory
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const typ = try reader.readInt(u8);
 		if(typ == 0xff) { // Confirmation
-			try items.Inventory.Sync.ClientSide.receiveConfirmation(reader);
+			try main.sync.ClientSide.receiveConfirmation(reader);
 		} else if(typ == 0xfe) { // Failure
-			items.Inventory.Sync.ClientSide.receiveFailure();
+			main.sync.ClientSide.receiveFailure();
 		} else {
-			try items.Inventory.Sync.ClientSide.receiveSyncOperation(reader);
+			try main.sync.ClientSide.receiveSyncOperation(reader);
 		}
 	}
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const user = conn.user.?;
 		if(reader.remaining[0] == 0xff) return error.InvalidPacket;
-		items.Inventory.Sync.ServerSide.receiveCommand(user, reader);
+		main.sync.ServerSide.receiveCommand(user, reader);
 	}
-	pub fn sendCommand(conn: *Connection, payloadType: items.Inventory.Command.PayloadType, _data: []const u8) void {
+	pub fn sendCommand(conn: *Connection, payloadType: main.sync.Command.PayloadType, _data: []const u8) void {
 		std.debug.assert(conn.user == null);
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 		defer writer.deinit();
-		writer.writeEnum(items.Inventory.Command.PayloadType, payloadType);
+		writer.writeEnum(main.sync.Command.PayloadType, payloadType);
 		std.debug.assert(writer.data.items[0] != 0xff);
 		writer.writeSlice(_data);
 		conn.send(.fast, id, writer.data.items);

@@ -83,17 +83,25 @@ fn isItemBlock(block: Block, item: main.items.ItemStack) bool {
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
-		.no, .yes_costsDurability, .yes_dropsItems => return .no,
+		.no, .yes_costsDurability => return .no,
 		.yes_costsItems => |r| return .{.yes_costsItems = r},
 		.yes => {
 			const oldAmount = if(oldBlock.typ == newBlock.typ) @min(oldBlock.data, oldBlock.modeData() - 1) else 0;
 			if(oldAmount == newBlock.data) return .no;
-			if(oldAmount < newBlock.data) {
-				if(!isItemBlock(newBlock, item)) return .no;
-				return .{.yes_costsItems = newBlock.data - oldAmount};
-			} else {
-				return .{.yes_dropsItems = oldAmount - newBlock.data};
-			}
+			if(oldAmount > newBlock.data) return .yes;
+			if(!isItemBlock(newBlock, item)) return .no;
+			return .{.yes_costsItems = newBlock.data - oldAmount};
 		},
 	}
+}
+
+pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
+	if(newBlock.typ != oldBlock.typ) return oldBlock.data + 1;
+	return oldBlock.data -| newBlock.data;
+}
+
+// MARK: non-interface fns
+
+pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
+	if(!neighborSupportive[Neighbor.dirDown.toInt()]) block.* = .air;
 }
