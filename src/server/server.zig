@@ -118,7 +118,8 @@ pub const User = struct { // MARK: User
 	lastSentBiomeId: u32 = 0xffffffff,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
-	inventory: ?InventoryId = null,
+	mainInventory: ?InventoryId = null,
+	hotbar: ?InventoryId = null,
 	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
@@ -148,13 +149,14 @@ pub const User = struct { // MARK: User
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 
-		if(self.inventory != null) {
+		if(self.mainInventory != null) {
 			world.?.savePlayer(self) catch |err| {
 				std.log.err("Failed to save player: {s}", .{@errorName(err)});
 				return;
 			};
 
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
+			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.mainInventory.?);
+			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.hotbar.?);
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
 		}
 

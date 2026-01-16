@@ -67,8 +67,10 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
-	for(0..main.game.Player.inventory.size()) |i| {
-		addItemStackToAvailable(main.game.Player.inventory.getStack(i));
+	inline for(.{main.game.Player.hotbar, main.game.Player.mainInventory}) |inv| {
+		for(0..inv.size()) |i| {
+			addItemStackToAvailable(inv.getStack(i));
+		}
 	}
 	if(std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
 	// Remove no longer present items:

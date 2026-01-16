@@ -428,8 +428,10 @@ pub const Player = struct { // MARK: Player
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = .{};
-	pub const inventorySize = 32;
-	pub var inventory: Inventory = undefined;
+	pub const mainInventorySize = 20;
+	pub const hotbarSize = 12;
+	pub var mainInventory: Inventory = undefined;
+	pub var hotbar: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 	pub const defaultBlockDamage: f32 = 1;
 
@@ -541,7 +543,7 @@ pub const Player = struct { // MARK: Player
 			}
 		}
 
-		inventory.placeBlock(selectedSlot);
+		hotbar.placeBlock(selectedSlot);
 	}
 
 	pub fn kill(spawnPos: Vec3d) void {
@@ -557,14 +559,14 @@ pub const Player = struct { // MARK: Player
 
 	pub fn dropFromHand(mods: main.Window.Key.Modifiers) void {
 		if(mods.shift) {
-			inventory.dropStack(selectedSlot);
+			hotbar.dropStack(selectedSlot);
 		} else {
-			inventory.dropOne(selectedSlot);
+			hotbar.dropOne(selectedSlot);
 		}
 	}
 
 	pub fn breakBlock(deltaTime: f64) void {
-		inventory.breakBlock(selectedSlot, deltaTime);
+		hotbar.breakBlock(selectedSlot, deltaTime);
 	}
 
 	pub fn acquireSelectedBlock() void {
@@ -580,9 +582,9 @@ pub const Player = struct { // MARK: Player
 
 			// Check if there is already a slot with that item type
 			for(0..12) |slotIdx| {
-				if(std.meta.eql(inventory.getItem(slotIdx), item)) {
+				if(std.meta.eql(hotbar.getItem(slotIdx), item)) {
 					if(isCreative()) {
-						inventory.fillFromCreative(@intCast(slotIdx), item);
+						hotbar.fillFromCreative(@intCast(slotIdx), item);
 					}
 					selectedSlot = @intCast(slotIdx);
 					return;
@@ -591,17 +593,17 @@ pub const Player = struct { // MARK: Player
 
 			if(isCreative()) {
 				const targetSlot = blk: {
-					if(inventory.getItem(selectedSlot) == .null) break :blk selectedSlot;
+					if(hotbar.getItem(selectedSlot) == .null) break :blk selectedSlot;
 					// Look for an empty slot
 					for(0..12) |slotIdx| {
-						if(inventory.getItem(slotIdx) == .null) {
+						if(hotbar.getItem(slotIdx) == .null) {
 							break :blk slotIdx;
 						}
 					}
 					break :blk selectedSlot;
 				};
 
-				inventory.fillFromCreative(@intCast(targetSlot), item);
+				hotbar.fillFromCreative(@intCast(targetSlot), item);
 				selectedSlot = @intCast(targetSlot);
 			}
 		}
@@ -656,7 +658,8 @@ pub const World = struct { // MARK: World
 		main.gui.inventory.deinit();
 		main.gui.deinit();
 		main.gui.init();
-		Player.inventory.deinit(main.globalAllocator);
+		Player.mainInventory.deinit(main.globalAllocator);
+		Player.hotbar.deinit(main.globalAllocator);
 		main.items.clearRecipeCachedInventories();
 		main.sync.ClientSide.reset();
 
@@ -695,7 +698,8 @@ pub const World = struct { // MARK: World
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id}, .{});
+		Player.mainInventory = Inventory.init(main.globalAllocator, Player.mainInventorySize, .normal, .{.playerMainInventory = Player.id}, .{});
+		Player.hotbar = Inventory.init(main.globalAllocator, Player.hotbarSize, .normal, .{.playerHotbar = Player.id}, .{});
 		Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);

@@ -220,7 +220,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
+	MeshSelection.select(playerPos, direction, game.Player.hotbar.getItem(game.Player.selectedSlot));
 
 	chunk_meshing.beginRender();
 

@@ -572,7 +572,7 @@ pub fn toggleGameMenu() void {
 	if(!main.Window.grabbed) {
 		hideGui = false;
 	} else { // Take of the currently held item stack and close some windows
-		main.game.Player.inventory.depositOrDrop(inventory.carried);
+		main.game.Player.hotbar.depositOrDrop(inventory.carried);
 		hoveredItemSlot = null;
 		var i: usize = 0;
 		while(i < openWindows.items.len) {
@@ -665,7 +665,7 @@ pub const inventory = struct { // MARK: inventory
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
 				if(mainGuiButton.modsOnPress.shift) {
-					itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+					itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.hotbar, main.game.Player.mainInventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {
 					itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
 				}
@@ -679,7 +679,7 @@ pub const inventory = struct { // MARK: inventory
 		if(itemSlot.mode != .normal) return;
 
 		if(mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
-			if(itemSlot.inventory.id == main.game.Player.inventory.id) {
+			if(itemSlot.inventory.id == main.game.Player.mainInventory.id or itemSlot.inventory.id == main.game.Player.hotbar.id) {
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while(iterator.next()) |window| {
 					if(window.shiftClickableInventory) |inv| {
@@ -688,7 +688,7 @@ pub const inventory = struct { // MARK: inventory
 					}
 				}
 			} else {
-				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.hotbar, main.game.Player.mainInventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
 			return;
 		}

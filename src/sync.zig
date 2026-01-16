@@ -792,15 +792,22 @@ pub const Command = struct { // MARK: Command
 		if(!destinationsCanHold) return;
 		if(source.ref().item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
-		const playerInventory: Inventory = switch(side) {
-			.client => main.game.Player.inventory,
+		const playerInventory: [2]Inventory = switch(side) {
+			.client => .{main.game.Player.hotbar, main.game.Player.mainInventory},
 			.server => blk: {
 				if(user) |_user| {
+					var other: ?Inventory = null;
 					var it = _user.inventoryClientToServerIdMap.valueIterator();
 					while(it.next()) |serverId| {
 						const serverInventory = Inventory.ServerSide.getInventoryFromId(serverId.*);
-						if(serverInventory.source == .playerInventory)
-							break :blk serverInventory;
+						if(serverInventory.source == .playerMainInventory) {
+							if(other) |inv| break :blk .{serverInventory, inv};
+							other = serverInventory;
+						}
+						if(serverInventory.source == .playerHotbar) {
+							if(other) |inv| break :blk .{inv, serverInventory};
+							other = serverInventory;
+						}
 					}
 				}
 				return;
@@ -815,9 +822,11 @@ pub const Command = struct { // MARK: Command
 				if(std.meta.eql(requiredStack.item, otherStack.item))
 					amount += otherStack.amount;
 			}
-			for(playerInventory._items) |otherStack| {
-				if(std.meta.eql(requiredStack.item, otherStack.item))
-					amount -|= otherStack.amount;
+			for(playerInventory) |inv| {
+				for(inv._items) |otherStack| {
+					if(std.meta.eql(requiredStack.item, otherStack.item))
+						amount -|= otherStack.amount;
+				}
 			}
 			// Not enough ingredients
 			if(amount != 0)
@@ -827,15 +836,17 @@ pub const Command = struct { // MARK: Command
 		// Craft it
 		for(source.inv._items[0..source.slot]) |requiredStack| {
 			var remainingAmount: usize = requiredStack.amount;
-			for(playerInventory._items, 0..) |*otherStack, i| {
-				if(std.meta.eql(requiredStack.item, otherStack.item)) {
-					const amount = @min(remainingAmount, otherStack.amount);
-					self.executeBaseOperation(allocator, .{.delete = .{
-						.source = .{.inv = playerInventory, .slot = @intCast(i)},
-						.amount = amount,
-					}}, side);
-					remainingAmount -= amount;
-					if(remainingAmount == 0) break;
+			outer: for(playerInventory) |inv| {
+				for(inv._items, 0..) |*otherStack, i| {
+					if(std.meta.eql(requiredStack.item, otherStack.item)) {
+						const amount = @min(remainingAmount, otherStack.amount);
+						self.executeBaseOperation(allocator, .{.delete = .{
+							.source = .{.inv = inv, .slot = @intCast(i)},
+							.amount = amount,
+						}}, side);
+						remainingAmount -= amount;
+						if(remainingAmount == 0) break :outer;
+					}
 				}
 			}
 			std.debug.assert(remainingAmount == 0);
@@ -897,7 +908,7 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(Inventory.TypeEnum, self.inv.type);
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch(self.source) {
-				.playerInventory, .hand => |val| {
+				.playerMainInventory, .playerHotbar, .hand => |val| {
 					writer.writeInt(u32, val);
 				},
 				.recipe => |val| {
@@ -929,7 +940,8 @@ pub const Command = struct { // MARK: Command
 			const typeEnum = try reader.readEnum(Inventory.TypeEnum);
 			const sourceType = try reader.readEnum(Inventory.SourceType);
 			const source: Inventory.Source = switch(sourceType) {
-				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
+				.playerMainInventory => .{.playerMainInventory = try reader.readInt(u32)},
+				.playerHotbar => .{.playerHotbar = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
 				.recipe => .{
 					.recipe = blk: {
