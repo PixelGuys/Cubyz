@@ -130,8 +130,8 @@ pub const ServerSide = struct { // MARK: ServerSide
 				if(self.managed == .internallyManaged) {
 					if(self.inv.type.shouldDepositToUserOnClose()) {
 						const playerMainInventory = getInventoryFromSource(.{.playerMainInventory = user.id}) orelse @panic("Could not find player main inventory");
-						sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerMainInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
-						// TODO: add Hotbar after depositOrDrop is updated to slice
+						const playerHotbar = getInventoryFromSource(.{.playerHotbar = user.id}) orelse @panic("Could not find player hotbar");
+						sync.ServerSide.executeCommand(.{.depositOrDrop = .init(&.{playerHotbar, playerMainInventory}, self.inv, user.player.pos)}, null);
 					}
 					inventoryCreationMutex.lock();
 					defer inventoryCreationMutex.unlock();
@@ -514,8 +514,8 @@ pub fn distribute(carried: Inventory, destinationInventories: []const Inventory,
 	}
 }
 
-pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
-	main.sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source, .dropLocation = undefined}});
+pub fn depositOrDrop(source: Inventory, destinations: []const Inventory) void {
+	main.sync.ClientSide.executeCommand(.{.depositOrDrop = .init(destinations, source, undefined)});
 }
 
 pub fn depositToAny(source: Inventory, sourceSlot: u32, destinations: []const Inventory, amount: u16) void {
