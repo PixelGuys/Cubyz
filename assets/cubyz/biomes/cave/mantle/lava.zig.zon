@@ -36,7 +36,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mantle/base",
+			.block = "cubyz:pyrolite/base",
 			.chance = 0.4,
 			.width = 3,
 			.variation = 2,
@@ -45,7 +45,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mantle/base",
+			.block = "cubyz:pyrolite/base",
 			.chance = 0.08,
 			.width = 6,
 			.variation = 5,

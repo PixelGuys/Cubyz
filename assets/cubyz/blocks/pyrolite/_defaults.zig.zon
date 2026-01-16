@@ -1,5 +1,5 @@
 .{
-	.tags = .{.mineable, .mantle},
+	.tags = .{.mineable, .pyrolite},
 	.blockHealth = 40,
 	.blockResistance = 25,
 	.drops = .{
@@ -19,7 +19,7 @@
 				.{
 					.id = "good_at",
 					.strength = 0.5,
-					.tag = .mantle,
+					.tag = .pyrolite,
 					.restriction = .{
 						.id = .encased,
 						.tag = .precious,

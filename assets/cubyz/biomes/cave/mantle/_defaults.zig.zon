@@ -4,5 +4,5 @@
 	.minHeight = -48250,
 	.fogDensity = 25,
 	.fogColor = 0x3d1a11,
-	.stoneBlock = "cubyz:mantle/base",
+	.stoneBlock = "cubyz:pyrolite/base",
 }

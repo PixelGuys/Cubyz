@@ -1,6 +1,7 @@
 .{
 	.chance = 1000,
-	.caves = -0.03,
+	.caves = -10,
+	.caveRadiusFactor = 0,
 	.stoneBlock = "cubyz:lava",
 	.maxHeight = -20000,
 	.minHeight = -20080,
