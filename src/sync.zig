@@ -779,11 +779,17 @@ pub const Command = struct { // MARK: Command
 		};
 	}
 
-	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: Inventory, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
+	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, destinations: []const Inventory, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
 		std.debug.assert(source.inv.type == .crafting);
-		std.debug.assert(dest.type == .normal);
+		for(destinations) |dest| std.debug.assert(dest.type == .normal);
 		if(source.slot != source.inv._items.len - 1) return;
-		if(!dest.canHold(source.ref().*)) return;
+		const destinationsCanHold = blk: {
+			for(destinations) |dest| {
+				if(dest.canHold(source.ref().*)) break :blk true;
+			}
+			break :blk false;
+		};
+		if(!destinationsCanHold) return;
 		if(source.ref().item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
 		const playerInventory: Inventory = switch(side) {
@@ -836,19 +842,49 @@ pub const Command = struct { // MARK: Command
 		}
 
 		var remainingAmount: u16 = source.ref().amount;
-		for(dest._items, 0..) |*destStack, destSlot| {
-			if(std.meta.eql(destStack.item, source.ref().item) or destStack.item == .null) {
-				const amount = @min(source.ref().item.stackSize() - destStack.amount, remainingAmount);
+		var selectedEmptySlot: ?u32 = null;
+		var selectedEmptyInv: ?Inventory = null;
+		outer: for(destinations) |dest| {
+			var emptySlot: ?u32 = null;
+			var hasItem = false;
+			for(dest._items, 0..) |*destStack, destSlot| {
+				if(destStack.item == .null and emptySlot == null) {
+					emptySlot = @intCast(destSlot);
+					if(selectedEmptySlot == null) {
+						selectedEmptySlot = emptySlot;
+						selectedEmptyInv = dest;
+					}
+				}
+				if(std.meta.eql(destStack.item, source.ref().item)) {
+					hasItem = true;
+					const amount = @min(source.ref().item.stackSize() - destStack.amount, remainingAmount);
+					if(amount == 0) continue;
+					self.executeBaseOperation(allocator, .{.create = .{
+						.dest = .{.inv = dest, .slot = @intCast(destSlot)},
+						.amount = amount,
+						.item = source.ref().item,
+					}}, side);
+					remainingAmount -= amount;
+					if(remainingAmount == 0) break :outer;
+				}
+			}
+			if(emptySlot != null and hasItem) {
 				self.executeBaseOperation(allocator, .{.create = .{
-					.dest = .{.inv = dest, .slot = @intCast(destSlot)},
-					.amount = amount,
+					.dest = .{.inv = dest, .slot = emptySlot.?},
+					.amount = remainingAmount,
 					.item = source.ref().item,
 				}}, side);
-				remainingAmount -= amount;
-				if(remainingAmount == 0) break;
+				remainingAmount = 0;
+				break :outer;
 			}
 		}
-		std.debug.assert(remainingAmount == 0);
+		if(remainingAmount > 0 and selectedEmptySlot != null) {
+			self.executeBaseOperation(allocator, .{.create = .{
+				.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
+				.amount = remainingAmount,
+				.item = source.ref().item,
+			}}, side);
+		}
 	}
 
 	const Context = struct {
@@ -999,7 +1035,7 @@ pub const Command = struct { // MARK: Command
 				return;
 			}
 			if(self.dest.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.source.inv, self.dest, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, &.{self.source.inv}, self.dest, ctx.side, ctx.user);
 				return;
 			}
 			if(self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled) return;
@@ -1120,7 +1156,7 @@ pub const Command = struct { // MARK: Command
 				return;
 			}
 			if(self.source.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.dest.inv, self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, &.{self.dest.inv}, self.source, ctx.side, ctx.user);
 				return;
 			}
 			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
@@ -1188,7 +1224,7 @@ pub const Command = struct { // MARK: Command
 					.source = undefined,
 					.callbacks = .{},
 				};
-				ctx.cmd.tryCraftingTo(ctx.allocator, temp, self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, &.{temp}, self.source, ctx.side, ctx.user);
 				std.debug.assert(ctx.cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != .null) {
 					if(ctx.side == .server) {
@@ -1369,7 +1405,7 @@ pub const Command = struct { // MARK: Command
 				if(dest.type == .workbench) return;
 			}
 			if(self.source.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations[0], self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations, self.source, ctx.side, ctx.user);
 				return;
 			}
 			const sourceStack = self.source.ref();
