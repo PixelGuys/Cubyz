@@ -131,7 +131,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 					if(self.inv.type.shouldDepositToUserOnClose()) {
 						const playerMainInventory = getInventoryFromSource(.{.playerMainInventory = user.id}) orelse @panic("Could not find player main inventory");
 						sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerMainInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
-						//TODO add Hotbar after depositOrDrop is updated to slice
+						//TODO: add Hotbar after depositOrDrop is updated to slice
 					}
 					inventoryCreationMutex.lock();
 					defer inventoryCreationMutex.unlock();
