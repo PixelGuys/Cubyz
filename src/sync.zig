@@ -913,8 +913,23 @@ pub const Command = struct { // MARK: Command
 				remainingAmount -= amount;
 				if (remainingAmount == 0) break;
 			}
+			if(emptySlot != null and hasItem) {
+				self.executeBaseOperation(allocator, .{.create = .{
+					.dest = .{.inv = dest, .slot = emptySlot.?},
+					.amount = remainingAmount,
+					.item = source.ref().item,
+				}}, side);
+				remainingAmount = 0;
+				break :outer;
+			}
 		}
-		std.debug.assert(remainingAmount == 0);
+		if(remainingAmount > 0 and selectedEmptySlot != null) {
+			self.executeBaseOperation(allocator, .{.create = .{
+				.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
+				.amount = remainingAmount,
+				.item = source.ref().item,
+			}}, side);
+		}
 	}
 
 	const Context = struct {
