@@ -1264,38 +1264,70 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const DepositOrDrop = struct { // MARK: DepositOrDrop
-		dest: Inventory,
+		destinations: []const Inventory,
 		source: Inventory,
 		dropLocation: Vec3d,
 
+		pub fn init(destinations: []const Inventory, source: Inventory, dropLocation: Vec3d) DepositOrDrop {
+			return .{
+				.destinations = main.globalAllocator.dupe(Inventory, destinations),
+				.source = source,
+				.dropLocation = dropLocation,
+			};
+		}
+
+		fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
+			main.globalAllocator.free(self.destinations);
+		}
+
 		pub fn run(self: DepositOrDrop, ctx: Context) error{serverFailure}!void {
-			std.debug.assert(self.dest.type == .normal);
+			for(self.destinations) |dest| {
+				std.debug.assert(dest.type == .normal);
+			}
 			if(self.source.type == .crafting) return;
 			var sourceItems = self.source._items;
 			if(self.source.type == .workbench) sourceItems = self.source._items[0..25];
 			outer: for(sourceItems, 0..) |*sourceStack, sourceSlot| {
 				if(sourceStack.item == .null) continue;
-				for(self.dest._items, 0..) |*destStack, destSlot| {
-					if(std.meta.eql(destStack.item, sourceStack.item)) {
-						const amount = @min(destStack.item.stackSize() - destStack.amount, sourceStack.amount);
-						ctx.execute(.{.move = .{
-							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
-							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
-							.amount = amount,
-						}});
-						if(sourceStack.amount == 0) {
-							continue :outer;
+				var selectedEmptySlot: ?u32 = null;
+				var selectedEmptyInv: ?Inventory = null;
+				for(self.destinations) |dest| {
+					var emptySlot: ?u32 = null;
+					var hasItem = false;
+					for(dest._items, 0..) |*destStack, destSlot| {
+						if(destStack.item == .null and emptySlot == null) {
+							emptySlot = @intCast(destSlot);
+							if(selectedEmptySlot == null) {
+								selectedEmptySlot = emptySlot;
+								selectedEmptyInv = dest;
+							}
+						}
+						if(std.meta.eql(destStack.item, sourceStack.item)) {
+							hasItem = true;
+							const amount = @min(sourceStack.item.stackSize() - destStack.amount, sourceStack.amount);
+							if(amount == 0) continue;
+							ctx.execute(.{.move = .{
+								.dest = .{.inv = dest, .slot = @intCast(destSlot)},
+								.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
+								.amount = amount,
+							}});
+							if(sourceStack.amount == 0) continue :outer;
 						}
 					}
-				}
-				for(self.dest._items, 0..) |*destStack, destSlot| {
-					if(destStack.item == .null) {
+					if(emptySlot != null and hasItem) {
 						ctx.execute(.{.swap = .{
-							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
+							.dest = .{.inv = dest, .slot = emptySlot.?},
 							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
 						}});
 						continue :outer;
 					}
+				}
+				if(selectedEmptySlot != null) {
+					ctx.execute(.{.swap = .{
+						.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
+						.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
+					}});
+					continue :outer;
 				}
 				if(ctx.side == .server) {
 					const direction = if(ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
@@ -1309,15 +1341,28 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: DepositOrDrop, writer: *BinaryWriter) void {
-			writer.writeEnum(InventoryId, self.dest.id);
+			writer.writeVarInt(usize, self.destinations.len);
+			for(self.destinations) |dest| {
+				writer.writeEnum(InventoryId, dest.id);
+			}
 			writer.writeEnum(InventoryId, self.source.id);
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !DepositOrDrop {
-			const destId = try reader.readEnum(InventoryId);
+			const destinationsSize = try reader.readVarInt(usize);
+			if(destinationsSize == 0) return error.Invalid;
+			if(destinationsSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+
+			const destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
+			errdefer main.globalAllocator.free(destinations);
+
+			for(destinations) |*dest| {
+				const invId = try reader.readEnum(InventoryId);
+				dest.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
+			}
 			const sourceId = try reader.readEnum(InventoryId);
 			return .{
-				.dest = Inventory.getInventory(destId, side, user) orelse return error.InventoryNotFound,
+				.destinations = destinations[0..],
 				.source = Inventory.getInventory(sourceId, side, user) orelse return error.InventoryNotFound,
 				.dropLocation = (user orelse return error.Invalid).player.pos,
 			};

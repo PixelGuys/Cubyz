@@ -572,7 +572,7 @@ pub fn toggleGameMenu() void {
 	if(!main.Window.grabbed) {
 		hideGui = false;
 	} else { // Take of the currently held item stack and close some windows
-		main.game.Player.inventory.depositOrDrop(inventory.carried);
+		inventory.carried.depositOrDrop(&.{main.game.Player.inventory});
 		hoveredItemSlot = null;
 		var i: usize = 0;
 		while(i < openWindows.items.len) {

@@ -130,7 +130,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 				if(self.managed == .internallyManaged) {
 					if(self.inv.type.shouldDepositToUserOnClose()) {
 						const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-						sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
+						sync.ServerSide.executeCommand(.{.depositOrDrop = .init(&.{playerinventory}, self.inv, user.player.pos)}, null);
 					}
 					inventoryCreationMutex.lock();
 					defer inventoryCreationMutex.unlock();
