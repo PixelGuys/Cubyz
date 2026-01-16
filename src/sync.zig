@@ -853,10 +853,23 @@ pub const Command = struct { // MARK: Command
 		}
 
 		var remainingAmount: u16 = source.ref().amount;
+		var selectedEmptySlot: ?u32 = null;
+		var selectedEmptyInv: ?Inventory = null;
 		outer: for(destinations) |dest| {
+			var emptySlot: ?u32 = null;
+			var hasItem = false;
 			for(dest._items, 0..) |*destStack, destSlot| {
-				if(std.meta.eql(destStack.item, source.ref().item) or destStack.item == .null) {
+				if(destStack.item == .null and emptySlot == null) {
+					emptySlot = @intCast(destSlot);
+					if(selectedEmptySlot == null) {
+						selectedEmptySlot = emptySlot;
+						selectedEmptyInv = dest;
+					}
+				}
+				if(std.meta.eql(destStack.item, source.ref().item)) {
+					hasItem = true;
 					const amount = @min(source.ref().item.stackSize() - destStack.amount, remainingAmount);
+					if(amount == 0) continue;
 					self.executeBaseOperation(allocator, .{.create = .{
 						.dest = .{.inv = dest, .slot = @intCast(destSlot)},
 						.amount = amount,
@@ -866,8 +879,23 @@ pub const Command = struct { // MARK: Command
 					if(remainingAmount == 0) break :outer;
 				}
 			}
+			if(emptySlot != null and hasItem) {
+				self.executeBaseOperation(allocator, .{.create = .{
+					.dest = .{.inv = dest, .slot = emptySlot.?},
+					.amount = remainingAmount,
+					.item = source.ref().item,
+				}}, side);
+				remainingAmount = 0;
+				break :outer;
+			}
 		}
-		std.debug.assert(remainingAmount == 0);
+		if(remainingAmount > 0 and selectedEmptySlot != null) {
+			self.executeBaseOperation(allocator, .{.create = .{
+				.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
+				.amount = remainingAmount,
+				.item = source.ref().item,
+			}}, side);
+		}
 	}
 
 	const Context = struct {
