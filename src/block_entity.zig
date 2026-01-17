@@ -225,21 +225,21 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			std.debug.assert(!data.foundExisting);
-			data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, inventoryCallbacks);
+			data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, inventoryCallbacks);
 		}
 
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			const data = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 			StorageServer.mutex.unlock();
-			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(data.invId);
+			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(data.invId);
 		}
 		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.getByIndex(dataIndex) orelse return;
 
-			const inv = main.items.Inventory.Sync.ServerSide.getInventoryFromId(data.invId);
+			const inv = main.items.Inventory.ServerSide.getInventoryFromId(data.invId);
 			var isEmpty: bool = true;
 			for(inv._items) |item| {
 				if(item.amount != 0) isEmpty = false;
@@ -265,7 +265,7 @@ pub const BlockEntityTypes = struct {
 			switch(event) {
 				.remove => {
 					const chest = StorageServer.remove(pos, chunk) orelse return;
-					main.items.Inventory.Sync.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
+					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
 				},
 				.update => |_| {
 					StorageServer.mutex.lock();
@@ -273,7 +273,7 @@ pub const BlockEntityTypes = struct {
 					const data = StorageServer.getOrPut(pos, chunk);
 					if(data.foundExisting) return;
 					var reader = BinaryReader.init(&.{});
-					data.valuePtr.invId = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
+					data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
 				},
 			}
 		}

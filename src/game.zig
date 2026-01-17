@@ -658,7 +658,7 @@ pub const World = struct { // MARK: World
 		main.gui.init();
 		Player.inventory.deinit(main.globalAllocator);
 		main.items.clearRecipeCachedInventories();
-		main.items.Inventory.Sync.ClientSide.reset();
+		main.sync.ClientSide.reset();
 
 		main.threadPool.clear();
 		main.entity.ClientEntityManager.clear();

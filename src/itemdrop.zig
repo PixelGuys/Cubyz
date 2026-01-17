@@ -445,7 +445,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const dist = @max(min - itemPos, itemPos - max);
 			if(@reduce(.Max, dist) < radius + pickupRange) {
 				const itemStack = &self.list.items(.itemStack)[i];
-				main.items.Inventory.Sync.ServerSide.tryCollectingToPlayerInventory(user, itemStack);
+				main.items.Inventory.ServerSide.tryCollectingToPlayerInventory(user, itemStack);
 				if(itemStack.amount == 0) {
 					self.directRemove(i);
 					continue;

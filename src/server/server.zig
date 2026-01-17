@@ -144,7 +144,7 @@ pub const User = struct { // MARK: User
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 
-		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
+		main.items.Inventory.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 
@@ -154,8 +154,8 @@ pub const User = struct { // MARK: User
 				return;
 			};
 
-			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
-			main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
+			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
+			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
 		}
 
 		self.worldEditData.deinit();
@@ -270,7 +270,7 @@ pub const User = struct { // MARK: User
 		for(commands.items) |commandData| {
 			defer main.globalAllocator.free(commandData);
 			var reader: BinaryReader = .init(commandData);
-			main.items.Inventory.Sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+			main.sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
 				if(err == error.InventoryNotFound) {
 					main.network.protocols.inventory.sendFailure(self.conn);
 				} else {
@@ -356,7 +356,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
-	main.items.Inventory.Sync.ServerSide.init();
+	main.items.Inventory.ServerSide.init();
+	main.sync.ServerSide.init();
 
 	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -396,7 +397,8 @@ fn deinit() void {
 	}
 	world = null;
 
-	main.items.Inventory.Sync.ServerSide.deinit();
+	main.sync.ServerSide.deinit();
+	main.items.Inventory.ServerSide.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
