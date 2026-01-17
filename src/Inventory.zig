@@ -129,8 +129,9 @@ pub const ServerSide = struct { // MARK: ServerSide
 				}
 				if(self.managed == .internallyManaged) {
 					if(self.inv.type.shouldDepositToUserOnClose()) {
-						const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-						sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
+						const playerMainInventory = getInventoryFromSource(.{.playerMainInventory = user.id}) orelse @panic("Could not find player main inventory");
+						const playerHotbar = getInventoryFromSource(.{.playerHotbar = user.id}) orelse @panic("Could not find player hotbar");
+						sync.ServerSide.executeCommand(.{.depositOrDrop = .init(&.{playerHotbar, playerMainInventory}, self.inv, user.player.pos)}, null);
 					}
 					inventoryCreationMutex.lock();
 					defer inventoryCreationMutex.unlock();
@@ -231,9 +232,9 @@ pub const ServerSide = struct { // MARK: ServerSide
 	pub fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
 		sync.threadContext.assertCorrectContext(.server);
 		switch(source) {
-			.recipe, .blockInventory, .playerInventory, .hand => {
+			.recipe, .blockInventory, .playerMainInventory, .playerHotbar, .hand => {
 				switch(source) {
-					.playerInventory, .hand => |id| {
+					.playerMainInventory, .playerHotbar, .hand => |id| {
 						if(id != user.id) {
 							std.log.err("Player {s} tried to access the inventory of another player.", .{user.name});
 							return error.Invalid;
@@ -264,7 +265,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 
 		switch(source) {
 			.blockInventory => unreachable, // Should be loaded by the block entity
-			.playerInventory, .hand => unreachable, // Should be loaded on player creation
+			.playerMainInventory, .playerHotbar, .hand => unreachable, // Should be loaded on player creation
 			.recipe => |recipe| {
 				for(0..recipe.sourceAmounts.len) |i| {
 					inventory.inv._items[i].amount = recipe.sourceAmounts[i];
@@ -316,7 +317,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 		sync.threadContext.assertCorrectContext(.server);
 		var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 		while(inventoryIdIterator.next()) |inventoryId| {
-			if(inventories.items()[@intFromEnum(inventoryId.*)].source == .playerInventory) {
+			if(inventories.items()[@intFromEnum(inventoryId.*)].source == .playerMainInventory or inventories.items()[@intFromEnum(inventoryId.*)].source == .playerHotbar) {
 				sync.ServerSide.executeCommand(.{.clear = .{.inv = inventories.items()[@intFromEnum(inventoryId.*)].inv}}, null);
 			}
 		}
@@ -326,23 +327,32 @@ pub const ServerSide = struct { // MARK: ServerSide
 		if(itemStack.item == .null) return;
 		sync.threadContext.assertCorrectContext(.server);
 		var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
+		var mainInventory: ?Inventory = null;
+		var hotbar: ?Inventory = null;
 		outer: while(inventoryIdIterator.next()) |inventoryId| {
-			if(inventories.items()[@intFromEnum(inventoryId.*)].source == .playerInventory) {
-				const inv = inventories.items()[@intFromEnum(inventoryId.*)].inv;
-				for(inv._items, 0..) |invStack, slot| {
-					if(std.meta.eql(invStack.item, itemStack.item)) {
-						const amount = @min(itemStack.item.stackSize() - invStack.amount, itemStack.amount);
-						if(amount == 0) continue;
-						sync.ServerSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
-						itemStack.amount -= amount;
-						if(itemStack.amount == 0) break :outer;
+			if(mainInventory == null and inventories.items()[@intFromEnum(inventoryId.*)].source == .playerMainInventory)
+				mainInventory = inventories.items()[@intFromEnum(inventoryId.*)].inv;
+			if(hotbar == null and inventories.items()[@intFromEnum(inventoryId.*)].source == .playerHotbar)
+				hotbar = inventories.items()[@intFromEnum(inventoryId.*)].inv;
+			if(hotbar != null and mainInventory != null) {
+				inline for(.{hotbar.?, mainInventory.?}) |inv| {
+					for(inv._items, 0..) |invStack, slot| {
+						if(std.meta.eql(invStack.item, itemStack.item)) {
+							const amount = @min(itemStack.item.stackSize() - invStack.amount, itemStack.amount);
+							if(amount == 0) continue;
+							sync.ServerSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
+							itemStack.amount -= amount;
+							if(itemStack.amount == 0) break :outer;
+						}
 					}
 				}
-				for(inv._items, 0..) |invStack, slot| {
-					if(invStack.item == .null) {
-						sync.ServerSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
-						itemStack.amount = 0;
-						break :outer;
+				inline for(.{hotbar.?, mainInventory.?}) |inv| {
+					for(inv._items, 0..) |invStack, slot| {
+						if(invStack.item == .null) {
+							sync.ServerSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
+							itemStack.amount = 0;
+							break :outer;
+						}
 					}
 				}
 			}
@@ -367,7 +377,8 @@ pub const Callbacks = struct {
 
 pub const SourceType = enum(u8) {
 	alreadyFreed = 0,
-	playerInventory = 1,
+	playerMainInventory = 1,
+	playerHotbar = 2,
 	hand = 3,
 	recipe = 4,
 	blockInventory = 5,
@@ -375,7 +386,8 @@ pub const SourceType = enum(u8) {
 };
 pub const Source = union(SourceType) {
 	alreadyFreed: void,
-	playerInventory: u32,
+	playerMainInventory: u32,
+	playerHotbar: u32,
 	hand: u32,
 	recipe: *const main.items.Recipe,
 	blockInventory: Vec3i,
@@ -502,8 +514,8 @@ pub fn distribute(carried: Inventory, destinationInventories: []const Inventory,
 	}
 }
 
-pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
-	main.sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source, .dropLocation = undefined}});
+pub fn depositOrDrop(source: Inventory, destinations: []const Inventory) void {
+	main.sync.ClientSide.executeCommand(.{.depositOrDrop = .init(destinations, source, undefined)});
 }
 
 pub fn depositToAny(source: Inventory, sourceSlot: u32, destinations: []const Inventory, amount: u16) void {

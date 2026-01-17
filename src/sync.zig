@@ -779,22 +779,35 @@ pub const Command = struct { // MARK: Command
 		};
 	}
 
-	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: Inventory, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
+	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, destinations: []const Inventory, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
 		std.debug.assert(source.inv.type == .crafting);
-		std.debug.assert(dest.type == .normal);
+		for(destinations) |dest| std.debug.assert(dest.type == .normal);
 		if(source.slot != source.inv._items.len - 1) return;
-		if(!dest.canHold(source.ref().*)) return;
+		const destinationsCanHold = blk: {
+			for(destinations) |dest| {
+				if(dest.canHold(source.ref().*)) break :blk true;
+			}
+			break :blk false;
+		};
+		if(!destinationsCanHold) return;
 		if(source.ref().item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
-		const playerInventory: Inventory = switch(side) {
-			.client => main.game.Player.inventory,
+		const playerInventory: [2]Inventory = switch(side) {
+			.client => .{main.game.Player.hotbar, main.game.Player.mainInventory},
 			.server => blk: {
 				if(user) |_user| {
+					var other: ?Inventory = null;
 					var it = _user.inventoryClientToServerIdMap.valueIterator();
 					while(it.next()) |serverId| {
 						const serverInventory = Inventory.ServerSide.getInventoryFromId(serverId.*);
-						if(serverInventory.source == .playerInventory)
-							break :blk serverInventory;
+						if(serverInventory.source == .playerMainInventory) {
+							if(other) |inv| break :blk .{serverInventory, inv};
+							other = serverInventory;
+						}
+						if(serverInventory.source == .playerHotbar) {
+							if(other) |inv| break :blk .{inv, serverInventory};
+							other = serverInventory;
+						}
 					}
 				}
 				return;
@@ -809,9 +822,11 @@ pub const Command = struct { // MARK: Command
 				if(std.meta.eql(requiredStack.item, otherStack.item))
 					amount += otherStack.amount;
 			}
-			for(playerInventory._items) |otherStack| {
-				if(std.meta.eql(requiredStack.item, otherStack.item))
-					amount -|= otherStack.amount;
+			for(playerInventory) |inv| {
+				for(inv._items) |otherStack| {
+					if(std.meta.eql(requiredStack.item, otherStack.item))
+						amount -|= otherStack.amount;
+				}
 			}
 			// Not enough ingredients
 			if(amount != 0)
@@ -821,34 +836,66 @@ pub const Command = struct { // MARK: Command
 		// Craft it
 		for(source.inv._items[0..source.slot]) |requiredStack| {
 			var remainingAmount: usize = requiredStack.amount;
-			for(playerInventory._items, 0..) |*otherStack, i| {
-				if(std.meta.eql(requiredStack.item, otherStack.item)) {
-					const amount = @min(remainingAmount, otherStack.amount);
-					self.executeBaseOperation(allocator, .{.delete = .{
-						.source = .{.inv = playerInventory, .slot = @intCast(i)},
-						.amount = amount,
-					}}, side);
-					remainingAmount -= amount;
-					if(remainingAmount == 0) break;
+			outer: for(playerInventory) |inv| {
+				for(inv._items, 0..) |*otherStack, i| {
+					if(std.meta.eql(requiredStack.item, otherStack.item)) {
+						const amount = @min(remainingAmount, otherStack.amount);
+						self.executeBaseOperation(allocator, .{.delete = .{
+							.source = .{.inv = inv, .slot = @intCast(i)},
+							.amount = amount,
+						}}, side);
+						remainingAmount -= amount;
+						if(remainingAmount == 0) break :outer;
+					}
 				}
 			}
 			std.debug.assert(remainingAmount == 0);
 		}
 
 		var remainingAmount: u16 = source.ref().amount;
-		for(dest._items, 0..) |*destStack, destSlot| {
-			if(std.meta.eql(destStack.item, source.ref().item) or destStack.item == .null) {
-				const amount = @min(source.ref().item.stackSize() - destStack.amount, remainingAmount);
+		var selectedEmptySlot: ?u32 = null;
+		var selectedEmptyInv: ?Inventory = null;
+		outer: for(destinations) |dest| {
+			var emptySlot: ?u32 = null;
+			var hasItem = false;
+			for(dest._items, 0..) |*destStack, destSlot| {
+				if(destStack.item == .null and emptySlot == null) {
+					emptySlot = @intCast(destSlot);
+					if(selectedEmptySlot == null) {
+						selectedEmptySlot = emptySlot;
+						selectedEmptyInv = dest;
+					}
+				}
+				if(std.meta.eql(destStack.item, source.ref().item)) {
+					hasItem = true;
+					const amount = @min(source.ref().item.stackSize() - destStack.amount, remainingAmount);
+					if(amount == 0) continue;
+					self.executeBaseOperation(allocator, .{.create = .{
+						.dest = .{.inv = dest, .slot = @intCast(destSlot)},
+						.amount = amount,
+						.item = source.ref().item,
+					}}, side);
+					remainingAmount -= amount;
+					if(remainingAmount == 0) break :outer;
+				}
+			}
+			if(emptySlot != null and hasItem) {
 				self.executeBaseOperation(allocator, .{.create = .{
-					.dest = .{.inv = dest, .slot = @intCast(destSlot)},
-					.amount = amount,
+					.dest = .{.inv = dest, .slot = emptySlot.?},
+					.amount = remainingAmount,
 					.item = source.ref().item,
 				}}, side);
-				remainingAmount -= amount;
-				if(remainingAmount == 0) break;
+				remainingAmount = 0;
+				break :outer;
 			}
 		}
-		std.debug.assert(remainingAmount == 0);
+		if(remainingAmount > 0 and selectedEmptySlot != null) {
+			self.executeBaseOperation(allocator, .{.create = .{
+				.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
+				.amount = remainingAmount,
+				.item = source.ref().item,
+			}}, side);
+		}
 	}
 
 	const Context = struct {
@@ -889,7 +936,7 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(Inventory.TypeEnum, self.inv.type);
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch(self.source) {
-				.playerInventory, .hand => |val| {
+				.playerMainInventory, .playerHotbar, .hand => |val| {
 					writer.writeInt(u32, val);
 				},
 				.recipe => |val| {
@@ -921,7 +968,8 @@ pub const Command = struct { // MARK: Command
 			const typeEnum = try reader.readEnum(Inventory.TypeEnum);
 			const sourceType = try reader.readEnum(Inventory.SourceType);
 			const source: Inventory.Source = switch(sourceType) {
-				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
+				.playerMainInventory => .{.playerMainInventory = try reader.readInt(u32)},
+				.playerHotbar => .{.playerHotbar = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
 				.recipe => .{
 					.recipe = blk: {
@@ -999,7 +1047,7 @@ pub const Command = struct { // MARK: Command
 				return;
 			}
 			if(self.dest.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.source.inv, self.dest, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, &.{self.source.inv}, self.dest, ctx.side, ctx.user);
 				return;
 			}
 			if(self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled) return;
@@ -1120,7 +1168,7 @@ pub const Command = struct { // MARK: Command
 				return;
 			}
 			if(self.source.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.dest.inv, self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, &.{self.dest.inv}, self.source, ctx.side, ctx.user);
 				return;
 			}
 			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
@@ -1188,7 +1236,7 @@ pub const Command = struct { // MARK: Command
 					.source = undefined,
 					.callbacks = .{},
 				};
-				ctx.cmd.tryCraftingTo(ctx.allocator, temp, self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, &.{temp}, self.source, ctx.side, ctx.user);
 				std.debug.assert(ctx.cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != .null) {
 					if(ctx.side == .server) {
@@ -1284,39 +1332,71 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const DepositOrDrop = struct { // MARK: DepositOrDrop
-		dest: Inventory,
+		destinations: []const Inventory,
 		source: Inventory,
 		dropLocation: Vec3d,
 
+		pub fn init(destinations: []const Inventory, source: Inventory, dropLocation: Vec3d) DepositOrDrop {
+			return .{
+				.destinations = main.globalAllocator.dupe(Inventory, destinations),
+				.source = source,
+				.dropLocation = dropLocation,
+			};
+		}
+
+		fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
+			main.globalAllocator.free(self.destinations);
+		}
+
 		pub fn run(self: DepositOrDrop, ctx: Context) error{serverFailure}!void {
-			std.debug.assert(self.dest.type == .normal);
+			for(self.destinations) |dest| {
+				std.debug.assert(dest.type == .normal);
+			}
 			if(self.source.type == .creative) return;
 			if(self.source.type == .crafting) return;
 			var sourceItems = self.source._items;
 			if(self.source.type == .workbench) sourceItems = self.source._items[0..25];
 			outer: for(sourceItems, 0..) |*sourceStack, sourceSlot| {
 				if(sourceStack.item == .null) continue;
-				for(self.dest._items, 0..) |*destStack, destSlot| {
-					if(std.meta.eql(destStack.item, sourceStack.item)) {
-						const amount = @min(destStack.item.stackSize() - destStack.amount, sourceStack.amount);
-						ctx.execute(.{.move = .{
-							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
-							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
-							.amount = amount,
-						}});
-						if(sourceStack.amount == 0) {
-							continue :outer;
+				var selectedEmptySlot: ?u32 = null;
+				var selectedEmptyInv: ?Inventory = null;
+				for(self.destinations) |dest| {
+					var emptySlot: ?u32 = null;
+					var hasItem = false;
+					for(dest._items, 0..) |*destStack, destSlot| {
+						if(destStack.item == .null and emptySlot == null) {
+							emptySlot = @intCast(destSlot);
+							if(selectedEmptySlot == null) {
+								selectedEmptySlot = emptySlot;
+								selectedEmptyInv = dest;
+							}
+						}
+						if(std.meta.eql(destStack.item, sourceStack.item)) {
+							hasItem = true;
+							const amount = @min(sourceStack.item.stackSize() - destStack.amount, sourceStack.amount);
+							if(amount == 0) continue;
+							ctx.execute(.{.move = .{
+								.dest = .{.inv = dest, .slot = @intCast(destSlot)},
+								.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
+								.amount = amount,
+							}});
+							if(sourceStack.amount == 0) continue :outer;
 						}
 					}
-				}
-				for(self.dest._items, 0..) |*destStack, destSlot| {
-					if(destStack.item == .null) {
+					if(emptySlot != null and hasItem) {
 						ctx.execute(.{.swap = .{
-							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
+							.dest = .{.inv = dest, .slot = emptySlot.?},
 							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
 						}});
 						continue :outer;
 					}
+				}
+				if(selectedEmptySlot != null) {
+					ctx.execute(.{.swap = .{
+						.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
+						.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
+					}});
+					continue :outer;
 				}
 				if(ctx.side == .server) {
 					const direction = if(ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
@@ -1330,15 +1410,28 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: DepositOrDrop, writer: *BinaryWriter) void {
-			writer.writeEnum(InventoryId, self.dest.id);
+			writer.writeVarInt(usize, self.destinations.len);
+			for(self.destinations) |dest| {
+				writer.writeEnum(InventoryId, dest.id);
+			}
 			writer.writeEnum(InventoryId, self.source.id);
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !DepositOrDrop {
-			const destId = try reader.readEnum(InventoryId);
+			const destinationsSize = try reader.readVarInt(usize);
+			if(destinationsSize == 0) return error.Invalid;
+			if(destinationsSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+
+			const destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
+			errdefer main.globalAllocator.free(destinations);
+
+			for(destinations) |*dest| {
+				const invId = try reader.readEnum(InventoryId);
+				dest.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
+			}
 			const sourceId = try reader.readEnum(InventoryId);
 			return .{
-				.dest = Inventory.getInventory(destId, side, user) orelse return error.InventoryNotFound,
+				.destinations = destinations[0..],
 				.source = Inventory.getInventory(sourceId, side, user) orelse return error.InventoryNotFound,
 				.dropLocation = (user orelse return error.Invalid).player.pos,
 			};
@@ -1369,7 +1462,7 @@ pub const Command = struct { // MARK: Command
 				if(dest.type == .workbench) return;
 			}
 			if(self.source.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations[0], self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations, self.source, ctx.side, ctx.user);
 				return;
 			}
 			const sourceStack = self.source.ref();
