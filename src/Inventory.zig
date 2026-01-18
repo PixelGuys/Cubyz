@@ -393,6 +393,13 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		return self;
 	}
 
+	pub fn initClientOnly(allocator: NeverFailingAllocator, _size: usize, _type: Type, callbacks: Callbacks) ClientInventory {
+		const self: ClientInventory = .{
+			.super = Inventory._init(allocator, _size, _type, .other, .client, callbacks),
+		};
+		return self;
+	}
+
 	pub fn deinit(self: ClientInventory, allocator: NeverFailingAllocator) void {
 		if(main.game.world.?.connected) {
 			sync.ClientSide.executeCommand(.{.close = .{.inv = self.super, .allocator = allocator}});
@@ -404,14 +411,28 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn depositOrSwap(dest: ClientInventory, destSlot: u32, carried: ClientInventory) void {
+		if(dest.super.type == .creative) {
+			carried.fillFromCreative(0, dest.getItem(destSlot));
+			return;
+		}
 		main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
 	}
 
 	pub fn deposit(dest: ClientInventory, destSlot: u32, source: ClientInventory, sourceSlot: u32, amount: u16) void {
+		if(source.super.type == .creative) {
+			std.debug.assert(dest.super.type == .normal);
+			dest.fillFromCreative(destSlot, source.getItem(sourceSlot));
+			return;
+		}
+		std.debug.assert(source.super.type == .normal);
 		main.sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = source.super, .slot = sourceSlot}, .amount = amount}});
 	}
 
 	pub fn takeHalf(source: ClientInventory, sourceSlot: u32, carried: ClientInventory) void {
+		if(carried.super.type == .creative) {
+			carried.fillFromCreative(0, source.getItem(sourceSlot));
+			return;
+		}
 		main.sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried.super, .slot = 0}, .source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
@@ -424,18 +445,24 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn depositOrDrop(dest: ClientInventory, source: ClientInventory) void {
+		std.debug.assert(dest.super.type == .normal);
+		std.debug.assert(source.super.type != .creative);
 		main.sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest.super, .source = source.super, .dropLocation = undefined}});
 	}
 
 	pub fn depositToAny(source: ClientInventory, sourceSlot: u32, destinations: []const ClientInventory, amount: u16) void {
+		std.debug.assert(source.super.type != .creative);
+		for(destinations) |inv| std.debug.assert(inv.super.type == .normal);
 		main.sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source.super, .slot = sourceSlot}, amount)});
 	}
 
 	pub fn dropStack(source: ClientInventory, sourceSlot: u32) void {
+		if(source.super.type == .creative) return;
 		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
 	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {
+		if(source.super.type == .creative) return;
 		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}, .desiredAmount = 1}});
 	}
 
@@ -448,10 +475,12 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
+		std.debug.assert(self.super.type == .normal);
 		main.renderer.MeshSelection.placeBlock(self, slot);
 	}
 
 	pub fn breakBlock(self: ClientInventory, slot: u32, deltaTime: f64) void {
+		std.debug.assert(self.super.type == .normal);
 		main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
 	}
 
