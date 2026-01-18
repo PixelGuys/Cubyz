@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const items = main.items;
 const BaseItemIndex = items.BaseItemIndex;
-const Inventory = items.Inventory;
+const ClientInventory = items.Inventory.ClientInventory;
 const ItemStack = items.ItemStack;
 const Player = main.game.Player;
 const Texture = main.graphics.Texture;
@@ -34,7 +34,7 @@ const padding: f32 = 8;
 
 var availableItems: main.List(BaseItemIndex) = undefined;
 var itemAmount: main.List(u32) = undefined;
-var inventories: main.List(Inventory) = undefined;
+var inventories: main.List(ClientInventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
 
@@ -92,7 +92,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		}
 		// All ingredients found: Add it to the list.
 		if(recipe.cachedInventory == null) {
-			recipe.cachedInventory = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .{.recipe = recipe}, .{});
+			recipe.cachedInventory = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .{.recipe = recipe}, .{});
 		}
 		const inv = recipe.cachedInventory.?;
 		inventories.append(inv);

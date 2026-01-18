@@ -5,7 +5,7 @@ const assets = @import("assets.zig");
 const itemdrop = @import("itemdrop.zig");
 const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
-const Inventory = items.Inventory;
+const ClientInventory = items.Inventory.ClientInventory;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const network = @import("network.zig");
@@ -429,7 +429,7 @@ pub const Player = struct { // MARK: Player
 	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = .{};
 	pub const inventorySize = 32;
-	pub var inventory: Inventory = undefined;
+	pub var inventory: ClientInventory = undefined;
 	pub var selectedSlot: u32 = 0;
 	pub const defaultBlockDamage: f32 = 1;
 
@@ -695,7 +695,7 @@ pub const World = struct { // MARK: World
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id}, .{});
+		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id}, .{});
 		Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);

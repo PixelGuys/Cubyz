@@ -787,7 +787,7 @@ pub const Command = struct { // MARK: Command
 		if(source.ref().item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
 		const playerInventory: Inventory = switch(side) {
-			.client => main.game.Player.inventory,
+			.client => main.game.Player.inventory.super,
 			.server => blk: {
 				if(user) |_user| {
 					var it = _user.inventoryClientToServerIdMap.valueIterator();
@@ -1350,9 +1350,11 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		pub fn init(destinations: []const Inventory, source: InventoryAndSlot, amount: u16) DepositToAny {
+		pub fn init(destinations: []const Inventory.ClientInventory, source: InventoryAndSlot, amount: u16) DepositToAny {
+			const copy = main.globalAllocator.alloc(Inventory, destinations.len);
+			for(copy, destinations) |*d, s| d.* = s.super;
 			return .{
-				.destinations = main.globalAllocator.dupe(Inventory, destinations),
+				.destinations = copy,
 				.source = source,
 				.amount = amount,
 			};

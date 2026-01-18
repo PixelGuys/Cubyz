@@ -382,6 +382,96 @@ pub const Source = union(SourceType) {
 	other: void,
 };
 
+pub const ClientInventory = struct { // MARK: ClientInventory
+	super: Inventory,
+
+	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, callbacks: Callbacks) ClientInventory {
+		const self: ClientInventory = .{
+			.super = Inventory._init(allocator, _size, _type, source, .client, callbacks),
+		};
+		sync.ClientSide.executeCommand(.{.open = .{.inv = self.super, .source = source}});
+		return self;
+	}
+
+	pub fn deinit(self: ClientInventory, allocator: NeverFailingAllocator) void {
+		if(main.game.world.?.connected) {
+			sync.ClientSide.executeCommand(.{.close = .{.inv = self.super, .allocator = allocator}});
+		} else {
+			main.sync.ClientSide.mutex.lock();
+			defer main.sync.ClientSide.mutex.unlock();
+			self.super._deinit(allocator, .client);
+		}
+	}
+
+	pub fn depositOrSwap(dest: ClientInventory, destSlot: u32, carried: ClientInventory) void {
+		main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
+	}
+
+	pub fn deposit(dest: ClientInventory, destSlot: u32, source: ClientInventory, sourceSlot: u32, amount: u16) void {
+		main.sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = source.super, .slot = sourceSlot}, .amount = amount}});
+	}
+
+	pub fn takeHalf(source: ClientInventory, sourceSlot: u32, carried: ClientInventory) void {
+		main.sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried.super, .slot = 0}, .source = .{.inv = source.super, .slot = sourceSlot}}});
+	}
+
+	pub fn distribute(carried: ClientInventory, destinationInventories: []const ClientInventory, destinationSlots: []const u32) void {
+		const amount = carried.getAmount(0)/destinationInventories.len;
+		if(amount == 0) return;
+		for(0..destinationInventories.len) |i| {
+			destinationInventories[i].deposit(destinationSlots[i], carried, 0, @intCast(amount));
+		}
+	}
+
+	pub fn depositOrDrop(dest: ClientInventory, source: ClientInventory) void {
+		main.sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest.super, .source = source.super, .dropLocation = undefined}});
+	}
+
+	pub fn depositToAny(source: ClientInventory, sourceSlot: u32, destinations: []const ClientInventory, amount: u16) void {
+		main.sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source.super, .slot = sourceSlot}, amount)});
+	}
+
+	pub fn dropStack(source: ClientInventory, sourceSlot: u32) void {
+		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
+	}
+
+	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {
+		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}, .desiredAmount = 1}});
+	}
+
+	pub fn fillFromCreative(dest: ClientInventory, destSlot: u32, item: Item) void {
+		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item}});
+	}
+
+	pub fn fillAmountFromCreative(dest: ClientInventory, destSlot: u32, item: Item, amount: u16) void {
+		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item, .amount = amount}});
+	}
+
+	pub fn placeBlock(self: ClientInventory, slot: u32) void {
+		main.renderer.MeshSelection.placeBlock(self, slot);
+	}
+
+	pub fn breakBlock(self: ClientInventory, slot: u32, deltaTime: f64) void {
+		main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
+	}
+
+	pub fn size(self: ClientInventory) usize {
+		return self.super.size();
+	}
+
+	pub fn getItem(self: ClientInventory, slot: usize) Item {
+		return self.super.getItem(slot);
+	}
+
+	pub fn getStack(self: ClientInventory, slot: usize) ItemStack {
+		return self.super.getStack(slot);
+	}
+
+	pub fn getAmount(self: ClientInventory, slot: usize) u16 {
+		return self.super.getAmount(slot);
+	}
+};
+
 const Inventory = @This(); // MARK: Inventory
 
 pub const TypeEnum = enum(u8) {
@@ -400,17 +490,12 @@ pub const Type = union(TypeEnum) {
 		return self == .workbench;
 	}
 };
+
 type: Type,
 id: InventoryId,
 _items: []ItemStack,
 source: Source,
 callbacks: Callbacks,
-
-pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, callbacks: Callbacks) Inventory {
-	const self = _init(allocator, _size, _type, source, .client, callbacks);
-	sync.ClientSide.executeCommand(.{.open = .{.inv = self, .source = source}});
-	return self;
-}
 
 fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, side: sync.Side, callbacks: Callbacks) Inventory {
 	if(_type == .workbench) std.debug.assert(_size == 26);
@@ -428,16 +513,6 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: So
 		item.* = ItemStack{};
 	}
 	return self;
-}
-
-pub fn deinit(self: Inventory, allocator: NeverFailingAllocator) void {
-	if(main.game.world.?.connected) {
-		sync.ClientSide.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
-	} else {
-		main.sync.ClientSide.mutex.lock();
-		defer main.sync.ClientSide.mutex.unlock();
-		self._deinit(allocator, .client);
-	}
 }
 
 pub fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: sync.Side) void {
@@ -480,58 +555,6 @@ pub fn update(self: Inventory) void {
 		self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final(), self.type.workbench)};
 		self._items[self._items.len - 1].amount = 1;
 	}
-}
-
-pub fn depositOrSwap(dest: Inventory, destSlot: u32, carried: Inventory) void {
-	main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = carried, .slot = 0}}});
-}
-
-pub fn deposit(dest: Inventory, destSlot: u32, source: Inventory, sourceSlot: u32, amount: u16) void {
-	main.sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = source, .slot = sourceSlot}, .amount = amount}});
-}
-
-pub fn takeHalf(source: Inventory, sourceSlot: u32, carried: Inventory) void {
-	main.sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried, .slot = 0}, .source = .{.inv = source, .slot = sourceSlot}}});
-}
-
-pub fn distribute(carried: Inventory, destinationInventories: []const Inventory, destinationSlots: []const u32) void {
-	const amount = carried._items[0].amount/destinationInventories.len;
-	if(amount == 0) return;
-	for(0..destinationInventories.len) |i| {
-		destinationInventories[i].deposit(destinationSlots[i], carried, 0, @intCast(amount));
-	}
-}
-
-pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
-	main.sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source, .dropLocation = undefined}});
-}
-
-pub fn depositToAny(source: Inventory, sourceSlot: u32, destinations: []const Inventory, amount: u16) void {
-	main.sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source, .slot = sourceSlot}, amount)});
-}
-
-pub fn dropStack(source: Inventory, sourceSlot: u32) void {
-	main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source, .slot = sourceSlot}}});
-}
-
-pub fn dropOne(source: Inventory, sourceSlot: u32) void {
-	main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source, .slot = sourceSlot}, .desiredAmount = 1}});
-}
-
-pub fn fillFromCreative(dest: Inventory, destSlot: u32, item: Item) void {
-	main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest, .slot = destSlot}, .item = item}});
-}
-
-pub fn fillAmountFromCreative(dest: Inventory, destSlot: u32, item: Item, amount: u16) void {
-	main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest, .slot = destSlot}, .item = item, .amount = amount}});
-}
-
-pub fn placeBlock(self: Inventory, slot: u32) void {
-	main.renderer.MeshSelection.placeBlock(self, slot);
-}
-
-pub fn breakBlock(self: Inventory, slot: u32, deltaTime: f64) void {
-	main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
 }
 
 pub fn size(self: Inventory) usize {

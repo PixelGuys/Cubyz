@@ -591,8 +591,8 @@ pub fn toggleGameMenu() void {
 
 pub const inventory = struct { // MARK: inventory
 	const ItemStack = main.items.ItemStack;
-	const Inventory = main.items.Inventory;
-	pub var carried: Inventory = undefined;
+	const ClientInventory = main.items.Inventory.ClientInventory;
+	pub var carried: ClientInventory = undefined;
 	var carriedItemSlot: *ItemSlot = undefined;
 	var leftClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
 	var rightClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
@@ -605,7 +605,7 @@ pub const inventory = struct { // MARK: inventory
 	var isCrafting: bool = false;
 
 	pub fn init() void {
-		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
+		carried = ClientInventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
@@ -651,7 +651,7 @@ pub const inventory = struct { // MARK: inventory
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
-		if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
+		if(itemSlot.inventory.super.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
 			if(recipeItem == .null and item != .null) recipeItem = item.clone();
 			if(!std.meta.eql(item, recipeItem)) return;
@@ -679,7 +679,7 @@ pub const inventory = struct { // MARK: inventory
 		if(itemSlot.mode != .normal) return;
 
 		if(mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
-			if(itemSlot.inventory.id == main.game.Player.inventory.id) {
+			if(itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while(iterator.next()) |window| {
 					if(window.shiftClickableInventory) |inv| {
@@ -719,7 +719,7 @@ pub const inventory = struct { // MARK: inventory
 			recipeItem = .null;
 			isCrafting = false;
 			if(leftClickSlots.items.len != 0) {
-				const targetInventories = main.stackAllocator.alloc(Inventory, leftClickSlots.items.len);
+				const targetInventories = main.stackAllocator.alloc(ClientInventory, leftClickSlots.items.len);
 				defer main.stackAllocator.free(targetInventories);
 				const targetSlots = main.stackAllocator.alloc(u32, leftClickSlots.items.len);
 				defer main.stackAllocator.free(targetSlots);
@@ -730,7 +730,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
-				if(hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
+				if(hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
 			} else if(!hoveredAWindow) {
 				carried.dropStack(0);
@@ -739,8 +739,8 @@ pub const inventory = struct { // MARK: inventory
 			if(rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
-				if(hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
-				if(hovered.inventory.type == .creative) {
+				if(hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
+				if(hovered.inventory.super.type == .creative) {
 					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
 				} else {
 					hovered.inventory.takeHalf(hovered.itemSlot, carried);
