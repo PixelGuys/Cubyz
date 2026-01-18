@@ -605,7 +605,7 @@ pub const inventory = struct { // MARK: inventory
 	var isCrafting: bool = false;
 
 	pub fn init() void {
-		carried = ClientInventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id}, .{});
+		carried = ClientInventory.init(main.globalAllocator, 1, .normal, .serverShared, .{.hand = main.game.Player.id}, .{});
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
@@ -740,7 +740,7 @@ pub const inventory = struct { // MARK: inventory
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
 				if(hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
-				if(hovered.inventory.super.type == .creative) {
+				if(hovered.inventory.type == .creative) {
 					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
 				} else {
 					hovered.inventory.takeHalf(hovered.itemSlot, carried);

@@ -54,7 +54,7 @@ fn toggleTool() void {
 }
 
 fn openInventory() void {
-	inv = ClientInventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other, .{});
+	inv = ClientInventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .serverShared, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);

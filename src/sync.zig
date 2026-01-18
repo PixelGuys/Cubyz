@@ -907,7 +907,7 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => unreachable,
 			}
 			switch(self.inv.type) {
-				.normal, .creative, .crafting => {},
+				.normal, .crafting => {},
 				.workbench => {
 					writer.writeSlice(self.inv.type.workbench.id());
 				},
@@ -950,10 +950,9 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => return error.Invalid,
 			};
 			const typ: Inventory.Type = switch(typeEnum) {
-				inline .normal, .creative, .crafting => |tag| tag,
+				inline .normal, .crafting => |tag| tag,
 				.workbench => .{.workbench = main.items.ToolTypeIndex.fromId(reader.remaining) orelse return error.Invalid},
 			};
-			if(typ == .creative) return error.Invalid; // TODO: Remove from type
 			try Inventory.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
 				.inv = Inventory.ServerSide.getInventory(user.?, id) orelse return error.InventoryNotFound,

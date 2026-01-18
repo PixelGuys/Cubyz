@@ -383,20 +383,21 @@ pub const Source = union(SourceType) {
 };
 
 pub const ClientInventory = struct { // MARK: ClientInventory
+	const ClientType = enum {
+		serverShared,
+		creative,
+	};
 	super: Inventory,
+	type: ClientType,
 
-	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, callbacks: Callbacks) ClientInventory {
+	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, clientType: ClientType, source: Source, callbacks: Callbacks) ClientInventory {
 		const self: ClientInventory = .{
 			.super = Inventory._init(allocator, _size, _type, source, .client, callbacks),
+			.type = clientType,
 		};
-		sync.ClientSide.executeCommand(.{.open = .{.inv = self.super, .source = source}});
-		return self;
-	}
-
-	pub fn initClientOnly(allocator: NeverFailingAllocator, _size: usize, _type: Type, callbacks: Callbacks) ClientInventory {
-		const self: ClientInventory = .{
-			.super = Inventory._init(allocator, _size, _type, .other, .client, callbacks),
-		};
+		if(clientType == .serverShared) {
+			sync.ClientSide.executeCommand(.{.open = .{.inv = self.super, .source = source}});
+		}
 		return self;
 	}
 
@@ -411,7 +412,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn depositOrSwap(dest: ClientInventory, destSlot: u32, carried: ClientInventory) void {
-		if(dest.super.type == .creative) {
+		if(dest.type == .creative) {
 			carried.fillFromCreative(0, dest.getItem(destSlot));
 			return;
 		}
@@ -419,17 +420,17 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn deposit(dest: ClientInventory, destSlot: u32, source: ClientInventory, sourceSlot: u32, amount: u16) void {
-		if(source.super.type == .creative) {
-			std.debug.assert(dest.super.type == .normal);
+		if(source.type == .creative) {
+			std.debug.assert(dest.type == .serverShared);
 			dest.fillFromCreative(destSlot, source.getItem(sourceSlot));
 			return;
 		}
-		std.debug.assert(source.super.type == .normal);
+		std.debug.assert(source.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = source.super, .slot = sourceSlot}, .amount = amount}});
 	}
 
 	pub fn takeHalf(source: ClientInventory, sourceSlot: u32, carried: ClientInventory) void {
-		if(carried.super.type == .creative) {
+		if(carried.type == .creative) {
 			carried.fillFromCreative(0, source.getItem(sourceSlot));
 			return;
 		}
@@ -445,24 +446,24 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn depositOrDrop(dest: ClientInventory, source: ClientInventory) void {
-		std.debug.assert(dest.super.type == .normal);
-		std.debug.assert(source.super.type != .creative);
+		std.debug.assert(dest.type == .serverShared);
+		std.debug.assert(source.type != .creative);
 		main.sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest.super, .source = source.super, .dropLocation = undefined}});
 	}
 
 	pub fn depositToAny(source: ClientInventory, sourceSlot: u32, destinations: []const ClientInventory, amount: u16) void {
-		std.debug.assert(source.super.type != .creative);
+		std.debug.assert(source.type != .creative);
 		for(destinations) |inv| std.debug.assert(inv.super.type == .normal);
 		main.sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source.super, .slot = sourceSlot}, amount)});
 	}
 
 	pub fn dropStack(source: ClientInventory, sourceSlot: u32) void {
-		if(source.super.type == .creative) return;
+		if(source.type == .creative) return;
 		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
 	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {
-		if(source.super.type == .creative) return;
+		if(source.type == .creative) return;
 		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}, .desiredAmount = 1}});
 	}
 
@@ -475,12 +476,12 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
-		std.debug.assert(self.super.type == .normal);
+		std.debug.assert(self.type == .serverShared);
 		main.renderer.MeshSelection.placeBlock(self, slot);
 	}
 
 	pub fn breakBlock(self: ClientInventory, slot: u32, deltaTime: f64) void {
-		std.debug.assert(self.super.type == .normal);
+		std.debug.assert(self.type == .serverShared);
 		main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
 	}
 
@@ -505,13 +506,11 @@ const Inventory = @This(); // MARK: Inventory
 
 pub const TypeEnum = enum(u8) {
 	normal = 0,
-	creative = 1,
 	crafting = 2,
 	workbench = 3,
 };
 pub const Type = union(TypeEnum) {
 	normal: void,
-	creative: void,
 	crafting: void,
 	workbench: ToolTypeIndex,
 
