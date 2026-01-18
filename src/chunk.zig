@@ -234,7 +234,7 @@ pub const Lod = enum(u5) {
 	}
 
 	test "Lod.localMask() max" {
-		try std.testing.expectEqual(Lod.max.localMask(), ~@as(i32, 1023));
+		try std.testing.expectEqual(~@as(i32, 1023), Lod.max.localMask());
 	}
 };
 
