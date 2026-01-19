@@ -1,0 +1,6 @@
+.{
+	.texture = "cubyz:bars/uranium",
+	.item = .{
+		.texture = "fence/birch.png",
+	},
+}
