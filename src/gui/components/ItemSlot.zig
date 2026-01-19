@@ -138,8 +138,6 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 	if(item != .null) {
 		const itemTexture = item.getTexture();
 		itemTexture.bindTo(0);
-		draw.setColor(0xff000000);
-		draw.boundImage(self.pos + @as(Vec2f, @splat(border)) + Vec2f{1.0, 1.0}, self.size - @as(Vec2f, @splat(2*border)));
 		draw.setColor(0xffffffff);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
 		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
