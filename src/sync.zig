@@ -1129,9 +1129,11 @@ pub const Command = struct { // MARK: Command
 				for(self.sources) |source| {
 					for(source._items, 0..) |*otherStack, i| {
 						if(std.meta.eql(requiredStack.item, otherStack.item)) {
-							if(fullSlot != null and otherStack.amount == otherStack.item.stackSize()) {
-								fullSlot = @intCast(i);
+							if(otherStack.amount == otherStack.item.stackSize()) {
+								if(fullSlot == null) {
+                                                                fullSlot = @intCast(i);
 								fullInv = source;
+                                                                }
 								continue;
 							}
 							const amount = @min(remainingAmount, otherStack.amount);
