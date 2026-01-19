@@ -130,7 +130,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 						map.addStructure(.{
 							.internal = .{
 								.data = @ptrCast(data),
-								.generateFn = &SimpleStructure.generate,
+								.generateFn = main.meta.castFunctionSelfToConstAnyopaque(SimpleStructure.generate),
 							},
 							.priority = model.priority,
 						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% marginZ}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% marginZ});
@@ -173,8 +173,8 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 						if(model.generationMode == .water_surface) data.wz = 0;
 						map.addStructure(.{
 							.internal = .{
-								.data = @ptrCast(data),
-								.generateFn = &SimpleStructure.generate,
+								.data = data,
+								.generateFn = main.meta.castFunctionSelfToConstAnyopaque(SimpleStructure.generate),
 							},
 							.priority = model.priority,
 						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% marginZ}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% marginZ});
@@ -188,7 +188,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 	}
 }
 
-const SimpleStructure = struct {
+pub const SimpleStructure = struct {
 	model: *const biomes.SimpleStructureModel,
 	seed: u64,
 	wx: i32,
@@ -196,8 +196,7 @@ const SimpleStructure = struct {
 	wz: i32,
 	isCeiling: bool,
 
-	pub fn generate(_self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
-		const self: *const SimpleStructure = @ptrCast(@alignCast(_self));
+	pub fn generate(self: *const SimpleStructure, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
 		var seed = self.seed;
 		const relX = self.wx - chunk.super.pos.wx;
 		const relY = self.wy - chunk.super.pos.wy;
