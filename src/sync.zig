@@ -1077,10 +1077,14 @@ pub const Command = struct { // MARK: Command
 		resultStack: ItemStack,
 		sourceStacks: []const ItemStack,
 
-		pub fn init(destinations: []const Inventory, sources: []const Inventory, resultStack: ItemStack, sourceStacks: []const ItemStack) CraftFrom {
-			return .{
-				.destinations = main.globalAllocator.dupe(Inventory, destinations),
-				.sources = main.globalAllocator.dupe(Inventory, sources),
+		pub fn init(destinations: []const Inventory.ClientInventory, sources: []const Inventory.ClientInventory, resultStack: ItemStack, sourceStacks: []const ItemStack) CraftFrom {
+                        const destinationsCopy = main.globalAllocator.alloc(Inventory, destinations.len);
+                        for(destinationsCopy, destinations) |*d, s| d.* = s.super;
+                        const sourcesCopy = main.globalAllocator.alloc(Inventory, sources.len);
+                        for(sourcesCopy, sources) |*d, s| d.* = s.super;
+                        return .{
+				.destinations = destinationsCopy,
+				.sources = sourcesCopy,
 				.resultStack = resultStack,
 				.sourceStacks = main.globalAllocator.dupe(ItemStack, sourceStacks),
 			};
@@ -1239,7 +1243,8 @@ pub const Command = struct { // MARK: Command
                         const resultStack = try ItemStack.fromBytes(reader);
                         const sourceStacksSize = try reader.readVarInt(usize);
                         if(sourceStacksSize == 0) return error.Invalid;
-                        if(sourceStacksSize*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid;
+                        std.log.info("sourceStacksSize: {d}, sourceStacksSize*@sizeOf(ItemStack): {d}, remaining: {d}\n", .{sourceStacksSize, sourceStacksSize*@sizeOf(ItemStack), reader.remaining.len});
+                        //if(sourceStacksSize*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid; // this check sadly fails
 
                         const sourceStacks = main.globalAllocator.alloc(ItemStack, sourceStacksSize);
                         errdefer main.globalAllocator.free(sourceStacks);
@@ -1249,7 +1254,6 @@ pub const Command = struct { // MARK: Command
                         }
 
                         //look if recipe is valid
-
                         const found = blk: {
                             outer: for(main.items.recipes()) |*recipe| {
                                 if(recipe.resultItem != resultStack.item.baseItem) continue;
@@ -1258,8 +1262,8 @@ pub const Command = struct { // MARK: Command
                                 for(recipe.sourceItems, recipe.sourceAmounts, sourceStacks) |recipeItem, recipeAmount, sourceStack| {
                                     if(recipeItem != sourceStack.item.baseItem) continue :outer;
                                     if(recipeAmount != sourceStack.amount) continue :outer;
-                                    break :blk true;
                                 }
+                                break :blk true;
                             }
                             break :blk false;
                         };

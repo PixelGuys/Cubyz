@@ -475,6 +475,24 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item, .amount = amount}});
 	}
 
+        pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory, slot: u32) void {
+                std.debug.assert(source.type == .serverShared);
+                for(destinations) |inv| std.debug.assert(inv.type == .serverShared);
+                std.debug.assert(craftingInv.super.type == .crafting);
+		
+		if(slot != craftingInv.super._items.len - 1) return;
+		const destinationsCanHold = blk: {
+			for(destinations) |dest| {
+				if(dest.canHold(craftingInv.getStack(slot))) break :blk true;
+			}
+			break :blk false;
+		};
+		if(!destinationsCanHold) return;
+		if(craftingInv.getStack(slot).item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
+
+                main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.getStack(slot), craftingInv.super._items[0..slot])});
+        }
+
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
 		main.renderer.MeshSelection.placeBlock(self, slot);
@@ -500,6 +518,10 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn getAmount(self: ClientInventory, slot: usize) u16 {
 		return self.super.getAmount(slot);
 	}
+
+        pub fn canHold(self: ClientInventory, itemStack: ItemStack) bool {
+            return self.super.canHold(itemStack);
+        }
 };
 
 const Inventory = @This(); // MARK: Inventory
