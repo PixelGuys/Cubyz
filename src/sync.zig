@@ -233,7 +233,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock = 9,
 		addHealth = 10,
 		chatCommand = 12,
-                craftFrom = 13,
+		craftFrom = 13,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -249,7 +249,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
 		chatCommand: ChatCommand,
-                craftFrom: CraftFrom,
+		craftFrom: CraftFrom,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -1078,11 +1078,11 @@ pub const Command = struct { // MARK: Command
 		sourceStacks: []const ItemStack,
 
 		pub fn init(destinations: []const Inventory.ClientInventory, sources: []const Inventory.ClientInventory, resultStack: ItemStack, sourceStacks: []const ItemStack) CraftFrom {
-                        const destinationsCopy = main.globalAllocator.alloc(Inventory, destinations.len);
-                        for(destinationsCopy, destinations) |*d, s| d.* = s.super;
-                        const sourcesCopy = main.globalAllocator.alloc(Inventory, sources.len);
-                        for(sourcesCopy, sources) |*d, s| d.* = s.super;
-                        return .{
+			const destinationsCopy = main.globalAllocator.alloc(Inventory, destinations.len);
+			for(destinationsCopy, destinations) |*d, s| d.* = s.super;
+			const sourcesCopy = main.globalAllocator.alloc(Inventory, sources.len);
+			for(sourcesCopy, sources) |*d, s| d.* = s.super;
+			return .{
 				.destinations = destinationsCopy,
 				.sources = sourcesCopy,
 				.resultStack = resultStack,
@@ -1205,14 +1205,14 @@ pub const Command = struct { // MARK: Command
 				writer.writeEnum(InventoryId, dest.id);
 			}
 			writer.writeVarInt(usize, self.sources.len);
-                        for(self.sources) |source| {
-                            writer.writeEnum(InventoryId, source.id);
-                        }
-                        self.resultStack.toBytes(writer);
-                        writer.writeVarInt(usize, self.sourceStacks.len);
-                        for(self.sourceStacks) |sourceStack| {
-                            sourceStack.toBytes(writer);
-                        }
+			for(self.sources) |source| {
+				writer.writeEnum(InventoryId, source.id);
+			}
+			self.resultStack.toBytes(writer);
+			writer.writeVarInt(usize, self.sourceStacks.len);
+			for(self.sourceStacks) |sourceStack| {
+				sourceStack.toBytes(writer);
+			}
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !CraftFrom {
@@ -1228,46 +1228,46 @@ pub const Command = struct { // MARK: Command
 				dest.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
 			}
 
-                        const sourcesSize = try reader.readVarInt(usize);
-                        if(sourcesSize == 0) return error.Invalid;
-                        if(sourcesSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+			const sourcesSize = try reader.readVarInt(usize);
+			if(sourcesSize == 0) return error.Invalid;
+			if(sourcesSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
 
-                        const sources = main.globalAllocator.alloc(Inventory, sourcesSize);
-                        errdefer main.globalAllocator.free(sources);
+			const sources = main.globalAllocator.alloc(Inventory, sourcesSize);
+			errdefer main.globalAllocator.free(sources);
 
-                        for(sources) |*source| {
-                            const invId = try reader.readEnum(InventoryId);
-                            source.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
-                        }
+			for(sources) |*source| {
+				const invId = try reader.readEnum(InventoryId);
+				source.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
+			}
 
-                        const resultStack = try ItemStack.fromBytes(reader);
-                        const sourceStacksSize = try reader.readVarInt(usize);
-                        if(sourceStacksSize == 0) return error.Invalid;
-                        std.log.info("sourceStacksSize: {d}, sourceStacksSize*@sizeOf(ItemStack): {d}, remaining: {d}\n", .{sourceStacksSize, sourceStacksSize*@sizeOf(ItemStack), reader.remaining.len});
-                        //if(sourceStacksSize*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid; // this check sadly fails
+			const resultStack = try ItemStack.fromBytes(reader);
+			const sourceStacksSize = try reader.readVarInt(usize);
+			if(sourceStacksSize == 0) return error.Invalid;
+			std.log.info("sourceStacksSize: {d}, sourceStacksSize*@sizeOf(ItemStack): {d}, remaining: {d}\n", .{sourceStacksSize, sourceStacksSize*@sizeOf(ItemStack), reader.remaining.len});
+			//if(sourceStacksSize*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid; // this check sadly fails
 
-                        const sourceStacks = main.globalAllocator.alloc(ItemStack, sourceStacksSize);
-                        errdefer main.globalAllocator.free(sourceStacks);
+			const sourceStacks = main.globalAllocator.alloc(ItemStack, sourceStacksSize);
+			errdefer main.globalAllocator.free(sourceStacks);
 
-                        for(sourceStacks) |*sourceStack| {
-                            sourceStack.* = try ItemStack.fromBytes(reader);
-                        }
+			for(sourceStacks) |*sourceStack| {
+				sourceStack.* = try ItemStack.fromBytes(reader);
+			}
 
-                        //look if recipe is valid
-                        const found = blk: {
-                            outer: for(main.items.recipes()) |*recipe| {
-                                if(recipe.resultItem != resultStack.item.baseItem) continue;
-                                if(recipe.resultAmount != resultStack.amount) continue;
-                                if(recipe.sourceItems.len != sourceStacksSize) continue;
-                                for(recipe.sourceItems, recipe.sourceAmounts, sourceStacks) |recipeItem, recipeAmount, sourceStack| {
-                                    if(recipeItem != sourceStack.item.baseItem) continue :outer;
-                                    if(recipeAmount != sourceStack.amount) continue :outer;
-                                }
-                                break :blk true;
-                            }
-                            break :blk false;
-                        };
-                        if(!found) return error.Invalid;
+			//look if recipe is valid
+			const found = blk: {
+				outer: for(main.items.recipes()) |*recipe| {
+					if(recipe.resultItem != resultStack.item.baseItem) continue;
+					if(recipe.resultAmount != resultStack.amount) continue;
+					if(recipe.sourceItems.len != sourceStacksSize) continue;
+					for(recipe.sourceItems, recipe.sourceAmounts, sourceStacks) |recipeItem, recipeAmount, sourceStack| {
+						if(recipeItem != sourceStack.item.baseItem) continue :outer;
+						if(recipeAmount != sourceStack.amount) continue :outer;
+					}
+					break :blk true;
+				}
+				break :blk false;
+			};
+			if(!found) return error.Invalid;
 
 			return .{
 				.destinations = destinations,
@@ -1276,7 +1276,6 @@ pub const Command = struct { // MARK: Command
 				.sourceStacks = sourceStacks,
 			};
 		}
-
 	};
 
 	const DepositOrSwap = struct { // MARK: DepositOrSwap

@@ -667,7 +667,7 @@ pub const inventory = struct { // MARK: inventory
 				if (mainGuiButton.modsOnPress.shift) {
 					itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {
-                                        main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory, itemSlot.itemSlot);
+					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory, itemSlot.itemSlot);
 				}
 			}
 			return;

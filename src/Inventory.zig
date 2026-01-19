@@ -369,7 +369,6 @@ pub const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
 	hand = 3,
-	recipe = 4,
 	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
@@ -377,7 +376,6 @@ pub const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: u32,
 	hand: u32,
-	recipe: *const main.items.Recipe,
 	blockInventory: Vec3i,
 	other: void,
 };
@@ -386,6 +384,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	const ClientType = enum {
 		serverShared,
 		creative,
+		crafting,
 	};
 	super: Inventory,
 	type: ClientType,
@@ -475,11 +474,11 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item, .amount = amount}});
 	}
 
-        pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory, slot: u32) void {
-                std.debug.assert(source.type == .serverShared);
-                for(destinations) |inv| std.debug.assert(inv.type == .serverShared);
-                std.debug.assert(craftingInv.super.type == .crafting);
-		
+	pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory, slot: u32) void {
+		std.debug.assert(source.type == .serverShared);
+		for(destinations) |inv| std.debug.assert(inv.type == .serverShared);
+		std.debug.assert(craftingInv.type == .crafting);
+
 		if(slot != craftingInv.super._items.len - 1) return;
 		const destinationsCanHold = blk: {
 			for(destinations) |dest| {
@@ -490,8 +489,8 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		if(!destinationsCanHold) return;
 		if(craftingInv.getStack(slot).item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
-                main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.getStack(slot), craftingInv.super._items[0..slot])});
-        }
+		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.getStack(slot), craftingInv.super._items[0..slot])});
+	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
@@ -519,21 +518,19 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		return self.super.getAmount(slot);
 	}
 
-        pub fn canHold(self: ClientInventory, itemStack: ItemStack) bool {
-            return self.super.canHold(itemStack);
-        }
+	pub fn canHold(self: ClientInventory, itemStack: ItemStack) bool {
+		return self.super.canHold(itemStack);
+	}
 };
 
 const Inventory = @This(); // MARK: Inventory
 
 pub const TypeEnum = enum(u8) {
 	normal = 0,
-	crafting = 2,
 	workbench = 3,
 };
 pub const Type = union(TypeEnum) {
 	normal: void,
-	crafting: void,
 	workbench: ToolTypeIndex,
 
 	pub fn shouldDepositToUserOnClose(self: Type) bool {

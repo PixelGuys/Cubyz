@@ -95,6 +95,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			recipe.cachedInventory = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .serverShared, .{.recipe = recipe}, .{});
 		}
 		const inv = recipe.cachedInventory.?;
+
 		inventories.append(inv);
 		const rowList = HorizontalList.init();
 		const maxColumns: u32 = 4;
