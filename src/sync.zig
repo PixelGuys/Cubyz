@@ -1246,7 +1246,7 @@ pub const Command = struct { // MARK: Command
 			const sourceStacksSize = try reader.readVarInt(usize);
 			if(sourceStacksSize == 0) return error.Invalid;
 			std.log.info("sourceStacksSize: {d}, sourceStacksSize*@sizeOf(ItemStack): {d}, remaining: {d}\n", .{sourceStacksSize, sourceStacksSize*@sizeOf(ItemStack), reader.remaining.len});
-			//if(sourceStacksSize*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid; // this check sadly fails
+			// if(sourceStacksSize*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid; // this check sadly fails
 
 			const sourceStacks = main.globalAllocator.alloc(ItemStack, sourceStacksSize);
 			errdefer main.globalAllocator.free(sourceStacks);
@@ -1255,7 +1255,7 @@ pub const Command = struct { // MARK: Command
 				sourceStack.* = try ItemStack.fromBytes(reader);
 			}
 
-			//look if recipe is valid
+			// check if recipe is valid
 			const found = blk: {
 				outer: for(main.items.recipes()) |*recipe| {
 					if(recipe.resultItem != resultStack.item.baseItem) continue;
