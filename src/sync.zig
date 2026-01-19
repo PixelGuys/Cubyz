@@ -1131,9 +1131,9 @@ pub const Command = struct { // MARK: Command
 						if(std.meta.eql(requiredStack.item, otherStack.item)) {
 							if(otherStack.amount == otherStack.item.stackSize()) {
 								if(fullSlot == null) {
-                                                                fullSlot = @intCast(i);
-								fullInv = source;
-                                                                }
+									fullSlot = @intCast(i);
+									fullInv = source;
+								}
 								continue;
 							}
 							const amount = @min(remainingAmount, otherStack.amount);
