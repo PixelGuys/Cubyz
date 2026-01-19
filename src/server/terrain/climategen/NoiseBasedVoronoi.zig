@@ -58,7 +58,7 @@ const BiomePoint = struct {
 	radius: f32,
 
 	fn voronoiDistanceFunction(self: @This(), pos: Vec2i) f32 {
-		const len: f32 = @sqrt(@as(f32, @floatFromInt(vec.lengthSquare(self.pos -% pos))));
+		const len: f32 = @sqrt(vec.lengthSquare(@as(Vec2f, @floatFromInt(self.pos -% pos))));
 		const result = len*self.weight;
 		return result;
 	}
@@ -222,8 +222,8 @@ const GenerationStructure = struct {
 		var totalWeight: f32 = 0;
 		const cellX: i32 = @divFloor(relX, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
 		const cellY: i32 = @divFloor(relY, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
-		// Note that at a small loss of details we can assume that all BiomePoints are within ±1 chunks of the current one.
-		var candidateList: main.List(struct {point: *BiomePoint, weight: f32}) = .init(main.stackAllocator);
+		// all BiomePoints are within ±2 chunks of the current one.
+		var candidateList: main.List(struct {point: *BiomePoint, weight: f32}) = .initCapacity(main.stackAllocator, 1024);
 		defer candidateList.deinit();
 		var dx: i32 = 3;
 		while(dx <= 5) : (dx += 1) {
@@ -236,9 +236,12 @@ const GenerationStructure = struct {
 				const chunk = self.chunks.get(@intCast(totalX), @intCast(totalY));
 				const minX = x -% 3*chunk.maxBiomeRadius;
 				const maxX = x +% 3*chunk.maxBiomeRadius;
+				const minY = y -% 3*chunk.maxBiomeRadius;
+				const maxY = y +% 3*chunk.maxBiomeRadius;
 				const list = chunk.biomesSortedByX[Chunk.getStartCoordinate(minX, chunk.biomesSortedByX)..];
 				for(list) |*biomePoint| {
 					if(biomePoint.pos[0] -% maxX >= 0) break;
+					if(biomePoint.pos[1] -% minY <= 0 or biomePoint.pos[1] -% maxY >= 0) continue;
 					candidateList.append(.{.point = biomePoint, .weight = 1});
 				}
 			}
