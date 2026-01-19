@@ -251,7 +251,7 @@ pub const BlockEntityTypes = struct {
 		pub fn onInteract(pos: Vec3i, _: *Chunk) main.callbacks.Result {
 			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 
-			const inventory = main.items.Inventory.init(main.globalAllocator, inventorySize, .normal, .{.blockInventory = pos}, .{});
+			const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, inventorySize, .normal, .serverShared, .{.blockInventory = pos}, .{});
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");

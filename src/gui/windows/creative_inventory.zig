@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const Item = main.items.Item;
-const Inventory = main.items.Inventory;
+const ClientInventory = main.items.Inventory.ClientInventory;
 const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;
 
@@ -27,7 +27,7 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 const slotsPerRow: u32 = 10;
 var items: main.List(Item) = undefined;
-var inventory: Inventory = undefined;
+var inventory: ClientInventory = undefined;
 var searchInput: *TextInput = undefined;
 var searchString: []const u8 = undefined;
 
@@ -98,9 +98,9 @@ fn initContent() void {
 
 		std.mem.sort(Item, items.items, {}, lessThan);
 		const slotCount = items.items.len + (slotsPerRow - items.items.len%slotsPerRow);
-		inventory = Inventory.init(main.globalAllocator, slotCount, .creative, .other, .{});
+		inventory = ClientInventory.init(main.globalAllocator, slotCount, .normal, .creative, .other, .{});
 		for(0..items.items.len) |i| {
-			inventory.fillAmountFromCreative(@intCast(i), items.items[i], 1);
+			inventory.super._items[i] = .{.item = items.items[i], .amount = 1};
 		}
 		var i: u32 = 0;
 		while(i < items.items.len) {

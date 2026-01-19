@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Inventory = main.items.Inventory;
+const ClientInventory = main.items.Inventory.ClientInventory;
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -26,7 +26,7 @@ const Mode = enum {
 
 pos: Vec2f,
 size: Vec2f = @splat(sizeWithBorder),
-inventory: Inventory,
+inventory: ClientInventory,
 itemSlot: u32,
 lastItemAmount: u16 = 0,
 text: TextBuffer,
@@ -69,7 +69,7 @@ pub fn __deinit() void {
 	craftingResultTexture.deinit();
 }
 
-pub fn init(pos: Vec2f, inventory: Inventory, itemSlot: u32, texture: TextureParamType, mode: Mode) *ItemSlot {
+pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: TextureParamType, mode: Mode) *ItemSlot {
 	const self = main.globalAllocator.create(ItemSlot);
 	const amount = inventory.getAmount(itemSlot);
 	var buf: [16]u8 = undefined;
@@ -138,8 +138,6 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 	if(item != .null) {
 		const itemTexture = item.getTexture();
 		itemTexture.bindTo(0);
-		draw.setColor(0xff000000);
-		draw.boundImage(self.pos + @as(Vec2f, @splat(border)) + Vec2f{1.0, 1.0}, self.size - @as(Vec2f, @splat(2*border)));
 		draw.setColor(0xffffffff);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
 		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;

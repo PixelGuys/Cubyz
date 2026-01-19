@@ -974,7 +974,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		return true; // TODO: Check other entities
 	}
 
-	pub fn placeBlock(inventory: main.items.Inventory, slot: u32) void {
+	pub fn placeBlock(inventory: main.items.Inventory.ClientInventory, slot: u32) void {
 		if(selectedBlockPos) |selectedPos| {
 			var oldBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			var block = oldBlock;
@@ -1036,7 +1036,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
+	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
 		if(selectedBlockPos) |selectedPos| {
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
@@ -1106,10 +1106,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.sync.ClientSide.executeCommand(.{
 			.updateBlock = .{
-				.source = .{.inv = source, .slot = slot},
+				.source = .{.inv = source.super, .slot = slot},
 				.pos = .{x, y, z},
 				.dropLocation = .{
 					.dir = selectionFace,

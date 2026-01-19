@@ -1061,7 +1061,7 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
-	cachedInventory: ?Inventory = null,
+	cachedInventory: ?Inventory.ClientInventory = null,
 };
 
 var toolTypeList: ListUnmanaged(ToolType) = .{};
