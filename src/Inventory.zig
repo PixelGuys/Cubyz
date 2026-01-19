@@ -487,7 +487,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			break :blk false;
 		};
 		if(!destinationsCanHold) return;
-		if(craftingInv.getStack(slot).item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
 		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.getStack(slot), craftingInv.super._items[0..slot])});
 	}
