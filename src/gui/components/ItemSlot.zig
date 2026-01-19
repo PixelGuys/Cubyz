@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Inventory = main.items.Inventory;
+const ClientInventory = main.items.Inventory.ClientInventory;
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -26,7 +26,7 @@ const Mode = enum {
 
 pos: Vec2f,
 size: Vec2f = @splat(sizeWithBorder),
-inventory: Inventory,
+inventory: ClientInventory,
 itemSlot: u32,
 lastItemAmount: u16 = 0,
 text: TextBuffer,
@@ -69,7 +69,7 @@ pub fn __deinit() void {
 	craftingResultTexture.deinit();
 }
 
-pub fn init(pos: Vec2f, inventory: Inventory, itemSlot: u32, texture: TextureParamType, mode: Mode) *ItemSlot {
+pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: TextureParamType, mode: Mode) *ItemSlot {
 	const self = main.globalAllocator.create(ItemSlot);
 	const amount = inventory.getAmount(itemSlot);
 	var buf: [16]u8 = undefined;
