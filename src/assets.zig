@@ -124,11 +124,21 @@ pub const Assets = struct {
 			defer dir.close();
 
 			var iterator = dir.iterate();
-			while (iterator.next() catch |err| blk: {
+			outer: while (iterator.next() catch |err| blk: {
 				std.log.err("Got error while iterating over asset path {s}: {s}", .{path, @errorName(err)});
 				break :blk null;
 			}) |addon| {
 				if (addon.kind != .directory) continue;
+
+				for(addon.name) |char| {
+					switch (char) {
+						'_', 'a'...'z', '0'...'9' => continue,
+						else => {
+							std.log.err("Invalid addon name for addon {s}: Addon name must only contain lowercase letters 'a' - 'z', numbers '0' - '9' and underscores '_'.", .{addon.name});
+							continue :outer;
+						},
+					}
+				}
 
 				const directory = dir.openDir(addon.name) catch |err| {
 					std.log.err("Got error while reading addon {s} from {s}: {s}", .{addon.name, path, @errorName(err)});
@@ -217,7 +227,7 @@ pub const Assets = struct {
 				if (std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
 				if (std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, assetType, entry.path) catch continue;
 
 				const zon = assetsDirectory.readToZon(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{assetType, entry.path, @errorName(err)});
@@ -258,7 +268,7 @@ pub const Assets = struct {
 				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 				if (std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, "blueprint", entry.path) catch continue;
 
 				const data = assetsDirectory.read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -287,7 +297,7 @@ pub const Assets = struct {
 				if (entry.kind != .file) continue;
 				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, "model", entry.path) catch continue;
 
 				const string = assetsDirectory.read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -302,10 +312,33 @@ pub const Assets = struct {
 fn createAssetStringID(
 	externalAllocator: NeverFailingAllocator,
 	addonName: []const u8,
+	assetType: []const u8,
 	relativeFilePath: []const u8,
-) []u8 {
+) error{InvalidId}![]u8 {
 	const baseNameEndIndex = if (std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
 	const pathNoExtension: []const u8 = relativeFilePath[0..baseNameEndIndex];
+
+	const fileNameStart: usize = if(std.mem.findScalarLast(u8, pathNoExtension, '/')) |i| i + 1 else 0;
+	if(pathNoExtension[fileNameStart] == '_') {
+		std.log.err(
+			"Invalid {s} asset id for addon '{s}' and subpath '{s}': File name must not start with an underscore '_', this is reserved for special files.",
+			.{assetType, addonName, relativeFilePath},
+		);
+		return error.InvalidId;
+	}
+
+	for(pathNoExtension) |char| {
+		switch (char) {
+			'_', 'a'...'z', '0'...'9', '/' => continue,
+			else => {
+				std.log.err(
+					"Invalid {s} asset name for addon '{s}' and subpath '{s}': Asset name must only contain lowercase letters 'a' - 'z', numbers '0' - '9', underscores '_' and path separators '/'.",
+					.{assetType, addonName, relativeFilePath},
+				);
+				return error.InvalidId;
+			},
+		}
+	}
 
 	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + pathNoExtension.len);
 
