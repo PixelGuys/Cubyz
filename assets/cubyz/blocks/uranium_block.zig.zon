@@ -5,6 +5,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
+	.emittedLight = 0x214200,
 	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
 	.texture = "cubyz:uranium_block",
