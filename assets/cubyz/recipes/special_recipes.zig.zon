@@ -52,6 +52,10 @@
 		.output = "2 cubyz:chain/iron",
 	},
 	.{
+		.inputs = .{"{mod}:{type}_ingot"},
+		.output = "2 {mod}:bars/{type}",
+	},
+	.{
 		.inputs = .{"4 cubyz:silver_ingot"},
 		.output = "cubyz:silver_block",
 	},

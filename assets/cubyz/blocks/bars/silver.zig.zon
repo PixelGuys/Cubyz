@@ -1,6 +1,7 @@
 .{
+	.blockHealth = 20,
 	.texture = "cubyz:bars/silver",
 	.item = .{
-		.texture = "fence/palm.png",
+		.texture = "bars/silver.png",
 	},
 }
