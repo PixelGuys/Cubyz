@@ -1,0 +1,48 @@
+.{
+	.chance = 0,
+	.radius = 20,
+	.minHeight = 1500,
+	.maxHeight = 3000,
+	.keepOriginalTerrain = 0.99,
+	.roughness = 1,
+	.mountains = 70,
+	.hills = 20,
+	.ground_structure = .{"cubyz:slate/base"},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:moss:cubyz:slate/cobble",
+			.chance = 0.2,
+			.width = 5,
+			.variation = 6,
+			.depth = 2,
+			.smoothness = 0.6,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:moss:cubyz:slate/base",
+			.chance = 0.1,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.6,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:slate/base",
+			.chance = 0.1,
+			.size = 4,
+			.size_variation = 3,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:jungle/sparse",
+			.chance = 5,
+		},
+		.{
+			.id = "cubyz:jungle/base",
+			.chance = 4,
+		},
+	},
+}
