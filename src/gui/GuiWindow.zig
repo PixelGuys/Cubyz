@@ -140,7 +140,9 @@ pub fn __deinit() void {
 }
 
 pub fn defaultFunction() void {}
-pub fn defaultFunctionWithResult() main.callbacks.Result { return .ignored; }
+pub fn defaultFunctionWithResult() main.callbacks.Result {
+	return .ignored;
+}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) main.callbacks.Result {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
