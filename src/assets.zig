@@ -131,7 +131,7 @@ pub const Assets = struct {
 				if (addon.kind != .directory) continue;
 
 				for(addon.name) |char| {
-					switch (char) {
+					switch(char) {
 						'_', 'a'...'z', '0'...'9' => continue,
 						else => {
 							std.log.err("Invalid addon name for addon {s}: Addon name must only contain lowercase letters 'a' - 'z', numbers '0' - '9' and underscores '_'.", .{addon.name});
@@ -328,7 +328,7 @@ fn createAssetStringID(
 	}
 
 	for(pathNoExtension) |char| {
-		switch (char) {
+		switch(char) {
 			'_', 'a'...'z', '0'...'9', '/' => continue,
 			else => {
 				std.log.err(
