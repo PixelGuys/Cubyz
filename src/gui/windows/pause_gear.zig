@@ -24,7 +24,7 @@ pub var window: GuiWindow = GuiWindow{
 	.hasBackground = false,
 	.isHud = true,
 	.hideIfMouseIsGrabbed = true,
-	.closeable = false,
+	.titleBarButtons = &.{GuiWindow.zoomInButton, GuiWindow.zoomOutButton},
 };
 
 const padding: f32 = 8;
