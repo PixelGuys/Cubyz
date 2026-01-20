@@ -1152,7 +1152,6 @@ pub const Command = struct { // MARK: Command
 						.amount = @min(remainingAmount, requiredStack.item.stackSize()),
 					}});
 				}
-				std.debug.assert(remainingAmount == 0);
 			}
 
 			var remainingAmount: u16 = self.resultStack.amount;
@@ -1255,22 +1254,7 @@ pub const Command = struct { // MARK: Command
 				sourceStack.* = try ItemStack.fromBytes(reader);
 			}
 
-			// check if recipe is valid
-			const found = blk: {
-				outer: for(main.items.recipes()) |*recipe| {
-					if(recipe.resultItem != resultStack.item.baseItem) continue;
-					if(recipe.resultAmount != resultStack.amount) continue;
-					if(recipe.sourceItems.len != sourceStacksSize) continue;
-					for(recipe.sourceItems, recipe.sourceAmounts, sourceStacks) |recipeItem, recipeAmount, sourceStack| {
-						if(recipeItem != sourceStack.item.baseItem) continue :outer;
-						if(recipeAmount != sourceStack.amount) continue :outer;
-					}
-					break :blk true;
-				}
-				break :blk false;
-			};
-			if(!found) return error.Invalid;
-
+			if(!validRecipe(sourceStacks, resultStack)) return error.Invalid;
 			return .{
 				.destinations = destinations,
 				.sources = sources,
