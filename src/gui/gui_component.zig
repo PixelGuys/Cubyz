@@ -83,14 +83,15 @@ pub const GuiComponent = union(enum) {
 		}
 	}
 
-	pub fn updateHovered(self: GuiComponent, mousePosition: Vec2f) void {
-		switch (self) {
+	pub fn updateHovered(self: GuiComponent, mousePosition: Vec2f) main.callbacks.Result {
+		switch(self) {
 			inline else => |impl| {
-				if (@hasDecl(@TypeOf(impl.*), "updateHovered")) {
-					impl.updateHovered(mousePosition);
+				if(@hasDecl(@TypeOf(impl.*), "updateHovered")) {
+					return impl.updateHovered(mousePosition);
 				}
 			},
 		}
+		return .ignored;
 	}
 
 	pub fn render(self: GuiComponent, mousePosition: Vec2f) void {
@@ -103,14 +104,15 @@ pub const GuiComponent = union(enum) {
 		}
 	}
 
-	pub fn mainButtonPressed(self: GuiComponent, mousePosition: Vec2f) void {
-		switch (self) {
+	pub fn mainButtonPressed(self: GuiComponent, mousePosition: Vec2f) main.callbacks.Result {
+		switch(self) {
 			inline else => |impl| {
-				if (@hasDecl(@TypeOf(impl.*), "mainButtonPressed")) {
-					impl.mainButtonPressed(mousePosition);
+				if(@hasDecl(@TypeOf(impl.*), "mainButtonPressed")) {
+					return impl.mainButtonPressed(mousePosition);
 				}
 			},
 		}
+		return .ignored;
 	}
 
 	pub fn mainButtonReleased(self: GuiComponent, mousePosition: Vec2f) void {

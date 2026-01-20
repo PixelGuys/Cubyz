@@ -75,17 +75,21 @@ pub fn scroll(self: *ScrollBar, offset: f32) void {
 	self.currentState = @min(1, @max(0, self.currentState));
 }
 
-pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) void {
-	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.updateHovered(mousePosition - self.pos);
+pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Result {
+	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if(self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 	}
+	return .ignored;
 }
 
-pub fn mainButtonPressed(self: *ScrollBar, mousePosition: Vec2f) void {
-	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.mainButtonPressed(mousePosition - self.pos);
-		self.mouseAnchor = mousePosition[1] - self.button.pos[1];
+pub fn mainButtonPressed(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Result {
+	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if(self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
+			self.mouseAnchor = mousePosition[1] - self.button.pos[1];
+			return .handled;
+		}
 	}
+	return .ignored;
 }
 
 pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {

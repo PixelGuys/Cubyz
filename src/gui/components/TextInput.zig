@@ -95,26 +95,26 @@ pub fn toComponent(self: *TextInput) GuiComponent {
 	return .{.textInput = self};
 }
 
-pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) void {
-	if (self.textSize[1] > self.maxHeight - 2*border) {
+pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) main.callbacks.Result {
+	if(self.textSize[1] > self.maxHeight - 2*border) {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
 		main.Window.scrollOffset = 0;
 	}
 	if (self.textSize[1] > self.maxHeight - 2*border) {
 		self.scrollBar.pos = Vec2f{self.size[0] - border - scrollBarWidth, border};
-		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			self.scrollBar.updateHovered(mousePosition - self.pos);
+		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			if(self.scrollBar.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
+	return .handled;
 }
 
-pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) void {
-	if (self.textSize[1] > self.maxHeight - 2*border) {
+pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) main.callbacks.Result {
+	if(self.textSize[1] > self.maxHeight - 2*border) {
 		self.scrollBar.pos = Vec2f{self.size[0] - border - scrollBarWidth, border};
-		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			self.scrollBar.mainButtonPressed(mousePosition - self.pos);
-			return;
+		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			if(self.scrollBar.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
 	self.cursor = null;
@@ -126,6 +126,7 @@ pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) void {
 	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	self.pressed = true;
 	self.ensureCursorVisibility();
+	return .handled;
 }
 
 pub fn mainButtonReleased(self: *TextInput, mousePosition: Vec2f) void {

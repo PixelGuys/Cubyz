@@ -97,29 +97,26 @@ pub fn updateSelected(self: *VerticalList) void {
 	}
 }
 
-pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) void {
+pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) main.callbacks.Result {
 	var shiftedPos = self.pos;
 	if (self.scrollBarEnabled) {
 		const diff = self.childrenHeight - self.maxHeight;
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
+		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
+		main.Window.scrollOffset = 0;
+		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			if(self.scrollBar.updateHovered(mousePosition - self.pos) == .handled) return .handled;
+		}
 	}
 	var i: usize = self.children.items.len;
 	while (i != 0) {
 		i -= 1;
 		const child = &self.children.items[i];
-		if (GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
-			child.updateHovered(mousePosition - shiftedPos);
-			break;
+		if(GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
+			if(child.updateHovered(mousePosition - shiftedPos) == .handled) return .handled;
 		}
 	}
-	if (self.scrollBarEnabled) {
-		const diff = self.childrenHeight - self.maxHeight;
-		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
-		main.Window.scrollOffset = 0;
-		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			self.scrollBar.updateHovered(mousePosition - self.pos);
-		}
-	}
+	return .ignored;
 }
 
 pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
@@ -146,25 +143,22 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn mainButtonPressed(self: *VerticalList, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *VerticalList, mousePosition: Vec2f) main.callbacks.Result {
 	var shiftedPos = self.pos;
 	if (self.scrollBarEnabled) {
 		const diff = self.childrenHeight - self.maxHeight;
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
-		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			self.scrollBar.mainButtonPressed(mousePosition - self.pos);
-			return;
+		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			if(self.scrollBar.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
-	var selectedChild: ?*GuiComponent = null;
-	for (self.children.items) |*child| {
-		if (GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
-			selectedChild = child;
+	var iterator = std.mem.reverseIterator(self.children.items);
+	while(iterator.next()) |child| {
+		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
+			if(child.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
-	if (selectedChild) |child| {
-		child.mainButtonPressed(mousePosition - shiftedPos);
-	}
+	return .ignored;
 }
 
 pub fn mainButtonReleased(self: *VerticalList, mousePosition: Vec2f) void {

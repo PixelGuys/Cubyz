@@ -104,17 +104,21 @@ fn updateValueFromButtonPos(self: *ContinuousSlider) void {
 	}
 }
 
-pub fn updateHovered(self: *ContinuousSlider, mousePosition: Vec2f) void {
-	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.updateHovered(mousePosition - self.pos);
+pub fn updateHovered(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
+	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if(self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 	}
+	return .ignored;
 }
 
-pub fn mainButtonPressed(self: *ContinuousSlider, mousePosition: Vec2f) void {
-	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.mainButtonPressed(mousePosition - self.pos);
-		self.mouseAnchor = mousePosition[0] - self.button.pos[0];
+pub fn mainButtonPressed(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
+	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if(self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
+			self.mouseAnchor = mousePosition[0] - self.button.pos[0];
+			return .handled;
+		}
 	}
+	return .ignored;
 }
 
 pub fn mainButtonReleased(self: *ContinuousSlider, _: Vec2f) void {

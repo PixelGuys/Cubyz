@@ -72,7 +72,7 @@ updateFn: *const fn () void = &defaultFunction,
 /// Called every frame for the currently selected window.
 updateSelectedFn: *const fn () void = &defaultFunction,
 /// Called every frame for the currently hovered window.
-updateHoveredFn: *const fn () void = &defaultFunction,
+updateHoveredFn: *const fn () main.callbacks.Result = &defaultFunctionWithResult,
 
 onOpenFn: *const fn () void = &defaultFunction,
 
@@ -140,8 +140,9 @@ pub fn __deinit() void {
 }
 
 pub fn defaultFunction() void {}
+pub fn defaultFunctionWithResult() main.callbacks.Result { return .ignored; }
 
-pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) main.callbacks.Result {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
 	const btnPos = self.getButtonPositions();
 	const zoomInPos = btnPos[2]/self.scale;
@@ -150,12 +151,15 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
 		windowMoving = scaledMousePos[0] <= zoomInPos;
+		return .handled;
 	} else {
-		if (self.rootComponent) |*component| {
-			if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
-				component.mainButtonPressed(scaledMousePos);
+		if(self.rootComponent) |*component| {
+			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
+				if(component.mainButtonPressed(scaledMousePos) == .handled) return .handled;
 			}
 		}
+		if(self.hasBackground) return .handled;
+		return .ignored;
 	}
 }
 
@@ -371,13 +375,17 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
-	self.updateHoveredFn();
+pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) main.callbacks.Result {
+	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
+	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) return .handled;
+	if (self.updateHoveredFn() == .handled) return .handled;
 	if (self.rootComponent) |component| {
-		if (GuiComponent.contains(component.pos(), component.size(), (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)))) {
-			component.updateHovered((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+		if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
+			if (component.updateHovered(scaledMousePos) == .handled) return .handled;
 		}
 	}
+	if(self.hasBackground) return .handled;
+	return .ignored;
 }
 pub fn getMinWindowWidth(self: *GuiWindow) f32 {
 	return iconWidth*@as(f32, (if (self.closeable) 4 else 3));
