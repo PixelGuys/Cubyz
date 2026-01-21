@@ -779,6 +779,67 @@ pub const Command = struct { // MARK: Command
 		};
 	}
 
+	const PutItemsInto = struct {
+		const Source = union(enum) {
+			move: InventoryAndSlot,
+			create: Item,
+		};
+
+		fn getBaseOperation(dest: InventoryAndSlot, amount: u16, source: Source) BaseOperation {
+			return switch(source) {
+				.move => |slot| .{.move = .{
+					.dest = dest,
+					.amount = amount,
+					.source = slot,
+				}},
+				.create => |item| .{.create = .{
+					.dest = dest,
+					.amount = amount,
+					.item = item,
+				}},
+			};
+		}
+
+		pub fn do(ctx: Context, destinations: []const Inventory, itemAmount: u16, source: Source) void {
+			const item = switch(source) {
+				.move => |slot| slot.ref().item,
+				.create => |item| item,
+			};
+			var remainingAmount = itemAmount;
+			var selectedEmptySlot: ?u32 = null;
+			var selectedEmptyInv: ?Inventory = null;
+			outer: for(destinations) |dest| {
+				var emptySlot: ?u32 = null;
+				var hasItem = false;
+				for(dest._items, 0..) |*destStack, destSlot| {
+					if(destStack.item == .null and emptySlot == null) {
+						emptySlot = @intCast(destSlot);
+						if(selectedEmptySlot == null) {
+							selectedEmptySlot = emptySlot;
+							selectedEmptyInv = dest;
+						}
+					}
+					if(std.meta.eql(destStack.item, item)) {
+						hasItem = true;
+						const amount = @min(item.stackSize() - destStack.amount, remainingAmount);
+						if(amount == 0) continue;
+						ctx.execute(getBaseOperation(.{.inv = dest, .slot = @intCast(destSlot)}, amount, source));
+						remainingAmount -= amount;
+						if(remainingAmount == 0) break :outer;
+					}
+				}
+				if(emptySlot != null and hasItem) {
+					ctx.execute(getBaseOperation(.{.inv = dest, .slot = emptySlot.?}, remainingAmount, source));
+					remainingAmount = 0;
+					break :outer;
+				}
+			}
+			if(remainingAmount > 0 and selectedEmptySlot != null) {
+				ctx.execute(getBaseOperation(.{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?}, remainingAmount, source));
+			}
+		}
+	};
+
 	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: Inventory, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
 		std.debug.assert(source.inv.type == .crafting);
 		std.debug.assert(dest.type == .normal);
@@ -1355,50 +1416,7 @@ pub const Command = struct { // MARK: Command
 			if(sourceStack.item == .null) return;
 			if(self.amount > sourceStack.amount) return;
 
-			var remainingAmount = self.amount;
-			var selectedEmptySlot: ?u32 = null;
-			var selectedEmptyInv: ?Inventory = null;
-			outer: for(self.destinations) |dest| {
-				var emptySlot: ?u32 = null;
-				var hasItem = false;
-				for(dest._items, 0..) |*destStack, destSlot| {
-					if(destStack.item == .null and emptySlot == null) {
-						emptySlot = @intCast(destSlot);
-						if(selectedEmptySlot == null) {
-							selectedEmptySlot = emptySlot;
-							selectedEmptyInv = dest;
-						}
-					}
-					if(std.meta.eql(destStack.item, sourceStack.item)) {
-						hasItem = true;
-						const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
-						if(amount == 0) continue;
-						ctx.execute(.{.move = .{
-							.dest = .{.inv = dest, .slot = @intCast(destSlot)},
-							.source = self.source,
-							.amount = amount,
-						}});
-						remainingAmount -= amount;
-						if(remainingAmount == 0) break :outer;
-					}
-				}
-				if(emptySlot != null and hasItem) {
-					ctx.execute(.{.move = .{
-						.dest = .{.inv = dest, .slot = emptySlot.?},
-						.source = self.source,
-						.amount = remainingAmount,
-					}});
-					remainingAmount = 0;
-					break :outer;
-				}
-			}
-			if(remainingAmount > 0 and selectedEmptySlot != null) {
-				ctx.execute(.{.move = .{
-					.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
-					.source = self.source,
-					.amount = remainingAmount,
-				}});
-			}
+			PutItemsInto.do(ctx, self.destinations, self.amount, .{.move = self.source});
 		}
 
 		fn serialize(self: DepositToAny, writer: *BinaryWriter) void {
