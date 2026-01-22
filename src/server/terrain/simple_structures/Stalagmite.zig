@@ -23,17 +23,18 @@ const Stalagmite = @This();
 block: main.blocks.Block,
 size: f32,
 sizeVariation: f32,
-slope: f32,
-pointiness: f32,
+topSlope: f32,
+baseSlope: f32,
 
 pub fn loadModel(parameters: ZonElement) ?*Stalagmite {
 	const self = main.worldArena.create(Stalagmite);
+	const baseSlope = parameters.get(f32, "baseSlope", 4.0);
 	self.* = .{
 		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite")),
 		.size = parameters.get(f32, "size", 12),
 		.sizeVariation = parameters.get(f32, "size_variation", 8),
-		.slope = parameters.get(f32, "slope", 4.0),
-		.pointiness = std.math.clamp(parameters.get(f32, "pointiness", 0), 0, 1),
+		.baseSlope = baseSlope,
+		.topSlope = parameters.get(f32, "topSlope", baseSlope),
 	};
 	return self;
 }
@@ -45,7 +46,33 @@ pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, ch
 
 	const height = self.size + random.nextFloat(seed)*self.sizeVariation;
 
-	const baseRadius = height/self.slope;
+	// We want to ensure the following properties:
+	// height(r = 0) = height
+	// height'(r = 0) = -topSlope
+	// height(r = baseRadius) = 0
+	// height'(r = baseRadius) = -baseSlope
+	// With height(r) = a·r² + b·r + c → height'(r) = 2a·r + b
+	// c = height, b = -topSlope
+	// 0 = a·baseRadius² + b·baseRadius + c
+	// -baseSlope = 2a·baseRadius + b
+	// → a·baseRadius = (-baseSlope - b)/2
+	// This permits both positive and negative values for baseRadius, so we need to account for that during substitution:
+	// = (-baseSlope - b)/2·±baseRadius + b·baseRadius + c
+	// → baseRadius = -c/(±(-baseSlope - b)/2 + b)
+	const c = height;
+	const b = -self.topSlope;
+	var baseRadius: f32 = undefined;
+	var a: f32 = undefined;
+	if(self.baseSlope == self.topSlope) {
+		baseRadius = height/self.topSlope;
+		a = 0;
+	} else {
+		baseRadius = -c/((-self.baseSlope - b)/2 + b);
+		if(baseRadius < 0) {
+			baseRadius = -c/(-(-self.baseSlope - b)/2 + b);
+		}
+		a = (-self.baseSlope - b)/(2*baseRadius);
+	}
 
 	const xMin: i32 = @intFromFloat(@floor(relX - baseRadius));
 	const xMax: i32 = @intFromFloat(@ceil(relX + baseRadius));
@@ -57,8 +84,8 @@ pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, ch
 		while(y3 <= yMax) : (y3 += 1) {
 			const distSquare = vec.lengthSquare(Vec2f{@as(f32, @floatFromInt(x3)) - relX, @as(f32, @floatFromInt(y3)) - relY});
 			if(distSquare >= baseRadius*baseRadius) continue;
-			const scale = 1 - @sqrt(distSquare)/baseRadius;
-			const columnHeight = std.math.lerp(scale, scale*scale, self.pointiness)*height;
+			const r = @sqrt(distSquare);
+			const columnHeight = a*r*r + b*r + c;
 			if(x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width) {
 				const zMin: i32 = @intFromFloat(@round(relZ - columnHeight));
 				const zMax: i32 = @intFromFloat(@round(relZ + columnHeight));
