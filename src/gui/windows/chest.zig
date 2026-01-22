@@ -37,9 +37,9 @@ pub fn deinit() void {
 	itemSlots.deinit();
 }
 
-pub var openInventory: main.items.Inventory = undefined;
+pub var openInventory: main.items.Inventory.ClientInventory = undefined;
 
-pub fn setInventory(selectedInventory: main.items.Inventory) void {
+pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) void {
 	openInventory = selectedInventory;
 }
 

@@ -49,6 +49,7 @@ pub const Ore = struct {
 	minHeight: i32,
 
 	blockType: u16,
+	seed: u64,
 };
 
 var _transparent: [maxBlockCount]bool = undefined;
@@ -150,6 +151,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.minHeight = oreProperties.get(i32, "minHeight", std.math.minInt(i32)),
 			.density = oreProperties.get(f32, "density", 0.5),
 			.blockType = @intCast(size),
+			.seed = std.hash.Wyhash.hash(0, id),
 		});
 	}
 

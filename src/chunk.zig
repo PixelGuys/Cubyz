@@ -148,6 +148,96 @@ pub fn deinit() void {
 	serverPool.deinit();
 }
 
+pub const Lod = enum(u5) {
+	@"1" = 0,
+	@"2" = 1,
+	@"4" = 2,
+	@"8" = 3,
+	@"16" = 4,
+	@"32" = 5,
+
+	const min: Lod = @enumFromInt(@typeInfo(Lod).@"enum".fields[0].value);
+	const max: Lod = blk: {
+		const fields = @typeInfo(Lod).@"enum".fields;
+		const maxValue = fields[fields.len - 1].value;
+		break :blk @enumFromInt(maxValue);
+	};
+
+	pub inline fn next(self: Lod) Lod {
+		return @enumFromInt(@intFromEnum(self) + 1);
+	}
+
+	pub inline fn previous(self: Lod) Lod {
+		return @enumFromInt(@intFromEnum(self) - 1);
+	}
+
+	pub inline fn toInt(self: Lod) @typeInfo(Lod).@"enum".tag_type {
+		return @intFromEnum(self);
+	}
+
+	pub inline fn voxelSize(self: Lod) u31 {
+		return 1 << @intFromEnum(self);
+	}
+
+	pub inline fn chunkWidth(self: Lod) u31 {
+		return self.voxelSize()*chunkSize;
+	}
+
+	pub inline fn voxelSizeShift(self: Lod) u5 {
+		return self.toInt();
+	}
+
+	// Mask for converting global coordinates to Lod resolution coordinates.
+	pub inline fn voxelSizeMask(self: Lod) i32 {
+		return ~@as(i32, self.voxelSize() - 1);
+	}
+
+	// Mask for converting global coordinates to chunk local coordinates.
+	pub inline fn localMask(self: Lod) i32 {
+		return ~@as(i32, self.voxelSize()*chunkSize - 1);
+	}
+
+	test "Lod.voxelSize() min" {
+		try std.testing.expectEqual(1, Lod.min.voxelSize());
+	}
+
+	test "Lod.voxelSize() max" {
+		try std.testing.expectEqual(32, Lod.max.voxelSize());
+	}
+
+	test "Lod.chunkWidth() min" {
+		try std.testing.expectEqual(32, Lod.min.chunkWidth());
+	}
+
+	test "Lod.chunkWidth() max" {
+		try std.testing.expectEqual(1024, Lod.max.chunkWidth());
+	}
+
+	test "Lod.voxelSizeShift() min" {
+		try std.testing.expectEqual(0, Lod.min.voxelSizeShift());
+	}
+
+	test "Lod.voxelSizeShift() max" {
+		try std.testing.expectEqual(5, Lod.max.voxelSizeShift());
+	}
+
+	test "Lod.voxelSizeMask() min" {
+		try std.testing.expectEqual(~@as(i32, 0b00000), Lod.min.voxelSizeMask());
+	}
+
+	test "Lod.voxelSizeMask() max" {
+		try std.testing.expectEqual(~@as(i32, 0b11111), Lod.max.voxelSizeMask());
+	}
+
+	test "Lod.localMask() min" {
+		try std.testing.expectEqual(~@as(i32, 31), Lod.min.localMask());
+	}
+
+	test "Lod.localMask() max" {
+		try std.testing.expectEqual(~@as(i32, 1023), Lod.max.localMask());
+	}
+};
+
 pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wx: i32,
 	wy: i32,

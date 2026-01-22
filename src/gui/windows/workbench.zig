@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const items = main.items;
 const BaseItem = items.BaseItem;
-const Inventory = items.Inventory;
+const ClientInventory = items.Inventory.ClientInventory;
 const Item = items.Item;
 const Tool = items.Tool;
 const ToolType = items.ToolType;
@@ -35,7 +35,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var inv: Inventory = undefined;
+var inv: ClientInventory = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
@@ -54,7 +54,7 @@ fn toggleTool() void {
 }
 
 fn openInventory() void {
-	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other, .{});
+	inv = ClientInventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .serverShared, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -108,7 +108,7 @@ pub fn update() void {
 }
 
 pub fn render() void {
-	const currentResult = inv._items[25].item;
+	const currentResult = inv.getItem(25);
 	if(currentResult == .null) return;
 
 	const offsetX = 5*ItemSlot.sizeWithBorder + 20;

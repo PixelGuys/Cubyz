@@ -787,7 +787,7 @@ pub const Command = struct { // MARK: Command
 		if(source.ref().item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 
 		const playerInventory: Inventory = switch(side) {
-			.client => main.game.Player.inventory,
+			.client => main.game.Player.inventory.super,
 			.server => blk: {
 				if(user) |_user| {
 					var it = _user.inventoryClientToServerIdMap.valueIterator();
@@ -907,7 +907,7 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => unreachable,
 			}
 			switch(self.inv.type) {
-				.normal, .creative, .crafting => {},
+				.normal, .crafting => {},
 				.workbench => {
 					writer.writeSlice(self.inv.type.workbench.id());
 				},
@@ -950,7 +950,7 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => return error.Invalid,
 			};
 			const typ: Inventory.Type = switch(typeEnum) {
-				inline .normal, .creative, .crafting => |tag| tag,
+				inline .normal, .crafting => |tag| tag,
 				.workbench => .{.workbench = main.items.ToolTypeIndex.fromId(reader.remaining) orelse return error.Invalid},
 			};
 			try Inventory.ServerSide.createInventory(user.?, id, len, typ, source);
@@ -994,10 +994,6 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.source.inv.type == .normal);
-			if(self.dest.inv.type == .creative) {
-				try FillFromCreative.run(.{.dest = self.source, .item = self.dest.ref().item}, ctx);
-				return;
-			}
 			if(self.dest.inv.type == .crafting) {
 				ctx.cmd.tryCraftingTo(ctx.allocator, self.source.inv, self.dest, ctx.side, ctx.user);
 				return;
@@ -1056,20 +1052,12 @@ pub const Command = struct { // MARK: Command
 		amount: u16,
 
 		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
-			if(self.source.inv.type != .normal and (self.source.inv.type != .creative or self.dest.inv.type != .normal)) return error.serverFailure;
+			if(self.source.inv.type != .normal and self.dest.inv.type != .normal) return error.serverFailure;
 			if(self.dest.inv.type == .crafting) return;
 			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
 			if(self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item;
 			if(itemSource == .null) return;
-			if(self.source.inv.type == .creative) {
-				var amount: u16 = self.amount;
-				if(std.meta.eql(self.dest.ref().item, itemSource)) {
-					amount = @min(self.dest.ref().amount + self.amount, itemSource.stackSize());
-				}
-				try FillFromCreative.run(.{.dest = self.dest, .item = itemSource, .amount = amount}, ctx);
-				return;
-			}
 			const itemDest = self.dest.ref().item;
 			if(itemDest != .null) {
 				if(std.meta.eql(itemDest, itemSource)) {
@@ -1112,13 +1100,6 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
-			if(self.source.inv.type == .creative) {
-				if(self.dest.ref().item == .null) {
-					const item = self.source.ref().item;
-					try FillFromCreative.run(.{.dest = self.dest, .item = item}, ctx);
-				}
-				return;
-			}
 			if(self.source.inv.type == .crafting) {
 				ctx.cmd.tryCraftingTo(ctx.allocator, self.dest.inv, self.source, ctx.side, ctx.user);
 				return;
@@ -1176,7 +1157,6 @@ pub const Command = struct { // MARK: Command
 		desiredAmount: u16 = 0xffff,
 
 		fn run(self: Drop, ctx: Context) error{serverFailure}!void {
-			if(self.source.inv.type == .creative) return;
 			if(self.source.ref().item == .null) return;
 			if(self.source.inv.type == .crafting) {
 				if(self.source.slot != self.source.inv._items.len - 1) return;
@@ -1290,7 +1270,6 @@ pub const Command = struct { // MARK: Command
 
 		pub fn run(self: DepositOrDrop, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.dest.type == .normal);
-			if(self.source.type == .creative) return;
 			if(self.source.type == .crafting) return;
 			var sourceItems = self.source._items;
 			if(self.source.type == .workbench) sourceItems = self.source._items[0..25];
@@ -1350,9 +1329,11 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 		amount: u16,
 
-		pub fn init(destinations: []const Inventory, source: InventoryAndSlot, amount: u16) DepositToAny {
+		pub fn init(destinations: []const Inventory.ClientInventory, source: InventoryAndSlot, amount: u16) DepositToAny {
+			const copy = main.globalAllocator.alloc(Inventory, destinations.len);
+			for(copy, destinations) |*d, s| d.* = s.super;
 			return .{
-				.destinations = main.globalAllocator.dupe(Inventory, destinations),
+				.destinations = copy,
 				.source = source,
 				.amount = amount,
 			};
@@ -1364,9 +1345,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
 			for(self.destinations) |dest| {
-				if(dest.type == .creative) return;
-				if(dest.type == .crafting) return;
-				if(dest.type == .workbench) return;
+				if(dest.type != .normal) return;
 			}
 			if(self.source.inv.type == .crafting) {
 				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations[0], self.source, ctx.side, ctx.user);
@@ -1456,7 +1435,6 @@ pub const Command = struct { // MARK: Command
 		inv: Inventory,
 
 		pub fn run(self: Clear, ctx: Context) error{serverFailure}!void {
-			if(self.inv.type == .creative) return;
 			if(self.inv.type == .crafting) return;
 			var items = self.inv._items;
 			if(self.inv.type == .workbench) items = self.inv._items[0..25];

@@ -635,10 +635,6 @@ pub fn clientMain() void { // MARK: clientMain()
 
 		const endRendering = timestamp();
 		const frameTime = @as(f64, @floatFromInt(endRendering.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
-		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
-			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
-			std.posix.exit(1);
-		}
 		lastFrameTime.store(frameTime, .monotonic);
 
 		if(settings.fpsCap) |fpsCap| {

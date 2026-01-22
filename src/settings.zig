@@ -67,8 +67,6 @@ pub var updateRepeatSpeed: std.Io.Duration = .fromMilliseconds(200);
 
 pub var updateRepeatDelay: std.Io.Duration = .fromMilliseconds(500);
 
-pub var developerGPUInfiniteLoopDetection: bool = false;
-
 pub var controllerAxisDeadzone: f32 = 0.2;
 
 const settingsFile = if(builtin.mode == .Debug) "debug_settings.zig.zon" else "settings.zig.zon";
