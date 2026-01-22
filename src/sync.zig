@@ -1217,11 +1217,11 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !CraftFrom {
-			const destinationsSize = try reader.readVarInt(usize);
-			if(destinationsSize == 0) return error.Invalid;
-			if(destinationsSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+			const destinationCount = try reader.readVarInt(usize);
+			if(destinationCount == 0) return error.Invalid;
+			if(destinationCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
 
-			const destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
+			const destinations = main.globalAllocator.alloc(Inventory, destinationCount);
 			errdefer main.globalAllocator.free(destinations);
 
 			for(destinations) |*dest| {
@@ -1229,11 +1229,11 @@ pub const Command = struct { // MARK: Command
 				dest.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
 			}
 
-			const sourcesSize = try reader.readVarInt(usize);
-			if(sourcesSize == 0) return error.Invalid;
-			if(sourcesSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+			const sourceCount = try reader.readVarInt(usize);
+			if(sourceCount == 0) return error.Invalid;
+			if(sourceCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
 
-			const sources = main.globalAllocator.alloc(Inventory, sourcesSize);
+			const sources = main.globalAllocator.alloc(Inventory, sourceCount);
 			errdefer main.globalAllocator.free(sources);
 
 			for(sources) |*source| {
@@ -1242,12 +1242,12 @@ pub const Command = struct { // MARK: Command
 			}
 
 			const resultStack = try ItemStack.fromBytes(reader);
-			const sourceStacksSize = try reader.readVarInt(usize);
-			if(sourceStacksSize == 0) return error.Invalid;
-			std.log.info("sourceStacksSize: {d}, sourceStacksSize*@sizeOf(ItemStack): {d}, remaining: {d}\n", .{sourceStacksSize, sourceStacksSize*@sizeOf(ItemStack), reader.remaining.len});
-			// if(sourceStacksSize*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid; // this check sadly fails
+			const sourceStackCount = try reader.readVarInt(usize);
+			if(sourceStackCount == 0) return error.Invalid;
+			std.log.info("sourceStackCount: {d}, sourceStackCount*@sizeOf(ItemStack): {d}, remaining: {d}\n", .{sourceStackCount, sourceStackCount*@sizeOf(ItemStack), reader.remaining.len});
+			// if(sourceStackCount*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid; // this check sadly fails
 
-			const sourceStacks = main.globalAllocator.alloc(ItemStack, sourceStacksSize);
+			const sourceStacks = main.globalAllocator.alloc(ItemStack, sourceStackCount);
 			errdefer main.globalAllocator.free(sourceStacks);
 
 			for(sourceStacks) |*sourceStack| {
