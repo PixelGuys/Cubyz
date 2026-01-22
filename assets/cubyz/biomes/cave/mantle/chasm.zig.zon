@@ -3,10 +3,20 @@
 	.caves = -0.03,
 	.structures = .{
 		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:cave/mantle/stalagmite",
-			.placeMode = .degradable,
-			.chance = 0.06,
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:pyrolite/base",
+			.chance = 0.1,
+			.size = 12,
+			.size_variation = 4,
+			.baseSlope = 0,
+			.topSlope = 8,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:pyrolite/base",
+			.chance = 0.2,
+			.size = 4,
+			.size_variation = 6,
 		},
 		.{
 			.id = "cubyz:sbb",

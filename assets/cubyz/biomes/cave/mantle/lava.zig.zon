@@ -8,19 +8,22 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:cave/mantle/stalagmite",
-			.placeMode = .degradable,
-			.chance = 0.03,
-		},
-		.{
-			.id = "cubyz:sbb",
 			.structure = "cubyz:cave/mantle/lava_pool",
 			.placeMode = .degradable,
 			.chance = 0.03,
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:mantle/base",
+			.block = "cubyz:pyrolite/base",
+			.chance = 0.2,
+			.size = 12,
+			.size_variation = 6,
+			.baseSlope = 0,
+			.topSlope = 8,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:pyrolite/base",
 			.chance = 0.2,
 			.size = 4,
 			.size_variation = 6,

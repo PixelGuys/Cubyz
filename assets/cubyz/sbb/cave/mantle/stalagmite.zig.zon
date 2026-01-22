@@ -1,8 +1,0 @@
-.{
-	.blueprints = .{
-		.{.id = "cubyz:cave/mantle/stalagmite/0"},
-		.{.id = "cubyz:cave/mantle/stalagmite/1"},
-		.{.id = "cubyz:cave/mantle/stalagmite/2"},
-		.{.id = "cubyz:cave/mantle/stalagmite/3"},
-	},
-}
