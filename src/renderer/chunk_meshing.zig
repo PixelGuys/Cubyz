@@ -802,7 +802,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn generateLightingData(self: *ChunkMesh) error{AlreadyStored, NoLongerNeeded}!void {
+	pub fn generateLightingData(self: *ChunkMesh) error{ AlreadyStored, NoLongerNeeded }!void {
 		try mesh_storage.addMeshToStorage(self);
 
 		var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);

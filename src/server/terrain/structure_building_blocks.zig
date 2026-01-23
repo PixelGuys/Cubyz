@@ -199,7 +199,7 @@ pub const Rotation = union(RotationMode) {
 			else => .{.fixed = .@"0"},
 		};
 	}
-	pub fn fromZon(zon: ZonElement) error{UnknownString, UnknownType}!Rotation {
+	pub fn fromZon(zon: ZonElement) error{ UnknownString, UnknownType }!Rotation {
 		return switch(zon) {
 			.string, .stringOwned => |str| {
 				if(std.meta.stringToEnum(FixedRotation, str)) |r| {

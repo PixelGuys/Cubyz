@@ -745,7 +745,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 
 		/// Returns the biggest element and removes it from the heap.
 		/// If empty blocks until a new object is added or the datastructure is closed.
-		pub fn extractMax(self: *@This()) error{Timeout, Closed}!T {
+		pub fn extractMax(self: *@This()) error{ Timeout, Closed }!T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 
@@ -1668,13 +1668,13 @@ const endian: std.builtin.Endian = .big;
 pub const BinaryReader = struct {
 	remaining: []const u8,
 
-	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat};
+	pub const AllErrors = error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat };
 
 	pub fn init(data: []const u8) BinaryReader {
 		return .{.remaining = data};
 	}
 
-	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
+	pub fn readVec(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidFloat }!T {
 		const typeInfo = @typeInfo(T).vector;
 		var result: T = undefined;
 		inline for(0..typeInfo.len) |i| {
@@ -1691,7 +1691,7 @@ pub const BinaryReader = struct {
 		return result;
 	}
 
-	pub fn readInt(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+	pub fn readInt(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds }!T {
 		if(@mod(@typeInfo(T).int.bits, 8) != 0) {
 			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
 			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
@@ -1719,19 +1719,19 @@ pub const BinaryReader = struct {
 		return result;
 	}
 
-	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
+	pub fn readFloat(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidFloat }!T {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
 		const result: T = @bitCast(try self.readInt(IntT));
 		if(!std.math.isFinite(result)) return error.InvalidFloat;
 		return result;
 	}
 
-	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
+	pub fn readEnum(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag }!T {
 		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
 		return std.meta.intToEnum(T, int);
 	}
 
-	pub fn readBool(self: *BinaryReader) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!bool {
+	pub fn readBool(self: *BinaryReader) error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag }!bool {
 		const int = try self.readInt(u1);
 		return int != 0;
 	}
@@ -1742,7 +1742,7 @@ pub const BinaryReader = struct {
 		return self.remaining[0..len :delimiter];
 	}
 
-	pub fn readSlice(self: *BinaryReader, length: usize) error{OutOfBounds, IntOutOfBounds}![]const u8 {
+	pub fn readSlice(self: *BinaryReader, length: usize) error{ OutOfBounds, IntOutOfBounds }![]const u8 {
 		if(self.remaining.len < length) return error.OutOfBounds;
 		defer self.remaining = self.remaining[length..];
 		return self.remaining[0..length];
