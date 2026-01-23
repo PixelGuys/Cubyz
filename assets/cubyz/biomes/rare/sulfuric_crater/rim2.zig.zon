@@ -1,0 +1,30 @@
+.{
+	.minHeight = 128,
+	.maxHeight = 128,
+	.smoothBeaches = true,
+	.radius = 440,
+	.roughness = 1,
+	.hills = 15,
+	.mountains = 150,
+	.chance = 0.01,
+	.soilCreep = 1.0,
+	.validPlayerSpawn = false,
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:chalk/yellow",
+			.chance = 0.5,
+			.width = 8,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/sulfuric_crater/rim1",
+			.chance = 1.0,
+		},
+	},
+	.maxSubBiomeCount = 1,
+}
