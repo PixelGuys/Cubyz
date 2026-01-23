@@ -783,6 +783,7 @@ pub const Command = struct { // MARK: Command
 		const Provider = union(enum) {
 			move: InventoryAndSlot,
 			create: Item,
+
 			pub fn getBaseOperation(provider: Provider, dest: InventoryAndSlot, amount: u16) BaseOperation {
 				return switch(provider) {
 					.move => |slot| .{.move = .{
@@ -1338,30 +1339,10 @@ pub const Command = struct { // MARK: Command
 			if(self.source.type == .crafting) return;
 			var sourceItems = self.source._items;
 			if(self.source.type == .workbench) sourceItems = self.source._items[0..25];
-			outer: for(sourceItems, 0..) |*sourceStack, sourceSlot| {
+			for(sourceItems, 0..) |*sourceStack, sourceSlot| {
 				if(sourceStack.item == .null) continue;
-				for(self.dest._items, 0..) |*destStack, destSlot| {
-					if(std.meta.eql(destStack.item, sourceStack.item)) {
-						const amount = @min(destStack.item.stackSize() - destStack.amount, sourceStack.amount);
-						ctx.execute(.{.move = .{
-							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
-							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
-							.amount = amount,
-						}});
-						if(sourceStack.amount == 0) {
-							continue :outer;
-						}
-					}
-				}
-				for(self.dest._items, 0..) |*destStack, destSlot| {
-					if(destStack.item == .null) {
-						ctx.execute(.{.swap = .{
-							.dest = .{.inv = self.dest, .slot = @intCast(destSlot)},
-							.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
-						}});
-						continue :outer;
-					}
-				}
+				put_items_into.do(ctx, &.{self.dest}, sourceStack.amount, .{.move = .{.inv = self.source, .slot = @intCast(sourceSlot)}});
+				if(sourceStack.amount == 0) continue;
 				if(ctx.side == .server) {
 					const direction = if(ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
 					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 20);
