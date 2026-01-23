@@ -779,35 +779,39 @@ pub const Command = struct { // MARK: Command
 		};
 	}
 
-	const PutItemsInto = struct {
-		const Source = union(enum) {
+	const put_items_into = struct {
+		const Provider = union(enum) {
 			move: InventoryAndSlot,
 			create: Item,
+			pub fn getBaseOperation(provider: Provider, dest: InventoryAndSlot, amount: u16) BaseOperation {
+				return switch(provider) {
+					.move => |slot| .{.move = .{
+						.dest = dest,
+						.amount = amount,
+						.source = slot,
+					}},
+					.create => |item| .{.create = .{
+						.dest = dest,
+						.amount = amount,
+						.item = item,
+					}},
+				};
+			}
+
+			pub fn getItem(provider: Provider) Item {
+				return switch(provider) {
+					.move => |slot| slot.ref().item,
+					.create => |item| item,
+				};
+			}
 		};
 
-		fn getBaseOperation(dest: InventoryAndSlot, amount: u16, source: Source) BaseOperation {
-			return switch(source) {
-				.move => |slot| .{.move = .{
-					.dest = dest,
-					.amount = amount,
-					.source = slot,
-				}},
-				.create => |item| .{.create = .{
-					.dest = dest,
-					.amount = amount,
-					.item = item,
-				}},
-			};
-		}
-
-		pub fn do(ctx: Context, destinations: []const Inventory, itemAmount: u16, source: Source) void {
-			const item = switch(source) {
-				.move => |slot| slot.ref().item,
-				.create => |item| item,
-			};
+		pub fn do(ctx: Context, destinations: []const Inventory, itemAmount: u16, provider: Provider) void {
+			const item = provider.getItem();
 			var remainingAmount = itemAmount;
 			var selectedEmptySlot: ?u32 = null;
 			var selectedEmptyInv: ?Inventory = null;
+
 			outer: for(destinations) |dest| {
 				var emptySlot: ?u32 = null;
 				var hasItem = false;
@@ -823,19 +827,19 @@ pub const Command = struct { // MARK: Command
 						hasItem = true;
 						const amount = @min(item.stackSize() - destStack.amount, remainingAmount);
 						if(amount == 0) continue;
-						ctx.execute(getBaseOperation(.{.inv = dest, .slot = @intCast(destSlot)}, amount, source));
+						ctx.execute(provider.getBaseOperation(.{.inv = dest, .slot = @intCast(destSlot)}, amount));
 						remainingAmount -= amount;
 						if(remainingAmount == 0) break :outer;
 					}
 				}
 				if(emptySlot != null and hasItem) {
-					ctx.execute(getBaseOperation(.{.inv = dest, .slot = emptySlot.?}, remainingAmount, source));
+					ctx.execute(provider.getBaseOperation(.{.inv = dest, .slot = emptySlot.?}, remainingAmount));
 					remainingAmount = 0;
 					break :outer;
 				}
 			}
 			if(remainingAmount > 0 and selectedEmptySlot != null) {
-				ctx.execute(getBaseOperation(.{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?}, remainingAmount, source));
+				ctx.execute(provider.getBaseOperation(.{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?}, remainingAmount));
 			}
 		}
 	};
@@ -1416,7 +1420,7 @@ pub const Command = struct { // MARK: Command
 			if(sourceStack.item == .null) return;
 			if(self.amount > sourceStack.amount) return;
 
-			PutItemsInto.do(ctx, self.destinations, self.amount, .{.move = self.source});
+			put_items_into.do(ctx, self.destinations, self.amount, .{.move = self.source});
 		}
 
 		fn serialize(self: DepositToAny, writer: *BinaryWriter) void {
