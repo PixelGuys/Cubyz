@@ -1268,7 +1268,17 @@ pub const Command = struct { // MARK: Command
 		source: Inventory,
 		dropLocation: Vec3d,
 
-		pub fn init(destinations: []const Inventory, source: Inventory, dropLocation: Vec3d) DepositOrDrop {
+		pub fn init(destinations: []const Inventory.ClientInventory, source: Inventory, dropLocation: Vec3d) DepositOrDrop {
+			const copy = main.globalAllocator.alloc(Inventory, destinations.len);
+			for(copy, destinations) |*d, s| d.* = s.super;
+			return .{
+				.destinations = copy,
+				.source = source,
+				.dropLocation = dropLocation,
+			};
+		}
+
+		pub fn initWithInventories(destinations: []const Inventory, source: Inventory, dropLocation: Vec3d) DepositOrDrop {
 			return .{
 				.destinations = main.globalAllocator.dupe(Inventory, destinations),
 				.source = source,
