@@ -34,7 +34,7 @@ var signBlock: main.blocks.Block = undefined;
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 
-	const Entry = struct{sbb: *const StructureBuildingBlock, hasParent: bool, reachable: bool};
+	const Entry = struct {sbb: *const StructureBuildingBlock, hasParent: bool, reachable: bool};
 	var localSbbList: main.ListUnmanaged(Entry) = .{};
 	defer localSbbList.deinit(main.stackAllocator);
 	for(terrain.structure_building_blocks.list()) |*entry| {
