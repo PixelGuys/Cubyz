@@ -34,38 +34,76 @@ var signBlock: main.blocks.Block = undefined;
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 
-	var localSbbList: main.ListUnmanaged(*const StructureBuildingBlock) = .{};
+	const Entry = struct{sbb: *const StructureBuildingBlock, hasParent: bool, reachable: bool};
+	var localSbbList: main.ListUnmanaged(Entry) = .{};
 	defer localSbbList.deinit(main.stackAllocator);
-	for (terrain.structure_building_blocks.list()) |*entry| {
-		localSbbList.append(main.stackAllocator, entry);
+	for(terrain.structure_building_blocks.list()) |*entry| {
+		localSbbList.append(main.stackAllocator, .{.sbb = entry, .hasParent = false, .reachable = false});
 	}
 
-	{ // Remove all SBBs that are children of other SBBs.
-		var i: usize = 0;
-		outer: while (i < localSbbList.items.len) {
-			const candidate = localSbbList.items[i];
-			for (localSbbList.items) |other| {
-				if (other == candidate) continue;
-				for (other.children) |child| {
-					if (child == candidate) {
-						_ = localSbbList.swapRemove(i);
+	{ // Mark all SBBs that are children of other SBBs.
+		outer: for(localSbbList.items) |*candidate| {
+			for(localSbbList.items) |other| {
+				if(other.sbb == candidate.sbb) continue;
+				for(other.sbb.children) |child| {
+					if(child == candidate.sbb) {
+						candidate.hasParent = true;
 						continue :outer;
 					}
 				}
 			}
-			i += 1;
+		}
+	}
+	var rootSbbList: main.ListUnmanaged(*const StructureBuildingBlock) = .initCapacity(main.stackAllocator, localSbbList.items.len);
+	defer rootSbbList.deinit(main.stackAllocator);
+	{ // Ensure that every structure was reachable (in case of recursion)
+		var unreachables: main.ListUnmanaged(*Entry) = .initCapacity(main.stackAllocator, localSbbList.items.len);
+		defer unreachables.deinit(main.stackAllocator);
+
+		for(localSbbList.items) |*candidate| {
+			if(candidate.hasParent) {
+				unreachables.appendAssumeCapacity(candidate);
+			} else {
+				candidate.reachable = true;
+				rootSbbList.appendAssumeCapacity(candidate.sbb);
+			}
+		}
+
+		while(unreachables.items.len != 0) {
+			var lastLen: usize = 0;
+			while(lastLen != unreachables.items.len) {
+				lastLen = unreachables.items.len;
+				var i: usize = 0;
+				outer: while(i < unreachables.items.len) {
+					const candidate = unreachables.items[i];
+					for(localSbbList.items) |other| {
+						if(!other.reachable) continue;
+						for(other.sbb.children) |child| {
+							if(child == candidate.sbb) {
+								candidate.reachable = true;
+								_ = unreachables.swapRemove(i);
+								continue :outer;
+							}
+						}
+					}
+					i += 1;
+				}
+			}
+			const recursiveOne = unreachables.popOrNull() orelse break;
+			recursiveOne.reachable = true;
+			rootSbbList.appendAssumeCapacity(recursiveOne.sbb);
 		}
 	}
 
-	std.sort.insertion(*const StructureBuildingBlock, localSbbList.items, {}, struct {
+	std.sort.insertion(*const StructureBuildingBlock, rootSbbList.items, {}, struct {
 		fn lessThanFn(_: void, lhs: *const StructureBuildingBlock, rhs: *const StructureBuildingBlock) bool {
 			return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .lt;
 		}
 	}.lessThanFn);
 
-	sbbList = main.worldArena.alloc(main.server.terrain.biomes.SimpleStructureModel, localSbbList.items.len);
+	sbbList = main.worldArena.alloc(main.server.terrain.biomes.SimpleStructureModel, rootSbbList.items.len);
 
-	for (localSbbList.items, 0..) |sbb, i| {
+	for (rootSbbList.items, 0..) |sbb, i| {
 		const structureData = main.worldArena.create(SbbGen);
 		structureData.* = .{
 			.structureRef = sbb,
