@@ -601,13 +601,23 @@ pub fn main() void { // MARK: main()
 }
 
 pub fn clientMain() void { // MARK: clientMain()
-	if (settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else if (settings.launchConfig.autoEnterWorld.len == 0) {
-		gui.openWindow("main");
-	} else {
-		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
+	switch (settings.accountState) {
+		.unknown => {
+			gui.openWindow("authentication/login");
+		},
+		.encrypted => {
+			gui.openWindow("authentication/unlock");
+		},
+		.stored => {
+			if (settings.playerName.len == 0) {
+				gui.openWindow("change_name");
+			} else if (settings.launchConfig.autoEnterWorld.len == 0) {
+				gui.openWindow("main");
+			} else {
+				// Speed up the dev process by entering the world directly.
+				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
+			}
+		},
 	}
 
 	const c = Window.c;

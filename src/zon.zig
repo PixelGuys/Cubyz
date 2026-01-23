@@ -255,6 +255,9 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				}
 				return result;
 			},
+			.@"enum" => {
+				return createElementFromRandomType(@tagName(value), allocator);
+			},
 			else => {
 				if (@TypeOf(value) == ZonElement) {
 					return value;
