@@ -915,7 +915,7 @@ pub const Command = struct { // MARK: Command
 				remainingAmount -= amount;
 				if (remainingAmount == 0) break;
 			}
-			if(emptySlot != null and hasItem) {
+			if (emptySlot != null and hasItem) {
 				self.executeBaseOperation(allocator, .{.create = .{
 					.dest = .{.inv = dest, .slot = emptySlot.?},
 					.amount = remainingAmount,
@@ -925,7 +925,7 @@ pub const Command = struct { // MARK: Command
 				break :outer;
 			}
 		}
-		if(remainingAmount > 0 and selectedEmptySlot != null) {
+		if (remainingAmount > 0 and selectedEmptySlot != null) {
 			self.executeBaseOperation(allocator, .{.create = .{
 				.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
 				.amount = remainingAmount,
@@ -1079,9 +1079,9 @@ pub const Command = struct { // MARK: Command
 
 		pub fn init(destinations: []const Inventory.ClientInventory, sources: []const Inventory.ClientInventory, resultStack: ItemStack, sourceStacks: []const ItemStack) CraftFrom {
 			const destinationsCopy = main.globalAllocator.alloc(Inventory, destinations.len);
-			for(destinationsCopy, destinations) |*d, s| d.* = s.super;
+			for (destinationsCopy, destinations) |*d, s| d.* = s.super;
 			const sourcesCopy = main.globalAllocator.alloc(Inventory, sources.len);
-			for(sourcesCopy, sources) |*d, s| d.* = s.super;
+			for (sourcesCopy, sources) |*d, s| d.* = s.super;
 			return .{
 				.destinations = destinationsCopy,
 				.sources = sourcesCopy,
@@ -1097,40 +1097,40 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: CraftFrom, ctx: Context) error{serverFailure}!void {
-			for(self.destinations) |dest| if(dest.type != .normal) return;
-			for(self.sources) |source| if(source.type != .normal) return;
+			for (self.destinations) |dest| if (dest.type != .normal) return;
+			for (self.sources) |source| if (source.type != .normal) return;
 
 			// Can we even craft it?
-			outer: for(self.sourceStacks) |requiredStack| {
+			outer: for (self.sourceStacks) |requiredStack| {
 				var amount: usize = 0;
 				// There might be duplicate entries:
-				for(self.sourceStacks) |otherStack| {
-					if(std.meta.eql(requiredStack.item, otherStack.item))
+				for (self.sourceStacks) |otherStack| {
+					if (std.meta.eql(requiredStack.item, otherStack.item))
 						amount += otherStack.amount;
 				}
-				for(self.sources) |source| {
-					for(source._items) |otherStack| {
-						if(std.meta.eql(requiredStack.item, otherStack.item)) {
+				for (self.sources) |source| {
+					for (source._items) |otherStack| {
+						if (std.meta.eql(requiredStack.item, otherStack.item)) {
 							amount -|= otherStack.amount;
-							if(amount == 0) break :outer;
+							if (amount == 0) break :outer;
 						}
 					}
 				}
 				// Not enough ingredients
-				if(amount != 0)
+				if (amount != 0)
 					return;
 			}
 
 			// Craft it
-			outer: for(self.sourceStacks) |requiredStack| {
+			outer: for (self.sourceStacks) |requiredStack| {
 				var fullSlot: ?u32 = null;
 				var fullInv: ?Inventory = null;
 				var remainingAmount: usize = requiredStack.amount;
-				for(self.sources) |source| {
-					for(source._items, 0..) |*otherStack, i| {
-						if(std.meta.eql(requiredStack.item, otherStack.item)) {
-							if(otherStack.amount == otherStack.item.stackSize()) {
-								if(fullSlot == null) {
+				for (self.sources) |source| {
+					for (source._items, 0..) |*otherStack, i| {
+						if (std.meta.eql(requiredStack.item, otherStack.item)) {
+							if (otherStack.amount == otherStack.item.stackSize()) {
+								if (fullSlot == null) {
 									fullSlot = @intCast(i);
 									fullInv = source;
 								}
@@ -1142,11 +1142,11 @@ pub const Command = struct { // MARK: Command
 								.amount = amount,
 							}});
 							remainingAmount -= amount;
-							if(remainingAmount == 0) continue :outer;
+							if (remainingAmount == 0) continue :outer;
 						}
 					}
 				}
-				if(remainingAmount > 0 and fullSlot != null) {
+				if (remainingAmount > 0 and fullSlot != null) {
 					ctx.execute(.{.delete = .{
 						.source = .{.inv = fullInv.?, .slot = fullSlot.?},
 						.amount = @min(remainingAmount, requiredStack.item.stackSize()),
@@ -1159,59 +1159,59 @@ pub const Command = struct { // MARK: Command
 
 		fn serialize(self: CraftFrom, writer: *BinaryWriter) void {
 			writer.writeVarInt(usize, self.destinations.len);
-			for(self.destinations) |dest| {
+			for (self.destinations) |dest| {
 				writer.writeEnum(InventoryId, dest.id);
 			}
 			writer.writeVarInt(usize, self.sources.len);
-			for(self.sources) |source| {
+			for (self.sources) |source| {
 				writer.writeEnum(InventoryId, source.id);
 			}
 			self.resultStack.toBytes(writer);
 			writer.writeVarInt(usize, self.sourceStacks.len);
-			for(self.sourceStacks) |sourceStack| {
+			for (self.sourceStacks) |sourceStack| {
 				sourceStack.toBytes(writer);
 			}
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !CraftFrom {
 			const destinationCount = try reader.readVarInt(usize);
-			if(destinationCount == 0) return error.Invalid;
-			if(destinationCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+			if (destinationCount == 0) return error.Invalid;
+			if (destinationCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
 
 			const destinations = main.globalAllocator.alloc(Inventory, destinationCount);
 			errdefer main.globalAllocator.free(destinations);
 
-			for(destinations) |*dest| {
+			for (destinations) |*dest| {
 				const invId = try reader.readEnum(InventoryId);
 				dest.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
 			}
 
 			const sourceCount = try reader.readVarInt(usize);
-			if(sourceCount == 0) return error.Invalid;
-			if(sourceCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+			if (sourceCount == 0) return error.Invalid;
+			if (sourceCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
 
 			const sources = main.globalAllocator.alloc(Inventory, sourceCount);
 			errdefer main.globalAllocator.free(sources);
 
-			for(sources) |*source| {
+			for (sources) |*source| {
 				const invId = try reader.readEnum(InventoryId);
 				source.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
 			}
 
 			const resultStack = try ItemStack.fromBytes(reader);
 			const sourceStackCount = try reader.readVarInt(usize);
-			if(sourceStackCount == 0) return error.Invalid;
+			if (sourceStackCount == 0) return error.Invalid;
 			std.log.info("sourceStackCount: {d}, sourceStackCount*@sizeOf(ItemStack): {d}, remaining: {d}\n", .{sourceStackCount, sourceStackCount*@sizeOf(ItemStack), reader.remaining.len});
 			// if(sourceStackCount*@sizeOf(ItemStack) > reader.remaining.len) return error.Invalid; // this check sadly fails
 
 			const sourceStacks = main.globalAllocator.alloc(ItemStack, sourceStackCount);
 			errdefer main.globalAllocator.free(sourceStacks);
 
-			for(sourceStacks) |*sourceStack| {
+			for (sourceStacks) |*sourceStack| {
 				sourceStack.* = try ItemStack.fromBytes(reader);
 			}
 
-			if(!validRecipe(sourceStacks, resultStack)) return error.Invalid;
+			if (!validRecipe(sourceStacks, resultStack)) return error.Invalid;
 			return .{
 				.destinations = destinations,
 				.sources = sources,

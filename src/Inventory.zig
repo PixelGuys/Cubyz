@@ -476,17 +476,17 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory, slot: u32) void {
 		std.debug.assert(source.type == .serverShared);
-		for(destinations) |inv| std.debug.assert(inv.type == .serverShared);
+		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
 		std.debug.assert(craftingInv.type == .crafting);
 
-		if(slot != craftingInv.super._items.len - 1) return;
+		if (slot != craftingInv.super._items.len - 1) return;
 		const destinationsCanHold = blk: {
-			for(destinations) |dest| {
-				if(dest.canHold(craftingInv.getStack(slot))) break :blk true;
+			for (destinations) |dest| {
+				if (dest.canHold(craftingInv.getStack(slot))) break :blk true;
 			}
 			break :blk false;
 		};
-		if(!destinationsCanHold) return;
+		if (!destinationsCanHold) return;
 
 		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.getStack(slot), craftingInv.super._items[0..slot])});
 	}
