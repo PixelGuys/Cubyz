@@ -1061,7 +1061,6 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
-	cachedInventory: ?Inventory.ClientInventory = null,
 };
 
 var toolTypeList: ListUnmanaged(ToolType) = .{};
@@ -1265,9 +1264,6 @@ pub fn clearRecipeCachedInventories() void {
 	for (recipeList.items) |recipe| {
 		main.globalAllocator.free(recipe.sourceItems);
 		main.globalAllocator.free(recipe.sourceAmounts);
-		if (recipe.cachedInventory) |inv| {
-			inv.deinit(main.globalAllocator);
-		}
 	}
 }
 
