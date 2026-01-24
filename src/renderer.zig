@@ -1073,7 +1073,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingProgress = 0;
 						currentSwingTime = 0;
 					}
-					if(currentSwingTime == 0) {
+					if (currentSwingTime == 0) {
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
 						currentSwingTime = damagePerSwing/damage*swingTime;
