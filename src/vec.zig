@@ -101,6 +101,96 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 	} + center;
 }
 
+pub const Mat3f = struct { // MARK: Mat3f
+	rows: [3]Vec3f,
+	pub fn identity() Mat3f {
+		return Mat3f{
+			.rows = [3]Vec3f{
+				Vec3f{1, 0, 0},
+				Vec3f{0, 1, 0},
+				Vec3f{0, 0, 1},
+			},
+		};
+	}
+
+	pub fn scale(vector: Vec3f) Mat3f { // zig fmt: off
+		return Mat3f{
+			.rows = [3]Vec3f{
+				Vec3f{vector[0], 0,         0,       },
+				Vec3f{0,         vector[1], 0,       },
+				Vec3f{0,         0,         vector[2]},
+			},
+		};
+	} // zig fmt: on
+
+	pub fn rotationX(rad: f32) Mat3f {
+		const s = @sin(rad);
+		const c = @cos(rad);
+		return Mat3f{
+			.rows = [3]Vec3f{
+				Vec3f{1, 0, 0},
+				Vec3f{0, c, -s},
+				Vec3f{0, s, c},
+			},
+		};
+	}
+
+	pub fn rotationY(rad: f32) Mat3f {
+		const s = @sin(rad);
+		const c = @cos(rad);
+		return Mat3f{
+			.rows = [3]Vec3f{
+				Vec3f{c, 0, s},
+				Vec3f{0, 1, 0},
+				Vec3f{-s, 0, c},
+			},
+		};
+	}
+
+	pub fn rotationZ(rad: f32) Mat3f {
+		const s = @sin(rad);
+		const c = @cos(rad);
+		return Mat3f{
+			.rows = [3]Vec3f{
+				Vec3f{c, -s, 0},
+				Vec3f{s, c, 0},
+				Vec3f{0, 0, 1},
+			},
+		};
+	}
+
+	pub fn transpose(self: Mat3f) Mat3f {
+		return Mat3f{
+			.rows = [3]Vec3f{
+				Vec3f{self.rows[0][0], self.rows[1][0], self.rows[2][0]},
+				Vec3f{self.rows[0][1], self.rows[1][1], self.rows[2][1]},
+				Vec3f{self.rows[0][2], self.rows[1][2], self.rows[2][2]},
+			},
+		};
+	}
+
+	pub fn mul(self: Mat3f, other: Mat3f) Mat3f {
+		const transposeOther = other.transpose();
+		var result: Mat3f = undefined;
+		for(&result.rows, self.rows) |*resRow, selfRow| {
+			resRow.* = .{
+				dot(selfRow, transposeOther.rows[0]),
+				dot(selfRow, transposeOther.rows[1]),
+				dot(selfRow, transposeOther.rows[2]),
+			};
+		}
+		return result;
+	}
+
+	pub fn mulVec(self: Mat3f, vec: Vec3f) Vec3f {
+		return Vec3f{
+			dot(self.rows[0], vec),
+			dot(self.rows[1], vec),
+			dot(self.rows[2], vec),
+		};
+	}
+};
+
 pub const Mat4f = struct { // MARK: Mat4f
 	rows: [4]Vec4f,
 	pub fn identity() Mat4f {

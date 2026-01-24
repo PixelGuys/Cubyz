@@ -8,7 +8,7 @@ const ModelIndex = main.models.ModelIndex;
 const rotation = main.rotation;
 const Degrees = rotation.Degrees;
 const vec = main.vec;
-const Mat4f = vec.Mat4f;
+const Mat3f = vec.Mat3f;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
@@ -33,10 +33,10 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 
 	const baseModel = main.models.getModelIndex(modelId).model();
 	// Rotate the model:
-	const modelIndex: ModelIndex = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0)});
-	_ = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0)});
-	_ = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi)});
-	_ = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.identity()});
+	const modelIndex: ModelIndex = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(std.math.pi/2.0)});
+	_ = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(-std.math.pi/2.0)});
+	_ = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.rotationZ(std.math.pi)});
+	_ = baseModel.transformModel(rotation.rotationMatrixTransform3D, .{Mat3f.identity()});
 	rotatedModels.put(modelId, modelIndex) catch unreachable;
 	return modelIndex;
 }
