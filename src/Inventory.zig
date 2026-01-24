@@ -504,10 +504,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn getAmount(self: ClientInventory, slot: usize) u16 {
 		return self.super.getAmount(slot);
 	}
-
-	pub fn canHold(self: ClientInventory, itemStack: ItemStack) bool {
-		return self.super.canHold(itemStack);
-	}
 };
 
 const Inventory = @This(); // MARK: Inventory
@@ -607,18 +603,22 @@ pub fn getAmount(self: Inventory, slot: usize) u16 {
 	return self._items[slot].amount;
 }
 
-pub fn canHold(self: Inventory, sourceStack: ItemStack) bool {
-	if (sourceStack.amount == 0) return true;
+pub fn getPossibleHoldingAmount(self: Inventory, sourceStack: ItemStack) u16 {
+	if (sourceStack.amount == 0) return 0;
 
 	var remainingAmount = sourceStack.amount;
 	for (self._items) |*destStack| {
 		if (std.meta.eql(destStack.item, sourceStack.item) or destStack.item == .null) {
 			const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 			remainingAmount -= amount;
-			if (remainingAmount == 0) return true;
+			if (remainingAmount == 0) return sourceStack.amount;
 		}
 	}
-	return false;
+	return sourceStack.amount - remainingAmount;
+}
+
+pub fn canHold(self: Inventory, sourceStack: ItemStack) bool {
+	return self.getPossibleHoldingAmount(sourceStack) == sourceStack.amount;
 }
 
 pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {

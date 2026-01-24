@@ -781,6 +781,15 @@ pub const Command = struct { // MARK: Command
 		};
 	}
 
+	fn destinationsCanHold(destinations: []const Inventory, itemStack: ItemStack) bool {
+		var remainingAmount = itemStack.amount;
+		for (destinations) |dest| {
+			remainingAmount -|= dest.getPossibleHoldingAmount(itemStack);
+			if (remainingAmount == 0) return true;
+		}
+		return false;
+	}
+
 	const put_items_into = struct {
 		const Provider = union(enum) {
 			move: InventoryAndSlot,
@@ -1365,13 +1374,7 @@ pub const Command = struct { // MARK: Command
 			for (self.destinations) |dest| if (dest.type != .normal) return;
 			for (self.sources) |source| if (source.type != .normal) return;
 
-			const destinationsCanHold = blk: {
-				for (self.destinations) |dest| {
-					if (dest.canHold(.{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount})) break :blk true;
-				}
-				break :blk false;
-			};
-			if (!destinationsCanHold) return;
+			if (!destinationsCanHold(self.destinations, .{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount})) return;
 
 			// Can we even craft it?
 			outer: for (self.recipe.sourceItems) |requiredItem| {
