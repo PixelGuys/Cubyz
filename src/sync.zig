@@ -843,6 +843,7 @@ pub const Command = struct { // MARK: Command
 			}
 			if (remainingAmount > 0 and selectedEmptySlot != null) {
 				ctx.execute(provider.getBaseOperation(.{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?}, remainingAmount));
+				remainingAmount = 0;
 			}
 			return remainingAmount;
 		}
