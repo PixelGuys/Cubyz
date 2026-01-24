@@ -781,6 +781,22 @@ pub const Command = struct { // MARK: Command
 		};
 	}
 
+	fn validRecipe(sourceStacks: []ItemStack, resultStack: ItemStack) bool {
+		return blk: {
+			outer: for (main.items.recipes()) |*recipe| {
+				if (recipe.resultItem != resultStack.item.baseItem) continue;
+				if (recipe.resultAmount != resultStack.amount) continue;
+				if (recipe.sourceItems.len != sourceStacks.len) continue;
+				for (recipe.sourceItems, recipe.sourceAmounts, sourceStacks) |recipeItem, recipeAmount, sourceStack| {
+					if (recipeItem != sourceStack.item.baseItem) continue :outer;
+					if (recipeAmount != sourceStack.amount) continue :outer;
+				}
+				break :blk true;
+			}
+			break :blk false;
+		};
+	}
+
 	const put_items_into = struct {
 		const Provider = union(enum) {
 			move: InventoryAndSlot,
@@ -847,93 +863,6 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: Inventory, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
-		std.debug.assert(source.inv.type == .crafting);
-		std.debug.assert(dest.type == .normal);
-		if (source.slot != source.inv._items.len - 1) return;
-		if (!dest.canHold(source.ref().*)) return;
-		if (source.ref().item == .null) return; // Can happen if the we didn't receive the inventory information from the server yet.
-
-		const playerInventory: Inventory = switch (side) {
-			.client => main.game.Player.inventory.super,
-			.server => blk: {
-				if (user) |_user| {
-					var it = _user.inventoryClientToServerIdMap.valueIterator();
-					while (it.next()) |serverId| {
-						const serverInventory = Inventory.ServerSide.getInventoryFromId(serverId.*);
-						if (serverInventory.source == .playerInventory)
-							break :blk serverInventory;
-					}
-				}
-				return;
-			},
-		};
-
-		// Can we even craft it?
-		for (source.inv._items[0..source.slot]) |requiredStack| {
-			var amount: usize = 0;
-			// There might be duplicate entries:
-			for (source.inv._items[0..source.slot]) |otherStack| {
-				if (std.meta.eql(requiredStack.item, otherStack.item))
-					amount += otherStack.amount;
-			}
-			for (playerInventory._items) |otherStack| {
-				if (std.meta.eql(requiredStack.item, otherStack.item))
-					amount -|= otherStack.amount;
-			}
-			// Not enough ingredients
-			if (amount != 0)
-				return;
-		}
-
-		// Craft it
-		for (source.inv._items[0..source.slot]) |requiredStack| {
-			var remainingAmount: usize = requiredStack.amount;
-			for (playerInventory._items, 0..) |*otherStack, i| {
-				if (std.meta.eql(requiredStack.item, otherStack.item)) {
-					const amount = @min(remainingAmount, otherStack.amount);
-					self.executeBaseOperation(allocator, .{.delete = .{
-						.source = .{.inv = playerInventory, .slot = @intCast(i)},
-						.amount = amount,
-					}}, side);
-					remainingAmount -= amount;
-					if (remainingAmount == 0) break;
-				}
-			}
-			std.debug.assert(remainingAmount == 0);
-		}
-
-		var remainingAmount: u16 = source.ref().amount;
-		for (dest._items, 0..) |*destStack, destSlot| {
-			if (std.meta.eql(destStack.item, source.ref().item) or destStack.item == .null) {
-				const amount = @min(source.ref().item.stackSize() - destStack.amount, remainingAmount);
-				self.executeBaseOperation(allocator, .{.create = .{
-					.dest = .{.inv = dest, .slot = @intCast(destSlot)},
-					.amount = amount,
-					.item = source.ref().item,
-				}}, side);
-				remainingAmount -= amount;
-				if (remainingAmount == 0) break;
-			}
-			if (emptySlot != null and hasItem) {
-				self.executeBaseOperation(allocator, .{.create = .{
-					.dest = .{.inv = dest, .slot = emptySlot.?},
-					.amount = remainingAmount,
-					.item = source.ref().item,
-				}}, side);
-				remainingAmount = 0;
-				break :outer;
-			}
-		}
-		if (remainingAmount > 0 and selectedEmptySlot != null) {
-			self.executeBaseOperation(allocator, .{.create = .{
-				.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
-				.amount = remainingAmount,
-				.item = source.ref().item,
-			}}, side);
-		}
-	}
-
 	const Context = struct {
 		allocator: NeverFailingAllocator,
 		cmd: *Command,
@@ -975,14 +904,6 @@ pub const Command = struct { // MARK: Command
 				.playerInventory, .hand => |val| {
 					writer.writeInt(u32, val);
 				},
-				.recipe => |val| {
-					writer.writeInt(u16, val.resultAmount);
-					writer.writeWithDelimiter(val.resultItem.id(), 0);
-					for (0..val.sourceItems.len) |i| {
-						writer.writeInt(u16, val.sourceAmounts[i]);
-						writer.writeWithDelimiter(val.sourceItems[i].id(), 0);
-					}
-				},
 				.blockInventory => |val| {
 					writer.writeVec(Vec3i, val);
 				},
@@ -990,7 +911,7 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => unreachable,
 			}
 			switch (self.inv.type) {
-				.normal, .crafting => {},
+				.normal => {},
 				.workbench => {
 					writer.writeSlice(self.inv.type.workbench.id());
 				},
@@ -1006,34 +927,12 @@ pub const Command = struct { // MARK: Command
 			const source: Inventory.Source = switch (sourceType) {
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
-				.recipe => .{
-					.recipe = blk: {
-						var itemList = main.List(struct { amount: u16, item: main.items.BaseItemIndex }).initCapacity(main.stackAllocator, len);
-						defer itemList.deinit();
-						while (reader.remaining.len >= 2) {
-							const resultAmount = try reader.readInt(u16);
-							const itemId = try reader.readUntilDelimiter(0);
-							itemList.append(.{.amount = resultAmount, .item = main.items.BaseItemIndex.fromId(itemId) orelse return error.Invalid});
-						}
-						if (itemList.items.len != len) return error.Invalid;
-						// Find the recipe in our list:
-						outer: for (main.items.recipes()) |*recipe| {
-							if (recipe.resultAmount == itemList.items[0].amount and recipe.resultItem == itemList.items[0].item and recipe.sourceItems.len == itemList.items.len - 1) {
-								for (itemList.items[1..], 0..) |item, i| {
-									if (item.amount != recipe.sourceAmounts[i] or item.item != recipe.sourceItems[i]) continue :outer;
-								}
-								break :blk recipe;
-							}
-						}
-						return error.Invalid;
-					},
-				},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
 			const typ: Inventory.Type = switch (typeEnum) {
-				inline .normal, .crafting => |tag| tag,
+				inline .normal => |tag| tag,
 				.workbench => .{.workbench = main.items.ToolTypeIndex.fromId(reader.remaining) orelse return error.Invalid},
 			};
 			try Inventory.ServerSide.createInventory(user.?, id, len, typ, source);
@@ -1227,10 +1126,6 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.source.inv.type == .normal);
-			if (self.dest.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.source.inv, self.dest, ctx.side, ctx.user);
-				return;
-			}
 			if (self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled) return;
 			if (self.dest.inv.type == .workbench and self.dest.slot == 25) {
 				if (self.source.ref().item == .null and self.dest.ref().item != .null) {
@@ -1286,7 +1181,6 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
 			if (self.source.inv.type != .normal and self.dest.inv.type != .normal) return error.serverFailure;
-			if (self.dest.inv.type == .crafting) return;
 			if (self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
 			if (self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item;
@@ -1333,10 +1227,6 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
-			if (self.source.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.dest.inv, self.source, ctx.side, ctx.user);
-				return;
-			}
 			if (self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
 			if (self.source.inv.type == .workbench and self.source.slot == 25) {
 				if (self.dest.ref().item == .null and self.source.ref().item != .null) {
@@ -1391,26 +1281,6 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: Drop, ctx: Context) error{serverFailure}!void {
 			if (self.source.ref().item == .null) return;
-			if (self.source.inv.type == .crafting) {
-				if (self.source.slot != self.source.inv._items.len - 1) return;
-				var _items: [1]ItemStack = .{.{.item = .null, .amount = 0}};
-				const temp: Inventory = .{
-					.type = .normal,
-					._items = &_items,
-					.id = undefined,
-					.source = undefined,
-					.callbacks = .{},
-				};
-				ctx.cmd.tryCraftingTo(ctx.allocator, &.{temp}, self.source, ctx.side, ctx.user);
-				std.debug.assert(ctx.cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
-				if (_items[0].item != .null) {
-					if (ctx.side == .server) {
-						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -ctx.user.?.player.rot[0]), -ctx.user.?.player.rot[2]);
-						main.server.world.?.dropWithCooldown(_items[0], ctx.user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
-					}
-				}
-				return;
-			}
 			if (self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
 			if (self.source.inv.type == .workbench and self.source.slot == 25) {
 				ctx.cmd.removeToolCraftingIngredients(ctx.allocator, self.source.inv, ctx.side);
@@ -1503,7 +1373,6 @@ pub const Command = struct { // MARK: Command
 
 		pub fn run(self: DepositOrDrop, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.dest.type == .normal);
-			if (self.source.type == .crafting) return;
 			var sourceItems = self.source._items;
 			if (self.source.type == .workbench) sourceItems = self.source._items[0..25];
 			for (sourceItems, 0..) |*sourceStack, sourceSlot| {
@@ -1560,10 +1429,6 @@ pub const Command = struct { // MARK: Command
 			for (self.destinations) |dest| {
 				if (dest.type != .normal) return;
 			}
-			if (self.source.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations[0], self.source, ctx.side, ctx.user);
-				return;
-			}
 			const sourceStack = self.source.ref();
 			if (sourceStack.item == .null) return;
 			if (self.amount > sourceStack.amount) return;
@@ -1605,7 +1470,6 @@ pub const Command = struct { // MARK: Command
 		inv: Inventory,
 
 		pub fn run(self: Clear, ctx: Context) error{serverFailure}!void {
-			if (self.inv.type == .crafting) return;
 			var items = self.inv._items;
 			if (self.inv.type == .workbench) items = self.inv._items[0..25];
 			for (items, 0..) |stack, slot| {

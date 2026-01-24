@@ -651,7 +651,7 @@ pub const inventory = struct { // MARK: inventory
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
-		if (itemSlot.inventory.super.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
+		if (itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
 			if (recipeItem == .null and item != .null) recipeItem = item.clone();
 			if (!std.meta.eql(item, recipeItem)) return;
@@ -665,7 +665,7 @@ pub const inventory = struct { // MARK: inventory
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
 				if (mainGuiButton.modsOnPress.shift) {
-					itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+					main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory, itemSlot.itemSlot);
 				} else {
 					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory, itemSlot.itemSlot);
 				}
@@ -730,7 +730,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
-				if (hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
+				if (hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
 			} else if (!hoveredAWindow) {
 				carried.dropStack(0);
@@ -739,7 +739,7 @@ pub const inventory = struct { // MARK: inventory
 			if (rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
-				if (hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
+				if (hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
 				if (hovered.inventory.type == .creative) {
 					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
 				} else {

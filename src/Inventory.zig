@@ -231,7 +231,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 	pub fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
 		sync.threadContext.assertCorrectContext(.server);
 		switch (source) {
-			.recipe, .blockInventory, .playerInventory, .hand => {
+			.blockInventory, .playerInventory, .hand => {
 				switch (source) {
 					.playerInventory, .hand => |id| {
 						if (id != user.id) {
@@ -249,7 +249,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 						return;
 					}
 				}
-				if (source != .recipe) return error.Invalid;
+				return error.Invalid;
 			},
 			.other => {},
 			.alreadyFreed => unreachable,
@@ -265,14 +265,6 @@ pub const ServerSide = struct { // MARK: ServerSide
 		switch (source) {
 			.blockInventory => unreachable, // Should be loaded by the block entity
 			.playerInventory, .hand => unreachable, // Should be loaded on player creation
-			.recipe => |recipe| {
-				for (0..recipe.sourceAmounts.len) |i| {
-					inventory.inv._items[i].amount = recipe.sourceAmounts[i];
-					inventory.inv._items[i].item = .{.baseItem = recipe.sourceItems[i]};
-				}
-				inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
-				inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
-			},
 			.other => {},
 			.alreadyFreed => unreachable,
 		}
