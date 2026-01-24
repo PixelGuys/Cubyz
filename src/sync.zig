@@ -782,17 +782,17 @@ pub const Command = struct { // MARK: Command
 	}
 
 	fn validRecipe(sourceStacks: []ItemStack, resultStack: ItemStack) bool {
-			outer: for (main.items.recipes()) |*recipe| {
-				if (recipe.resultItem != resultStack.item.baseItem) continue;
-				if (recipe.resultAmount != resultStack.amount) continue;
-				if (recipe.sourceItems.len != sourceStacks.len) continue;
-				for (recipe.sourceItems, recipe.sourceAmounts, sourceStacks) |recipeItem, recipeAmount, sourceStack| {
-					if (recipeItem != sourceStack.item.baseItem) continue :outer;
-					if (recipeAmount != sourceStack.amount) continue :outer;
-				}
-				return true;
+		outer: for (main.items.recipes()) |*recipe| {
+			if (recipe.resultItem != resultStack.item.baseItem) continue;
+			if (recipe.resultAmount != resultStack.amount) continue;
+			if (recipe.sourceItems.len != sourceStacks.len) continue;
+			for (recipe.sourceItems, recipe.sourceAmounts, sourceStacks) |recipeItem, recipeAmount, sourceStack| {
+				if (recipeItem != sourceStack.item.baseItem) continue :outer;
+				if (recipeAmount != sourceStack.amount) continue :outer;
 			}
-		        return false,
+			return true;
+		}
+		return false;
 	}
 
 	const put_items_into = struct {
