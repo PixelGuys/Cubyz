@@ -8,8 +8,13 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:cross",
-	.texture = "cubyz:grass_vegetation",
+	.model = .{
+		.model = "cubyz:cross",
+		.states = 2,
+	},
+	.rotation = "cubyz:texture_pile",
+	.texture0 = "cubyz:grass_vegetation/temperate/0",
+	.texture1 = "cubyz:grass_vegetation/temperate/1",
 	.item = .{
 		.texture = "grass.png",
 	},
