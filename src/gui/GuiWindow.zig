@@ -155,12 +155,12 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) main.call
 		windowMoving = scaledMousePos[0] <= zoomInPos;
 		return .handled;
 	} else {
-		if(self.rootComponent) |*component| {
-			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
-				if(component.mainButtonPressed(scaledMousePos) == .handled) return .handled;
+		if (self.rootComponent) |*component| {
+			if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
+				if (component.mainButtonPressed(scaledMousePos) == .handled) return .handled;
 			}
 		}
-		if(self.hasBackground) return .handled;
+		if (self.hasBackground) return .handled;
 		return .ignored;
 	}
 }
@@ -386,7 +386,7 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) main.callbacks.Resu
 			if (component.updateHovered(scaledMousePos) == .handled) return .handled;
 		}
 	}
-	if(self.hasBackground) return .handled;
+	if (self.hasBackground) return .handled;
 	return .ignored;
 }
 pub fn getMinWindowWidth(self: *GuiWindow) f32 {

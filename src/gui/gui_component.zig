@@ -84,9 +84,9 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn updateHovered(self: GuiComponent, mousePosition: Vec2f) main.callbacks.Result {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
-				if(@hasDecl(@TypeOf(impl.*), "updateHovered")) {
+				if (@hasDecl(@TypeOf(impl.*), "updateHovered")) {
 					return impl.updateHovered(mousePosition);
 				}
 			},
@@ -105,9 +105,9 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn mainButtonPressed(self: GuiComponent, mousePosition: Vec2f) main.callbacks.Result {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
-				if(@hasDecl(@TypeOf(impl.*), "mainButtonPressed")) {
+				if (@hasDecl(@TypeOf(impl.*), "mainButtonPressed")) {
 					return impl.mainButtonPressed(mousePosition);
 				}
 			},

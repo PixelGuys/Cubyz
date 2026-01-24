@@ -465,11 +465,11 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 
 	var i: usize = openWindows.items.len;
-	while(i > 0) {
+	while (i > 0) {
 		i -= 1;
 		const window = openWindows.items[i];
-		if(@reduce(.And, mousePosition >= window.pos) and @reduce(.And, mousePosition < window.pos + window.size)) {
-			if(window.mainButtonPressed(mousePosition) == .handled) {
+		if (@reduce(.And, mousePosition >= window.pos) and @reduce(.And, mousePosition < window.pos + window.size)) {
+			if (window.mainButtonPressed(mousePosition) == .handled) {
 				_ = openWindows.orderedRemove(i);
 				openWindows.appendAssumeCapacity(window);
 				selectedWindow = window;
@@ -477,7 +477,7 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 			}
 		}
 	}
-	if(main.game.world != null and inventory.carried.getItem(0) == .null) {
+	if (main.game.world != null and inventory.carried.getItem(0) == .null) {
 		toggleGameMenu();
 	}
 }
@@ -538,8 +538,8 @@ pub fn updateAndRenderGui() void {
 		while (i != 0) {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
-			if(GuiComponent.contains(window.pos, window.size, mousePos)) {
-				if(window.updateHovered(mousePos) == .handled) {
+			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
+				if (window.updateHovered(mousePos) == .handled) {
 					hoveredAWindow = true;
 					break;
 				}

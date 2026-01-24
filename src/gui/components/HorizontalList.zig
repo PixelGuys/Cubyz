@@ -81,8 +81,8 @@ pub fn updateHovered(self: *HorizontalList, mousePosition: Vec2f) main.callbacks
 	while (i != 0) {
 		i -= 1;
 		const child = &self.children.items[i];
-		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
-			if(child.updateHovered(mousePosition - self.pos) == .handled) return .handled;
+		if (GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
+			if (child.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
 	return .ignored;
@@ -98,9 +98,9 @@ pub fn render(self: *HorizontalList, mousePosition: Vec2f) void {
 
 pub fn mainButtonPressed(self: *HorizontalList, mousePosition: Vec2f) main.callbacks.Result {
 	var iterator = std.mem.reverseIterator(self.children.items);
-	while(iterator.next()) |child| {
-		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
-			if(child.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
+	while (iterator.next()) |child| {
+		if (GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
+			if (child.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
 	return .ignored;

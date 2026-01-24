@@ -104,16 +104,16 @@ pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) main.callbacks.R
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
 		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
 		main.Window.scrollOffset = 0;
-		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			if(self.scrollBar.updateHovered(mousePosition - self.pos) == .handled) return .handled;
+		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			if (self.scrollBar.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
 	var i: usize = self.children.items.len;
 	while (i != 0) {
 		i -= 1;
 		const child = &self.children.items[i];
-		if(GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
-			if(child.updateHovered(mousePosition - shiftedPos) == .handled) return .handled;
+		if (GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
+			if (child.updateHovered(mousePosition - shiftedPos) == .handled) return .handled;
 		}
 	}
 	return .ignored;
@@ -148,14 +148,14 @@ pub fn mainButtonPressed(self: *VerticalList, mousePosition: Vec2f) main.callbac
 	if (self.scrollBarEnabled) {
 		const diff = self.childrenHeight - self.maxHeight;
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
-		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			if(self.scrollBar.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
+		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			if (self.scrollBar.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
 	var iterator = std.mem.reverseIterator(self.children.items);
-	while(iterator.next()) |child| {
-		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
-			if(child.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
+	while (iterator.next()) |child| {
+		if (GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
+			if (child.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
 		}
 	}
 	return .ignored;

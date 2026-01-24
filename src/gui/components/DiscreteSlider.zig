@@ -117,15 +117,15 @@ fn updateValueFromButtonPos(self: *DiscreteSlider) void {
 }
 
 pub fn updateHovered(self: *DiscreteSlider, mousePosition: Vec2f) main.callbacks.Result {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		if(self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 	}
 	return .ignored;
 }
 
 pub fn mainButtonPressed(self: *DiscreteSlider, mousePosition: Vec2f) main.callbacks.Result {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		if(self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
 			self.mouseAnchor = mousePosition[0] - self.button.pos[0];
 			return .handled;
 		}

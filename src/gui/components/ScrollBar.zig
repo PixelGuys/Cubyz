@@ -76,15 +76,15 @@ pub fn scroll(self: *ScrollBar, offset: f32) void {
 }
 
 pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Result {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		if(self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 	}
 	return .ignored;
 }
 
 pub fn mainButtonPressed(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Result {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		if(self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
 			self.mouseAnchor = mousePosition[1] - self.button.pos[1];
 			return .handled;
 		}
