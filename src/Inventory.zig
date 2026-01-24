@@ -265,7 +265,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 		switch (source) {
 			.blockInventory => unreachable, // Should be loaded by the block entity
 			.playerInventory, .hand => unreachable, // Should be loaded on player creation
-			.recipe => unreachable, //Should be loaded only on client side
+			.recipe => unreachable, // Should be loaded only on client side
 			.other => {},
 			.alreadyFreed => unreachable,
 		}
