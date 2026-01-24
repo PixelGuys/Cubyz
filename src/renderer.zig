@@ -1077,19 +1077,15 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
 						currentSwingTime = damagePerSwing/damage*swingTime;
-						std.log.info("hit {} {} {} {} {} {}", .{currentSwingTime, currentSwingProgress, damagePerSwing, swings, damage, swingTime});
 					}
-					std.log.info("no hit {} {}", .{currentSwingTime, currentSwingProgress});
 					currentSwingProgress += @floatCast(deltaTime);
 					while (currentSwingProgress > currentSwingTime) {
 						currentSwingProgress -= currentSwingTime;
 						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
-						std.log.info("hit {}", .{damage*currentSwingTime/swingTime/block.blockHealth()});
 						if (currentBlockProgress > 0.9999) break;
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
 						currentSwingTime = damagePerSwing/damage*swingTime;
-						std.log.info("hit {} {} {} {} {} {}", .{currentSwingTime, currentSwingProgress, damagePerSwing, swings, damage, swingTime});
 					}
 					if (currentBlockProgress < 0.9999) {
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
