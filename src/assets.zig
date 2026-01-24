@@ -88,9 +88,9 @@ pub const Assets = struct {
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
 		const addons = Addon.discoverAll(main.stackAllocator, assetDir, assetPath);
 		defer addons.deinit(main.stackAllocator);
-		defer for(addons.items) |*addon| addon.deinit(main.stackAllocator);
+		defer for (addons.items) |*addon| addon.deinit(main.stackAllocator);
 
-		for(addons.items) |addon| {
+		for (addons.items) |addon| {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
@@ -103,7 +103,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 		}
 	}
-	fn log(self: *Assets, typ: enum {common, world}) void {
+	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
 			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets",
 			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
@@ -124,11 +124,11 @@ pub const Assets = struct {
 			defer dir.close();
 
 			var iterator = dir.iterate();
-			while(iterator.next() catch |err| blk: {
+			while (iterator.next() catch |err| blk: {
 				std.log.err("Got error while iterating over asset path {s}: {s}", .{path, @errorName(err)});
 				break :blk null;
 			}) |addon| {
-				if(addon.kind != .directory) continue;
+				if (addon.kind != .directory) continue;
 
 				const directory = dir.openDir(addon.name) catch |err| {
 					std.log.err("Got error while reading addon {s} from {s}: {s}", .{addon.name, path, @errorName(err)});
@@ -161,7 +161,7 @@ pub const Assets = struct {
 			fn get(self: *Defaults, dir: main.files.Dir, dirPath: []const u8) ZonElement {
 				const result = self.defaults.getOrPut(self.localAllocator.allocator, dirPath) catch unreachable;
 
-				if(!result.found_existing) {
+				if (!result.found_existing) {
 					result.key_ptr.* = self.localAllocator.dupe(u8, dirPath);
 					const default: ZonElement = self.read(dir) catch |err| blk: {
 						std.log.err("Failed to read default file: {s}", .{@errorName(err)});
@@ -175,16 +175,16 @@ pub const Assets = struct {
 			}
 
 			fn read(self: *Defaults, dir: main.files.Dir) !ZonElement {
-				if(dir.readToZon(self.localAllocator, "_defaults.zig.zon")) |zon| {
+				if (dir.readToZon(self.localAllocator, "_defaults.zig.zon")) |zon| {
 					return zon;
 				} else |err| {
-					if(err != error.FileNotFound) return err;
+					if (err != error.FileNotFound) return err;
 				}
 
-				if(dir.readToZon(self.localAllocator, "_defaults.zon")) |zon| {
+				if (dir.readToZon(self.localAllocator, "_defaults.zon")) |zon| {
 					return zon;
 				} else |err| {
-					if(err != error.FileNotFound) return err;
+					if (err != error.FileNotFound) return err;
 				}
 
 				return .null;
@@ -193,7 +193,7 @@ pub const Assets = struct {
 
 		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: []const u8, hasDefaults: bool, output: *ZonHashMap, migrations: ?*AddonNameToZonMap) void {
 			var assetsDirectory = addon.dir.openIterableDir(assetType) catch |err| {
-				if(err != error.FileNotFound) {
+				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{assetType, @errorName(err)});
 				}
 				return;
@@ -207,15 +207,15 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while(walker.next() catch |err| blk: {
+			while (walker.next() catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{assetType, @errorName(err)});
 				break :blk null;
 			}) |entry| {
-				if(entry.kind != .file) continue;
-				if(std.ascii.startsWithIgnoreCase(entry.basename, "_defaults")) continue;
-				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
-				if(std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
-				if(std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
+				if (entry.kind != .file) continue;
+				if (std.ascii.startsWithIgnoreCase(entry.basename, "_defaults")) continue;
+				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
+				if (std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
+				if (std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
 
 				const id = createAssetStringID(allocator, addon.name, entry.path);
 
@@ -223,14 +223,14 @@ pub const Assets = struct {
 					std.log.err("Could not open {s}/{s}: {s}", .{assetType, entry.path, @errorName(err)});
 					continue;
 				};
-				if(hasDefaults) {
+				if (hasDefaults) {
 					zon.join(.preferLeft, defaultsStorage.get(main.files.Dir.init(entry.dir), entry.path[0 .. entry.path.len - entry.basename.len]));
 				}
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}
-			if(migrations != null) blk: {
+			if (migrations != null) blk: {
 				const zon = assetsDirectory.readToZon(allocator, "_migrations.zig.zon") catch |err| {
-					if(err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{assetType, addon.name});
+					if (err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{assetType, addon.name});
 					break :blk;
 				};
 				migrations.?.put(allocator.allocator, allocator.dupe(u8, addon.name), zon) catch unreachable;
@@ -239,7 +239,7 @@ pub const Assets = struct {
 
 		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
-				if(err != error.FileNotFound) {
+				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
 				}
 				return;
@@ -249,14 +249,14 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while(walker.next() catch |err| blk: {
+			while (walker.next() catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 				break :blk null;
 			}) |entry| {
-				if(entry.kind != .file) continue;
-				if(std.ascii.startsWithIgnoreCase(entry.basename, "_defaults")) continue;
-				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
-				if(std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
+				if (entry.kind != .file) continue;
+				if (std.ascii.startsWithIgnoreCase(entry.basename, "_defaults")) continue;
+				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
+				if (std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
 				const id = createAssetStringID(allocator, addon.name, entry.path);
 
@@ -271,7 +271,7 @@ pub const Assets = struct {
 		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
 			const subPath = "models";
 			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
-				if(err != error.FileNotFound) {
+				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
 				}
 				return;
@@ -280,12 +280,12 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while(walker.next() catch |err| blk: {
+			while (walker.next() catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 				break :blk null;
 			}) |entry| {
-				if(entry.kind != .file) continue;
-				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
+				if (entry.kind != .file) continue;
+				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
 
 				const id = createAssetStringID(allocator, addon.name, entry.path);
 
@@ -304,7 +304,7 @@ fn createAssetStringID(
 	addonName: []const u8,
 	relativeFilePath: []const u8,
 ) []u8 {
-	const baseNameEndIndex = if(std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
+	const baseNameEndIndex = if (std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
 	const pathNoExtension: []const u8 = relativeFilePath[0..baseNameEndIndex];
 
 	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + pathNoExtension.len);
@@ -313,8 +313,8 @@ fn createAssetStringID(
 	assetId[addonName.len] = ':';
 
 	// Convert from windows to unix style separators.
-	for(0..pathNoExtension.len) |i| {
-		if(pathNoExtension[i] == '\\') {
+	for (0..pathNoExtension.len) |i| {
+		if (pathNoExtension[i] == '\\') {
 			assetId[addonName.len + 1 + i] = '/';
 		} else {
 			assetId[addonName.len + 1 + i] = pathNoExtension[i];
@@ -339,7 +339,7 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	defer main.stackAllocator.free(texturePath);
 	var replacementTexturePath: []const u8 = &.{};
 	defer main.stackAllocator.free(replacementTexturePath);
-	if(zon.get(?[]const u8, "texture", null)) |texture| {
+	if (zon.get(?[]const u8, "texture", null)) |texture| {
 		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
@@ -351,7 +351,7 @@ fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
-	if(zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
+	if (zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 
 	_ = blocks_zig.register(assetFolder, id, zon);
 	blocks_zig.meshes.register(assetFolder, id, zon);
@@ -366,7 +366,7 @@ fn assignBlockItem(stringId: []const u8) !void {
 }
 
 fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
-	if(zon == .null) std.log.err("Missing biome: {s}. Replacing it with default biome.", .{stringId});
+	if (zon == .null) std.log.err("Missing biome: {s}. Replacing it with default biome.", .{stringId});
 	biomes_zig.register(stringId, numericId, zon);
 }
 
@@ -378,17 +378,17 @@ pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
 
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
-		const self = switch(zon) {
+		const self = switch (zon) {
 			.object => try loadFromZonLegacy(allocator, zon),
 			.array, .null => try loadFromZon(allocator, zon),
 			else => return error.InvalidPaletteFormat,
 		};
 
-		if(firstElement) |elem| {
-			if(self.palette.items.len == 0) {
+		if (firstElement) |elem| {
+			if (self.palette.items.len == 0) {
 				self.palette.append(allocator.dupe(u8, elem));
 			}
-			if(!std.mem.eql(u8, self.palette.items[0], elem)) {
+			if (!std.mem.eql(u8, self.palette.items[0], elem)) {
 				return error.FistItemMismatch;
 			}
 		}
@@ -403,7 +403,7 @@ pub const Palette = struct { // MARK: Palette
 		};
 		errdefer self.deinit();
 
-		for(items) |name| {
+		for (items) |name| {
 			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
 			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
 		}
@@ -418,11 +418,11 @@ pub const Palette = struct { // MARK: Palette
 		@memset(translationPalette, null);
 
 		var iterator = zon.object.iterator();
-		while(iterator.next()) |entry| {
+		while (iterator.next()) |entry| {
 			const numericId = entry.value_ptr.as(?usize, null) orelse return error.InvalidPaletteFormat;
 			const name = entry.key_ptr.*;
 
-			if(numericId >= translationPalette.len) {
+			if (numericId >= translationPalette.len) {
 				std.log.err("ID {} ('{s}') out of range. This can be caused by palette having missing block IDs.", .{numericId, name});
 				return error.SparsePaletteNotAllowed;
 			}
@@ -435,7 +435,7 @@ pub const Palette = struct { // MARK: Palette
 		};
 		errdefer self.deinit();
 
-		for(translationPalette) |val| {
+		for (translationPalette) |val| {
 			self.palette.appendAssumeCapacity(allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
 			std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
 		}
@@ -443,7 +443,7 @@ pub const Palette = struct { // MARK: Palette
 	}
 
 	pub fn deinit(self: *Palette) void {
-		for(self.palette.items) |item| {
+		for (self.palette.items) |item| {
 			self.palette.allocator.free(item);
 		}
 		const allocator = self.palette.allocator;
@@ -460,7 +460,7 @@ pub const Palette = struct { // MARK: Palette
 
 		zon.array.ensureCapacity(self.palette.items.len);
 
-		for(self.palette.items) |item| {
+		for (self.palette.items) |item| {
 			zon.append(item);
 		}
 		return zon;
@@ -479,7 +479,7 @@ pub const Palette = struct { // MARK: Palette
 var loadedAssets: bool = false;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
-	if(loadedAssets) return; // The assets already got loaded by the server.
+	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
 	main.Tag.initTags();
@@ -503,25 +503,25 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	// models:
 	var modelIterator = worldAssets.models.iterator();
-	while(modelIterator.next()) |entry| {
+	while (modelIterator.next()) |entry| {
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	if(!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
+	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
-	for(blockPalette.palette.items) |stringId| {
+	for (blockPalette.palette.items) |stringId| {
 		try registerBlock(assetFolder, stringId, worldAssets.blocks.get(stringId) orelse .null);
 	}
 
 	// Then all the blocks that were missing in palette but are present in the game.
 	var iterator = worldAssets.blocks.iterator();
-	while(iterator.next()) |entry| {
+	while (iterator.next()) |entry| {
 		const stringId = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if(blocks_zig.hasRegistered(stringId)) continue;
+		if (blocks_zig.hasRegistered(stringId)) continue;
 
 		try registerBlock(assetFolder, stringId, zon);
 		blockPalette.add(stringId);
@@ -529,18 +529,18 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	// Items:
 	// First from the palette to enforce ID values.
-	for(itemPalette.palette.items) |stringId| {
+	for (itemPalette.palette.items) |stringId| {
 		// Some items are created automatically from blocks.
-		if(worldAssets.blocks.get(stringId)) |zon| {
-			if(!zon.get(bool, "hasItem", true)) continue;
+		if (worldAssets.blocks.get(stringId)) |zon| {
+			if (!zon.get(bool, "hasItem", true)) continue;
 			try registerItem(assetFolder, stringId, zon.getChild("item"));
-			if(worldAssets.items.get(stringId) != null) {
+			if (worldAssets.items.get(stringId) != null) {
 				std.log.err("Item {s} appears as standalone item and as block item.", .{stringId});
 			}
 			continue;
 		}
 		// Items not related to blocks should appear in items hash map.
-		if(worldAssets.items.get(stringId)) |zon| {
+		if (worldAssets.items.get(stringId)) |zon| {
 			try registerItem(assetFolder, stringId, zon);
 			continue;
 		}
@@ -549,11 +549,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// Then missing block-items to keep backwards compatibility of ID order.
-	for(blockPalette.palette.items) |stringId| {
+	for (blockPalette.palette.items) |stringId| {
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
-		if(!zon.get(bool, "hasItem", true)) continue;
-		if(items_zig.hasRegistered(stringId)) continue;
+		if (!zon.get(bool, "hasItem", true)) continue;
+		if (items_zig.hasRegistered(stringId)) continue;
 
 		try registerItem(assetFolder, stringId, zon.getChild("item"));
 		itemPalette.add(stringId);
@@ -561,11 +561,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	// And finally normal items.
 	iterator = worldAssets.items.iterator();
-	while(iterator.next()) |entry| {
+	while (iterator.next()) |entry| {
 		const stringId = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if(items_zig.hasRegistered(stringId)) continue;
+		if (items_zig.hasRegistered(stringId)) continue;
 		std.debug.assert(zon != .null);
 
 		try registerItem(assetFolder, stringId, zon);
@@ -573,24 +573,24 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// After we have registered all items and all blocks, we can assign block references to those that come from blocks.
-	for(blockPalette.palette.items) |stringId| {
+	for (blockPalette.palette.items) |stringId| {
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
-		if(!zon.get(bool, "hasItem", true)) continue;
+		if (!zon.get(bool, "hasItem", true)) continue;
 		std.debug.assert(items_zig.hasRegistered(stringId));
 
 		try assignBlockItem(stringId);
 	}
 
-	for(toolPalette.palette.items) |id| {
+	for (toolPalette.palette.items) |id| {
 		registerTool(assetFolder, id, worldAssets.tools.get(id) orelse .null);
 	}
 
 	// tools:
 	iterator = worldAssets.tools.iterator();
-	while(iterator.next()) |entry| {
+	while (iterator.next()) |entry| {
 		const id = entry.key_ptr.*;
-		if(items_zig.hasRegisteredTool(id)) continue;
+		if (items_zig.hasRegisteredTool(id)) continue;
 		registerTool(assetFolder, id, entry.value_ptr.*);
 		toolPalette.add(id);
 	}
@@ -599,7 +599,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	blocks_zig.finishBlocks(worldAssets.blocks);
 
 	iterator = worldAssets.recipes.iterator();
-	while(iterator.next()) |entry| {
+	while (iterator.next()) |entry| {
 		registerRecipesFromZon(entry.value_ptr.*);
 	}
 
@@ -607,19 +607,19 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
 
 	iterator = worldAssets.particles.iterator();
-	while(iterator.next()) |entry| {
+	while (iterator.next()) |entry| {
 		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
-	for(biomePalette.palette.items) |id| {
+	for (biomePalette.palette.items) |id| {
 		registerBiome(nextBiomeNumericId, id, worldAssets.biomes.get(id) orelse .null);
 		nextBiomeNumericId += 1;
 	}
 	iterator = worldAssets.biomes.iterator();
-	while(iterator.next()) |entry| {
-		if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
+	while (iterator.next()) |entry| {
+		if (biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
 		registerBiome(nextBiomeNumericId, entry.key_ptr.*, entry.value_ptr.*);
 		biomePalette.add(entry.key_ptr.*);
 		nextBiomeNumericId += 1;
@@ -633,15 +633,15 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	};
 	defer dir.close();
 	var dirIterator = dir.iterate();
-	while(dirIterator.next() catch |err| blk: {
+	while (dirIterator.next() catch |err| blk: {
 		std.log.err("Got error while iterating over asset path {s}: {s}", .{"assets", @errorName(err)});
 		break :blk null;
 	}) |addon| {
-		if(addon.kind == .directory) {
+		if (addon.kind == .directory) {
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			// Check for access rights
-			if(!main.files.cwd().hasDir(path)) continue;
+			if (!main.files.cwd().hasDir(path)) continue;
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
 		}
 	}
@@ -650,7 +650,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 }
 
 pub fn unloadAssets() void { // MARK: unloadAssets()
-	if(!loadedAssets) return;
+	if (!loadedAssets) return;
 	loadedAssets = false;
 
 	sbb.reset();
@@ -671,15 +671,15 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	};
 	defer dir.close();
 	var dirIterator = dir.iterate();
-	while(dirIterator.next() catch |err| blk: {
+	while (dirIterator.next() catch |err| blk: {
 		std.log.err("Got error while iterating over asset path {s}: {s}", .{"assets", @errorName(err)});
 		break :blk null;
 	}) |addon| {
-		if(addon.kind == .directory) {
+		if (addon.kind == .directory) {
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			// Check for access rights
-			if(!main.files.cwd().hasDir(path)) continue;
+			if (!main.files.cwd().hasDir(path)) continue;
 			main.utils.file_monitor.removePath(path);
 		}
 	}

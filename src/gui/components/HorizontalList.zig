@@ -27,7 +27,7 @@ pub fn init() *HorizontalList {
 }
 
 pub fn deinit(self: *const HorizontalList) void {
-	for(self.children.items) |*child| {
+	for (self.children.items) |*child| {
 		child.deinit();
 	}
 	self.children.deinit();
@@ -40,7 +40,7 @@ pub fn toComponent(self: *HorizontalList) GuiComponent {
 
 pub fn add(self: *HorizontalList, _other: anytype) void {
 	var other: GuiComponent = undefined;
-	if(@TypeOf(_other) == GuiComponent) {
+	if (@TypeOf(_other) == GuiComponent) {
 		other = _other;
 	} else {
 		other = _other.toComponent();
@@ -54,11 +54,11 @@ pub fn add(self: *HorizontalList, _other: anytype) void {
 pub fn finish(self: *HorizontalList, pos: Vec2f, alignment: graphics.TextBuffer.Alignment) void {
 	self.pos = pos;
 	self.children.shrinkAndFree(self.children.items.len);
-	for(self.children.items) |_child| {
+	for (self.children.items) |_child| {
 		const child: GuiComponent = _child;
 		const mutPos = child.mutPos();
 		const size = child.size();
-		switch(alignment) {
+		switch (alignment) {
 			.left => {},
 			.center => {
 				mutPos.*[1] = mutPos.*[1]/2 + self.size[1]/2 - size[1]/2;
@@ -71,17 +71,17 @@ pub fn finish(self: *HorizontalList, pos: Vec2f, alignment: graphics.TextBuffer.
 }
 
 pub fn updateSelected(self: *HorizontalList) void {
-	for(self.children.items) |*child| {
+	for (self.children.items) |*child| {
 		child.updateSelected();
 	}
 }
 
 pub fn updateHovered(self: *HorizontalList, mousePosition: Vec2f) void {
 	var i: usize = self.children.items.len;
-	while(i != 0) {
+	while (i != 0) {
 		i -= 1;
 		const child = &self.children.items[i];
-		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
+		if (GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
 			child.updateHovered(mousePosition - self.pos);
 			break;
 		}
@@ -90,7 +90,7 @@ pub fn updateHovered(self: *HorizontalList, mousePosition: Vec2f) void {
 
 pub fn render(self: *HorizontalList, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
-	for(self.children.items) |*child| {
+	for (self.children.items) |*child| {
 		child.render(mousePosition - self.pos);
 	}
 	draw.restoreTranslation(oldTranslation);
@@ -98,18 +98,18 @@ pub fn render(self: *HorizontalList, mousePosition: Vec2f) void {
 
 pub fn mainButtonPressed(self: *HorizontalList, mousePosition: Vec2f) void {
 	var selectedChild: ?*GuiComponent = null;
-	for(self.children.items) |*child| {
-		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
+	for (self.children.items) |*child| {
+		if (GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
 			selectedChild = child;
 		}
 	}
-	if(selectedChild) |child| {
+	if (selectedChild) |child| {
 		child.mainButtonPressed(mousePosition - self.pos);
 	}
 }
 
 pub fn mainButtonReleased(self: *HorizontalList, mousePosition: Vec2f) void {
-	for(self.children.items) |*child| {
+	for (self.children.items) |*child| {
 		child.mainButtonReleased(mousePosition - self.pos);
 	}
 }

@@ -8,17 +8,17 @@ pub const usage = "/time\n/time <day/night>\n/time <time>\n/time <start/stop>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
-	if(split.next()) |arg| blk: {
-		if(arg.len == 0) break :blk;
+	if (split.next()) |arg| blk: {
+		if (arg.len == 0) break :blk;
 		var gameTime: i64 = undefined;
-		if(std.ascii.eqlIgnoreCase(arg, "day")) {
+		if (std.ascii.eqlIgnoreCase(arg, "day")) {
 			gameTime = 0;
-		} else if(std.ascii.eqlIgnoreCase(arg, "night")) {
+		} else if (std.ascii.eqlIgnoreCase(arg, "night")) {
 			gameTime = main.server.ServerWorld.dayCycle/2;
-		} else if(std.ascii.eqlIgnoreCase(arg, "start")) {
+		} else if (std.ascii.eqlIgnoreCase(arg, "start")) {
 			main.server.world.?.doGameTimeCycle = true;
 			return;
-		} else if(std.ascii.eqlIgnoreCase(arg, "stop")) {
+		} else if (std.ascii.eqlIgnoreCase(arg, "stop")) {
 			main.server.world.?.doGameTimeCycle = false;
 			return;
 		} else {
@@ -27,7 +27,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				return;
 			};
 		}
-		if(split.next() != null) {
+		if (split.next() != null) {
 			source.sendMessage("#ff0000Too many arguments for command /time", .{});
 			return;
 		}

@@ -32,7 +32,7 @@ size: Vec2f,
 state: bool = false,
 pressed: bool = false,
 hovered: bool = false,
-onAction: *const fn(bool) void,
+onAction: *const fn (bool) void,
 label: *Label,
 
 pub fn __init() void {
@@ -53,7 +53,7 @@ pub fn __deinit() void {
 	textureEmptyPressed.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) *CheckBox {
+pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn (bool) void) *CheckBox {
 	const label = Label.init(undefined, width - 3*border - boxSize, text, .left);
 	const self = main.globalAllocator.create(CheckBox);
 	self.* = CheckBox{
@@ -84,9 +84,9 @@ pub fn mainButtonPressed(self: *CheckBox, _: Vec2f) void {
 }
 
 pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {
-	if(self.pressed) {
+	if (self.pressed) {
 		self.pressed = false;
-		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
+		if (GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			self.state = !self.state;
 			self.onAction(self.state);
 		}
@@ -94,18 +94,18 @@ pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *CheckBox, mousePosition: Vec2f) void {
-	if(self.state) {
-		if(self.pressed) {
+	if (self.state) {
+		if (self.pressed) {
 			textureCheckedPressed.bindTo(0);
-		} else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
+		} else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
 			textureCheckedHovered.bindTo(0);
 		} else {
 			textureCheckedNormal.bindTo(0);
 		}
 	} else {
-		if(self.pressed) {
+		if (self.pressed) {
 			textureEmptyPressed.bindTo(0);
-		} else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
+		} else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
 			textureEmptyHovered.bindTo(0);
 		} else {
 			textureEmptyNormal.bindTo(0);
