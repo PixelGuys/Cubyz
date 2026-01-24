@@ -29,7 +29,7 @@ pub fn reset() void {
 
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	const modelId = zon.as([]const u8, "cubyz:cube");
-	if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+	if (rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex(modelId).model();
 	// Rotate the model:
@@ -47,27 +47,27 @@ pub fn model(block: Block) ModelIndex {
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	comptime var rotationTable: [4][4]u8 = undefined;
-	comptime for(0..4) |i| {
+	comptime for (0..4) |i| {
 		rotationTable[0][i] = i;
 	};
-	comptime for(1..4) |a| {
-		for(0..4) |i| {
+	comptime for (1..4) |a| {
+		for (0..4) |i| {
 			const neighbor: Neighbor = @enumFromInt(rotationTable[a - 1][i] + 2);
 			rotationTable[a][i] = neighbor.rotateZ().toInt() - 2;
 		}
 	};
-	if(data >= 4) return 0;
+	if (data >= 4) return 0;
 	const runtimeTable = rotationTable;
 	return runtimeTable[@intFromEnum(angle)][data];
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
-	if(blockPlacing) {
-		if(@abs(playerDir[0]) > @abs(playerDir[1])) {
-			const dir: Neighbor = if(playerDir[0] < 0) .dirNegX else .dirPosX;
+	if (blockPlacing) {
+		if (@abs(playerDir[0]) > @abs(playerDir[1])) {
+			const dir: Neighbor = if (playerDir[0] < 0) .dirNegX else .dirPosX;
 			currentData.data = dir.toInt() - 2;
 		} else {
-			const dir: Neighbor = if(playerDir[1] < 0) .dirNegY else .dirPosY;
+			const dir: Neighbor = if (playerDir[1] < 0) .dirNegY else .dirPosY;
 			currentData.data = dir.toInt() - 2;
 		}
 		return true;
@@ -78,5 +78,5 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _
 // MARK: non-interface fns
 
 pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
-	if(!neighborSupportive[Neighbor.dirDown.toInt()]) block.* = .air;
+	if (!neighborSupportive[Neighbor.dirDown.toInt()]) block.* = .air;
 }
