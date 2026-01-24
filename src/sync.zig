@@ -1402,7 +1402,7 @@ pub const Command = struct { // MARK: Command
 				var fullInv: ?Inventory = null;
 				var remainingAmount: usize = requiredAmount;
 				for (self.sources) |source| {
-					for (0..source._items.len) |r| {
+					for (0..source._items.len) |reverseIndex| {
 						const i: usize = source._items.len - r - 1;
 						const otherStack: *ItemStack = &source._items[i];
 						if (otherStack.item != .null and std.meta.eql(requiredItem, otherStack.item.baseItem)) {
