@@ -130,8 +130,8 @@ pub const Assets = struct {
 			}) |addon| {
 				if (addon.kind != .directory) continue;
 
-				for(addon.name) |char| {
-					switch(char) {
+				for (addon.name) |char| {
+					switch (char) {
 						'_', 'a'...'z', '0'...'9' => continue,
 						else => {
 							std.log.err("Invalid addon name for addon {s}: Addon name must only contain lowercase letters 'a' - 'z', numbers '0' - '9' and underscores '_'.", .{addon.name});
@@ -318,8 +318,8 @@ fn createAssetStringID(
 	const baseNameEndIndex = if (std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
 	const pathNoExtension: []const u8 = relativeFilePath[0..baseNameEndIndex];
 
-	const fileNameStart: usize = if(std.mem.findScalarLast(u8, pathNoExtension, '/')) |i| i + 1 else 0;
-	if(pathNoExtension[fileNameStart] == '_') {
+	const fileNameStart: usize = if (std.mem.findScalarLast(u8, pathNoExtension, '/')) |i| i + 1 else 0;
+	if (pathNoExtension[fileNameStart] == '_') {
 		std.log.err(
 			"Invalid {s} asset id for addon '{s}' and subpath '{s}': File name must not start with an underscore '_', this is reserved for special files.",
 			.{assetType, addonName, relativeFilePath},
@@ -327,8 +327,8 @@ fn createAssetStringID(
 		return error.InvalidId;
 	}
 
-	for(pathNoExtension) |char| {
-		switch(char) {
+	for (pathNoExtension) |char| {
+		switch (char) {
 			'_', 'a'...'z', '0'...'9', '/' => continue,
 			else => {
 				std.log.err(
