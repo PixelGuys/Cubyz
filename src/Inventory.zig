@@ -20,6 +20,7 @@ const Neighbor = main.chunk.Neighbor;
 const BaseItemIndex = main.items.BaseItemIndex;
 const ToolTypeIndex = main.items.ToolTypeIndex;
 
+
 pub const InventoryId = enum(u32) { _ };
 
 pub const ClientSide = struct {

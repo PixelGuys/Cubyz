@@ -1336,7 +1336,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn init(destinations: []const Inventory.ClientInventory, source: Inventory, dropLocation: Vec3d) DepositOrDrop {
 			const copy = main.globalAllocator.alloc(Inventory, destinations.len);
-			for(copy, destinations) |*d, s| d.* = s.super;
+			for (copy, destinations) |*d, s| d.* = s.super;
 			return .{
 				.destinations = copy,
 				.source = source,
@@ -1357,18 +1357,18 @@ pub const Command = struct { // MARK: Command
 		}
 
 		pub fn run(self: DepositOrDrop, ctx: Context) error{serverFailure}!void {
-			for(self.destinations) |dest| {
+			for (self.destinations) |dest| {
 				std.debug.assert(dest.type == .normal);
 			}
-			if(self.source.type == .crafting) return;
+			if (self.source.type == .crafting) return;
 			var sourceItems = self.source._items;
-			if(self.source.type == .workbench) sourceItems = self.source._items[0..25];
-			for(sourceItems, 0..) |*sourceStack, sourceSlot| {
-				if(sourceStack.item == .null) continue;
+			if (self.source.type == .workbench) sourceItems = self.source._items[0..25];
+			for (sourceItems, 0..) |*sourceStack, sourceSlot| {
+				if (sourceStack.item == .null) continue;
 				put_items_into.do(ctx, self.destinations, sourceStack.amount, .{.move = .{.inv = self.source, .slot = @intCast(sourceSlot)}});
 				if (sourceStack.amount == 0) continue;
-				if(ctx.side == .server) {
-					const direction = if(ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
+				if (ctx.side == .server) {
+					const direction = if (ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
 					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 20);
 				}
 				ctx.execute(.{.delete = .{
@@ -1380,7 +1380,7 @@ pub const Command = struct { // MARK: Command
 
 		fn serialize(self: DepositOrDrop, writer: *BinaryWriter) void {
 			writer.writeVarInt(usize, self.destinations.len);
-			for(self.destinations) |dest| {
+			for (self.destinations) |dest| {
 				writer.writeEnum(InventoryId, dest.id);
 			}
 			writer.writeEnum(InventoryId, self.source.id);
@@ -1388,13 +1388,13 @@ pub const Command = struct { // MARK: Command
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !DepositOrDrop {
 			const destinationsSize = try reader.readVarInt(usize);
-			if(destinationsSize == 0) return error.Invalid;
-			if(destinationsSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+			if (destinationsSize == 0) return error.Invalid;
+			if (destinationsSize*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
 
 			const destinations = main.globalAllocator.alloc(Inventory, destinationsSize);
 			errdefer main.globalAllocator.free(destinations);
 
-			for(destinations) |*dest| {
+			for (destinations) |*dest| {
 				const invId = try reader.readEnum(InventoryId);
 				dest.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
 			}
