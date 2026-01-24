@@ -47,10 +47,10 @@ pub fn deinit() void {
 }
 
 fn addItemStackToAvailable(itemStack: ItemStack) void {
-	if(itemStack.item == .baseItem) {
+	if (itemStack.item == .baseItem) {
 		const baseItem = itemStack.item.baseItem;
-		for(availableItems.items, 0..) |alreadyPresent, i| {
-			if(baseItem == alreadyPresent) {
+		for (availableItems.items, 0..) |alreadyPresent, i| {
+			if (baseItem == alreadyPresent) {
 				itemAmount.items[i] += itemStack.amount;
 				return;
 			}
@@ -63,35 +63,35 @@ fn addItemStackToAvailable(itemStack: ItemStack) void {
 fn findAvailableRecipes(list: *VerticalList) bool {
 	const oldAmounts = main.stackAllocator.dupe(u32, itemAmount.items);
 	defer main.stackAllocator.free(oldAmounts);
-	for(itemAmount.items) |*amount| {
+	for (itemAmount.items) |*amount| {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
-	for(0..main.game.Player.inventory.size()) |i| {
+	for (0..main.game.Player.inventory.size()) |i| {
 		addItemStackToAvailable(main.game.Player.inventory.getStack(i));
 	}
-	if(std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
+	if (std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
 	// Remove no longer present items:
 	var i: u32 = 0;
-	while(i < availableItems.items.len) : (i += 1) {
-		if(itemAmount.items[i] == 0) {
+	while (i < availableItems.items.len) : (i += 1) {
+		if (itemAmount.items[i] == 0) {
 			_ = itemAmount.swapRemove(i);
 			_ = availableItems.swapRemove(i);
 		}
 	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
-	outer: for(items.recipes()) |*recipe| {
-		middle: for(recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
-			for(availableItems.items, itemAmount.items) |availableItem, availableAmount| {
-				if(availableItem == sourceItem and availableAmount >= sourceAmount) {
+	outer: for (items.recipes()) |*recipe| {
+		middle: for (recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
+			for (availableItems.items, itemAmount.items) |availableItem, availableAmount| {
+				if (availableItem == sourceItem and availableAmount >= sourceAmount) {
 					continue :middle;
 				}
 			}
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
-		if(recipe.cachedInventory == null) {
+		if (recipe.cachedInventory == null) {
 			recipe.cachedInventory = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .serverShared, .{.recipe = recipe}, .{});
 		}
 		const inv = recipe.cachedInventory.?;
@@ -101,11 +101,11 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		const itemsPerColumn = recipe.sourceItems.len/maxColumns;
 		const remainder = recipe.sourceItems.len%maxColumns;
 		i = 0;
-		for(0..maxColumns) |col| {
+		for (0..maxColumns) |col| {
 			var itemsThisColumn = itemsPerColumn;
-			if(col < remainder) itemsThisColumn += 1;
+			if (col < remainder) itemsThisColumn += 1;
 			const columnList = VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
-			for(0..itemsThisColumn) |_| {
+			for (0..itemsThisColumn) |_| {
 				columnList.add(ItemSlot.init(.{0, 0}, inv, i, .immutable, .immutable));
 				i += 1;
 			}
@@ -122,17 +122,17 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 }
 
 fn refresh() void {
-	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
+	const oldScrollState = if (window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
 	const recipesChanged = findAvailableRecipes(list);
-	if(!recipesChanged and window.rootComponent != null) {
+	if (!recipesChanged and window.rootComponent != null) {
 		list.deinit();
 		return;
 	}
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.meta.castFunctionSelfToAnyopaque(VerticalList.deinit)});
 	}
-	if(list.children.items.len == 0) {
+	if (list.children.items.len == 0) {
 		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));
 	}
 	list.finish(.center);
@@ -151,7 +151,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
 	}

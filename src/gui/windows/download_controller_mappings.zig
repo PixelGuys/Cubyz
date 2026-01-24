@@ -26,7 +26,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 pub fn update() void {
-	if(main.Window.Gamepad.wereControllerMappingsDownloaded()) {
+	if (main.Window.Gamepad.wereControllerMappingsDownloaded()) {
 		gui.closeWindowFromRef(&window);
 	}
 }
@@ -38,7 +38,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

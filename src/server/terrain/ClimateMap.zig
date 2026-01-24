@@ -25,8 +25,8 @@ const ClimateMapFragmentPosition = struct {
 	wy: i32,
 
 	pub fn equals(self: ClimateMapFragmentPosition, other: anytype) bool {
-		if(@TypeOf(other) == ?*ClimateMapFragment) {
-			if(other) |ch| {
+		if (@TypeOf(other) == ?*ClimateMapFragment) {
+			if (other) |ch| {
 				return self.wx == ch.pos.wx and self.wy == ch.pos.wy;
 			}
 			return false;
@@ -69,8 +69,8 @@ pub const ClimateMapFragment = struct {
 
 /// Generates the climate(aka Biome) map, which is a rough representation of the world.
 pub const ClimateMapGenerator = struct {
-	init: *const fn(parameters: ZonElement) void,
-	generateMapFragment: *const fn(fragment: *ClimateMapFragment, seed: u64) void,
+	init: *const fn (parameters: ZonElement) void,
+	generateMapFragment: *const fn (fragment: *ClimateMapFragment, seed: u64) void,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(ClimateMapGenerator) = .{};
 
@@ -100,7 +100,7 @@ var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = undefined;
 
 pub fn globalInit() void {
 	const list = @import("climategen/_list.zig");
-	inline for(@typeInfo(list).@"struct".decls) |decl| {
+	inline for (@typeInfo(list).@"struct".decls) |decl| {
 		ClimateMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 	memoryPool = .init(main.globalAllocator);
@@ -139,20 +139,20 @@ pub fn getBiomeMap(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u3
 	const wxEnd = wx +% width & ~ClimateMapFragment.mapMask;
 	const wzEnd = wy +% height & ~ClimateMapFragment.mapMask;
 	var x = wxStart;
-	while(wxEnd -% x >= 0) : (x +%= ClimateMapFragment.mapSize) {
+	while (wxEnd -% x >= 0) : (x +%= ClimateMapFragment.mapSize) {
 		var y = wzStart;
-		while(wzEnd -% y >= 0) : (y +%= ClimateMapFragment.mapSize) {
+		while (wzEnd -% y >= 0) : (y +%= ClimateMapFragment.mapSize) {
 			const mapPiece = getOrGenerateFragment(x, y);
 			// Offset of the indices in the result map:
 			const xOffset = (x -% wx) >> MapFragment.biomeShift;
 			const yOffset = (y -% wy) >> MapFragment.biomeShift;
 			// Go through all indices in the mapPiece:
-			for(&mapPiece.map, 0..) |*col, lx| {
+			for (&mapPiece.map, 0..) |*col, lx| {
 				const resultX = @as(i32, @intCast(lx)) + xOffset;
-				if(resultX < 0 or resultX >= width >> MapFragment.biomeShift) continue;
-				for(col, 0..) |*spot, ly| {
+				if (resultX < 0 or resultX >= width >> MapFragment.biomeShift) continue;
+				for (col, 0..) |*spot, ly| {
 					const resultY = @as(i32, @intCast(ly)) + yOffset;
-					if(resultY < 0 or resultY >= height >> MapFragment.biomeShift) continue;
+					if (resultY < 0 or resultY >= height >> MapFragment.biomeShift) continue;
 					map.set(@intCast(resultX), @intCast(resultY), spot.*);
 				}
 			}

@@ -1,7 +1,7 @@
 const std = @import("std");
 
 fn libName(b: *std.Build, name: []const u8, target: std.Target) []const u8 {
-	return switch(target.os.tag) {
+	return switch (target.os.tag) {
 		.windows => b.fmt("{s}.lib", .{name}),
 		else => b.fmt("lib{s}.a", .{name}),
 	};
@@ -15,7 +15,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.linkLibC();
 	exe.linkLibCpp();
 
-	const depsLib = b.fmt("cubyz_deps_{s}-{s}-{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag), switch(t.os.tag) {
+	const depsLib = b.fmt("cubyz_deps_{s}-{s}-{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag), switch (t.os.tag) {
 		.linux => "musl",
 		.macos => "none",
 		.windows => "gnu",
@@ -24,7 +24,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	const artifactName = libName(b, depsLib, t);
 
 	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
-	if(useLocalDeps) depsName = "local";
+	if (useLocalDeps) depsName = "local";
 
 	const libsDeps = b.lazyDependency(depsName, .{
 		.target = target,
@@ -35,7 +35,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		std.log.info("Downloading cubyz_deps libraries {s}.", .{depsName});
 		return;
 	};
-	const headersDeps = if(useLocalDeps) libsDeps else b.lazyDependency("cubyz_deps_headers", .{}) orelse {
+	const headersDeps = if (useLocalDeps) libsDeps else b.lazyDependency("cubyz_deps_headers", .{}) orelse {
 		std.log.info("Downloading cubyz_deps headers {s}.", .{depsName});
 		return;
 	};
@@ -51,7 +51,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
 
-	if(t.os.tag == .macos) {
+	if (t.os.tag == .macos) {
 		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/Cubyz.app/Contents/Frameworks/libMoltenVK.dylib");
 		const moltenVkJsonInstall = b.addInstallFile(subPath.path(b, "MoltenVK_icd.json"), "bin/Cubyz.app/Contents/Resources/vulkan/icd.d/MoltenVK_icd.json");
 		exe.step.dependOn(&moltenVkLibInstall.step);
@@ -63,17 +63,17 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.step.dependOn(&validationLayerJsonInstall.step);
 	}
 
-	if(t.os.tag == .windows) {
+	if (t.os.tag == .windows) {
 		exe.linkSystemLibrary("crypt32");
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
-	} else if(t.os.tag == .macos) {
+	} else if (t.os.tag == .macos) {
 		exe.linkFramework("Cocoa");
 		exe.linkFramework("CoreFoundation");
 		exe.linkFramework("IOKit");
 		exe.linkFramework("QuartzCore");
-	} else if(t.os.tag != .linux) {
+	} else if (t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
 }
@@ -86,8 +86,8 @@ pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
 	defer modDir.close();
 
 	var iterator = modDir.iterate();
-	while(try iterator.next()) |modEntry| {
-		if(modEntry.kind != .directory) continue;
+	while (try iterator.next()) |modEntry| {
+		if (modEntry.kind != .directory) continue;
 
 		var mod = try modDir.openDir(modEntry.name, .{});
 		defer mod.close();
@@ -96,9 +96,9 @@ pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
 		defer featureDir.close();
 
 		var featureIterator = featureDir.iterate();
-		while(try featureIterator.next()) |featureEntry| {
-			if(featureEntry.kind != .file) continue;
-			if(!std.mem.endsWith(u8, featureEntry.name, ".zig")) continue;
+		while (try featureIterator.next()) |featureEntry| {
+			if (featureEntry.kind != .file) continue;
+			if (!std.mem.endsWith(u8, featureEntry.name, ".zig")) continue;
 
 			try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
 				\\pub const @"{s}:{s}" = @import("{s}/{s}/{s}");
@@ -177,7 +177,7 @@ pub fn build(b: *std.Build) !void {
 
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
-	const version = b.fmt("0.2.0{s}", .{if(isRelease) "" else "-dev"});
+	const version = b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
 	options.addOption([]const u8, "version", version);
 	options.addOption(bool, "isTaggedRelease", isRelease);
 
@@ -211,14 +211,14 @@ pub fn build(b: *std.Build) !void {
 	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
 
-	if(isRelease and target.result.os.tag == .windows) {
+	if (isRelease and target.result.os.tag == .windows) {
 		exe.subsystem = .Windows;
 	}
 
 	linkLibraries(b, exe, useLocalDeps);
 
 	var exeInstallOptions: std.Build.Step.InstallArtifact.Options = .{};
-	if(target.result.os.tag == .macos) {
+	if (target.result.os.tag == .macos) {
 		exeInstallOptions = .{
 			.dest_dir = .{.override = .{.custom = "bin/Cubyz.app/Contents/MacOS"}},
 		};
@@ -250,7 +250,7 @@ pub fn build(b: *std.Build) !void {
 
 	const run_cmd = b.addRunArtifact(exe);
 	run_cmd.step.dependOn(b.getInstallStep());
-	if(b.args) |args| {
+	if (b.args) |args| {
 		run_cmd.addArgs(args);
 	}
 
@@ -295,7 +295,7 @@ pub fn build(b: *std.Build) !void {
 
 	const formatter_cmd = b.addRunArtifact(formatter);
 	formatter_cmd.step.dependOn(&formatter_install.step);
-	if(b.args) |args| {
+	if (b.args) |args| {
 		formatter_cmd.addArgs(args);
 	}
 

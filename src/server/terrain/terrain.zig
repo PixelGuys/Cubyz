@@ -22,12 +22,12 @@ pub const StructureMap = @import("StructureMap.zig");
 
 pub const structure_building_blocks = @import("structure_building_blocks.zig");
 
-pub const GeneratorState = enum {enabled, disabled};
+pub const GeneratorState = enum { enabled, disabled };
 
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {
-	init: *const fn(parameters: ZonElement) void,
-	generate: *const fn(seed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
+	init: *const fn (parameters: ZonElement) void,
+	generate: *const fn (seed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
@@ -50,10 +50,10 @@ pub const BlockGenerator = struct {
 	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []BlockGenerator {
 		var list: main.ListUnmanaged(BlockGenerator) = .initCapacity(allocator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
-		while(iterator.next()) |generatorEntry| {
+		while (iterator.next()) |generatorEntry| {
 			const generator = generatorEntry.value_ptr.*;
 			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
-			if(generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -122,7 +122,7 @@ pub fn globalInit() void {
 	CaveMap.globalInit();
 	StructureMap.globalInit();
 	const list = @import("chunkgen/_list.zig");
-	inline for(@typeInfo(list).@"struct".decls) |decl| {
+	inline for (@typeInfo(list).@"struct".decls) |decl| {
 		BlockGenerator.registerGenerator(@field(list, decl.name));
 	}
 	const t1 = main.timestamp();

@@ -32,14 +32,14 @@ var searchInput: *TextInput = undefined;
 var searchString: []const u8 = undefined;
 
 fn lessThan(_: void, lhs: Item, rhs: Item) bool {
-	if(lhs == .baseItem and rhs == .baseItem) {
+	if (lhs == .baseItem and rhs == .baseItem) {
 		const lhsFolders = std.mem.count(u8, lhs.baseItem.id(), "/");
 		const rhsFolders = std.mem.count(u8, rhs.baseItem.id(), "/");
-		if(lhsFolders < rhsFolders) return true;
-		if(lhsFolders > rhsFolders) return false;
+		if (lhsFolders < rhsFolders) return true;
+		if (lhsFolders > rhsFolders) return false;
 		return std.ascii.lessThanIgnoreCase(lhs.baseItem.id(), rhs.baseItem.id());
 	} else {
-		if(lhs == .baseItem) return true;
+		if (lhs == .baseItem) return true;
 		return false;
 	}
 }
@@ -55,8 +55,8 @@ pub fn onClose() void {
 }
 
 fn hasMatchingTag(tags: []const main.Tag, target: []const u8) bool {
-	for(tags) |tag| {
-		if(std.mem.containsAtLeast(u8, tag.getName(), 1, target)) {
+	for (tags) |tag| {
+		if (std.mem.containsAtLeast(u8, tag.getName(), 1, target)) {
 			return true;
 		}
 	}
@@ -82,16 +82,16 @@ fn initContent() void {
 		const list = VerticalList.init(.{0, padding}, 144, 0);
 		items = .init(main.globalAllocator);
 		var itemIterator = main.items.iterator();
-		if(searchString.len > 1 and searchString[0] == '.') {
+		if (searchString.len > 1 and searchString[0] == '.') {
 			const tag = searchString[1..];
-			while(itemIterator.next()) |item| {
-				if(hasMatchingTag(item.tags(), tag) or (item.block() != null and hasMatchingTag((main.blocks.Block{.typ = item.block().?, .data = undefined}).blockTags(), tag))) {
+			while (itemIterator.next()) |item| {
+				if (hasMatchingTag(item.tags(), tag) or (item.block() != null and hasMatchingTag((main.blocks.Block{.typ = item.block().?, .data = undefined}).blockTags(), tag))) {
 					items.append(Item{.baseItem = item.*});
 				}
 			}
 		} else {
-			while(itemIterator.next()) |item| {
-				if(searchString.len != 0 and !std.mem.containsAtLeast(u8, item.id(), 1, searchString)) continue;
+			while (itemIterator.next()) |item| {
+				if (searchString.len != 0 and !std.mem.containsAtLeast(u8, item.id(), 1, searchString)) continue;
 				items.append(Item{.baseItem = item.*});
 			}
 		}
@@ -99,14 +99,14 @@ fn initContent() void {
 		std.mem.sort(Item, items.items, {}, lessThan);
 		const slotCount = items.items.len + (slotsPerRow - items.items.len%slotsPerRow);
 		inventory = ClientInventory.init(main.globalAllocator, slotCount, .normal, .creative, .other, .{});
-		for(0..items.items.len) |i| {
+		for (0..items.items.len) |i| {
 			inventory.super._items[i] = .{.item = items.items[i], .amount = 1};
 		}
 		var i: u32 = 0;
-		while(i < items.items.len) {
+		while (i < items.items.len) {
 			const row = HorizontalList.init();
-			for(0..slotsPerRow) |_| {
-				if(i >= items.items.len) {
+			for (0..slotsPerRow) |_| {
+				if (i >= items.items.len) {
 					row.add(ItemSlot.init(.{0, 0}, inventory, i, .immutable, .immutable));
 				} else {
 					row.add(ItemSlot.init(.{0, 0}, inventory, i, .default, .takeOnly));
@@ -125,7 +125,7 @@ fn initContent() void {
 }
 
 fn deinitContent() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 	items.deinit();
@@ -133,7 +133,7 @@ fn deinitContent() void {
 }
 
 pub fn update() void {
-	if(std.mem.eql(u8, searchInput.currentString.items, searchString)) return;
+	if (std.mem.eql(u8, searchInput.currentString.items, searchString)) return;
 	filter();
 }
 

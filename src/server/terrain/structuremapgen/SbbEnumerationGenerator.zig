@@ -36,18 +36,18 @@ pub fn init(parameters: ZonElement) void {
 
 	var localSbbList: main.ListUnmanaged(*const StructureBuildingBlock) = .{};
 	defer localSbbList.deinit(main.stackAllocator);
-	for(terrain.structure_building_blocks.list()) |*entry| {
+	for (terrain.structure_building_blocks.list()) |*entry| {
 		localSbbList.append(main.stackAllocator, entry);
 	}
 
 	{ // Remove all SBBs that are children of other SBBs.
 		var i: usize = 0;
-		outer: while(i < localSbbList.items.len) {
+		outer: while (i < localSbbList.items.len) {
 			const candidate = localSbbList.items[i];
-			for(localSbbList.items) |other| {
-				if(other == candidate) continue;
-				for(other.children) |child| {
-					if(child == candidate) {
+			for (localSbbList.items) |other| {
+				if (other == candidate) continue;
+				for (other.children) |child| {
+					if (child == candidate) {
 						_ = localSbbList.swapRemove(i);
 						continue :outer;
 					}
@@ -65,7 +65,7 @@ pub fn init(parameters: ZonElement) void {
 
 	sbbList = main.worldArena.alloc(main.server.terrain.biomes.SimpleStructureModel, localSbbList.items.len);
 
-	for(localSbbList.items, 0..) |sbb, i| {
+	for (localSbbList.items, 0..) |sbb, i| {
 		const structureData = main.worldArena.create(SbbGen);
 		structureData.* = .{
 			.structureRef = sbb,
@@ -98,20 +98,20 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 	const margin = 16;
 	const marginZ = 32;
 	var px: i32 = 0;
-	while(px < size + 2*margin) : (px += 32) {
+	while (px < size + 2*margin) : (px += 32) {
 		var py: i32 = 0;
-		while(py < size + 2*margin) : (py += 32) {
+		while (py < size + 2*margin) : (py += 32) {
 			const wpx = px +% map.pos.wx;
 			const wpy = py +% map.pos.wy;
 			const index: u32 = @intCast(@mod(@divFloor(wpx, 32), @as(i32, @intCast(sbbList.len))));
 			const sbb = &sbbList[index];
 
-			inline for(.{0, 128}) |startZ| blk: {
+			inline for (.{0, 128}) |startZ| blk: {
 				const relZ = startZ -% map.pos.wz;
-				if(relZ < -32 or relZ >= size + 32) break :blk;
+				if (relZ < -32 or relZ >= size + 32) break :blk;
 
 				const signRow = wpy & 1023 == 0;
-				if(signRow) {
+				if (signRow) {
 					const structure = map.allocator.create(SignGenerator);
 					structure.* = .{
 						.wx = wpx,
@@ -156,11 +156,11 @@ const SignGenerator = struct {
 	id: []const u8,
 
 	pub fn generate(self: *const SignGenerator, chunk: *ServerChunk, _: terrain.CaveMap.CaveMapView, _: terrain.CaveBiomeMap.CaveBiomeMapView) void {
-		if(chunk.super.pos.voxelSize != 1) return;
+		if (chunk.super.pos.voxelSize != 1) return;
 		const relX = self.wx - chunk.super.pos.wx;
 		const relY = self.wy - chunk.super.pos.wy;
 		const relZ = self.wz - chunk.super.pos.wz;
-		if(signBlock.blockEntity()) |blockEntity| {
+		if (signBlock.blockEntity()) |blockEntity| {
 			chunk.updateBlockIfDegradable(relX, relY, relZ, signBlock);
 			var reader: main.utils.BinaryReader = .init(self.id);
 			blockEntity.onLoadServer(.{self.wx, self.wy, self.wz}, &chunk.super, &reader) catch |err| {

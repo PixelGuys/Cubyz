@@ -46,15 +46,15 @@ fn discoverIpAddressFromNewThread() void {
 }
 
 fn join() void {
-	if(thread) |_thread| {
+	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
 	}
-	if(ipAddress.len != 0) {
+	if (ipAddress.len != 0) {
 		main.globalAllocator.free(ipAddress);
 		ipAddress = "";
 	}
-	if(connection) |_connection| {
+	if (connection) |_connection| {
 		_connection.world = &main.game.testWorld;
 		main.game.world = &main.game.testWorld;
 		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
@@ -75,7 +75,7 @@ fn join() void {
 		std.log.err("No connection found. Cannot connect.", .{});
 		main.gui.windowlist.notification.raiseNotification("No connection found. Cannot connect.");
 	}
-	for(gui.openWindows.items) |openWindow| {
+	for (gui.openWindows.items) |openWindow| {
 		gui.closeWindowFromRef(openWindow);
 	}
 	gui.openHud();
@@ -109,29 +109,29 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(thread) |_thread| {
+	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
 	}
-	if(connection) |_connection| {
+	if (connection) |_connection| {
 		_connection.deinit();
 		connection = null;
 	}
-	if(ipAddress.len != 0) {
+	if (ipAddress.len != 0) {
 		main.globalAllocator.free(ipAddress);
 		ipAddress = "";
 	}
 
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
 
 pub fn update() void {
-	if(gotIpAddress.load(.acquire)) {
+	if (gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
 
-		if(main.settings.streamerMode) {
+		if (main.settings.streamerMode) {
 			const obfuscatedIp = main.utils.obfuscateString(main.stackAllocator, ipAddress);
 			defer main.stackAllocator.free(obfuscatedIp);
 			ipAddressLabel.updateText(obfuscatedIp);
