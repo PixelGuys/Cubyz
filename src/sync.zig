@@ -1005,8 +1005,7 @@ pub const Command = struct { // MARK: Command
 					}
 				}
 				// Not enough ingredients
-				if (amount != 0)
-					return;
+				if (amount != 0) return;
 			}
 
 			// Craft it
