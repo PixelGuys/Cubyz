@@ -1373,8 +1373,8 @@ pub const Command = struct { // MARK: Command
 			if (self.source.type == .workbench) sourceItems = self.source._items[0..25];
 			for (sourceItems, 0..) |*sourceStack, sourceSlot| {
 				if (sourceStack.item == .null) continue;
-				put_items_into.do(ctx, self.destinations, sourceStack.amount, .{.move = .{.inv = self.source, .slot = @intCast(sourceSlot)}});
-				if (sourceStack.amount == 0) continue;
+				const remainingAmount = put_items_into.do(ctx, self.destinations, sourceStack.amount, .{.move = .{.inv = self.source, .slot = @intCast(sourceSlot)}});
+				if (remainingAmount == 0) continue;
 				if (ctx.side == .server) {
 					const direction = if (ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
 					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 20);
@@ -1442,7 +1442,7 @@ pub const Command = struct { // MARK: Command
 			if (sourceStack.item == .null) return;
 			if (self.amount > sourceStack.amount) return;
 
-			put_items_into.do(ctx, self.destinations, self.amount, .{.move = self.source});
+			_ = put_items_into.do(ctx, self.destinations, self.amount, .{.move = self.source});
 		}
 
 		fn serialize(self: DepositToAny, writer: *BinaryWriter) void {
