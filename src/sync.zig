@@ -1154,6 +1154,7 @@ pub const Command = struct { // MARK: Command
 				}
 			}
 
+			put_items_into.do(ctx, self.destinations, self.resultStack.amount, .{.create = self.resultStack.item});
 			var remainingAmount: u16 = self.resultStack.amount;
 			var selectedEmptySlot: ?u32 = null;
 			var selectedEmptyInv: ?Inventory = null;
