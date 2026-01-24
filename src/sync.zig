@@ -809,7 +809,7 @@ pub const Command = struct { // MARK: Command
 			}
 		};
 
-		pub fn do(ctx: Context, destinations: []const Inventory, itemAmount: u16, provider: Provider) void {
+		pub fn do(ctx: Context, destinations: []const Inventory, itemAmount: u16, provider: Provider) u16 {
 			const item = provider.getItem();
 			var remainingAmount = itemAmount;
 			var selectedEmptySlot: ?u32 = null;
@@ -844,6 +844,7 @@ pub const Command = struct { // MARK: Command
 			if (remainingAmount > 0 and selectedEmptySlot != null) {
 				ctx.execute(provider.getBaseOperation(.{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?}, remainingAmount));
 			}
+			return remainingAmount;
 		}
 	};
 
@@ -892,7 +893,7 @@ pub const Command = struct { // MARK: Command
 					writer.writeVec(Vec3i, val);
 				},
 				.other => {},
-				.alreadyFreed => unreachable,
+				.alreadyFreed, .recipe => unreachable,
 			}
 			switch (self.inv.type) {
 				.normal => {},
@@ -913,7 +914,7 @@ pub const Command = struct { // MARK: Command
 				.hand => .{.hand = try reader.readInt(u32)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.other => .{.other = {}},
-				.alreadyFreed => return error.Invalid,
+				.alreadyFreed, .recipe => return error.Invalid,
 			};
 			const typ: Inventory.Type = switch (typeEnum) {
 				inline .normal => |tag| tag,
@@ -957,9 +958,9 @@ pub const Command = struct { // MARK: Command
 	const CraftFrom = struct { // MARK: CraftFrom
 		destinations: []const Inventory,
 		sources: []const Inventory,
-		recipe: *main.items.Recipe,
+		recipe: *const main.items.Recipe,
 
-		pub fn init(destinations: []const Inventory.ClientInventory, sources: []const Inventory.ClientInventory, resultStack: ItemStack, sourceStacks: []const ItemStack) CraftFrom {
+		pub fn init(destinations: []const Inventory.ClientInventory, sources: []const Inventory.ClientInventory, recipe: *const main.items.Recipe) CraftFrom {
 			const destinationsCopy = main.globalAllocator.alloc(Inventory, destinations.len);
 			for (destinationsCopy, destinations) |*d, s| d.* = s.super;
 			const sourcesCopy = main.globalAllocator.alloc(Inventory, sources.len);
@@ -967,7 +968,7 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.destinations = destinationsCopy,
 				.sources = sourcesCopy,
-				.recipe = main.items.Recipe.getValidRecipeThroughStacks(sourceStacks, resultStack) catch unreachable,
+				.recipe = recipe,
 			};
 		}
 
@@ -1000,7 +1001,7 @@ pub const Command = struct { // MARK: Command
 					for (source._items) |otherStack| {
 						if (otherStack.item != .null and std.meta.eql(requiredItem, otherStack.item.baseItem)) {
 							amount -|= otherStack.amount;
-							if (amount == 0) break :outer;
+							if (amount == 0) continue :outer;
 						}
 					}
 				}
@@ -1041,7 +1042,8 @@ pub const Command = struct { // MARK: Command
 				}
 			}
 
-			put_items_into.do(ctx, self.destinations, self.recipe.resultAmount, .{.create = .{.baseItem = self.recipe.resultItem}});
+			const remainingAmount = put_items_into.do(ctx, self.destinations, self.recipe.resultAmount, .{.create = .{.baseItem = self.recipe.resultItem}});
+			std.debug.assert(remainingAmount == 0);
 		}
 
 		fn serialize(self: CraftFrom, writer: *BinaryWriter) void {

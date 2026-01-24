@@ -252,7 +252,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 				return error.Invalid;
 			},
 			.other => {},
-			.alreadyFreed => unreachable,
+			.alreadyFreed, .recipe => unreachable,
 		}
 
 		inventoryCreationMutex.lock();
@@ -265,6 +265,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 		switch (source) {
 			.blockInventory => unreachable, // Should be loaded by the block entity
 			.playerInventory, .hand => unreachable, // Should be loaded on player creation
+			.recipe => unreachable, //Should be loaded only on client side
 			.other => {},
 			.alreadyFreed => unreachable,
 		}
@@ -361,6 +362,7 @@ pub const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
 	hand = 3,
+	recipe = 4,
 	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
@@ -368,6 +370,7 @@ pub const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: u32,
 	hand: u32,
+	recipe: *const main.items.Recipe,
 	blockInventory: Vec3i,
 	other: void,
 };
@@ -467,14 +470,13 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item, .amount = amount}});
 	}
 
-	pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory, slot: u32) void {
+	pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory) void {
 		std.debug.assert(source.type == .serverShared);
 		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
 		std.debug.assert(craftingInv.type == .crafting);
+		std.debug.assert(craftingInv.super.source == .recipe);
 
-		if (slot != craftingInv.super._items.len - 1) return;
-
-		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.getStack(slot), craftingInv.super._items[0..slot])});
+		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.super.source.recipe)});
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {

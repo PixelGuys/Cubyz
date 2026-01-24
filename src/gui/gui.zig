@@ -665,9 +665,9 @@ pub const inventory = struct { // MARK: inventory
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
 				if (mainGuiButton.modsOnPress.shift) {
-					main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory, itemSlot.itemSlot);
+					main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
 				} else {
-					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory, itemSlot.itemSlot);
+					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
 				}
 			}
 			return;

@@ -94,7 +94,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
-		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .normal, .crafting, .other, .{});
+		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .normal, .crafting, .{.recipe = recipe}, .{});
 
 		for (0..recipe.sourceAmounts.len) |index| {
 			inv.super._items[index].amount = recipe.sourceAmounts[index];
