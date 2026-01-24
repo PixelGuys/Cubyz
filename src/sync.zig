@@ -782,7 +782,6 @@ pub const Command = struct { // MARK: Command
 	}
 
 	fn validRecipe(sourceStacks: []ItemStack, resultStack: ItemStack) bool {
-		return blk: {
 			outer: for (main.items.recipes()) |*recipe| {
 				if (recipe.resultItem != resultStack.item.baseItem) continue;
 				if (recipe.resultAmount != resultStack.amount) continue;
@@ -791,10 +790,9 @@ pub const Command = struct { // MARK: Command
 					if (recipeItem != sourceStack.item.baseItem) continue :outer;
 					if (recipeAmount != sourceStack.amount) continue :outer;
 				}
-				break :blk true;
+				return true;
 			}
-			break :blk false;
-		};
+		        return false,
 	}
 
 	const put_items_into = struct {

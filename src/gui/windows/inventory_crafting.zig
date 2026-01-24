@@ -93,6 +93,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		// All ingredients found: Add it to the list.
 		if (recipe.cachedInventory == null) {
 			recipe.cachedInventory = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .normal, .crafting, .other, .{});
+
 			const inv = recipe.cachedInventory.?.super;
 			for (0..recipe.sourceAmounts.len) |index| {
 				inv._items[index].amount = recipe.sourceAmounts[index];
