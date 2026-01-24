@@ -781,16 +781,7 @@ pub const Command = struct { // MARK: Command
 		};
 	}
 
-	fn destinationsCanHold(destinations: []const Inventory, itemStack: ItemStack) bool {
-		var remainingAmount = itemStack.amount;
-		for (destinations) |dest| {
-			remainingAmount -|= dest.getPossibleHoldingAmount(itemStack);
-			if (remainingAmount == 0) return true;
-		}
-		return false;
-	}
-
-	const put_items_into = struct {
+	const put_items_into = struct { // MARK: put_items_into
 		const Provider = union(enum) {
 			move: InventoryAndSlot,
 			create: Item,
@@ -903,7 +894,7 @@ pub const Command = struct { // MARK: Command
 					writer.writeVec(Vec3i, val);
 				},
 				.other => {},
-				.alreadyFreed, .recipe => unreachable,
+				.alreadyFreed => unreachable,
 			}
 			switch (self.inv.type) {
 				.normal => {},
@@ -924,7 +915,7 @@ pub const Command = struct { // MARK: Command
 				.hand => .{.hand = try reader.readInt(u32)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.other => .{.other = {}},
-				.alreadyFreed, .recipe => return error.Invalid,
+				.alreadyFreed => return error.Invalid,
 			};
 			const typ: Inventory.Type = switch (typeEnum) {
 				inline .normal => |tag| tag,
@@ -1374,7 +1365,7 @@ pub const Command = struct { // MARK: Command
 			for (self.destinations) |dest| if (dest.type != .normal) return;
 			for (self.sources) |source| if (source.type != .normal) return;
 
-			if (!destinationsCanHold(self.destinations, .{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount})) return;
+			if (Inventory.destinationsCanHold(self.destinations, .{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount}) != .yes) return;
 
 			// Can we even craft it?
 			outer: for (self.recipe.sourceItems) |requiredItem| {
@@ -1403,7 +1394,7 @@ pub const Command = struct { // MARK: Command
 				var remainingAmount: usize = requiredAmount;
 				for (self.sources) |source| {
 					for (0..source._items.len) |reverseIndex| {
-						const i: usize = source._items.len - r - 1;
+						const i: usize = source._items.len - reverseIndex - 1;
 						const otherStack: *ItemStack = &source._items[i];
 						if (otherStack.item != .null and std.meta.eql(requiredItem, otherStack.item.baseItem)) {
 							if (otherStack.amount == otherStack.item.stackSize()) {

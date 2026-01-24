@@ -252,7 +252,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 				return error.Invalid;
 			},
 			.other => {},
-			.alreadyFreed, .recipe => unreachable,
+			.alreadyFreed => unreachable,
 		}
 
 		inventoryCreationMutex.lock();
@@ -265,7 +265,6 @@ pub const ServerSide = struct { // MARK: ServerSide
 		switch (source) {
 			.blockInventory => unreachable, // Should be loaded by the block entity
 			.playerInventory, .hand => unreachable, // Should be loaded on player creation
-			.recipe => unreachable, // Should be loaded only on client side
 			.other => {},
 			.alreadyFreed => unreachable,
 		}
@@ -362,7 +361,6 @@ pub const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
 	hand = 3,
-	recipe = 4,
 	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
@@ -370,16 +368,15 @@ pub const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: u32,
 	hand: u32,
-	recipe: *const main.items.Recipe,
 	blockInventory: Vec3i,
 	other: void,
 };
 
 pub const ClientInventory = struct { // MARK: ClientInventory
-	const ClientType = enum {
-		serverShared,
-		creative,
-		crafting,
+	const ClientType = union(enum) {
+		serverShared: void,
+		creative: void,
+		crafting: *const main.items.Recipe,
 	};
 	super: Inventory,
 	type: ClientType,
@@ -474,9 +471,8 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		std.debug.assert(source.type == .serverShared);
 		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
 		std.debug.assert(craftingInv.type == .crafting);
-		std.debug.assert(craftingInv.super.source == .recipe);
 
-		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.super.source.recipe)});
+		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.type.crafting)});
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
@@ -603,22 +599,35 @@ pub fn getAmount(self: Inventory, slot: usize) u16 {
 	return self._items[slot].amount;
 }
 
-pub fn getPossibleHoldingAmount(self: Inventory, sourceStack: ItemStack) u16 {
-	if (sourceStack.amount == 0) return 0;
+const canHoldReturn = union(enum) {
+	yes: void,
+	remainingAmount: u16,
+};
+
+pub fn canHold(self: Inventory, sourceStack: ItemStack) canHoldReturn {
+	if (sourceStack.amount == 0) return .yes;
 
 	var remainingAmount = sourceStack.amount;
 	for (self._items) |*destStack| {
 		if (std.meta.eql(destStack.item, sourceStack.item) or destStack.item == .null) {
 			const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 			remainingAmount -= amount;
-			if (remainingAmount == 0) return sourceStack.amount;
+			if (remainingAmount == 0) return .yes;
 		}
 	}
-	return sourceStack.amount - remainingAmount;
+	return .{.remainingAmount = sourceStack.amount - remainingAmount};
 }
 
-pub fn canHold(self: Inventory, sourceStack: ItemStack) bool {
-	return self.getPossibleHoldingAmount(sourceStack) == sourceStack.amount;
+pub fn destinationsCanHold(destinations: []const Inventory, itemStack: ItemStack) canHoldReturn {
+	var remainingAmount = itemStack.amount;
+	for (destinations) |dest| {
+		remainingAmount -|= switch (dest.canHold(itemStack)) {
+			.yes => return .yes,
+			.remainingAmount => |amount| amount,
+		};
+		if (remainingAmount == 0) return .yes;
+	}
+	return .{.remainingAmount = remainingAmount};
 }
 
 pub fn toBytes(self: Inventory, writer: *BinaryWriter) void {

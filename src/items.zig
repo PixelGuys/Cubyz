@@ -1062,16 +1062,6 @@ pub const Recipe = struct { // MARK: Recipe
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
 
-	pub fn toBytes(self: *const Recipe, writer: *BinaryWriter) void {
-		writer.writeEnum(BaseItemIndex, self.resultItem);
-		writer.writeVarInt(u16, self.resultAmount);
-		writer.writeVarInt(usize, self.sourceItems.len);
-		for (self.sourceItems, self.sourceAmounts) |item, amount| {
-			writer.writeEnum(BaseItemIndex, item);
-			writer.writeVarInt(u16, amount);
-		}
-	}
-
 	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
 		outer: for (main.items.recipes()) |*recipe| {
 			if (recipe.resultItem != self.resultItem) continue;
@@ -1084,6 +1074,16 @@ pub const Recipe = struct { // MARK: Recipe
 			return recipe;
 		}
 		return error.Invalid;
+	}
+
+	pub fn toBytes(self: *const Recipe, writer: *BinaryWriter) void {
+		writer.writeEnum(BaseItemIndex, self.resultItem);
+		writer.writeVarInt(u16, self.resultAmount);
+		writer.writeVarInt(usize, self.sourceItems.len);
+		for (self.sourceItems, self.sourceAmounts) |item, amount| {
+			writer.writeEnum(BaseItemIndex, item);
+			writer.writeVarInt(u16, amount);
+		}
 	}
 
 	pub fn fromBytes(reader: *BinaryReader) !*Recipe {
