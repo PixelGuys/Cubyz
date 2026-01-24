@@ -1048,6 +1048,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				currentSwingProgress = 0;
+				currentSwingTime = 0;
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
 			}
@@ -1067,17 +1069,25 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				damage -= block.blockResistance();
 				if (damage > 0) {
 					const swingTime = if (isTool and stack.item.tool.isEffectiveOn(block)) 1.0/stack.item.tool.swingSpeed else 0.5;
-					if (currentSwingTime != swingTime) {
+					if (currentSwingTime > swingTime) {
 						currentSwingProgress = 0;
-						currentSwingTime = swingTime;
+						currentSwingTime = 0;
+					}
+					if (currentSwingTime == 0) {
+						const swings = @ceil(block.blockHealth()/damage);
+						const damagePerSwing = block.blockHealth()/swings;
+						currentSwingTime = damagePerSwing/damage*swingTime;
 					}
 					currentSwingProgress += @floatCast(deltaTime);
 					while (currentSwingProgress > currentSwingTime) {
 						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage/block.blockHealth();
-						if (currentBlockProgress > 1) break;
+						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
+						if (currentBlockProgress > 0.9999) break;
+						const swings = @ceil(block.blockHealth()/damage);
+						const damagePerSwing = block.blockHealth()/swings;
+						currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					if (currentBlockProgress < 1) {
+					if (currentBlockProgress < 0.9999) {
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						if (currentBlockProgress != 0) {
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
@@ -1086,9 +1096,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 						return;
 					} else {
-						currentSwingProgress += (currentBlockProgress - 1)*block.blockHealth()/damage*currentSwingTime;
+						currentSwingProgress = 0;
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
+						currentSwingTime = 0;
 					}
 				} else {
 					main.sync.ClientSide.mutex.unlock();

@@ -130,7 +130,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 				if (self.managed == .internallyManaged) {
 					if (self.inv.type.shouldDepositToUserOnClose()) {
 						const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-						sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv, .dropLocation = user.player.pos}}, null);
+						sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, self.inv, user.player.pos)}, null);
 					}
 					inventoryCreationMutex.lock();
 					defer inventoryCreationMutex.unlock();
@@ -440,10 +440,10 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 	}
 
-	pub fn depositOrDrop(dest: ClientInventory, source: ClientInventory) void {
-		std.debug.assert(dest.type == .serverShared);
-		std.debug.assert(source.type == .serverShared);
-		main.sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest.super, .source = source.super, .dropLocation = undefined}});
+	pub fn depositOrDrop(source: ClientInventory, destinations: []const ClientInventory) void {
+		for (destinations) |dest| std.debug.assert(dest.type == .serverShared);
+		std.debug.assert(source.type != .creative);
+		main.sync.ClientSide.executeCommand(.{.depositOrDrop = .init(destinations, source.super, undefined)});
 	}
 
 	pub fn depositToAny(source: ClientInventory, sourceSlot: u32, destinations: []const ClientInventory, amount: u16) void {
