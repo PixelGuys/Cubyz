@@ -980,6 +980,14 @@ pub const Command = struct { // MARK: Command
 			for (self.destinations) |dest| if (dest.type != .normal) return;
 			for (self.sources) |source| if (source.type != .normal) return;
 
+			const destinationsCanHold = blk: {
+				for (self.destinations) |dest| {
+					if (dest.canHold(.{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount})) break :blk true;
+				}
+				break :blk false;
+			};
+			if (!destinationsCanHold) return;
+
 			// Can we even craft it?
 			outer: for (self.recipe.sourceItems) |requiredItem| {
 				var amount: usize = 0;
