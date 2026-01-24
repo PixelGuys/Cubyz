@@ -446,7 +446,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn depositOrDrop(source: ClientInventory, destinations: []const ClientInventory) void {
-		for(destinations) |dest| std.debug.assert(dest.type == .serverShared);
+		for (destinations) |dest| std.debug.assert(dest.type == .serverShared);
 		std.debug.assert(source.type != .creative);
 		main.sync.ClientSide.executeCommand(.{.depositOrDrop = .init(destinations, source.super, undefined)});
 	}
