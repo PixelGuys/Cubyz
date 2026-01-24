@@ -834,7 +834,7 @@ pub fn addToUpdateList(mesh: *chunk_meshing.ChunkMesh) void {
 	}
 }
 
-pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored, NoLongerNeeded}!void {
+pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{ AlreadyStored, NoLongerNeeded }!void {
 	mutex.lock();
 	defer mutex.unlock();
 	if(!isInRenderDistance(mesh.pos)) {
