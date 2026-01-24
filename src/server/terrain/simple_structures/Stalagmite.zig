@@ -63,12 +63,12 @@ pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, ch
 	const b = -self.topSlope;
 	var baseRadius: f32 = undefined;
 	var a: f32 = undefined;
-	if(self.baseSlope == self.topSlope) {
+	if (self.baseSlope == self.topSlope) {
 		baseRadius = height/self.topSlope;
 		a = 0;
 	} else {
 		baseRadius = -c/((-self.baseSlope - b)/2 + b);
-		if(baseRadius < 0) {
+		if (baseRadius < 0) {
 			baseRadius = -c/(-(-self.baseSlope - b)/2 + b);
 		}
 		a = (-self.baseSlope - b)/(2*baseRadius);
@@ -79,21 +79,21 @@ pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, ch
 	const yMin: i32 = @intFromFloat(@floor(relY - baseRadius));
 	const yMax: i32 = @intFromFloat(@ceil(relY + baseRadius));
 	var x3: i32 = xMin;
-	while(x3 <= xMax) : (x3 += 1) {
+	while (x3 <= xMax) : (x3 += 1) {
 		var y3: i32 = yMin;
-		while(y3 <= yMax) : (y3 += 1) {
+		while (y3 <= yMax) : (y3 += 1) {
 			const distSquare = vec.lengthSquare(Vec2f{@as(f32, @floatFromInt(x3)) - relX, @as(f32, @floatFromInt(y3)) - relY});
-			if(distSquare >= baseRadius*baseRadius) continue;
+			if (distSquare >= baseRadius*baseRadius) continue;
 			const r = @sqrt(distSquare);
 			const columnHeight = a*r*r + b*r + c;
-			if(x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width) {
+			if (x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width) {
 				const zMin: i32 = @intFromFloat(@round(relZ - columnHeight));
 				const zMax: i32 = @intFromFloat(@round(relZ + columnHeight));
 				var z3: i32 = zMin;
-				while(z3 <= zMax) : (z3 += 1) {
-					if(z3 >= 0 and z3 < chunk.super.width) {
+				while (z3 <= zMax) : (z3 += 1) {
+					if (z3 >= 0 and z3 < chunk.super.width) {
 						const block: main.blocks.Block = chunk.getBlock(x3, y3, z3);
-						if(block.typ == 0 or block.degradable()) {
+						if (block.typ == 0 or block.degradable()) {
 							chunk.updateBlockInGeneration(x3, y3, z3, self.block);
 						}
 					}

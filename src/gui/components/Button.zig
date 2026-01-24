@@ -125,18 +125,18 @@ pub fn mainButtonPressed(self: *Button, _: Vec2f) void {
 }
 
 pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
-	if(self.pressed) {
+	if (self.pressed) {
 		self.pressed = false;
-		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
+		if (GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			self.onAction.run();
 		}
 	}
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	const textures = if(self.pressed)
+	const textures = if (self.pressed)
 		pressedTextures
-	else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
+	else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
 		hoveredTextures
 	else
 		normalTextures;

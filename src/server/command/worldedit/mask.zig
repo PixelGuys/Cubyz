@@ -12,8 +12,8 @@ pub const usage =
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
-	if(args.len == 0) {
-		if(source.worldEditData.mask) |mask| mask.deinit(main.globalAllocator);
+	if (args.len == 0) {
+		if (source.worldEditData.mask) |mask| mask.deinit(main.globalAllocator);
 		source.worldEditData.mask = null;
 		source.sendMessage("#00ff00Mask cleared.", .{});
 		return;
