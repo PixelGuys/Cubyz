@@ -1061,6 +1061,58 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
+
+	pub fn toBytes(self: *const Recipe, writer: *BinaryWriter) void {
+		writer.writeEnum(BaseItemIndex, self.resultItem);
+		writer.writeInt(u16, self.resultAmount);
+		writer.writeVarInt(usize, self.sourceItems.len);
+		for (self.sourceItems, self.sourceAmounts) |item, amount| {
+			writer.writeEnum(BaseItemIndex, item);
+			writer.writeInt(u16, amount);
+		}
+	}
+
+	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
+		outer: for (main.items.recipes()) |*recipe| {
+			if (recipe.resultItem != self.resultItem) continue;
+			if (recipe.resultAmount != self.resultAmount) continue;
+			if (recipe.sourceItems.len != self.sourceItems.len) continue;
+			for (recipe.sourceItems, recipe.sourceAmounts, self.sourceItems, self.sourceAmounts) |recipeItem, recipeAmount, selfItem, selfAmount| {
+				if (recipeItem != selfItem) continue :outer;
+				if (recipeAmount != selfAmount) continue :outer;
+			}
+			return recipe;
+		}
+		return error.Invalid;
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !*Recipe {
+		const resultItem = try reader.readEnum(BaseItemIndex);
+		const resultAmount = try reader.readInt(u16);
+		const sourceCount = try reader.readVarInt(usize);
+
+		const sourceItems = main.stackAllocator.alloc(BaseItemIndex, sourceCount);
+		defer main.stackAllocator.free(sourceItems);
+		const sourceAmounts = main.stackAllocator.alloc(u16, sourceCount);
+		defer main.stackAllocator.free(sourceAmounts);
+		for (sourceItems, sourceAmounts) |*item, *amount| {
+			item.* = try reader.readEnum(BaseItemIndex);
+			amount.* = try reader.readInt(u16);
+		}
+		return getValidRecipe(.{.sourceItems = sourceItems, .sourceAmounts = sourceAmounts, .resultItem = resultItem, .resultAmount = resultAmount});
+	}
+
+	pub fn getValidRecipeThroughStacks(sourceStacks: []const ItemStack, resultStack: ItemStack) error{Invalid}!*Recipe {
+		const sourceItems = main.stackAllocator.alloc(BaseItemIndex, sourceStacks.len);
+		defer main.stackAllocator.free(sourceItems);
+		const sourceAmounts = main.stackAllocator.alloc(u16, sourceStacks.len);
+		defer main.stackAllocator.free(sourceAmounts);
+		for (sourceItems, sourceAmounts, sourceStacks) |*item, *amount, stack| {
+			item.* = stack.item.baseItem;
+			amount.* = stack.amount;
+		}
+		return getValidRecipe(.{.sourceItems = sourceItems, .sourceAmounts = sourceAmounts, .resultItem = resultStack.item.baseItem, .resultAmount = resultStack.amount});
+	}
 };
 
 var toolTypeList: ListUnmanaged(ToolType) = .{};
