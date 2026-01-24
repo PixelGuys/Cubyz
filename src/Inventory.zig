@@ -407,6 +407,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			carried.fillFromCreative(0, dest.getItem(destSlot));
 			return;
 		}
+		std.debug.assert(dest.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
 	}
 
@@ -438,23 +439,23 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn depositOrDrop(dest: ClientInventory, source: ClientInventory) void {
 		std.debug.assert(dest.type == .serverShared);
-		std.debug.assert(source.type != .creative);
+		std.debug.assert(source.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest.super, .source = source.super, .dropLocation = undefined}});
 	}
 
 	pub fn depositToAny(source: ClientInventory, sourceSlot: u32, destinations: []const ClientInventory, amount: u16) void {
-		std.debug.assert(source.type != .creative);
+		std.debug.assert(source.type == .serverShared);
 		for (destinations) |inv| std.debug.assert(inv.super.type == .normal);
 		main.sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source.super, .slot = sourceSlot}, amount)});
 	}
 
 	pub fn dropStack(source: ClientInventory, sourceSlot: u32) void {
-		if (source.type == .creative) return;
+		if (source.type != .serverShared) return;
 		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
 	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {
-		if (source.type == .creative) return;
+		if (source.type != .serverShared) return;
 		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}, .desiredAmount = 1}});
 	}
 
