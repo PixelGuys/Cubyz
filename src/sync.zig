@@ -1155,50 +1155,6 @@ pub const Command = struct { // MARK: Command
 			}
 
 			put_items_into.do(ctx, self.destinations, self.resultStack.amount, .{.create = self.resultStack.item});
-			var remainingAmount: u16 = self.resultStack.amount;
-			var selectedEmptySlot: ?u32 = null;
-			var selectedEmptyInv: ?Inventory = null;
-			outer: for(self.destinations) |dest| {
-				var emptySlot: ?u32 = null;
-				var hasItem = false;
-				for(dest._items, 0..) |*destStack, destSlot| {
-					if(destStack.item == .null and emptySlot == null) {
-						emptySlot = @intCast(destSlot);
-						if(selectedEmptySlot == null) {
-							selectedEmptySlot = emptySlot;
-							selectedEmptyInv = dest;
-						}
-					}
-					if(std.meta.eql(destStack.item, self.resultStack.item)) {
-						hasItem = true;
-						const amount = @min(self.resultStack.item.stackSize() - destStack.amount, remainingAmount);
-						if(amount == 0) continue;
-						ctx.execute(.{.create = .{
-							.dest = .{.inv = dest, .slot = @intCast(destSlot)},
-							.amount = amount,
-							.item = self.resultStack.item,
-						}});
-						remainingAmount -= amount;
-						if(remainingAmount == 0) break :outer;
-					}
-				}
-				if(emptySlot != null and hasItem) {
-					ctx.execute(.{.create = .{
-						.dest = .{.inv = dest, .slot = emptySlot.?},
-						.amount = remainingAmount,
-						.item = self.resultStack.item,
-					}});
-					remainingAmount = 0;
-					break :outer;
-				}
-			}
-			if(remainingAmount > 0 and selectedEmptySlot != null) {
-				ctx.execute(.{.create = .{
-					.dest = .{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?},
-					.amount = remainingAmount,
-					.item = self.resultStack.item,
-				}});
-			}
 		}
 
 		fn serialize(self: CraftFrom, writer: *BinaryWriter) void {
