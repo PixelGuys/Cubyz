@@ -772,5 +772,4 @@ pub const Inventories = struct { // MARK: Inventories
 		}
 		return remainingAmount;
 	}
-
 };
