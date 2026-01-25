@@ -28,8 +28,8 @@ const HashMapKey = struct {
 		return hasher.final();
 	}
 	pub fn eql(_: HashMapKey, val1: HashMapKey, val2: HashMapKey) bool {
-		if(val1.radius != val2.radius) return false;
-		if(val1.textureSlotOffset != val2.textureSlotOffset) return false;
+		if (val1.radius != val2.radius) return false;
+		if (val1.textureSlotOffset != val2.textureSlotOffset) return false;
 		return std.mem.eql(u8, val1.shellModelId, val2.shellModelId);
 	}
 };
@@ -46,7 +46,7 @@ pub const BranchData = packed struct(u7) {
 	}
 
 	pub inline fn setConnection(self: *@This(), neighbor: Neighbor, value: bool) void {
-		if(value) {
+		if (value) {
 			self.enabledConnections |= Neighbor.bitMask(neighbor);
 		} else {
 			self.enabledConnections &= ~Neighbor.bitMask(neighbor);
@@ -85,7 +85,7 @@ const Pattern = union(enum) {
 fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, side: Neighbor, textureSlotOffset: u32) main.models.QuadInfo {
 	var corners: [4]Vec2f = originalCorners;
 
-	switch(pattern) {
+	switch (pattern) {
 		.dot, .cross => {},
 		inline else => |typ| {
 			const angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ)))*std.math.pi/2.0;
@@ -108,7 +108,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[3][1] - offY)),
 	};
 
-	const offset: Vec3f = @as(Vec3f, @floatFromInt(@abs(side.relPos())))*@as(Vec3f, @splat(if(side.isPositive()) max else min));
+	const offset: Vec3f = @as(Vec3f, @floatFromInt(@abs(side.relPos())))*@as(Vec3f, @splat(if (side.isPositive()) max else min));
 
 	const res: main.models.QuadInfo = .{
 		.corners = .{
@@ -128,7 +128,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 fn addQuads(pattern: Pattern, side: Neighbor, radius: f32, out: *main.List(main.models.QuadInfo), textureSlotOffset: u32) void {
 	const min: f32 = (8.0 - radius)/16.0;
 	const max: f32 = (8.0 + radius)/16.0;
-	switch(pattern) {
+	switch (pattern) {
 		.dot => {
 			out.append(rotateQuad(.{
 				.{min, min},
@@ -193,9 +193,9 @@ pub fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 
 	const count: u6 = @as(u6, @intFromBool(connectedPosX)) + @as(u6, @intFromBool(connectedNegX)) + @as(u6, @intFromBool(connectedPosY)) + @as(u6, @intFromBool(connectedNegY));
 
-	return switch(count) {
+	return switch (count) {
 		0 => {
-			if(data.isConnected(side)) {
+			if (data.isConnected(side)) {
 				return null;
 			}
 
@@ -203,19 +203,19 @@ pub fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 		},
 		1 => {
 			var dir: Direction = .negXDir;
-			if(connectedNegY) {
+			if (connectedNegY) {
 				dir = .negYDir;
-			} else if(connectedPosX) {
+			} else if (connectedPosX) {
 				dir = .posXDir;
-			} else if(connectedPosY) {
+			} else if (connectedPosY) {
 				dir = .posYDir;
 			}
 			return .{.halfLine = dir};
 		},
 		2 => {
-			if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
+			if ((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
 				var dir: Direction = .negYDir;
-				if(connectedPosX and connectedNegX) {
+				if (connectedPosX and connectedNegX) {
 					dir = .posXDir;
 				}
 
@@ -224,19 +224,19 @@ pub fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 
 			var dir: Direction = .negXDir;
 
-			if(connectedNegY) {
+			if (connectedNegY) {
 				dir = .negYDir;
-				if(connectedPosX) {
+				if (connectedPosX) {
 					dir = .posXDir;
 				}
-			} else if(connectedPosX) {
+			} else if (connectedPosX) {
 				dir = .posXDir;
-				if(connectedPosY) {
+				if (connectedPosY) {
 					dir = .posYDir;
 				}
-			} else if(connectedPosY) {
+			} else if (connectedPosY) {
 				dir = .posYDir;
-				if(connectedNegX) {
+				if (connectedNegX) {
 					dir = .negXDir;
 				}
 			}
@@ -245,10 +245,10 @@ pub fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 		},
 		3 => {
 			var dir: Direction = undefined;
-			if(!connectedPosY) dir = .negYDir;
-			if(!connectedNegX) dir = .posXDir;
-			if(!connectedNegY) dir = .posYDir;
-			if(!connectedPosX) dir = .negXDir;
+			if (!connectedPosY) dir = .negYDir;
+			if (!connectedNegX) dir = .posXDir;
+			if (!connectedNegY) dir = .posYDir;
+			if (!connectedPosX) dir = .negXDir;
 
 			return .{.intersection = dir};
 		},
@@ -266,31 +266,31 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 	modeData.* = radiusForComparisons;
 	const shellModelId = zon.get([]const u8, "shellModel", "");
 	const textureSlotOffset = zon.get(u32, "textureSlotOffset", 0);
-	if(branchModels.get(.{.radius = radiusForComparisons, .shellModelId = shellModelId, .textureSlotOffset = textureSlotOffset})) |modelIndex| return modelIndex;
+	if (branchModels.get(.{.radius = radiusForComparisons, .shellModelId = shellModelId, .textureSlotOffset = textureSlotOffset})) |modelIndex| return modelIndex;
 
 	var shellQuads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 	defer shellQuads.deinit();
-	if(shellModelId.len != 0) {
+	if (shellModelId.len != 0) {
 		const shellModel = main.models.getModelIndex(shellModelId).model();
 		shellModel.getRawFaces(&shellQuads);
 	}
 
 	var modelIndex: ModelIndex = undefined;
-	for(0..64) |i| {
+	for (0..64) |i| {
 		var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 		defer quads.deinit();
 		quads.appendSlice(shellQuads.items);
 
-		for(Neighbor.iterable) |neighbor| {
+		for (Neighbor.iterable) |neighbor| {
 			const pattern = getPattern(BranchData.init(@intCast(i)), neighbor);
 
-			if(pattern) |pat| {
+			if (pattern) |pat| {
 				addQuads(pat, neighbor, radius, &quads, textureSlotOffset);
 			}
 		}
 
 		const index = main.models.Model.init(quads.items);
-		if(i == 0) {
+		if (i == 0) {
 			modelIndex = index;
 		}
 	}
@@ -308,11 +308,11 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	@setEvalBranchQuota(65_536);
 
 	comptime var rotationTable: [4][16]u8 = undefined;
-	comptime for(0..16) |i| {
+	comptime for (0..16) |i| {
 		rotationTable[0][i] = @intCast(i << 2);
 	};
-	comptime for(1..4) |a| {
-		for(0..16) |i| {
+	comptime for (1..4) |a| {
+		for (0..16) |i| {
 			const old: BranchData = .init(rotationTable[a - 1][i]);
 			var new: BranchData = .init(0);
 
@@ -324,7 +324,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 			rotationTable[a][i] = new.enabledConnections;
 		}
 	};
-	if(data > 0b111111) return 0;
+	if (data > 0b111111) return 0;
 	const rotationIndex = (data & 0b111100) >> 2;
 	const upDownFlags = data & 0b000011;
 	const runtimeTable = rotationTable;
@@ -344,7 +344,7 @@ pub fn generateData(
 ) bool {
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode() and currentBlock.modeData() == neighborBlock.modeData();
 
-	if(blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
+	if (blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
 		const neighborModel = blocks.meshes.model(neighborBlock).model();
 
 		var currentData = BranchData.init(currentBlock.data);
@@ -355,7 +355,7 @@ pub fn generateData(
 
 		currentData.placedByHuman = true;
 		const result: u7 = @bitCast(currentData);
-		if(result == currentBlock.data) return false;
+		if (result == currentBlock.data) return false;
 
 		currentBlock.data = result;
 		return true;
@@ -370,15 +370,15 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	// Handle joining with other branches. While placed, branches extend in a
 	// opposite direction than they were placed from, effectively connecting
 	// to the block they were placed at.
-	if(canConnectToNeighbor) {
+	if (canConnectToNeighbor) {
 		const neighborData = BranchData.init(neighborBlock.data);
 		currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
-	} else if(neighborBlock.replacable()) {
+	} else if (neighborBlock.replacable()) {
 		currentData.setConnection(neighbor, false);
 	}
 
 	const result: u7 = @bitCast(currentData);
-	if(result == block.data) return false;
+	if (result == block.data) return false;
 
 	block.data = result;
 	return true;
@@ -389,18 +389,18 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 	var resultBitMask: ?u16 = null;
 	{
 		const modelIndex = blocks.meshes.modelIndexStart(block);
-		if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+		if (RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 			closestIntersectionDistance = intersection.distance;
 			resultBitMask = 0;
 		}
 	}
-	for(Neighbor.iterable) |direction| {
+	for (Neighbor.iterable) |direction| {
 		const directionBitMask = Neighbor.bitMask(direction);
 
-		if((block.data & directionBitMask) != 0) {
+		if ((block.data & directionBitMask) != 0) {
 			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(directionBitMask);
-			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-				if(@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
+			if (RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+				if (@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
 					closestIntersectionDistance = intersection.distance;
 					resultBitMask = direction.bitMask();
 				}
@@ -411,9 +411,9 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 }
 
 pub fn onBlockBreaking(_: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
-	if(closestRay(currentData.*, relativePlayerPos, playerDir)) |directionBitMask| {
+	if (closestRay(currentData.*, relativePlayerPos, playerDir)) |directionBitMask| {
 		// If player destroys a central part of branch block, branch block is completely destroyed.
-		if(directionBitMask == 0) {
+		if (directionBitMask == 0) {
 			currentData.typ = 0;
 			currentData.data = 0;
 			return;

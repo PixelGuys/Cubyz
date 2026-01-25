@@ -39,7 +39,7 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 }
 
 pub fn clampMag(self: anytype, maxMag: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if(lengthSquare(self) > maxMag*maxMag) {
+	if (lengthSquare(self) > maxMag*maxMag) {
 		return normalize(self)*@as(@TypeOf(self), @splat(maxMag));
 	}
 
@@ -47,7 +47,7 @@ pub fn clampMag(self: anytype, maxMag: @typeInfo(@TypeOf(self)).vector.child) @T
 }
 
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	return @TypeOf(self){
 		self[1]*other[2] - self[2]*other[1],
 		self[2]*other[0] - self[0]*other[2],
@@ -56,7 +56,7 @@ pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 }
 
 pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -67,7 +67,7 @@ pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @Typ
 }
 
 pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -78,7 +78,7 @@ pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @Typ
 }
 
 pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -89,7 +89,7 @@ pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @Typ
 }
 
 pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, center: @TypeOf(self)) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 2) @compileError("Only available for vectors of length 2.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 2) @compileError("Only available for vectors of length 2.");
 
 	const sin = @sin(angle);
 	const cos = @cos(angle);
@@ -202,7 +202,7 @@ pub const Mat4f = struct { // MARK: Mat4f
 	pub fn mul(self: Mat4f, other: Mat4f) Mat4f {
 		const transposeOther = other.transpose();
 		var result: Mat4f = undefined;
-		for(&result.rows, self.rows) |*resRow, selfRow| {
+		for (&result.rows, self.rows) |*resRow, selfRow| {
 			resRow.* = .{
 				dot(selfRow, transposeOther.rows[0]),
 				dot(selfRow, transposeOther.rows[1]),
@@ -272,7 +272,7 @@ pub const Complex = struct { // MARK: Complex
 	}
 
 	pub fn fromSqrt(val: f64) Complex {
-		if(val < 0) {
+		if (val < 0) {
 			return .{.val = .{0, @sqrt(-val)}};
 		} else {
 			return .{.val = .{@sqrt(val), 0}};

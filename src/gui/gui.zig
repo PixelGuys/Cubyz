@@ -62,8 +62,8 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn executeCommands() void {
-		while(commands.popFront()) |command| {
-			switch(command.action) {
+		while (commands.popFront()) |command| {
+			switch (command.action) {
 				.open => {
 					executeOpenWindowCommand(command.window);
 				},
@@ -76,8 +76,8 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 
 	fn executeOpenWindowCommand(window: *GuiWindow) void {
 		defer updateWindowPositions();
-		for(openWindows.items, 0..) |_openWindow, i| {
-			if(_openWindow == window) {
+		for (openWindows.items, 0..) |_openWindow, i| {
+			if (_openWindow == window) {
 				_ = openWindows.orderedRemove(i);
 				openWindows.appendAssumeCapacity(window);
 				selectedWindow = null;
@@ -91,11 +91,11 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 
 	fn executeCloseWindowCommand(window: *GuiWindow) void {
 		defer updateWindowPositions();
-		if(selectedWindow == window) {
+		if (selectedWindow == window) {
 			selectedWindow = null;
 		}
-		for(openWindows.items, 0..) |_openWindow, i| {
-			if(_openWindow == window) {
+		for (openWindows.items, 0..) |_openWindow, i| {
+			if (_openWindow == window) {
 				_ = openWindows.swapRemove(i);
 				window.onCloseFn();
 				break;
@@ -109,13 +109,13 @@ pub fn initWindowList() void {
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
 	openWindows = .init(main.globalAllocator);
-	inline for(@typeInfo(windowlist).@"struct".decls) |decl| {
+	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
 		windowStruct.window.id = decl.name;
 		addWindow(&windowStruct.window);
 		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
-		inline for(functionNames) |function| {
-			if(@hasDecl(windowStruct, function)) {
+		inline for (functionNames) |function| {
+			if (@hasDecl(windowStruct, function)) {
 				@field(windowStruct.window, function ++ "Fn") = &@field(windowStruct, function);
 			}
 		}
@@ -130,9 +130,9 @@ pub fn deinitWindowList() void {
 }
 
 pub fn init() void { // MARK: init()
-	inline for(@typeInfo(windowlist).@"struct".decls) |decl| {
+	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
-		if(@hasDecl(windowStruct, "init")) {
+		if (@hasDecl(windowStruct, "init")) {
 			windowStruct.init();
 		}
 	}
@@ -151,7 +151,7 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	save();
 	GamepadCursor.deinit();
-	for(openWindows.items) |window| {
+	for (openWindows.items) |window| {
 		window.onCloseFn();
 	}
 	openWindows.clearRetainingCapacity();
@@ -163,9 +163,9 @@ pub fn deinit() void {
 	ContinuousSlider.__deinit();
 	DiscreteSlider.__deinit();
 	TextInput.__deinit();
-	inline for(@typeInfo(windowlist).@"struct".decls) |decl| {
+	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
-		if(@hasDecl(WindowStruct, "deinit")) {
+		if (@hasDecl(WindowStruct, "deinit")) {
 			WindowStruct.deinit();
 		}
 	}
@@ -174,11 +174,11 @@ pub fn deinit() void {
 pub fn save() void { // MARK: save()
 	var guiZon = ZonElement.initObject(main.stackAllocator);
 	defer guiZon.deinit(main.stackAllocator);
-	for(windowList.items) |window| {
+	for (windowList.items) |window| {
 		const windowZon = ZonElement.initObject(main.stackAllocator);
-		for(window.relativePosition, 0..) |relPos, i| {
+		for (window.relativePosition, 0..) |relPos, i| {
 			const relPosZon = ZonElement.initObject(main.stackAllocator);
-			switch(relPos) {
+			switch (relPos) {
 				.ratio => |ratio| {
 					relPosZon.put("type", "ratio");
 					relPosZon.put("ratio", ratio);
@@ -208,14 +208,14 @@ pub fn save() void { // MARK: save()
 
 	// Merge with the old settings file to preserve unknown settings.
 	var oldZon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
-		if(err != error.FileNotFound) {
+		if (err != error.FileNotFound) {
 			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
 		}
 		break :blk .null;
 	};
 	defer oldZon.deinit(main.stackAllocator);
 
-	if(oldZon == .object) {
+	if (oldZon == .object) {
 		guiZon.join(.preferLeft, oldZon);
 	}
 
@@ -226,33 +226,33 @@ pub fn save() void { // MARK: save()
 
 fn load() void {
 	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
-		if(err != error.FileNotFound) {
+		if (err != error.FileNotFound) {
 			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
 		}
 		break :blk .null;
 	};
 	defer zon.deinit(main.stackAllocator);
 
-	for(windowList.items) |window| {
+	for (windowList.items) |window| {
 		const windowZon = zon.getChild(window.id);
-		if(windowZon == .null) continue;
-		for(&window.relativePosition, 0..) |*relPos, i| {
+		if (windowZon == .null) continue;
+		for (&window.relativePosition, 0..) |*relPos, i| {
 			const relPosZon = windowZon.getChild(([_][]const u8{"relPos0", "relPos1"})[i]);
 			const typ = relPosZon.get([]const u8, "type", "ratio");
-			if(std.mem.eql(u8, typ, "ratio")) {
+			if (std.mem.eql(u8, typ, "ratio")) {
 				relPos.* = .{.ratio = relPosZon.get(f32, "ratio", 0.5)};
-			} else if(std.mem.eql(u8, typ, "attachedToFrame")) {
+			} else if (std.mem.eql(u8, typ, "attachedToFrame")) {
 				relPos.* = .{.attachedToFrame = .{
 					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
 					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
 				}};
-			} else if(std.mem.eql(u8, typ, "relativeToWindow")) {
+			} else if (std.mem.eql(u8, typ, "relativeToWindow")) {
 				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
 				relPos.* = .{.relativeToWindow = .{
 					.reference = reference,
 					.ratio = relPosZon.get(f32, "ratio", 0.5),
 				}};
-			} else if(std.mem.eql(u8, typ, "attachedToWindow")) {
+			} else if (std.mem.eql(u8, typ, "attachedToWindow")) {
 				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
 				relPos.* = .{.attachedToWindow = .{
 					.reference = reference,
@@ -268,8 +268,8 @@ fn load() void {
 }
 
 fn getWindowById(id: []const u8) ?*GuiWindow {
-	for(windowList.items) |window| {
-		if(std.mem.eql(u8, id, window.id)) {
+	for (windowList.items) |window| {
+		if (std.mem.eql(u8, id, window.id)) {
 			return window;
 		}
 	}
@@ -278,26 +278,26 @@ fn getWindowById(id: []const u8) ?*GuiWindow {
 }
 
 pub fn updateGuiScale() void {
-	if(settings.guiScale) |guiScale| {
+	if (settings.guiScale) |guiScale| {
 		scale = guiScale;
 	} else {
 		const windowSize = main.Window.getWindowSize();
 		const screenWidth = @min(windowSize[0], windowSize[1]*16/9);
 		scale = @floor(screenWidth/640.0 + 0.2);
-		if(scale < 1) {
+		if (scale < 1) {
 			scale = 0.5;
 		}
 	}
 }
 
 fn addWindow(window: *GuiWindow) void {
-	for(windowList.items) |other| {
-		if(std.mem.eql(u8, window.id, other.id)) {
+	for (windowList.items) |other| {
+		if (std.mem.eql(u8, window.id, other.id)) {
 			std.log.err("Duplicate window id: {s}", .{window.id});
 			return;
 		}
 	}
-	if(window.isHud) {
+	if (window.isHud) {
 		hudWindows.append(window);
 	}
 	windowList.append(window);
@@ -306,8 +306,8 @@ fn addWindow(window: *GuiWindow) void {
 pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
 
-	for(windowList.items) |window| {
-		if(std.mem.eql(u8, window.id, id)) {
+	for (windowList.items) |window| {
+		if (std.mem.eql(u8, window.id, id)) {
 			openWindowFromRef(window);
 			return;
 		}
@@ -322,10 +322,10 @@ pub fn openWindowFromRef(window: *GuiWindow) void {
 
 pub fn toggleWindow(id: []const u8) void {
 	defer updateWindowPositions();
-	for(windowList.items) |window| {
-		if(std.mem.eql(u8, window.id, id)) {
-			for(openWindows.items, 0..) |_openWindow, i| {
-				if(_openWindow == window) {
+	for (windowList.items) |window| {
+		if (std.mem.eql(u8, window.id, id)) {
+			for (openWindows.items, 0..) |_openWindow, i| {
+				if (_openWindow == window) {
 					_ = openWindows.swapRemove(i);
 					window.onCloseFn();
 					selectedWindow = null;
@@ -343,8 +343,8 @@ pub fn toggleWindow(id: []const u8) void {
 
 pub fn openHud() void {
 	inventory.init();
-	for(windowList.items) |window| {
-		if(window.isHud) {
+	for (windowList.items) |window| {
+		if (window.isHud) {
 			openWindowFromRef(window);
 		}
 	}
@@ -360,8 +360,8 @@ pub fn closeWindowFromRef(window: *GuiWindow) void {
 }
 
 pub fn closeWindow(id: []const u8) void {
-	for(windowList.items) |window| {
-		if(std.mem.eql(u8, window.id, id)) {
+	for (windowList.items) |window| {
+		if (std.mem.eql(u8, window.id, id)) {
 			closeWindowFromRef(window);
 			return;
 		}
@@ -370,15 +370,15 @@ pub fn closeWindow(id: []const u8) void {
 }
 
 pub fn isWindowOpen(id: []const u8) bool {
-	for(openWindows.items) |window| {
-		if(std.mem.eql(u8, window.id, id)) return true;
+	for (openWindows.items) |window| {
+		if (std.mem.eql(u8, window.id, id)) return true;
 	}
 	return false;
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
-	if(selectedTextInput) |current| {
-		if(current != newSelectedTextInput) {
+	if (selectedTextInput) |current| {
+		if (current != newSelectedTextInput) {
 			current.deselect();
 		}
 	}
@@ -387,72 +387,72 @@ pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
 
 pub const textCallbacks = struct {
 	pub fn char(codepoint: u21) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.inputCharacter(codepoint);
 		}
 	}
 	pub fn left(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.left(mods);
 		}
 	}
 	pub fn right(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.right(mods);
 		}
 	}
 	pub fn down(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.down(mods);
 		}
 	}
 	pub fn up(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.up(mods);
 		}
 	}
 	pub fn gotoStart(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.gotoStart(mods);
 		}
 	}
 	pub fn gotoEnd(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.gotoEnd(mods);
 		}
 	}
 	pub fn deleteLeft(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.deleteLeft(mods);
 		}
 	}
 	pub fn deleteRight(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.deleteRight(mods);
 		}
 	}
 	pub fn selectAll(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.selectAll(mods);
 		}
 	}
 	pub fn copy(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.copy(mods);
 		}
 	}
 	pub fn paste(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.paste(mods);
 		}
 	}
 	pub fn cut(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.cut(mods);
 		}
 	}
 	pub fn newline(mods: main.Window.Key.Modifiers) void {
-		if(selectedTextInput) |current| {
+		if (selectedTextInput) |current| {
 			current.newline(mods);
 		}
 	}
@@ -463,20 +463,20 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	selectedWindow = null;
 	setSelectedTextInput(null);
 	var selectedI: usize = 0;
-	for(openWindows.items, 0..) |window, i| {
+	for (openWindows.items, 0..) |window, i| {
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		mousePosition -= window.pos;
-		if(@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
+		if (@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
 			selectedWindow = window;
 			selectedI = i;
 		}
 	}
-	if(selectedWindow) |_selectedWindow| {
+	if (selectedWindow) |_selectedWindow| {
 		const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
-	} else if(main.game.world != null and inventory.carried.getItem(0) == .null) {
+	} else if (main.game.world != null and inventory.carried.getItem(0) == .null) {
 		toggleGameMenu();
 	}
 }
@@ -485,17 +485,17 @@ pub fn mainButtonReleased(_: main.Window.Key.Modifiers) void {
 	inventory.applyChanges(true);
 	const oldWindow = selectedWindow;
 	selectedWindow = null;
-	for(openWindows.items) |window| {
+	for (openWindows.items) |window| {
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		mousePosition -= window.pos;
-		if(@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
+		if (@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
 			selectedWindow = window;
 		}
 	}
-	if(selectedWindow != oldWindow) { // Unselect the window if the mouse left it.
+	if (selectedWindow != oldWindow) { // Unselect the window if the mouse left it.
 		selectedWindow = null;
 	}
-	if(oldWindow) |_oldWindow| {
+	if (oldWindow) |_oldWindow| {
 		const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		_oldWindow.mainButtonReleased(mousePosition);
 	}
@@ -511,13 +511,13 @@ pub fn secondaryButtonReleased(_: main.Window.Key.Modifiers) void {
 
 pub fn updateWindowPositions() void {
 	var wasChanged: bool = true;
-	while(wasChanged) {
+	while (wasChanged) {
 		wasChanged = false;
-		for(windowList.items) |window| {
+		for (windowList.items) |window| {
 			const oldPos = window.pos;
 			window.updateWindowPosition();
 			const newPos = window.pos;
-			if(vec.lengthSquare(oldPos - newPos) >= 1e-3) {
+			if (vec.lengthSquare(oldPos - newPos) >= 1e-3) {
 				wasChanged = true;
 			}
 		}
@@ -528,16 +528,16 @@ pub fn updateAndRenderGui() void {
 	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
 	GuiCommandQueue.executeCommands();
-	if(!main.Window.grabbed) {
-		if(selectedWindow) |selected| {
+	if (!main.Window.grabbed) {
+		if (selectedWindow) |selected| {
 			selected.updateSelected(mousePos);
 		}
 		hoveredItemSlot = null;
 		var i: usize = openWindows.items.len;
-		while(i != 0) {
+		while (i != 0) {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
-			if(GuiComponent.contains(window.pos, window.size, mousePos)) {
+			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
 				window.updateHovered(mousePos);
 				hoveredAWindow = true;
 				break;
@@ -545,11 +545,11 @@ pub fn updateAndRenderGui() void {
 		}
 		inventory.update();
 	}
-	for(openWindows.items) |window| {
+	for (openWindows.items) |window| {
 		window.update();
 	}
-	if(!hideGui) {
-		if(!main.Window.grabbed) {
+	if (!hideGui) {
+		if (!main.Window.grabbed) {
 			draw.setColor(0x80000000);
 			GuiWindow.borderPipeline.bind(draw.getScissor());
 			graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
@@ -557,7 +557,7 @@ pub fn updateAndRenderGui() void {
 		}
 		const oldScale = draw.setScale(scale);
 		defer draw.restoreScale(oldScale);
-		for(openWindows.items) |window| {
+		for (openWindows.items) |window| {
 			window.render(mousePos);
 		}
 		inventory.render(mousePos);
@@ -569,15 +569,15 @@ pub fn updateAndRenderGui() void {
 
 pub fn toggleGameMenu() void {
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
-	if(!main.Window.grabbed) {
+	if (!main.Window.grabbed) {
 		hideGui = false;
 	} else { // Take of the currently held item stack and close some windows
-		main.game.Player.inventory.depositOrDrop(inventory.carried);
+		inventory.carried.depositOrDrop(&.{main.game.Player.inventory});
 		hoveredItemSlot = null;
 		var i: usize = 0;
-		while(i < openWindows.items.len) {
+		while (i < openWindows.items.len) {
 			const window = openWindows.items[i];
-			if(window.closeIfMouseIsGrabbed) {
+			if (window.closeIfMouseIsGrabbed) {
 				_ = openWindows.swapRemove(i);
 				window.onCloseFn();
 			} else {
@@ -621,20 +621,20 @@ pub const inventory = struct { // MARK: inventory
 	}
 
 	pub fn deleteItemSlotReferences(slot: *const ItemSlot) void {
-		if(slot == hoveredItemSlot) {
+		if (slot == hoveredItemSlot) {
 			hoveredItemSlot = null;
 		}
 		var i: usize = 0;
-		while(i < leftClickSlots.items.len) {
-			if(leftClickSlots.items[i] == slot) {
+		while (i < leftClickSlots.items.len) {
+			if (leftClickSlots.items[i] == slot) {
 				_ = leftClickSlots.swapRemove(i);
 				continue;
 			}
 			i += 1;
 		}
 		i = 0;
-		while(i < rightClickSlots.items.len) {
-			if(rightClickSlots.items[i] == slot) {
+		while (i < rightClickSlots.items.len) {
+			if (rightClickSlots.items[i] == slot) {
 				_ = rightClickSlots.swapRemove(i);
 				continue;
 			}
@@ -643,7 +643,7 @@ pub const inventory = struct { // MARK: inventory
 	}
 
 	fn update() void {
-		if(!initialized) return;
+		if (!initialized) return;
 		const itemSlot = hoveredItemSlot orelse {
 			isCrafting = false;
 			return;
@@ -651,20 +651,20 @@ pub const inventory = struct { // MARK: inventory
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 
-		if(itemSlot.inventory.super.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
+		if (itemSlot.inventory.super.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if(recipeItem == .null and item != .null) recipeItem = item.clone();
-			if(!std.meta.eql(item, recipeItem)) return;
+			if (recipeItem == .null and item != .null) recipeItem = item.clone();
+			if (!std.meta.eql(item, recipeItem)) return;
 			const time = main.timestamp();
-			if(!isCrafting) {
+			if (!isCrafting) {
 				isCrafting = true;
 				craftingCooldown = maxCraftingCooldown;
 				nextCraftingAction = time;
 			}
-			while(time.durationTo(nextCraftingAction).nanoseconds <= 0) {
+			while (time.durationTo(nextCraftingAction).nanoseconds <= 0) {
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
-				if(mainGuiButton.modsOnPress.shift) {
+				if (mainGuiButton.modsOnPress.shift) {
 					itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				} else {
 					itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
@@ -675,14 +675,14 @@ pub const inventory = struct { // MARK: inventory
 
 		isCrafting = false;
 
-		if(recipeItem != .null) return;
-		if(itemSlot.mode != .normal) return;
+		if (recipeItem != .null) return;
+		if (itemSlot.mode != .normal) return;
 
-		if(mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
-			if(itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
+		if (mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
+			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
 				var iterator = std.mem.reverseIterator(openWindows.items);
-				while(iterator.next()) |window| {
-					if(window.shiftClickableInventory) |inv| {
+				while (iterator.next()) |window| {
+					if (window.shiftClickableInventory) |inv| {
 						itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 						break;
 					}
@@ -693,18 +693,18 @@ pub const inventory = struct { // MARK: inventory
 			return;
 		}
 
-		if(carried.getAmount(0) == 0) return;
-		if(mainGuiButton.pressed) {
-			for(leftClickSlots.items) |deliveredSlot| {
-				if(itemSlot == deliveredSlot) return;
+		if (carried.getAmount(0) == 0) return;
+		if (mainGuiButton.pressed) {
+			for (leftClickSlots.items) |deliveredSlot| {
+				if (itemSlot == deliveredSlot) return;
 			}
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if(item == .null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.stackSize()) {
+			if (item == .null or (std.meta.eql(item, carried.getItem(0))) and itemSlot.inventory.getAmount(itemSlot.itemSlot) != item.stackSize()) {
 				leftClickSlots.append(itemSlot);
 			}
-		} else if(secondaryGuiButton.pressed) {
-			for(rightClickSlots.items) |deliveredSlot| {
-				if(itemSlot == deliveredSlot) return;
+		} else if (secondaryGuiButton.pressed) {
+			for (rightClickSlots.items) |deliveredSlot| {
+				if (itemSlot == deliveredSlot) return;
 			}
 			itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 0, 1);
 			rightClickSlots.append(itemSlot);
@@ -712,58 +712,58 @@ pub const inventory = struct { // MARK: inventory
 	}
 
 	fn applyChanges(leftClick: bool) void {
-		if(!initialized) return;
-		if(main.game.world == null) return;
-		if(leftClick) {
+		if (!initialized) return;
+		if (main.game.world == null) return;
+		if (leftClick) {
 			recipeItem.deinit();
 			recipeItem = .null;
 			isCrafting = false;
-			if(leftClickSlots.items.len != 0) {
+			if (leftClickSlots.items.len != 0) {
 				const targetInventories = main.stackAllocator.alloc(ClientInventory, leftClickSlots.items.len);
 				defer main.stackAllocator.free(targetInventories);
 				const targetSlots = main.stackAllocator.alloc(u32, leftClickSlots.items.len);
 				defer main.stackAllocator.free(targetSlots);
-				for(0..leftClickSlots.items.len) |i| {
+				for (0..leftClickSlots.items.len) |i| {
 					targetInventories[i] = leftClickSlots.items[i].inventory;
 					targetSlots[i] = leftClickSlots.items[i].itemSlot;
 				}
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
-			} else if(hoveredItemSlot) |hovered| {
-				if(hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
+			} else if (hoveredItemSlot) |hovered| {
+				if (hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
-			} else if(!hoveredAWindow) {
+			} else if (!hoveredAWindow) {
 				carried.dropStack(0);
 			}
 		} else {
-			if(rightClickSlots.items.len != 0) {
+			if (rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
-			} else if(hoveredItemSlot) |hovered| {
-				if(hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
-				if(hovered.inventory.type == .creative) {
+			} else if (hoveredItemSlot) |hovered| {
+				if (hovered.inventory.super.type == .crafting and hovered.mode == .takeOnly) return;
+				if (hovered.inventory.type == .creative) {
 					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
 				} else {
 					hovered.inventory.takeHalf(hovered.itemSlot, carried);
 				}
-			} else if(!hoveredAWindow) {
+			} else if (!hoveredAWindow) {
 				carried.dropOne(0);
 			}
 		}
 	}
 
 	fn render(mousePos: Vec2f) void {
-		if(!initialized) return;
+		if (!initialized) return;
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
-		if(carried.getAmount(0) == 0) if(hoveredItemSlot) |hovered| {
-			if(hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
+		if (carried.getAmount(0) == 0) if (hoveredItemSlot) |hovered| {
+			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
 				const fontSize = 16;
 				var size = textBuffer.calculateLineBreaks(fontSize, 300);
 				size[0] = 0;
-				for(textBuffer.lineBreaks.items) |lineBreak| {
+				for (textBuffer.lineBreaks.items) |lineBreak| {
 					size[0] = @max(size[0], lineBreak.width);
 				}
 				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
@@ -771,7 +771,7 @@ pub const inventory = struct { // MARK: inventory
 				const padding: f32 = 1;
 				const border: f32 = padding + 1;
 				var pos = mousePos;
-				if(pos[0] + size[0] + border + xOffset >= windowSize[0]) {
+				if (pos[0] + size[0] + border + xOffset >= windowSize[0]) {
 					pos[0] -= size[0] + xOffset;
 				} else {
 					pos[0] += xOffset;

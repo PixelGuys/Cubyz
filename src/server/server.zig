@@ -63,11 +63,11 @@ pub const WorldEditData = struct {
 			self.changes.deinit();
 		}
 		pub fn clear(self: *History) void {
-			while(self.changes.popFront()) |item| item.deinit();
+			while (self.changes.popFront()) |item| item.deinit();
 		}
 		pub fn push(self: *History, value: Value) void {
-			if(self.changes.reachedCapacity()) {
-				if(self.changes.popFront()) |oldValue| oldValue.deinit();
+			if (self.changes.reachedCapacity()) {
+				if (self.changes.popFront()) |oldValue| oldValue.deinit();
 			}
 
 			self.changes.pushBack(value);
@@ -80,12 +80,12 @@ pub const WorldEditData = struct {
 		return .{.undoHistory = History.init(), .redoHistory = History.init()};
 	}
 	pub fn deinit(self: *WorldEditData) void {
-		if(self.clipboard != null) {
+		if (self.clipboard != null) {
 			self.clipboard.?.deinit(main.globalAllocator);
 		}
 		self.undoHistory.deinit();
 		self.redoHistory.deinit();
-		if(self.mask) |mask| {
+		if (self.mask) |mask| {
 			mask.deinit(main.globalAllocator);
 		}
 	}
@@ -148,7 +148,7 @@ pub const User = struct { // MARK: User
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 
-		if(self.inventory != null) {
+		if (self.inventory != null) {
 			world.?.savePlayer(self) catch |err| {
 				std.log.err("Failed to save player: {s}", .{@errorName(err)});
 				return;
@@ -163,7 +163,7 @@ pub const User = struct { // MARK: User
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
-		for(self.inventoryCommands.items) |commandData| {
+		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
@@ -178,7 +178,7 @@ pub const User = struct { // MARK: User
 	pub fn decreaseRefCount(self: *User) void {
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
+		if (prevVal == 1) {
 			self.deinit();
 		}
 	}
@@ -209,15 +209,15 @@ pub const User = struct { // MARK: User
 		const newBoxEnd = (newPos +% @as(Vec3i, @splat(newRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		// Clear all chunks not inside the new box:
 		var x: i32 = lastBoxStart[0];
-		while(x != lastBoxEnd[0]) : (x +%= chunk.chunkSize) {
+		while (x != lastBoxEnd[0]) : (x +%= chunk.chunkSize) {
 			const inXDistance = x -% newBoxStart[0] >= 0 and x -% newBoxEnd[0] < 0;
 			var y: i32 = lastBoxStart[1];
-			while(y != lastBoxEnd[1]) : (y +%= chunk.chunkSize) {
+			while (y != lastBoxEnd[1]) : (y +%= chunk.chunkSize) {
 				const inYDistance = y -% newBoxStart[1] >= 0 and y -% newBoxEnd[1] < 0;
 				var z: i32 = lastBoxStart[2];
-				while(z != lastBoxEnd[2]) : (z +%= chunk.chunkSize) {
+				while (z != lastBoxEnd[2]) : (z +%= chunk.chunkSize) {
 					const inZDistance = z -% newBoxStart[2] >= 0 and z -% newBoxEnd[2] < 0;
-					if(!inXDistance or !inYDistance or !inZDistance) {
+					if (!inXDistance or !inYDistance or !inZDistance) {
 						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)].decreaseRefCount();
 						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = undefined;
 					}
@@ -233,15 +233,15 @@ pub const User = struct { // MARK: User
 		const newBoxEnd = (newPos +% @as(Vec3i, @splat(newRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		// Clear all chunks not inside the new box:
 		var x: i32 = newBoxStart[0];
-		while(x != newBoxEnd[0]) : (x +%= chunk.chunkSize) {
+		while (x != newBoxEnd[0]) : (x +%= chunk.chunkSize) {
 			const inXDistance = x -% lastBoxStart[0] >= 0 and x -% lastBoxEnd[0] < 0;
 			var y: i32 = newBoxStart[1];
-			while(y != newBoxEnd[1]) : (y +%= chunk.chunkSize) {
+			while (y != newBoxEnd[1]) : (y +%= chunk.chunkSize) {
 				const inYDistance = y -% lastBoxStart[1] >= 0 and y -% lastBoxEnd[1] < 0;
 				var z: i32 = newBoxStart[2];
-				while(z != newBoxEnd[2]) : (z +%= chunk.chunkSize) {
+				while (z != newBoxEnd[2]) : (z +%= chunk.chunkSize) {
 					const inZDistance = z -% lastBoxStart[2] >= 0 and z -% lastBoxEnd[2] < 0;
-					if(!inXDistance or !inYDistance or !inZDistance) {
+					if (!inXDistance or !inYDistance or !inZDistance) {
 						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = world_zig.ChunkManager.getOrGenerateSimulationChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 					}
 				}
@@ -252,7 +252,7 @@ pub const User = struct { // MARK: User
 	fn loadUnloadChunks(self: *User) void {
 		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
-		if(@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
+		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
 			self.loadNewChunk(newPos, newRenderDistance);
 			self.lastRenderDistance = newRenderDistance;
@@ -267,11 +267,11 @@ pub const User = struct { // MARK: User
 		self.inventoryCommands = .{};
 		self.mutex.unlock();
 
-		for(commands.items) |commandData| {
+		for (commands.items) |commandData| {
 			defer main.globalAllocator.free(commandData);
 			var reader: BinaryReader = .init(commandData);
 			main.sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
-				if(err == error.InventoryNotFound) {
+				if (err == error.InventoryNotFound) {
 					main.network.protocols.inventory.sendFailure(self.conn);
 				} else {
 					std.log.err("Got error while executing user command: {s}. Disconnecting.", .{@errorName(err)});
@@ -289,7 +289,7 @@ pub const User = struct { // MARK: User
 		self.lastTime = time;
 
 		const saveTime = main.timestamp();
-		if(self.lastSaveTime.durationTo(saveTime).toSeconds() > 5) {
+		if (self.lastSaveTime.durationTo(saveTime).toSeconds() > 5) {
 			world.?.savePlayer(self) catch |err| {
 				std.log.err("Failed to save player {s}: {s}", .{self.name, @errorName(err)});
 			};
@@ -367,7 +367,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
 	};
-	if(singlePlayerPort) |port| blk: {
+	if (singlePlayerPort) |port| blk: {
 		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
 		defer main.stackAllocator.free(ipString);
 		const user = User.initAndIncreaseRefCount(connectionManager, ipString) catch |err| {
@@ -381,18 +381,18 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 fn deinit() void {
 	users.clearAndFree();
-	while(userDeinitList.popFront()) |user| {
+	while (userDeinitList.popFront()) |user| {
 		user.deinit();
 	}
 	userDeinitList.deinit();
 	userConnectList.deinit();
-	for(connectionManager.connections.items) |conn| {
+	for (connectionManager.connections.items) |conn| {
 		conn.user.?.decreaseRefCount();
 	}
 	connectionManager.deinit();
 	connectionManager = undefined;
 
-	if(world) |_world| {
+	if (world) |_world| {
 		_world.deinit();
 	}
 	world = null;
@@ -408,14 +408,14 @@ pub fn getUserListAndIncreaseRefCount(allocator: main.heap.NeverFailingAllocator
 	userMutex.lock();
 	defer userMutex.unlock();
 	const result = allocator.dupe(*User, users.items);
-	for(result) |user| {
+	for (result) |user| {
 		user.increaseRefCount();
 	}
 	return result;
 }
 
 pub fn freeUserListAndDecreaseRefCount(allocator: main.heap.NeverFailingAllocator, list: []*User) void {
-	for(list) |user| {
+	for (list) |user| {
 		user.decreaseRefCount();
 	}
 	allocator.free(list);
@@ -438,14 +438,14 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 fn update() void { // MARK: update()
 	world.?.update();
 
-	while(userConnectList.popFront()) |user| {
+	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
 		user.decreaseRefCount();
 	}
 
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-	for(userList) |user| {
+	for (userList) |user| {
 		user.update();
 	}
 
@@ -456,7 +456,7 @@ fn update() void { // MARK: update()
 	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
-	for(userList) |user| {
+	for (userList) |user| {
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
@@ -465,21 +465,21 @@ fn update() void { // MARK: update()
 			.rot = user.player.rot,
 		});
 	}
-	for(userList) |user| {
+	for (userList) |user| {
 		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
 	}
 
-	for(userList) |user| {
+	for (userList) |user| {
 		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
-		if(biomeId != user.lastSentBiomeId) {
+		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
 			main.network.protocols.genericUpdate.sendBiome(user.conn, biomeId);
 		}
 	}
 
-	while(userDeinitList.popFront()) |user| {
-		if(user.refCount.load(.unordered) == 1) {
+	while (userDeinitList.popFront()) |user| {
+		if (user.refCount.load(.unordered) == 1) {
 			user.decreaseRefCount();
 		} else {
 			userDeinitList.pushBack(user);
@@ -499,10 +499,10 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	init(name, port);
 	defer deinit();
 	running.store(true, .release);
-	while(running.load(.monotonic)) {
+	while (running.load(.monotonic)) {
 		main.heap.GarbageCollection.syncPoint();
 		const newTime = main.timestamp();
-		if(lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
+		if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
 			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
 			lastTime = lastTime.addDuration(updateTime);
 		} else {
@@ -518,27 +518,27 @@ pub fn stop() void {
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
-	if(!user.connected.load(.unordered)) return;
+	if (!user.connected.load(.unordered)) return;
 	removePlayer(user);
 	userDeinitList.pushBack(user);
 	user.connected.store(false, .unordered);
 }
 
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
-	if(!user.connected.load(.unordered)) return;
+	if (!user.connected.load(.unordered)) return;
 
 	const foundUser = blk: {
 		userMutex.lock();
 		defer userMutex.unlock();
-		for(users.items, 0..) |other, i| {
-			if(other == user) {
+		for (users.items, 0..) |other, i| {
+			if (other == user) {
 				_ = users.swapRemove(i);
 				break :blk true;
 			}
 		}
 		break :blk false;
 	};
-	if(!foundUser) return;
+	if (!foundUser) return;
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.
@@ -549,7 +549,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	defer main.stackAllocator.free(data);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-	for(userList) |other| {
+	for (userList) |other| {
 		main.network.protocols.entity.send(other.conn, data);
 	}
 }
@@ -566,9 +566,9 @@ pub fn connectInternal(user: *User) void {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Check if a user with that name is already present
-	if(!world.?.testingMode) {
-		for(userList) |other| {
-			if(std.mem.eql(u8, other.name, user.name)) {
+	if (!world.?.testingMode) {
+		for (userList) |other| {
+			if (std.mem.eql(u8, other.name, user.name)) {
 				user.conn.disconnect();
 				return;
 			}
@@ -584,14 +584,14 @@ pub fn connectInternal(user: *User) void {
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
-		for(userList) |other| {
+		for (userList) |other| {
 			main.network.protocols.entity.send(other.conn, data);
 		}
 	}
 	{ // Let this client know about the others:
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		for(userList) |other| {
+		for (userList) |other| {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
 			entityZon.put("name", other.name);
@@ -599,7 +599,7 @@ pub fn connectInternal(user: *User) void {
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
-		if(user.connected.load(.unordered)) main.network.protocols.entity.send(user.conn, data);
+		if (user.connected.load(.unordered)) main.network.protocols.entity.send(user.conn, data);
 	}
 	const initialList = getInitialEntityList(main.stackAllocator);
 	main.network.protocols.entity.send(user.conn, initialList);
@@ -622,7 +622,7 @@ fn sendRawMessage(msg: []const u8) void {
 	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-	for(userList) |user| {
+	for (userList) |user| {
 		user.sendRawMessage(msg);
 	}
 }
