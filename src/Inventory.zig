@@ -650,6 +650,30 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	}
 }
 
+pub const InventoryAndSlot = struct {
+        inv: Inventory,
+        slot: u32,
+
+        pub fn ref(self: InventoryAndSlot) *ItemStack {
+                return &self.inv._items[self.slot];
+        }
+
+        pub fn write(self: InventoryAndSlot, writer: *BinaryWriter) void {
+                writer.writeEnum(InventoryId, self.inv.id);
+                writer.writeInt(u32, self.slot);
+        }
+
+        pub fn read(reader: *BinaryReader, side: sync.Side, user: ?*main.server.User) !InventoryAndSlot {
+                const id = try reader.readEnum(InventoryId);
+                const result: InventoryAndSlot = .{
+                        .inv = Inventory.getInventory(id, side, user) orelse return error.InventoryNotFound,
+                        .slot = try reader.readInt(u32),
+                };
+                if (result.slot >= result.inv._items.len) return error.Invalid;
+                return result;
+        }
+};
+
 pub const Inventories = struct { // MARK: Inventories
 	inventories: []const Inventory,
 
@@ -708,10 +732,10 @@ pub const Inventories = struct { // MARK: Inventories
 	}
 
 	const Provider = union(enum) {
-		move: sync.Command.InventoryAndSlot,
+		move: InventoryAndSlot,
 		create: Item,
 
-		pub fn getBaseOperation(provider: Provider, dest: sync.Command.InventoryAndSlot, amount: u16) sync.Command.BaseOperation {
+		pub fn getBaseOperation(provider: Provider, dest: InventoryAndSlot, amount: u16) sync.Command.BaseOperation {
 			return switch (provider) {
 				.move => |slot| .{.move = .{
 					.dest = dest,

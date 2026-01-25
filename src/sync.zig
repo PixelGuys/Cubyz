@@ -7,6 +7,7 @@ const Gamemode = main.game.Gamemode;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Inventory = main.items.Inventory;
 const InventoryId = Inventory.InventoryId;
+const InventoryAndSlot = Inventory.InventoryAndSlot;
 const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const utils = main.utils;
@@ -258,30 +259,6 @@ pub const Command = struct { // MARK: Command
 		useDurability = 4,
 		addHealth = 5,
 		addEnergy = 6,
-	};
-
-	pub const InventoryAndSlot = struct {
-		inv: Inventory,
-		slot: u32,
-
-		pub fn ref(self: InventoryAndSlot) *ItemStack {
-			return &self.inv._items[self.slot];
-		}
-
-		fn write(self: InventoryAndSlot, writer: *BinaryWriter) void {
-			writer.writeEnum(InventoryId, self.inv.id);
-			writer.writeInt(u32, self.slot);
-		}
-
-		fn read(reader: *BinaryReader, side: Side, user: ?*main.server.User) !InventoryAndSlot {
-			const id = try reader.readEnum(InventoryId);
-			const result: InventoryAndSlot = .{
-				.inv = Inventory.getInventory(id, side, user) orelse return error.InventoryNotFound,
-				.slot = try reader.readInt(u32),
-			};
-			if (result.slot >= result.inv._items.len) return error.Invalid;
-			return result;
-		}
 	};
 
 	pub const BaseOperation = union(BaseOperationType) {
