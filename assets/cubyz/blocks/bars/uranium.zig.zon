@@ -1,4 +1,5 @@
 .{
+	.blockResistance = 17.5,
 	.blockHealth = 25,
 	.texture = "cubyz:bars/uranium",
 	.item = .{

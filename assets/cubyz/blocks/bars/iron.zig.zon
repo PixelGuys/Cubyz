@@ -1,4 +1,5 @@
 .{
+	.blockResistance = 5,
 	.blockHealth = 15,
 	.texture = "cubyz:bars/iron",
 	.item = .{

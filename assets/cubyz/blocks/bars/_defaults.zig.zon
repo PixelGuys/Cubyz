@@ -1,6 +1,5 @@
 .{
 	.tags = .{.mineable},
-	.blockResistance = 1,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
