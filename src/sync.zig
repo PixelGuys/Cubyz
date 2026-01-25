@@ -1289,7 +1289,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		pub fn run(self: DepositOrDrop, ctx: Context) error{serverFailure}!void {
-			for (self.destinations.getInventories()) |dest| {
+			for (self.destinations.inventories) |dest| {
 				std.debug.assert(dest.type == .normal);
 			}
 			if (self.source.type == .crafting) return;
@@ -1344,11 +1344,11 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
-			for (self.destinations.getInventories()) |dest| {
+			for (self.destinations.inventories) |dest| {
 				if (dest.type != .normal) return;
 			}
 			if (self.source.inv.type == .crafting) {
-				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations.getInventories()[0], self.source, ctx.side, ctx.user);
+				ctx.cmd.tryCraftingTo(ctx.allocator, self.destinations.inventories[0], self.source, ctx.side, ctx.user);
 				return;
 			}
 			const sourceStack = self.source.ref();

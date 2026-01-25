@@ -671,10 +671,6 @@ pub const Inventories = struct { // MARK: Inventories
 		alloctor.free(self.inventories);
 	}
 
-	pub fn getInventories(self: Inventories) []const Inventory {
-		return self.inventories;
-	}
-
 	pub fn canHold(self: Inventories, itemStack: ItemStack) Inventory.CanHoldReturn {
 		var remainingAmount = itemStack.amount;
 		for (self.inventories) |dest| {
