@@ -648,6 +648,30 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 	}
 }
 
+pub const InventoryAndSlot = struct {
+	inv: Inventory,
+	slot: u32,
+
+	pub fn ref(self: InventoryAndSlot) *ItemStack {
+		return &self.inv._items[self.slot];
+	}
+
+	pub fn write(self: InventoryAndSlot, writer: *BinaryWriter) void {
+		writer.writeEnum(InventoryId, self.inv.id);
+		writer.writeInt(u32, self.slot);
+	}
+
+	pub fn read(reader: *BinaryReader, side: sync.Side, user: ?*main.server.User) !InventoryAndSlot {
+		const id = try reader.readEnum(InventoryId);
+		const result: InventoryAndSlot = .{
+			.inv = Inventory.getInventory(id, side, user) orelse return error.InventoryNotFound,
+			.slot = try reader.readInt(u32),
+		};
+		if (result.slot >= result.inv._items.len) return error.Invalid;
+		return result;
+	}
+};
+
 pub const Inventories = struct { // MARK: Inventories
 	inventories: []const Inventory,
 
@@ -657,7 +681,7 @@ pub const Inventories = struct { // MARK: Inventories
 		};
 	}
 
-	pub fn initWithClientInventories(alloctor: NeverFailingAllocator, clientInventories: []const Inventory.ClientInventory) Inventories {
+	pub fn initFromClientInventories(alloctor: NeverFailingAllocator, clientInventories: []const Inventory.ClientInventory) Inventories {
 		const copy = alloctor.alloc(Inventory, clientInventories.len);
 		for (copy, clientInventories) |*d, s| d.* = s.super;
 		return .{
@@ -665,31 +689,50 @@ pub const Inventories = struct { // MARK: Inventories
 		};
 	}
 
+	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *BinaryReader, side: sync.Side, user: ?*main.server.User) !Inventories {
+		const inventoryCount = try reader.readVarInt(usize);
+		if (inventoryCount == 0) return error.Invalid;
+		if (inventoryCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+
+		const inventories = allocator.alloc(Inventory, inventoryCount);
+		errdefer allocator.free(inventories);
+
+		for (inventories) |*inv| {
+			const invId = try reader.readEnum(InventoryId);
+			inv.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
+		}
+		return .{
+			.inventories = inventories,
+		};
+	}
+
 	pub fn deinit(self: Inventories, alloctor: NeverFailingAllocator) void {
 		alloctor.free(self.inventories);
 	}
 
-	pub fn getInventories(self: Inventories) []const Inventory {
-		return self.inventories;
+	pub fn toBytes(self: Inventories, writer: *BinaryWriter) void {
+		writer.writeVarInt(usize, self.inventories.len);
+		for (self.inventories) |inv| {
+			writer.writeEnum(InventoryId, inv.id);
+		}
 	}
 
 	pub fn canHold(self: Inventories, itemStack: ItemStack) Inventory.CanHoldReturn {
 		var remainingAmount = itemStack.amount;
 		for (self.inventories) |dest| {
-			remainingAmount -|= switch (dest.canHold(itemStack)) {
+			remainingAmount = switch (dest.canHold(.{.item = itemStack.item, .amount = remainingAmount})) {
 				.yes => return .yes,
-				.remainingAmount => |amount| (itemStack.amount - amount),
+				.remainingAmount => |amount| amount,
 			};
-			if (remainingAmount == 0) return .yes;
 		}
 		return .{.remainingAmount = remainingAmount};
 	}
 
 	const Provider = union(enum) {
-		move: sync.Command.InventoryAndSlot,
+		move: InventoryAndSlot,
 		create: Item,
 
-		pub fn getBaseOperation(provider: Provider, dest: sync.Command.InventoryAndSlot, amount: u16) sync.Command.BaseOperation {
+		pub fn getBaseOperation(provider: Provider, dest: InventoryAndSlot, amount: u16) sync.Command.BaseOperation {
 			return switch (provider) {
 				.move => |slot| .{.move = .{
 					.dest = dest,
@@ -749,63 +792,5 @@ pub const Inventories = struct { // MARK: Inventories
 			remainingAmount = 0;
 		}
 		return remainingAmount;
-	}
-
-	pub fn removeItems(self: Inventories, ctx: sync.Command.Context, itemAmount: u16, baseItem: main.items.BaseItemIndex) void {
-		var fullSlot: ?u32 = null;
-		var fullInv: ?Inventory = null;
-		var remainingAmount: usize = itemAmount;
-		for (self.inventories) |source| {
-			for (0..source._items.len) |reverseIndex| {
-				const i: usize = source._items.len - reverseIndex - 1;
-				const otherStack: *ItemStack = &source._items[i];
-				if (otherStack.item != .null and baseItem == otherStack.item.baseItem) {
-					if (otherStack.amount == otherStack.item.stackSize()) {
-						if (fullSlot == null) {
-							fullSlot = @intCast(i);
-							fullInv = source;
-						}
-						continue;
-					}
-					const amount = @min(remainingAmount, otherStack.amount);
-					ctx.execute(.{.delete = .{
-						.source = .{.inv = source, .slot = @intCast(i)},
-						.amount = amount,
-					}});
-					remainingAmount -= amount;
-					if (remainingAmount == 0) return;
-				}
-			}
-		}
-		if (remainingAmount > 0 and fullSlot != null) {
-			ctx.execute(.{.delete = .{
-				.source = .{.inv = fullInv.?, .slot = fullSlot.?},
-				.amount = @min(remainingAmount, baseItem.stackSize()),
-			}});
-		}
-	}
-
-	pub fn toBytes(self: Inventories, writer: *BinaryWriter) void {
-		writer.writeVarInt(usize, self.inventories.len);
-		for (self.inventories) |inv| {
-			writer.writeEnum(InventoryId, inv.id);
-		}
-	}
-
-	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *BinaryReader, side: sync.Side, user: ?*main.server.User) !Inventories {
-		const inventoryCount = try reader.readVarInt(usize);
-		if (inventoryCount == 0) return error.Invalid;
-		if (inventoryCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
-
-		const inventories = allocator.alloc(Inventory, inventoryCount);
-		errdefer allocator.free(inventories);
-
-		for (inventories) |*inv| {
-			const invId = try reader.readEnum(InventoryId);
-			inv.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
-		}
-		return .{
-			.inventories = inventories,
-		};
 	}
 };

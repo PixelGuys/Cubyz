@@ -49,7 +49,11 @@
 	},
 	.{
 		.inputs = .{"1 cubyz:iron_ingot"},
-		.output = "2 cubyz:chain/iron",
+		.output = "4 cubyz:chain/iron",
+	},
+	.{
+		.inputs = .{"{mod}:{type}_ingot"},
+		.output = "4 {mod}:bars/{type}",
 	},
 	.{
 		.inputs = .{"4 cubyz:silver_ingot"},
