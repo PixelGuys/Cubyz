@@ -1270,7 +1270,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn init(destinations: []const Inventory.ClientInventory, source: Inventory, dropLocation: Vec3d) DepositOrDrop {
 			return .{
-				.destinations = .initWithClientInventories(main.globalAllocator, destinations),
+				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
 				.source = source,
 				.dropLocation = dropLocation,
 			};
@@ -1333,7 +1333,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn init(destinations: []const Inventory.ClientInventory, source: InventoryAndSlot, amount: u16) DepositToAny {
 			return .{
-				.destinations = .initWithClientInventories(main.globalAllocator, destinations),
+				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
 				.source = source,
 				.amount = amount,
 			};

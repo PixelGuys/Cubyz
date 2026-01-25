@@ -659,7 +659,7 @@ pub const Inventories = struct { // MARK: Inventories
 		};
 	}
 
-	pub fn initWithClientInventories(alloctor: NeverFailingAllocator, clientInventories: []const Inventory.ClientInventory) Inventories {
+	pub fn initFromClientInventories(alloctor: NeverFailingAllocator, clientInventories: []const Inventory.ClientInventory) Inventories {
 		const copy = alloctor.alloc(Inventory, clientInventories.len);
 		for (copy, clientInventories) |*d, s| d.* = s.super;
 		return .{
@@ -667,8 +667,32 @@ pub const Inventories = struct { // MARK: Inventories
 		};
 	}
 
+	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *BinaryReader, side: sync.Side, user: ?*main.server.User) !Inventories {
+		const inventoryCount = try reader.readVarInt(usize);
+		if (inventoryCount == 0) return error.Invalid;
+		if (inventoryCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+
+		const inventories = allocator.alloc(Inventory, inventoryCount);
+		errdefer allocator.free(inventories);
+
+		for (inventories) |*inv| {
+			const invId = try reader.readEnum(InventoryId);
+			inv.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
+		}
+		return .{
+			.inventories = inventories,
+		};
+	}
+
 	pub fn deinit(self: Inventories, alloctor: NeverFailingAllocator) void {
 		alloctor.free(self.inventories);
+	}
+
+	pub fn toBytes(self: Inventories, writer: *BinaryWriter) void {
+		writer.writeVarInt(usize, self.inventories.len);
+		for (self.inventories) |inv| {
+			writer.writeEnum(InventoryId, inv.id);
+		}
 	}
 
 	pub fn canHold(self: Inventories, itemStack: ItemStack) Inventory.CanHoldReturn {
@@ -783,27 +807,4 @@ pub const Inventories = struct { // MARK: Inventories
 		}
 	}
 
-	pub fn toBytes(self: Inventories, writer: *BinaryWriter) void {
-		writer.writeVarInt(usize, self.inventories.len);
-		for (self.inventories) |inv| {
-			writer.writeEnum(InventoryId, inv.id);
-		}
-	}
-
-	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *BinaryReader, side: sync.Side, user: ?*main.server.User) !Inventories {
-		const inventoryCount = try reader.readVarInt(usize);
-		if (inventoryCount == 0) return error.Invalid;
-		if (inventoryCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
-
-		const inventories = allocator.alloc(Inventory, inventoryCount);
-		errdefer allocator.free(inventories);
-
-		for (inventories) |*inv| {
-			const invId = try reader.readEnum(InventoryId);
-			inv.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
-		}
-		return .{
-			.inventories = inventories,
-		};
-	}
 };
