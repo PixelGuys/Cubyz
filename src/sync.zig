@@ -849,6 +849,43 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
+	const remove_items_from = struct { // MARK: remove_items_from
+
+		pub fn do(ctx: Context, sources: []const Inventory, itemAmount: u16, baseItem: main.items.BaseItemIndex) void {
+			var fullSlot: ?u32 = null;
+			var fullInv: ?Inventory = null;
+			var remainingAmount: usize = itemAmount;
+			for (sources) |source| {
+				for (0..source._items.len) |reverseIndex| {
+					const i: usize = source._items.len - reverseIndex - 1;
+					const otherStack: *ItemStack = &source._items[i];
+					if (otherStack.item != .null and baseItem == otherStack.item.baseItem) {
+						if (otherStack.amount == otherStack.item.stackSize()) {
+							if (fullSlot == null) {
+								fullSlot = @intCast(i);
+								fullInv = source;
+							}
+							continue;
+						}
+						const amount = @min(remainingAmount, otherStack.amount);
+						ctx.execute(.{.delete = .{
+							.source = .{.inv = source, .slot = @intCast(i)},
+							.amount = amount,
+						}});
+						remainingAmount -= amount;
+						if (remainingAmount == 0) return;
+					}
+				}
+			}
+			if (remainingAmount > 0 and fullSlot != null) {
+				ctx.execute(.{.delete = .{
+					.source = .{.inv = fullInv.?, .slot = fullSlot.?},
+					.amount = @min(remainingAmount, baseItem.stackSize()),
+				}});
+			}
+		}
+	};
+
 	const Context = struct {
 		allocator: NeverFailingAllocator,
 		cmd: *Command,
@@ -1368,58 +1405,8 @@ pub const Command = struct { // MARK: Command
 			if (Inventory.destinationsCanHold(self.destinations, .{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount}) != .yes) return;
 
 			// Can we even craft it?
-			outer: for (self.recipe.sourceItems) |requiredItem| {
-				var amount: usize = 0;
-				// There might be duplicate entries:
-				for (self.recipe.sourceItems, self.recipe.sourceAmounts) |otherItem, otherAmount| {
-					if (std.meta.eql(requiredItem, otherItem))
-						amount += otherAmount;
-				}
-				for (self.sources) |source| {
-					for (source._items) |otherStack| {
-						if (otherStack.item != .null and std.meta.eql(requiredItem, otherStack.item.baseItem)) {
-							amount -|= otherStack.amount;
-							if (amount == 0) continue :outer;
-						}
-					}
-				}
-				// Not enough ingredients
-				if (amount != 0) return;
-			}
-
-			// Craft it
-			outer: for (self.recipe.sourceItems, self.recipe.sourceAmounts) |requiredItem, requiredAmount| {
-				var fullSlot: ?u32 = null;
-				var fullInv: ?Inventory = null;
-				var remainingAmount: usize = requiredAmount;
-				for (self.sources) |source| {
-					for (0..source._items.len) |reverseIndex| {
-						const i: usize = source._items.len - reverseIndex - 1;
-						const otherStack: *ItemStack = &source._items[i];
-						if (otherStack.item != .null and std.meta.eql(requiredItem, otherStack.item.baseItem)) {
-							if (otherStack.amount == otherStack.item.stackSize()) {
-								if (fullSlot == null) {
-									fullSlot = @intCast(i);
-									fullInv = source;
-								}
-								continue;
-							}
-							const amount = @min(remainingAmount, otherStack.amount);
-							ctx.execute(.{.delete = .{
-								.source = .{.inv = source, .slot = @intCast(i)},
-								.amount = amount,
-							}});
-							remainingAmount -= amount;
-							if (remainingAmount == 0) continue :outer;
-						}
-					}
-				}
-				if (remainingAmount > 0 and fullSlot != null) {
-					ctx.execute(.{.delete = .{
-						.source = .{.inv = fullInv.?, .slot = fullSlot.?},
-						.amount = @min(remainingAmount, requiredItem.stackSize()),
-					}});
-				}
+			for (self.recipe.sourceItems, self.recipe.sourceAmounts) |requiredItem, requiredAmount| {
+				remove_items_from.do(ctx, self.sources, requiredAmount, requiredItem);
 			}
 
 			const remainingAmount = put_items_into.do(ctx, self.destinations, self.recipe.resultAmount, .{.create = .{.baseItem = self.recipe.resultItem}});

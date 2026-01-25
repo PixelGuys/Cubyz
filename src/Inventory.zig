@@ -604,7 +604,7 @@ const CanHoldReturn = union(enum) {
 	remainingAmount: u16,
 };
 
-pub fn canHold(self: Inventory, sourceStack: ItemStack) canHoldReturn {
+pub fn canHold(self: Inventory, sourceStack: ItemStack) CanHoldReturn {
 	if (sourceStack.amount == 0) return .yes;
 
 	var remainingAmount = sourceStack.amount;
@@ -615,15 +615,15 @@ pub fn canHold(self: Inventory, sourceStack: ItemStack) canHoldReturn {
 			if (remainingAmount == 0) return .yes;
 		}
 	}
-	return .{.remainingAmount = sourceStack.amount - remainingAmount};
+	return .{.remainingAmount = remainingAmount};
 }
 
-pub fn destinationsCanHold(destinations: []const Inventory, itemStack: ItemStack) canHoldReturn {
+pub fn destinationsCanHold(destinations: []const Inventory, itemStack: ItemStack) CanHoldReturn {
 	var remainingAmount = itemStack.amount;
 	for (destinations) |dest| {
 		remainingAmount -|= switch (dest.canHold(itemStack)) {
 			.yes => return .yes,
-			.remainingAmount => |amount| amount,
+			.remainingAmount => |amount| (itemStack.amount - amount),
 		};
 		if (remainingAmount == 0) return .yes;
 	}
