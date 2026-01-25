@@ -651,27 +651,27 @@ pub fn fromBytes(self: Inventory, reader: *BinaryReader) void {
 }
 
 pub const InventoryAndSlot = struct {
-        inv: Inventory,
-        slot: u32,
+	inv: Inventory,
+	slot: u32,
 
-        pub fn ref(self: InventoryAndSlot) *ItemStack {
-                return &self.inv._items[self.slot];
-        }
+	pub fn ref(self: InventoryAndSlot) *ItemStack {
+		return &self.inv._items[self.slot];
+	}
 
-        pub fn write(self: InventoryAndSlot, writer: *BinaryWriter) void {
-                writer.writeEnum(InventoryId, self.inv.id);
-                writer.writeInt(u32, self.slot);
-        }
+	pub fn write(self: InventoryAndSlot, writer: *BinaryWriter) void {
+		writer.writeEnum(InventoryId, self.inv.id);
+		writer.writeInt(u32, self.slot);
+	}
 
-        pub fn read(reader: *BinaryReader, side: sync.Side, user: ?*main.server.User) !InventoryAndSlot {
-                const id = try reader.readEnum(InventoryId);
-                const result: InventoryAndSlot = .{
-                        .inv = Inventory.getInventory(id, side, user) orelse return error.InventoryNotFound,
-                        .slot = try reader.readInt(u32),
-                };
-                if (result.slot >= result.inv._items.len) return error.Invalid;
-                return result;
-        }
+	pub fn read(reader: *BinaryReader, side: sync.Side, user: ?*main.server.User) !InventoryAndSlot {
+		const id = try reader.readEnum(InventoryId);
+		const result: InventoryAndSlot = .{
+			.inv = Inventory.getInventory(id, side, user) orelse return error.InventoryNotFound,
+			.slot = try reader.readInt(u32),
+		};
+		if (result.slot >= result.inv._items.len) return error.Invalid;
+		return result;
+	}
 };
 
 pub const Inventories = struct { // MARK: Inventories
