@@ -8,8 +8,13 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:cross",
-	.texture = "cubyz:tussock",
+	.model = .{
+		.model = "cubyz:cross",
+		.states = 2,
+	},
+	.rotation = "cubyz:texture_pile",
+	.texture0 = "cubyz:tussock/0",
+	.texture1 = "cubyz:tussock/1",
 	.item = .{
 		.texture = "tussock.png",
 	},
