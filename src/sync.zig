@@ -781,6 +781,172 @@ pub const Command = struct { // MARK: Command
 		};
 	}
 
+	pub const Inventories = struct { // MARK: Inventories
+		inventories: []const Inventory,
+
+		pub fn init(alloctor: main.NeverFailingAllocator, inventories: []const Inventory) Inventories {
+			return .{
+				.inventories = alloctor.dupe(Inventory, inventories),
+			};
+		}
+
+		pub fn initWithClientInventories(alloctor: main.NeverFailingAllocator, clientInventories: []const Inventory.ClientInventory) Inventories {
+			const copy = alloctor.alloc(Inventory, clientInventories.len);
+			for (copy, clientInventories) |*d, s| d.* = s.super;
+			return .{
+				.inventories = copy,
+			};
+		}
+
+		pub fn deinit(self: Inventories, alloctor: main.NeverFailingAllocator) void {
+			alloctor.free(self.inventories);
+		}
+
+		pub fn getInventories(self: Inventories) []const Inventory {
+			return self.inventories;
+		}
+
+		pub fn canHold(self: Inventories, itemStack: ItemStack) Inventory.CanHoldReturn {
+			var remainingAmount = itemStack.amount;
+			for (self.inventories) |dest| {
+				remainingAmount -|= switch (dest.canHold(itemStack)) {
+					.yes => return .yes,
+					.remainingAmount => |amount| (itemStack.amount - amount),
+				};
+				if (remainingAmount == 0) return .yes;
+			}
+			return .{.remainingAmount = remainingAmount};
+		}
+
+		const put_items_into = struct { // MARK: put_items_into
+			const Provider = union(enum) {
+				move: InventoryAndSlot,
+				create: Item,
+
+				pub fn getBaseOperation(provider: Provider, dest: InventoryAndSlot, amount: u16) BaseOperation {
+					return switch (provider) {
+						.move => |slot| .{.move = .{
+							.dest = dest,
+							.amount = amount,
+							.source = slot,
+						}},
+						.create => |item| .{.create = .{
+							.dest = dest,
+							.amount = amount,
+							.item = item,
+						}},
+					};
+				}
+
+				pub fn getItem(provider: Provider) Item {
+					return switch (provider) {
+						.move => |slot| slot.ref().item,
+						.create => |item| item,
+					};
+				}
+			};
+
+			pub fn do(ctx: Context, destinations: []const Inventory, itemAmount: u16, provider: Provider) u16 {
+				const item = provider.getItem();
+				var remainingAmount = itemAmount;
+				var selectedEmptySlot: ?u32 = null;
+				var selectedEmptyInv: ?Inventory = null;
+
+				outer: for (destinations) |dest| {
+					var emptySlot: ?u32 = null;
+					var hasItem = false;
+					for (dest._items, 0..) |*destStack, destSlot| {
+						if (destStack.item == .null and emptySlot == null) {
+							emptySlot = @intCast(destSlot);
+							if (selectedEmptySlot == null) {
+								selectedEmptySlot = emptySlot;
+								selectedEmptyInv = dest;
+							}
+						}
+						if (std.meta.eql(destStack.item, item)) {
+							hasItem = true;
+							const amount = @min(item.stackSize() - destStack.amount, remainingAmount);
+							if (amount == 0) continue;
+							ctx.execute(provider.getBaseOperation(.{.inv = dest, .slot = @intCast(destSlot)}, amount));
+							remainingAmount -= amount;
+							if (remainingAmount == 0) break :outer;
+						}
+					}
+					if (emptySlot != null and hasItem) {
+						ctx.execute(provider.getBaseOperation(.{.inv = dest, .slot = emptySlot.?}, remainingAmount));
+						remainingAmount = 0;
+						break :outer;
+					}
+				}
+				if (remainingAmount > 0 and selectedEmptySlot != null) {
+					ctx.execute(provider.getBaseOperation(.{.inv = selectedEmptyInv.?, .slot = selectedEmptySlot.?}, remainingAmount));
+					remainingAmount = 0;
+				}
+				return remainingAmount;
+			}
+		};
+
+		const remove_items_from = struct { // MARK: remove_items_from
+
+			pub fn do(ctx: Context, sources: []const Inventory, itemAmount: u16, baseItem: main.items.BaseItemIndex) void {
+				var fullSlot: ?u32 = null;
+				var fullInv: ?Inventory = null;
+				var remainingAmount: usize = itemAmount;
+				for (sources) |source| {
+					for (0..source._items.len) |reverseIndex| {
+						const i: usize = source._items.len - reverseIndex - 1;
+						const otherStack: *ItemStack = &source._items[i];
+						if (otherStack.item != .null and baseItem == otherStack.item.baseItem) {
+							if (otherStack.amount == otherStack.item.stackSize()) {
+								if (fullSlot == null) {
+									fullSlot = @intCast(i);
+									fullInv = source;
+								}
+								continue;
+							}
+							const amount = @min(remainingAmount, otherStack.amount);
+							ctx.execute(.{.delete = .{
+								.source = .{.inv = source, .slot = @intCast(i)},
+								.amount = amount,
+							}});
+							remainingAmount -= amount;
+							if (remainingAmount == 0) return;
+						}
+					}
+				}
+				if (remainingAmount > 0 and fullSlot != null) {
+					ctx.execute(.{.delete = .{
+						.source = .{.inv = fullInv.?, .slot = fullSlot.?},
+						.amount = @min(remainingAmount, baseItem.stackSize()),
+					}});
+				}
+			}
+		};
+		pub fn toBytes(self: Inventories, writer: *BinaryWriter) void {
+			writer.writeVarInt(usize, self.inventories.len);
+			for (self.inventories) |inv| {
+				writer.writeEnum(InventoryId, inv.id);
+			}
+		}
+
+		pub fn fromBytes(allocator: main.NeverFailingAllocator, reader: *BinaryReader, side: Side, user: *?main.server.User) !Inventories {
+			const inventoryCount = try reader.readVarInt(usize);
+			if (inventoryCount == 0) return error.Invalid;
+			if (inventoryCount*@sizeOf(InventoryId) >= reader.remaining.len) return error.Invalid;
+
+			const inventories = allocator.alloc(Inventory, inventoryCount);
+			errdefer main.globalAllocator.free(Inventories);
+
+			for (inventories) |*inv| {
+				const invId = try reader.readEnum(InventoryId);
+				inv.* = Inventory.getInventory(invId, side, user) orelse return error.InventoryNotFound;
+			}
+			return .{
+				.inventories = inventories,
+			};
+		}
+	};
+
 	const put_items_into = struct { // MARK: put_items_into
 		const Provider = union(enum) {
 			move: InventoryAndSlot,
