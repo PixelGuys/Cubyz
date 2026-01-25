@@ -1226,8 +1226,8 @@ pub const Command = struct { // MARK: Command
 
 		pub fn init(destinations: []const Inventory.ClientInventory, sources: []const Inventory.ClientInventory, recipe: *const main.items.Recipe) CraftFrom {
 			return .{
-				.destinations = .initWithClientInventories(main.globalAllocator, destinations),
-				.sources = .initWithClientInventories(main.globalAllocator, sources),
+				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
+				.sources = .initFromClientInventories(main.globalAllocator, sources),
 				.recipe = recipe,
 			};
 		}
@@ -1238,8 +1238,8 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: CraftFrom, ctx: Context) error{serverFailure}!void {
-			for (self.destinations.getInventories()) |dest| if (dest.type != .normal) return;
-			for (self.sources.getInventories()) |source| if (source.type != .normal) return;
+			for (self.destinations.inventories) |dest| if (dest.type != .normal) return;
+			for (self.sources.inventories) |source| if (source.type != .normal) return;
 
 			if (self.destinations.canHold(.{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount}) != .yes) return;
 
@@ -1260,7 +1260,9 @@ pub const Command = struct { // MARK: Command
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !CraftFrom {
 			const destinations = try Inventory.Inventories.fromBytes(main.globalAllocator, reader, side, user);
+			errdefer destinations.deinit(main.globalAllocator);
 			const sources = try Inventory.Inventories.fromBytes(main.globalAllocator, reader, side, user);
+			errdefer destinations.deinit(main.globalAllocator);
 			const recipe = try main.items.Recipe.fromBytes(reader);
 			return .{
 				.destinations = destinations,
