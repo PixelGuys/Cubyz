@@ -722,11 +722,10 @@ pub const Inventories = struct { // MARK: Inventories
 	pub fn canHold(self: Inventories, itemStack: ItemStack) Inventory.CanHoldReturn {
 		var remainingAmount = itemStack.amount;
 		for (self.inventories) |dest| {
-			remainingAmount -|= switch (dest.canHold(itemStack)) {
+			remainingAmount = switch (dest.canHold(.{.item = itemStack.item, .amount = remainingAmount})) {
 				.yes => return .yes,
-				.remainingAmount => |amount| (itemStack.amount - amount),
+				.remainingAmount => |amount| amount,
 			};
-			if (remainingAmount == 0) return .yes;
 		}
 		return .{.remainingAmount = remainingAmount};
 	}
