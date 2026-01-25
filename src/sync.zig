@@ -1294,6 +1294,7 @@ pub const Command = struct { // MARK: Command
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !DepositOrDrop {
 			const destinations: Inventory.Inventories = try .fromBytes(main.globalAllocator, reader, side, user);
+			errdefer destinations.deinit(main.globalAllocator);
 			const sourceId = try reader.readEnum(InventoryId);
 			return .{
 				.destinations = destinations,
@@ -1342,8 +1343,10 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !DepositToAny {
+			const destinations: Inventory.Inventories = try .fromBytes(main.globalAllocator, reader, side, user);
+			errdefer destinations.deinit(main.globalAllocator);
 			return .{
-				.destinations = try .fromBytes(main.globalAllocator, reader, side, user),
+				.destinations = destinations,
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.amount = try reader.readInt(u16),
 			};
