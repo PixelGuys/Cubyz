@@ -773,38 +773,4 @@ pub const Inventories = struct { // MARK: Inventories
 		return remainingAmount;
 	}
 
-	pub fn removeItems(self: Inventories, ctx: sync.Command.Context, itemAmount: u16, baseItem: main.items.BaseItemIndex) void {
-		var fullSlot: ?u32 = null;
-		var fullInv: ?Inventory = null;
-		var remainingAmount: usize = itemAmount;
-		for (self.inventories) |source| {
-			for (0..source._items.len) |reverseIndex| {
-				const i: usize = source._items.len - reverseIndex - 1;
-				const otherStack: *ItemStack = &source._items[i];
-				if (otherStack.item != .null and baseItem == otherStack.item.baseItem) {
-					if (otherStack.amount == otherStack.item.stackSize()) {
-						if (fullSlot == null) {
-							fullSlot = @intCast(i);
-							fullInv = source;
-						}
-						continue;
-					}
-					const amount = @min(remainingAmount, otherStack.amount);
-					ctx.execute(.{.delete = .{
-						.source = .{.inv = source, .slot = @intCast(i)},
-						.amount = amount,
-					}});
-					remainingAmount -= amount;
-					if (remainingAmount == 0) return;
-				}
-			}
-		}
-		if (remainingAmount > 0 and fullSlot != null) {
-			ctx.execute(.{.delete = .{
-				.source = .{.inv = fullInv.?, .slot = fullSlot.?},
-				.amount = @min(remainingAmount, baseItem.stackSize()),
-			}});
-		}
-	}
-
 };
