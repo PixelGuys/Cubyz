@@ -599,7 +599,7 @@ pub fn getAmount(self: Inventory, slot: usize) u16 {
 	return self._items[slot].amount;
 }
 
-const canHoldReturn = union(enum) {
+const CanHoldReturn = union(enum) {
 	yes: void,
 	remainingAmount: u16,
 };
