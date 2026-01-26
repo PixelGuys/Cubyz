@@ -802,7 +802,7 @@ pub const Inventories = struct { // MARK: Inventories
 			for (0..source._items.len) |reverseIndex| {
 				const i: usize = source._items.len - reverseIndex - 1;
 				const otherStack: *ItemStack = &source._items[i];
-				if (otherStack.item != .null and baseItem == otherStack.item.baseItem) {
+				if (otherStack.item == .baseItem and baseItem == otherStack.item.baseItem) {
 					if (otherStack.amount == otherStack.item.stackSize()) {
 						if (fullSlot == null) {
 							fullSlot = @intCast(i);
