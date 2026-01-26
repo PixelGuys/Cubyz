@@ -1244,6 +1244,25 @@ pub const Command = struct { // MARK: Command
 			if (self.destinations.canHold(.{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount}) != .yes) return;
 
 			// Can we even craft it?
+			outer: for (self.recipe.sourceItems) |requiredItem| {
+				var amount: usize = 0;
+				// There might be duplicate entries:
+				for (self.recipe.sourceItems, self.recipe.sourceAmounts) |otherItem, otherAmount| {
+					if (std.meta.eql(requiredItem, otherItem))
+						amount += otherAmount;
+				}
+				for (self.sources.inventories) |source| {
+					for (source._items) |otherStack| {
+						if (otherStack.item != .null and std.meta.eql(requiredItem, otherStack.item.baseItem)) {
+							amount -|= otherStack.amount;
+							if (amount == 0) continue :outer;
+						}
+					}
+				}
+				// Not enough ingredients
+				if (amount != 0) return;
+			}
+
 			for (self.recipe.sourceItems, self.recipe.sourceAmounts) |requiredItem, requiredAmount| {
 				self.sources.removeItems(ctx, requiredAmount, requiredItem);
 			}
