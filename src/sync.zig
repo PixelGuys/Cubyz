@@ -1281,7 +1281,7 @@ pub const Command = struct { // MARK: Command
 			const destinations = try Inventory.Inventories.fromBytes(main.globalAllocator, reader, side, user);
 			errdefer destinations.deinit(main.globalAllocator);
 			const sources = try Inventory.Inventories.fromBytes(main.globalAllocator, reader, side, user);
-			errdefer destinations.deinit(main.globalAllocator);
+			errdefer sources.deinit(main.globalAllocator);
 			const recipe = try main.items.Recipe.fromBytes(reader);
 			return .{
 				.destinations = destinations,

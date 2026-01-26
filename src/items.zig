@@ -1090,6 +1090,8 @@ pub const Recipe = struct { // MARK: Recipe
 		const resultItem = try reader.readEnum(BaseItemIndex);
 		const resultAmount = try reader.readVarInt(u16);
 		const sourceCount = try reader.readVarInt(usize);
+		if (sourceCount == 0) return error.Invalid;
+		if (sourceCount*@sizeOf(Recipe) > reader.remaining.len) return error.Invalid; // this check fails
 
 		const sourceItems = main.stackAllocator.alloc(BaseItemIndex, sourceCount);
 		defer main.stackAllocator.free(sourceItems);
