@@ -1,7 +1,7 @@
 .{
 	.tags = .{.mineable},
-	.blockHealth = 50,
-	.blockResistance = 1,
+	.blockHealth = 45,
+	.blockResistance = 5,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
