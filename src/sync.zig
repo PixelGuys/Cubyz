@@ -1248,8 +1248,7 @@ pub const Command = struct { // MARK: Command
 				var amount: usize = 0;
 				// There might be duplicate entries:
 				for (self.recipe.sourceItems, self.recipe.sourceAmounts) |otherItem, otherAmount| {
-					if (std.meta.eql(requiredItem, otherItem))
-						amount += otherAmount;
+					if (requiredItem == otherItem) amount += otherAmount;
 				}
 				for (self.sources.inventories) |source| {
 					for (source._items) |otherStack| {
