@@ -650,8 +650,8 @@ pub const inventory = struct { // MARK: inventory
 		};
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
-
-		if (itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
+		if (itemSlot.inventory.type == .crafting and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
+			if (itemSlot.mode != .takeOnly) return;
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
 			if (recipeItem == .null and item != .null) recipeItem = item.clone();
 			if (!std.meta.eql(item, recipeItem)) return;
@@ -730,7 +730,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
-				if (hovered.inventory.type == .crafting and hovered.mode == .takeOnly) return;
+				if (hovered.inventory.type == .crafting) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
 			} else if (!hoveredAWindow) {
 				carried.dropStack(0);
