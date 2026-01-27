@@ -1091,17 +1091,18 @@ pub const Recipe = struct { // MARK: Recipe
 		const resultAmount = try reader.readVarInt(u16);
 		const sourceCount = try reader.readVarInt(usize);
 		if (sourceCount == 0) return error.Invalid;
-		if (sourceCount*@sizeOf(Recipe) > reader.remaining.len) return error.Invalid; // this check fails
 
-		const sourceItems = main.stackAllocator.alloc(BaseItemIndex, sourceCount);
-		defer main.stackAllocator.free(sourceItems);
-		const sourceAmounts = main.stackAllocator.alloc(u16, sourceCount);
-		defer main.stackAllocator.free(sourceAmounts);
-		for (sourceItems, sourceAmounts) |*item, *amount| {
-			item.* = try reader.readEnum(BaseItemIndex);
-			amount.* = try reader.readVarInt(u16);
+		var sourceItems: main.List(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		defer sourceItems.deinit();
+		var sourceAmounts: main.List(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		defer sourceAmounts.deinit();
+
+		while (reader.remaining.len > 0) {
+			sourceItems.append(try reader.readEnum(BaseItemIndex));
+			sourceAmounts.append(try reader.readVarInt(u16));
 		}
-		return getValidRecipe(.{.sourceItems = sourceItems, .sourceAmounts = sourceAmounts, .resultItem = resultItem, .resultAmount = resultAmount});
+
+		return getValidRecipe(.{.sourceItems = sourceItems.toOwnedSlice(), .sourceAmounts = sourceAmounts.toOwnedSlice(), .resultItem = resultItem, .resultAmount = resultAmount});
 	}
 };
 
