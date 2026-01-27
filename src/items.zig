@@ -1102,7 +1102,7 @@ pub const Recipe = struct { // MARK: Recipe
 			sourceAmounts.append(try reader.readVarInt(u16));
 		}
 
-		return getValidRecipe(.{.sourceItems = sourceItems.toOwnedSlice(), .sourceAmounts = sourceAmounts.toOwnedSlice(), .resultItem = resultItem, .resultAmount = resultAmount});
+		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount});
 	}
 };
 
