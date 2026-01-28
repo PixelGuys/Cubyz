@@ -231,7 +231,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 	pub fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
 		sync.threadContext.assertCorrectContext(.server);
 		switch (source) {
-			.recipe, .blockInventory, .playerInventory, .hand => {
+			.blockInventory, .playerInventory, .hand => {
 				switch (source) {
 					.playerInventory, .hand => |id| {
 						if (id != user.id) {
@@ -249,7 +249,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 						return;
 					}
 				}
-				if (source != .recipe) return error.Invalid;
+				return error.Invalid;
 			},
 			.other => {},
 			.alreadyFreed => unreachable,
@@ -265,14 +265,6 @@ pub const ServerSide = struct { // MARK: ServerSide
 		switch (source) {
 			.blockInventory => unreachable, // Should be loaded by the block entity
 			.playerInventory, .hand => unreachable, // Should be loaded on player creation
-			.recipe => |recipe| {
-				for (0..recipe.sourceAmounts.len) |i| {
-					inventory.inv._items[i].amount = recipe.sourceAmounts[i];
-					inventory.inv._items[i].item = .{.baseItem = recipe.sourceItems[i]};
-				}
-				inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
-				inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
-			},
 			.other => {},
 			.alreadyFreed => unreachable,
 		}
@@ -369,7 +361,6 @@ pub const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
 	hand = 3,
-	recipe = 4,
 	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
@@ -377,15 +368,15 @@ pub const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: u32,
 	hand: u32,
-	recipe: *const main.items.Recipe,
 	blockInventory: Vec3i,
 	other: void,
 };
 
 pub const ClientInventory = struct { // MARK: ClientInventory
-	const ClientType = enum {
-		serverShared,
-		creative,
+	const ClientType = union(enum) {
+		serverShared: void,
+		creative: void,
+		crafting: *const main.items.Recipe,
 	};
 	super: Inventory,
 	type: ClientType,
@@ -416,6 +407,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			carried.fillFromCreative(0, dest.getItem(destSlot));
 			return;
 		}
+		std.debug.assert(dest.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
 	}
 
@@ -452,18 +444,18 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn depositToAny(source: ClientInventory, sourceSlot: u32, destinations: []const ClientInventory, amount: u16) void {
-		std.debug.assert(source.type != .creative);
+		std.debug.assert(source.type == .serverShared);
 		for (destinations) |inv| std.debug.assert(inv.super.type == .normal);
 		main.sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source.super, .slot = sourceSlot}, amount)});
 	}
 
 	pub fn dropStack(source: ClientInventory, sourceSlot: u32) void {
-		if (source.type == .creative) return;
+		if (source.type != .serverShared) return;
 		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
 	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {
-		if (source.type == .creative) return;
+		if (source.type != .serverShared) return;
 		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}, .desiredAmount = 1}});
 	}
 
@@ -473,6 +465,14 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn fillAmountFromCreative(dest: ClientInventory, destSlot: u32, item: Item, amount: u16) void {
 		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item, .amount = amount}});
+	}
+
+	pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory) void {
+		std.debug.assert(source.type == .serverShared);
+		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
+		std.debug.assert(craftingInv.type == .crafting);
+
+		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.type.crafting)});
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
@@ -506,12 +506,10 @@ const Inventory = @This(); // MARK: Inventory
 
 pub const TypeEnum = enum(u8) {
 	normal = 0,
-	crafting = 2,
 	workbench = 3,
 };
 pub const Type = union(TypeEnum) {
 	normal: void,
-	crafting: void,
 	workbench: ToolTypeIndex,
 
 	pub fn shouldDepositToUserOnClose(self: Type) bool {
@@ -794,5 +792,39 @@ pub const Inventories = struct { // MARK: Inventories
 			remainingAmount = 0;
 		}
 		return remainingAmount;
+	}
+
+	pub fn removeItems(self: Inventories, ctx: sync.Command.Context, itemAmount: u16, baseItem: main.items.BaseItemIndex) void {
+		var fullSlot: ?u32 = null;
+		var fullInv: ?Inventory = null;
+		var remainingAmount: usize = itemAmount;
+		for (self.inventories) |source| {
+			for (0..source._items.len) |reverseIndex| {
+				const i: usize = source._items.len - reverseIndex - 1;
+				const otherStack: *ItemStack = &source._items[i];
+				if (otherStack.item == .baseItem and baseItem == otherStack.item.baseItem) {
+					if (otherStack.amount == otherStack.item.stackSize()) {
+						if (fullSlot == null) {
+							fullSlot = @intCast(i);
+							fullInv = source;
+						}
+						continue;
+					}
+					const amount = @min(remainingAmount, otherStack.amount);
+					ctx.execute(.{.delete = .{
+						.source = .{.inv = source, .slot = @intCast(i)},
+						.amount = amount,
+					}});
+					remainingAmount -= amount;
+					if (remainingAmount == 0) return;
+				}
+			}
+		}
+		if (remainingAmount > 0 and fullSlot != null) {
+			ctx.execute(.{.delete = .{
+				.source = .{.inv = fullInv.?, .slot = fullSlot.?},
+				.amount = @min(remainingAmount, baseItem.stackSize()),
+			}});
+		}
 	}
 };

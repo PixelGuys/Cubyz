@@ -1061,7 +1061,48 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
-	cachedInventory: ?Inventory.ClientInventory = null,
+
+	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
+		outer: for (main.items.recipes()) |*recipe| {
+			if (recipe.resultItem != self.resultItem) continue;
+			if (recipe.resultAmount != self.resultAmount) continue;
+			if (recipe.sourceItems.len != self.sourceItems.len) continue;
+			for (recipe.sourceItems, recipe.sourceAmounts, self.sourceItems, self.sourceAmounts) |recipeItem, recipeAmount, selfItem, selfAmount| {
+				if (recipeItem != selfItem) continue :outer;
+				if (recipeAmount != selfAmount) continue :outer;
+			}
+			return recipe;
+		}
+		return error.Invalid;
+	}
+
+	pub fn toBytes(self: *const Recipe, writer: *BinaryWriter) void {
+		writer.writeEnum(BaseItemIndex, self.resultItem);
+		writer.writeVarInt(u16, self.resultAmount);
+		writer.writeVarInt(usize, self.sourceItems.len);
+		for (self.sourceItems, self.sourceAmounts) |item, amount| {
+			writer.writeEnum(BaseItemIndex, item);
+			writer.writeVarInt(u16, amount);
+		}
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !*Recipe {
+		const resultItem = try reader.readEnum(BaseItemIndex);
+		const resultAmount = try reader.readVarInt(u16);
+		const sourceCount = try reader.readVarInt(usize);
+
+		var sourceItems: main.List(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		defer sourceItems.deinit();
+		var sourceAmounts: main.List(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		defer sourceAmounts.deinit();
+
+		while (reader.remaining.len > 0 and sourceItems.items.len < sourceCount) {
+			sourceItems.append(try reader.readEnum(BaseItemIndex));
+			sourceAmounts.append(try reader.readVarInt(u16));
+		}
+
+		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount});
+	}
 };
 
 var toolTypeList: ListUnmanaged(ToolType) = .{};
@@ -1265,9 +1306,6 @@ pub fn clearRecipeCachedInventories() void {
 	for (recipeList.items) |recipe| {
 		main.globalAllocator.free(recipe.sourceItems);
 		main.globalAllocator.free(recipe.sourceAmounts);
-		if (recipe.cachedInventory) |inv| {
-			inv.deinit(main.globalAllocator);
-		}
 	}
 }
 

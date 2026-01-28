@@ -79,6 +79,9 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			_ = availableItems.swapRemove(i);
 		}
 	}
+	for (inventories.items) |inv| {
+		inv.deinit(main.globalAllocator);
+	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
 	outer: for (items.recipes()) |*recipe| {
@@ -91,10 +94,15 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
-		if (recipe.cachedInventory == null) {
-			recipe.cachedInventory = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .serverShared, .{.recipe = recipe}, .{});
+		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .normal, .{.crafting = recipe}, .other, .{});
+
+		for (0..recipe.sourceAmounts.len) |index| {
+			inv.super._items[index].amount = recipe.sourceAmounts[index];
+			inv.super._items[index].item = .{.baseItem = recipe.sourceItems[index]};
 		}
-		const inv = recipe.cachedInventory.?;
+		inv.super._items[inv.super._items.len - 1].amount = recipe.resultAmount;
+		inv.super._items[inv.super._items.len - 1].item = .{.baseItem = recipe.resultItem};
+
 		inventories.append(inv);
 		const rowList = HorizontalList.init();
 		const maxColumns: u32 = 4;
@@ -157,6 +165,9 @@ pub fn onClose() void {
 	}
 	availableItems.deinit();
 	itemAmount.deinit();
+	for (inventories.items) |inv| {
+		inv.deinit(main.globalAllocator);
+	}
 	inventories.deinit();
 }
 
