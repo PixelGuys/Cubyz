@@ -1,0 +1,22 @@
+.{
+	.structures = .{
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:grass_vegetation:1",
+			.chance = 0.15,
+			.width = 5,
+			.variation = 8,
+			.density = 0.5,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:grass_vegetation",
+			.chance = 0.4,
+			.width = 8,
+			.variation = 6,
+			.density = 0.3,
+			.priority = 0.2,
+		},
+	},
+}
