@@ -1252,7 +1252,7 @@ pub const Command = struct { // MARK: Command
 				}
 				for (self.sources.inventories) |source| {
 					for (source._items) |otherStack| {
-						if (otherStack.item != .null and std.meta.eql(requiredItem, otherStack.item.baseItem)) {
+						if (std.meta.eql(requiredItem, otherStack.item.baseItem)) {
 							amount -|= otherStack.amount;
 							if (amount == 0) continue :outer;
 						}
