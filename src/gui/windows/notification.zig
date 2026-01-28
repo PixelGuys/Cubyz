@@ -23,14 +23,14 @@ pub fn deinit() void {
 	text = "";
 }
 
-fn setNotificationText(newText: []const u8) void {
+fn setNotificationText(comptime formatText: []const u8, args: anytype) void {
 	main.globalAllocator.free(text);
-	text = main.globalAllocator.dupe(u8, newText);
+	text = std.fmt.allocPrint(main.globalAllocator.allocator, formatText, args) catch unreachable;
 }
 
-pub fn raiseNotification(notifText: []const u8) void {
+pub fn raiseNotification(comptime formatText: []const u8, args: anytype) void {
 	main.gui.closeWindow("notification");
-	setNotificationText(notifText);
+	setNotificationText(formatText, args);
 	main.gui.openWindow("notification");
 }
 

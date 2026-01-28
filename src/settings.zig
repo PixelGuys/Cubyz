@@ -49,6 +49,8 @@ pub var streamerMode: bool = false;
 
 pub var lastUsedIPAddress: []const u8 = "";
 
+pub var accountState: enum { unknown, stored, encrypted } = .unknown;
+
 pub var guiScale: ?f32 = null;
 
 pub var musicVolume: f32 = 1;

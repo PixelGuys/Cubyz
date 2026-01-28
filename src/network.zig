@@ -8,6 +8,7 @@ const settings = main.settings;
 const utils = main.utils;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+pub const authentication = @import("network/authentication.zig");
 pub const protocols = @import("network/protocols.zig");
 
 // TODO: Might want to use SSL or something similar to encode the message
@@ -191,6 +192,7 @@ const Socket = struct {
 pub fn init() void {
 	Socket.startup();
 	protocols.init();
+	authentication.init();
 }
 
 pub const Address = struct {
