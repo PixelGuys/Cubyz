@@ -650,8 +650,7 @@ pub const inventory = struct { // MARK: inventory
 		};
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
-		if (itemSlot.inventory.type == .crafting and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
-			if (itemSlot.mode != .takeOnly) return;
+		if (itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
 			if (recipeItem == .null and item != .null) recipeItem = item.clone();
 			if (!std.meta.eql(item, recipeItem)) return;
