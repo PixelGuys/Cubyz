@@ -1090,14 +1090,13 @@ pub const Recipe = struct { // MARK: Recipe
 		const resultItem = try reader.readEnum(BaseItemIndex);
 		const resultAmount = try reader.readVarInt(u16);
 		const sourceCount = try reader.readVarInt(usize);
-		if (sourceCount == 0) return error.Invalid;
 
 		var sourceItems: main.List(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
 		defer sourceItems.deinit();
 		var sourceAmounts: main.List(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
 		defer sourceAmounts.deinit();
 
-		while (reader.remaining.len > 0) {
+		while (reader.remaining.len > 0 and sourceItems.items.len < sourceCount) {
 			sourceItems.append(try reader.readEnum(BaseItemIndex));
 			sourceAmounts.append(try reader.readVarInt(u16));
 		}
