@@ -648,6 +648,7 @@ pub const inventory = struct { // MARK: inventory
 			isCrafting = false;
 			return;
 		};
+		if (itemSlot.mode == .immutable) return;
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
 		if (itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
