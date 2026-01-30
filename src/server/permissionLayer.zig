@@ -6,7 +6,7 @@ const User = main.server.User;
 pub const PermissionLayer = union(enum) {
 	none: void,
 	all: void,
-	list: std.StringHashMap(*PermissionLayer),
+	subPermissions: std.StringHashMap(*PermissionLayer),
 
 	pub fn init() *PermissionLayer {
 		const self = main.globalAllocator.create(PermissionLayer);
@@ -15,13 +15,13 @@ pub const PermissionLayer = union(enum) {
 	}
 
 	pub fn deinit(self: *PermissionLayer) void {
-		if (self.* == .list) {
-			var it = self.list.iterator();
+		if (self.* == .subPermissions) {
+			var it = self.subPermissions.iterator();
 			while (it.next()) |entry| {
 				main.globalAllocator.free(entry.key_ptr.*);
 				entry.value_ptr.*.deinit();
 			}
-			self.list.deinit();
+			self.subPermissions.deinit();
 		}
 		main.globalAllocator.destroy(self);
 	}
@@ -33,8 +33,8 @@ pub const PermissionLayer = union(enum) {
 			return;
 		}
 		if (std.mem.eql(u8, permissionPath, "*")) {
-			if (self.* == .list) {
-				self.list.deinit();
+			if (self.* == .subPermissions) {
+				self.subPermissions.deinit();
 			}
 			self.* = .all;
 			return;
@@ -42,13 +42,13 @@ pub const PermissionLayer = union(enum) {
 
 		const end = std.mem.indexOfScalar(u8, permissionPath, '.') orelse permissionPath.len;
 		if (self.* == .none) {
-			self.* = .{.list = .init(main.globalAllocator.allocator)};
+			self.* = .{.subPermissions = .init(main.globalAllocator.allocator)};
 		}
-		if (!self.list.contains(permissionPath[0..end])) {
+		if (!self.subPermissions.contains(permissionPath[0..end])) {
 			const perm: *PermissionLayer = .init();
-			self.list.put(main.globalAllocator.dupe(u8, permissionPath[0..end]), perm) catch unreachable;
+			self.subPermissions.put(main.globalAllocator.dupe(u8, permissionPath[0..end]), perm) catch unreachable;
 		}
-		if (self.list.get(permissionPath[0..end])) |perm| {
+		if (self.subPermissions.get(permissionPath[0..end])) |perm| {
 			perm.addPermission(permissionPath[@min(end + 1, permissionPath.len)..], source);
 			return;
 		}
@@ -58,9 +58,9 @@ pub const PermissionLayer = union(enum) {
 		return switch (self.*) {
 			.all => true,
 			.none => (permissionPath.len == 0),
-			.list => |list| {
+			.subPermissions => |subPermissions| {
 				const end = std.mem.indexOfScalar(u8, permissionPath, '.') orelse permissionPath.len;
-				if (list.get(permissionPath[0..end])) |perm| {
+				if (subPermissions.get(permissionPath[0..end])) |perm| {
 					return perm.hasPermission(permissionPath[@min(end + 1, permissionPath.len)..]);
 				}
 				return false;
