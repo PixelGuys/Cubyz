@@ -529,14 +529,14 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
+	pub fn placeBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
-			if (!mods.shift) {
+			if (!KeyBoard.key("crouch").pressed) {
 				if (main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
 			}
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
 			const onInteract = block.onInteract();
-			if (!mods.shift) {
+			if (!KeyBoard.key("crouch").pressed) {
 				if (onInteract.run(.{.blockPos = blockPos, .block = block}) == .handled) return;
 			}
 		}
@@ -767,10 +767,10 @@ pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .densi
 var nextBlockPlaceTime: ?std.Io.Timestamp = null;
 var nextBlockBreakTime: ?std.Io.Timestamp = null;
 
-pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
+pub fn pressPlace(_: main.Window.Key.Modifiers) void {
 	const time = main.timestamp();
 	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
-	Player.placeBlock(mods);
+	Player.placeBlock();
 }
 
 pub fn releasePlace(_: main.Window.Key.Modifiers) void {
@@ -972,7 +972,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if (nextBlockPlaceTime) |*placeTime| {
 		if (placeTime.durationTo(time).nanoseconds >= 0) {
 			placeTime.* = placeTime.addDuration(main.settings.updateRepeatSpeed);
-			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
+			Player.placeBlock();
 		}
 	}
 	if (nextBlockBreakTime) |*breakTime| {
