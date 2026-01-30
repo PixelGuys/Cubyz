@@ -9,7 +9,7 @@ pub const Command = struct {
 	name: []const u8,
 	description: []const u8,
 	usage: []const u8,
-	permissionPath: []const u8 
+	permissionPath: []const u8,
 };
 
 pub var commands: std.StringHashMap(Command) = undefined;
