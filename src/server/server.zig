@@ -130,7 +130,9 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
-	permissionLayer: *permissions.PermissionLayer = undefined,
+	permissionWhiteList: std.StringHashMapUnmanaged(void) = .{},
+	permissionBlackList: std.StringHashMapUnmanaged(void) = .{},
+	permissionGroups: main.List(*permissions.PermissionGroup) = undefined,
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -140,7 +142,7 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
-		self.permissionLayer = .init();
+		self.permissionGroups = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -151,7 +153,9 @@ pub const User = struct { // MARK: User
 		main.items.Inventory.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
-		self.permissionLayer.deinit();
+		self.permissionWhiteList.deinit(main.globalAllocator.allocator);
+		self.permissionBlackList.deinit(main.globalAllocator.allocator);
+		self.permissionGroups.deinit();
 
 		if (self.inventory != null) {
 			world.?.savePlayer(self) catch |err| {
@@ -352,6 +356,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
+	permissions.init();
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
@@ -381,7 +386,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
-		user.permissionLayer.addPermission("*", user);
+		permissions.addUserPermission(user, .black, "command/spawn");
+		permissions.createGroup("root") catch unreachable;
+		permissions.addGroupPermission("root", .white, "command") catch unreachable;
+		permissions.addUserToGroup(user, "root") catch unreachable;
 	}
 }
 
@@ -406,6 +414,7 @@ fn deinit() void {
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
 
+	permissions.deinit();
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
 }
