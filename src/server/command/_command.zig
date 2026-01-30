@@ -34,6 +34,10 @@ pub fn execute(msg: []const u8, source: *User) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
 	if (commands.get(command)) |cmd| {
+		if (!source.permissionLayer.hasPermission(command)) {
+			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
+			return;
+		}
 		source.sendMessage("#00ff00Executing Command /{s}", .{msg});
 		cmd.exec(msg[@min(end + 1, msg.len)..], source);
 	} else {

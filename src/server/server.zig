@@ -26,6 +26,7 @@ pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
+pub const permissions = @import("permissionLayer.zig");
 
 pub const command = @import("command/_command.zig");
 
@@ -129,6 +130,8 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
+	permissionLayer: *permissions.PermissionLayer = undefined,
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
@@ -137,6 +140,7 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
+		self.permissionLayer = .init();
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -147,6 +151,7 @@ pub const User = struct { // MARK: User
 		main.items.Inventory.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
+		self.permissionLayer.deinit();
 
 		if (self.inventory != null) {
 			world.?.savePlayer(self) catch |err| {
@@ -376,6 +381,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
+		user.permissionLayer.addPermission("*", user);
 	}
 }
 
