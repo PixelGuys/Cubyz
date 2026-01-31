@@ -355,7 +355,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
-	permissions.init();
+	permissions.init(main.globalAllocator);
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
@@ -385,10 +385,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
-		permissions.addUserPermission(user, .black, "command/spawn");
-		permissions.createGroup("root") catch unreachable;
+		permissions.addUserPermission(user, main.globalAllocator, .black, "command/spawn");
+		permissions.createGroup("root", main.globalAllocator) catch unreachable;
 		permissions.addGroupPermission("root", .white, "command") catch unreachable;
-		permissions.addUserToGroup(user, "root") catch unreachable;
+		permissions.addUserToGroup(user, main.globalAllocator, "root") catch unreachable;
 	}
 }
 

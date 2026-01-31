@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const server = main.server;
 const User = server.User;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const ListType = enum {
 	white,
@@ -10,12 +11,13 @@ pub const ListType = enum {
 };
 
 pub const PermissionGroup = struct {
+	allocator: NeverFailingAllocator,
 	permissionWhiteList: std.StringHashMapUnmanaged(void) = .{},
 	permissionBlackList: std.StringHashMapUnmanaged(void) = .{},
 
 	pub fn deinit(self: *PermissionGroup) void {
-		self.permissionWhiteList.deinit(main.globalAllocator.allocator);
-		self.permissionBlackList.deinit(main.globalAllocator.allocator);
+		self.permissionWhiteList.deinit(self.allocator.allocator);
+		self.permissionBlackList.deinit(self.allocator.allocator);
 	}
 
 	pub fn hasPermission(self: *PermissionGroup, permissionPath: []const u8) bool {
@@ -35,8 +37,8 @@ pub const PermissionGroup = struct {
 
 pub var groups: std.StringHashMap(PermissionGroup) = undefined;
 
-pub fn init() void {
-	groups = .init(main.globalAllocator.allocator);
+pub fn init(allocator: NeverFailingAllocator) void {
+	groups = .init(allocator.allocator);
 }
 
 pub fn deinit() void {
@@ -47,9 +49,9 @@ pub fn deinit() void {
 	groups.deinit();
 }
 
-pub fn createGroup(name: []const u8) error{Invalid}!void {
+pub fn createGroup(name: []const u8, allocator: NeverFailingAllocator) error{Invalid}!void {
 	if (groups.contains(name)) return error.Invalid;
-	groups.put(name, .{}) catch unreachable;
+	groups.put(name, .{.allocator = allocator}) catch unreachable;
 }
 
 pub fn deleteGroup(name: []const u8) bool {
@@ -67,22 +69,22 @@ pub fn deleteGroup(name: []const u8) bool {
 pub fn addGroupPermission(name: []const u8, listType: ListType, permissionPath: []const u8) error{Invalid}!void {
 	if (groups.getPtr(name)) |group| {
 		switch (listType) {
-			.white => group.permissionWhiteList.put(main.globalAllocator.allocator, permissionPath, {}) catch unreachable,
-			.black => group.permissionBlackList.put(main.globalAllocator.allocator, permissionPath, {}) catch unreachable,
+			.white => group.permissionWhiteList.put(group.allocator.allocator, permissionPath, {}) catch unreachable,
+			.black => group.permissionBlackList.put(group.allocator.allocator, permissionPath, {}) catch unreachable,
 		}
-	}
+	} else return error.Invalid;
 }
 
-pub fn addUserPermission(user: *User, listType: ListType, permissionPath: []const u8) void {
+pub fn addUserPermission(user: *User, allocator: NeverFailingAllocator, listType: ListType, permissionPath: []const u8) void {
 	switch (listType) {
-		.white => user.permissionWhiteList.put(main.globalAllocator.allocator, permissionPath, {}) catch unreachable,
-		.black => user.permissionBlackList.put(main.globalAllocator.allocator, permissionPath, {}) catch unreachable,
+		.white => user.permissionWhiteList.put(allocator.allocator, permissionPath, {}) catch unreachable,
+		.black => user.permissionBlackList.put(allocator.allocator, permissionPath, {}) catch unreachable,
 	}
 }
 
-pub fn addUserToGroup(user: *User, name: []const u8) error{Invalid}!void {
+pub fn addUserToGroup(user: *User, allocator: NeverFailingAllocator, name: []const u8) error{Invalid}!void {
 	if (groups.getPtr(name)) |group| {
-		user.permissionGroups.put(main.globalAllocator.allocator, name, group) catch unreachable;
+		user.permissionGroups.put(allocator.allocator, name, group) catch unreachable;
 	} else {
 		return error.Invalid;
 	}
@@ -106,4 +108,66 @@ pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
 	}
 
 	return false;
+}
+
+test "GroupWhitePermission" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	try createGroup("test", main.heap.testingAllocator);
+	const group = groups.getPtr("test").?;
+	try addGroupPermission("test", .white, "command/test");
+
+	try std.testing.expectEqual(true, group.hasPermission("command/test"));
+}
+
+test "GroupBlacklist" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	try createGroup("test", main.heap.testingAllocator);
+	const group = groups.getPtr("test").?;
+	try addGroupPermission("test", .white, "command");
+	try addGroupPermission("test", .black, "command/test");
+
+	try std.testing.expectEqual(false, group.hasPermission("command/test"));
+	try std.testing.expectEqual(true, group.hasPermission("command"));
+}
+
+test "GroupDeepPermission" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	try createGroup("test", main.heap.testingAllocator);
+	const group = groups.getPtr("test").?;
+	try addGroupPermission("test", .white, "server/command/testing/test");
+
+	try std.testing.expectEqual(true, group.hasPermission("server/command/testing/test"));
+	try std.testing.expectEqual(false, group.hasPermission("server/command/testing"));
+	try std.testing.expectEqual(false, group.hasPermission("server/command"));
+	try std.testing.expectEqual(false, group.hasPermission("server"));
+	try std.testing.expectEqual(false, group.hasPermission("server/command/testing/test2"));
+}
+
+test "inValidGroupPermission" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	try createGroup("test", main.heap.testingAllocator);
+	try std.testing.expectError(error.Invalid, addGroupPermission("root", .white, "command/test"));
+}
+
+test "inValidGroupPermissionEmptyGroups" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	try std.testing.expectError(error.Invalid, addGroupPermission("root", .white, "command/test"));
+}
+
+test "inValidGroupCreation" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	try createGroup("test", main.heap.testingAllocator);
+	try std.testing.expectError(error.Invalid, createGroup("test", main.heap.testingAllocator));
 }
