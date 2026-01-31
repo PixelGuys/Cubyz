@@ -1,7 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const server = main.server;
+const User = server.User;
 
 pub const ListType = enum {
 	white,
@@ -17,13 +18,13 @@ pub const PermissionGroup = struct {
 		self.permissionBlackList.deinit(main.globalAllocator.allocator);
 	}
 
-	pub fn hasPermission(user: *PermissionGroup, permissionPath: []const u8) bool {
+	pub fn hasPermission(self: *PermissionGroup, permissionPath: []const u8) bool {
 		var it = std.mem.splitBackwardsScalar(u8, permissionPath, '/');
 		var current = permissionPath;
 
 		while (it.next()) |path| {
-			if (user.permissionBlackList.contains(current)) return false;
-			if (user.permissionWhiteList.contains(current)) return true;
+			if (self.permissionBlackList.contains(current)) return false;
+			if (self.permissionWhiteList.contains(current)) return true;
 
 			const len = current.len -| (path.len + 1);
 			current = permissionPath[0..len];
@@ -51,6 +52,18 @@ pub fn createGroup(name: []const u8) error{Invalid}!void {
 	groups.put(name, .{}) catch unreachable;
 }
 
+pub fn deleteGroup(name: []const u8) bool {
+	const users = server.getUserListAndIncreaseRefCount(main.globalAllocator);
+	for (users) |user| {
+		_ = user.permissionGroups.remove(name);
+	}
+	server.freeUserListAndDecreaseRefCount(main.globalAllocator, users);
+	if (groups.getPtr(name)) |group| {
+		group.deinit();
+	}
+	return groups.remove(name);
+}
+
 pub fn addGroupPermission(name: []const u8, listType: ListType, permissionPath: []const u8) error{Invalid}!void {
 	if (groups.getPtr(name)) |group| {
 		switch (listType) {
@@ -69,7 +82,7 @@ pub fn addUserPermission(user: *User, listType: ListType, permissionPath: []cons
 
 pub fn addUserToGroup(user: *User, name: []const u8) error{Invalid}!void {
 	if (groups.getPtr(name)) |group| {
-		user.permissionGroups.append(group);
+		user.permissionGroups.put(main.globalAllocator.allocator, name, group) catch unreachable;
 	} else {
 		return error.Invalid;
 	}
@@ -87,8 +100,9 @@ pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
 		current = permissionPath[0..len];
 	}
 
-	for (user.permissionGroups.items) |group| {
-		if (group.hasPermission(permissionPath)) return true;
+	var groupIt = user.permissionGroups.valueIterator();
+	while (groupIt.next()) |group| {
+		if (group.*.hasPermission(permissionPath)) return true;
 	}
 
 	return false;

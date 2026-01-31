@@ -132,7 +132,7 @@ pub const User = struct { // MARK: User
 
 	permissionWhiteList: std.StringHashMapUnmanaged(void) = .{},
 	permissionBlackList: std.StringHashMapUnmanaged(void) = .{},
-	permissionGroups: main.List(*permissions.PermissionGroup) = undefined,
+	permissionGroups: std.StringHashMapUnmanaged(*permissions.PermissionGroup) = .{},
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -142,7 +142,6 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
-		self.permissionGroups = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -155,7 +154,7 @@ pub const User = struct { // MARK: User
 		self.inventoryClientToServerIdMap.deinit();
 		self.permissionWhiteList.deinit(main.globalAllocator.allocator);
 		self.permissionBlackList.deinit(main.globalAllocator.allocator);
-		self.permissionGroups.deinit();
+		self.permissionGroups.deinit(main.globalAllocator.allocator);
 
 		if (self.inventory != null) {
 			world.?.savePlayer(self) catch |err| {
