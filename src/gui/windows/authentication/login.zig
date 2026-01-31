@@ -31,7 +31,7 @@ fn apply() void {
 	const seedPhrase = main.network.authentication.SeedPhrase.initFromUserInput(textComponent.currentString.items, &failureText);
 	defer seedPhrase.deinit();
 
-	if(failureText.items.len != 0 and !applyAnyways) {
+	if (failureText.items.len != 0 and !applyAnyways) {
 		failureText.insertSlice(0, "Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n");
 
 		main.gui.windowlist.notification.raiseNotification("{s}", .{failureText.items});
@@ -41,6 +41,8 @@ fn apply() void {
 
 		return;
 	}
+
+	main.network.authentication.KeyCollection.init(seedPhrase);
 
 	gui.closeWindowFromRef(&window);
 	if (settings.playerName.len == 0) {
