@@ -47,7 +47,6 @@ pub const Permissions = struct {
 	permissionBlackList: std.StringHashMapUnmanaged(void) = .{},
 
 	pub fn deinit(self: *Permissions) void {
-		std.debug.print("IS this called (please)\n", .{});
 		var it = self.permissionWhiteList.keyIterator();
 		while (it.next()) |key| {
 			self.allocator.free(key.*);
