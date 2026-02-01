@@ -119,6 +119,7 @@ pub const User = struct { // MARK: User
 
 	jobQueue: main.utils.ConcurrentMaxHeap(main.utils.ThreadPool.Task) = undefined,
 	jobQueueScheduled: bool = false,
+	jobQueueLastUpdate: struct { position: Vec3i, time: std.Io.Timestamp } = .{.position = @splat(0), .time = .{.nanoseconds = 0}},
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
@@ -304,6 +305,30 @@ pub const User = struct { // MARK: User
 	pub fn getTaskFromJobQueue(self: *User) ?struct { main.utils.ThreadPool.Task, enum { hasMoreTasks, empty } } {
 		self.mutex.lock();
 		defer self.mutex.unlock();
+		if (vec.lengthSquare(@as(@Vector(3, i64), self.jobQueueLastUpdate.position -% self.lastPos)) > 32*32) {
+			const startTime = main.timestamp();
+			if (self.jobQueueLastUpdate.time.durationTo(startTime).toMilliseconds() > 100) {
+				// Resort tasks:
+				var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, self.jobQueue.size);
+				defer newTasks.deinit(main.stackAllocator);
+				while (self.jobQueue.extractAny()) |_task| {
+					var task = _task;
+					if (!task.vtable.isStillNeeded(task.self)) {
+						task.vtable.clean(task.self);
+						continue;
+					}
+					task.cachedPriority = task.vtable.getPriority(task.self);
+					newTasks.appendAssumeCapacity(task);
+				}
+				self.jobQueue.addMany(newTasks.items);
+				const endTime = main.timestamp();
+				main.threadPool.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
+				self.jobQueueLastUpdate = .{
+					.position = self.lastPos,
+					.time = endTime,
+				};
+			}
+		}
 		if (self.isNetworkQueueFull() or self.jobQueue.size == 0) {
 			self.jobQueueScheduled = false;
 			return null;
