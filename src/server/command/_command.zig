@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const User = main.server.User;
-const permissionLayer = main.server.permissions;
+const permissionLayer = main.server.permissionLayer;
 
 pub const Command = struct {
 	exec: *const fn (args: []const u8, source: *User) void,
@@ -23,7 +23,7 @@ pub fn init() void {
 			.description = @field(commandList, decl.name).description,
 			.usage = @field(commandList, decl.name).usage,
 			.exec = &@field(commandList, decl.name).execute,
-			.permissionPath = "command/" ++ decl.name,
+			.permissionPath = "/command/" ++ decl.name,
 		}) catch unreachable;
 		std.log.debug("Registered command: '/{s}'", .{decl.name});
 	}

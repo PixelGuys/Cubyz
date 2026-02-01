@@ -26,7 +26,7 @@ pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
-pub const permissions = @import("permissionLayer.zig");
+pub const permissionLayer = @import("permissionLayer.zig");
 
 pub const command = @import("command/_command.zig");
 
@@ -130,9 +130,8 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
-	permissionWhiteList: std.StringHashMapUnmanaged(void) = .{},
-	permissionBlackList: std.StringHashMapUnmanaged(void) = .{},
-	permissionGroups: std.StringHashMapUnmanaged(*permissions.PermissionGroup) = .{},
+	permissions: permissionLayer.PermissionGroup = undefined,
+	permissionGroups: std.StringHashMapUnmanaged(*permissionLayer.PermissionGroup) = .{},
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -142,6 +141,7 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
+		self.permissions = .{.allocator = main.globalAllocator};
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -152,9 +152,6 @@ pub const User = struct { // MARK: User
 		main.items.Inventory.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
-		self.permissionWhiteList.deinit(main.globalAllocator.allocator);
-		self.permissionBlackList.deinit(main.globalAllocator.allocator);
-		self.permissionGroups.deinit(main.globalAllocator.allocator);
 
 		if (self.inventory != null) {
 			world.?.savePlayer(self) catch |err| {
@@ -165,6 +162,13 @@ pub const User = struct { // MARK: User
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
 		}
+
+		self.permissions.deinit();
+		var permissionGroupsIterator = self.permissionGroups.keyIterator();
+		while (permissionGroupsIterator.next()) |group| {
+			main.globalAllocator.free(group.*);
+		}
+		self.permissionGroups.deinit(main.globalAllocator.allocator);
 
 		self.worldEditData.deinit();
 
@@ -355,7 +359,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
-	permissions.init(main.globalAllocator);
+	permissionLayer.init(main.globalAllocator);
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
@@ -386,10 +390,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		defer user.decreaseRefCount();
 		user.isLocal = true;
 		// this is to show how the permission system can be used not the supposed setup of a users permission
-		permissions.addUserPermission(user, main.globalAllocator, .black, "command/spawn");
-		permissions.createGroup("root", main.globalAllocator) catch unreachable;
-		permissions.addGroupPermission("root", .white, "command") catch unreachable;
-		permissions.addUserToGroup(user, main.globalAllocator, "root") catch unreachable;
+		// permissions.addUserPermission(user, main.globalAllocator, .black, "/command/spawn");
+		// permissions.createGroup("root", main.globalAllocator) catch unreachable;
+		// permissions.addGroupPermission("root", .white, "/") catch unreachable;
+		// permissions.addUserToGroup(user, main.globalAllocator, "root") catch unreachable;
 	}
 }
 
@@ -414,7 +418,7 @@ fn deinit() void {
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
 
-	permissions.deinit();
+	permissionLayer.deinit();
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
 }

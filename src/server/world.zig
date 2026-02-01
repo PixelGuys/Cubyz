@@ -21,6 +21,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
+const permissionLayer = server.permissionLayer;
 const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
@@ -480,6 +481,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
+
+		try self.loadPermissionGroups();
 		return self;
 	}
 
@@ -593,6 +596,24 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
 
 		try files.cubyzDir().writeZon(path, worldData);
+	}
+
+	pub fn loadPermissionGroups(self: *ServerWorld) !void {
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups.zig.zon", .{self.path}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		const groups = files.cubyzDir().readToZon(main.stackAllocator, path) catch return;
+		defer groups.deinit(main.stackAllocator);
+		permissionLayer.fillGroups(main.globalAllocator, groups);
+	}
+
+	pub fn savePermissionGroups(self: *ServerWorld) !void {
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups.zig.zon", .{self.path}) catch unreachable;
+		defer main.stackAllocator.free(path);
+
+		files.cubyzDir().deleteFile(path) catch {};
+		const groups = permissionLayer.groupsToZon(main.stackAllocator);
+		defer groups.deinit(main.stackAllocator);
+		try files.cubyzDir().writeZon(path, groups);
 	}
 
 	const RegenerateLODTask = struct { // MARK: RegenerateLODTask
@@ -858,6 +879,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
+			permissionLayer.fillList(main.globalAllocator, &user.permissions.permissionWhiteList, playerData.getChild("permissionWhiteList"));
+			permissionLayer.fillList(main.globalAllocator, &user.permissions.permissionBlackList, playerData.getChild("permissionBlackList"));
+			permissionLayer.addUserToGroupList(user, main.globalAllocator, playerData.getChild("permissionGroups"));
+
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
@@ -914,6 +939,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("name", user.name);
 
 		playerZon.put("entity", user.player.save(main.stackAllocator));
+		playerZon.put("permissionWhiteList", permissionLayer.listToZon(main.stackAllocator, user.permissions.permissionWhiteList));
+		playerZon.put("permissionBlackList", permissionLayer.listToZon(main.stackAllocator, user.permissions.permissionBlackList));
+		playerZon.put("permissionGroups", permissionLayer.zonFromGroupList(user, main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
@@ -951,6 +979,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.saveWorldConfig();
 
 		try self.saveAllPlayers();
+		try self.savePermissionGroups();
 
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();
