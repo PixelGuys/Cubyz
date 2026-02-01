@@ -130,7 +130,7 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
-	permissions: permissionLayer.PermissionGroup = undefined,
+	permissions: permissionLayer.Permissions = undefined,
 	permissionGroups: std.StringHashMapUnmanaged(*permissionLayer.PermissionGroup) = .{},
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {

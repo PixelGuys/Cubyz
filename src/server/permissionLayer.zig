@@ -6,42 +6,17 @@ const User = server.User;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 
-pub const ListType = enum {
-	white,
-	black,
-};
+pub const Permissions = struct {
+	pub const ListType = enum {
+		white,
+		black,
+	};
 
-pub fn listToZon(allocator: NeverFailingAllocator, list: std.StringHashMapUnmanaged(void)) ZonElement {
-	var zon: ZonElement = .initArray(allocator);
-	var it = list.keyIterator();
-	while (it.next()) |key| {
-		zon.append(key.*);
-	}
-	return zon;
-}
-
-pub fn fillList(allocator: NeverFailingAllocator, list: *std.StringHashMapUnmanaged(void), zon: ZonElement) void {
-	if (zon != .array) return;
-
-	for (zon.array.items) |item| {
-		switch (item) {
-			.string => |string| {
-				list.put(allocator.allocator, allocator.dupe(u8, string), {}) catch continue;
-			},
-			.stringOwned => |string| {
-				list.put(allocator.allocator, allocator.dupe(u8, string), {}) catch continue;
-			},
-			else => {},
-		}
-	}
-}
-
-pub const PermissionGroup = struct {
 	allocator: NeverFailingAllocator,
 	permissionWhiteList: std.StringHashMapUnmanaged(void) = .{},
 	permissionBlackList: std.StringHashMapUnmanaged(void) = .{},
 
-	pub fn deinit(self: *PermissionGroup) void {
+	pub fn deinit(self: *Permissions) void {
 		var it = self.permissionWhiteList.keyIterator();
 		while (it.next()) |key| {
 			self.allocator.free(key.*);
@@ -60,7 +35,44 @@ pub const PermissionGroup = struct {
 		neutral,
 	};
 
-	pub fn hasPermission(self: *PermissionGroup, permissionPath: []const u8) PermissionResult {
+	pub fn list(self: *Permissions, listType: ListType) *std.StringHashMapUnmanaged(void) {
+		return switch (listType) {
+			.white => &self.permissionWhiteList,
+			.black => &self.permissionBlackList,
+		};
+	}
+
+	pub fn fillList(self: *Permissions, listType: ListType, zon: ZonElement) void {
+		if (zon != .array) return;
+
+		for (zon.array.items) |item| {
+			switch (item) {
+				.string => |string| {
+					self.list(listType).put(self.allocator.allocator, self.allocator.dupe(u8, string), {}) catch continue;
+				},
+				.stringOwned => |string| {
+					self.list(listType).put(self.allocator.allocator, self.allocator.dupe(u8, string), {}) catch continue;
+				},
+				else => {},
+			}
+		}
+	}
+
+	pub fn listToZon(self: *Permissions, allocator: NeverFailingAllocator, listType: ListType) ZonElement {
+		var zon: ZonElement = .initArray(allocator);
+
+		var it = self.list(listType).keyIterator();
+		while (it.next()) |key| {
+			zon.append(key.*);
+		}
+		return zon;
+	}
+
+	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
+		self.list(listType).put(self.allocator.allocator, self.allocator.dupe(u8, permissionPath), {}) catch unreachable;
+	}
+
+	pub fn hasPermission(self: *Permissions, permissionPath: []const u8) PermissionResult {
 		var it = std.mem.splitBackwardsScalar(u8, permissionPath, '/');
 		var current = permissionPath;
 
@@ -75,6 +87,32 @@ pub const PermissionGroup = struct {
 	}
 };
 
+pub const PermissionGroup = struct {
+	allocator: NeverFailingAllocator,
+	permissions: Permissions,
+	members: main.List([]const u8),
+
+	pub fn init(allocator: NeverFailingAllocator) PermissionGroup {
+		return .{
+			.allocator = allocator,
+			.permissions = .{.allocator = allocator},
+			.members = .init(allocator),
+		};
+	}
+
+	pub fn deinit(self: *PermissionGroup) void {
+		self.permissions.deinit();
+		for (self.members.items) |items| {
+			self.allocator.free(items);
+		}
+		self.members.deinit();
+	}
+
+	pub fn hasPermission(self: *PermissionGroup, permissionPath: []const u8) Permissions.PermissionResult {
+		return self.permissions.hasPermission(permissionPath);
+	}
+};
+
 pub var groups: std.StringHashMap(PermissionGroup) = undefined;
 
 pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
@@ -82,8 +120,8 @@ pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
 	var it = groups.iterator();
 	while (it.next()) |group| {
 		var groupZon: ZonElement = .initObject(allocator);
-		groupZon.put("permissionWhiteList", listToZon(allocator, group.value_ptr.permissionWhiteList));
-		groupZon.put("permissionBlackList", listToZon(allocator, group.value_ptr.permissionBlackList));
+		groupZon.put("permissionWhiteList", group.value_ptr.permissions.listToZon(allocator, .white));
+		groupZon.put("permissionBlackList", group.value_ptr.permissions.listToZon(allocator, .black));
 		zon.put(group.key_ptr.*, groupZon);
 	}
 	return zon;
@@ -96,8 +134,8 @@ pub fn fillGroups(allocator: NeverFailingAllocator, zon: ZonElement) void {
 	while (it.next()) |entry| {
 		createGroup(entry.key_ptr.*, allocator) catch {};
 		const group = groups.getPtr(entry.key_ptr.*).?;
-		fillList(allocator, &group.permissionWhiteList, entry.value_ptr.getChild("permissionWhiteList"));
-		fillList(allocator, &group.permissionBlackList, entry.value_ptr.getChild("permissionBlackList"));
+		group.permissions.fillList(.white, entry.value_ptr.getChild("permissionWhiteList"));
+		group.permissions.fillList(.black, entry.value_ptr.getChild("permissionBlackList"));
 	}
 }
 
@@ -116,7 +154,7 @@ pub fn deinit() void {
 
 pub fn createGroup(name: []const u8, allocator: NeverFailingAllocator) error{Invalid}!void {
 	if (groups.contains(name)) return error.Invalid;
-	groups.put(allocator.dupe(u8, name), .{.allocator = allocator}) catch unreachable;
+	groups.put(allocator.dupe(u8, name), .init(allocator)) catch unreachable;
 }
 
 pub fn deleteGroup(name: []const u8) bool {
@@ -138,20 +176,10 @@ pub fn deleteGroup(name: []const u8) bool {
 	return false;
 }
 
-pub fn addGroupPermission(name: []const u8, listType: ListType, permissionPath: []const u8) error{Invalid}!void {
+pub fn addGroupPermission(name: []const u8, listType: Permissions.ListType, permissionPath: []const u8) error{Invalid}!void {
 	if (groups.getPtr(name)) |group| {
-		switch (listType) {
-			.white => group.permissionWhiteList.put(group.allocator.allocator, group.allocator.dupe(u8, permissionPath), {}) catch unreachable,
-			.black => group.permissionBlackList.put(group.allocator.allocator, group.allocator.dupe(u8, permissionPath), {}) catch unreachable,
-		}
+		group.permissions.addPermission(listType, permissionPath);
 	} else return error.Invalid;
-}
-
-pub fn addUserPermission(user: *User, allocator: NeverFailingAllocator, listType: ListType, permissionPath: []const u8) void {
-	switch (listType) {
-		.white => user.permissions.permissionWhiteList.put(allocator.allocator, allocator.dupe(u8, permissionPath), {}) catch unreachable,
-		.black => user.permissions.permissionBlackList.put(allocator.allocator, allocator.dupe(u8, permissionPath), {}) catch unreachable,
-	}
 }
 
 pub fn addUserToGroup(user: *User, allocator: NeverFailingAllocator, name: []const u8) error{Invalid}!void {
@@ -179,7 +207,7 @@ pub fn zonFromGroupList(user: *User, allocator: NeverFailingAllocator) ZonElemen
 	return zon;
 }
 
-pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
+pub fn userHasPermission(user: *User, permissionPath: []const u8) bool {
 	switch (user.permissions.hasPermission(permissionPath)) {
 		.yes => return true,
 		.no => return false,
@@ -271,28 +299,22 @@ test "listToFromZon" {
 	defer deinit();
 
 	try createGroup("test", main.heap.testingAllocator);
-	const group = groups.getPtr("test").?;
+	var group = groups.getPtr("test").?;
 	try addGroupPermission("test", .white, "/command/test");
 	try addGroupPermission("test", .white, "/command/spawn");
 
-	const zon = listToZon(main.heap.testingAllocator, groups.get("test").?.permissionWhiteList);
+	const zon = group.permissions.listToZon(main.heap.testingAllocator, .white);
 	defer zon.deinit(main.heap.testingAllocator);
 
-	var testList: std.StringHashMapUnmanaged(void) = .{};
-	defer {
-		var it = testList.keyIterator();
-		while (it.next()) |key| {
-			main.heap.testingAllocator.free(key.*);
-		}
-		testList.deinit(main.heap.testingAllocator.allocator);
-	}
+	var testPermissions: Permissions = .{.allocator = main.heap.testingAllocator};
+	defer testPermissions.deinit();
 
-	fillList(main.heap.testingAllocator, &testList, zon);
+	testPermissions.fillList(.white, zon);
 
-	try std.testing.expectEqual(2, testList.size);
+	try std.testing.expectEqual(2, testPermissions.permissionWhiteList.size);
 
-	var it = testList.keyIterator();
+	var it = testPermissions.permissionWhiteList.keyIterator();
 	while (it.next()) |item| {
-		try std.testing.expectEqual(true, group.permissionWhiteList.contains(item.*));
+		try std.testing.expectEqual(true, group.permissions.permissionWhiteList.contains(item.*));
 	}
 }
