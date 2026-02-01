@@ -24,7 +24,15 @@ pub fn fillList(allocator: NeverFailingAllocator, list: *std.StringHashMapUnmana
 	if (zon != .array) return;
 
 	for (zon.array.items) |item| {
-		list.put(allocator.allocator, allocator.dupe(u8, item.stringOwned), {}) catch continue;
+		switch (item) {
+			.string => |string| {
+				list.put(allocator.allocator, allocator.dupe(u8, string), {}) catch continue;
+			},
+			.stringOwned => |string| {
+				list.put(allocator.allocator, allocator.dupe(u8, string), {}) catch continue;
+			},
+			else => {},
+		}
 	}
 }
 
@@ -271,7 +279,13 @@ test "listToFromZon" {
 	defer zon.deinit(main.heap.testingAllocator);
 
 	var testList: std.StringHashMapUnmanaged(void) = .{};
-	defer testList.deinit(main.heap.testingAllocator.allocator);
+	defer {
+		var it = testList.keyIterator();
+		while (it.next()) |key| {
+			main.heap.testingAllocator.free(key.*);
+		}
+		testList.deinit(main.heap.testingAllocator.allocator);
+	}
 
 	fillList(main.heap.testingAllocator, &testList, zon);
 
@@ -279,6 +293,6 @@ test "listToFromZon" {
 
 	var it = testList.keyIterator();
 	while (it.next()) |item| {
-		try std.testing.expectEqual(.yes, group.permissionWhiteList.contains(item.*));
+		try std.testing.expectEqual(true, group.permissionWhiteList.contains(item.*));
 	}
 }
