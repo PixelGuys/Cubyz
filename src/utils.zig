@@ -623,12 +623,11 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 /// A simple binary heap.
 /// Thread safe and blocking.
 /// Expects T to have a `biggerThan(T) bool` function
-pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
+pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 	return struct {
 		const initialSize = 16;
 		size: usize,
 		array: []T,
-		semaphore: std.Thread.Semaphore = .{},
 		mutex: std.Thread.Mutex = .{},
 		allocator: NeverFailingAllocator,
 
@@ -703,8 +702,6 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.array[self.size] = elem;
 			self.siftUp(self.size);
 			self.size += 1;
-
-			self.semaphore.post();
 		}
 
 		pub fn addMany(self: *@This(), elems: []const T) void {
@@ -719,9 +716,6 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 				self.siftUp(self.size);
 				self.size += 1;
 			}
-			for (0..elems.len) |_| {
-				self.semaphore.post();
-			}
 		}
 
 		fn removeIndex(self: *@This(), i: usize) void {
@@ -733,14 +727,10 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 
 		/// Returns the biggest element and removes it from the heap.
 		/// If empty blocks until a new object is added or the datastructure is closed.
-		pub fn extractMax(self: *@This()) error{ Timeout, SporadicFailure }!T {
-			try self.semaphore.timedWait(10_000_000);
-
+		pub fn extractMax(self: *@This()) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			if (self.size == 0) {
-				return error.SporadicFailure;
-			}
+			if (self.size == 0) return null;
 			const ret = self.array[0];
 			self.removeIndex(0);
 			return ret;
@@ -751,7 +741,6 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			defer self.mutex.unlock();
 			if (self.size == 0) return null;
 			self.size -= 1;
-			self.semaphore.timedWait(0) catch {};
 			return self.array[self.size];
 		}
 
@@ -817,7 +806,8 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
-	loadList: BlockingMaxHeap(Task),
+	loadList: ConcurrentMaxHeap(Task),
+	semaphore: std.Thread.Semaphore = .{},
 	allocator: NeverFailingAllocator,
 	running: Atomic(bool) = .init(true),
 
@@ -830,7 +820,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		self.* = .{
 			.threads = allocator.alloc(std.Thread, threadCount),
 			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
-			.loadList = BlockingMaxHeap(Task).init(allocator),
+			.loadList = .init(allocator),
 			.performance = .{},
 			.allocator = allocator,
 		};
@@ -851,6 +841,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Clear the remaining tasks:
 		while (self.loadList.extractAny()) |task| {
 			task.vtable.clean(task.self);
+			self.semaphore.timedWait(0) catch {};
 		}
 
 		for (self.threads) |thread| {
@@ -873,7 +864,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
-				self.loadList.semaphore.timedWait(0) catch {};
+				self.semaphore.timedWait(0) catch {};
 			} else {
 				i += 1;
 			}
@@ -894,7 +885,8 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		outer: while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 			{
-				const task = self.loadList.extractMax() catch continue :outer;
+				self.semaphore.timedWait(10_000_000) catch continue :outer;
+				const task = self.loadList.extractMax() orelse continue :outer;
 				self.currentTasks[id].store(task.vtable, .monotonic);
 				const start = main.timestamp();
 				task.vtable.run(task.self);
@@ -909,6 +901,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
 				defer temporaryTaskList.deinit();
 				while (self.loadList.extractAny()) |task| {
+					self.semaphore.timedWait(0) catch {};
 					if (!task.vtable.isStillNeeded(task.self)) {
 						task.vtable.clean(task.self);
 						_ = self.trueQueueSize.fetchSub(1, .monotonic);
@@ -919,6 +912,9 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					}
 				}
 				self.loadList.addMany(temporaryTaskList.items);
+				for (0..temporaryTaskList.items.len) |_| {
+					self.semaphore.post();
+				}
 				const end = main.timestamp();
 				lastUpdate = end;
 				self.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(start.durationTo(end).toNanoseconds(), 1000)));
@@ -932,18 +928,17 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			.vtable = vtable,
 			.self = task,
 		});
+		self.semaphore.post();
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
 	pub fn clear(self: *ThreadPool) void {
 		// Clear the remaining tasks:
-		self.loadList.mutex.lock();
-		for (self.loadList.array[0..self.loadList.size]) |task| {
+		while (self.loadList.extractAny()) |task| {
+			self.semaphore.timedWait(0) catch {};
 			task.vtable.clean(task.self);
+			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
-		_ = self.trueQueueSize.fetchSub(self.loadList.size, .monotonic);
-		self.loadList.size = 0;
-		self.loadList.mutex.unlock();
 		// Wait for the in-progress tasks to finish:
 		while (self.trueQueueSize.load(.monotonic) != 0) {
 			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
