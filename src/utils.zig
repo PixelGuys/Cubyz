@@ -787,6 +787,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		chunkgen,
 		meshgenAndLighting,
 		misc,
+		taskPriorityUpdate,
 	};
 	pub const taskTypes = std.enums.directEnumArrayLen(TaskType, 0);
 	const Task = struct {
@@ -925,6 +926,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			}
 
 			if (id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
+				const start = main.timestamp();
 				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
 				defer temporaryTaskList.deinit();
 				while (self.loadList.extractAny()) |task| {
@@ -938,7 +940,9 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 					}
 				}
 				self.loadList.addMany(temporaryTaskList.items);
-				lastUpdate = main.timestamp();
+				const end = main.timestamp();
+				lastUpdate = end;
+				self.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(start.durationTo(end).toNanoseconds(), 1000)));
 			}
 		}
 	}
