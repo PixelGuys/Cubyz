@@ -779,7 +779,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		tasks: [taskTypes]u32 = undefined,
 		utime: [taskTypes]i64 = undefined,
 
-		fn add(self: *Performance, task: TaskType, time: i64) void {
+		pub fn add(self: *Performance, task: TaskType, time: i64) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			const i = @intFromEnum(task);
