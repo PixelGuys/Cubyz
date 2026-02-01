@@ -6,6 +6,32 @@ const User = server.User;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 
+fn fillMap(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void), zon: ZonElement) void {
+	if (zon != .array) return;
+
+	for (zon.array.items) |item| {
+		switch (item) {
+			.string => |string| {
+				map.put(allocator.allocator, allocator.dupe(u8, string), {}) catch continue;
+			},
+			.stringOwned => |string| {
+				map.put(allocator.allocator, allocator.dupe(u8, string), {}) catch continue;
+			},
+			else => {},
+		}
+	}
+}
+
+fn mapToZon(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void)) ZonElement {
+	var zon: ZonElement = .initArray(allocator);
+
+	var it = map.keyIterator();
+	while (it.next()) |key| {
+		zon.append(key.*);
+	}
+	return zon;
+}
+
 pub const Permissions = struct {
 	pub const ListType = enum {
 		white,
@@ -43,29 +69,11 @@ pub const Permissions = struct {
 	}
 
 	pub fn fillList(self: *Permissions, listType: ListType, zon: ZonElement) void {
-		if (zon != .array) return;
-
-		for (zon.array.items) |item| {
-			switch (item) {
-				.string => |string| {
-					self.list(listType).put(self.allocator.allocator, self.allocator.dupe(u8, string), {}) catch continue;
-				},
-				.stringOwned => |string| {
-					self.list(listType).put(self.allocator.allocator, self.allocator.dupe(u8, string), {}) catch continue;
-				},
-				else => {},
-			}
-		}
+		fillMap(self.allocator, self.list(listType), zon);
 	}
 
 	pub fn listToZon(self: *Permissions, allocator: NeverFailingAllocator, listType: ListType) ZonElement {
-		var zon: ZonElement = .initArray(allocator);
-
-		var it = self.list(listType).keyIterator();
-		while (it.next()) |key| {
-			zon.append(key.*);
-		}
-		return zon;
+		return mapToZon(allocator, self.list(listType));
 	}
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
@@ -90,26 +98,30 @@ pub const Permissions = struct {
 pub const PermissionGroup = struct {
 	allocator: NeverFailingAllocator,
 	permissions: Permissions,
-	members: main.List([]const u8),
+	members: std.StringHashMapUnmanaged(void) = .{},
 
 	pub fn init(allocator: NeverFailingAllocator) PermissionGroup {
 		return .{
 			.allocator = allocator,
 			.permissions = .{.allocator = allocator},
-			.members = .init(allocator),
 		};
 	}
 
 	pub fn deinit(self: *PermissionGroup) void {
 		self.permissions.deinit();
-		for (self.members.items) |items| {
-			self.allocator.free(items);
+		var it = self.members.keyIterator();
+		while (it.next()) |key| {
+			self.allocator.free(key.*);
 		}
-		self.members.deinit();
+		self.members.deinit(self.allocator.allocator);
 	}
 
 	pub fn hasPermission(self: *PermissionGroup, permissionPath: []const u8) Permissions.PermissionResult {
 		return self.permissions.hasPermission(permissionPath);
+	}
+
+	pub fn addUser(self: *PermissionGroup, user: *User) void {
+		self.members.put(self.allocator.allocator, self.allocator.dupe(u8, user.name), {}) catch unreachable;
 	}
 };
 
@@ -122,6 +134,7 @@ pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
 		var groupZon: ZonElement = .initObject(allocator);
 		groupZon.put("permissionWhiteList", group.value_ptr.permissions.listToZon(allocator, .white));
 		groupZon.put("permissionBlackList", group.value_ptr.permissions.listToZon(allocator, .black));
+		groupZon.put("members", mapToZon(allocator, &group.value_ptr.members));
 		zon.put(group.key_ptr.*, groupZon);
 	}
 	return zon;
@@ -136,6 +149,7 @@ pub fn fillGroups(allocator: NeverFailingAllocator, zon: ZonElement) void {
 		const group = groups.getPtr(entry.key_ptr.*).?;
 		group.permissions.fillList(.white, entry.value_ptr.getChild("permissionWhiteList"));
 		group.permissions.fillList(.black, entry.value_ptr.getChild("permissionBlackList"));
+		fillMap(group.allocator, &group.members, entry.value_ptr.getChild("members"));
 	}
 }
 
@@ -185,6 +199,7 @@ pub fn addGroupPermission(name: []const u8, listType: Permissions.ListType, perm
 pub fn addUserToGroup(user: *User, allocator: NeverFailingAllocator, name: []const u8) error{Invalid}!void {
 	if (groups.getPtr(name)) |group| {
 		user.permissionGroups.put(allocator.allocator, allocator.dupe(u8, name), group) catch unreachable;
+		group.addUser(user);
 	} else {
 		return error.Invalid;
 	}
@@ -194,7 +209,10 @@ pub fn addUserToGroupList(user: *User, allocator: NeverFailingAllocator, zon: Zo
 	if (zon != .array) return;
 
 	for (zon.array.items) |item| {
-		addUserToGroup(user, allocator, item.stringOwned) catch {};
+		if (groups.getPtr(item.stringOwned)) |group| {
+			if (!group.members.contains(user.name)) continue;
+			user.permissionGroups.put(allocator.allocator, allocator.dupe(u8, item.stringOwned), group) catch unreachable;
+		}
 	}
 }
 
