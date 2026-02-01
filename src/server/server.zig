@@ -389,11 +389,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
-		// this is to show how the permission system can be used not the supposed setup of a users permission
-		// permissions.addUserPermission(user, main.globalAllocator, .black, "/command/spawn");
-		// permissions.createGroup("root", main.globalAllocator) catch unreachable;
-		// permissions.addGroupPermission("root", .white, "/") catch unreachable;
-		// permissions.addUserToGroup(user, main.globalAllocator, "root") catch unreachable;
+		user.permissions.addPermission(.white, "/");
 	}
 }
 

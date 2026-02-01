@@ -21,3 +21,6 @@ pub const rotate = @import("worldedit/rotate.zig");
 pub const set = @import("worldedit/set.zig");
 pub const mask = @import("worldedit/mask.zig");
 pub const replace = @import("worldedit/replace.zig");
+
+pub const perm = @import("permission/perm.zig");
+pub const group = @import("permission/group.zig");

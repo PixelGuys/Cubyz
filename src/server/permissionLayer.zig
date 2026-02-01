@@ -6,17 +6,21 @@ const User = server.User;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 
+fn fillMapHelper(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void), permissionPath: []const u8) void {
+	if (map.contains(permissionPath)) return;
+	const duped = allocator.dupe(u8, permissionPath);
+	map.put(allocator.allocator, duped, {}) catch {
+		allocator.free(duped);
+	};
+}
+
 fn fillMap(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void), zon: ZonElement) void {
 	if (zon != .array) return;
 
 	for (zon.array.items) |item| {
 		switch (item) {
-			.string => |string| {
-				map.put(allocator.allocator, allocator.dupe(u8, string), {}) catch continue;
-			},
-			.stringOwned => |string| {
-				map.put(allocator.allocator, allocator.dupe(u8, string), {}) catch continue;
-			},
+			.string => |string| fillMapHelper(allocator, map, string),
+			.stringOwned => |string| fillMapHelper(allocator, map, string),
 			else => {},
 		}
 	}
@@ -43,6 +47,7 @@ pub const Permissions = struct {
 	permissionBlackList: std.StringHashMapUnmanaged(void) = .{},
 
 	pub fn deinit(self: *Permissions) void {
+		std.debug.print("IS this called (please)\n", .{});
 		var it = self.permissionWhiteList.keyIterator();
 		while (it.next()) |key| {
 			self.allocator.free(key.*);
@@ -194,9 +199,10 @@ pub fn deleteGroup(name: []const u8) bool {
 	}
 	server.freeUserListAndDecreaseRefCount(main.globalAllocator, users);
 	if (groups.getEntry(name)) |entry| {
-		_ = groups.remove(name);
-		groups.allocator.free(entry.key_ptr.*);
 		entry.value_ptr.deinit();
+		const slice = entry.key_ptr.*;
+		_ = groups.remove(name);
+		groups.allocator.free(slice);
 		return true;
 	}
 	return false;
@@ -223,24 +229,25 @@ pub fn addUserToGroup(user: *User, name: []const u8) error{Invalid}!void {
 	}
 }
 
-pub fn removeUserNameFromGroup(userName: []const u8, groupName: []const u8) void {
+pub fn removeUserNameFromGroup(userName: []const u8, groupName: []const u8) error{Invalid}!void {
 	if (groups.getPtr(groupName)) |group| {
 		const _member = group.members.getKeyPtr(userName);
 		if (_member) |member| {
+			const slice = member.*;
 			_ = group.members.remove(userName);
-			group.allocator.free(member.*);
+			group.allocator.free(slice);
 		}
-	}
+	} else return error.Invalid;
 }
 
-pub fn removeUserFromGroup(user: *User, name: []const u8) void {
+pub fn removeUserFromGroup(user: *User, name: []const u8) error{Invalid}!void {
 	const _key = user.permissionGroups.getKeyPtr(name);
 	if (_key) |key| {
 		const slice = key.*;
 		_ = user.permissionGroups.remove(name);
 		main.globalAllocator.free(slice);
 	}
-	removeUserNameFromGroup(user.name, name);
+	try removeUserNameFromGroup(user.name, name);
 }
 
 pub fn addUserToGroupList(user: *User, allocator: NeverFailingAllocator, zon: ZonElement) void {
