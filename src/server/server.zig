@@ -117,6 +117,9 @@ pub const User = struct { // MARK: User
 
 	playerIndex: usize = undefined,
 
+	jobQueue: main.utils.ConcurrentMaxHeap(main.utils.ThreadPool.Task) = undefined,
+	jobQueueScheduled: bool = false,
+
 	lastSentBiomeId: u32 = 0xffffffff,
 
 	newKeyString: []const u8 = &.{},
@@ -140,6 +143,7 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
+		self.jobQueue = .init(main.globalAllocator);
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -168,6 +172,7 @@ pub const User = struct { // MARK: User
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
+		self.jobQueue.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.free(self.newKeyString);
 		for (self.inventoryCommands.items) |commandData| {
@@ -296,8 +301,47 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn getTaskFromJobQueue(self: *User) ?struct { main.utils.ThreadPool.Task, enum { hasMoreTasks, empty } } {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		if (self.isNetworkQueueFull() or self.jobQueue.size == 0) {
+			self.jobQueueScheduled = false;
+			return null;
+		}
+		if (self.jobQueue.size == 0) {
+			self.jobQueueScheduled = false;
+			return .{self.jobQueue.extractMax().?, .empty};
+		} else {
+			return .{self.jobQueue.extractMax().?, .hasMoreTasks};
+		}
+	}
+
+	pub fn addTask(self: *User, task: *anyopaque, vtable: *const main.utils.ThreadPool.VTable) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.jobQueue.add(.{
+			.cachedPriority = vtable.getPriority(task),
+			.vtable = vtable,
+			.self = task,
+		});
+	}
+
+	fn isNetworkQueueFull(self: *User) bool {
+		return self.conn.fastChannel.sendBuffer.buffer.len > 900000;
+	}
+
+	fn scheduleJobQueue(self: *User) void {
+		main.utils.assertLocked(&self.mutex);
+		if (self.jobQueueScheduled) return;
+		if (self.jobQueue.size == 0) return;
+		if (self.isNetworkQueueFull()) return;
+		self.jobQueueScheduled = true;
+		main.threadPool.addPlayer(self);
+	}
+
 	pub fn update(self: *User) void {
 		self.mutex.lock();
+		self.scheduleJobQueue();
 		const commands = self.inventoryCommands;
 		defer commands.deinit(main.globalAllocator);
 		self.inventoryCommands = .{};
