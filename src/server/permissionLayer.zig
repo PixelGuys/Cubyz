@@ -80,6 +80,17 @@ pub const Permissions = struct {
 		self.list(listType).put(self.allocator.allocator, self.allocator.dupe(u8, permissionPath), {}) catch unreachable;
 	}
 
+	pub fn removePermission(self: *Permissions, listType: ListType, permissionPath: []const u8) bool {
+		const _key = self.list(listType).getKeyPtr(permissionPath);
+		if (_key) |key| {
+			const slice = key.*;
+			_ = self.list(listType).remove(permissionPath);
+			self.allocator.free(slice);
+			return true;
+		}
+		return false;
+	}
+
 	pub fn hasPermission(self: *Permissions, permissionPath: []const u8) PermissionResult {
 		var it = std.mem.splitBackwardsScalar(u8, permissionPath, '/');
 		var current = permissionPath;
@@ -176,8 +187,9 @@ pub fn deleteGroup(name: []const u8) bool {
 	for (users) |user| {
 		const _key = user.permissionGroups.getKeyPtr(name);
 		if (_key) |key| {
+			const slice = key.*;
 			_ = user.permissionGroups.remove(name);
-			main.globalAllocator.free(key.*);
+			main.globalAllocator.free(slice);
 		}
 	}
 	server.freeUserListAndDecreaseRefCount(main.globalAllocator, users);
@@ -196,13 +208,39 @@ pub fn addGroupPermission(name: []const u8, listType: Permissions.ListType, perm
 	} else return error.Invalid;
 }
 
-pub fn addUserToGroup(user: *User, allocator: NeverFailingAllocator, name: []const u8) error{Invalid}!void {
+pub fn removeGroupPermission(name: []const u8, listType: Permissions.ListType, permissionPath: []const u8) error{Invalid}!bool {
 	if (groups.getPtr(name)) |group| {
-		user.permissionGroups.put(allocator.allocator, allocator.dupe(u8, name), group) catch unreachable;
+		return group.permissions.removePermission(listType, permissionPath);
+	} else return error.Invalid;
+}
+
+pub fn addUserToGroup(user: *User, name: []const u8) error{Invalid}!void {
+	if (groups.getPtr(name)) |group| {
+		user.permissionGroups.put(main.globalAllocator.allocator, main.globalAllocator.dupe(u8, name), group) catch unreachable;
 		group.addUser(user);
 	} else {
 		return error.Invalid;
 	}
+}
+
+pub fn removeUserNameFromGroup(userName: []const u8, groupName: []const u8) void {
+	if (groups.getPtr(groupName)) |group| {
+		const _member = group.members.getKeyPtr(userName);
+		if (_member) |member| {
+			_ = group.members.remove(userName);
+			group.allocator.free(member.*);
+		}
+	}
+}
+
+pub fn removeUserFromGroup(user: *User, name: []const u8) void {
+	const _key = user.permissionGroups.getKeyPtr(name);
+	if (_key) |key| {
+		const slice = key.*;
+		_ = user.permissionGroups.remove(name);
+		main.globalAllocator.free(slice);
+	}
+	removeUserNameFromGroup(user.name, name);
 }
 
 pub fn addUserToGroupList(user: *User, allocator: NeverFailingAllocator, zon: ZonElement) void {
@@ -287,6 +325,17 @@ test "GroupRootPermission" {
 	try addGroupPermission("test", .white, "/");
 
 	try std.testing.expectEqual(.yes, group.hasPermission("/command/test"));
+}
+
+test "GroupAddRemovePermission" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	try createGroup("test", main.heap.testingAllocator);
+	const group = groups.getPtr("test").?;
+	try addGroupPermission("test", .white, "/command/test");
+
+	try std.testing.expectEqual(true, group.permissions.removePermission(.white, "/command/test"));
 }
 
 test "inValidGroupPermission" {
