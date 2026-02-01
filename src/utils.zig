@@ -736,7 +736,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 			return ret;
 		}
 
-		fn extractAny(self: *@This()) ?T {
+		pub fn extractAny(self: *@This()) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			if (self.size == 0) return null;
@@ -758,7 +758,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		taskPriorityUpdate,
 	};
 	pub const taskTypes = std.enums.directEnumArrayLen(TaskType, 0);
-	const Task = struct {
+	pub const Task = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
 		vtable: *const VTable,
@@ -807,6 +807,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
 	loadList: ConcurrentMaxHeap(Task),
+	playerJobQueue: ConcurrentQueue(*main.server.User),
 	semaphore: std.Thread.Semaphore = .{},
 	allocator: NeverFailingAllocator,
 	running: Atomic(bool) = .init(true),
@@ -821,6 +822,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			.threads = allocator.alloc(std.Thread, threadCount),
 			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
 			.loadList = .init(allocator),
+			.playerJobQueue = .init(allocator, 1024),
 			.performance = .{},
 			.allocator = allocator,
 		};
@@ -841,7 +843,10 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Clear the remaining tasks:
 		while (self.loadList.extractAny()) |task| {
 			task.vtable.clean(task.self);
-			self.semaphore.timedWait(0) catch {};
+		}
+
+		while (self.playerJobQueue.popFront()) |player| {
+			player.decreaseRefCount();
 		}
 
 		for (self.threads) |thread| {
@@ -850,12 +855,15 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 		self.loadList.deinit();
 
+		self.playerJobQueue.deinit();
+
 		self.allocator.free(self.currentTasks);
 		self.allocator.free(self.threads);
 		self.allocator.destroy(self);
 	}
 
 	pub fn closeAllTasksOfType(self: *ThreadPool, vtable: *const VTable) void {
+		std.debug.assert(vtable.taskType != .chunkgen);
 		self.loadList.mutex.lock();
 		defer self.loadList.mutex.unlock();
 		var i: u32 = 0;
@@ -877,16 +885,49 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 	}
 
+	fn getNextTask(self: *ThreadPool, iteration: usize) ?Task {
+		for (0..2) |i| {
+			switch ((iteration + i)%2) {
+				0 => return self.loadList.extractMax() orelse continue,
+				1 => {
+					const player = self.playerJobQueue.popFront() orelse continue;
+					const result, const hasMoreTasks = player.getTaskFromJobQueue() orelse {
+						_ = self.trueQueueSize.fetchSub(1, .monotonic);
+						player.decreaseRefCount();
+						continue;
+					};
+					switch (hasMoreTasks) {
+						.empty => {
+							player.decreaseRefCount();
+						},
+						.hasMoreTasks => {
+							self.playerJobQueue.pushBack(player);
+							self.semaphore.post();
+							_ = self.trueQueueSize.fetchAdd(1, .monotonic);
+						},
+					}
+					return result;
+				},
+				else => unreachable,
+			}
+		}
+		return null;
+	}
+
 	fn run(self: *ThreadPool, id: usize) void {
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
 
 		var lastUpdate = main.timestamp();
+		var iteration: usize = 0;
 		outer: while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
+
+			self.semaphore.timedWait(10_000_000) catch continue :outer;
+			iteration +%= 1;
+
 			{
-				self.semaphore.timedWait(10_000_000) catch continue :outer;
-				const task = self.loadList.extractMax() orelse continue :outer;
+				const task = self.getNextTask(iteration) orelse continue :outer;
 				self.currentTasks[id].store(task.vtable, .monotonic);
 				const start = main.timestamp();
 				task.vtable.run(task.self);
@@ -932,11 +973,26 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
+	pub fn addPlayer(self: *ThreadPool, player: *main.server.User) void {
+		player.increaseRefCount();
+		self.playerJobQueue.pushBack(player);
+		self.semaphore.post();
+		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
+	}
+
 	pub fn clear(self: *ThreadPool) void {
 		// Clear the remaining tasks:
 		while (self.loadList.extractAny()) |task| {
 			self.semaphore.timedWait(0) catch {};
 			task.vtable.clean(task.self);
+			_ = self.trueQueueSize.fetchSub(1, .monotonic);
+		}
+		while (self.playerJobQueue.popFront()) |player| {
+			while (player.getTaskFromJobQueue()) |task| {
+				task[0].vtable.clean(task[0].self);
+			}
+			self.semaphore.timedWait(0) catch {};
+			player.decreaseRefCount();
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
 		// Wait for the in-progress tasks to finish:
