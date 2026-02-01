@@ -115,6 +115,10 @@ pub const User = struct { // MARK: User
 	spawnPos: Vec3d = .{0, 0, 0},
 	worldEditData: WorldEditData = undefined,
 
+	jobQueue: main.utils.ConcurrentMaxHeap(main.utils.ThreadPool.Task) = undefined,
+	jobQueueScheduled: bool = false,
+	jobQueueLastUpdate: struct { position: Vec3i, time: std.Io.Timestamp } = .{.position = @splat(0), .time = .{.nanoseconds = 0}},
+
 	lastSentBiomeId: u32 = 0xffffffff,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
@@ -134,6 +138,7 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
+		self.jobQueue = .init(main.globalAllocator);
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -162,6 +167,7 @@ pub const User = struct { // MARK: User
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
+		self.jobQueue.deinit();
 		main.globalAllocator.free(self.name);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
@@ -260,8 +266,71 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn getTaskFromJobQueue(self: *User) ?struct { main.utils.ThreadPool.Task, enum { hasMoreTasks, empty } } {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		if (vec.lengthSquare(@as(@Vector(3, i64), self.jobQueueLastUpdate.position -% self.lastPos)) > 32*32) {
+			const startTime = main.timestamp();
+			if (self.jobQueueLastUpdate.time.durationTo(startTime).toMilliseconds() > 100) {
+				// Resort tasks:
+				var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, self.jobQueue.size);
+				defer newTasks.deinit(main.stackAllocator);
+				while (self.jobQueue.extractAny()) |_task| {
+					var task = _task;
+					if (!task.vtable.isStillNeeded(task.self)) {
+						task.vtable.clean(task.self);
+						continue;
+					}
+					task.cachedPriority = task.vtable.getPriority(task.self);
+					newTasks.appendAssumeCapacity(task);
+				}
+				self.jobQueue.addMany(newTasks.items);
+				const endTime = main.timestamp();
+				main.threadPool.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
+				self.jobQueueLastUpdate = .{
+					.position = self.lastPos,
+					.time = endTime,
+				};
+			}
+		}
+		if (self.isNetworkQueueFull() or self.jobQueue.size == 0) {
+			self.jobQueueScheduled = false;
+			return null;
+		}
+		if (self.jobQueue.size == 0) {
+			self.jobQueueScheduled = false;
+			return .{self.jobQueue.extractMax().?, .empty};
+		} else {
+			return .{self.jobQueue.extractMax().?, .hasMoreTasks};
+		}
+	}
+
+	pub fn addTask(self: *User, task: *anyopaque, vtable: *const main.utils.ThreadPool.VTable) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.jobQueue.add(.{
+			.cachedPriority = vtable.getPriority(task),
+			.vtable = vtable,
+			.self = task,
+		});
+	}
+
+	fn isNetworkQueueFull(self: *User) bool {
+		return self.conn.fastChannel.sendBuffer.buffer.len > 900000;
+	}
+
+	fn scheduleJobQueue(self: *User) void {
+		main.utils.assertLocked(&self.mutex);
+		if (self.jobQueueScheduled) return;
+		if (self.jobQueue.size == 0) return;
+		if (self.isNetworkQueueFull()) return;
+		self.jobQueueScheduled = true;
+		main.threadPool.addPlayer(self);
+	}
+
 	pub fn update(self: *User) void {
 		self.mutex.lock();
+		self.scheduleJobQueue();
 		const commands = self.inventoryCommands;
 		defer commands.deinit(main.globalAllocator);
 		self.inventoryCommands = .{};
