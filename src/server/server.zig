@@ -479,7 +479,7 @@ fn update() void { // MARK: update()
 	}
 
 	while (userDeinitList.popFront()) |user| {
-		if (user.refCount.load(.unordered) == 1) {
+		if (user.refCount.load(.monotonic) == 1) {
 			user.decreaseRefCount();
 		} else {
 			userDeinitList.pushBack(user);
@@ -518,14 +518,14 @@ pub fn stop() void {
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
-	if (!user.connected.load(.unordered)) return;
+	if (!user.connected.load(.monotonic)) return;
 	removePlayer(user);
 	userDeinitList.pushBack(user);
-	user.connected.store(false, .unordered);
+	user.connected.store(false, .monotonic);
 }
 
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
-	if (!user.connected.load(.unordered)) return;
+	if (!user.connected.load(.monotonic)) return;
 
 	const foundUser = blk: {
 		userMutex.lock();
@@ -599,7 +599,7 @@ pub fn connectInternal(user: *User) void {
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
-		if (user.connected.load(.unordered)) main.network.protocols.entity.send(user.conn, data);
+		if (user.connected.load(.monotonic)) main.network.protocols.entity.send(user.conn, data);
 	}
 	const initialList = getInitialEntityList(main.stackAllocator);
 	main.network.protocols.entity.send(user.conn, initialList);

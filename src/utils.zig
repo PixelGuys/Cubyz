@@ -1294,7 +1294,6 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 						iOld += 1;
 						if (iOld >= len) break :outer;
 					}
-					if (iNew >= impl.activePaletteEntries) std.log.err("{} {}", .{iNew, impl.activePaletteEntries});
 					std.debug.assert(iNew < impl.activePaletteEntries);
 					std.debug.assert(iOld < impl.paletteLength);
 					paletteMap[iOld] = iNew;

@@ -227,7 +227,7 @@ fn tryHashmapDeinit(region: *RegionFile) void {
 		std.debug.assert(stillUsedHashMap.fetchRemove(region.pos).?.value == region);
 		region.storedInHashMap = false;
 	}
-	std.debug.assert(region.refCount.load(.unordered) == 1);
+	std.debug.assert(region.refCount.load(.monotonic) == 1);
 	region.decreaseRefCount();
 }
 

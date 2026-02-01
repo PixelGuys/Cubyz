@@ -866,7 +866,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		const blockType = try reader.readInt(u16);
 		const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
 		defer simChunk.decreaseRefCount();
-		const ch = simChunk.chunk.load(.unordered) orelse return;
+		const ch = simChunk.chunk.load(.monotonic) orelse return;
 		ch.mutex.lock();
 		defer ch.mutex.unlock();
 		const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);
@@ -911,7 +911,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	pub fn sendServerDataUpdateToClients(pos: Vec3i) void {
 		const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
 		defer simChunk.decreaseRefCount();
-		const ch = simChunk.chunk.load(.unordered) orelse return;
+		const ch = simChunk.chunk.load(.monotonic) orelse return;
 		ch.mutex.lock();
 		defer ch.mutex.unlock();
 		const block = ch.getBlock(pos[0] - ch.super.pos.wx, pos[1] - ch.super.pos.wy, pos[2] - ch.super.pos.wz);

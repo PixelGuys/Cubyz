@@ -194,7 +194,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
 			switch (self.source) { // Remove the task if the player disconnected
-				.user => |user| if (!user.connected.load(.unordered)) return false,
+				.user => |user| if (!user.connected.load(.monotonic)) return false,
 				.simulationChunk => |ch| if (ch.refCount.load(.monotonic) == 2) return false,
 			}
 			switch (self.source) { // Remove the task if it's far enough away from the player:
@@ -262,7 +262,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			defer self.clean();
 			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			if (self.source) |source| {
-				if (source.connected.load(.unordered)) main.network.protocols.lightMapTransmission.sendLightMap(source.conn, map);
+				if (source.connected.load(.monotonic)) main.network.protocols.lightMapTransmission.sendLightMap(source.conn, map);
 			} else {
 				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -988,7 +988,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		for (currentChunks.items) |simulationChunk| {
 			defer simulationChunk.decreaseRefCount();
-			simulationChunk.update(self.tickSpeed.load(.unordered));
+			simulationChunk.update(self.tickSpeed.load(.monotonic));
 		}
 	}
 

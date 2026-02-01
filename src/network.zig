@@ -1280,7 +1280,7 @@ pub const Connection = struct { // MARK: Connection
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		return self.connectionState.load(.unordered) == .connected;
+		return self.connectionState.load(.monotonic) == .connected;
 	}
 
 	pub fn isServerSide(conn: *Connection) bool {
@@ -1563,7 +1563,7 @@ pub const Connection = struct { // MARK: Connection
 
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
-		self.connectionState.store(.disconnectDesired, .unordered);
+		self.connectionState.store(.disconnectDesired, .monotonic);
 		if (builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}

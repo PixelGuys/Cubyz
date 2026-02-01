@@ -662,7 +662,7 @@ pub const meshes = struct { // MARK: meshes
 				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
 			});
 		}
-		textureOcclusionData[index].store(textureInfoZon.get(bool, "hasOcclusion", true), .unordered);
+		textureOcclusionData[index].store(textureInfoZon.get(bool, "hasOcclusion", true), .monotonic);
 	}
 
 	pub fn findTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
