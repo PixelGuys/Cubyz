@@ -11,6 +11,13 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 pub const authentication = @import("network/authentication.zig");
 pub const protocols = @import("network/protocols.zig");
 
+const c = @cImport({
+	@cInclude("mbedtls/debug.h");
+	@cInclude("mbedtls/ssl.h");
+	@cInclude("mbedtls/entropy.h");
+	@cInclude("mbedtls/ctr_drbg.h");
+});
+
 // TODO: Might want to use SSL or something similar to encode the message
 
 const ms = 1_000;
@@ -822,6 +829,7 @@ pub const Connection = struct { // MARK: Connection
 		ranges: RangeBuffer,
 		availablePosition: SequenceIndex = undefined,
 		currentReadPosition: SequenceIndex = undefined,
+		decryptedBuffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
 		protocolBuffer: main.ListUnmanaged(u8) = .{},
@@ -829,6 +837,7 @@ pub const Connection = struct { // MARK: Connection
 		pub fn init() ReceiveBuffer {
 			return .{
 				.ranges = .init(),
+				.decryptedBuffer = .init(main.globalAllocator),
 				.buffer = .init(main.globalAllocator),
 			};
 		}
@@ -837,45 +846,52 @@ pub const Connection = struct { // MARK: Connection
 			self.ranges.deinit(main.globalAllocator);
 			self.protocolBuffer.deinit(main.globalAllocator);
 			self.buffer.deinit(main.globalAllocator);
+			self.decryptedBuffer.deinit(main.globalAllocator);
 		}
 
-		fn applyRanges(self: *ReceiveBuffer) void {
+		fn applyRanges(self: *ReceiveBuffer, secureChannel: ?*SecureChannel) !void {
 			const range = self.ranges.extractFirstRange() orelse unreachable;
 			std.debug.assert(range.start == self.availablePosition);
 			self.availablePosition = range.end();
+			const data = main.stackAllocator.alloc(u8, @intCast(range.len));
+			defer main.stackAllocator.free(data);
+			self.buffer.popSliceFront(data) catch unreachable;
+			if (secureChannel) |ch| {
+				try ch.receiveThroughTls(data);
+			} else {
+				try self.decryptedBuffer.pushBackSlice(data);
+			}
 		}
 
 		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
-			if (self.currentReadPosition == self.availablePosition) return null;
+			if (self.decryptedBuffer.len == 0) return null;
 			var header: Header = .{
-				.protocolIndex = self.buffer.getAtOffset(0) orelse unreachable,
+				.protocolIndex = self.decryptedBuffer.getAtOffset(0) orelse unreachable,
 				.size = 0,
 			};
 			var i: u8 = 1;
 			while (true) : (i += 1) {
-				if (self.currentReadPosition +% i == self.availablePosition) return null;
-				const nextByte = self.buffer.getAtOffset(i) orelse unreachable;
+				if (i == self.decryptedBuffer.len) return null;
+				const nextByte = self.decryptedBuffer.getAtOffset(i) orelse unreachable;
 				header.size = header.size << 7 | (nextByte & 0x7f);
 				if (nextByte & 0x80 == 0) break;
 				if (header.size > std.math.maxInt(@TypeOf(header.size)) >> 7) return error.Invalid;
 			}
-			self.buffer.discardElementsFront(i + 1);
-			self.currentReadPosition +%= @intCast(i + 1);
+			self.decryptedBuffer.discardElementsFront(i + 1);
 			return header;
 		}
 
-		fn collectRangesAndExecuteProtocols(self: *ReceiveBuffer, conn: *Connection) !void {
-			self.applyRanges();
+		fn collectRangesAndExecuteProtocols(self: *ReceiveBuffer, secureChannel: ?*SecureChannel, conn: *Connection) !void {
+			try self.applyRanges(secureChannel);
 			while (true) {
 				if (self.header == null) {
 					self.header = try self.getHeaderInformation() orelse return;
 					self.protocolBuffer.ensureCapacity(main.globalAllocator, self.header.?.size);
 				}
-				const amount = @min(@as(usize, @intCast(self.availablePosition -% self.currentReadPosition)), self.header.?.size - self.protocolBuffer.items.len);
-				if (self.availablePosition -% self.currentReadPosition == 0) return;
+				const amount = @min(@as(usize, @intCast(self.decryptedBuffer.len)), self.header.?.size - self.protocolBuffer.items.len);
+				if (self.decryptedBuffer.len == 0) return;
 
-				self.buffer.popSliceFront(self.protocolBuffer.addManyAssumeCapacity(amount)) catch unreachable;
-				self.currentReadPosition +%= @intCast(amount);
+				self.decryptedBuffer.popSliceFront(self.protocolBuffer.addManyAssumeCapacity(amount)) catch unreachable;
 				if (self.protocolBuffer.items.len != self.header.?.size) return;
 
 				const protocolIndex = self.header.?.protocolIndex;
@@ -894,13 +910,17 @@ pub const Connection = struct { // MARK: Connection
 		};
 
 		pub fn receive(self: *ReceiveBuffer, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveStatus {
+			return self.receiveSecure(null, conn, start, data);
+		}
+
+		pub fn receiveSecure(self: *ReceiveBuffer, secureChannel: ?*SecureChannel, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveStatus {
 			const len: SequenceIndex = @intCast(data.len);
 			if (start -% self.availablePosition < 0) return .accepted; // We accepted it in the past.
-			const offset: usize = @intCast(start -% self.currentReadPosition);
+			const offset: usize = @intCast(start -% self.availablePosition);
 			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
 			self.ranges.addRange(main.globalAllocator, .{.start = start, .len = len});
 			if (start == self.availablePosition) {
-				try self.collectRangesAndExecuteProtocols(conn);
+				try self.collectRangesAndExecuteProtocols(secureChannel, conn);
 			}
 			return .accepted;
 		}
@@ -948,24 +968,33 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn insertMessage(self: *SendBuffer, protocolIndex: u8, data: []const u8, time: i64) !void {
+			try self.insertMessageSecure(null, protocolIndex, data, time);
+		}
+
+		pub fn insertMessageSecure(self: *SendBuffer, secureChannel: ?*SecureChannel, protocolIndex: u8, data: []const u8, time: i64) !void {
 			if (self.highestSentIndex == self.fullyConfirmedIndex) {
 				self.lastUnsentTime = time;
 			}
+			var fullData: main.List(u8) = .init(main.stackAllocator);
+			defer fullData.deinit();
 			if (data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
-			self.buffer.pushBack(protocolIndex);
-			self.nextIndex +%= 1;
+			fullData.append(protocolIndex);
 			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			const bits = 1 + if (data.len == 0) 0 else std.math.log2_int(usize, data.len);
 			const bytes = std.math.divCeil(usize, bits, 7) catch unreachable;
 			for (0..bytes) |i| {
 				const shift = 7*(bytes - i - 1);
 				const byte = (data.len >> @intCast(shift) & 0x7f) | if (i == bytes - 1) @as(u8, 0) else 0x80;
-				self.buffer.pushBack(@intCast(byte));
-				self.nextIndex +%= 1;
+				fullData.append(@intCast(byte));
 				_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			}
-			self.buffer.pushBackSlice(data);
-			self.nextIndex +%= @intCast(data.len);
+			fullData.appendSlice(data);
+			if (secureChannel) |ch| {
+				try ch.sendThroughTls(fullData.items);
+			} else {
+				self.buffer.pushBackSlice(fullData.items);
+				self.nextIndex +%= @intCast(fullData.items.len);
+			}
 		}
 
 		const ReceiveConfirmationResult = struct {
@@ -1137,6 +1166,132 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
+	const SecureChannel = struct { // MARK: SecureChannel
+		super: Channel,
+		sslContext: c.mbedtls_ssl_context = .{},
+		sslConfig: c.mbedtls_ssl_config = .{},
+		sslCtrDrbg: c.mbedtls_ctr_drbg_context = .{},
+		sslEntropy: c.mbedtls_entropy_context = .{},
+		dataToReceive: []const u8 = &.{},
+
+		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
+			self.* = .{
+				.super = .init(sequenceIndex, delay, id),
+			};
+
+			c.mbedtls_ssl_init(&self.sslContext);
+			c.mbedtls_ssl_config_init(&self.sslConfig);
+			c.mbedtls_ctr_drbg_init(&self.sslCtrDrbg);
+			c.mbedtls_entropy_init(&self.sslEntropy);
+
+			try checkResult(c.mbedtls_ctr_drbg_seed(&self.sslCtrDrbg, c.mbedtls_entropy_func, &self.sslEntropy, null, 0), "mbedtls_ctr_drbg_seed");
+
+			try checkResult(c.mbedtls_ssl_config_defaults(
+				&self.sslConfig,
+				if (side == .client) c.MBEDTLS_SSL_IS_CLIENT else c.MBEDTLS_SSL_IS_SERVER,
+				c.MBEDTLS_SSL_TRANSPORT_STREAM,
+				c.MBEDTLS_SSL_PRESET_DEFAULT,
+			), "mbedtls_ssl_config_defaults");
+			c.mbedtls_ssl_conf_authmode(&self.sslConfig, c.MBEDTLS_SSL_VERIFY_NONE); // We don't care about server certificates for now. Only the client is authenticated, through an outside mechanism.
+			c.mbedtls_ssl_conf_rng(&self.sslConfig, c.mbedtls_ctr_drbg_random, &self.sslCtrDrbg);
+			c.mbedtls_ssl_conf_dbg(&self.sslConfig, &debugOutput, undefined);
+
+			try checkResult(c.mbedtls_ssl_setup(&self.sslContext, &self.sslConfig), "mbedtls_ssl_setup");
+			try checkResult(c.mbedtls_ssl_set_hostname(&self.sslContext, "localhost"), "mbedtls_ssl_set_hostname");
+			c.mbedtls_ssl_set_bio(&self.sslContext, self, &mbedTlsSend, null, &mbedTlsReceive);
+			c.mbedtls_debug_set_threshold(4);
+		}
+
+		pub fn deinit(self: *SecureChannel) void {
+			self.super.deinit();
+		}
+
+		fn checkResult(result: c_int, function: []const u8) !void {
+			if (result != 0) {
+				std.log.err("TLS function {s} failed with error code {}/0x{x}", .{function, result, result});
+				return error.Failed;
+			}
+		}
+
+		fn debugOutput(_: ?*anyopaque, debugLevel: c_int, fileName: [*c]const u8, lineNumber: c_int, message: [*c]const u8) callconv(.c) void {
+			std.log.warn("Mbed TLS level: {} message: {s}, fileName: {s} line: {}", .{debugLevel, message, fileName, lineNumber});
+		}
+
+		pub fn connect(self: *SecureChannel, remoteStart: SequenceIndex) void {
+			self.super.connect(remoteStart);
+		}
+
+		fn mbedTlsSend(self_: ?*anyopaque, data: [*c]const u8, len: usize) callconv(.c) c_int {
+			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
+			std.log.debug("Sending: {any}", .{data[0..len]});
+			self.super.sendBuffer.buffer.pushBackSlice(data[0..len]);
+			self.super.sendBuffer.nextIndex +%= @intCast(len);
+			return @intCast(len);
+		}
+
+		fn mbedTlsReceive(self_: ?*anyopaque, data: [*c]u8, len: usize, timeout: u32) callconv(.c) c_int {
+			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
+			std.debug.assert(timeout == 0);
+			const copyLen = @min(len, self.dataToReceive.len);
+			if (copyLen == 0) return c.MBEDTLS_ERR_SSL_TIMEOUT;
+			@memcpy(data[0..copyLen], self.dataToReceive[0..copyLen]);
+			std.log.debug("Receiving: {any}", .{self.dataToReceive[copyLen..]});
+			self.dataToReceive = self.dataToReceive[copyLen..];
+			return @intCast(copyLen);
+		}
+
+		fn receiveThroughTls(self: *SecureChannel, data: []const u8) !void {
+			self.dataToReceive = data;
+			var outBuffer: [4096]u8 = undefined;
+			while (true) {
+				const len = c.mbedtls_ssl_read(&self.sslContext, &outBuffer, outBuffer.len);
+				if (len == c.MBEDTLS_ERR_SSL_TIMEOUT) break;
+				if (len == 0) return error.Closed;
+				if (len < 0) {
+					try checkResult(len, "mbedtls_ssl_read");
+				}
+				try self.super.receiveBuffer.decryptedBuffer.pushBackSlice(outBuffer[0..@intCast(len)]);
+			}
+		}
+
+		fn sendThroughTls(self: *SecureChannel, data: []const u8) !void {
+			var remaining = data;
+			while (remaining.len != 0) {
+				const len = c.mbedtls_ssl_write(&self.sslContext, remaining.ptr, remaining.len);
+				if (len == c.MBEDTLS_ERR_SSL_TIMEOUT) continue;
+				if (len == 0) return error.Closed;
+				if (len < 0) {
+					try checkResult(len, "mbedtls_ssl_write");
+				}
+				remaining = remaining[@intCast(len)..];
+			}
+		}
+
+		pub fn receive(self: *SecureChannel, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveBuffer.ReceiveStatus {
+			return self.super.receiveBuffer.receiveSecure(self, conn, start, data);
+		}
+
+		pub fn send(self: *SecureChannel, protocolIndex: u8, data: []const u8, time: i64) !void {
+			return self.super.sendBuffer.insertMessageSecure(self, protocolIndex, data, time);
+		}
+
+		pub fn receiveConfirmationAndGetTimestamp(self: *SecureChannel, start: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			return self.super.receiveConfirmationAndGetTimestamp(start);
+		}
+
+		pub fn checkForLosses(self: *SecureChannel, conn: *Connection, time: i64) LossStatus {
+			return self.super.checkForLosses(conn, time);
+		}
+
+		pub fn sendNextPacketAndGetSize(self: *SecureChannel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
+			return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
+		}
+
+		pub fn getStatistics(self: *SecureChannel, unconfirmed: *usize, queued: *usize) void {
+			self.super.getStatistics(unconfirmed, queued);
+		}
+	};
+
 	const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
 		fast = 1,
@@ -1179,7 +1334,7 @@ pub const Connection = struct { // MARK: Connection
 	bruteForcedPortRange: u16 = 0,
 
 	lossyChannel: Channel, // TODO: Actually allow it to be lossy
-	fastChannel: Channel,
+	fastChannel: SecureChannel,
 	slowChannel: Channel,
 
 	hasRttEstimate: bool = false,
@@ -1221,17 +1376,18 @@ pub const Connection = struct { // MARK: Connection
 			.lastRttSampleTime = networkTimestamp() -% 10_000*ms,
 			.queuedConfirmations = .init(main.globalAllocator, 1024),
 			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1*ms, .lossy),
-			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .fast),
+			.fastChannel = undefined,
 			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100*ms, .slow),
 			.connectionIdentifier = networkTimestamp(),
 			.remoteConnectionIdentifier = 0,
 		};
 		errdefer {
 			result.lossyChannel.deinit();
-			result.fastChannel.deinit();
 			result.slowChannel.deinit();
 			result.queuedConfirmations.deinit();
 		}
+		try result.fastChannel.init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .fast, if (user != null) .server else .client);
+		errdefer result.fastChannel.deinit();
 		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
 
 		var splitter = std.mem.splitScalar(u8, ipPort, ':');
@@ -1515,7 +1671,7 @@ pub const Connection = struct { // MARK: Connection
 				writer.writeEnum(ChannelId, .init);
 				writer.writeInt(i64, self.connectionIdentifier);
 				writer.writeInt(SequenceIndex, self.lossyChannel.sendBuffer.fullyConfirmedIndex);
-				writer.writeInt(SequenceIndex, self.fastChannel.sendBuffer.fullyConfirmedIndex);
+				writer.writeInt(SequenceIndex, self.fastChannel.super.sendBuffer.fullyConfirmedIndex);
 				writer.writeInt(SequenceIndex, self.slowChannel.sendBuffer.fullyConfirmedIndex);
 				_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
 				self.manager.send(writer.data.items, self.remoteAddress, null);
