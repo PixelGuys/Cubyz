@@ -9,7 +9,7 @@ pub const usage = "/group <create/delete/join/leave> <groupName>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (args.len == 0) {
-		source.sendMessage("#ff0000Too few arguments for command /clear. Expected one argument.", .{});
+		source.sendMessage("#ff0000Too few arguments for command /group. Expected one argument.", .{});
 		return;
 	}
 	var op: enum { create, delete, join, leave } = undefined;
@@ -31,7 +31,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 	if (split.next()) |arg| {
 		if (split.next() != null) {
-			source.sendMessage("#ff0000Too many arguments for command /clear", .{});
+			source.sendMessage("#ff0000Too many arguments for command /group", .{});
 			return;
 		}
 		if (std.ascii.startsWithIgnoreCase(arg, "/")) {

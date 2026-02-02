@@ -14,7 +14,7 @@ pub const usage =
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (args.len == 0) {
-		source.sendMessage("#ff0000Too few arguments for command /clear. Expected one argument.", .{});
+		source.sendMessage("#ff0000Too few arguments for command /perm. Expected one argument.", .{});
 		return;
 	}
 	var split = std.mem.splitScalar(u8, args, ' ');
