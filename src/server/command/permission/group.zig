@@ -55,8 +55,9 @@ pub fn execute(args: []const u8, source: *User) void {
 				};
 			},
 			.leave => {
-				permissionLayer.removeUserFromGroup(source, arg) catch {
-					source.sendMessage("#ff0000Group {s} does not exist.", .{arg});
+				permissionLayer.removeUserFromGroup(source, arg) catch |err| switch (err) {
+					error.GroupNotFound => source.sendMessage("#ff0000Group {s} does not exist.", .{arg}),
+					error.UserNotInGroup => source.sendMessage("#ff0000User {s} was already not in Group {s}.", .{source.name, arg}),
 				};
 			},
 		}

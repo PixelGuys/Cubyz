@@ -9,9 +9,7 @@ const ZonElement = main.ZonElement;
 fn fillMapHelper(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void), permissionPath: []const u8) void {
 	if (map.contains(permissionPath)) return;
 	const duped = allocator.dupe(u8, permissionPath);
-	map.put(allocator.allocator, duped, {}) catch {
-		allocator.free(duped);
-	};
+	map.put(allocator.allocator, duped, {}) catch unreachable;
 }
 
 fn fillMap(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void), zon: ZonElement) void {
@@ -181,8 +179,8 @@ pub fn deinit() void {
 	groups.deinit();
 }
 
-pub fn createGroup(name: []const u8, allocator: NeverFailingAllocator) error{Invalid}!void {
-	if (groups.contains(name)) return error.Invalid;
+pub fn createGroup(name: []const u8, allocator: NeverFailingAllocator) error{AlreadyExists}!void {
+	if (groups.contains(name)) return error.AlreadyExists;
 	groups.put(allocator.dupe(u8, name), .init(allocator)) catch unreachable;
 }
 
@@ -207,45 +205,43 @@ pub fn deleteGroup(name: []const u8) bool {
 	return false;
 }
 
-pub fn addGroupPermission(name: []const u8, listType: Permissions.ListType, permissionPath: []const u8) error{Invalid}!void {
+pub fn addGroupPermission(name: []const u8, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!void {
 	if (groups.getPtr(name)) |group| {
 		group.permissions.addPermission(listType, permissionPath);
-	} else return error.Invalid;
+	} else return error.GroupNotFound;
 }
 
-pub fn removeGroupPermission(name: []const u8, listType: Permissions.ListType, permissionPath: []const u8) error{Invalid}!bool {
+pub fn removeGroupPermission(name: []const u8, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!bool {
 	if (groups.getPtr(name)) |group| {
 		return group.permissions.removePermission(listType, permissionPath);
-	} else return error.Invalid;
+	} else return error.GroupNotFound;
 }
 
-pub fn addUserToGroup(user: *User, name: []const u8) error{Invalid}!void {
+pub fn addUserToGroup(user: *User, name: []const u8) error{GroupNotFound}!void {
 	if (groups.getPtr(name)) |group| {
 		user.permissionGroups.put(main.globalAllocator.allocator, main.globalAllocator.dupe(u8, name), group) catch unreachable;
 		group.addUser(user);
-	} else {
-		return error.Invalid;
-	}
+	} else return error.GroupNotFound;
 }
 
-pub fn removeUserNameFromGroup(userName: []const u8, groupName: []const u8) error{Invalid}!void {
+pub fn removeUserNameFromGroup(userName: []const u8, groupName: []const u8) error{ GroupNotFound, UserNotInGroup }!void {
 	if (groups.getPtr(groupName)) |group| {
 		const _member = group.members.getKeyPtr(userName);
 		if (_member) |member| {
 			const slice = member.*;
 			_ = group.members.remove(userName);
 			group.allocator.free(slice);
-		}
-	} else return error.Invalid;
+		} else return error.UserNotInGroup;
+	} else return error.GroupNotFound;
 }
 
-pub fn removeUserFromGroup(user: *User, name: []const u8) error{Invalid}!void {
+pub fn removeUserFromGroup(user: *User, name: []const u8) error{ GroupNotFound, UserNotInGroup }!void {
 	const _key = user.permissionGroups.getKeyPtr(name);
 	if (_key) |key| {
 		const slice = key.*;
 		_ = user.permissionGroups.remove(name);
 		main.globalAllocator.free(slice);
-	}
+	} else return error.UserNotInGroup;
 	try removeUserNameFromGroup(user.name, name);
 }
 
@@ -349,14 +345,14 @@ test "inValidGroupPermission" {
 	defer deinit();
 
 	try createGroup("test", main.heap.testingAllocator);
-	try std.testing.expectError(error.Invalid, addGroupPermission("root", .white, "/command/test"));
+	try std.testing.expectError(error.GroupNotFound, addGroupPermission("root", .white, "/command/test"));
 }
 
 test "inValidGroupPermissionEmptyGroups" {
 	init(main.heap.testingAllocator);
 	defer deinit();
 
-	try std.testing.expectError(error.Invalid, addGroupPermission("root", .white, "/command/test"));
+	try std.testing.expectError(error.GroupNotFound, addGroupPermission("root", .white, "/command/test"));
 }
 
 test "inValidGroupCreation" {
@@ -364,7 +360,7 @@ test "inValidGroupCreation" {
 	defer deinit();
 
 	try createGroup("test", main.heap.testingAllocator);
-	try std.testing.expectError(error.Invalid, createGroup("test", main.heap.testingAllocator));
+	try std.testing.expectError(error.AlreadyExists, createGroup("test", main.heap.testingAllocator));
 }
 
 test "listToFromZon" {
