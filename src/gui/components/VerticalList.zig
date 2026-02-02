@@ -154,8 +154,8 @@ pub fn mainButtonPressed(self: *VerticalList, mousePosition: Vec2f) main.callbac
 	}
 	var iterator = std.mem.reverseIterator(self.children.items);
 	while (iterator.next()) |child| {
-		if (GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
-			if (child.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
+		if (GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
+			if (child.mainButtonPressed(mousePosition - shiftedPos) == .handled) return .handled;
 		}
 	}
 	return .ignored;
