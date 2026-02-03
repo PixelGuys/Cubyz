@@ -1172,6 +1172,8 @@ pub const Connection = struct { // MARK: Connection
 		sslConfig: c.mbedtls_ssl_config = .{},
 		sslCtrDrbg: c.mbedtls_ctr_drbg_context = .{},
 		sslEntropy: c.mbedtls_entropy_context = .{},
+		serverCertificate: c.mbedtls_x509_crt = .{},
+		serverKey: c.mbedtls_pk_context = .{},
 		dataToReceive: []const u8 = &.{},
 
 		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
@@ -1196,10 +1198,32 @@ pub const Connection = struct { // MARK: Connection
 			c.mbedtls_ssl_conf_rng(&self.sslConfig, c.mbedtls_ctr_drbg_random, &self.sslCtrDrbg);
 			c.mbedtls_ssl_conf_dbg(&self.sslConfig, &debugOutput, undefined);
 
+			if (side == .server) { // Generate a self-signed certificate, since we do not key about authenticating the server. MITM will be mitigated during the client authentication
+				var certificate: c.mbedtls_x509write_cert = .{};
+				c.mbedtls_x509write_crt_init(&certificate);
+				try checkResult(c.mbedtls_pk_setup(&self.serverKey, c.mbedtls_pk_info_from_type(c.MBEDTLS_PK_RSA)), "mbedtls_pk_setup");
+				try checkResult(c.mbedtls_rsa_gen_key(c.mbedtls_pk_rsa(self.serverKey), c.mbedtls_ctr_drbg_random, &self.sslCtrDrbg, 2048, 65537), "mbedtls_rsa_gen_key");
+
+				try checkResult(c.mbedtls_x509write_crt_set_subject_name(&certificate, "CN=localhost,O=Cubyz,C=Cubyz"), "mbedtls_x509write_crt_set_subject_name");
+				try checkResult(c.mbedtls_x509write_crt_set_issuer_name(&certificate, "CN=localhost,O=Cubyz,C=Cubyz"), "mbedtls_x509write_crt_set_issuer_name");
+				c.mbedtls_x509write_crt_set_issuer_key(&certificate, &self.serverKey);
+				c.mbedtls_x509write_crt_set_subject_key(&certificate, &self.serverKey);
+
+				c.mbedtls_x509write_crt_set_md_alg(&certificate, c.MBEDTLS_MD_SHA256);
+				try checkResult(c.mbedtls_x509write_crt_set_validity(&certificate, "20000101000000", "50000101000000"), "mbedtls_x509write_crt_set_validity");
+
+				var buf: [4096]u8 = undefined;
+				try checkResult(c.mbedtls_x509write_crt_pem(&certificate, &buf, buf.len, c.mbedtls_ctr_drbg_random, &self.sslCtrDrbg), "mbedtls_x509write_crt_pem");
+
+				c.mbedtls_x509_crt_init(&self.serverCertificate);
+				try checkResult(c.mbedtls_x509_crt_parse(&self.serverCertificate, &buf, buf.len), "mbedtls_x509_crt_parse");
+
+				try checkResult(c.mbedtls_ssl_conf_own_cert(&self.sslConfig, &self.serverCertificate, &self.serverKey), "mbedtls_ssl_conf_own_cert");
+			}
+
 			try checkResult(c.mbedtls_ssl_setup(&self.sslContext, &self.sslConfig), "mbedtls_ssl_setup");
 			try checkResult(c.mbedtls_ssl_set_hostname(&self.sslContext, "localhost"), "mbedtls_ssl_set_hostname");
 			c.mbedtls_ssl_set_bio(&self.sslContext, self, &mbedTlsSend, null, &mbedTlsReceive);
-			c.mbedtls_debug_set_threshold(4);
 		}
 
 		pub fn deinit(self: *SecureChannel) void {
@@ -1221,9 +1245,20 @@ pub const Connection = struct { // MARK: Connection
 			self.super.connect(remoteStart);
 		}
 
+		pub fn startTlsHandshake(self: *SecureChannel) void {
+			var data: [0]u8 = .{};
+			while (true) {
+				const result = c.mbedtls_ssl_write(&self.sslContext, &data, data.len);
+				if (result == c.MBEDTLS_ERR_SSL_TIMEOUT) {
+					main.io.sleep(.fromMilliseconds(10), .awake) catch {};
+					continue;
+				}
+				break;
+			}
+		}
+
 		fn mbedTlsSend(self_: ?*anyopaque, data: [*c]const u8, len: usize) callconv(.c) c_int {
 			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
-			std.log.debug("Sending: {any}", .{data[0..len]});
 			self.super.sendBuffer.buffer.pushBackSlice(data[0..len]);
 			self.super.sendBuffer.nextIndex +%= @intCast(len);
 			return @intCast(len);
@@ -1235,7 +1270,6 @@ pub const Connection = struct { // MARK: Connection
 			const copyLen = @min(len, self.dataToReceive.len);
 			if (copyLen == 0) return c.MBEDTLS_ERR_SSL_TIMEOUT;
 			@memcpy(data[0..copyLen], self.dataToReceive[0..copyLen]);
-			std.log.debug("Receiving: {any}", .{self.dataToReceive[copyLen..]});
 			self.dataToReceive = self.dataToReceive[copyLen..];
 			return @intCast(copyLen);
 		}

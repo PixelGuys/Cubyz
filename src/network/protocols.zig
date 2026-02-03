@@ -220,6 +220,7 @@ pub const handShake = struct { // MARK: handShake
 		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 		defer main.stackAllocator.free(data);
+		conn.fastChannel.startTlsHandshake();
 		conn.send(.fast, id, data);
 
 		conn.mutex.lock();
