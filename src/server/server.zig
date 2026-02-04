@@ -117,6 +117,9 @@ pub const User = struct { // MARK: User
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
+	key: network.authentication.PublicKey = undefined,
+	legacyKey: ?network.authentication.PublicKey = null,
+
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
 	inventory: ?InventoryId = null,
 	handInventory: ?InventoryId = null,
@@ -183,9 +186,18 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	pub fn setName(self: *User, name: []const u8) void {
+	pub fn identifyFromKeysAndName(self: *User, name: []const u8, keys: main.ZonElement) !void {
+		// TODO: Actually identify it.
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
+		self.key = try .initFromBase64(keys.get([]const u8, "ed25519", ""), .ed25519);
+	}
+
+	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
+		try self.key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+		if (self.legacyKey) |key| {
+			try key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+		}
 	}
 
 	var freeId: u32 = 0;

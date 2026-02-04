@@ -122,7 +122,24 @@ pub const handShake = struct { // MARK: handShake
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
 			switch (newState) {
-				.userData => return error.InvalidSide,
+				.userData, .signatureResponse => return error.InvalidSide,
+				.signatureRequest => {
+					const signature1Len = try reader.readVarInt(usize);
+					const signature1 = try reader.readSlice(signature1Len);
+					const signature2Len = try reader.readVarInt(usize);
+					const signature2 = try reader.readSlice(signature2Len);
+
+					var writer: utils.BinaryWriter = .init(main.stackAllocator);
+					defer writer.deinit();
+					writer.writeEnum(Connection.HandShakeState, .signatureResponse);
+					conn.handShakeState.store(.signatureResponse, .monotonic);
+
+					network.authentication.KeyCollection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature1) orelse return error.Invalid, conn.fastChannel.verificationDataForClientSignature.items);
+					if (signature2.len != 0) {
+						network.authentication.KeyCollection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature2) orelse return error.Invalid, conn.fastChannel.verificationDataForClientSignature.items);
+					}
+					conn.send(.fast, id, writer.data.items);
+				},
 				.assets => {
 					std.log.info("Received assets.", .{});
 					main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
@@ -150,6 +167,8 @@ pub const handShake = struct { // MARK: handShake
 			conn.handShakeState.store(newState, .monotonic);
 			switch (newState) {
 				.userData => {
+					conn.fastChannel.finishedCollectingClientVerificationData = true;
+					std.log.err("{any}", .{conn.fastChannel.verificationDataForClientSignature.items});
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 					defer zon.deinit(main.stackAllocator);
 					const name = zon.get([]const u8, "name", "unnamed");
@@ -169,6 +188,22 @@ pub const handShake = struct { // MARK: handShake
 						return error.IncompatibleVersion;
 					}
 
+					const keys = zon.getChild("keys");
+					try conn.user.?.identifyFromKeysAndName(name, keys);
+
+					var writer: utils.BinaryWriter = .init(main.stackAllocator);
+					defer writer.deinit();
+					writer.writeEnum(Connection.HandShakeState, .signatureRequest);
+					conn.handShakeState.store(.signatureRequest, .monotonic);
+					writer.writeVarInt(usize, "ed25519".len);
+					writer.writeSlice("ed25519"); // TODO: Move to settings
+					writer.writeVarInt(usize, 0);
+					writer.writeSlice(""); // TODO: Insert legacy key here
+					conn.send(.fast, id, writer.data.items);
+				},
+				.signatureResponse => {
+					try conn.user.?.verifySignatures(reader);
+					std.log.info("Signature correct", .{});
 					{
 						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 						defer main.stackAllocator.free(path);
@@ -182,10 +217,9 @@ pub const handShake = struct { // MARK: handShake
 					}
 					conn.handShakeState.store(.assets, .monotonic);
 
-					conn.user.?.setName(name);
 					main.server.connect(conn.user.?);
 				},
-				.assets, .serverData => return error.InvalidSide,
+				.assets, .serverData, .signatureRequest => return error.InvalidSide,
 				.start, .complete => {},
 			}
 		} else {
@@ -217,10 +251,14 @@ pub const handShake = struct { // MARK: handShake
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.putOwnedString("version", settings.version.version);
 		zonObject.putOwnedString("name", name);
+		zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
 		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 		defer main.stackAllocator.free(data);
+		std.log.err("Data: {s}", .{data});
 		conn.fastChannel.startTlsHandshake();
+		std.log.err("{any}", .{conn.fastChannel.verificationDataForClientSignature.items});
+		conn.fastChannel.finishedCollectingClientVerificationData = true;
 		conn.send(.fast, id, data);
 
 		conn.mutex.lock();

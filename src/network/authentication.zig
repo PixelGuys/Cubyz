@@ -1,6 +1,10 @@
 const std = @import("std");
 
 const main = @import("main");
+const BinaryWriter = main.utils.BinaryWriter;
+const BinaryReader = main.utils.BinaryReader;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const ZonElement = main.ZonElement;
 
 var wordlist: ?[2048][]const u8 = null;
 
@@ -28,10 +32,18 @@ pub fn init() void {
 	}
 }
 
+pub const KeyTypeEnum = enum(u8) {
+	ed25519 = 0,
+	ecdsaP256Sha256 = 1,
+	mldsa44 = 2,
+};
+
 pub const KeyCollection = struct { // Provides multiple methods to allow server hosts to react when one of the methods is compromised
-	pub var ed25519: std.crypto.sign.Ed25519.KeyPair = undefined;
-	pub var ecdsaP256Sha256: std.crypto.sign.ecdsa.EcdsaP256Sha256.KeyPair = undefined;
-	pub var mldsa44: std.crypto.sign.mldsa.MLDSA44.KeyPair = undefined;
+	const Storage = struct {
+		pub var ed25519: std.crypto.sign.Ed25519.KeyPair = undefined;
+		pub var ecdsaP256Sha256: std.crypto.sign.ecdsa.EcdsaP256Sha256.KeyPair = undefined;
+		pub var mldsa44: std.crypto.sign.mldsa.MLDSA44.KeyPair = undefined;
+	};
 
 	pub fn init(seedPhrase: SeedPhrase) void {
 		// These are used to salt the the seed phrase for each of the keys so we get unrelated keys in case one of them gets compromised.
@@ -41,9 +53,7 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 			"4t7z3592a09p85z4piotfh7z",
 			"u89564epogz1qi9up5zc94309",
 		};
-		inline for (comptime std.meta.declarations(@This()), 0..) |decl, i| {
-			if (@typeInfo(@TypeOf(@field(KeyCollection, decl.name))) == .@"fn") continue;
-
+		inline for (comptime std.meta.declarations(Storage), 0..) |decl, i| {
 			const hashableString = std.mem.concat(main.stackAllocator.allocator, u8, &.{seedPhrase.text, keySalts[i]}) catch unreachable;
 			defer main.stackAllocator.free(hashableString);
 			defer @memset(hashableString, 0);
@@ -57,10 +67,78 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 				hashedResult = out;
 			}
 
-			const functionType = @TypeOf(@TypeOf(@field(KeyCollection, decl.name)).generateDeterministic);
+			const functionType = @TypeOf(@TypeOf(@field(Storage, decl.name)).generateDeterministic);
 			const seed = hashedResult[0..@sizeOf(@typeInfo(functionType).@"fn".params[0].type.?)].*;
 
-			@field(KeyCollection, decl.name) = @TypeOf(@field(KeyCollection, decl.name)).generateDeterministic(seed) catch @panic("Failed to generate key pair for " ++ decl.name);
+			@field(Storage, decl.name) = @TypeOf(@field(Storage, decl.name)).generateDeterministic(seed) catch @panic("Failed to generate key pair for " ++ decl.name);
+		}
+	}
+
+	pub fn getPublicKeys(allocator: NeverFailingAllocator) ZonElement {
+		const result = ZonElement.initObject(allocator);
+		inline for (comptime std.meta.declarations(Storage)) |decl| {
+			const bytes = if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes"))
+				@field(Storage, decl.name).public_key.toBytes()
+			else
+				@field(Storage, decl.name).public_key.toUncompressedSec1();
+			var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
+			result.putOwnedString(decl.name, std.base64.standard.Encoder.encode(&base64, &bytes));
+		}
+		return result;
+	}
+
+	pub fn sign(writer: *BinaryWriter, typ: KeyTypeEnum, message: []const u8) void {
+		switch (typ) {
+			inline else => |_typ| {
+				const AlgorithmType = switch (@TypeOf(@field(Storage, @tagName(_typ)))) {
+					std.crypto.sign.Ed25519.KeyPair => std.crypto.sign.Ed25519,
+					std.crypto.sign.ecdsa.EcdsaP256Sha256.KeyPair => std.crypto.sign.ecdsa.EcdsaP256Sha256,
+					std.crypto.sign.mldsa.MLDSA44.KeyPair => std.crypto.sign.mldsa.MLDSA44,
+					else => unreachable,
+				};
+				const randomBytes = std.crypto.random.array(u8, AlgorithmType.noise_length);
+				const signature = @field(Storage, @tagName(_typ)).sign(message, randomBytes) catch |err| {
+					std.debug.panic("Failed to sign message with error {s}. Maybe try reconnecting, if the error persists, I'd suggest creating a new account", .{@errorName(err)});
+				};
+				writer.writeSlice(&signature.toBytes());
+			},
+		}
+	}
+};
+
+pub const PublicKey = union(KeyTypeEnum) {
+	ed25519: std.crypto.sign.Ed25519.PublicKey,
+	ecdsaP256Sha256: std.crypto.sign.ecdsa.EcdsaP256Sha256.PublicKey,
+	mldsa44: std.crypto.sign.mldsa.MLDSA44.PublicKey,
+
+	pub fn initFromBase64(base64: []const u8, typ: KeyTypeEnum) !PublicKey {
+		switch (typ) {
+			inline else => |_typ| {
+				const KeyType = @TypeOf(@field(KeyCollection.Storage, @tagName(_typ)).public_key);
+				const length = if (@hasDecl(KeyType, "fromBytes")) KeyType.encoded_length else KeyType.uncompressed_sec1_encoded_length;
+				var bytes: [length]u8 = undefined;
+				try std.base64.standard.Decoder.decode(&bytes, base64);
+				if (@hasDecl(KeyType, "fromBytes")) {
+					return @unionInit(PublicKey, @tagName(_typ), try KeyType.fromBytes(bytes));
+				} else {
+					return @unionInit(PublicKey, @tagName(_typ), try KeyType.fromSec1(&bytes));
+				}
+			},
+		}
+	}
+
+	pub fn verifySignature(self: PublicKey, reader: *BinaryReader, message: []const u8) !void {
+		switch (self) {
+			inline else => |publicKey| {
+				const AlgorithmType = switch (@TypeOf(publicKey)) {
+					std.crypto.sign.Ed25519.PublicKey => std.crypto.sign.Ed25519,
+					std.crypto.sign.ecdsa.EcdsaP256Sha256.PublicKey => std.crypto.sign.ecdsa.EcdsaP256Sha256,
+					std.crypto.sign.mldsa.MLDSA44.PublicKey => std.crypto.sign.mldsa.MLDSA44,
+					else => unreachable,
+				};
+				const signature: error{InvalidEncoding}!AlgorithmType.Signature = AlgorithmType.Signature.fromBytes((try reader.readSlice(AlgorithmType.Signature.encoded_length))[0..AlgorithmType.Signature.encoded_length].*);
+				try (try signature).verify(message, publicKey);
+			},
 		}
 	}
 };

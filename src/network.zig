@@ -1176,9 +1176,14 @@ pub const Connection = struct { // MARK: Connection
 		serverKey: c.mbedtls_pk_context = .{},
 		dataToReceive: []const u8 = &.{},
 
+		side: main.sync.Side,
+		finishedCollectingClientVerificationData: bool = false,
+		verificationDataForClientSignature: main.ListUnmanaged(u8) = .{},
+
 		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
 			self.* = .{
 				.super = .init(sequenceIndex, delay, id),
+				.side = side,
 			};
 
 			c.mbedtls_ssl_init(&self.sslContext);
@@ -1261,6 +1266,12 @@ pub const Connection = struct { // MARK: Connection
 			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
 			self.super.sendBuffer.buffer.pushBackSlice(data[0..len]);
 			self.super.sendBuffer.nextIndex +%= @intCast(len);
+			if (!self.finishedCollectingClientVerificationData) {
+				@branchHint(.unlikely);
+				if (self.side == .server) {
+					self.verificationDataForClientSignature.appendSlice(main.globalAllocator, data[0..len]);
+				}
+			}
 			return @intCast(len);
 		}
 
@@ -1270,6 +1281,12 @@ pub const Connection = struct { // MARK: Connection
 			const copyLen = @min(len, self.dataToReceive.len);
 			if (copyLen == 0) return c.MBEDTLS_ERR_SSL_TIMEOUT;
 			@memcpy(data[0..copyLen], self.dataToReceive[0..copyLen]);
+			if (!self.finishedCollectingClientVerificationData) {
+				@branchHint(.unlikely);
+				if (self.side == .client) {
+					self.verificationDataForClientSignature.appendSlice(main.globalAllocator, self.dataToReceive[0..copyLen]);
+				}
+			}
 			self.dataToReceive = self.dataToReceive[copyLen..];
 			return @intCast(copyLen);
 		}
@@ -1353,8 +1370,10 @@ pub const Connection = struct { // MARK: Connection
 	pub const HandShakeState = enum(u8) {
 		start = 0,
 		userData = 1,
-		assets = 2,
-		serverData = 3,
+		signatureRequest = 2,
+		signatureResponse = 3,
+		assets = 4,
+		serverData = 5,
 		complete = 255,
 	};
 
