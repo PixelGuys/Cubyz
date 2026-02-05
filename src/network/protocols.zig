@@ -168,7 +168,6 @@ pub const handShake = struct { // MARK: handShake
 			switch (newState) {
 				.userData => {
 					conn.fastChannel.finishedCollectingClientVerificationData = true;
-					std.log.err("{any}", .{conn.fastChannel.verificationDataForClientSignature.items});
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 					defer zon.deinit(main.stackAllocator);
 					const name = zon.get([]const u8, "name", "unnamed");
@@ -255,9 +254,7 @@ pub const handShake = struct { // MARK: handShake
 		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 		defer main.stackAllocator.free(data);
-		std.log.err("Data: {s}", .{data});
-		conn.fastChannel.startTlsHandshake();
-		std.log.err("{any}", .{conn.fastChannel.verificationDataForClientSignature.items});
+		try conn.fastChannel.startTlsHandshake();
 		conn.fastChannel.finishedCollectingClientVerificationData = true;
 		conn.send(.fast, id, data);
 

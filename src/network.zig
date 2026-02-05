@@ -1175,6 +1175,7 @@ pub const Connection = struct { // MARK: Connection
 		serverCertificate: c.mbedtls_x509_crt = .{},
 		serverKey: c.mbedtls_pk_context = .{},
 		dataToReceive: []const u8 = &.{},
+		mutex: std.Thread.Mutex = .{},
 
 		side: main.sync.Side,
 		finishedCollectingClientVerificationData: bool = false,
@@ -1233,6 +1234,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn deinit(self: *SecureChannel) void {
 			self.super.deinit();
+			self.verificationDataForClientSignature.deinit(main.globalAllocator);
 		}
 
 		fn checkResult(result: c_int, function: []const u8) !void {
@@ -1250,14 +1252,16 @@ pub const Connection = struct { // MARK: Connection
 			self.super.connect(remoteStart);
 		}
 
-		pub fn startTlsHandshake(self: *SecureChannel) void {
-			var data: [0]u8 = .{};
+		pub fn startTlsHandshake(self: *SecureChannel) !void {
 			while (true) {
-				const result = c.mbedtls_ssl_write(&self.sslContext, &data, data.len);
-				if (result == c.MBEDTLS_ERR_SSL_TIMEOUT) {
+				self.mutex.lock();
+				const result = c.mbedtls_ssl_handshake(&self.sslContext);
+				self.mutex.unlock();
+				if (result == c.MBEDTLS_ERR_SSL_WANT_READ) {
 					main.io.sleep(.fromMilliseconds(10), .awake) catch {};
 					continue;
 				}
+				try checkResult(result, "mbedtls_ssl_handshake");
 				break;
 			}
 		}
@@ -1279,7 +1283,7 @@ pub const Connection = struct { // MARK: Connection
 			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
 			std.debug.assert(timeout == 0);
 			const copyLen = @min(len, self.dataToReceive.len);
-			if (copyLen == 0) return c.MBEDTLS_ERR_SSL_TIMEOUT;
+			if (copyLen == 0) return c.MBEDTLS_ERR_SSL_WANT_READ;
 			@memcpy(data[0..copyLen], self.dataToReceive[0..copyLen]);
 			if (!self.finishedCollectingClientVerificationData) {
 				@branchHint(.unlikely);
@@ -1292,11 +1296,14 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		fn receiveThroughTls(self: *SecureChannel, data: []const u8) !void {
+			std.debug.assert(self.dataToReceive.len == 0);
 			self.dataToReceive = data;
 			var outBuffer: [4096]u8 = undefined;
 			while (true) {
+				self.mutex.lock();
 				const len = c.mbedtls_ssl_read(&self.sslContext, &outBuffer, outBuffer.len);
-				if (len == c.MBEDTLS_ERR_SSL_TIMEOUT) break;
+				self.mutex.unlock();
+				if (len == c.MBEDTLS_ERR_SSL_WANT_READ) break;
 				if (len == 0) return error.Closed;
 				if (len < 0) {
 					try checkResult(len, "mbedtls_ssl_read");
@@ -1308,8 +1315,10 @@ pub const Connection = struct { // MARK: Connection
 		fn sendThroughTls(self: *SecureChannel, data: []const u8) !void {
 			var remaining = data;
 			while (remaining.len != 0) {
+				self.mutex.lock();
 				const len = c.mbedtls_ssl_write(&self.sslContext, remaining.ptr, remaining.len);
-				if (len == c.MBEDTLS_ERR_SSL_TIMEOUT) continue;
+				self.mutex.unlock();
+				if (len == c.MBEDTLS_ERR_SSL_WANT_READ) continue;
 				if (len == 0) return error.Closed;
 				if (len < 0) {
 					try checkResult(len, "mbedtls_ssl_write");
@@ -1323,6 +1332,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn send(self: *SecureChannel, protocolIndex: u8, data: []const u8, time: i64) !void {
+			std.debug.assert(c.mbedtls_ssl_is_handshake_over(&self.sslContext) != 0);
 			return self.super.sendBuffer.insertMessageSecure(self, protocolIndex, data, time);
 		}
 

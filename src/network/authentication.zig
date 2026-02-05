@@ -36,6 +36,14 @@ pub const KeyTypeEnum = enum(u8) {
 	ed25519 = 0,
 	ecdsaP256Sha256 = 1,
 	mldsa44 = 2,
+
+	pub fn getAlgorithmType(self: KeyTypeEnum) type {
+		return switch (self) {
+			.ed25519 => std.crypto.sign.Ed25519,
+			.ecdsaP256Sha256 => std.crypto.sign.ecdsa.EcdsaP256Sha256,
+			.mldsa44 => std.crypto.sign.mldsa.MLDSA44,
+		};
+	}
 };
 
 pub const KeyCollection = struct { // Provides multiple methods to allow server hosts to react when one of the methods is compromised
@@ -77,6 +85,7 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn getPublicKeys(allocator: NeverFailingAllocator) ZonElement {
 		const result = ZonElement.initObject(allocator);
 		inline for (comptime std.meta.declarations(Storage)) |decl| {
+			// TODO: Unify function declarations upstream and link PR
 			const bytes = if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes"))
 				@field(Storage, decl.name).public_key.toBytes()
 			else
@@ -90,12 +99,7 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn sign(writer: *BinaryWriter, typ: KeyTypeEnum, message: []const u8) void {
 		switch (typ) {
 			inline else => |_typ| {
-				const AlgorithmType = switch (@TypeOf(@field(Storage, @tagName(_typ)))) {
-					std.crypto.sign.Ed25519.KeyPair => std.crypto.sign.Ed25519,
-					std.crypto.sign.ecdsa.EcdsaP256Sha256.KeyPair => std.crypto.sign.ecdsa.EcdsaP256Sha256,
-					std.crypto.sign.mldsa.MLDSA44.KeyPair => std.crypto.sign.mldsa.MLDSA44,
-					else => unreachable,
-				};
+				const AlgorithmType = _typ.getAlgorithmType();
 				const randomBytes = std.crypto.random.array(u8, AlgorithmType.noise_length);
 				const signature = @field(Storage, @tagName(_typ)).sign(message, randomBytes) catch |err| {
 					std.debug.panic("Failed to sign message with error {s}. Maybe try reconnecting, if the error persists, I'd suggest creating a new account", .{@errorName(err)});
@@ -115,9 +119,11 @@ pub const PublicKey = union(KeyTypeEnum) {
 		switch (typ) {
 			inline else => |_typ| {
 				const KeyType = @TypeOf(@field(KeyCollection.Storage, @tagName(_typ)).public_key);
+				// TODO: Unify function declarations upstream and link PR
 				const length = if (@hasDecl(KeyType, "fromBytes")) KeyType.encoded_length else KeyType.uncompressed_sec1_encoded_length;
 				var bytes: [length]u8 = undefined;
 				try std.base64.standard.Decoder.decode(&bytes, base64);
+				// TODO: Unify function declarations upstream and link PR
 				if (@hasDecl(KeyType, "fromBytes")) {
 					return @unionInit(PublicKey, @tagName(_typ), try KeyType.fromBytes(bytes));
 				} else {
@@ -128,16 +134,12 @@ pub const PublicKey = union(KeyTypeEnum) {
 	}
 
 	pub fn verifySignature(self: PublicKey, reader: *BinaryReader, message: []const u8) !void {
-		switch (self) {
-			inline else => |publicKey| {
-				const AlgorithmType = switch (@TypeOf(publicKey)) {
-					std.crypto.sign.Ed25519.PublicKey => std.crypto.sign.Ed25519,
-					std.crypto.sign.ecdsa.EcdsaP256Sha256.PublicKey => std.crypto.sign.ecdsa.EcdsaP256Sha256,
-					std.crypto.sign.mldsa.MLDSA44.PublicKey => std.crypto.sign.mldsa.MLDSA44,
-					else => unreachable,
-				};
+		switch (@as(KeyTypeEnum, self)) {
+			inline else => |tag| {
+				const AlgorithmType = tag.getAlgorithmType();
+				// TODO: Unify function signatures upstream and link PR
 				const signature: error{InvalidEncoding}!AlgorithmType.Signature = AlgorithmType.Signature.fromBytes((try reader.readSlice(AlgorithmType.Signature.encoded_length))[0..AlgorithmType.Signature.encoded_length].*);
-				try (try signature).verify(message, publicKey);
+				try (try signature).verify(message, @field(self, @tagName(tag)));
 			},
 		}
 	}
