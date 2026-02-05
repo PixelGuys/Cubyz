@@ -741,6 +741,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 						if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
 						if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
 						const integerWeight: u16 = @intFromFloat(weight/4.0*256);
+						if (integerWeight == 0) continue;
 						var weights: [4]u16 = @splat(0);
 						weights[i] = integerWeight;
 						addCornerLightSamples(&lightSamples, containingBlockPos +% Vec3i{dx, dy, dz}, normal, weights);
