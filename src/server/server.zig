@@ -18,6 +18,7 @@ const Blueprint = main.blueprint.Blueprint;
 const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
+const sync = main.sync;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
@@ -339,11 +340,13 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn addToGroup(self: *User, groupName: []const u8) error{GroupNotFound}!void {
+		sync.threadContext.assertCorrectContext(.server);
 		const group = try permissionLayer.getGroup(groupName);
 		self.permissionGroups.put(main.globalAllocator.allocator, main.globalAllocator.dupe(u8, groupName), group) catch unreachable;
 	}
 
 	pub fn removeFromGroup(self: *User, groupName: []const u8) bool {
+		sync.threadContext.assertCorrectContext(.server);
 		const slice = (self.permissionGroups.getKeyPtr(groupName) orelse return false).*;
 		_ = self.permissionGroups.remove(groupName);
 		main.globalAllocator.free(slice);

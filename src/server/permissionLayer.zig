@@ -6,6 +6,7 @@ const User = server.User;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ZonElement = main.ZonElement;
+const sync = main.sync;
 
 fn mapFromZon(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void), zon: ZonElement) void {
 	if (zon != .array) return;
@@ -70,10 +71,12 @@ pub const Permissions = struct {
 	}
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
+		sync.threadContext.assertCorrectContext(.server);
 		self.list(listType).put(self.arenaAllocator.allocator().allocator, self.arenaAllocator.allocator().dupe(u8, permissionPath), {}) catch unreachable;
 	}
 
 	pub fn removePermission(self: *Permissions, listType: ListType, permissionPath: []const u8) bool {
+		sync.threadContext.assertCorrectContext(.server);
 		const key = self.list(listType).getKeyPtr(permissionPath) orelse return false;
 		const slice = key.*;
 		_ = self.list(listType).remove(permissionPath);
@@ -164,6 +167,7 @@ pub fn groupsFromZon(allocator: NeverFailingAllocator, zon: ZonElement) void {
 }
 
 pub fn createGroup(name: []const u8, allocator: NeverFailingAllocator) error{AlreadyExists}!void {
+	sync.threadContext.assertCorrectContext(.server);
 	if (groups.contains(name)) return error.AlreadyExists;
 	groups.put(allocator.dupe(u8, name), .init(allocator)) catch unreachable;
 }
@@ -173,6 +177,7 @@ pub fn getGroup(name: []const u8) error{GroupNotFound}!*PermissionGroup {
 }
 
 pub fn deleteGroup(name: []const u8) bool {
+	sync.threadContext.assertCorrectContext(.server);
 	const users = server.getUserListAndIncreaseRefCount(main.globalAllocator);
 	for (users) |user| {
 		const key = user.permissionGroups.getKeyPtr(name) orelse continue;
