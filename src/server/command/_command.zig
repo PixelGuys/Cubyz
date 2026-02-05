@@ -37,7 +37,7 @@ pub fn execute(msg: []const u8, source: *User) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
 	if (commands.get(command)) |cmd| {
-		if (!permissionLayer.userHasPermission(source, cmd.permissionPath)) {
+		if (!source.hasPermission(cmd.permissionPath)) {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
 		}

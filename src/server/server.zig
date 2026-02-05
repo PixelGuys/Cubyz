@@ -141,7 +141,7 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
-		self.permissions = .{.allocator = main.globalAllocator};
+		self.permissions = .{.arenaAllocator = .init(main.globalAllocator)};
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -336,6 +336,55 @@ pub const User = struct { // MARK: User
 	}
 	pub fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.protocols.chat.send(self.conn, msg);
+	}
+
+	pub fn addToGroup(self: *User, groupName: []const u8) error{GroupNotFound}!void {
+		const group = try permissionLayer.getGroup(groupName);
+		self.permissionGroups.put(main.globalAllocator.allocator, main.globalAllocator.dupe(u8, groupName), group) catch unreachable;
+	}
+
+	pub fn removeFromGroup(self: *User, groupName: []const u8) bool {
+		const slice = (self.permissionGroups.getKeyPtr(groupName) orelse return false).*;
+		_ = self.permissionGroups.remove(groupName);
+		main.globalAllocator.free(slice);
+		return true;
+	}
+
+	pub fn groupListFromZon(self: *User, zon: main.ZonElement) void {
+		if (zon != .array) return;
+
+		for (zon.toSlice()) |item| {
+			const groupName = item.get([]const u8, "name", "");
+			const group = permissionLayer.getGroup(groupName) catch continue;
+			if (group.id != item.get(u32, "id", 0)) continue;
+			self.addToGroup(groupName) catch unreachable;
+		}
+	}
+
+	pub fn groupListToZon(self: *User, allocator: NeverFailingAllocator) main.ZonElement {
+		var zon: main.ZonElement = .initArray(allocator);
+		var it = self.permissionGroups.iterator();
+		while (it.next()) |entry| {
+			var entryZon: main.ZonElement = .initObject(allocator);
+			entryZon.put("name", entry.key_ptr.*);
+			entryZon.put("id", entry.value_ptr.*.id);
+			zon.append(entryZon);
+		}
+		return zon;
+	}
+
+	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
+		switch (user.permissions.hasPermission(permissionPath)) {
+			.yes => return true,
+			.no => return false,
+			.neutral => {},
+		}
+
+		var groupIt = user.permissionGroups.valueIterator();
+		while (groupIt.next()) |group| {
+			if (group.*.hasPermission(permissionPath) == .yes) return true;
+		}
+		return false;
 	}
 };
 

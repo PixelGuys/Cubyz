@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 const permissionLayer = main.server.permissionLayer;
+const ListType = permissionLayer.Permissions.ListType;
 
 pub const description = "Performs permission interactions.";
 pub const usage =
@@ -20,15 +21,20 @@ pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
 	if (split.next()) |arg| {
 		if (std.ascii.eqlIgnoreCase(arg, "remove")) {
-			const helper = Helper.parseHelper(&split) catch {
-				source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
-				return;
+			const helper = Helper.parseHelper(source, &split) catch |err| switch (err) {
+				error.InvalidAmount => {
+					source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
+					return;
+				},
+				error.InvalidArg => return,
 			};
 			if (helper.permissionPath) |permissionPath| {
-				if (helper.group) |group| {
-					_ = permissionLayer.removeGroupPermission(group, helper.listType, permissionPath) catch {
-						source.sendMessage("#ff0000Group {s} does not exist.", .{group});
+				if (helper.group) |groupName| {
+					const group = permissionLayer.getGroup(groupName) catch {
+						source.sendMessage("#ff0000Group {s} does not exist.", .{groupName});
+						return;
 					};
+					_ = group.permissions.removePermission(helper.listType, permissionPath);
 				} else {
 					_ = source.permissions.removePermission(helper.listType, permissionPath);
 				}
@@ -40,15 +46,20 @@ pub fn execute(args: []const u8, source: *User) void {
 		}
 	}
 	split.reset();
-	const helper = Helper.parseHelper(&split) catch {
-		source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
-		return;
+	const helper = Helper.parseHelper(source, &split) catch |err| switch (err) {
+		error.InvalidAmount => {
+			source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
+			return;
+		},
+		error.InvalidArg => return,
 	};
 	if (helper.permissionPath) |permissionPath| {
-		if (helper.group) |group| {
-			permissionLayer.addGroupPermission(group, helper.listType, permissionPath) catch {
-				source.sendMessage("#ff0000Group {s} does not exist.", .{group});
+		if (helper.group) |groupName| {
+			const group = permissionLayer.getGroup(groupName) catch {
+				source.sendMessage("#ff0000Group {s} does not exist.", .{groupName});
+				return;
 			};
+			group.permissions.addPermission(helper.listType, permissionPath);
 		} else {
 			source.permissions.addPermission(helper.listType, permissionPath);
 		}
@@ -60,25 +71,27 @@ pub fn execute(args: []const u8, source: *User) void {
 }
 
 const Helper = struct {
-	listType: permissionLayer.Permissions.ListType,
+	listType: ListType,
 	group: ?[]const u8,
 	permissionPath: ?[]const u8,
 
-	pub fn parseHelper(split: *std.mem.SplitIterator(u8, .scalar)) error{Invalid}!Helper {
-		var listType: permissionLayer.Permissions.ListType = undefined;
+	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{ InvalidAmount, InvalidArg }!Helper {
+		var listType: ListType = undefined;
 		if (split.next()) |arg| {
-			std.debug.print("current arg: {s}\n", .{arg});
 			if (std.ascii.eqlIgnoreCase(arg, "whitelist")) {
 				listType = .white;
 			} else if (std.ascii.eqlIgnoreCase(arg, "blacklist")) {
 				listType = .black;
-			} else return error.Invalid;
-		} else return error.Invalid;
+			} else {
+				source.sendMessage("#ff0000Expected either whitelist or blacklist, found \"{s}\"", .{arg});
+				return error.InvalidArg;
+			}
+		} else return error.InvalidAmount;
 
 		var group: ?[]const u8 = null;
 		var permissionPath: ?[]const u8 = null;
 		if (split.next()) |arg| {
-			if (!std.ascii.startsWithIgnoreCase(arg, "/")) {
+			if (split.peek() != null) {
 				group = arg;
 			} else {
 				permissionPath = arg;

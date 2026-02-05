@@ -603,7 +603,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer main.stackAllocator.free(path);
 		const groups = files.cubyzDir().readToZon(main.stackAllocator, path) catch return;
 		defer groups.deinit(main.stackAllocator);
-		permissionLayer.fillGroups(main.globalAllocator, groups);
+		permissionLayer.groupsFromZon(main.globalAllocator, groups);
 	}
 
 	pub fn savePermissionGroups(self: *ServerWorld) !void {
@@ -879,9 +879,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
-			user.permissions.fillList(.white, playerData.getChild("permissionWhiteList"));
-			user.permissions.fillList(.black, playerData.getChild("permissionBlackList"));
-			permissionLayer.addUserToGroupList(user, main.globalAllocator, playerData.getChild("permissionGroups"));
+			user.permissions.fromZon(playerData);
+			user.groupListFromZon(playerData.getChild("permissionGroups"));
 
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
@@ -939,9 +938,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("name", user.name);
 
 		playerZon.put("entity", user.player.save(main.stackAllocator));
-		playerZon.put("permissionWhiteList", user.permissions.listToZon(main.stackAllocator, .white));
-		playerZon.put("permissionBlackList", user.permissions.listToZon(main.stackAllocator, .black));
-		playerZon.put("permissionGroups", permissionLayer.zonFromGroupList(user, main.stackAllocator));
+		user.permissions.toZon(main.stackAllocator, &playerZon);
+		playerZon.put("permissionGroups", user.groupListToZon(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
