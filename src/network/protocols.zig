@@ -194,10 +194,14 @@ pub const handShake = struct { // MARK: handShake
 					defer writer.deinit();
 					writer.writeEnum(Connection.HandShakeState, .signatureRequest);
 					conn.handShakeState.store(.signatureRequest, .monotonic);
-					writer.writeVarInt(usize, "ed25519".len);
-					writer.writeSlice("ed25519"); // TODO: Move to settings
-					writer.writeVarInt(usize, 0);
-					writer.writeSlice(""); // TODO: Insert legacy key here
+					writer.writeVarInt(usize, @tagName(conn.user.?.key).len);
+					writer.writeSlice(@tagName(conn.user.?.key));
+					if (conn.user.?.legacyKey) |legacyKey| {
+						writer.writeVarInt(usize, @tagName(legacyKey).len);
+						writer.writeSlice(@tagName(legacyKey));
+					} else {
+						writer.writeVarInt(usize, 0);
+					}
 					conn.send(.fast, id, writer.data.items);
 				},
 				.signatureResponse => {
