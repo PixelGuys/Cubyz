@@ -153,12 +153,14 @@ pub const SeedPhrase = struct {
 		defer result.deinit(main.stackAllocator);
 		defer @memset(result.items, 0);
 
-		for (text) |char| {
+		const trimmed = std.mem.trim(u8, text, &std.ascii.whitespace);
+
+		for (trimmed) |char| {
 			if (std.ascii.isAlphabetic(char)) {
 				result.appendAssumeCapacity(std.ascii.toLower(char));
 			} else if (std.ascii.isWhitespace(char)) {
-				if (result.items.len != 0 and result.items[result.items.len - 1] != ' ') {
-					result.appendAssumeCapacity(char);
+				if (result.items[result.items.len - 1] != ' ') {
+					result.appendAssumeCapacity(' ');
 				}
 			} else {
 				failureText.print("Seed phrase contains invalid character '{c}', only ASCII letters and whitespaces are allowed\n", .{char});
@@ -190,7 +192,7 @@ pub const SeedPhrase = struct {
 		}
 
 		if (wordCount != 15) {
-			failureText.print("The seed phrase contains an invalid number of words. Should be 16.\n", .{});
+			failureText.print("The seed phrase contains an invalid number of words. Should be 15.\n", .{});
 			failedWordlist = true;
 		}
 
