@@ -257,7 +257,7 @@ test "GroupAddRemovePermission" {
 	try std.testing.expectEqual(true, group.permissions.removePermission(.white, "/command/test"));
 }
 
-test "inValidGroupPermission" {
+test "invalidGroupPermission" {
 	init(main.heap.testingAllocator);
 	defer deinit();
 
