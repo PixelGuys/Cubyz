@@ -1,0 +1,26 @@
+.{
+	.minRadius = 32,
+	.maxRadius = 48,
+	.chance = 0,
+	.minHeight = 30,
+	.maxHeight = 40,
+
+	.roughness = 10,
+	.mountains = 20,
+	.validPlayerSpawn = false,
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.03,
+			.block = "cubyz:sulfur_block",
+			.size = 2,
+			.size_variance = 2,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/sulfuric_crater/base",
+			.chance = 15,
+		},
+	},
+}
