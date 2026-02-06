@@ -265,7 +265,7 @@ test "invalidGroupPermission" {
 	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
 }
 
-test "inValidGroupPermissionEmptyGroups" {
+test "invalidGroupPermissionEmptyGroups" {
 	init(main.heap.testingAllocator);
 	defer deinit();
 
