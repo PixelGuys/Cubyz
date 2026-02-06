@@ -211,6 +211,12 @@ pub fn build(b: *std.Build) !void {
 	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
 
+	const mbedtls_dependency = b.dependency("mbedtls", .{
+		.target = target,
+		.optimize = optimize,
+	});
+	exe.root_module.linkLibrary(mbedtls_dependency.artifact("mbedtls"));
+
 	if (isRelease and target.result.os.tag == .windows) {
 		exe.subsystem = .Windows;
 	}

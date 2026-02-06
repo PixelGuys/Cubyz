@@ -51,5 +51,9 @@
 			.hash = "zig-0.0.0-Fp4XJAXmXQ1r23tqehV14LpPFILnnXSyg7bPitqs8mrf",
 			.lazy = true,
 		},
+		.mbedtls = .{ // TODO: Move to Cubyz-libs and use a more recent version
+			.url = "git+https://github.com/allyourcodebase/mbedtls.git#3aa71a19acc173ae57b6a1114d62f2fdfd22960c",
+			.hash = "mbedtls-3.6.4-E4NUR2wWAAAUSvVbho9aaU31-e4D8glu9l1VfxKezBkV",
+		},
 	},
 }
