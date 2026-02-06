@@ -12,6 +12,7 @@ pub const authentication = @import("network/authentication.zig");
 pub const protocols = @import("network/protocols.zig");
 
 const c = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("mbedtls/debug.h");
 	@cInclude("mbedtls/ssl.h");
 	@cInclude("mbedtls/entropy.h");
