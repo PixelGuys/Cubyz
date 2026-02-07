@@ -1101,6 +1101,24 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return block;
 	}
 
+	pub fn getBlockAndBlockEntityDataToDisk(self: *ServerWorld, x: i32, y: i32, z: i32, blockEntityDataWriter: *utils.BinaryWriter) ?Block {
+		const chunkPos = Vec3i{x, y, z} & ~@as(Vec3i, @splat(main.chunk.chunkMask));
+		const otherChunk = self.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
+		defer otherChunk.decreaseRefCount();
+		const ch = otherChunk.getChunk() orelse return null;
+		ch.mutex.lock();
+		defer ch.mutex.unlock();
+		const block = ch.getBlock(x - ch.super.pos.wx, y - ch.super.pos.wy, z - ch.super.pos.wz);
+		if (block.blockEntity()) |blockEntity| {
+			ch.super.blockPosToEntityDataMapMutex.lock();
+			defer ch.super.blockPosToEntityDataMapMutex.unlock();
+			if (ch.super.blockPosToEntityDataMap.get(.fromWorldCoords(x, y, z))) |blockEntityIndex| {
+				blockEntity.onStoreServerToDisk(blockEntityIndex, blockEntityDataWriter);
+			}
+		}
+		return block;
+	}
+
 	/// Returns the actual block on failure
 	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
 		main.sync.threadContext.assertCorrectContext(.server);

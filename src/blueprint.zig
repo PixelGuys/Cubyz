@@ -24,7 +24,7 @@ const BinaryReader = main.utils.BinaryReader;
 const AliasTable = main.utils.AliasTable;
 const ListUnmanaged = main.ListUnmanaged;
 
-pub const blueprintVersion = 0;
+pub const blueprintVersion = 1;
 var voidType: ?u16 = null;
 
 pub const BlueprintCompression = enum(u16) {
@@ -33,19 +33,39 @@ pub const BlueprintCompression = enum(u16) {
 
 pub const Blueprint = struct {
 	blocks: Array3D(Block),
+	blockEntityData: Array3D([]u8),
 
 	pub fn init(allocator: NeverFailingAllocator) Blueprint {
-		return .{.blocks = .init(allocator, 0, 0, 0)};
+		return .{.blocks = .init(allocator, 0, 0, 0), .blockEntityData = .init(allocator, 0, 0, 0)};
 	}
 	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
+		for(self.blockEntityData.mem, 0..) |data, i| {
+			if(self.blocks.mem[i].blockEntity()) |_| {
+				allocator.free(data);
+			}
+		}
+		self.blockEntityData.deinit(allocator);
 		self.blocks.deinit(allocator);
 	}
 	pub fn clone(self: Blueprint, allocator: NeverFailingAllocator) Blueprint {
-		return .{.blocks = self.blocks.clone(allocator)};
+		var blockEntityData: Array3D([]u8) = .init(allocator, self.blockEntityData.width, self.blockEntityData.height, self.blockEntityData.depth);
+		for (0..self.blocks.width) |x| {
+			for (0..self.blocks.depth) |y| {
+				for (0..self.blocks.height) |z| {
+					const data = self.blockEntityData.get(x, y, z);
+					blockEntityData.set(x, y, z, allocator.dupe(u8, data));
+				}
+			}
+		}
+		return .{.blocks = self.blocks.clone(allocator), .blockEntityData = blockEntityData};
 	}
 	pub fn rotateZ(self: Blueprint, allocator: NeverFailingAllocator, angle: Degrees) Blueprint {
 		var new = Blueprint{
 			.blocks = switch (angle) {
+				.@"0", .@"180" => .init(allocator, self.blocks.width, self.blocks.depth, self.blocks.height),
+				.@"90", .@"270" => .init(allocator, self.blocks.depth, self.blocks.width, self.blocks.height),
+			},
+			.blockEntityData = switch (angle) {
 				.@"0", .@"180" => .init(allocator, self.blocks.width, self.blocks.depth, self.blocks.height),
 				.@"90", .@"270" => .init(allocator, self.blocks.depth, self.blocks.width, self.blocks.height),
 			},
@@ -63,6 +83,9 @@ pub const Blueprint = struct {
 				for (0..self.blocks.height) |z| {
 					const block = self.blocks.get(xOld, yOld, z);
 					new.blocks.set(xNew, yNew, z, block.rotateZ(angle));
+
+					const blockEntityData = self.blockEntityData.get(xOld, yOld, z);
+					new.blockEntityData.set(xNew, yNew, z, allocator.dupe(u8, blockEntityData));
 				}
 			}
 		}
@@ -87,7 +110,7 @@ pub const Blueprint = struct {
 		const sizeY: u32 = @intCast(endY - startY + 1);
 		const sizeZ: u32 = @intCast(endZ - startZ + 1);
 
-		const self = Blueprint{.blocks = .init(allocator, sizeX, sizeY, sizeZ)};
+		const self = Blueprint{.blocks = .init(allocator, sizeX, sizeY, sizeZ), .blockEntityData = .init(allocator, sizeX, sizeY, sizeZ)};
 
 		for (0..sizeX) |x| {
 			const worldX = startX +% @as(i32, @intCast(x));
@@ -98,9 +121,12 @@ pub const Blueprint = struct {
 				for (0..sizeZ) |z| {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
-					const maybeBlock = main.server.world.?.getBlock(worldX, worldY, worldZ);
+					var blockEntityDataWriter = BinaryWriter.init(allocator);
+					defer blockEntityDataWriter.deinit();
+					const maybeBlock = main.server.world.?.getBlockAndBlockEntityDataToDisk(worldX, worldY, worldZ, &blockEntityDataWriter);
 					if (maybeBlock) |block| {
 						self.blocks.set(x, y, z, block);
+						self.blockEntityData.set(x, y, z, allocator.dupe(u8, blockEntityDataWriter.data.items));
 					} else {
 						return .{.failure = .{.pos = .{worldX, worldY, worldZ}, .message = "Chunk containing block not loaded."}};
 					}
@@ -133,12 +159,14 @@ pub const Blueprint = struct {
 
 					if (block.typ == voidType) continue;
 
+					var data = BinaryReader.init(self.blockEntityData.get(indexX, indexY, indexZ));
+
 					const chunkX = indexX + pos[0];
 					const chunkY = indexY + pos[1];
 					const chunkZ = indexZ + pos[2];
 					switch (mode) {
-						.all => chunk.updateBlockInGeneration(chunkX, chunkY, chunkZ, block),
-						.degradable => chunk.updateBlockIfDegradable(chunkX, chunkY, chunkZ, block),
+						.all => chunk.updateBlockInGenerationWithBlockEntityData(chunkX, chunkY, chunkZ, block, &data),
+						.degradable => chunk.updateBlockIfDegradableWithBlockEntityData(chunkX, chunkY, chunkZ, block, &data),
 					}
 				}
 			}
@@ -164,8 +192,31 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					if (block.typ != voidType or flags.preserveVoid)
+					if (block.typ != voidType or flags.preserveVoid) {
 						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
+						if(block.blockEntity()) |blockEntity| {
+							const baseChunk = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
+								.wx = worldX & ~@as(i32, main.chunk.chunkMask),
+								.wy = worldY & ~@as(i32, main.chunk.chunkMask),
+								.wz = worldZ & ~@as(i32, main.chunk.chunkMask),
+								.voxelSize = 1
+							});
+							defer baseChunk.decreaseRefCount();
+
+							const blockEntityData = self.blockEntityData.get(x, y, z);
+							var data = BinaryReader.init(blockEntityData);
+							blockEntity.updateServerData(.{worldX, worldY, worldZ}, &baseChunk.super, .{.update = &data}) catch |err| {
+								std.log.err("Got error {s} while trying to create entity data in position {} for block {s}", .{@errorName(err), .{worldX, worldY, worldZ}, block.id()});
+							};
+
+							const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+							defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+							for (userList) |user| {
+								main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = worldX, .y = worldY, .z = worldZ, .newBlock = block, .blockEntityData = blockEntityData}});
+							}
+						}
+					}
 				}
 			}
 		}
@@ -185,7 +236,10 @@ pub const Blueprint = struct {
 		const depth = try compressedReader.readInt(u16);
 		const height = try compressedReader.readInt(u16);
 
-		const self = Blueprint{.blocks = .init(allocator, width, depth, height)};
+		const self = Blueprint{
+			.blocks = .init(allocator, width, depth, height),
+			.blockEntityData = .init(allocator, width, depth, height),
+		};
 
 		const decompressedData = try self.decompressBuffer(compressedReader.remaining, blockPaletteSizeBytes, compression);
 		defer main.stackAllocator.free(decompressedData);
@@ -204,6 +258,14 @@ pub const Blueprint = struct {
 			const gameBlockId = blueprintIdToGameIdMap[blueprintBlock.typ];
 
 			block.* = .{.typ = gameBlockId, .data = blueprintBlock.data};
+		}
+		if(compressedReader.remaining.len != 0) {
+			for (self.blockEntityData.mem) |*blockEntityData| {
+				const len = try compressedReader.readVarInt(usize);
+				const data = try compressedReader.readSlice(len);
+				
+				blockEntityData.* = allocator.dupe(u8, data);
+			}
 		}
 		return self;
 	}
@@ -225,7 +287,15 @@ pub const Blueprint = struct {
 		const compressed = self.compressOutputBuffer(main.stackAllocator, uncompressedWriter.data.items);
 		defer main.stackAllocator.free(compressed.data);
 
-		var outputWriter = BinaryWriter.initCapacity(allocator, @sizeOf(i16) + @sizeOf(BlueprintCompression) + @sizeOf(u32) + @sizeOf(u16)*4 + compressed.data.len);
+		var blockEntityData = BinaryWriter.init(main.stackAllocator);
+		defer blockEntityData.deinit();
+
+		for (self.blockEntityData.mem) |data| {
+			blockEntityData.writeVarInt(usize, data.len);
+			blockEntityData.writeSlice(data);
+		}
+
+		var outputWriter = BinaryWriter.initCapacity(allocator, @sizeOf(i16) + @sizeOf(BlueprintCompression) + @sizeOf(u32) + @sizeOf(u16)*4 + compressed.data.len + blockEntityData.data.items.len);
 
 		outputWriter.writeInt(u16, blueprintVersion);
 		outputWriter.writeEnum(BlueprintCompression, compressed.mode);
@@ -236,6 +306,7 @@ pub const Blueprint = struct {
 		outputWriter.writeInt(u16, @intCast(self.blocks.height));
 
 		outputWriter.writeSlice(compressed.data);
+		outputWriter.writeSlice(blockEntityData.data.items);
 
 		return outputWriter.data.toOwnedSlice();
 	}

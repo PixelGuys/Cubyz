@@ -406,6 +406,12 @@ pub fn ListUnmanaged(comptime T: type) type {
 				self.items.len -= len - new_items.len;
 			}
 		}
+
+		pub fn clone(self: @This(), allocator: NeverFailingAllocator) @This() {
+            var cloned: @This() = .initCapacity(allocator, self.capacity);
+            cloned.appendSliceAssumeCapacity(self.items);
+            return cloned;
+		}
 	};
 }
 
