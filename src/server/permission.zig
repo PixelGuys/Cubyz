@@ -133,8 +133,22 @@ var groups: std.StringHashMapUnmanaged(PermissionGroup) = .{};
 var arena: NeverFailingArenaAllocator = undefined;
 var currentId: u32 = 0;
 
-pub fn init(allocator: NeverFailingAllocator) void {
+pub fn init(allocator: NeverFailingAllocator, _zon: ?ZonElement) void {
 	arena = .init(allocator);
+	const zon = _zon orelse return;
+	currentId = zon.get(u32, "currentId", 0);
+
+	if (zon.getChild("groups") != .object) return;
+	var it = zon.getChild("groups").object.iterator();
+	while (it.next()) |entry| {
+		groups.put(arena.allocator().allocator, arena.allocator().dupe(u8, entry.key_ptr.*), .{
+			.id = entry.value_ptr.get(u32, "id", 0),
+			.permissions = .init(arena.allocator()),
+		}) catch unreachable;
+
+		const group = groups.getPtr(entry.key_ptr.*).?;
+		group.permissions.fromZon(entry.value_ptr.*);
+	}
 }
 
 pub fn deinit() void {
@@ -156,22 +170,6 @@ pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
 	}
 	zon.put("groups", groupsZon);
 	return zon;
-}
-
-pub fn groupsFromZon(zon: ZonElement) void {
-	if (zon != .object) return;
-	currentId = zon.get(u32, "currentId", 0);
-
-	var it = zon.getChild("groups").object.iterator();
-	while (it.next()) |entry| {
-		groups.put(arena.allocator().allocator, arena.allocator().dupe(u8, entry.key_ptr.*), .{
-			.id = entry.value_ptr.get(u32, "id", 0),
-			.permissions = .init(arena.allocator()),
-		}) catch unreachable;
-
-		const group = groups.getPtr(entry.key_ptr.*).?;
-		group.permissions.fromZon(entry.value_ptr.*);
-	}
 }
 
 pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
@@ -202,10 +200,10 @@ pub fn deleteGroup(name: []const u8) bool {
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
 test "GroupWhitePermission" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
-	try createGroup("test", main.heap.testingAllocator);
+	try createGroup("test");
 	const group = groups.getPtr("test").?;
 	group.permissions.addPermission(.white, "/command/test");
 
@@ -213,10 +211,10 @@ test "GroupWhitePermission" {
 }
 
 test "GroupBlacklist" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
-	try createGroup("test", main.heap.testingAllocator);
+	try createGroup("test");
 	const group = groups.getPtr("test").?;
 	group.permissions.addPermission(.white, "/command");
 	group.permissions.addPermission(.black, "/command/test");
@@ -226,10 +224,10 @@ test "GroupBlacklist" {
 }
 
 test "GroupDeepPermission" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
-	try createGroup("test", main.heap.testingAllocator);
+	try createGroup("test");
 	const group = groups.getPtr("test").?;
 	group.permissions.addPermission(.white, "/server/command/testing/test");
 
@@ -241,10 +239,10 @@ test "GroupDeepPermission" {
 }
 
 test "GroupRootPermission" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
-	try createGroup("test", main.heap.testingAllocator);
+	try createGroup("test");
 	const group = groups.getPtr("test").?;
 	group.permissions.addPermission(.white, "/");
 
@@ -252,10 +250,10 @@ test "GroupRootPermission" {
 }
 
 test "GroupAddRemovePermission" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
-	try createGroup("test", main.heap.testingAllocator);
+	try createGroup("test");
 	const group = groups.getPtr("test").?;
 	group.permissions.addPermission(.white, "/command/test");
 
@@ -263,33 +261,33 @@ test "GroupAddRemovePermission" {
 }
 
 test "invalidGroupPermission" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
-	try createGroup("test", main.heap.testingAllocator);
+	try createGroup("test");
 	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
 }
 
 test "invalidGroupPermissionEmptyGroups" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
 	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
 }
 
 test "invalidGroupCreation" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
-	try createGroup("test", main.heap.testingAllocator);
-	try std.testing.expectError(error.AlreadyExists, createGroup("test", main.heap.testingAllocator));
+	try createGroup("test");
+	try std.testing.expectError(error.AlreadyExists, createGroup("test"));
 }
 
 test "listToFromZon" {
-	init(main.heap.testingAllocator);
+	init(main.heap.testingAllocator, null);
 	defer deinit();
 
-	try createGroup("test", main.heap.testingAllocator);
+	try createGroup("test");
 	var group = groups.getPtr("test").?;
 	group.permissions.addPermission(.white, "/command/test");
 	group.permissions.addPermission(.white, "/command/spawn");
@@ -300,7 +298,7 @@ test "listToFromZon" {
 	var testPermissions: Permissions = .init(main.heap.testingAllocator);
 	defer testPermissions.deinit();
 
-	testPermissions.whitelist.fromZon(testPermissions.arenaAllocator.allocator(), zon);
+	testPermissions.whitelist.fromZon(testPermissions.arena.allocator(), zon);
 
 	try std.testing.expectEqual(2, testPermissions.whitelist.map.size);
 

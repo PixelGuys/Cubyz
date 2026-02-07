@@ -600,12 +600,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn loadPermissionGroups(self: *ServerWorld) !void {
-		permission.init(main.globalAllocator);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups.zig.zon", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		const groups = files.cubyzDir().readToZon(main.stackAllocator, path) catch return;
 		defer groups.deinit(main.stackAllocator);
-		permission.groupsFromZon(groups);
+		permission.init(main.globalAllocator, groups);
 	}
 
 	pub fn savePermissionGroups(self: *ServerWorld) !void {
