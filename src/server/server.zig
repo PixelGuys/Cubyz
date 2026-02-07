@@ -142,7 +142,7 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
-		self.permissions = .{.arenaAllocator = .init(main.globalAllocator)};
+		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -411,7 +411,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
-	permission.init(main.globalAllocator);
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
@@ -466,7 +465,6 @@ fn deinit() void {
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
 
-	permission.deinit();
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
 }

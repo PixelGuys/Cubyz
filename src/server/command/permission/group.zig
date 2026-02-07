@@ -36,7 +36,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		}
 		switch (op) {
 			.create => {
-				permission.createGroup(arg, main.globalAllocator) catch {
+				permission.createGroup(arg) catch {
 					source.sendMessage("#ff0000Group with name {s} already exists.", .{arg});
 				};
 			},

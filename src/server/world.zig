@@ -515,6 +515,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
+		permission.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -599,11 +600,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn loadPermissionGroups(self: *ServerWorld) !void {
+		permission.init(main.globalAllocator);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups.zig.zon", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		const groups = files.cubyzDir().readToZon(main.stackAllocator, path) catch return;
 		defer groups.deinit(main.stackAllocator);
-		permission.groupsFromZon(main.globalAllocator, groups);
+		permission.groupsFromZon(groups);
 	}
 
 	pub fn savePermissionGroups(self: *ServerWorld) !void {

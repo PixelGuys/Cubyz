@@ -45,19 +45,19 @@ pub const Permissions = struct { // MARK: Permissions
 		black,
 	};
 
-	arenaAllocator: NeverFailingArenaAllocator,
+	arena: NeverFailingArenaAllocator,
 	whitelist: PermissionMap = .{},
 	blacklist: PermissionMap = .{},
 
 	pub fn init(allocator: NeverFailingAllocator) Permissions {
 		return .{
-			.arenaAllocator = .init(allocator),
+			.arena = .init(allocator),
 		};
 	}
 
 	pub fn deinit(self: *Permissions) void {
 		sync.threadContext.assertCorrectContext(.server);
-		self.arenaAllocator.deinit();
+		self.arena.deinit();
 	}
 
 	const PermissionResult = enum {
@@ -74,8 +74,8 @@ pub const Permissions = struct { // MARK: Permissions
 	}
 
 	pub fn fromZon(self: *Permissions, zon: ZonElement) void {
-		self.list(.white).fromZon(self.arenaAllocator.allocator(), zon.getChild("permissionWhitelist"));
-		self.list(.black).fromZon(self.arenaAllocator.allocator(), zon.getChild("permissionBlacklist"));
+		self.list(.white).fromZon(self.arena.allocator(), zon.getChild("permissionWhitelist"));
+		self.list(.black).fromZon(self.arena.allocator(), zon.getChild("permissionBlacklist"));
 	}
 
 	pub fn toZon(self: *Permissions, allocator: NeverFailingAllocator, zon: *ZonElement) void {
@@ -85,7 +85,7 @@ pub const Permissions = struct { // MARK: Permissions
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
 		sync.threadContext.assertCorrectContext(.server);
-		self.list(listType).put(self.arenaAllocator.allocator(), self.arenaAllocator.allocator().dupe(u8, permissionPath));
+		self.list(listType).put(self.arena.allocator(), self.arena.allocator().dupe(u8, permissionPath));
 	}
 
 	pub fn removePermission(self: *Permissions, listType: ListType, permissionPath: []const u8) bool {
@@ -129,20 +129,17 @@ pub const PermissionGroup = struct { // MARK: PermissionGroup
 	}
 };
 
-var groups: std.StringHashMap(PermissionGroup) = undefined;
+var groups: std.StringHashMapUnmanaged(PermissionGroup) = .{};
+var arena: NeverFailingArenaAllocator = undefined;
 var currentId: u32 = 0;
 
 pub fn init(allocator: NeverFailingAllocator) void {
-	groups = .init(allocator.allocator);
+	arena = .init(allocator);
 }
 
 pub fn deinit() void {
-	var it = groups.iterator();
-	while (it.next()) |entry| {
-		groups.allocator.free(entry.key_ptr.*);
-		entry.value_ptr.deinit();
-	}
-	groups.deinit();
+	arena.deinit();
+	groups = .{};
 }
 
 pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
@@ -161,15 +158,15 @@ pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
 	return zon;
 }
 
-pub fn groupsFromZon(allocator: NeverFailingAllocator, zon: ZonElement) void {
+pub fn groupsFromZon(zon: ZonElement) void {
 	if (zon != .object) return;
 	currentId = zon.get(u32, "currentId", 0);
 
 	var it = zon.getChild("groups").object.iterator();
 	while (it.next()) |entry| {
-		groups.put(allocator.dupe(u8, entry.key_ptr.*), .{
+		groups.put(arena.allocator().allocator, arena.allocator().dupe(u8, entry.key_ptr.*), .{
 			.id = entry.value_ptr.get(u32, "id", 0),
-			.permissions = .init(allocator),
+			.permissions = .init(arena.allocator()),
 		}) catch unreachable;
 
 		const group = groups.getPtr(entry.key_ptr.*).?;
@@ -177,10 +174,10 @@ pub fn groupsFromZon(allocator: NeverFailingAllocator, zon: ZonElement) void {
 	}
 }
 
-pub fn createGroup(name: []const u8, allocator: NeverFailingAllocator) error{AlreadyExists}!void {
+pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
 	sync.threadContext.assertCorrectContext(.server);
 	if (groups.contains(name)) return error.AlreadyExists;
-	groups.put(allocator.dupe(u8, name), .init(allocator)) catch unreachable;
+	groups.put(arena.allocator().allocator, arena.allocator().dupe(u8, name), .init(arena.allocator())) catch unreachable;
 }
 
 pub fn getGroup(name: []const u8) error{GroupNotFound}!*PermissionGroup {
@@ -197,14 +194,7 @@ pub fn deleteGroup(name: []const u8) bool {
 		main.globalAllocator.free(slice);
 	}
 	server.freeUserListAndDecreaseRefCount(main.globalAllocator, users);
-	if (groups.getEntry(name)) |entry| {
-		entry.value_ptr.deinit();
-		const slice = entry.key_ptr.*;
-		_ = groups.remove(name);
-		groups.allocator.free(slice);
-		return true;
-	}
-	return false;
+	return groups.remove(name);
 }
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
