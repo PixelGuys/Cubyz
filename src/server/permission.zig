@@ -49,6 +49,12 @@ pub const Permissions = struct { // MARK: Permissions
 	whitelist: PermissionMap = .{},
 	blacklist: PermissionMap = .{},
 
+	pub fn init(allocator: NeverFailingAllocator) Permissions {
+		return .{
+			.arenaAllocator = .init(allocator),
+		};
+	}
+
 	pub fn deinit(self: *Permissions) void {
 		self.arenaAllocator.deinit();
 	}
@@ -110,7 +116,7 @@ pub const PermissionGroup = struct { // MARK: PermissionGroup
 	pub fn init(allocator: NeverFailingAllocator) PermissionGroup {
 		currentId += 1;
 		return .{
-			.permissions = .{.arenaAllocator = .init(allocator)},
+			.permissions = .init(allocator),
 			.id = currentId,
 		};
 	}
@@ -164,7 +170,7 @@ pub fn groupsFromZon(allocator: NeverFailingAllocator, zon: ZonElement) void {
 	while (it.next()) |entry| {
 		groups.put(allocator.dupe(u8, entry.key_ptr.*), .{
 			.id = entry.value_ptr.get(u32, "id", 0),
-			.permissions = .{.arenaAllocator = .init(allocator)},
+			.permissions = .init(allocator),
 		}) catch unreachable;
 
 		const group = groups.getPtr(entry.key_ptr.*).?;
@@ -302,7 +308,7 @@ test "listToFromZon" {
 	const zon = group.permissions.whitelist.toZon(main.heap.testingAllocator);
 	defer zon.deinit(main.heap.testingAllocator);
 
-	var testPermissions: Permissions = .{.arenaAllocator = .init(main.heap.testingAllocator)};
+	var testPermissions: Permissions = .init(main.heap.testingAllocator);
 	defer testPermissions.deinit();
 
 	testPermissions.whitelist.fromZon(testPermissions.arenaAllocator.allocator(), zon);
