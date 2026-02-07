@@ -1119,6 +1119,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return block;
 	}
 
+	pub fn updateBlockEntityData(self: *ServerWorld, x: i32, y: i32, z: i32, block: Block, blockEntityData: *utils.BinaryReader) void {
+		const chunkPos = Vec3i{x, y, z} & ~@as(Vec3i, @splat(main.chunk.chunkMask));
+		const otherChunk = self.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return;
+		defer otherChunk.decreaseRefCount();
+		const ch = otherChunk.getChunk() orelse return;
+		ch.mutex.lock();
+		defer ch.mutex.unlock();
+		if (block.blockEntity()) |_| {
+			ch.updateBlockEntityData(x - ch.super.pos.wx, y - ch.super.pos.wy, z - ch.super.pos.wz, block, blockEntityData);
+		}
+	}
+
 	/// Returns the actual block on failure
 	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
 		main.sync.threadContext.assertCorrectContext(.server);

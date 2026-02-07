@@ -583,25 +583,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		}
 	}
 
-	pub fn updateBlockIfDegradableWithBlockEntityData(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block, data: *main.utils.BinaryReader) void {
-		main.utils.assertLocked(&self.mutex);
-		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
-		const oldBlock = self.super.data.getValue(pos.toIndex());
-		if (oldBlock.typ == 0 or oldBlock.degradable()) {
-			self.super.data.setValue(pos.toIndex(), newBlock);
-			if (oldBlock != newBlock) {
-				const globalPos = self.super.localToGlobalPosition(pos);
-				if (oldBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(globalPos, &self.super, .remove) catch |err| {
-					std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), globalPos, newBlock.id()});
-				};
-
-				if(newBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(globalPos, &self.super, .{.update = data}) catch |err| {
-					std.log.err("Got error {s} while trying to create entity data in position {} for block {s}", .{@errorName(err), globalPos, newBlock.id()});
-				};
-			}
-		}
-	}
-
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlockInGeneration(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
@@ -617,17 +598,12 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		}
 	}
 
-	pub fn updateBlockInGenerationWithBlockEntityData(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block, data: *main.utils.BinaryReader) void {
+	pub fn updateBlockEntityData(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block, data: *main.utils.BinaryReader) void {
 		main.utils.assertLocked(&self.mutex);
 		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
 		const oldBlock = self.super.data.getValue(pos.toIndex());
-		self.super.data.setValue(pos.toIndex(), newBlock);
-		if (oldBlock != newBlock) {
+		if (oldBlock == newBlock) {
 			const globalPos = self.super.localToGlobalPosition(pos);
-			if (oldBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(globalPos, &self.super, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), globalPos, newBlock.id()});
-			};
-
 			if(newBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(globalPos, &self.super, .{.update = data}) catch |err| {
 				std.log.err("Got error {s} while trying to create entity data in position {} for block {s}", .{@errorName(err), globalPos, newBlock.id()});
 			};

@@ -24,6 +24,8 @@ const BinaryReader = main.utils.BinaryReader;
 const AliasTable = main.utils.AliasTable;
 const ListUnmanaged = main.ListUnmanaged;
 
+const BlockPos = main.chunk.BlockPos;
+
 pub const blueprintVersion = 1;
 var voidType: ?u16 = null;
 
@@ -33,31 +35,27 @@ pub const BlueprintCompression = enum(u16) {
 
 pub const Blueprint = struct {
 	blocks: Array3D(Block),
-	blockEntityData: Array3D([]u8),
+	blockEntityPos: main.ListUnmanaged(struct{pos: Vec3i, len: usize}),
+	blockEntityData: main.ListUnmanaged(u8),
 
 	pub fn init(allocator: NeverFailingAllocator) Blueprint {
-		return .{.blocks = .init(allocator, 0, 0, 0), .blockEntityData = .init(allocator, 0, 0, 0)};
+		return .{
+			.blocks = .init(allocator, 0, 0, 0),
+			.blockEntityPos = .{},
+			.blockEntityData = .{}
+		};
 	}
 	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
-		for(self.blockEntityData.mem, 0..) |data, i| {
-			if(self.blocks.mem[i].blockEntity()) |_| {
-				allocator.free(data);
-			}
-		}
-		self.blockEntityData.deinit(allocator);
 		self.blocks.deinit(allocator);
+		self.blockEntityPos.deinit(allocator);
+		self.blockEntityData.deinit(allocator);
 	}
 	pub fn clone(self: Blueprint, allocator: NeverFailingAllocator) Blueprint {
-		var blockEntityData: Array3D([]u8) = .init(allocator, self.blockEntityData.width, self.blockEntityData.height, self.blockEntityData.depth);
-		for (0..self.blocks.width) |x| {
-			for (0..self.blocks.depth) |y| {
-				for (0..self.blocks.height) |z| {
-					const data = self.blockEntityData.get(x, y, z);
-					blockEntityData.set(x, y, z, allocator.dupe(u8, data));
-				}
-			}
-		}
-		return .{.blocks = self.blocks.clone(allocator), .blockEntityData = blockEntityData};
+		return .{
+			.blocks = self.blocks.clone(allocator),
+			.blockEntityPos = self.blockEntityPos.clone(allocator),
+			.blockEntityData = self.blockEntityData.clone(allocator),
+		};
 	}
 	pub fn rotateZ(self: Blueprint, allocator: NeverFailingAllocator, angle: Degrees) Blueprint {
 		var new = Blueprint{
@@ -65,10 +63,8 @@ pub const Blueprint = struct {
 				.@"0", .@"180" => .init(allocator, self.blocks.width, self.blocks.depth, self.blocks.height),
 				.@"90", .@"270" => .init(allocator, self.blocks.depth, self.blocks.width, self.blocks.height),
 			},
-			.blockEntityData = switch (angle) {
-				.@"0", .@"180" => .init(allocator, self.blocks.width, self.blocks.depth, self.blocks.height),
-				.@"90", .@"270" => .init(allocator, self.blocks.depth, self.blocks.width, self.blocks.height),
-			},
+			.blockEntityPos = .initCapacity(allocator, self.blockEntityPos.items.len),
+			.blockEntityData = self.blockEntityData.clone(allocator),
 		};
 
 		for (0..self.blocks.width) |xOld| {
@@ -83,11 +79,17 @@ pub const Blueprint = struct {
 				for (0..self.blocks.height) |z| {
 					const block = self.blocks.get(xOld, yOld, z);
 					new.blocks.set(xNew, yNew, z, block.rotateZ(angle));
-
-					const blockEntityData = self.blockEntityData.get(xOld, yOld, z);
-					new.blockEntityData.set(xNew, yNew, z, allocator.dupe(u8, blockEntityData));
 				}
 			}
+		}
+		for (self.blockEntityPos.items) |pos| {
+			const xNew, const yNew = switch (angle) {
+				.@"0" => .{pos.pos[0], pos.pos[1]},
+				.@"90" => .{@as(i32, @intCast(new.blocks.width)) - pos.pos[1] - 1, pos.pos[0]},
+				.@"180" => .{@as(i32, @intCast(new.blocks.width)) - pos.pos[0] - 1, @as(i32, @intCast(new.blocks.depth)) - pos.pos[1] - 1},
+				.@"270" => .{pos.pos[1], @as(i32, @intCast(new.blocks.depth)) - pos.pos[0] - 1},
+			};
+			new.blockEntityPos.appendAssumeCapacity(.{.pos = .{xNew, yNew, pos.pos[2]}, .len = pos.len});
 		}
 		return new;
 	}
@@ -110,7 +112,7 @@ pub const Blueprint = struct {
 		const sizeY: u32 = @intCast(endY - startY + 1);
 		const sizeZ: u32 = @intCast(endZ - startZ + 1);
 
-		const self = Blueprint{.blocks = .init(allocator, sizeX, sizeY, sizeZ), .blockEntityData = .init(allocator, sizeX, sizeY, sizeZ)};
+		var self = Blueprint{.blocks = .init(allocator, sizeX, sizeY, sizeZ), .blockEntityPos = .{}, .blockEntityData = .{}};
 
 		for (0..sizeX) |x| {
 			const worldX = startX +% @as(i32, @intCast(x));
@@ -126,7 +128,10 @@ pub const Blueprint = struct {
 					const maybeBlock = main.server.world.?.getBlockAndBlockEntityDataToDisk(worldX, worldY, worldZ, &blockEntityDataWriter);
 					if (maybeBlock) |block| {
 						self.blocks.set(x, y, z, block);
-						self.blockEntityData.set(x, y, z, allocator.dupe(u8, blockEntityDataWriter.data.items));
+						if(block.blockEntity()) |_| {
+							self.blockEntityPos.append(allocator, .{.pos = .{@intCast(x), @intCast(y), @intCast(z)}, .len = blockEntityDataWriter.data.items.len});
+							self.blockEntityData.appendSlice(allocator, blockEntityDataWriter.data.items);
+						}
 					} else {
 						return .{.failure = .{.pos = .{worldX, worldY, worldZ}, .message = "Chunk containing block not loaded."}};
 					}
@@ -159,17 +164,29 @@ pub const Blueprint = struct {
 
 					if (block.typ == voidType) continue;
 
-					var data = BinaryReader.init(self.blockEntityData.get(indexX, indexY, indexZ));
-
 					const chunkX = indexX + pos[0];
 					const chunkY = indexY + pos[1];
 					const chunkZ = indexZ + pos[2];
 					switch (mode) {
-						.all => chunk.updateBlockInGenerationWithBlockEntityData(chunkX, chunkY, chunkZ, block, &data),
-						.degradable => chunk.updateBlockIfDegradableWithBlockEntityData(chunkX, chunkY, chunkZ, block, &data),
+						.all => chunk.updateBlockInGeneration(chunkX, chunkY, chunkZ, block),
+						.degradable => chunk.updateBlockIfDegradable(chunkX, chunkY, chunkZ, block),
 					}
 				}
 			}
+		}
+
+		var blockEntityData: []const u8 = self.blockEntityData.items;
+		for(self.blockEntityPos.items) |blockEntityPos| {
+			const localPos = blockEntityPos.pos;
+			const len = blockEntityPos.len;
+			const block = self.blocks.get(@intCast(localPos[0]), @intCast(localPos[1]), @intCast(localPos[2]));
+			const chunkPos = localPos + pos;
+
+			const data = blockEntityData[0..len];
+			blockEntityData = blockEntityData[len..];
+
+			var reader = BinaryReader.init(data);
+			chunk.updateBlockEntityData(chunkPos[0], chunkPos[1], chunkPos[2], block, &reader);
 		}
 	}
 
@@ -194,33 +211,53 @@ pub const Blueprint = struct {
 					const block = self.blocks.get(x, y, z);
 					if (block.typ != voidType or flags.preserveVoid) {
 						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
-						if(block.blockEntity()) |blockEntity| {
-							const baseChunk = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
-								.wx = worldX & ~@as(i32, main.chunk.chunkMask),
-								.wy = worldY & ~@as(i32, main.chunk.chunkMask),
-								.wz = worldZ & ~@as(i32, main.chunk.chunkMask),
-								.voxelSize = 1
-							});
-							defer baseChunk.decreaseRefCount();
-
-							const blockEntityData = self.blockEntityData.get(x, y, z);
-							var data = BinaryReader.init(blockEntityData);
-							blockEntity.updateServerData(.{worldX, worldY, worldZ}, &baseChunk.super, .{.update = &data}) catch |err| {
-								std.log.err("Got error {s} while trying to create entity data in position {} for block {s}", .{@errorName(err), .{worldX, worldY, worldZ}, block.id()});
-							};
-
-							const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-							defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-
-							for (userList) |user| {
-								main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = worldX, .y = worldY, .z = worldZ, .newBlock = block, .blockEntityData = blockEntityData}});
-							}
-						}
 					}
 				}
 			}
 		}
+
+		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		var blockEntityData: []const u8 = self.blockEntityData.items;
+		for(self.blockEntityPos.items) |blockEntityPos| {
+			const localPos = blockEntityPos.pos;
+			const len = blockEntityPos.len;
+			const block = self.blocks.get(@intCast(localPos[0]), @intCast(localPos[1]), @intCast(localPos[2]));
+			const globalPos = localPos + pos;
+
+			const data = blockEntityData[0..len];
+			blockEntityData = blockEntityData[len..];
+
+			const baseChunk = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
+				.wx = globalPos[0] & ~@as(i32, main.chunk.chunkMask),
+				.wy = globalPos[1] & ~@as(i32, main.chunk.chunkMask),
+				.wz = globalPos[2] & ~@as(i32, main.chunk.chunkMask),
+				.voxelSize = 1
+			});
+			defer baseChunk.decreaseRefCount();
+
+			var reader = BinaryReader.init(data);
+			main.server.world.?.updateBlockEntityData(globalPos[0], globalPos[1], globalPos[2], block, &reader);
+			for (userList) |user| {
+				main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = globalPos[0], .y = globalPos[1], .z = globalPos[2], .newBlock = block, .blockEntityData = data}});
+			}
+		}
 	}
+
+	fn posToIndex(self: Blueprint, pos: Vec3i) usize {
+		return (@as(usize, @intCast(pos[0]))*@as(usize, @intCast(self.blocks.depth)) + @as(usize, @intCast(pos[1])))*@as(usize, @intCast(self.blocks.height)) + @as(usize, @intCast(pos[2]));
+	}
+
+	fn indexToPos(self: Blueprint, index: usize) Vec3i {
+		const z: i32 = @intCast(index % self.blocks.height);
+		const yz = index / self.blocks.height;
+
+		const y: i32 = @intCast(yz % self.blocks.depth);
+		const x: i32 = @intCast(yz / self.blocks.depth);
+
+		return .{x, y, z};
+	}
+
 	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []const u8) !Blueprint {
 		var compressedReader = BinaryReader.init(inputBuffer);
 		const version = try compressedReader.readInt(u16);
@@ -236,9 +273,10 @@ pub const Blueprint = struct {
 		const depth = try compressedReader.readInt(u16);
 		const height = try compressedReader.readInt(u16);
 
-		const self = Blueprint{
+		var self = Blueprint{
 			.blocks = .init(allocator, width, depth, height),
-			.blockEntityData = .init(allocator, width, depth, height),
+			.blockEntityPos = .{},
+			.blockEntityData = .{},
 		};
 
 		const decompressedData = try self.decompressBuffer(compressedReader.remaining, blockPaletteSizeBytes, compression);
@@ -259,14 +297,13 @@ pub const Blueprint = struct {
 
 			block.* = .{.typ = gameBlockId, .data = blueprintBlock.data};
 		}
-		if(compressedReader.remaining.len != 0) {
-			for (self.blockEntityData.mem) |*blockEntityData| {
-				const len = try compressedReader.readVarInt(usize);
-				const data = try compressedReader.readSlice(len);
-				
-				blockEntityData.* = allocator.dupe(u8, data);
-			}
+		const numBlockEntities = try decompressedReader.readVarInt(usize);
+		for(0..numBlockEntities) |_| {
+			const index = try decompressedReader.readVarInt(usize);
+			const len = try decompressedReader.readVarInt(usize);
+			self.blockEntityPos.append(allocator, .{.pos = self.indexToPos(index), .len = len});
 		}
+		self.blockEntityData.appendSlice(allocator, decompressedReader.remaining);
 		return self;
 	}
 	pub fn store(self: Blueprint, allocator: NeverFailingAllocator) []u8 {
@@ -290,10 +327,12 @@ pub const Blueprint = struct {
 		var blockEntityData = BinaryWriter.init(main.stackAllocator);
 		defer blockEntityData.deinit();
 
-		for (self.blockEntityData.mem) |data| {
-			blockEntityData.writeVarInt(usize, data.len);
-			blockEntityData.writeSlice(data);
+		for (self.blockEntityPos.items) |pos| {
+			blockEntityData.writeVarInt(usize, self.posToIndex(pos.pos));
+			blockEntityData.writeVarInt(usize, pos.len);
 		}
+
+		blockEntityData.writeSlice(self.blockEntityData.items);
 
 		var outputWriter = BinaryWriter.initCapacity(allocator, @sizeOf(i16) + @sizeOf(BlueprintCompression) + @sizeOf(u32) + @sizeOf(u16)*4 + compressed.data.len + blockEntityData.data.items.len);
 
