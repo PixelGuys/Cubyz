@@ -8,7 +8,7 @@ const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ZonElement = main.ZonElement;
 const sync = main.sync;
 
-const PermissionMap = struct {
+const PermissionMap = struct { // MARK: PermissionMap
 	map: std.StringHashMapUnmanaged(void) = .{},
 
 	pub fn fromZon(self: *PermissionMap, allocator: NeverFailingAllocator, zon: ZonElement) void {
@@ -39,7 +39,7 @@ const PermissionMap = struct {
 	}
 };
 
-pub const Permissions = struct {
+pub const Permissions = struct { // MARK: Permissions
 	pub const ListType = enum {
 		white,
 		black,
@@ -103,7 +103,7 @@ pub const Permissions = struct {
 	}
 };
 
-pub const PermissionGroup = struct {
+pub const PermissionGroup = struct { // MARK: PermissionGroup
 	permissions: Permissions,
 	id: u32,
 
@@ -201,6 +201,10 @@ pub fn deleteGroup(name: []const u8) bool {
 	}
 	return false;
 }
+
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+// MARK: Testing
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
 test "GroupWhitePermission" {
 	init(main.heap.testingAllocator);
