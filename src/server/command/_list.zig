@@ -9,6 +9,9 @@ pub const tickspeed = @import("tickspeed.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
 
+pub const perm = @import("permission/perm.zig");
+pub const group = @import("permission/group.zig");
+
 pub const undo = @import("worldedit/undo.zig");
 pub const redo = @import("worldedit/redo.zig");
 pub const pos1 = @import("worldedit/pos1.zig");
