@@ -9,8 +9,6 @@ const ZonElement = main.ZonElement;
 const sync = main.sync;
 
 fn mapFromZon(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void), zon: ZonElement) void {
-	if (zon != .array) return;
-
 	for (zon.toSlice()) |item| {
 		switch (item) {
 			.string, .stringOwned => |string| {
