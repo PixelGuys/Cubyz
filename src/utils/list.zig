@@ -408,9 +408,9 @@ pub fn ListUnmanaged(comptime T: type) type {
 		}
 
 		pub fn clone(self: @This(), allocator: NeverFailingAllocator) @This() {
-            var cloned: @This() = .initCapacity(allocator, self.capacity);
-            cloned.appendSliceAssumeCapacity(self.items);
-            return cloned;
+			var cloned: @This() = .initCapacity(allocator, self.capacity);
+			cloned.appendSliceAssumeCapacity(self.items);
+			return cloned;
 		}
 	};
 }
