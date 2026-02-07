@@ -8,28 +8,36 @@ const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ZonElement = main.ZonElement;
 const sync = main.sync;
 
-fn mapFromZon(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void), zon: ZonElement) void {
-	for (zon.toSlice()) |item| {
-		switch (item) {
-			.string, .stringOwned => |string| {
-				if (map.contains(string)) return;
-				const duped = allocator.dupe(u8, string);
-				map.put(allocator.allocator, duped, {}) catch unreachable;
-			},
-			else => {},
+const PermissionMap = struct {
+	map: std.StringHashMapUnmanaged(void) = .{},
+
+	pub fn fromZon(self: *PermissionMap, allocator: NeverFailingAllocator, zon: ZonElement) void {
+		for (zon.toSlice()) |item| {
+			switch (item) {
+				.string, .stringOwned => |string| {
+					if (self.map.contains(string)) return;
+					const duped = allocator.dupe(u8, string);
+					self.put(allocator, duped);
+				},
+				else => {},
+			}
 		}
 	}
-}
 
-fn mapToZon(allocator: NeverFailingAllocator, map: *std.StringHashMapUnmanaged(void)) ZonElement {
-	const zon: ZonElement = .initArray(allocator);
+	pub fn toZon(self: *PermissionMap, allocator: NeverFailingAllocator) ZonElement {
+		const zon: ZonElement = .initArray(allocator);
 
-	var it = map.keyIterator();
-	while (it.next()) |key| {
-		zon.append(key.*);
+		var it = self.map.keyIterator();
+		while (it.next()) |key| {
+			zon.append(key.*);
+		}
+		return zon;
 	}
-	return zon;
-}
+
+	pub fn put(self: *PermissionMap, allocator: NeverFailingAllocator, key: []const u8) void {
+		_ = self.map.getOrPut(allocator.allocator, key) catch unreachable;
+	}
+};
 
 pub const Permissions = struct {
 	pub const ListType = enum {
@@ -38,8 +46,8 @@ pub const Permissions = struct {
 	};
 
 	arenaAllocator: NeverFailingArenaAllocator,
-	permissionWhiteList: std.StringHashMapUnmanaged(void) = .{},
-	permissionBlackList: std.StringHashMapUnmanaged(void) = .{},
+	whitelist: PermissionMap = .{},
+	blacklist: PermissionMap = .{},
 
 	pub fn deinit(self: *Permissions) void {
 		self.arenaAllocator.deinit();
@@ -51,33 +59,33 @@ pub const Permissions = struct {
 		neutral,
 	};
 
-	fn list(self: *Permissions, listType: ListType) *std.StringHashMapUnmanaged(void) {
+	fn list(self: *Permissions, listType: ListType) *PermissionMap {
 		return switch (listType) {
-			.white => &self.permissionWhiteList,
-			.black => &self.permissionBlackList,
+			.white => &self.whitelist,
+			.black => &self.blacklist,
 		};
 	}
 
 	pub fn fromZon(self: *Permissions, zon: ZonElement) void {
-		mapFromZon(self.arenaAllocator.allocator(), self.list(.white), zon.getChild("permissionWhiteList"));
-		mapFromZon(self.arenaAllocator.allocator(), self.list(.black), zon.getChild("permissionBlackList"));
+		self.list(.white).fromZon(self.arenaAllocator.allocator(), zon.getChild("permissionWhitelist"));
+		self.list(.black).fromZon(self.arenaAllocator.allocator(), zon.getChild("permissionBlacklist"));
 	}
 
 	pub fn toZon(self: *Permissions, allocator: NeverFailingAllocator, zon: *ZonElement) void {
-		zon.put("permissionWhiteList", mapToZon(allocator, self.list(.white)));
-		zon.put("permissionBlackList", mapToZon(allocator, self.list(.black)));
+		zon.put("permissionWhitelist", self.list(.white).toZon(allocator));
+		zon.put("permissionBlacklist", self.list(.black).toZon(allocator));
 	}
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
 		sync.threadContext.assertCorrectContext(.server);
-		self.list(listType).put(self.arenaAllocator.allocator().allocator, self.arenaAllocator.allocator().dupe(u8, permissionPath), {}) catch unreachable;
+		self.list(listType).put(self.arenaAllocator.allocator(), self.arenaAllocator.allocator().dupe(u8, permissionPath));
 	}
 
 	pub fn removePermission(self: *Permissions, listType: ListType, permissionPath: []const u8) bool {
 		sync.threadContext.assertCorrectContext(.server);
-		const key = self.list(listType).getKeyPtr(permissionPath) orelse return false;
+		const key = self.list(listType).map.getKeyPtr(permissionPath) orelse return false;
 		const slice = key.*;
-		_ = self.list(listType).remove(permissionPath);
+		_ = self.list(listType).map.remove(permissionPath);
 		self.arenaAllocator.allocator().free(slice);
 		return true;
 	}
@@ -86,12 +94,12 @@ pub const Permissions = struct {
 		var current = permissionPath;
 
 		while (std.mem.lastIndexOfScalar(u8, current, '/')) |nextPos| {
-			if (self.permissionBlackList.contains(current)) return .no;
-			if (self.permissionWhiteList.contains(current)) return .yes;
+			if (self.blacklist.map.contains(current)) return .no;
+			if (self.whitelist.map.contains(current)) return .yes;
 
 			current = permissionPath[0..nextPos];
 		}
-		return if (self.permissionWhiteList.contains("/")) .yes else .neutral;
+		return if (self.whitelist.map.contains("/")) .yes else .neutral;
 	}
 };
 
@@ -287,13 +295,13 @@ test "listToFromZon" {
 	group.permissions.addPermission(.white, "/command/test");
 	group.permissions.addPermission(.white, "/command/spawn");
 
-	const zon = mapToZon(main.heap.testingAllocator, &group.permissions.permissionWhiteList);
+	const zon = group.permissions.whitelist.toZon(main.heap.testingAllocator);
 	defer zon.deinit(main.heap.testingAllocator);
 
 	var testPermissions: Permissions = .{.arenaAllocator = .init(main.heap.testingAllocator)};
 	defer testPermissions.deinit();
 
-	mapFromZon(testPermissions.arenaAllocator.allocator(), &testPermissions.permissionWhiteList, zon);
+	testPermissions.whitelist.fromZon(testPermissions.arenaAllocator.allocator(), zon);
 
 	try std.testing.expectEqual(2, testPermissions.permissionWhiteList.size);
 
