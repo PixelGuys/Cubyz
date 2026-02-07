@@ -56,6 +56,7 @@ pub const Permissions = struct { // MARK: Permissions
 	}
 
 	pub fn deinit(self: *Permissions) void {
+		sync.threadContext.assertCorrectContext(.server);
 		self.arenaAllocator.deinit();
 	}
 
@@ -89,10 +90,7 @@ pub const Permissions = struct { // MARK: Permissions
 
 	pub fn removePermission(self: *Permissions, listType: ListType, permissionPath: []const u8) bool {
 		sync.threadContext.assertCorrectContext(.server);
-		const key = self.list(listType).map.getKeyPtr(permissionPath) orelse return false;
-		const slice = key.*;
 		_ = self.list(listType).map.remove(permissionPath);
-		self.arenaAllocator.allocator().free(slice);
 		return true;
 	}
 
@@ -114,6 +112,7 @@ pub const PermissionGroup = struct { // MARK: PermissionGroup
 	id: u32,
 
 	pub fn init(allocator: NeverFailingAllocator) PermissionGroup {
+		sync.threadContext.assertCorrectContext(.server);
 		currentId += 1;
 		return .{
 			.permissions = .init(allocator),
