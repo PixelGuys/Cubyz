@@ -5,7 +5,7 @@ const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
 
-pub const description = "Performs permission interactions.";
+pub const description = "Performs changes on the permissions of the player or a groupp.";
 pub const usage =
 	\\/perm <whitelist/blacklist> <permissionPath>
 	\\/perm <whitelist/blacklist> <groupName> <permissionPath>
@@ -15,7 +15,7 @@ pub const usage =
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (args.len == 0) {
-		source.sendMessage("#ff0000Too few arguments for command /perm. Expected one argument.", .{});
+		source.sendMessage("#ff0000Too few arguments for command /perm. Expected at least two arguments.", .{});
 		return;
 	}
 	var split = std.mem.splitScalar(u8, args, ' ');
@@ -31,7 +31,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			if (helper.permissionPath) |permissionPath| {
 				if (helper.group) |groupName| {
 					const group = permission.getGroup(groupName) catch {
-						source.sendMessage("#ff0000Group {s} does not exist.", .{groupName});
+						source.sendMessage("#ff0000Group {s}#ff0000 does not exist.", .{groupName});
 						return;
 					};
 					_ = group.permissions.removePermission(helper.listType, permissionPath);
@@ -56,7 +56,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	if (helper.permissionPath) |permissionPath| {
 		if (helper.group) |groupName| {
 			const group = permission.getGroup(groupName) catch {
-				source.sendMessage("#ff0000Group {s} does not exist.", .{groupName});
+				source.sendMessage("#ff0000Group {s}#ff0000 does not exist.", .{groupName});
 				return;
 			};
 			group.permissions.addPermission(helper.listType, permissionPath);
@@ -99,6 +99,11 @@ const Helper = struct {
 		}
 		if (permissionPath == null) {
 			permissionPath = split.next();
+		}
+
+		if (permissionPath != null and permissionPath.?[0] != '/') {
+			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{permissionPath.?});
+			return error.InvalidArg;
 		}
 
 		return .{
