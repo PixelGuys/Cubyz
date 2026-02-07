@@ -35,15 +35,11 @@ pub const BlueprintCompression = enum(u16) {
 
 pub const Blueprint = struct {
 	blocks: Array3D(Block),
-	blockEntityPos: main.ListUnmanaged(struct{pos: Vec3i, len: usize}),
+	blockEntityPos: main.ListUnmanaged(struct { pos: Vec3i, len: usize }),
 	blockEntityData: main.ListUnmanaged(u8),
 
 	pub fn init(allocator: NeverFailingAllocator) Blueprint {
-		return .{
-			.blocks = .init(allocator, 0, 0, 0),
-			.blockEntityPos = .{},
-			.blockEntityData = .{}
-		};
+		return .{.blocks = .init(allocator, 0, 0, 0), .blockEntityPos = .{}, .blockEntityData = .{}};
 	}
 	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
@@ -128,7 +124,7 @@ pub const Blueprint = struct {
 					const maybeBlock = main.server.world.?.getBlockAndBlockEntityDataToDisk(worldX, worldY, worldZ, &blockEntityDataWriter);
 					if (maybeBlock) |block| {
 						self.blocks.set(x, y, z, block);
-						if(block.blockEntity()) |_| {
+						if (block.blockEntity()) |_| {
 							self.blockEntityPos.append(allocator, .{.pos = .{@intCast(x), @intCast(y), @intCast(z)}, .len = blockEntityDataWriter.data.items.len});
 							self.blockEntityData.appendSlice(allocator, blockEntityDataWriter.data.items);
 						}
@@ -176,7 +172,7 @@ pub const Blueprint = struct {
 		}
 
 		var blockEntityData: []const u8 = self.blockEntityData.items;
-		for(self.blockEntityPos.items) |blockEntityPos| {
+		for (self.blockEntityPos.items) |blockEntityPos| {
 			const localPos = blockEntityPos.pos;
 			const len = blockEntityPos.len;
 			const block = self.blocks.get(@intCast(localPos[0]), @intCast(localPos[1]), @intCast(localPos[2]));
@@ -219,7 +215,7 @@ pub const Blueprint = struct {
 		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 		var blockEntityData: []const u8 = self.blockEntityData.items;
-		for(self.blockEntityPos.items) |blockEntityPos| {
+		for (self.blockEntityPos.items) |blockEntityPos| {
 			const localPos = blockEntityPos.pos;
 			const len = blockEntityPos.len;
 			const block = self.blocks.get(@intCast(localPos[0]), @intCast(localPos[1]), @intCast(localPos[2]));
@@ -228,12 +224,7 @@ pub const Blueprint = struct {
 			const data = blockEntityData[0..len];
 			blockEntityData = blockEntityData[len..];
 
-			const baseChunk = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
-				.wx = globalPos[0] & ~@as(i32, main.chunk.chunkMask),
-				.wy = globalPos[1] & ~@as(i32, main.chunk.chunkMask),
-				.wz = globalPos[2] & ~@as(i32, main.chunk.chunkMask),
-				.voxelSize = 1
-			});
+			const baseChunk = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{.wx = globalPos[0] & ~@as(i32, main.chunk.chunkMask), .wy = globalPos[1] & ~@as(i32, main.chunk.chunkMask), .wz = globalPos[2] & ~@as(i32, main.chunk.chunkMask), .voxelSize = 1});
 			defer baseChunk.decreaseRefCount();
 
 			var reader = BinaryReader.init(data);
@@ -249,11 +240,11 @@ pub const Blueprint = struct {
 	}
 
 	fn indexToPos(self: Blueprint, index: usize) Vec3i {
-		const z: i32 = @intCast(index % self.blocks.height);
-		const yz = index / self.blocks.height;
+		const z: i32 = @intCast(index%self.blocks.height);
+		const yz = index/self.blocks.height;
 
-		const y: i32 = @intCast(yz % self.blocks.depth);
-		const x: i32 = @intCast(yz / self.blocks.depth);
+		const y: i32 = @intCast(yz%self.blocks.depth);
+		const x: i32 = @intCast(yz/self.blocks.depth);
 
 		return .{x, y, z};
 	}
@@ -298,7 +289,7 @@ pub const Blueprint = struct {
 			block.* = .{.typ = gameBlockId, .data = blueprintBlock.data};
 		}
 		const numBlockEntities = try decompressedReader.readVarInt(usize);
-		for(0..numBlockEntities) |_| {
+		for (0..numBlockEntities) |_| {
 			const index = try decompressedReader.readVarInt(usize);
 			const len = try decompressedReader.readVarInt(usize);
 			self.blockEntityPos.append(allocator, .{.pos = self.indexToPos(index), .len = len});

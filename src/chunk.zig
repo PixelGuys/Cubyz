@@ -604,7 +604,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		const oldBlock = self.super.data.getValue(pos.toIndex());
 		if (oldBlock == newBlock) {
 			const globalPos = self.super.localToGlobalPosition(pos);
-			if(newBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(globalPos, &self.super, .{.update = data}) catch |err| {
+			if (newBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(globalPos, &self.super, .{.update = data}) catch |err| {
 				std.log.err("Got error {s} while trying to create entity data in position {} for block {s}", .{@errorName(err), globalPos, newBlock.id()});
 			};
 		}
