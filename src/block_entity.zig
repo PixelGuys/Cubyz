@@ -272,7 +272,7 @@ pub const BlockEntityTypes = struct {
 					defer StorageServer.mutex.unlock();
 					const data = StorageServer.getOrPut(pos, chunk);
 					if (data.foundExisting) return;
-					var reader = BinaryReader.init(&.{});
+					var reader = BinaryReader.init(event.update.remaining);
 					data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
 				},
 			}
