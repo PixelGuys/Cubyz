@@ -21,7 +21,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
-const permissionLayer = server.permissionLayer;
+const permission = server.permission;
 const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
@@ -603,7 +603,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer main.stackAllocator.free(path);
 		const groups = files.cubyzDir().readToZon(main.stackAllocator, path) catch return;
 		defer groups.deinit(main.stackAllocator);
-		permissionLayer.groupsFromZon(main.globalAllocator, groups);
+		permission.groupsFromZon(main.globalAllocator, groups);
 	}
 
 	pub fn savePermissionGroups(self: *ServerWorld) !void {
@@ -611,7 +611,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer main.stackAllocator.free(path);
 
 		files.cubyzDir().deleteFile(path) catch {};
-		const groups = permissionLayer.groupsToZon(main.stackAllocator);
+		const groups = permission.groupsToZon(main.stackAllocator);
 		defer groups.deinit(main.stackAllocator);
 		try files.cubyzDir().writeZon(path, groups);
 	}

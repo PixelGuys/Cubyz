@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const User = main.server.User;
-const permissionLayer = main.server.permissionLayer;
+const permission = main.server.permission;
 
 pub const description = "lets you create, delete, join and leave groups";
 pub const usage = "/group <create/delete/join/leave> <groupName>";
@@ -36,12 +36,12 @@ pub fn execute(args: []const u8, source: *User) void {
 		}
 		switch (op) {
 			.create => {
-				permissionLayer.createGroup(arg, main.globalAllocator) catch {
+				permission.createGroup(arg, main.globalAllocator) catch {
 					source.sendMessage("#ff0000Group with name {s} already exists.", .{arg});
 				};
 			},
 			.delete => {
-				if (!permissionLayer.deleteGroup(arg)) {
+				if (!permission.deleteGroup(arg)) {
 					source.sendMessage("#ff0000Group with name {s} did not exists.", .{arg});
 				}
 			},

@@ -27,7 +27,7 @@ pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
-pub const permissionLayer = @import("permissionLayer.zig");
+pub const permission = @import("permission.zig");
 
 pub const command = @import("command/_command.zig");
 
@@ -131,8 +131,8 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
-	permissions: permissionLayer.Permissions = undefined,
-	permissionGroups: std.StringHashMapUnmanaged(*permissionLayer.PermissionGroup) = .{},
+	permissions: permission.Permissions = undefined,
+	permissionGroups: std.StringHashMapUnmanaged(*permission.PermissionGroup) = .{},
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -341,7 +341,7 @@ pub const User = struct { // MARK: User
 
 	pub fn addToGroup(self: *User, groupName: []const u8) error{GroupNotFound}!void {
 		sync.threadContext.assertCorrectContext(.server);
-		const group = try permissionLayer.getGroup(groupName);
+		const group = try permission.getGroup(groupName);
 		self.permissionGroups.put(main.globalAllocator.allocator, main.globalAllocator.dupe(u8, groupName), group) catch unreachable;
 	}
 
@@ -358,7 +358,7 @@ pub const User = struct { // MARK: User
 
 		for (zon.toSlice()) |item| {
 			const groupName = item.get([]const u8, "name", "");
-			const group = permissionLayer.getGroup(groupName) catch continue;
+			const group = permission.getGroup(groupName) catch continue;
 			if (group.id != item.get(u32, "id", 0)) continue;
 			self.addToGroup(groupName) catch unreachable;
 		}
@@ -411,7 +411,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
-	permissionLayer.init(main.globalAllocator);
+	permission.init(main.globalAllocator);
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
@@ -466,7 +466,7 @@ fn deinit() void {
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
 
-	permissionLayer.deinit();
+	permission.deinit();
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
 }

@@ -2,8 +2,8 @@ const std = @import("std");
 
 const main = @import("main");
 const User = main.server.User;
-const permissionLayer = main.server.permissionLayer;
-const ListType = permissionLayer.Permissions.ListType;
+const permission = main.server.permission;
+const ListType = permission.Permissions.ListType;
 
 pub const description = "Performs permission interactions.";
 pub const usage =
@@ -30,7 +30,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			};
 			if (helper.permissionPath) |permissionPath| {
 				if (helper.group) |groupName| {
-					const group = permissionLayer.getGroup(groupName) catch {
+					const group = permission.getGroup(groupName) catch {
 						source.sendMessage("#ff0000Group {s} does not exist.", .{groupName});
 						return;
 					};
@@ -55,7 +55,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 	if (helper.permissionPath) |permissionPath| {
 		if (helper.group) |groupName| {
-			const group = permissionLayer.getGroup(groupName) catch {
+			const group = permission.getGroup(groupName) catch {
 				source.sendMessage("#ff0000Group {s} does not exist.", .{groupName});
 				return;
 			};

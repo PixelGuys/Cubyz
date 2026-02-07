@@ -2,7 +2,6 @@ const std = @import("std");
 
 const main = @import("main");
 const User = main.server.User;
-const permissionLayer = main.server.permissionLayer;
 
 pub const Command = struct {
 	exec: *const fn (args: []const u8, source: *User) void,
