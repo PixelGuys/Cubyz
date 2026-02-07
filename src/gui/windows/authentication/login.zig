@@ -23,6 +23,13 @@ var textComponent: *TextInput = undefined;
 var applyButton: *Button = undefined;
 var applyAnyways: bool = false;
 
+var innerList: *VerticalList = undefined;
+var encryptWithPasswordCheckbox: *CheckBox = undefined;
+var passwordTextField: *TextInput = undefined;
+
+var storeSeedPhrase: bool = false;
+var encryptSeedPhrase: bool = true;
+
 const padding: f32 = 8;
 
 fn apply() void {
@@ -40,6 +47,13 @@ fn apply() void {
 		applyButton.child.label.updateText("Apply anyways");
 
 		return;
+	}
+
+	if (storeSeedPhrase) {
+		if (encryptSeedPhrase) @panic("TODO");
+		main.globalAllocator.free(main.settings.storedAccount);
+		main.settings.storedAccount = main.globalAllocator.dupe(u8, seedPhrase.text);
+		main.settings.accountEncryption = .none;
 	}
 
 	main.network.authentication.KeyCollection.init(seedPhrase);
@@ -61,21 +75,52 @@ fn showTextCallback(showText: bool) void {
 	textComponent.obfuscated = !showText;
 }
 
+fn storeSeedPhraseCallback(storeSeedPhrase_: bool) void {
+	storeSeedPhrase = storeSeedPhrase_;
+	refreshInner();
+}
+
+fn encryptSeedPhraseCallback(encryptSeedPhrase_: bool) void {
+	encryptSeedPhrase = encryptSeedPhrase_;
+	refreshInner();
+}
+
+fn refreshInner() void {
+	innerList.children.clearRetainingCapacity();
+	if (storeSeedPhrase) {
+		innerList.children.append(encryptWithPasswordCheckbox.toComponent());
+		if (encryptSeedPhrase) {
+			innerList.children.append(passwordTextField.toComponent());
+		}
+	}
+}
+
+fn none() void {}
+
 fn openCreateAccountWindow() void {
 	gui.closeWindowFromRef(&window);
 	gui.openWindow("authentication/create_account");
 }
 
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 420;
 	list.add(Label.init(.{0, 0}, width, "Please enter your account's seed phrase!", .center));
 	list.add(Label.init(.{0, 0}, width, "Note: We will only ask for the seed phrase on the start of the game.", .center));
 	list.add(Label.init(.{0, 0}, width, "Do not enter your seed phrase under any other circumstance and do not send it to anyone else.", .center));
-	textComponent = TextInput.init(.{0, 0}, width, 32, "", .{.onNewline = .init(apply), .onUpdate = .init(updateText)});
+	textComponent = TextInput.init(.{0, 0}, width, 32, "", .{.onNewline = .init(none), .onUpdate = .init(updateText)});
 	textComponent.obfuscated = true;
 	list.add(textComponent);
 	list.add(CheckBox.init(.{0, 0}, width, "Show text", false, &showTextCallback));
+	list.add(CheckBox.init(.{0, 0}, width, "Store seed phrase on disk", storeSeedPhrase, &storeSeedPhraseCallback));
+	innerList = VerticalList.init(.{0, 0}, 100, 16);
+	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it on disk (recommended)", encryptSeedPhrase, &encryptSeedPhraseCallback);
+	innerList.add(encryptWithPasswordCheckbox);
+	passwordTextField = TextInput.init(.{0, 0}, width, 32, "", .{.onNewline = .init(none)});
+	innerList.add(passwordTextField);
+	innerList.finish(.center);
+	refreshInner();
+	list.add(innerList);
 	const buttonRow = HorizontalList.init();
 	buttonRow.add(Button.initText(.{0, 0}, 200, "Create new Account", .init(openCreateAccountWindow)));
 	applyButton = Button.initText(.{padding, 0}, 200, "Apply", .init(apply));
@@ -92,6 +137,13 @@ pub fn onClose() void {
 	@memset(textComponent.textBuffer.glyphs, std.mem.zeroes(@TypeOf(textComponent.textBuffer.glyphs[0])));
 	@memset(textComponent.currentString.items, 0);
 	main.Window.setClipboardString("");
+
+	if (!storeSeedPhrase) {
+		encryptWithPasswordCheckbox.deinit();
+	}
+	if (!encryptSeedPhrase or !storeSeedPhrase) {
+		passwordTextField.deinit();
+	}
 
 	if (window.rootComponent) |*comp| {
 		comp.deinit();

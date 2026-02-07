@@ -601,14 +601,19 @@ pub fn main() void { // MARK: main()
 }
 
 pub fn clientMain() void { // MARK: clientMain()
-	switch (settings.accountState) {
+	switch (settings.accountEncryption) {
 		.unknown => {
 			gui.openWindow("authentication/login");
 		},
-		.encrypted => {
-			gui.openWindow("authentication/unlock");
-		},
-		.stored => {
+		.none => {
+			var failureList: List(u8) = .init(stackAllocator);
+			defer failureList.deinit();
+			const seedPhrase = network.authentication.SeedPhrase.initFromUserInput(settings.storedAccount, &failureList);
+			defer seedPhrase.deinit();
+			if (failureList.items.len != 0) {
+				std.log.err("Failed to verify account, we will keep going, but it is recommended to login again just to be sure.\n{s}", .{failureList.items});
+			}
+			network.authentication.KeyCollection.init(seedPhrase);
 			if (settings.playerName.len == 0) {
 				gui.openWindow("change_name");
 			} else if (settings.launchConfig.autoEnterWorld.len == 0) {
@@ -617,6 +622,9 @@ pub fn clientMain() void { // MARK: clientMain()
 				// Speed up the dev process by entering the world directly.
 				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 			}
+		},
+		else => {
+			gui.openWindow("authentication/unlock");
 		},
 	}
 
