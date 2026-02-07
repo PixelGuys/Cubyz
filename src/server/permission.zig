@@ -121,6 +121,7 @@ pub const PermissionGroup = struct { // MARK: PermissionGroup
 	}
 
 	pub fn deinit(self: *PermissionGroup) void {
+		sync.threadContext.assertCorrectContext(.server);
 		self.permissions.deinit();
 	}
 
