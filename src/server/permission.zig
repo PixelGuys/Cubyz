@@ -303,10 +303,10 @@ test "listToFromZon" {
 
 	testPermissions.whitelist.fromZon(testPermissions.arenaAllocator.allocator(), zon);
 
-	try std.testing.expectEqual(2, testPermissions.permissionWhiteList.size);
+	try std.testing.expectEqual(2, testPermissions.whitelist.map.size);
 
-	var it = testPermissions.permissionWhiteList.keyIterator();
+	var it = testPermissions.whitelist.map.keyIterator();
 	while (it.next()) |item| {
-		try std.testing.expectEqual(true, group.permissions.permissionWhiteList.contains(item.*));
+		try std.testing.expectEqual(true, group.permissions.whitelist.map.contains(item.*));
 	}
 }
