@@ -119,7 +119,7 @@ pub const User = struct { // MARK: User
 
 	jobQueue: main.utils.ConcurrentMaxHeap(main.utils.ThreadPool.Task) = undefined,
 	jobQueueScheduled: bool = false,
-	jobQueueLastUpdate: struct { position: Vec3i, time: std.Io.Timestamp } = .{.position = @splat(0), .time = .{.nanoseconds = 0}},
+	jobQueueLastUpdate: struct { position: Vec3i, time: std.Io.Timestamp, alreadyInUpdate: bool = false } = .{.position = @splat(0), .time = .{.nanoseconds = 0}},
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
@@ -307,25 +307,61 @@ pub const User = struct { // MARK: User
 		defer self.mutex.unlock();
 		if (vec.lengthSquare(@as(@Vector(3, i64), self.jobQueueLastUpdate.position -% self.lastPos)) > 32*32) {
 			const startTime = main.timestamp();
-			if (self.jobQueueLastUpdate.time.durationTo(startTime).toMilliseconds() > 100) {
-				// Resort tasks:
-				var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, self.jobQueue.size);
-				defer newTasks.deinit(main.stackAllocator);
-				while (self.jobQueue.extractAny()) |_task| {
-					var task = _task;
-					if (!task.vtable.isStillNeeded(task.self)) {
-						task.vtable.clean(task.self);
-						continue;
+			if (self.jobQueueLastUpdate.time.durationTo(startTime).toMilliseconds() > 100 and !self.jobQueueLastUpdate.alreadyInUpdate) {
+				const ResortTaskTask = struct { // MARK: ResortTaskTask
+					const vtable = utils.ThreadPool.VTable{
+						.getPriority = &getPriority,
+						.isStillNeeded = &isStillNeeded,
+						.run = main.meta.castFunctionSelfToAnyopaque(run),
+						.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+						.taskType = .taskPriorityUpdate,
+					};
+
+					pub fn getPriority(_: *anyopaque) f32 {
+						return undefined;
 					}
-					task.cachedPriority = task.vtable.getPriority(task.self);
-					newTasks.appendAssumeCapacity(task);
-				}
-				self.jobQueue.addMany(newTasks.items);
-				const endTime = main.timestamp();
-				main.threadPool.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
-				self.jobQueueLastUpdate = .{
-					.position = self.lastPos,
-					.time = endTime,
+
+					pub fn isStillNeeded(_: *anyopaque) bool {
+						return true;
+					}
+
+					pub fn run(user: *User) void {
+						defer user.decreaseRefCount();
+
+						var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
+						defer newTasks.deinit(main.stackAllocator);
+						while (user.jobQueue.extractAny()) |_task| {
+							var task = _task;
+							if (!task.vtable.isStillNeeded(task.self)) {
+								task.vtable.clean(task.self);
+								continue;
+							}
+							task.cachedPriority = task.vtable.getPriority(task.self);
+							newTasks.append(main.stackAllocator, task);
+						}
+						user.jobQueue.addMany(newTasks.items);
+						user.mutex.lock();
+						defer user.mutex.unlock();
+						user.jobQueueLastUpdate = .{
+							.position = user.lastPos,
+							.time = main.timestamp(),
+						};
+					}
+
+					pub fn clean(user: *User) void {
+						user.decreaseRefCount();
+					}
+				};
+				// Create a task to resort tasks:
+				self.jobQueueLastUpdate.alreadyInUpdate = true;
+				self.increaseRefCount();
+				return .{
+					.{
+						.cachedPriority = undefined,
+						.vtable = &ResortTaskTask.vtable,
+						.self = self,
+					},
+					.hasMoreTasks,
 				};
 			}
 		}

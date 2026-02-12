@@ -621,7 +621,7 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 }
 
 /// A simple binary heap.
-/// Thread safe and blocking.
+/// Thread safe.
 /// Expects T to have a `biggerThan(T) bool` function
 pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 	return struct {
@@ -885,31 +885,28 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 	}
 
-	fn getNextTask(self: *ThreadPool, iteration: usize) ?Task {
-		for (0..2) |i| {
-			switch ((iteration + i)%2) {
-				0 => return self.loadList.extractMax() orelse continue,
-				1 => {
-					const player = self.playerJobQueue.popFront() orelse continue;
-					const result, const hasMoreTasks = player.getTaskFromJobQueue() orelse {
-						_ = self.trueQueueSize.fetchSub(1, .monotonic);
-						player.decreaseRefCount();
-						continue;
-					};
-					switch (hasMoreTasks) {
-						.empty => {
-							player.decreaseRefCount();
-						},
-						.hasMoreTasks => {
-							self.playerJobQueue.pushBack(player);
-							self.semaphore.post();
-							_ = self.trueQueueSize.fetchAdd(1, .monotonic);
-						},
-					}
-					return result;
+	fn getNextTask(self: *ThreadPool) ?Task {
+		blk: {
+			return self.loadList.extractMax() orelse break :blk;
+		}
+		blk: {
+			const player = self.playerJobQueue.popFront() orelse break :blk;
+			const result, const hasMoreTasks = player.getTaskFromJobQueue() orelse {
+				_ = self.trueQueueSize.fetchSub(1, .monotonic);
+				player.decreaseRefCount();
+				break :blk;
+			};
+			switch (hasMoreTasks) {
+				.empty => {
+					player.decreaseRefCount();
 				},
-				else => unreachable,
+				.hasMoreTasks => {
+					self.playerJobQueue.pushBack(player);
+					self.semaphore.post();
+					_ = self.trueQueueSize.fetchAdd(1, .monotonic);
+				},
 			}
+			return result;
 		}
 		return null;
 	}
@@ -919,15 +916,13 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		defer main.deinitThreadLocals();
 
 		var lastUpdate = main.timestamp();
-		var iteration: usize = 0;
 		outer: while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 
 			self.semaphore.timedWait(10_000_000) catch continue :outer;
-			iteration +%= 1;
 
 			{
-				const task = self.getNextTask(iteration) orelse continue :outer;
+				const task = self.getNextTask() orelse continue :outer;
 				self.currentTasks[id].store(task.vtable, .monotonic);
 				const start = main.timestamp();
 				task.vtable.run(task.self);
