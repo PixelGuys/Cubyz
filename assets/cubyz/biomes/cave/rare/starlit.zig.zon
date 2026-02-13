@@ -1,8 +1,6 @@
 .{
 	.isCave = true,
-	.fogDensity = 35,
-	.fogColor = 0x000C14,
-	.chance = 1,
+	.chance = 0.01,
 	.maxHeight = -25000,
 	.minHeight = -48250,
 	.music = "cubyz:cubyz",
@@ -12,7 +10,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:starlit/star",
 			.placeMode = .degradable,
-			.chance = 0.3,
+			.chance = 0.4,
 		},
 	},
 }
