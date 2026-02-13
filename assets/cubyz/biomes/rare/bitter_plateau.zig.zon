@@ -13,7 +13,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:bitter_pillars/bitter_pillars",
+			.structure = "cubyz:bitter_pillars/pillars",
 			.placeMode = .degradable,
 			.chance = 0.04,
 		},
