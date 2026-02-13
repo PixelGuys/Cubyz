@@ -64,6 +64,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	}
 
 	if (t.os.tag == .windows) {
+		exe.linkSystemLibrary("bcrypt");
 		exe.linkSystemLibrary("crypt32");
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
