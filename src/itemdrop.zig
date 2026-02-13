@@ -553,6 +553,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	var bobIntensity: f32 = 0;
 
 	pub fn update(deltaTime: f64) void {
+		if (!settings.bobbing) return;
 		if (deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
