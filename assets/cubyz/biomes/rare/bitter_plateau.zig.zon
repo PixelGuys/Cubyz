@@ -7,13 +7,13 @@
 	.hills = 15,
 	.ground_structure = .{
 		"cubyz:cold_grass",
-		"2 to 3 cubyz:glacite/base",
+		"1 to 2 cubyz:glacite/base",
 		"1 to 3 cubyz:gravel",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:bitter_pillars/pillars",
+			.structure = "cubyz:bitter_plateau/pillars",
 			.placeMode = .degradable,
 			.chance = 0.04,
 		},
