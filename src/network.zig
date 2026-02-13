@@ -1204,6 +1204,7 @@ pub const Connection = struct { // MARK: Connection
 			if (side == .server) { // Generate a self-signed certificate, since we do not key about authenticating the server. MITM will be mitigated during the client authentication
 				var certificate: c.mbedtls_x509write_cert = .{};
 				c.mbedtls_x509write_crt_init(&certificate);
+				defer c.mbedtls_x509write_crt_free(&certificate);
 				var attributes = c.psa_key_attributes_init();
 				c.psa_set_key_type(&attributes, c.PSA_KEY_TYPE_RSA_KEY_PAIR);
 				c.psa_set_key_bits(&attributes, 2048);
@@ -1236,6 +1237,10 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn deinit(self: *SecureChannel) void {
+			c.mbedtls_ssl_free(&self.sslContext);
+			c.mbedtls_ssl_config_free(&self.sslConfig);
+			c.mbedtls_x509_crt_free(&self.serverCertificate);
+			c.mbedtls_pk_free(&self.serverKey);
 			self.super.deinit();
 			self.verificationDataForClientSignature.deinit(main.globalAllocator);
 		}
