@@ -15,8 +15,6 @@ const c = @cImport({
 	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("mbedtls/debug.h");
 	@cInclude("mbedtls/ssl.h");
-	@cInclude("mbedtls/entropy.h");
-	@cInclude("mbedtls/ctr_drbg.h");
 });
 
 // TODO: Might want to use SSL or something similar to encode the message
@@ -197,10 +195,15 @@ const Socket = struct {
 	}
 };
 
-pub fn init() void {
+pub fn init() !void {
 	Socket.startup();
 	protocols.init();
 	authentication.init();
+	try Connection.SecureChannel.checkResult(c.psa_crypto_init(), "psa_crypto_init");
+}
+
+pub fn deinit() void {
+	c.mbedtls_psa_crypto_free();
 }
 
 pub const Address = struct {
@@ -1171,8 +1174,6 @@ pub const Connection = struct { // MARK: Connection
 		super: Channel,
 		sslContext: c.mbedtls_ssl_context = .{},
 		sslConfig: c.mbedtls_ssl_config = .{},
-		sslCtrDrbg: c.mbedtls_ctr_drbg_context = .{},
-		sslEntropy: c.mbedtls_entropy_context = .{},
 		serverCertificate: c.mbedtls_x509_crt = .{},
 		serverKey: c.mbedtls_pk_context = .{},
 		dataToReceive: []const u8 = &.{},
@@ -1190,10 +1191,6 @@ pub const Connection = struct { // MARK: Connection
 
 			c.mbedtls_ssl_init(&self.sslContext);
 			c.mbedtls_ssl_config_init(&self.sslConfig);
-			c.mbedtls_ctr_drbg_init(&self.sslCtrDrbg);
-			c.mbedtls_entropy_init(&self.sslEntropy);
-
-			try checkResult(c.mbedtls_ctr_drbg_seed(&self.sslCtrDrbg, c.mbedtls_entropy_func, &self.sslEntropy, null, 0), "mbedtls_ctr_drbg_seed");
 
 			try checkResult(c.mbedtls_ssl_config_defaults(
 				&self.sslConfig,
@@ -1202,14 +1199,19 @@ pub const Connection = struct { // MARK: Connection
 				c.MBEDTLS_SSL_PRESET_DEFAULT,
 			), "mbedtls_ssl_config_defaults");
 			c.mbedtls_ssl_conf_authmode(&self.sslConfig, c.MBEDTLS_SSL_VERIFY_NONE); // We don't care about server certificates for now. Only the client is authenticated, through an outside mechanism.
-			c.mbedtls_ssl_conf_rng(&self.sslConfig, c.mbedtls_ctr_drbg_random, &self.sslCtrDrbg);
 			c.mbedtls_ssl_conf_dbg(&self.sslConfig, &debugOutput, undefined);
 
 			if (side == .server) { // Generate a self-signed certificate, since we do not key about authenticating the server. MITM will be mitigated during the client authentication
 				var certificate: c.mbedtls_x509write_cert = .{};
 				c.mbedtls_x509write_crt_init(&certificate);
-				try checkResult(c.mbedtls_pk_setup(&self.serverKey, c.mbedtls_pk_info_from_type(c.MBEDTLS_PK_RSA)), "mbedtls_pk_setup");
-				try checkResult(c.mbedtls_rsa_gen_key(c.mbedtls_pk_rsa(self.serverKey), c.mbedtls_ctr_drbg_random, &self.sslCtrDrbg, 2048, 65537), "mbedtls_rsa_gen_key");
+				var attributes = c.psa_key_attributes_init();
+				c.psa_set_key_type(&attributes, c.PSA_KEY_TYPE_RSA_KEY_PAIR);
+				c.psa_set_key_bits(&attributes, 2048);
+				c.psa_set_key_usage_flags(&attributes, c.PSA_KEY_USAGE_SIGN_HASH | c.PSA_KEY_USAGE_SIGN_MESSAGE);
+				c.psa_set_key_algorithm(&attributes, c.PSA_ALG_RSA_PSS(c.PSA_ALG_ANY_HASH));
+				var key: c.psa_key_id_t = 0;
+				try checkResult(c.psa_generate_key(&attributes, &key), "psa_generate_key");
+				try checkResult(c.mbedtls_pk_wrap_psa(&self.serverKey, key), "mbedtls_pk_wrap_psa");
 
 				try checkResult(c.mbedtls_x509write_crt_set_subject_name(&certificate, "CN=localhost,O=Cubyz,C=Cubyz"), "mbedtls_x509write_crt_set_subject_name");
 				try checkResult(c.mbedtls_x509write_crt_set_issuer_name(&certificate, "CN=localhost,O=Cubyz,C=Cubyz"), "mbedtls_x509write_crt_set_issuer_name");
@@ -1220,7 +1222,7 @@ pub const Connection = struct { // MARK: Connection
 				try checkResult(c.mbedtls_x509write_crt_set_validity(&certificate, "20000101000000", "50000101000000"), "mbedtls_x509write_crt_set_validity");
 
 				var buf: [4096]u8 = undefined;
-				try checkResult(c.mbedtls_x509write_crt_pem(&certificate, &buf, buf.len, c.mbedtls_ctr_drbg_random, &self.sslCtrDrbg), "mbedtls_x509write_crt_pem");
+				try checkResult(c.mbedtls_x509write_crt_pem(&certificate, &buf, buf.len), "mbedtls_x509write_crt_pem");
 
 				c.mbedtls_x509_crt_init(&self.serverCertificate);
 				try checkResult(c.mbedtls_x509_crt_parse(&self.serverCertificate, &buf, buf.len), "mbedtls_x509_crt_parse");

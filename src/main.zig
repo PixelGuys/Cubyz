@@ -579,7 +579,8 @@ pub fn main() void { // MARK: main()
 	if (!headless) renderer.init();
 	defer if (!headless) renderer.deinit();
 
-	network.init();
+	network.init() catch @panic("Failed to initialize network");
+	defer network.deinit();
 
 	if (!headless) entity.ClientEntityManager.init();
 	defer if (!headless) entity.ClientEntityManager.deinit();
