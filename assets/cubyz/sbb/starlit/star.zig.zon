@@ -1,0 +1,14 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:starlit/star/0", .chance = 0.1},
+		.{.id = "cubyz:starlit/star/1", .chance = 0.1},
+		.{.id = "cubyz:starlit/star/2", .chance = 0.2},
+		.{.id = "cubyz:starlit/star/3", .chance = 0.3},
+		.{.id = "cubyz:starlit/star/4", .chance = 0.5},
+		.{.id = "cubyz:starlit/star/5", .chance = 0.6},
+		.{.id = "cubyz:starlit/star/6", .chance = 0.5},
+		.{.id = "cubyz:starlit/star/7", .chance = 0.3},
+		.{.id = "cubyz:starlit/star/8", .chance = 0.1},
+		.{.id = "cubyz:starlit/star/9", .chance = 0.05},
+	},
+}
