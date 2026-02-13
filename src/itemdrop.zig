@@ -550,6 +550,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	var cameraFollowVel: Vec3f = @splat(0);
 	const damping: Vec3f = @splat(130);
 	var bobPhase: f32 = 0;
+	var bobIntensity: f32 = 0;
 
 	pub fn update(deltaTime: f64) void {
 		if (deltaTime == 0) return;
@@ -574,32 +575,45 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const bobSpeed: f32 = 1.2;
 		const bobAmountLateral: f32 = 0.007;
 		const bobAmountVertical: f32 = 0.006;
-		const bobSettle: f32 = 2.5;
-		const bobMovementScaleLimit: f32 = 10;
+		const settleSpeed: f32 = 2.5;
+		const fadeInSpeed: f32 = 0.4;
+		const fadeOutSpeedOnGround: f32 = 2.5;
+		const fadeOutSpeedAirborne: f32 = 0.4;
+		const movementScaleMax: f32 = 10;
+		const playerSpeedThreshold: f32 = 0.01;
+		const movementScaleMinForPhase: f32 = 6;
 
 		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
+			bobPhase = 0;
+			bobIntensity = 0;
 			return @splat(0);
 		}
 
-		const horizontalVel: Vec3f = .{
+		const playerVel: Vec3f = .{
 			@floatCast(game.Player.super.vel[0]),
 			@floatCast(game.Player.super.vel[1]),
 			0,
 		};
+		const playerSpeed = vec.length(playerVel);
+		const movementScale = @min(playerSpeed, movementScaleMax);
 
-		const movementScale = @min(vec.length(horizontalVel), bobMovementScaleLimit);
-
-		if (game.Player.onGround and movementScale > 0.01) {
-			bobPhase += dt*bobSpeed*movementScale;
-			bobPhase = std.math.mod(f32, bobPhase, 2*std.math.pi) catch unreachable;
+		if (game.Player.onGround) {
+			if (playerSpeed > playerSpeedThreshold) {
+				bobPhase += dt*bobSpeed*@max(movementScale, movementScaleMinForPhase);
+				bobPhase = std.math.mod(f32, bobPhase, 2*std.math.pi) catch unreachable;
+				bobIntensity = std.math.lerp(bobIntensity, 1, @min(dt*fadeInSpeed, 1));
+			} else {
+				bobPhase = std.math.lerp(bobPhase, 0, @min(dt*settleSpeed, 1));
+				bobIntensity = std.math.lerp(bobIntensity, 0, @min(dt*fadeOutSpeedOnGround, 1));
+			}
 		} else {
-			bobPhase = std.math.lerp(bobPhase, 0, @min(dt*bobSettle, 1));
+			bobIntensity = std.math.lerp(bobIntensity, 0, @min(dt*fadeOutSpeedAirborne, 1));
 		}
 
 		return .{
-			@abs(std.math.sin(bobPhase))*bobAmountVertical*movementScale,
+			@abs(std.math.sin(bobPhase))*bobAmountVertical*movementScale*bobIntensity,
 			0,
-			std.math.sin(bobPhase)*bobAmountLateral*movementScale,
+			std.math.sin(bobPhase)*bobAmountLateral*movementScale*bobIntensity,
 		};
 	}
 };
