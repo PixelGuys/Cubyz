@@ -151,7 +151,7 @@ pub const SeedPhrase = struct {
 	pub fn initFromUserInput(text: []const u8, failureText: *main.List(u8)) SeedPhrase {
 		var result: main.ListUnmanaged(u8) = .initCapacity(main.stackAllocator, text.len);
 		defer result.deinit(main.stackAllocator);
-		defer @memset(result.items, 0);
+		defer std.crypto.secureZero(u8, result.items);
 
 		const trimmed = std.mem.trim(u8, text, &std.ascii.whitespace);
 
@@ -171,7 +171,7 @@ pub const SeedPhrase = struct {
 		var split = std.mem.splitScalar(u8, result.items, ' ');
 		var wordCount: usize = 0;
 		var bits: [21]u8 = @splat(0);
-		defer @memset(&bits, 0);
+		defer std.crypto.secureZero(u8, &bits);
 		var failedWordlist: bool = false;
 		while (split.next()) |word| {
 			wordCount += 1;
@@ -198,7 +198,7 @@ pub const SeedPhrase = struct {
 
 		if (!failedWordlist) {
 			var sha256Result: [32]u8 = undefined;
-			defer @memset(&sha256Result, 0);
+			defer std.crypto.secureZero(u8, &sha256Result);
 			std.crypto.hash.sha2.Sha256.hash(bits[0..20], &sha256Result, .{});
 			if (sha256Result[0] >> 3 != bits[20] >> 3) {
 				failureText.print("The seed phrase has an incorrect checksum.\n", .{});
@@ -215,16 +215,16 @@ pub const SeedPhrase = struct {
 	pub fn initRandomly() SeedPhrase {
 		if (wordlist == null) @panic("Cannot generate new Account without a valid wordlist.");
 		var bits: [21]u8 = undefined;
-		defer @memset(&bits, 0);
+		defer std.crypto.secureZero(u8, &bits);
 		std.crypto.random.bytes(bits[0..20]);
 		var sha256Result: [32]u8 = undefined;
-		defer @memset(&sha256Result, 0);
+		defer std.crypto.secureZero(u8, &sha256Result);
 		std.crypto.hash.sha2.Sha256.hash(bits[0..20], &sha256Result, .{});
 		bits[20] = sha256Result[0];
 
 		var result: main.ListUnmanaged(u8) = .{};
 		defer result.deinit(main.stackAllocator);
-		defer @memset(result.items, 0);
+		defer std.crypto.secureZero(u8, result.items);
 
 		for (0..15) |i| {
 			const bitIndex = i*11;
@@ -243,7 +243,11 @@ pub const SeedPhrase = struct {
 	}
 
 	pub fn deinit(self: SeedPhrase) void {
-		@memset(self.text, 0);
+		std.crypto.secureZero(u8, self.text);
 		main.globalAllocator.free(self.text);
 	}
 };
+
+pub fn secureZero(comptime T: type, s: []volatile T) void { // TODO: Remove after zig#31197
+	@memset(s, std.mem.zeroes(T));
+}

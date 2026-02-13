@@ -56,7 +56,7 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	// Make sure there remains no trace of the seed phrase in memory
-	@memset(seedPhraseLabel.text.glyphs, std.mem.zeroes(@TypeOf(seedPhraseLabel.text.glyphs[0])));
+	main.network.authentication.secureZero(@TypeOf(seedPhraseLabel.text.glyphs[0]), seedPhraseLabel.text.glyphs);
 	seedPhrase.deinit();
 	// This also serves as a measure to ensure that the user indeed copied it somewhere else before closing the window
 	main.Window.setClipboardString("");
