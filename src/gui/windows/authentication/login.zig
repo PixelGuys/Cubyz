@@ -50,10 +50,14 @@ fn apply() void {
 	}
 
 	if (storeSeedPhrase) {
-		if (encryptSeedPhrase) @panic("TODO");
-		main.globalAllocator.free(main.settings.storedAccount);
-		main.settings.storedAccount = main.globalAllocator.dupe(u8, seedPhrase.text);
-		main.settings.accountEncryption = .none;
+		if (encryptSeedPhrase) {
+			settings.storedAccount.deinit(main.globalAllocator);
+			settings.storedAccount = main.network.authentication.PasswordEncodedSeedPhrase.initFromPassword(main.globalAllocator, seedPhrase, passwordTextField.currentString.items);
+		} else {
+			settings.storedAccount.deinit(main.globalAllocator);
+			settings.storedAccount = main.network.authentication.PasswordEncodedSeedPhrase.initUnencoded(main.globalAllocator, seedPhrase);
+		}
+		settings.save();
 	}
 
 	main.network.authentication.KeyCollection.init(seedPhrase);

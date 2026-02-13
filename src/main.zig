@@ -602,17 +602,22 @@ pub fn main() void { // MARK: main()
 }
 
 pub fn clientMain() void { // MARK: clientMain()
-	switch (settings.accountEncryption) {
-		.unknown => {
-			gui.openWindow("authentication/login");
-		},
-		.none => {
-			var failureList: List(u8) = .init(stackAllocator);
-			defer failureList.deinit();
-			const seedPhrase = network.authentication.SeedPhrase.initFromUserInput(settings.storedAccount, &failureList);
+	switch (settings.storedAccount.typ) {
+		.none => blk: {
+			if (settings.storedAccount.data.len == 0) {
+				gui.openWindow("authentication/login");
+				break :blk;
+			}
+			var failureText: List(u8) = .init(stackAllocator);
+			defer failureText.deinit();
+			const seedPhrase = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
+				std.log.err("Got error while loading seed phrase: {s}", .{@errorName(err)});
+				gui.openWindow("authentication/login");
+				break :blk;
+			};
 			defer seedPhrase.deinit();
-			if (failureList.items.len != 0) {
-				std.log.err("Failed to verify account, we will keep going, but it is recommended to login again just to be sure.\n{s}", .{failureList.items});
+			if (failureText.items.len != 0) {
+				std.log.err("Failed to verify account, we will keep going, but it is recommended to login again just to be sure.\n{s}", .{failureText.items});
 			}
 			network.authentication.KeyCollection.init(seedPhrase);
 			if (settings.playerName.len == 0) {

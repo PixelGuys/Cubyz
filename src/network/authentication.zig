@@ -248,6 +248,145 @@ pub const SeedPhrase = struct {
 	}
 };
 
+const EncodingType = enum { none, argon2_aes_gcm };
+
+pub const PasswordEncodedSeedPhrase = struct {
+	typ: EncodingType,
+	salt: []u8,
+	nonce: []u8,
+	data: []u8,
+	authenticationTag: []u8,
+
+	pub const empty: PasswordEncodedSeedPhrase = .{.typ = .none, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
+
+	pub fn initFromPassword(allocator: NeverFailingAllocator, seedPhrase: SeedPhrase, password: []const u8) PasswordEncodedSeedPhrase {
+		var salt: [32]u8 = std.crypto.random.array(u8, 32);
+		const saltBase64 = allocator.alloc(u8, std.base64.standard.Encoder.calcSize(salt.len));
+		std.debug.assert(std.base64.standard.Encoder.encode(saltBase64, &salt).len == saltBase64.len);
+
+		var key: [32]u8 = undefined;
+		defer std.crypto.secureZero(u8, &key);
+		keyFromPassword(.argon2_aes_gcm, saltBase64, password, &key);
+
+		const encryptedBuffer = allocator.alloc(u8, seedPhrase.text.len);
+		var authenticationTag: [std.crypto.aead.aes_gcm.Aes256Gcm.tag_length]u8 = undefined;
+		const nonce = std.crypto.random.array(u8, std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length);
+		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, seedPhrase.text, &.{}, nonce, key);
+
+		return .{
+			.typ = .argon2_aes_gcm,
+			.salt = saltBase64,
+			.data = encryptedBuffer,
+			.nonce = allocator.dupe(u8, &nonce),
+			.authenticationTag = allocator.dupe(u8, &authenticationTag),
+		};
+	}
+
+	pub fn initUnencoded(allocator: NeverFailingAllocator, seedPhrase: SeedPhrase) PasswordEncodedSeedPhrase {
+		return .{
+			.typ = .none,
+			.salt = &.{},
+			.nonce = &.{},
+			.data = allocator.dupe(u8, seedPhrase.text),
+			.authenticationTag = &.{},
+		};
+	}
+
+	pub fn deinit(self: PasswordEncodedSeedPhrase, allocator: NeverFailingAllocator) void {
+		allocator.free(self.salt);
+		allocator.free(self.data);
+		allocator.free(self.nonce);
+		allocator.free(self.authenticationTag);
+	}
+
+	pub fn decryptFromPassword(self: PasswordEncodedSeedPhrase, password: []const u8, failureText: *main.List(u8)) !SeedPhrase {
+		if (self.typ == .none) {
+			return SeedPhrase.initFromUserInput(self.data, failureText);
+		}
+		var key: [32]u8 = undefined;
+		defer std.crypto.secureZero(u8, &key);
+		keyFromPassword(self.typ, self.salt, password, &key);
+
+		switch (self.typ) {
+			.none => unreachable,
+			.argon2_aes_gcm => {
+				if (self.authenticationTag.len != std.crypto.aead.aes_gcm.Aes256Gcm.tag_length) return error.Invalid;
+				if (self.nonce.len != std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length) return error.Invalid;
+				const authenticationTag = self.authenticationTag[0..std.crypto.aead.aes_gcm.Aes256Gcm.tag_length];
+				const nonce = self.nonce[0..std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length];
+				const decryptedBuffer = main.stackAllocator.alloc(u8, self.data.len);
+				defer main.stackAllocator.free(decryptedBuffer);
+				defer std.crypto.secureZero(u8, decryptedBuffer);
+				try std.crypto.aead.aes_gcm.Aes256Gcm.decrypt(decryptedBuffer, self.data, authenticationTag.*, &.{}, nonce.*, key);
+				return SeedPhrase.initFromUserInput(decryptedBuffer, failureText);
+			},
+		}
+	}
+
+	fn keyFromPassword(typ: EncodingType, salt: []const u8, password: []const u8, key: *[32]u8) void {
+		switch (typ) {
+			.none => unreachable,
+			.argon2_aes_gcm => {
+				std.crypto.pwhash.argon2.kdf(main.globalAllocator.allocator, key, password, salt, .{
+					.t = 10,
+					.m = 32000,
+					.p = 1,
+				}, .argon2id) catch unreachable;
+			},
+		}
+	}
+
+	pub fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement) !PasswordEncodedSeedPhrase {
+		if (zon == .null) return .empty;
+		var self: PasswordEncodedSeedPhrase = undefined;
+
+		self.typ = std.meta.stringToEnum(EncodingType, zon.get(?[]const u8, "type", null) orelse return error.Invalid) orelse return error.Invalid;
+		self.salt = allocator.dupe(u8, zon.get([]const u8, "salt", ""));
+		errdefer allocator.free(self.salt);
+		if (self.salt.len < 32 and self.typ != .none) return error.Invalid;
+
+		const base64EncodedData = zon.get([]const u8, "data", "");
+		self.data = allocator.alloc(u8, try std.base64.standard.Decoder.calcSizeForSlice(base64EncodedData));
+		errdefer allocator.free(self.data);
+		try std.base64.standard.Decoder.decode(self.data, base64EncodedData);
+		if (self.data.len == 0 and self.typ != .none) return error.Invalid;
+
+		const base64EncodedTag = zon.get([]const u8, "authenticationTag", "");
+		self.authenticationTag = allocator.alloc(u8, try std.base64.standard.Decoder.calcSizeForSlice(base64EncodedTag));
+		errdefer allocator.free(self.authenticationTag);
+		try std.base64.standard.Decoder.decode(self.authenticationTag, base64EncodedTag);
+		if (self.authenticationTag.len == 0 and self.typ != .none) return error.Invalid;
+
+		const base64EncodedNonce = zon.get([]const u8, "nonce", "");
+		self.nonce = allocator.alloc(u8, try std.base64.standard.Decoder.calcSizeForSlice(base64EncodedNonce));
+		errdefer allocator.free(self.nonce);
+		try std.base64.standard.Decoder.decode(self.nonce, base64EncodedNonce);
+		if (self.nonce.len == 0 and self.typ != .none) return error.Invalid;
+
+		return self;
+	}
+
+	pub fn toZon(self: PasswordEncodedSeedPhrase, allocator: NeverFailingAllocator) ZonElement {
+		const zon = ZonElement.initObject(allocator);
+		zon.put("type", @tagName(self.typ));
+		zon.putOwnedString("salt", self.salt);
+
+		const base64EncodedData = main.stackAllocator.alloc(u8, std.base64.standard.Encoder.calcSize(self.data.len));
+		defer main.stackAllocator.free(base64EncodedData);
+		zon.putOwnedString("data", std.base64.standard.Encoder.encode(base64EncodedData, self.data));
+
+		const base64EncodedTag = main.stackAllocator.alloc(u8, std.base64.standard.Encoder.calcSize(self.authenticationTag.len));
+		defer main.stackAllocator.free(base64EncodedTag);
+		zon.putOwnedString("authenticationTag", std.base64.standard.Encoder.encode(base64EncodedTag, self.authenticationTag));
+
+		const base64EncodedNonce = main.stackAllocator.alloc(u8, std.base64.standard.Encoder.calcSize(self.nonce.len));
+		defer main.stackAllocator.free(base64EncodedNonce);
+		zon.putOwnedString("nonce", std.base64.standard.Encoder.encode(base64EncodedNonce, self.nonce));
+
+		return zon;
+	}
+};
+
 pub fn secureZero(comptime T: type, s: []volatile T) void { // TODO: Remove after zig#31197
 	@memset(s, std.mem.zeroes(T));
 }
