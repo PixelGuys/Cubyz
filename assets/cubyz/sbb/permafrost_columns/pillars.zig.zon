@@ -1,0 +1,14 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:permafrost_columns/pillars/0", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/1", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/2", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/3", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/4", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/5", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/6", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/7", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/8", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/9", .chance = 1},
+	},
+}

@@ -1,0 +1,58 @@
+.{
+	.chance = 0.01,
+	.properties = .{.cold},
+	.minHeight = 224,
+	.maxHeight = 240,
+	.music = "cubyz:sunrise",
+	.hills = 15,
+	.ground_structure = .{
+		"cubyz:cold_grass",
+		"1 to 2 cubyz:glacite/base",
+		"1 to 3 cubyz:gravel",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:permafrost_columns/pillars",
+			.placeMode = .degradable,
+			.chance = 0.12,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:cold_grass_vegetation",
+			.chance = 1.1,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:bluebells",
+			.chance = 0.06,
+			.width = 8,
+			.variation = 4,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:vetch",
+			.chance = 0.06,
+			.width = 8,
+			.variation = 4,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.008,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.012,
+		},
+	},
+}
