@@ -4,7 +4,7 @@
 	.minHeight = 224,
 	.maxHeight = 240,
 	.music = "cubyz:sunrise",
-	.hills = 35,
+	.hills = 15,
 	.ground_structure = .{
 		"cubyz:cold_grass",
 		"2 to 3 cubyz:glacite/base",
