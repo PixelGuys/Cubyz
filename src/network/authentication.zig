@@ -85,7 +85,6 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn getPublicKeys(allocator: NeverFailingAllocator) ZonElement {
 		const result = ZonElement.initObject(allocator);
 		inline for (comptime std.meta.declarations(Storage)) |decl| {
-			// TODO: Unify function declarations upstream and link PR
 			const bytes = if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes"))
 				@field(Storage, decl.name).public_key.toBytes()
 			else
@@ -205,8 +204,6 @@ pub const SeedPhrase = struct {
 				failureText.print("The seed phrase has an incorrect checksum.\n", .{});
 			}
 		}
-
-		// TODO: Checksum check
 
 		return .{
 			.text = main.globalAllocator.dupe(u8, result.items),
