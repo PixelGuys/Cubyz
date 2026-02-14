@@ -119,11 +119,9 @@ pub const PublicKey = union(KeyTypeEnum) {
 		switch (typ) {
 			inline else => |_typ| {
 				const KeyType = @TypeOf(@field(KeyCollection.Storage, @tagName(_typ)).public_key);
-				// TODO: Unify function declarations upstream and link PR
 				const length = if (@hasDecl(KeyType, "fromBytes")) KeyType.encoded_length else KeyType.uncompressed_sec1_encoded_length;
 				var bytes: [length]u8 = undefined;
 				try std.base64.standard.Decoder.decode(&bytes, base64);
-				// TODO: Unify function declarations upstream and link PR
 				if (@hasDecl(KeyType, "fromBytes")) {
 					return @unionInit(PublicKey, @tagName(_typ), try KeyType.fromBytes(bytes));
 				} else {
@@ -137,7 +135,6 @@ pub const PublicKey = union(KeyTypeEnum) {
 		switch (@as(KeyTypeEnum, self)) {
 			inline else => |tag| {
 				const AlgorithmType = tag.getAlgorithmType();
-				// TODO: Unify function signatures upstream and link PR
 				const signature: error{InvalidEncoding}!AlgorithmType.Signature = AlgorithmType.Signature.fromBytes((try reader.readSlice(AlgorithmType.Signature.encoded_length))[0..AlgorithmType.Signature.encoded_length].*);
 				try (try signature).verify(message, @field(self, @tagName(tag)));
 			},
