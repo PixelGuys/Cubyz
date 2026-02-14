@@ -183,7 +183,14 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 				.pos = pos,
 				.source = source,
 			};
-			main.threadPool.addTask(task, &vtable);
+			switch (source) {
+				.user => |user| {
+					user.addTask(task, &vtable);
+				},
+				else => {
+					main.threadPool.addTask(task, &vtable);
+				},
+			}
 		}
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
@@ -195,7 +202,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
 			switch (self.source) { // Remove the task if the player disconnected
-				.user => |user| if (!user.connected.load(.unordered)) return false,
+				.user => |user| if (!user.connected.load(.monotonic)) return false,
 				.simulationChunk => |ch| if (ch.refCount.load(.monotonic) == 2) return false,
 			}
 			switch (self.source) { // Remove the task if it's far enough away from the player:
@@ -243,7 +250,11 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 				.pos = pos,
 				.source = source,
 			};
-			main.threadPool.addTask(task, &vtable);
+			if (source) |user| {
+				user.addTask(task, &vtable);
+			} else {
+				main.threadPool.addTask(task, &vtable);
+			}
 		}
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
@@ -263,7 +274,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			defer self.clean();
 			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			if (self.source) |source| {
-				if (source.connected.load(.unordered)) main.network.protocols.lightMapTransmission.sendLightMap(source.conn, map);
+				if (source.connected.load(.monotonic)) main.network.protocols.lightMapTransmission.sendLightMap(source.conn, map);
 			} else {
 				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -389,7 +400,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 };
 
-pub const worldDataVersion: u32 = 4;
+pub const worldDataVersion: u32 = 5;
 
 pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -422,6 +433,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	chunkUpdateQueue: main.utils.CircularBufferQueue(ChunkUpdateRequest),
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
+
+	playerDatabase: std.StringHashMapUnmanaged(usize) = .{},
+	nextPlayerIndex: std.atomic.Value(usize) = .init(0),
 
 	biomeChecksum: i64 = 0,
 
@@ -471,6 +485,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
 		try self.loadWorldConfig(arena, dir, worldData);
+		try self.loadPlayerLoginInfo(dir);
 
 		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
@@ -546,6 +561,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		if (worldData.get(u32, "version", 0) == 3) { // TODO: #2458
+			std.log.info("Migrating old world with world version 3 to version 4", .{});
 			// In version 0.1.0 these values were written incorrectly
 			const settings = worldData.getChild("settings");
 			if (settings.removeChild("default_gamemode")) |gamemode| {
@@ -556,6 +572,28 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 
 			worldData.put("version", 4);
+			try dir.writeZon("world.zig.zon", worldData);
+		}
+
+		if (worldData.get(u32, "version", 0) == 4) { // TODO: #2458
+			std.log.info("Migrating old world with world version 4 to version 5", .{});
+			// Player file names are now numerical instead of based on the name.
+			var fileNames: main.List([]const u8) = .init(arena);
+			var playerDir = try dir.openIterableDir("players");
+			defer playerDir.close();
+			var iterator = playerDir.iterate();
+			while (try iterator.next()) |file| {
+				if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
+					fileNames.append(arena.dupe(u8, file.name));
+				}
+			}
+
+			for (fileNames.items, 0..) |oldName, i| {
+				const newName = std.fmt.allocPrint(arena.allocator, "{}.zon", .{i}) catch unreachable;
+				try playerDir.dir.rename(oldName, newName);
+			}
+
+			worldData.put("version", 5);
 			try dir.writeZon("world.zig.zon", worldData);
 		}
 
@@ -615,6 +653,46 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const groups = permission.groupsToZon(main.stackAllocator);
 		defer groups.deinit(main.stackAllocator);
 		try files.cubyzDir().writeZon(path, groups);
+        }
+
+	pub fn loadPlayerLoginInfo(self: *ServerWorld, dir: main.files.Dir) !void {
+		var playerDir = try dir.openIterableDir("players");
+		defer playerDir.close();
+		var iterator = playerDir.iterate();
+		while (try iterator.next()) |file| {
+			if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
+				const zon = try playerDir.readToZon(main.stackAllocator, file.name);
+				defer zon.deinit(main.stackAllocator);
+				const fileNameBase = file.name[0 .. std.mem.findScalar(u8, file.name, '.') orelse unreachable];
+				if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
+					std.log.err("Player file {s} contains leading zeroes. Skipping.", .{file.name});
+					continue;
+				}
+				const index = std.fmt.parseInt(usize, fileNameBase, 10) catch |err| {
+					std.log.err("Couldn't parse player file {s}: {s} Skipping.", .{file.name, @errorName(err)});
+					continue;
+				};
+				_ = self.nextPlayerIndex.fetchMax(index + 1, .monotonic);
+				if (zon.get(?[]const u8, "publicKey", null)) |key| {
+					const keyType = key[0 .. std.mem.findScalar(u8, key, ':') orelse {
+						std.log.err("Player file {s} has invalid key entry {s}: Type is missing. Skipping.", .{file.name, key});
+						continue;
+					}];
+					_ = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyType) orelse {
+						std.log.err("Player file {s} has invalid key type {s}. Skipping.", .{file.name, keyType});
+						continue;
+					};
+					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, key), index) catch unreachable;
+				} else {
+					const name = zon.get(?[]const u8, "name", null) orelse {
+						std.log.err("Couldn't read player file {s}. Skipping.", .{file.name});
+						continue;
+					};
+					const fullEntry = std.fmt.allocPrint(main.worldArena.allocator, "name:{s}", .{name}) catch unreachable;
+					self.playerDatabase.put(main.worldArena.allocator, fullEntry, index) catch unreachable;
+				}
+			}
+		}
 	}
 
 	const RegenerateLODTask = struct { // MARK: RegenerateLODTask
@@ -862,16 +940,25 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn findPlayer(self: *ServerWorld, user: *User) void {
-		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
-		defer main.stackAllocator.free(dest);
-		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
-
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.path, hashedName}) catch unreachable;
+	pub fn loadPlayer(self: *ServerWorld, user: *User) void {
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
 		const playerData = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
+		if (playerData.get(?[]const u8, "publicKey", null)) |publicKey| {
+			if (!std.mem.eql(u8, publicKey, user.newKeyString)) {
+				std.debug.assert(self.playerDatabase.remove(publicKey));
+				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
+			}
+		} else {
+			removeOld: {
+				const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get(?[]const u8, "name", null) orelse break :removeOld}) catch unreachable;
+				defer main.stackAllocator.free(nameEntry);
+				std.debug.assert(self.playerDatabase.remove(nameEntry));
+			}
+			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
+		}
 		const player = &user.player;
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
@@ -921,11 +1008,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
-		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
-		defer main.stackAllocator.free(dest);
-		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
-
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.path, hashedName}) catch unreachable;
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
 		var playerZon: ZonElement = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
@@ -937,6 +1020,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		playerZon.put("name", user.name);
+		playerZon.put("publicKey", user.newKeyString);
 
 		playerZon.put("entity", user.player.save(main.stackAllocator));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
@@ -1016,7 +1100,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		for (currentChunks.items) |simulationChunk| {
 			defer simulationChunk.decreaseRefCount();
-			simulationChunk.update(self.tickSpeed.load(.unordered));
+			simulationChunk.update(self.tickSpeed.load(.monotonic));
 		}
 	}
 

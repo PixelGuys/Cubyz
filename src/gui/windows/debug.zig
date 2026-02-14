@@ -48,10 +48,10 @@ pub fn render() void {
 		draw.print("Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8, .left);
 		y += 8;
 		draw.print("Gamemode: {} IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
-			player.gamemode.load(.unordered),
-			player.isFlying.load(.unordered),
-			player.isGhost.load(.unordered),
-			player.hyperSpeed.load(.unordered),
+			player.gamemode.load(.monotonic),
+			player.isFlying.load(.monotonic),
+			player.isGhost.load(.monotonic),
+			player.hyperSpeed.load(.monotonic),
 		}, 0, y, 8, .left);
 		y += 8;
 		draw.print("OnGround: {} JumpCooldown: {d:.3} JumpCoyote: {d:.3}", .{

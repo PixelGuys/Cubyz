@@ -35,9 +35,15 @@ pub const QuadInfo = extern struct {
 	}
 };
 
+const LightSample = struct {
+	weights: [4]u16,
+	offset: Vec3i,
+};
+
 const ExtraQuadInfo = struct {
 	faceNeighbor: ?Neighbor,
 	isFullQuad: bool,
+	lightSampleListForAxisAlignedModels: []LightSample,
 	hasOnlyCornerVertices: bool,
 	alignedNormalDirection: ?Neighbor,
 };
@@ -713,9 +719,80 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 		if (@reduce(.And, info.normal == Vec3f{0, 0, -1})) extraQuadInfo.alignedNormalDirection = .dirDown;
 		if (@reduce(.And, info.normal == Vec3f{0, 0, 1})) extraQuadInfo.alignedNormalDirection = .dirUp;
 	}
+
+	if (extraQuadInfo.alignedNormalDirection) |normal| {
+		var lightSamples: main.ListUnmanaged(LightSample) = .initCapacity(main.stackAllocator, 4*8*4);
+		defer lightSamples.deinit(main.stackAllocator);
+
+		for (0..4) |i| {
+			const vertexPos: Vec3f = info.corners[i];
+			const lightPos = vertexPos;
+			const containingBlockPos: Vec3i = @intFromFloat(@floor(lightPos));
+			const interp = std.math.clamp(lightPos - @as(Vec3f, @floatFromInt(containingBlockPos)), @as(Vec3f, @splat(0)), @as(Vec3f, @splat(1)));
+
+			var dx: u31 = 0;
+			while (dx <= 1) : (dx += 1) {
+				var dy: u31 = 0;
+				while (dy <= 1) : (dy += 1) {
+					var dz: u31 = 0;
+					while (dz <= 1) : (dz += 1) {
+						var weight: f32 = 0;
+						if (dx == 0) weight = 1 - interp[0] else weight = interp[0];
+						if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
+						if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
+						const integerWeight: u16 = @intFromFloat(weight/4.0*256);
+						if (integerWeight == 0) continue;
+						var weights: [4]u16 = @splat(0);
+						weights[i] = integerWeight;
+						addCornerLightSamples(&lightSamples, containingBlockPos +% Vec3i{dx, dy, dz}, normal, weights);
+					}
+				}
+			}
+		}
+
+		std.sort.insertion(LightSample, lightSamples.items, {}, struct {
+			fn lessThan(_: void, a: LightSample, b: LightSample) bool {
+				if (a.offset[0] < b.offset[0]) return true;
+				if (a.offset[0] > b.offset[0]) return false;
+				if (a.offset[1] < b.offset[1]) return true;
+				if (a.offset[1] > b.offset[1]) return false;
+				if (a.offset[2] < b.offset[2]) return true;
+				return false;
+			}
+		}.lessThan);
+
+		var deduplicatedList: main.ListUnmanaged(LightSample) = .initCapacity(main.stackAllocator, lightSamples.items.len);
+		defer deduplicatedList.deinit(main.stackAllocator);
+
+		for (lightSamples.items) |sample| {
+			if (deduplicatedList.items.len != 0 and @reduce(.And, deduplicatedList.items[deduplicatedList.items.len - 1].offset == sample.offset)) {
+				for (0..4) |i| {
+					deduplicatedList.items[deduplicatedList.items.len - 1].weights[i] += sample.weights[i];
+				}
+			} else {
+				deduplicatedList.appendAssumeCapacity(sample);
+			}
+		}
+
+		extraQuadInfo.lightSampleListForAxisAlignedModels = main.globalArena.dupe(LightSample, deduplicatedList.items);
+	}
 	extraQuadInfos.append(extraQuadInfo);
 
 	return index;
+}
+
+fn addCornerLightSamples(lightSamples: *main.ListUnmanaged(LightSample), pos: Vec3i, direction: chunk.Neighbor, weights: [4]u16) void {
+	const normal: Vec3f = @floatFromInt(Vec3i{direction.relX(), direction.relY(), direction.relZ()});
+	const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
+	const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+	var dx: i32 = 0;
+	while (dx <= 1) : (dx += 1) {
+		var dy: i32 = 0;
+		while (dy <= 1) : (dy += 1) {
+			const finalPos = startPos +% @as(Vec3i, @intCast(@abs(direction.textureX())))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(direction.textureY()*@as(Vec3i, @splat(dy)))));
+			lightSamples.appendAssumeCapacity(.{.offset = finalPos, .weights = weights});
+		}
+	}
 }
 
 fn box(min: Vec3f, max: Vec3f, uvOffset: Vec2f) [6]QuadInfo {

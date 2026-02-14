@@ -557,7 +557,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 				const index = xIndex*storageSize + yIndex;
 				const pos = LightMap.MapFragmentPosition{.wx = x, .wy = y, .voxelSize = @as(u31, 1) << lod, .voxelSizeShift = lod};
 
-				const map = mapStorageLists[_lod][@intCast(index)].load(.unordered);
+				const map = mapStorageLists[_lod][@intCast(index)].load(.monotonic);
 				if (map) |_map| {
 					std.debug.assert(std.meta.eql(pos, _map.pos));
 				} else {

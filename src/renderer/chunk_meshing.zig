@@ -449,27 +449,14 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return val/@as(LightVector, @splat(256));
 	}
 
-	fn getCornerLightAligned(parent: *ChunkMesh, pos: Vec3i, direction: chunk.Neighbor) LightVector { // Fast path for aligned normals, leading to 4 instead of 8 light samples.
-		const normal: Vec3f = @floatFromInt(Vec3i{direction.relX(), direction.relY(), direction.relZ()});
-		const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
-		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
-		var val: LightVector = @splat(0);
-		var dx: i32 = 0;
-		while (dx <= 1) : (dx += 1) {
-			var dy: i32 = 0;
-			while (dy <= 1) : (dy += 1) {
-				const weight: u16 = 1.0/4.0*256;
-				const finalPos = startPos +% @as(Vec3i, @intCast(@abs(direction.textureX())))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(direction.textureY()*@as(Vec3i, @splat(dy)))));
-				var lightVal: LightVector = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
-				if (parent.pos.voxelSize == 1) {
-					const nextVal = getLightAt(parent, finalPos[0] +% direction.relX(), finalPos[1] +% direction.relY(), finalPos[2] +% direction.relZ());
-					const diff: LightVector = @min(@as(LightVector, @splat(8)), lightVal -| nextVal);
-					lightVal = lightVal -| diff*@as(LightVector, @splat(5))/@as(LightVector, @splat(2));
-				}
-				val += lightVal*@as(LightVector, @splat(weight));
-			}
+	fn getLightSampleAligned(parent: *ChunkMesh, pos: Vec3i, direction: chunk.Neighbor) LightVector {
+		var lightVal: LightVector = getLightAt(parent, pos[0], pos[1], pos[2]);
+		if (parent.pos.voxelSize == 1) {
+			const nextVal = getLightAt(parent, pos[0] +% direction.relX(), pos[1] +% direction.relY(), pos[2] +% direction.relZ());
+			const diff: LightVector = @min(@as(LightVector, @splat(8)), lightVal -| nextVal);
+			lightVal = lightVal -| diff*@as(LightVector, @splat(5))/@as(LightVector, @splat(2));
 		}
-		return val/@as(LightVector, @splat(256));
+		return lightVal;
 	}
 
 	fn packLightValues(rawVals: [4]LightVector) [4]u32 {
@@ -489,19 +476,29 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		const quadInfo = quadIndex.quadInfo();
 		const extraQuadInfo = quadIndex.extraQuadInfo();
 		const normal = quadInfo.normal;
-		if (!blocks.meshes.textureOcclusionData[textureIndex].load(.unordered)) { // No ambient occlusion (→ no smooth lighting)
+		if (!blocks.meshes.textureOcclusionData[textureIndex].load(.monotonic)) { // No ambient occlusion (→ no smooth lighting)
 			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
 			return packLightValues(@splat(fullValues));
+		}
+		if (extraQuadInfo.alignedNormalDirection) |dir| { // Fast path using precomputed samples
+			var lightValues: [4]LightVector = @splat(@splat(0));
+			for (extraQuadInfo.lightSampleListForAxisAlignedModels) |sample| {
+				const lightVal = getLightSampleAligned(parent, blockPos +% sample.offset, dir);
+				for (0..4) |i| {
+					lightValues[i] += @as(LightVector, @splat(sample.weights[i]))*lightVal;
+				}
+			}
+			for (0..4) |i| {
+				lightValues[i] /= @splat(256);
+			}
+			return packLightValues(lightValues);
 		}
 		if (extraQuadInfo.hasOnlyCornerVertices) { // Fast path for simple quads.
 			var rawVals: [4]LightVector = undefined;
 			for (0..4) |i| {
 				const vertexPos: Vec3f = quadInfo.corners[i];
 				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
-				rawVals[i] = if (extraQuadInfo.alignedNormalDirection) |dir|
-					getCornerLightAligned(parent, fullPos, dir)
-				else
-					getCornerLight(parent, fullPos, normal);
+				rawVals[i] = getCornerLight(parent, fullPos, normal);
 			}
 			return packLightValues(rawVals);
 		}
@@ -520,10 +517,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 					while (dy <= 1) : (dy += 1) {
 						var dz: u31 = 0;
 						while (dz <= 1) : (dz += 1) {
-							cornerVals[dx][dy][dz] = if (extraQuadInfo.alignedNormalDirection) |dir|
-								getCornerLightAligned(parent, containingBlockPos +% Vec3i{dx, dy, dz}, dir)
-							else
-								getCornerLight(parent, containingBlockPos +% Vec3i{dx, dy, dz}, normal);
+							cornerVals[dx][dy][dz] = getCornerLight(parent, containingBlockPos +% Vec3i{dx, dy, dz}, normal);
 						}
 					}
 				}

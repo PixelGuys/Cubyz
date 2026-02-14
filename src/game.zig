@@ -746,7 +746,7 @@ pub const World = struct { // MARK: World
 		}
 		// Ambient light:
 		{
-			self.ambientLight, const skyColorFactor = dayNightLightFactor(self.gameTime.load(.unordered));
+			self.ambientLight, const skyColorFactor = dayNightLightFactor(self.gameTime.load(.monotonic));
 			fog.fogColor = biomeFog.fogColor*skyColorFactor;
 			fog.skyColor = biomeFog.skyColor*skyColorFactor;
 			fog.density = biomeFog.density;

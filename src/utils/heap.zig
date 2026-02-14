@@ -758,11 +758,11 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 	}
 
 	pub fn assertAllThreadsStopped() void {
-		std.debug.assert(sharedState.load(.unordered) & 0x3fffffff == 0);
+		std.debug.assert(sharedState.load(.monotonic) & 0x3fffffff == 0);
 	}
 
 	fn startNewCycle() void {
-		var cur = sharedState.load(.unordered);
+		var cur = sharedState.load(.monotonic);
 		while (true) {
 			var new: State = @bitCast(cur);
 			new.waitingThreads = new.totalThreads;
@@ -788,7 +788,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		}
 		lastSyncPointTime = newTime;
 
-		const old: State = @bitCast(sharedState.load(.unordered));
+		const old: State = @bitCast(sharedState.load(.monotonic));
 		if (old.cycle == threadCycle) return;
 		removeThreadFromWaiting();
 		freeItemsFromList(&lists[threadCycle]);
