@@ -550,7 +550,6 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	var cameraFollowVel: Vec3f = @splat(0);
 	const damping: Vec3f = @splat(130);
 	var bobPhase: f32 = 0;
-	var bobIntensity: f32 = 0;
 
 	pub fn update(deltaTime: f64) void {
 		if (!settings.bobbing) {
@@ -581,16 +580,12 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const bobAmountLateral: f32 = 0.007;
 		const bobAmountVertical: f32 = 0.006;
 		const settleSpeed: f32 = 2.5;
-		const fadeInSpeed: f32 = 0.4;
-		const fadeOutSpeedOnGround: f32 = 2.5;
-		const fadeOutSpeedAirborne: f32 = 0.4;
 		const movementScaleMax: f32 = 10;
 		const playerSpeedThreshold: f32 = 0.01;
 		const movementScaleMinForPhase: f32 = 6;
 
 		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
 			bobPhase = 0;
-			bobIntensity = 0;
 			return @splat(0);
 		}
 
@@ -602,23 +597,18 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const playerSpeed = vec.length(playerVel);
 		const movementScale = @min(playerSpeed, movementScaleMax);
 
-		if (game.Player.onGround) {
-			if (playerSpeed > playerSpeedThreshold) {
-				bobPhase += dt*bobSpeed*@max(movementScale, movementScaleMinForPhase);
-				bobPhase = std.math.mod(f32, bobPhase, 2*std.math.pi) catch unreachable;
-				bobIntensity = std.math.lerp(bobIntensity, 1, @min(dt*fadeInSpeed, 1));
-			} else {
-				bobPhase = std.math.lerp(bobPhase, 0, @min(dt*settleSpeed, 1));
-				bobIntensity = std.math.lerp(bobIntensity, 0, @min(dt*fadeOutSpeedOnGround, 1));
-			}
+		if (game.Player.onGround and playerSpeed > playerSpeedThreshold) {
+			bobPhase += dt*bobSpeed*@max(movementScale, movementScaleMinForPhase);
+			bobPhase = std.math.mod(f32, bobPhase, 2*std.math.pi) catch unreachable;
 		} else {
-			bobIntensity = std.math.lerp(bobIntensity, 0, @min(dt*fadeOutSpeedAirborne, 1));
+			const targetPhase = std.math.round(bobPhase/std.math.pi)*std.math.pi;
+			bobPhase = std.math.lerp(bobPhase, targetPhase, @min(dt*settleSpeed, 1));
 		}
 
 		return .{
-			@abs(std.math.sin(bobPhase))*bobAmountVertical*movementScale*bobIntensity,
+			@abs(std.math.sin(bobPhase))*bobAmountVertical*movementScale,
 			0,
-			std.math.sin(bobPhase)*bobAmountLateral*movementScale*bobIntensity,
+			std.math.sin(bobPhase)*bobAmountLateral*movementScale,
 		};
 	}
 };
