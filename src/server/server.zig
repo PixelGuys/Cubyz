@@ -115,7 +115,13 @@ pub const User = struct { // MARK: User
 	spawnPos: Vec3d = .{0, 0, 0},
 	worldEditData: WorldEditData = undefined,
 
+	playerIndex: usize = undefined,
+
 	lastSentBiomeId: u32 = 0xffffffff,
+
+	newKeyString: []const u8 = &.{},
+	key: network.authentication.PublicKey = undefined,
+	legacyKey: ?network.authentication.PublicKey = null,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
 	inventory: ?InventoryId = null,
@@ -163,6 +169,7 @@ pub const User = struct { // MARK: User
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
+		main.globalAllocator.free(self.newKeyString);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
@@ -183,9 +190,38 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	pub fn setName(self: *User, name: []const u8) void {
+	pub fn identifyFromKeysAndName(self: *User, name: []const u8, keys: main.ZonElement) !void {
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
+		{
+			const keyBase64 = keys.get(?[]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), null) orelse return error.PublicKeyNotPresent;
+			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
+			self.newKeyString = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64}) catch unreachable;
+		}
+		var foundKey: bool = false;
+		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
+			const keyBase64 = keys.get(?[]const u8, keyTypeName, null) orelse continue;
+			const keyWithType = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{s}", .{keyTypeName, keyBase64}) catch unreachable;
+			defer main.stackAllocator.free(keyWithType);
+			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
+			foundKey = true;
+			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName) orelse unreachable;
+			if (keyType == self.key) break;
+			self.legacyKey = try .initFromBase64(keyBase64, keyType);
+			break;
+		}
+		if (!foundKey) {
+			const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
+			defer main.stackAllocator.free(nameEntry);
+			self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+		}
+	}
+
+	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
+		try self.key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+		if (self.legacyKey) |key| {
+			try key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+		}
 	}
 
 	var freeId: u32 = 0;
@@ -193,7 +229,7 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		world.?.findPlayer(self);
+		world.?.loadPlayer(self);
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.loadUnloadChunks();
 	}
@@ -565,10 +601,10 @@ pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-	// Check if a user with that name is already present
+	// Check if a user with that account is already present
 	if (!world.?.testingMode) {
 		for (userList) |other| {
-			if (std.mem.eql(u8, other.name, user.name)) {
+			if (other.playerIndex == user.playerIndex) {
 				user.conn.disconnect();
 				return;
 			}
