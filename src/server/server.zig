@@ -602,10 +602,10 @@ pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-	// Check if a user with that name is already present
+	// Check if a user with that account is already present
 	if (!world.?.testingMode) {
 		for (userList) |other| {
-			if (std.mem.eql(u8, other.name, user.name)) {
+			if (other.playerIndex == user.playerIndex) {
 				user.conn.disconnect();
 				return;
 			}
