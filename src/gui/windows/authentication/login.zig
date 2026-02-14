@@ -20,8 +20,8 @@ pub var window = GuiWindow{
 	.closeable = false,
 };
 var textComponent: *TextInput = undefined;
-var applyButton: *Button = undefined;
-var applyAnyways: bool = false;
+var loginButton: *Button = undefined;
+var loginAnyways: bool = false;
 
 var innerList: *VerticalList = undefined;
 var encryptWithPasswordCheckbox: *CheckBox = undefined;
@@ -33,7 +33,7 @@ var encryptSeedPhrase: bool = true;
 
 const padding: f32 = 8;
 
-fn apply() void {
+fn login() void {
 	var failureText: main.List(u8) = .init(main.stackAllocator);
 	defer failureText.deinit();
 	const seedPhrase = main.network.authentication.SeedPhrase.initFromUserInput(textComponent.currentString.items, &failureText);
@@ -44,13 +44,13 @@ fn apply() void {
 		return;
 	}
 
-	if (failureText.items.len != 0 and !applyAnyways) {
+	if (failureText.items.len != 0 and !loginAnyways) {
 		failureText.insertSlice(0, "Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n\n");
 
 		main.gui.windowlist.notification.raiseNotification("{s}", .{failureText.items});
 
-		applyAnyways = true;
-		applyButton.child.label.updateText("Apply anyways");
+		loginAnyways = true;
+		loginButton.child.label.updateText("Login anyways");
 
 		return;
 	}
@@ -77,8 +77,8 @@ fn apply() void {
 }
 
 fn updateText() void {
-	applyAnyways = false;
-	applyButton.child.label.updateText("Apply");
+	loginAnyways = false;
+	loginButton.child.label.updateText("Login");
 }
 
 fn showTextCallback(showText: bool) void {
@@ -114,32 +114,36 @@ fn openCreateAccountWindow() void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
-	const width = 420;
-	list.add(Label.init(.{0, 0}, width, "Please enter your account's seed phrase!", .center));
-	list.add(Label.init(.{0, 0}, width, "Note: We will only ask for the seed phrase on the start of the game.", .center));
-	list.add(Label.init(.{0, 0}, width, "Do not enter your seed phrase under any other circumstance and do not send it to anyone else.", .center));
-	textComponent = TextInput.init(.{0, 0}, width, 32, "", .{.onNewline = .init(none), .onUpdate = .init(updateText)});
+	const width = 480;
+	list.add(Label.init(.{0, 0}, width, "Please enter your account's seed phrase!", .left));
+	list.add(Label.init(.{0, 0}, width, "Note: We will only ask for the seed phrase on the start of the game.", .left));
+	list.add(Label.init(.{0, 0}, width, "Do not enter your seed phrase under any other circumstance and do not send it to anyone else.", .left));
+	const textRow = HorizontalList.init();
+	textComponent = TextInput.init(.{0, 0}, 400, 38, "", .{.onNewline = .init(none), .onUpdate = .init(updateText)});
 	textComponent.obfuscated = true;
-	list.add(textComponent);
-	list.add(CheckBox.init(.{0, 0}, width, "Show text", false, &showTextCallback));
+	textRow.add(textComponent);
+	textRow.add(CheckBox.init(.{10, 0}, 70, "Show", false, &showTextCallback));
+	textRow.finish(.{0, 0}, .center);
+	list.add(textRow);
 	list.add(CheckBox.init(.{0, 0}, width, "Store seed phrase on disk", storeSeedPhrase, &storeSeedPhraseCallback));
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
 	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it on disk (recommended)", encryptSeedPhrase, &encryptSeedPhraseCallback);
 	innerList.add(encryptWithPasswordCheckbox);
 	passwordRow = HorizontalList.init();
 	passwordRow.add(Label.init(.{0, 0}, 100, "Password:", .left));
-	passwordTextField = TextInput.init(.{0, 0}, width - 100, 32, "", .{.onNewline = .init(none)});
+	passwordTextField = TextInput.init(.{0, 0}, width - 100, 22, "", .{.onNewline = .init(none)});
 	passwordRow.add(passwordTextField);
 	passwordRow.finish(.{0, 0}, .center);
 	innerList.add(passwordRow);
 	innerList.finish(.center);
 	refreshInner();
 	list.add(innerList);
-	const buttonRow = HorizontalList.init();
-	buttonRow.add(Button.initText(.{0, 0}, 200, "Create new Account", .init(openCreateAccountWindow)));
-	applyButton = Button.initText(.{padding, 0}, 200, "Apply", .init(apply));
-	buttonRow.add(applyButton);
-	list.add(buttonRow);
+	loginButton = Button.initText(.{padding, 0}, 200, "Login", .init(login));
+	list.add(loginButton);
+	const createAccountRow = HorizontalList.init();
+	createAccountRow.add(Label.init(.{0, 3}, 240, "Dont' have an Account yet?", .left));
+	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .init(openCreateAccountWindow)));
+	list.add(createAccountRow);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
