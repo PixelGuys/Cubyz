@@ -124,6 +124,10 @@ pub fn onOpen() void {
 	textRow.finish(.{0, 0}, .center);
 	list.add(textRow);
 	list.add(Label.init(.{0, 0}, width, "#ff8080**Do not share your seed phrase with anyone!**", .left));
+	const createAccountRow = HorizontalList.init();
+	createAccountRow.add(Label.init(.{0, 3}, 240, "Don't have an Account yet?", .left));
+	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .init(openCreateAccountWindow)));
+	list.add(createAccountRow);
 	list.add(CheckBox.init(.{0, 0}, width, "Store seed phrase on disk", storeSeedPhrase, &storeSeedPhraseCallback));
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
 	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it on disk (recommended)", encryptSeedPhrase, &encryptSeedPhraseCallback);
@@ -139,10 +143,6 @@ pub fn onOpen() void {
 	list.add(innerList);
 	loginButton = Button.initText(.{padding, 0}, 200, "Login", .init(login));
 	list.add(loginButton);
-	const createAccountRow = HorizontalList.init();
-	createAccountRow.add(Label.init(.{0, 3}, 240, "Don't have an Account yet?", .left));
-	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .init(openCreateAccountWindow)));
-	list.add(createAccountRow);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
