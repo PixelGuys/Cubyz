@@ -206,7 +206,6 @@ pub const handShake = struct { // MARK: handShake
 				},
 				.signatureResponse => {
 					try conn.user.?.verifySignatures(reader);
-					std.log.info("Signature correct", .{});
 					{
 						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 						defer main.stackAllocator.free(path);
