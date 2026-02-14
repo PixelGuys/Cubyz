@@ -62,16 +62,18 @@ fn logout() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 420;
-	list.add(Label.init(.{0, 0}, width, "Please enter your local password!", .center));
-	list.add(Label.init(.{0, 0}, width, "Note: We will only ask for this password on the start of the game.", .center));
-	list.add(Label.init(.{0, 0}, width, "If you lost your password you can also log out and reenter your seed phrase.", .center));
-	textComponent = TextInput.init(.{0, 0}, width, 32, "", .{.onNewline = .init(apply)});
+	list.add(Label.init(.{0, 0}, width, "Please enter your local password!", .left));
+	list.add(Label.init(.{0, 0}, width, "If you lost your password you can also log out and reenter your seed phrase.", .left));
+	const passwordRow = HorizontalList.init();
+	textComponent = TextInput.init(.{0, 0}, width - 80, 22, "", .{.onNewline = .init(apply)});
 	textComponent.obfuscated = true;
-	list.add(textComponent);
-	list.add(CheckBox.init(.{0, 0}, width, "Show text", false, &showTextCallback));
+	passwordRow.add(textComponent);
+	passwordRow.add(CheckBox.init(.{10, 0}, 70, "Show", false, &showTextCallback));
+	passwordRow.finish(.{0, 0}, .center);
+	list.add(passwordRow);
 	const buttonRow = HorizontalList.init();
 	buttonRow.add(Button.initText(.{0, 0}, 200, "Logout", .init(logout)));
-	buttonRow.add(Button.initText(.{padding, 0}, 200, "Apply", .init(apply)));
+	buttonRow.add(Button.initText(.{padding, 0}, 200, "Unlock", .init(apply)));
 	list.add(buttonRow);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
