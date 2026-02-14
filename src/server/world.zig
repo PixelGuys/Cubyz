@@ -653,7 +653,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const groups = permission.groupsToZon(main.stackAllocator);
 		defer groups.deinit(main.stackAllocator);
 		try files.cubyzDir().writeZon(path, groups);
-        }
+	}
 
 	pub fn loadPlayerLoginInfo(self: *ServerWorld, dir: main.files.Dir) !void {
 		var playerDir = try dir.openIterableDir("players");
