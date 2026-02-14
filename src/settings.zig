@@ -49,6 +49,8 @@ pub var streamerMode: bool = false;
 
 pub var lastUsedIPAddress: []const u8 = "";
 
+pub var storedAccount: main.network.authentication.PasswordEncodedSeedPhrase = .empty;
+
 pub var guiScale: ?f32 = null;
 
 pub var musicVolume: f32 = 1;
@@ -82,7 +84,7 @@ pub fn init() void {
 	};
 	defer zon.deinit(main.stackAllocator);
 
-	inline for (@typeInfo(@This()).@"struct".decls) |decl| {
+	inline for (@typeInfo(@This()).@"struct".decls) |decl| runtimeContinueInsideOfComptimeBlock: {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if (!is_const) {
 			const DeclType = @TypeOf(@field(@This(), decl.name));
@@ -92,7 +94,11 @@ pub fn init() void {
 					@field(@This(), decl.name) = .fromNanoseconds(@intFromFloat(zon.get(f64, decl.name, defaultMilli)*1.0e6));
 					continue;
 				}
-				@compileError("Not implemented yet.");
+				@field(@This(), decl.name) = DeclType.fromZon(main.globalAllocator, zon.getChild(decl.name)) catch |err| {
+					std.log.err("Got error while loading setting {s}: {s}", .{decl.name, @errorName(err)});
+					break :runtimeContinueInsideOfComptimeBlock;
+				};
+				continue;
 			}
 			@field(@This(), decl.name) = zon.get(DeclType, decl.name, @field(@This(), decl.name));
 			if (@typeInfo(DeclType) == .pointer) {
@@ -128,7 +134,8 @@ pub fn deinit() void {
 			const DeclType = @TypeOf(@field(@This(), decl.name));
 			if (@typeInfo(DeclType) == .@"struct") {
 				if (DeclType == std.Io.Duration) continue;
-				@compileError("Not implemented yet.");
+				@field(@This(), decl.name).deinit(main.globalAllocator);
+				continue;
 			}
 			if (@typeInfo(DeclType) == .pointer) {
 				if (@typeInfo(DeclType).pointer.size == .slice) {
@@ -158,7 +165,8 @@ pub fn save() void {
 					zonObject.put(decl.name, @as(f64, @floatFromInt(@field(@This(), decl.name).toNanoseconds()))/1.0e6);
 					continue;
 				}
-				@compileError("Not implemented yet.");
+				zonObject.put(decl.name, @field(@This(), decl.name).toZon(main.stackAllocator));
+				continue;
 			}
 			if (DeclType == []const u8) {
 				zonObject.putOwnedString(decl.name, @field(@This(), decl.name));
@@ -204,6 +212,7 @@ pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;
+	pub var preferredAuthenticationAlgorithm: main.network.authentication.KeyTypeEnum = .ed25519;
 
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
@@ -215,5 +224,6 @@ pub const launchConfig = struct {
 		cubyzDir = main.globalArena.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
+		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm", preferredAuthenticationAlgorithm);
 	}
 };

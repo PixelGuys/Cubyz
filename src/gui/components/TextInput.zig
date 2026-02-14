@@ -50,6 +50,7 @@ const Callbacks = struct {
 	onNewline: main.callbacks.SimpleCallback,
 	onUp: main.callbacks.SimpleCallback = .{},
 	onDown: main.callbacks.SimpleCallback = .{},
+	onUpdate: main.callbacks.SimpleCallback = .{},
 };
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, callbacks: Callbacks) *TextInput {
@@ -161,6 +162,7 @@ pub fn deselect(self: *TextInput) void {
 }
 
 fn reloadText(self: *TextInput) void {
+	self.callbacks.onUpdate.run();
 	self.textBuffer.deinit();
 	self.textBuffer = TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);

@@ -64,6 +64,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	}
 
 	if (t.os.tag == .windows) {
+		exe.linkSystemLibrary("bcrypt");
 		exe.linkSystemLibrary("crypt32");
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
@@ -153,6 +154,7 @@ fn createLaunchConfig() !void {
 			\\    .cubyzDir = "",
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
+			\\    // .preferredAuthenticationAlgorithm = .ed25519, // Uncomment and change this if you own a server in an outdated game version where the default algorithm got compromised.
 			\\}
 		;
 		try std.fs.cwd().writeFile(.{

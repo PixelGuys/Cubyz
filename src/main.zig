@@ -579,7 +579,8 @@ pub fn main() void { // MARK: main()
 	if (!headless) renderer.init();
 	defer if (!headless) renderer.deinit();
 
-	network.init();
+	network.init() catch @panic("Failed to initialize network");
+	defer network.deinit();
 
 	if (!headless) entity.ClientEntityManager.init();
 	defer if (!headless) entity.ClientEntityManager.deinit();
@@ -601,13 +602,36 @@ pub fn main() void { // MARK: main()
 }
 
 pub fn clientMain() void { // MARK: clientMain()
-	if (settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else if (settings.launchConfig.autoEnterWorld.len == 0) {
-		gui.openWindow("main");
-	} else {
-		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
+	switch (settings.storedAccount.typ) {
+		.none => blk: {
+			if (settings.storedAccount.data.len == 0) {
+				gui.openWindow("authentication/login");
+				break :blk;
+			}
+			var failureText: List(u8) = .init(stackAllocator);
+			defer failureText.deinit();
+			const seedPhrase = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
+				std.log.err("Got error while loading seed phrase: {s}", .{@errorName(err)});
+				gui.openWindow("authentication/login");
+				break :blk;
+			};
+			defer seedPhrase.deinit();
+			if (failureText.items.len != 0) {
+				std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
+			}
+			network.authentication.KeyCollection.init(seedPhrase);
+			if (settings.playerName.len == 0) {
+				gui.openWindow("change_name");
+			} else if (settings.launchConfig.autoEnterWorld.len == 0) {
+				gui.openWindow("main");
+			} else {
+				// Speed up the dev process by entering the world directly.
+				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
+			}
+		},
+		else => {
+			gui.openWindow("authentication/unlock");
+		},
 	}
 
 	const c = Window.c;
