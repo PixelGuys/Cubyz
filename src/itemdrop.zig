@@ -543,13 +543,90 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 	}
 };
 
+const BobManager = struct {
+	phase: f32 = 0,
+	scale: f32 = 0,
+
+	const bobSpeed: f32 = 11;
+	const bobAmountLateral: f32 = 0.08;
+	const bobAmountVertical: f32 = 0.07;
+
+	const actualSpeedMax: f32 = 5;
+	const inputSpeedMax: f32 = 10;
+
+	const scaleThreshold: f32 = 0.1;
+
+	const scaleMinForPhaseWhenWalking: f32 = 0.7;
+
+	const settleSpeedFly: f32 = 5;
+	const scaleFly: f32 = 0.8;
+
+	const settleSpeedAirborne: f32 = 2.5;
+	const scaleAirborne: f32 = 0.8;
+
+	const settleSpeedOnGround: f32 = 4;
+	const scaleOnGround: f32 = 0.1;
+
+	const scaleTransitionSpeed: f32 = 4;
+
+	inline fn settlePhase(self: *@This(), dt: f32, speed: f32) void {
+		const targetPhase = std.math.round(self.phase/std.math.pi)*std.math.pi;
+		self.phase = std.math.lerp(self.phase, targetPhase, @min(dt*speed, 1));
+	}
+
+	inline fn transitionScale(self: *@This(), dt: f32, newScale: f32) void {
+		self.scale = std.math.lerp(self.scale, newScale, @min(dt*scaleTransitionSpeed, 1));
+	}
+
+	fn update(self: *@This(), dt: f32) void {
+		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
+			self.transitionScale(dt, scaleFly);
+			self.settlePhase(dt, settleSpeedFly);
+			return;
+		}
+
+		const horizontalVel: Vec3f = .{
+			@floatCast(game.Player.super.vel[0]),
+			@floatCast(game.Player.super.vel[1]),
+			0,
+		};
+
+		if (!game.Player.onGround) {
+			self.transitionScale(dt, scaleAirborne);
+			self.settlePhase(dt, settleSpeedAirborne);
+			return;
+		}
+
+		const newScale = @min(@as(f32, @floatCast(game.Player.inputSpeed))/inputSpeedMax, vec.length(horizontalVel)/actualSpeedMax, 1);
+
+		if (newScale > scaleThreshold) {
+			self.transitionScale(dt, newScale);
+			self.phase += dt*bobSpeed*@max(self.scale, scaleMinForPhaseWhenWalking);
+			self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
+			return;
+		}
+
+		self.transitionScale(dt, scaleOnGround);
+		self.settlePhase(dt, settleSpeedOnGround);
+	}
+
+	fn getOffset(self: @This()) Vec3f {
+		const s = std.math.sin(self.phase);
+		return .{
+			@abs(s)*bobAmountVertical*self.scale,
+			0,
+			s*bobAmountLateral*self.scale,
+		};
+	}
+};
+
 // Going to handle item animations and other things like - interpolation, movement reactions
 pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	pub var showItem: bool = true;
 	var cameraFollow: Vec3f = @splat(0);
 	var cameraFollowVel: Vec3f = @splat(0);
 	const damping: Vec3f = @splat(130);
-	var bobPhase: f32 = 0;
+	var bobManager: BobManager = .{};
 
 	pub fn update(deltaTime: f64) void {
 		if (!settings.bobbing) {
@@ -560,7 +637,9 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		if (deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
-		const totalOffset = calculateAscentDescentOffset() + calculateBobOffset(dt);
+		bobManager.update(dt);
+
+		const totalOffset = getAscentDescentOffset() + bobManager.getOffset();
 
 		// TODO: add *smooth* item sway
 		const n1: Vec3f = cameraFollowVel - (cameraFollow - totalOffset)*damping*damping*@as(Vec3f, @splat(dt));
@@ -570,46 +649,9 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
 	}
 
-	fn calculateAscentDescentOffset() Vec3f {
+	fn getAscentDescentOffset() Vec3f {
 		const playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
 		return vec.clampMag(playerVel, 0.32);
-	}
-
-	fn calculateBobOffset(dt: f32) Vec3f {
-		const bobSpeed: f32 = 1.2;
-		const bobAmountLateral: f32 = 0.007;
-		const bobAmountVertical: f32 = 0.006;
-		const settleSpeed: f32 = 2.5;
-		const movementScaleMax: f32 = 10;
-		const playerSpeedThreshold: f32 = 0.01;
-		const movementScaleMinForPhase: f32 = 6;
-
-		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
-			bobPhase = 0;
-			return @splat(0);
-		}
-
-		const playerVel: Vec3f = .{
-			@floatCast(game.Player.super.vel[0]),
-			@floatCast(game.Player.super.vel[1]),
-			0,
-		};
-		const playerSpeed = vec.length(playerVel);
-		const movementScale = @min(playerSpeed, movementScaleMax);
-
-		if (game.Player.onGround and playerSpeed > playerSpeedThreshold) {
-			bobPhase += dt*bobSpeed*@max(movementScale, movementScaleMinForPhase);
-			bobPhase = std.math.mod(f32, bobPhase, 2*std.math.pi) catch unreachable;
-		} else {
-			const targetPhase = std.math.round(bobPhase/std.math.pi)*std.math.pi;
-			bobPhase = std.math.lerp(bobPhase, targetPhase, @min(dt*settleSpeed, 1));
-		}
-
-		return .{
-			@abs(std.math.sin(bobPhase))*bobAmountVertical*movementScale,
-			0,
-			std.math.sin(bobPhase)*bobAmountLateral*movementScale,
-		};
 	}
 };
 
