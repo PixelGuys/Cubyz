@@ -191,7 +191,6 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn identifyFromKeysAndName(self: *User, name: []const u8, keys: main.ZonElement) !void {
-		// TODO: Actually identify it.
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
 		{
