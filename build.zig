@@ -154,6 +154,7 @@ fn createLaunchConfig() !void {
 			\\    .cubyzDir = "",
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
+			\\    // .preferredAuthenticationAlgorithm = .ed25519, // Uncomment and change this if you own a server in an outdated game version where the default algorithm got compromised.
 			\\}
 		;
 		try std.fs.cwd().writeFile(.{

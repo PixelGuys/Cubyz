@@ -195,9 +195,9 @@ pub const User = struct { // MARK: User
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
 		{
-			const keyBase64 = keys.get(?[]const u8, "ed25519", null) orelse return error.PublicKeyNotPresent;
-			self.key = try .initFromBase64(keyBase64, .ed25519);
-			self.newKeyString = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}:{s}", .{"ed25519", keyBase64}) catch unreachable;
+			const keyBase64 = keys.get(?[]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), null) orelse return error.PublicKeyNotPresent;
+			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
+			self.newKeyString = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64}) catch unreachable;
 		}
 		var foundKey: bool = false;
 		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
