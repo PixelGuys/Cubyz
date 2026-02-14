@@ -137,9 +137,11 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	// Make sure there remains no trace of the seed phrase in memory
+	// Make sure there remains no trace of the seed phrase or password in memory
 	main.network.authentication.secureZero(@TypeOf(textComponent.textBuffer.glyphs[0]), textComponent.textBuffer.glyphs);
 	std.crypto.secureZero(u8, textComponent.currentString.items);
+	main.network.authentication.secureZero(@TypeOf(passwordTextField.textBuffer.glyphs[0]), passwordTextField.textBuffer.glyphs);
+	std.crypto.secureZero(u8, passwordTextField.currentString.items);
 	main.Window.setClipboardString("");
 
 	if (!storeSeedPhrase) {

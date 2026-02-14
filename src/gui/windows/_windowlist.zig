@@ -1,6 +1,5 @@
 pub const @"authentication/create_account" = @import("authentication/create_account.zig");
 pub const @"authentication/login" = @import("authentication/login.zig");
-pub const @"authentication/logout" = @import("authentication/logout.zig");
 pub const @"authentication/unlock" = @import("authentication/unlock.zig");
 
 pub const advanced_controls = @import("advanced_controls.zig");
