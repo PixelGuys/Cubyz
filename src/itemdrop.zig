@@ -600,7 +600,7 @@ const BobManager = struct {
 		const newScale = @min(@as(f32, @floatCast(game.Player.inputSpeed))/inputSpeedMax, vec.length(horizontalVel)/actualSpeedMax, 1);
 
 		if (newScale > scaleThreshold) {
-			self.scale = newScale;
+			self.transitionScale(dt, newScale);
 			self.phase += dt*bobSpeed*@max(self.scale, scaleMinForPhaseWhenWalking);
 			self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
 			return;
