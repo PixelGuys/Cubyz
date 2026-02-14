@@ -388,7 +388,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn isNetworkQueueFull(self: *User) bool {
-		return self.conn.fastChannel.sendBuffer.buffer.len > 900000;
+		return self.conn.fastChannel.super.sendBuffer.buffer.len > 900000;
 	}
 
 	fn scheduleJobQueue(self: *User) void {
