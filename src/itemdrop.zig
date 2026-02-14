@@ -564,8 +564,8 @@ const BobManager = struct {
 	const settleSpeedAirborne: f32 = 2.5;
 	const scaleAirborne: f32 = 0.8;
 
-	const settleSpeedOnGround: f32 = 4;
-	const scaleOnGround: f32 = 0.1;
+	const settleSpeedStanding: f32 = 4;
+	const scaleStanding: f32 = 0.1;
 
 	const scaleTransitionSpeed: f32 = 4;
 
@@ -606,8 +606,8 @@ const BobManager = struct {
 			return;
 		}
 
-		self.transitionScale(dt, scaleOnGround);
-		self.settlePhase(dt, settleSpeedOnGround);
+		self.transitionScale(dt, scaleStanding);
+		self.settlePhase(dt, settleSpeedStanding);
 	}
 
 	fn getOffset(self: @This()) Vec3f {
