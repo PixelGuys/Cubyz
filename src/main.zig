@@ -617,7 +617,7 @@ pub fn clientMain() void { // MARK: clientMain()
 			};
 			defer seedPhrase.deinit();
 			if (failureText.items.len != 0) {
-				std.log.warn("Failed to verify account, we will keep going, but it is recommended to login again just to be sure.\n{s}", .{failureText.items});
+				std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
 			}
 			network.authentication.KeyCollection.init(seedPhrase);
 			if (settings.playerName.len == 0) {
