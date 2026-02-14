@@ -40,7 +40,7 @@ pub fn onOpen() void {
 
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 420;
-	list.add(Label.init(.{0, 0}, width, "This is your account's seed phrase:", .left));
+	list.add(Label.init(.{0, 0}, width, "This is your Account seed phrase:", .left));
 	const row = HorizontalList.init();
 	seedPhraseLabel = Label.init(.{0, 0}, 350, seedPhrase.text, .left);
 	row.add(seedPhraseLabel);

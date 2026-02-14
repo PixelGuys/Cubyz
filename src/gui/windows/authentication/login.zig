@@ -115,9 +115,7 @@ fn openCreateAccountWindow() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 480;
-	list.add(Label.init(.{0, 0}, width, "Please enter your account's seed phrase!", .left));
-	list.add(Label.init(.{0, 0}, width, "Note: We will only ask for the seed phrase on the start of the game.", .left));
-	list.add(Label.init(.{0, 0}, width, "Do not enter your seed phrase under any other circumstance and do not send it to anyone else.", .left));
+	list.add(Label.init(.{0, 0}, width, "Please enter your Account seed phrase:", .left));
 	const textRow = HorizontalList.init();
 	textComponent = TextInput.init(.{0, 0}, 400, 38, "", .{.onNewline = .init(none), .onUpdate = .init(updateText)});
 	textComponent.obfuscated = true;
@@ -125,13 +123,14 @@ pub fn onOpen() void {
 	textRow.add(CheckBox.init(.{10, 0}, 70, "Show", false, &showTextCallback));
 	textRow.finish(.{0, 0}, .center);
 	list.add(textRow);
+	list.add(Label.init(.{0, 0}, width, "#ff8080**Do not share your seed phrase with anyone!**", .left));
 	list.add(CheckBox.init(.{0, 0}, width, "Store seed phrase on disk", storeSeedPhrase, &storeSeedPhraseCallback));
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
 	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it on disk (recommended)", encryptSeedPhrase, &encryptSeedPhraseCallback);
 	innerList.add(encryptWithPasswordCheckbox);
 	passwordRow = HorizontalList.init();
-	passwordRow.add(Label.init(.{0, 0}, 100, "Password:", .left));
-	passwordTextField = TextInput.init(.{0, 0}, width - 100, 22, "", .{.onNewline = .init(none)});
+	passwordRow.add(Label.init(.{0, 0}, 130, "Local Password:", .left));
+	passwordTextField = TextInput.init(.{0, 0}, width - 130, 22, "", .{.onNewline = .init(none)});
 	passwordRow.add(passwordTextField);
 	passwordRow.finish(.{0, 0}, .center);
 	innerList.add(passwordRow);
@@ -141,7 +140,7 @@ pub fn onOpen() void {
 	loginButton = Button.initText(.{padding, 0}, 200, "Login", .init(login));
 	list.add(loginButton);
 	const createAccountRow = HorizontalList.init();
-	createAccountRow.add(Label.init(.{0, 3}, 240, "Dont' have an Account yet?", .left));
+	createAccountRow.add(Label.init(.{0, 3}, 240, "Don't have an Account yet?", .left));
 	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .init(openCreateAccountWindow)));
 	list.add(createAccountRow);
 	list.finish(.center);
