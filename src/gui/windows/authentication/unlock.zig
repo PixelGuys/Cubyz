@@ -54,6 +54,7 @@ fn showTextCallback(showText: bool) void {
 fn logout() void {
 	main.settings.storedAccount.deinit(main.globalAllocator);
 	main.settings.storedAccount = .empty;
+	main.settings.save();
 	gui.closeWindowFromRef(&window);
 	gui.openWindow("authentication/login");
 }
