@@ -96,7 +96,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		}
 		for (openWindows.items, 0..) |_openWindow, i| {
 			if (_openWindow == window) {
-				_ = openWindows.swapRemove(i);
+				_ = openWindows.orderedRemove(i);
 				window.onCloseFn();
 				break;
 			}
