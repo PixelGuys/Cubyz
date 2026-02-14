@@ -182,7 +182,14 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 				.pos = pos,
 				.source = source,
 			};
-			main.threadPool.addTask(task, &vtable);
+			switch (source) {
+				.user => |user| {
+					user.addTask(task, &vtable);
+				},
+				else => {
+					main.threadPool.addTask(task, &vtable);
+				},
+			}
 		}
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
@@ -242,7 +249,11 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 				.pos = pos,
 				.source = source,
 			};
-			main.threadPool.addTask(task, &vtable);
+			if (source) |user| {
+				user.addTask(task, &vtable);
+			} else {
+				main.threadPool.addTask(task, &vtable);
+			}
 		}
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {

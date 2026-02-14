@@ -117,6 +117,10 @@ pub const User = struct { // MARK: User
 
 	playerIndex: usize = undefined,
 
+	jobQueue: main.utils.ConcurrentMaxHeap(main.utils.ThreadPool.Task) = undefined,
+	jobQueueScheduled: bool = false,
+	jobQueueLastUpdate: struct { position: Vec3i, time: std.Io.Timestamp, alreadyInUpdate: bool = false } = .{.position = @splat(0), .time = .{.nanoseconds = 0}},
+
 	lastSentBiomeId: u32 = 0xffffffff,
 
 	newKeyString: []const u8 = &.{},
@@ -140,6 +144,7 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
+		self.jobQueue = .init(main.globalAllocator);
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -168,6 +173,7 @@ pub const User = struct { // MARK: User
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
+		self.jobQueue.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.free(self.newKeyString);
 		for (self.inventoryCommands.items) |commandData| {
@@ -296,8 +302,107 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn getTaskFromJobQueue(self: *User) ?struct { main.utils.ThreadPool.Task, enum { hasMoreTasks, empty } } {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		if (vec.lengthSquare(@as(@Vector(3, i64), self.jobQueueLastUpdate.position -% self.lastPos)) > 32*32) {
+			const startTime = main.timestamp();
+			if (self.jobQueueLastUpdate.time.durationTo(startTime).toMilliseconds() > 100 and !self.jobQueueLastUpdate.alreadyInUpdate) {
+				const ResortTaskTask = struct { // MARK: ResortTaskTask
+					const vtable = utils.ThreadPool.VTable{
+						.getPriority = &getPriority,
+						.isStillNeeded = &isStillNeeded,
+						.run = main.meta.castFunctionSelfToAnyopaque(run),
+						.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+						.taskType = .taskPriorityUpdate,
+					};
+
+					pub fn getPriority(_: *anyopaque) f32 {
+						return undefined;
+					}
+
+					pub fn isStillNeeded(_: *anyopaque) bool {
+						return true;
+					}
+
+					pub fn run(user: *User) void {
+						defer user.decreaseRefCount();
+
+						var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
+						defer newTasks.deinit(main.stackAllocator);
+						while (user.jobQueue.extractAny()) |_task| {
+							var task = _task;
+							if (!task.vtable.isStillNeeded(task.self)) {
+								task.vtable.clean(task.self);
+								continue;
+							}
+							task.cachedPriority = task.vtable.getPriority(task.self);
+							newTasks.append(main.stackAllocator, task);
+						}
+						user.jobQueue.addMany(newTasks.items);
+						user.mutex.lock();
+						defer user.mutex.unlock();
+						user.jobQueueLastUpdate = .{
+							.position = user.lastPos,
+							.time = main.timestamp(),
+						};
+					}
+
+					pub fn clean(user: *User) void {
+						user.decreaseRefCount();
+					}
+				};
+				// Create a task to resort tasks:
+				self.jobQueueLastUpdate.alreadyInUpdate = true;
+				self.increaseRefCount();
+				return .{
+					.{
+						.cachedPriority = undefined,
+						.vtable = &ResortTaskTask.vtable,
+						.self = self,
+					},
+					.hasMoreTasks,
+				};
+			}
+		}
+		if (self.isNetworkQueueFull() or self.jobQueue.size == 0) {
+			self.jobQueueScheduled = false;
+			return null;
+		}
+		if (self.jobQueue.size == 0) {
+			self.jobQueueScheduled = false;
+			return .{self.jobQueue.extractMax().?, .empty};
+		} else {
+			return .{self.jobQueue.extractMax().?, .hasMoreTasks};
+		}
+	}
+
+	pub fn addTask(self: *User, task: *anyopaque, vtable: *const main.utils.ThreadPool.VTable) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.jobQueue.add(.{
+			.cachedPriority = vtable.getPriority(task),
+			.vtable = vtable,
+			.self = task,
+		});
+	}
+
+	fn isNetworkQueueFull(self: *User) bool {
+		return self.conn.fastChannel.super.sendBuffer.buffer.len > 900000;
+	}
+
+	fn scheduleJobQueue(self: *User) void {
+		main.utils.assertLocked(&self.mutex);
+		if (self.jobQueueScheduled) return;
+		if (self.jobQueue.size == 0) return;
+		if (self.isNetworkQueueFull()) return;
+		self.jobQueueScheduled = true;
+		main.threadPool.addPlayer(self);
+	}
+
 	pub fn update(self: *User) void {
 		self.mutex.lock();
+		self.scheduleJobQueue();
 		const commands = self.inventoryCommands;
 		defer commands.deinit(main.globalAllocator);
 		self.inventoryCommands = .{};
