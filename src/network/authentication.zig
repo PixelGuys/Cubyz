@@ -27,7 +27,7 @@ pub fn init() void {
 	wordlist = @splat(&.{});
 	var i: usize = 0;
 	while (splitIterator.next()) |word| {
-		wordlist.?[i] = word;
+		wordlist.?[i] = std.mem.trim(u8, word, &std.ascii.whitespace);
 		i += 1;
 	}
 }
@@ -163,8 +163,12 @@ pub const SeedPhrase = struct {
 					result.appendAssumeCapacity(' ');
 				}
 			} else {
-				failureText.print("Seed phrase contains invalid character '{c}', only ASCII letters and whitespaces are allowed\n", .{char});
+				failureText.print("Seed phrase contains invalid character '{c}', only ASCII letters and whitespaces are allowed.\n", .{char});
 			}
+		}
+		if (result.items.len == 0) {
+			failureText.print("Seed phrase is empty.\n", .{});
+			return .{.text = ""};
 		}
 		if (result.items[result.items.len - 1] == ' ') _ = result.pop();
 

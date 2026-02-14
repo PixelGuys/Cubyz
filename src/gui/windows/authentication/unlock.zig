@@ -84,6 +84,7 @@ pub fn onClose() void {
 	main.network.authentication.secureZero(@TypeOf(textComponent.textBuffer.glyphs[0]), textComponent.textBuffer.glyphs);
 	std.crypto.secureZero(u8, textComponent.currentString.items);
 	main.Window.setClipboardString("");
+	gui.openWindow("clipboard_deleted");
 
 	if (window.rootComponent) |*comp| {
 		comp.deinit();

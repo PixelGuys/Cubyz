@@ -26,6 +26,7 @@ var applyAnyways: bool = false;
 var innerList: *VerticalList = undefined;
 var encryptWithPasswordCheckbox: *CheckBox = undefined;
 var passwordTextField: *TextInput = undefined;
+var passwordRow: *HorizontalList = undefined;
 
 var storeSeedPhrase: bool = false;
 var encryptSeedPhrase: bool = true;
@@ -38,8 +39,13 @@ fn apply() void {
 	const seedPhrase = main.network.authentication.SeedPhrase.initFromUserInput(textComponent.currentString.items, &failureText);
 	defer seedPhrase.deinit();
 
+	if (seedPhrase.text.len == 0) {
+		main.gui.windowlist.notification.raiseNotification("Seed phrase is empty. Please enter a valid seed phrase.", .{});
+		return;
+	}
+
 	if (failureText.items.len != 0 and !applyAnyways) {
-		failureText.insertSlice(0, "Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n");
+		failureText.insertSlice(0, "Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n\n");
 
 		main.gui.windowlist.notification.raiseNotification("{s}", .{failureText.items});
 
@@ -94,7 +100,7 @@ fn refreshInner() void {
 	if (storeSeedPhrase) {
 		innerList.children.append(encryptWithPasswordCheckbox.toComponent());
 		if (encryptSeedPhrase) {
-			innerList.children.append(passwordTextField.toComponent());
+			innerList.children.append(passwordRow.toComponent());
 		}
 	}
 }
@@ -120,8 +126,12 @@ pub fn onOpen() void {
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
 	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it on disk (recommended)", encryptSeedPhrase, &encryptSeedPhraseCallback);
 	innerList.add(encryptWithPasswordCheckbox);
-	passwordTextField = TextInput.init(.{0, 0}, width, 32, "", .{.onNewline = .init(none)});
-	innerList.add(passwordTextField);
+	passwordRow = HorizontalList.init();
+	passwordRow.add(Label.init(.{0, 0}, 100, "Password:", .left));
+	passwordTextField = TextInput.init(.{0, 0}, width - 100, 32, "", .{.onNewline = .init(none)});
+	passwordRow.add(passwordTextField);
+	passwordRow.finish(.{0, 0}, .center);
+	innerList.add(passwordRow);
 	innerList.finish(.center);
 	refreshInner();
 	list.add(innerList);
@@ -143,12 +153,13 @@ pub fn onClose() void {
 	main.network.authentication.secureZero(@TypeOf(passwordTextField.textBuffer.glyphs[0]), passwordTextField.textBuffer.glyphs);
 	std.crypto.secureZero(u8, passwordTextField.currentString.items);
 	main.Window.setClipboardString("");
+	gui.openWindow("clipboard_deleted");
 
 	if (!storeSeedPhrase) {
 		encryptWithPasswordCheckbox.deinit();
 	}
 	if (!encryptSeedPhrase or !storeSeedPhrase) {
-		passwordTextField.deinit();
+		passwordRow.deinit();
 	}
 
 	if (window.rootComponent) |*comp| {
