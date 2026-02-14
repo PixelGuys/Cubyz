@@ -181,5 +181,4 @@
 		.output = "cubyz:lush_grass",
 		.reversible = true,
 	},
-
 }
