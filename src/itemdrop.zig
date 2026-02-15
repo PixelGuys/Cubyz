@@ -573,11 +573,8 @@ const BobManager = struct {
 	}
 
 	fn updateSneakOffset(self: *@This(), dt: f32) void {
-		if (game.Player.crouching) {
-			self.sneakOffset = std.math.lerp(self.sneakOffset, self.scale*sneakScaleMul, @min(dt*sneakFadeSpeed, 1));
-		} else {
-			self.sneakOffset = std.math.lerp(self.sneakOffset, 0, @min(dt*sneakFadeSpeed, 1));
-		}
+		const targetOffset = if (game.Player.crouching) self.scale*sneakScaleMul else 0;
+		self.sneakOffset = std.math.lerp(self.sneakOffset, targetOffset, @min(dt*sneakFadeSpeed, 1));
 	}
 
 	fn bob(self: *@This(), dt: f32, newScale: f32) void {
@@ -623,7 +620,7 @@ const BobManager = struct {
 	fn getOffset(self: @This()) Vec3f {
 		const s = std.math.sin(self.phase);
 		return .{
-			@abs(s)*bobAmountVertical*self.scale+self.sneakOffset,
+			@abs(s)*bobAmountVertical*self.scale + self.sneakOffset,
 			0,
 			s*bobAmountLateral*self.scale,
 		};
