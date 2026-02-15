@@ -195,5 +195,10 @@
 			.structure = "cubyz:landmarks/temperate/temperate_landmarks",
 			.chance = 0.01,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/forest/mixed/mixed_trees_landmarks",
+			.chance = 0.01,
+		},
 	},
 }
