@@ -547,7 +547,7 @@ const BobManager = struct {
 	phase: f32 = 0,
 	scale: f32 = 0,
 
-	const bobSpeed: f32 = 11;
+	const bobSpeed: f32 = 9.4;
 	const bobAmountLateral: f32 = 0.08;
 	const bobAmountVertical: f32 = 0.07;
 
@@ -555,8 +555,6 @@ const BobManager = struct {
 	const inputSpeedMax: f32 = 10;
 
 	const scaleThreshold: f32 = 0.1;
-
-	const scaleMinForPhaseWhenWalking: f32 = 0.7;
 
 	const settleSpeedFly: f32 = 5;
 	const scaleFly: f32 = 0.8;
@@ -576,6 +574,10 @@ const BobManager = struct {
 
 	inline fn transitionScale(self: *@This(), dt: f32, newScale: f32) void {
 		self.scale = std.math.lerp(self.scale, newScale, @min(dt*scaleTransitionSpeed, 1));
+	}
+
+	inline fn phaseSpeedCurve(self: @This()) f32 {
+		return std.math.clamp(std.math.pow(f32, 2.21*self.scale - 1.28, 3) + 0.82, 0, 1);
 	}
 
 	fn update(self: *@This(), dt: f32) void {
@@ -601,7 +603,7 @@ const BobManager = struct {
 
 		if (newScale > scaleThreshold) {
 			self.transitionScale(dt, newScale);
-			self.phase += dt*bobSpeed*@max(self.scale, scaleMinForPhaseWhenWalking);
+			self.phase += dt*bobSpeed*self.phaseSpeedCurve();
 			self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
 			return;
 		}
