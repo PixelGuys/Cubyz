@@ -10,7 +10,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:abandoned_cavern/abandoned",
 			.placeMode = .degradable,
-			.chance = 0.02,
+			.chance = 0.035,
 		},
 		.{
 			.id = "cubyz:ground_patch",
