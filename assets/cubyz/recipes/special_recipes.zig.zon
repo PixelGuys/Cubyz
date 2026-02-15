@@ -158,27 +158,23 @@
 	},
 	.{
 		.inputs = .{"cubyz:{type}_grass_vegetation"},
-		.output = "3 cubyz:grass_seeds",
+		.output = "5 cubyz:grass_seeds",
 		.reversible = true,
 	},
 	.{
 		.inputs = .{"cubyz:soil", "cubyz:grass_seeds"},
 		.output = "cubyz:grass",
-		.reversible = true,
 	},
 	.{
 		.inputs = .{"cubyz:dirt", "cubyz:grass_seeds"},
 		.output = "cubyz:dry_grass",
-		.reversible = true,
 	},
 	.{
 		.inputs = .{"cubyz:permafrost", "cubyz:grass_seeds"},
 		.output = "cubyz:cold_grass",
-		.reversible = true,
 	},
 	.{
 		.inputs = .{"cubyz:mud", "cubyz:grass_seeds"},
 		.output = "cubyz:lush_grass",
-		.reversible = true,
 	},
 }
