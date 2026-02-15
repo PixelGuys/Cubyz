@@ -546,46 +546,61 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 const BobManager = struct {
 	phase: f32 = 0,
 	scale: f32 = 0,
+	sneakOffset: f32 = 0,
 
 	const bobSpeed: f32 = 9.4;
+
 	const bobAmountLateral: f32 = 0.08;
 	const bobAmountVertical: f32 = 0.07;
 
-	const actualSpeedMax: f32 = 5;
 	const inputSpeedMax: f32 = 10;
+	const actualSpeedMax: f32 = 5;
 
 	const scaleThreshold: f32 = 0.1;
-
-	const settleSpeedFly: f32 = 5;
-	const scaleFly: f32 = 0.8;
-
-	const settleSpeedAirborne: f32 = 2.5;
-	const scaleAirborne: f32 = 0.8;
-
-	const settleSpeedStanding: f32 = 4;
-	const scaleStanding: f32 = 0.1;
-
 	const scaleTransitionSpeed: f32 = 4;
 
-	inline fn settlePhase(self: *@This(), dt: f32, speed: f32) void {
-		const targetPhase = std.math.round(self.phase/std.math.pi)*std.math.pi;
-		self.phase = std.math.lerp(self.phase, targetPhase, @min(dt*speed, 1));
-	}
+	const settleSpeed: f32 = 4;
 
-	inline fn transitionScale(self: *@This(), dt: f32, newScale: f32) void {
+	const sneakScaleMul: f32 = 0.2;
+	const sneakFadeSpeed: f32 = 5;
+
+	fn transitionScale(self: *@This(), dt: f32, newScale: f32) void {
 		self.scale = std.math.lerp(self.scale, newScale, @min(dt*scaleTransitionSpeed, 1));
 	}
 
-	inline fn phaseSpeedCurve(self: @This()) f32 {
+	fn phaseSpeedCurve(self: @This()) f32 {
 		return std.math.clamp(std.math.pow(f32, 2.21*self.scale - 1.28, 3) + 0.82, 0, 1);
 	}
 
+	fn updateSneakOffset(self: *@This(), dt: f32) void {
+		if (game.Player.crouching) {
+			self.sneakOffset = std.math.lerp(self.sneakOffset, self.scale*sneakScaleMul, @min(dt*sneakFadeSpeed, 1));
+		} else {
+			self.sneakOffset = std.math.lerp(self.sneakOffset, 0, @min(dt*sneakFadeSpeed, 1));
+		}
+	}
+
+	fn bob(self: *@This(), dt: f32, newScale: f32) void {
+		self.transitionScale(dt, newScale);
+		self.updateSneakOffset(dt);
+		self.phase += dt*bobSpeed*self.phaseSpeedCurve();
+		self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
+	}
+
+	fn settle(self: *@This(), dt: f32) void {
+		self.transitionScale(dt, 0);
+		self.updateSneakOffset(dt);
+		const targetPhase = std.math.round(self.phase/std.math.pi)*std.math.pi;
+		self.phase = std.math.lerp(self.phase, targetPhase, @min(dt*settleSpeed, 1));
+	}
+
 	fn update(self: *@This(), dt: f32) void {
-		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
-			self.transitionScale(dt, scaleFly);
-			self.settlePhase(dt, settleSpeedFly);
+		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic) or !game.Player.onGround) {
+			self.settle(dt);
 			return;
 		}
+
+		const inputSpeed: f32 = @floatCast(game.Player.inputSpeed);
 
 		const horizontalVel: Vec3f = .{
 			@floatCast(game.Player.super.vel[0]),
@@ -593,29 +608,22 @@ const BobManager = struct {
 			0,
 		};
 
-		if (!game.Player.onGround) {
-			self.transitionScale(dt, scaleAirborne);
-			self.settlePhase(dt, settleSpeedAirborne);
+		const actualSpeed = vec.length(horizontalVel);
+
+		const newScale = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
+
+		if (newScale <= scaleThreshold) {
+			self.settle(dt);
 			return;
 		}
 
-		const newScale = @min(@as(f32, @floatCast(game.Player.inputSpeed))/inputSpeedMax, vec.length(horizontalVel)/actualSpeedMax, 1);
-
-		if (newScale > scaleThreshold) {
-			self.transitionScale(dt, newScale);
-			self.phase += dt*bobSpeed*self.phaseSpeedCurve();
-			self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
-			return;
-		}
-
-		self.transitionScale(dt, scaleStanding);
-		self.settlePhase(dt, settleSpeedStanding);
+		self.bob(dt, newScale);
 	}
 
 	fn getOffset(self: @This()) Vec3f {
 		const s = std.math.sin(self.phase);
 		return .{
-			@abs(s)*bobAmountVertical*self.scale,
+			@abs(s)*bobAmountVertical*self.scale+self.sneakOffset,
 			0,
 			s*bobAmountLateral*self.scale,
 		};
