@@ -109,7 +109,7 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:landmarks/forest/oak/oak_landmarks",
+			.structure = "cubyz:landmarks/forest/willow/willow_landmarks",
 			.chance = 0.01,
 		},
 	},
