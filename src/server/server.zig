@@ -224,9 +224,9 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
-		try self.key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+		try self.key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
 		if (self.legacyKey) |key| {
-			try key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+			try key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
 		}
 	}
 
@@ -388,7 +388,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn isNetworkQueueFull(self: *User) bool {
-		return self.conn.fastChannel.super.sendBuffer.buffer.len > 900000;
+		return self.conn.secureChannel.super.sendBuffer.buffer.len > 900000;
 	}
 
 	fn scheduleJobQueue(self: *User) void {
