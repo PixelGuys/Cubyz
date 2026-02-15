@@ -157,6 +157,11 @@
 		.reversible = true,
 	},
 	.{
+		.inputs = .{"cubyz:grass_vegetation"},
+		.output = "5 cubyz:grass_seeds",
+		.reversible = true,
+	},
+	.{
 		.inputs = .{"cubyz:{type}_grass_vegetation"},
 		.output = "5 cubyz:grass_seeds",
 		.reversible = true,
