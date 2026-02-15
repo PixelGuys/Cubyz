@@ -548,7 +548,7 @@ const BobManager = struct {
 	scale: f32 = 0,
 	sneakOffset: f32 = 0,
 
-	const bobSpeed: f32 = 9.4;
+	const bobSpeed: f32 = 9.5;
 
 	const bobAmountLateral: f32 = 0.08;
 	const bobAmountVertical: f32 = 0.07;
@@ -556,16 +556,21 @@ const BobManager = struct {
 	const inputSpeedMax: f32 = 10;
 	const actualSpeedMax: f32 = 5;
 
-	const scaleThreshold: f32 = 0.1;
-	const scaleTransitionSpeed: f32 = 4;
+	const phaseFadeOutSpeedAirborne: f32 = 1.6;
+	const phaseFadeOutSpeedFlying: f32 = 3;
+	const phaseFadeOutSpeedStanding: f32 = 2;
 
-	const settleSpeed: f32 = 4;
+	const scaleThreshold: f32 = 0.1;
+	const scaleFadeInSpeed: f32 = 4;
+	const scaleFadeOutSpeedAirborne: f32 = 1;
+	const scaleFadeOutSpeedFlying: f32 = 3;
+	const scaleFadeOutSpeedStanding: f32 = 2;
 
 	const sneakScaleMul: f32 = 0.2;
 	const sneakFadeSpeed: f32 = 5;
 
-	fn transitionScale(self: *@This(), dt: f32, newScale: f32) void {
-		self.scale = std.math.lerp(self.scale, newScale, @min(dt*scaleTransitionSpeed, 1));
+	fn fadeScale(self: *@This(), dt: f32, newScale: f32, fadeSpeed: f32) void {
+		self.scale = std.math.lerp(self.scale, newScale, @min(dt*fadeSpeed, 1));
 	}
 
 	fn phaseSpeedCurve(self: @This()) f32 {
@@ -578,22 +583,27 @@ const BobManager = struct {
 	}
 
 	fn bob(self: *@This(), dt: f32, newScale: f32) void {
-		self.transitionScale(dt, newScale);
+		self.fadeScale(dt, newScale, scaleFadeInSpeed);
 		self.updateSneakOffset(dt);
 		self.phase += dt*bobSpeed*self.phaseSpeedCurve();
 		self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
 	}
 
-	fn settle(self: *@This(), dt: f32) void {
-		self.transitionScale(dt, 0);
+	fn settle(self: *@This(), dt: f32, phaseFadeOutSpeed: f32, scaleFadeOutSpeed: f32) void {
+		self.fadeScale(dt, 0, scaleFadeOutSpeed);
 		self.updateSneakOffset(dt);
 		const targetPhase = std.math.round(self.phase/std.math.pi)*std.math.pi;
-		self.phase = std.math.lerp(self.phase, targetPhase, @min(dt*settleSpeed, 1));
+		self.phase = std.math.lerp(self.phase, targetPhase, @min(dt*phaseFadeOutSpeed, 1));
 	}
 
 	fn update(self: *@This(), dt: f32) void {
-		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic) or !game.Player.onGround) {
-			self.settle(dt);
+		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
+			self.settle(dt, phaseFadeOutSpeedFlying, scaleFadeOutSpeedFlying);
+			return;
+		}
+
+		if (!game.Player.onGround) {
+			self.settle(dt, phaseFadeOutSpeedAirborne, scaleFadeOutSpeedAirborne);
 			return;
 		}
 
@@ -610,7 +620,7 @@ const BobManager = struct {
 		const newScale = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
 
 		if (newScale <= scaleThreshold) {
-			self.settle(dt);
+			self.settle(dt, phaseFadeOutSpeedStanding, scaleFadeOutSpeedStanding);
 			return;
 		}
 
