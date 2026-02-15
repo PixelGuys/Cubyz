@@ -365,15 +365,19 @@ pub const User = struct { // MARK: User
 				};
 			}
 		}
-		if (self.isNetworkQueueFull() or self.jobQueue.size == 0) {
+		if (self.isNetworkQueueFull()) {
 			self.jobQueueScheduled = false;
 			return null;
 		}
+		const task = self.jobQueue.extractMax() orelse {
+			self.jobQueueScheduled = false;
+			return null;
+		};
 		if (self.jobQueue.size == 0) {
 			self.jobQueueScheduled = false;
-			return .{self.jobQueue.extractMax().?, .empty};
+			return .{task, .empty};
 		} else {
-			return .{self.jobQueue.extractMax().?, .hasMoreTasks};
+			return .{task, .hasMoreTasks};
 		}
 	}
 
