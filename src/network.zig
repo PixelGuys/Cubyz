@@ -1363,7 +1363,7 @@ pub const Connection = struct { // MARK: Connection
 
 	const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
-		fast = 1,
+		secure = 1,
 		slow = 2,
 		confirmation = 3,
 		init = 4,
@@ -1405,7 +1405,7 @@ pub const Connection = struct { // MARK: Connection
 	bruteForcedPortRange: u16 = 0,
 
 	lossyChannel: Channel, // TODO: Actually allow it to be lossy
-	fastChannel: SecureChannel,
+	secureChannel: SecureChannel,
 	slowChannel: Channel,
 
 	hasRttEstimate: bool = false,
@@ -1447,7 +1447,7 @@ pub const Connection = struct { // MARK: Connection
 			.lastRttSampleTime = networkTimestamp() -% 10_000*ms,
 			.queuedConfirmations = .init(main.globalAllocator, 1024),
 			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1*ms, .lossy),
-			.fastChannel = undefined,
+			.secureChannel = undefined,
 			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100*ms, .slow),
 			.connectionIdentifier = networkTimestamp(),
 			.remoteConnectionIdentifier = 0,
@@ -1457,8 +1457,8 @@ pub const Connection = struct { // MARK: Connection
 			result.slowChannel.deinit();
 			result.queuedConfirmations.deinit();
 		}
-		try result.fastChannel.init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .fast, if (user != null) .server else .client);
-		errdefer result.fastChannel.deinit();
+		try result.secureChannel.init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .secure, if (user != null) .server else .client);
+		errdefer result.secureChannel.deinit();
 		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
 
 		var splitter = std.mem.splitScalar(u8, ipPort, ':');
@@ -1483,7 +1483,7 @@ pub const Connection = struct { // MARK: Connection
 		self.disconnect();
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
 		self.lossyChannel.deinit();
-		self.fastChannel.deinit();
+		self.secureChannel.deinit();
 		self.slowChannel.deinit();
 		self.queuedConfirmations.deinit();
 		main.globalAllocator.destroy(self);
@@ -1496,7 +1496,7 @@ pub const Connection = struct { // MARK: Connection
 
 		_ = switch (channel) {
 			.lossy => self.lossyChannel.send(protocolIndex, data, networkTimestamp()),
-			.fast => self.fastChannel.send(protocolIndex, data, networkTimestamp()),
+			.secure => self.secureChannel.send(protocolIndex, data, networkTimestamp()),
 			.slow => self.slowChannel.send(protocolIndex, data, networkTimestamp()),
 			else => comptime unreachable,
 		} catch {
@@ -1549,7 +1549,7 @@ pub const Connection = struct { // MARK: Connection
 			const start = try reader.readInt(SequenceIndex);
 			const confirmationResult = switch (channel) {
 				.lossy => self.lossyChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
-				.fast => self.fastChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
+				.secure => self.secureChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				else => return error.Invalid,
 			};
@@ -1628,19 +1628,19 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			}
 			const lossyStart = try reader.readInt(SequenceIndex);
-			const fastStart = try reader.readInt(SequenceIndex);
+			const secureStart = try reader.readInt(SequenceIndex);
 			const slowStart = try reader.readInt(SequenceIndex);
 			switch (self.connectionState.load(.monotonic)) {
 				.awaitingClientConnection => {
 					self.lossyChannel.connect(lossyStart);
-					self.fastChannel.connect(fastStart);
+					self.secureChannel.connect(secureStart);
 					self.slowChannel.connect(slowStart);
 					_ = self.connectionState.cmpxchgStrong(.awaitingClientConnection, .awaitingClientAcknowledgement, .monotonic, .monotonic);
 					self.remoteConnectionIdentifier = remoteConnectionIdentifier;
 				},
 				.awaitingServerResponse => {
 					self.lossyChannel.connect(lossyStart);
-					self.fastChannel.connect(fastStart);
+					self.secureChannel.connect(secureStart);
 					self.slowChannel.connect(slowStart);
 					_ = self.connectionState.cmpxchgStrong(.awaitingServerResponse, .connected, .monotonic, .monotonic);
 					self.remoteConnectionIdentifier = remoteConnectionIdentifier;
@@ -1685,9 +1685,9 @@ pub const Connection = struct { // MARK: Connection
 					});
 				}
 			},
-			.fast => {
+			.secure => {
 				const start = try reader.readInt(SequenceIndex);
-				if (try self.fastChannel.receive(self, start, reader.remaining) == .accepted) {
+				if (try self.secureChannel.receive(self, start, reader.remaining) == .accepted) {
 					self.queuedConfirmations.pushBack(.{
 						.channel = channel,
 						.start = start,
@@ -1742,7 +1742,7 @@ pub const Connection = struct { // MARK: Connection
 				writer.writeEnum(ChannelId, .init);
 				writer.writeInt(i64, self.connectionIdentifier);
 				writer.writeInt(SequenceIndex, self.lossyChannel.sendBuffer.fullyConfirmedIndex);
-				writer.writeInt(SequenceIndex, self.fastChannel.super.sendBuffer.fullyConfirmedIndex);
+				writer.writeInt(SequenceIndex, self.secureChannel.super.sendBuffer.fullyConfirmedIndex);
 				writer.writeInt(SequenceIndex, self.slowChannel.sendBuffer.fullyConfirmedIndex);
 				_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
 				self.manager.send(writer.data.items, self.remoteAddress, null);
@@ -1753,7 +1753,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));
-		self.handlePacketLoss(self.fastChannel.checkForLosses(self, timestamp));
+		self.handlePacketLoss(self.secureChannel.checkForLosses(self, timestamp));
 		self.handlePacketLoss(self.slowChannel.checkForLosses(self, timestamp));
 
 		// We don't want to send too many packets at once if there was a period of no traffic.
@@ -1778,7 +1778,7 @@ pub const Connection = struct { // MARK: Connection
 				self.mutex.lock();
 				defer self.mutex.unlock();
 				if (self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-				if (self.fastChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+				if (self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
 				if (self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
 
 				break;

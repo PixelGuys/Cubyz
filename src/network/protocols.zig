@@ -134,11 +134,11 @@ pub const handShake = struct { // MARK: handShake
 					writer.writeEnum(Connection.HandShakeState, .signatureResponse);
 					conn.handShakeState.store(.signatureResponse, .monotonic);
 
-					network.authentication.KeyCollection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature1) orelse return error.Invalid, conn.fastChannel.verificationDataForClientSignature.items);
+					network.authentication.KeyCollection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature1) orelse return error.Invalid, conn.secureChannel.verificationDataForClientSignature.items);
 					if (signature2.len != 0) {
-						network.authentication.KeyCollection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature2) orelse return error.Invalid, conn.fastChannel.verificationDataForClientSignature.items);
+						network.authentication.KeyCollection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature2) orelse return error.Invalid, conn.secureChannel.verificationDataForClientSignature.items);
 					}
-					conn.send(.fast, id, writer.data.items);
+					conn.send(.secure, id, writer.data.items);
 				},
 				.assets => {
 					std.log.info("Received assets.", .{});
@@ -167,7 +167,7 @@ pub const handShake = struct { // MARK: handShake
 			conn.handShakeState.store(newState, .monotonic);
 			switch (newState) {
 				.userData => {
-					conn.fastChannel.finishedCollectingClientVerificationData = true;
+					conn.secureChannel.finishedCollectingClientVerificationData = true;
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 					defer zon.deinit(main.stackAllocator);
 					const name = zon.get([]const u8, "name", "unnamed");
@@ -202,7 +202,7 @@ pub const handShake = struct { // MARK: handShake
 					} else {
 						writer.writeVarInt(usize, 0);
 					}
-					conn.send(.fast, id, writer.data.items);
+					conn.send(.secure, id, writer.data.items);
 				},
 				.signatureResponse => {
 					try conn.user.?.verifySignatures(reader);
@@ -215,7 +215,7 @@ pub const handShake = struct { // MARK: handShake
 						defer writer.deinit();
 						try writer.writer.writeByte(@intFromEnum(Connection.HandShakeState.assets));
 						try utils.Compression.pack(dir, &writer.writer);
-						conn.send(.fast, id, writer.written());
+						conn.send(.secure, id, writer.written());
 					}
 					conn.handShakeState.store(.assets, .monotonic);
 
@@ -245,7 +245,7 @@ pub const handShake = struct { // MARK: handShake
 
 		const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
 		defer main.stackAllocator.free(outData);
-		conn.send(.fast, id, outData);
+		conn.send(.secure, id, outData);
 	}
 
 	pub fn clientSide(conn: *Connection, name: []const u8) !void {
@@ -257,9 +257,9 @@ pub const handShake = struct { // MARK: handShake
 		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 		defer main.stackAllocator.free(data);
-		try conn.fastChannel.startTlsHandshake();
-		conn.fastChannel.finishedCollectingClientVerificationData = true;
-		conn.send(.fast, id, data);
+		try conn.secureChannel.startTlsHandshake();
+		conn.secureChannel.finishedCollectingClientVerificationData = true;
+		conn.send(.secure, id, data);
 
 		conn.mutex.lock();
 		while (true) {
@@ -311,7 +311,7 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 			writer.writeInt(i8, @intCast((req.wz -% (basePosition[2] & positionMask)) >> voxelSizeShift + chunk.chunkShift));
 			writer.writeInt(u5, voxelSizeShift);
 		}
-		conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
+		conn.send(.secure, id, writer.data.items); // TODO: Can this use the slow channel?
 	}
 };
 
@@ -341,7 +341,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 		writer.writeInt(i32, ch.super.pos.wz);
 		writer.writeInt(u31, ch.super.pos.voxelSize);
 		writer.writeSlice(chunkData);
-		conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
+		conn.send(.secure, id, writer.data.items); // TODO: Can this use the slow channel?
 	}
 	pub fn sendChunk(conn: *Connection, ch: *chunk.ServerChunk) void {
 		sendChunkOverTheNetwork(conn, ch);
@@ -496,7 +496,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 			writer.writeInt(usize, update.blockEntityData.len);
 			writer.writeSlice(update.blockEntityData);
 		}
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 };
 
@@ -537,7 +537,7 @@ pub const entity = struct { // MARK: entity
 		}
 	}
 	pub fn send(conn: *Connection, msg: []const u8) void {
-		conn.send(.fast, id, msg);
+		conn.send(.secure, id, msg);
 	}
 };
 
@@ -671,7 +671,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 	}
 
 	pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
-		conn.send(.fast, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
+		conn.send(.secure, id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
 	}
 
 	pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
@@ -681,7 +681,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		writer.writeEnum(UpdateType, .teleport);
 		writer.writeVec(Vec3d, pos);
 
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 
 	pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
@@ -694,7 +694,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 			writer.writeVec(Vec3i, pos);
 		}
 
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 
 	pub fn sendBiome(conn: *Connection, biomeIndex: u32) void {
@@ -704,7 +704,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		writer.writeEnum(UpdateType, .biome);
 		writer.writeInt(u32, biomeIndex);
 
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 
 	pub fn sendParticles(conn: *Connection, particleId: []const u8, pos: Vec3d, collides: bool, count: u32, spawnZon: []const u8) void {
@@ -721,7 +721,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		writer.writeVarInt(usize, spawnZon.len);
 		writer.writeSlice(spawnZon);
 
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 
 	pub fn sendTime(conn: *Connection, world: *const main.server.ServerWorld) void {
@@ -731,7 +731,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		writer.writeEnum(UpdateType, .time);
 		writer.writeInt(i64, world.gameTime);
 
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 
 	pub fn sendClear(conn: *Connection, cleartype: ClearType) void {
@@ -798,7 +798,7 @@ pub const lightMapRequest = struct { // MARK: lightMapRequest
 			writer.writeInt(i32, req.wy);
 			writer.writeInt(u8, req.voxelSizeShift);
 		}
-		conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
+		conn.send(.secure, id, writer.data.items); // TODO: Can this use the slow channel?
 	}
 };
 
@@ -844,7 +844,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 		writer.writeInt(i32, map.pos.wy);
 		writer.writeInt(u8, map.pos.voxelSizeShift);
 		writer.writeSlice(compressedData);
-		conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
+		conn.send(.secure, id, writer.data.items); // TODO: Can this use the slow channel?
 	}
 };
 
@@ -873,7 +873,7 @@ pub const inventory = struct { // MARK: inventory
 		writer.writeEnum(main.sync.Command.PayloadType, payloadType);
 		std.debug.assert(writer.data.items[0] != 0xff);
 		writer.writeSlice(_data);
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 	pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
 		std.debug.assert(conn.isServerSide());
@@ -881,11 +881,11 @@ pub const inventory = struct { // MARK: inventory
 		defer writer.deinit();
 		writer.writeInt(u8, 0xff);
 		writer.writeSlice(_data);
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 	pub fn sendFailure(conn: *Connection) void {
 		std.debug.assert(conn.isServerSide());
-		conn.send(.fast, id, &.{0xfe});
+		conn.send(.secure, id, &.{0xfe});
 	}
 	pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
 		std.debug.assert(conn.isServerSide());
@@ -893,7 +893,7 @@ pub const inventory = struct { // MARK: inventory
 		defer writer.deinit();
 		writer.writeInt(u8, 0);
 		writer.writeSlice(_data);
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 };
 
@@ -931,7 +931,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		writer.writeInt(u16, block.typ);
 		blockEntity.getClientToServerData(pos, mesh.chunk, &writer);
 
-		conn.send(.fast, id, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
 
 	fn sendServerDataUpdateToClientsInternal(pos: Vec3i, ch: *chunk.Chunk, block: Block, blockEntity: *const main.block_entity.BlockEntityType) void {
