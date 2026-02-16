@@ -44,7 +44,7 @@ fn apply() void {
 		return;
 	}
 
-	main.block_entity.BlockEntityTypes.Sign.updateTextFromClient(pos, textComponent.currentString.items);
+	main.block_entity.BlockEntityTypes.sign.updateTextFromClient(pos, textComponent.currentString.items);
 
 	gui.toggleGameMenu();
 }
