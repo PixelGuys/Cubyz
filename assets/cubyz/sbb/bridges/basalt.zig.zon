@@ -12,7 +12,7 @@
 	.children = .{
 		.black = "cubyz:bridges/slate",
 		.dark_grey = "cubyz:bridges/basalt",
-		.grey = "cubyz:marble",
-		.white = "cubyz:oak",
+		.grey = "cubyz:bridges/marble",
+		.white = "cubyz:bridges/oak",
 	},
 }
