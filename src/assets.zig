@@ -539,7 +539,7 @@ pub const Palette = struct { // MARK: Palette
 var loadedAssets: bool = false;
 pub var rawEntityModelData: std.StringHashMap([]const main.models.QuadInfo) = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, blockEntityComponentPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -561,6 +561,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
 	migrations_zig.apply(.biome, biomePalette);
+
+	// block entity components:
+	main.block_entity.init(blockEntityComponentPalette);
 
 	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
 	migrations_zig.apply(.entityComponent, entityComponentPalette);
