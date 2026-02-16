@@ -18,8 +18,6 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
-pub const BlockEntityIndex = main.utils.DenseId(u32);
-
 const UpdateEvent = union(enum) {
 	remove: void,
 	update: *BinaryReader,
@@ -94,33 +92,60 @@ pub const BlockEntityType = struct {
 	}
 };
 
+pub const BlockEntityIndex = enum(u32) {
+	noValue = std.math.maxInt(u32),
+	_,
+
+	var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
+	var nextIndex: BlockEntityIndex = @enumFromInt(0);
+	var mutex: std.Thread.Mutex = .{};
+
+	fn globalDeinit() void {
+		freeIndexList.deinit(main.globalAllocator);
+		nextIndex = undefined;
+		freeIndexList = undefined;
+	}
+
+	fn reset() void {
+		freeIndexList.clearRetainingCapacity();
+		nextIndex = @enumFromInt(0);
+	}
+
+	fn create() BlockEntityIndex {
+		mutex.lock();
+		defer mutex.unlock();
+		return freeIndexList.popOrNull() orelse {
+			defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
+			return nextIndex;
+		};
+	}
+
+	fn destroy(self: BlockEntityIndex) void {
+		mutex.lock();
+		defer mutex.unlock();
+		freeIndexList.append(main.globalAllocator, self);
+	}
+};
+
 fn BlockEntityDataStorage(T: type) type {
 	return struct {
 		pub const DataT = T;
-		var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
-		var nextIndex: BlockEntityIndex = @enumFromInt(0);
-		var storage: main.utils.SparseSet(DataT, BlockEntityIndex) = .{};
+		var storage: main.utils.SparseSet(DataT, BlockEntityIndex) = undefined;
 		pub var mutex: std.Thread.Mutex = .{};
 
 		pub fn init() void {
 			storage = .{};
-			freeIndexList = .{};
 		}
 		pub fn deinit() void {
 			storage.deinit(main.globalAllocator);
-			freeIndexList.deinit(main.globalAllocator);
-			nextIndex = @enumFromInt(0);
+			storage = undefined;
 		}
 		pub fn reset() void {
 			storage.clear();
-			freeIndexList.clearRetainingCapacity();
 		}
 		fn createEntry(pos: Vec3i, chunk: *Chunk) BlockEntityIndex {
 			main.utils.assertLocked(&mutex);
-			const dataIndex: BlockEntityIndex = freeIndexList.popOrNull() orelse blk: {
-				defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
-				break :blk nextIndex;
-			};
+			const dataIndex: BlockEntityIndex = .create();
 			const localPos = chunk.getLocalBlockPos(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
@@ -137,7 +162,7 @@ fn BlockEntityDataStorage(T: type) type {
 		}
 		pub fn removeAtIndex(dataIndex: BlockEntityIndex) ?DataT {
 			main.utils.assertLocked(&mutex);
-			freeIndexList.append(main.globalAllocator, dataIndex);
+			dataIndex.destroy();
 			return storage.fetchRemove(dataIndex) catch null;
 		}
 		pub fn remove(pos: Vec3i, chunk: *Chunk) ?DataT {
@@ -554,12 +579,14 @@ pub fn reset() void {
 	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		@field(BlockEntityTypes, declaration.name).reset();
 	}
+	BlockEntityIndex.reset();
 }
 
 pub fn deinit() void {
 	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		@field(BlockEntityTypes, declaration.name).deinit();
 	}
+	BlockEntityIndex.globalDeinit();
 	blockyEntityTypes.deinit(main.globalAllocator.allocator);
 }
 
