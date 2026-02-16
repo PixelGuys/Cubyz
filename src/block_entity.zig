@@ -27,6 +27,7 @@ pub const ErrorSet = BinaryReader.AllErrors || error{Invalid};
 
 pub const BlockEntityType = struct {
 	id: []const u8,
+	index: main.utils.DenseId(u16) = .noValue,
 	vtable: VTable,
 
 	const VTable = struct {
@@ -563,14 +564,48 @@ pub const BlockEntityTypes = struct {
 	};
 };
 
-var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
+var blockyEntityComponentTypesMap: std.StringHashMapUnmanaged(*BlockEntityType) = .{};
+var palette: *main.assets.Palette = undefined;
+var blockEntityComponentTypes: main.ListUnmanaged(*BlockEntityType) = undefined;
 
-pub fn init() void {
+pub fn globalInit() void {
 	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name), declaration.name);
-		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
+		const class = main.globalArena.create(BlockEntityType);
+		class.* = BlockEntityType.init(@field(BlockEntityTypes, declaration.name), declaration.name);
+		blockyEntityComponentTypesMap.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
 		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
 	}
+}
+
+pub fn globalDeinit() void {
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+		@field(BlockEntityTypes, declaration.name).deinit();
+	}
+	BlockEntityIndex.globalDeinit();
+	blockyEntityComponentTypesMap.deinit(main.globalAllocator.allocator);
+}
+
+pub fn init(palette_: *main.assets.Palette) void {
+	palette = palette_;
+	blockEntityComponentTypes = .{};
+	for (palette.palette.items) |entry| {
+		const index = blockEntityComponentTypes.items.len;
+		blockEntityComponentTypes.append(main.worldArena, blockyEntityComponentTypesMap.get(entry) orelse blk: {
+			std.log.err("Couldn't find block entity with id {s}. Loading may fail.", .{entry});
+			break :blk undefined; // TODO: Add an empty placeholder component instead.
+		});
+		blockEntityComponentTypes.items[index].index = @enumFromInt(@as(u16, @intCast(index)));
+	}
+	var iterator = blockyEntityComponentTypesMap.valueIterator();
+	while (iterator.next()) |componentType| {
+		if (componentType.*.index == .noValue) {
+			palette.add(componentType.*.id);
+			const index = blockEntityComponentTypes.items.len;
+			blockEntityComponentTypes.append(main.worldArena, componentType.*);
+			blockEntityComponentTypes.items[index].index = @enumFromInt(@as(u16, @intCast(index)));
+		}
+	}
+	std.debug.assert(blockEntityComponentTypes.items.len == palette.palette.items.len);
 }
 
 pub fn reset() void {
@@ -578,19 +613,14 @@ pub fn reset() void {
 		@field(BlockEntityTypes, declaration.name).reset();
 	}
 	BlockEntityIndex.reset();
-}
-
-pub fn deinit() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).deinit();
-	}
-	BlockEntityIndex.globalDeinit();
-	blockyEntityTypes.deinit(main.globalAllocator.allocator);
+	blockyEntityComponentTypesMap = undefined;
+	palette = undefined;
+	blockEntityComponentTypes = undefined;
 }
 
 pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 	const id = _id orelse return null;
-	if (blockyEntityTypes.getPtr(id)) |cls| return cls;
+	if (blockyEntityComponentTypesMap.get(id)) |cls| return cls;
 	std.log.err("BlockEntityType with id '{s}' not found", .{id});
 	return null;
 }

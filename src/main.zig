@@ -556,8 +556,8 @@ pub fn main() void { // MARK: main()
 
 	callbacks.init();
 
-	block_entity.init();
-	defer block_entity.deinit();
+	block_entity.globalInit();
+	defer block_entity.globalDeinit();
 
 	models.init();
 	defer models.deinit();

@@ -622,6 +622,7 @@ pub const World = struct { // MARK: World
 	itemPalette: *assets.Palette = undefined,
 	toolPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
+	blockEntityComponentPalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
@@ -667,6 +668,7 @@ pub const World = struct { // MARK: World
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
+		self.blockEntityComponentPalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
 		if (main.server.thread) |serverThread| {
@@ -690,10 +692,12 @@ pub const World = struct { // MARK: World
 		errdefer self.itemPalette.deinit();
 		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
 		errdefer self.toolPalette.deinit();
+		self.blockEntityComponentPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockEntityComponentPalette"), null);
+		errdefer self.blockEntityComponentPalette.deinit();
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.blockEntityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .normal, .serverShared, .{.playerInventory = Player.id}, .{});
 		Player.loadFrom(zon.getChild("player"));

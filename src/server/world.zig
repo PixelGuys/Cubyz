@@ -426,6 +426,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	itemPalette: *main.assets.Palette = undefined,
 	toolPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
+	blockEntityComponentPalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
 	gameTime: i64 = 0,
@@ -494,18 +495,29 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
 
+		self.blockEntityComponentPalette = try loadPalette(arena, path, "block_entity_component_palette", null);
+		errdefer self.blockEntityComponentPalette.deinit();
+
 		errdefer main.assets.unloadAssets();
 
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try main.assets.loadWorldAssets(
+			try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}),
+			self.blockPalette,
+			self.itemPalette,
+			self.toolPalette,
+			self.biomePalette,
+			self.blockEntityComponentPalette,
+		);
 		// Store the block palette now that everything is loaded.
 		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
 		try dir.writeZon("tool_palette.zig.zon", self.toolPalette.storeToZon(arena));
 		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
+		try dir.writeZon("block_entity_component_palette.zig.zon", self.blockEntityComponentPalette.storeToZon(arena));
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
@@ -542,6 +554,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
+		self.blockEntityComponentPalette.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);

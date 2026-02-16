@@ -242,6 +242,7 @@ pub const handShake = struct { // MARK: handShake
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
 		zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
+		zonObject.put("blockEntityComponentPalette", main.server.world.?.blockEntityComponentPalette.storeToZon(main.stackAllocator));
 
 		const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
 		defer main.stackAllocator.free(outData);
