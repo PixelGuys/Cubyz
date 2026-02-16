@@ -17,7 +17,7 @@ pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) mai
 	}
 	main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, params.blockPos);
 
-	const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, main.block_entity.BlockEntityTypes.Chest.inventorySize, .serverShared, .{.blockInventory = params.blockPos}, .{});
+	const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, main.block_entity.BlockEntityTypes.chest.inventorySize, .serverShared, .{.blockInventory = params.blockPos}, .{});
 
 	main.gui.windowlist.chest.setInventory(inventory);
 	main.gui.openWindow("chest");

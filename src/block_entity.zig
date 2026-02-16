@@ -43,10 +43,10 @@ pub const BlockEntityType = struct {
 		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
-	pub fn init(comptime BlockEntityTypeT: type) BlockEntityType {
+	pub fn init(comptime BlockEntityTypeT: type, comptime name: []const u8) BlockEntityType {
 		BlockEntityTypeT.init();
 		var class = BlockEntityType{
-			.id = BlockEntityTypeT.id,
+			.id = "cubyz:" ++ name,
 			.vtable = undefined,
 		};
 
@@ -182,13 +182,12 @@ fn BlockEntityDataStorage(T: type) type {
 }
 
 pub const BlockEntityTypes = struct {
-	pub const Chest = struct {
+	pub const chest = struct {
 		pub const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
 		});
 
-		pub const id = "chest";
 		pub fn init() void {
 			StorageServer.init();
 		}
@@ -249,8 +248,8 @@ pub const BlockEntityTypes = struct {
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 			switch (event) {
 				.remove => {
-					const chest = StorageServer.remove(pos, chunk) orelse return;
-					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
+					const chestComponent = StorageServer.remove(pos, chunk) orelse return;
+					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
 				},
 				.update => |_| {
 					StorageServer.mutex.lock();
@@ -268,7 +267,7 @@ pub const BlockEntityTypes = struct {
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
-	pub const Sign = struct {
+	pub const sign = struct {
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
@@ -307,7 +306,6 @@ pub const BlockEntityTypes = struct {
 		const textureHeight = 72;
 		const textureMargin = 4;
 
-		pub const id = "sign";
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
@@ -433,7 +431,7 @@ pub const BlockEntityTypes = struct {
 				const localPos = mesh.chunk.getLocalBlockPos(pos);
 				const block = mesh.chunk.data.getValue(localPos.toIndex());
 				const blockEntity = block.blockEntity() orelse return;
-				if (!std.mem.eql(u8, blockEntity.id, id)) return;
+				if (!std.mem.eql(u8, blockEntity.id, "cubyz:sign")) return;
 
 				StorageClient.mutex.lock();
 				defer StorageClient.mutex.unlock();
@@ -521,7 +519,7 @@ var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
 
 pub fn init() void {
 	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name));
+		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name), declaration.name);
 		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
 		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
 	}
