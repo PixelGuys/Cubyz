@@ -54,5 +54,10 @@
 			.height = 3,
 			.height_variation = 2,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/cave/marble/marble_landmarks",
+			.chance = 0.01,
+		},
 	},
 }
