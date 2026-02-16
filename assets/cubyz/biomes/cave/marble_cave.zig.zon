@@ -25,4 +25,9 @@
 			.smoothness = 1,
 		},
 	},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/forest/marble/marble_landmarks",
+			.chance = 0.01,
+		},
 }
