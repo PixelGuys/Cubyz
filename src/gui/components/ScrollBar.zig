@@ -65,7 +65,7 @@ fn setButtonPosFromValue(self: *ScrollBar) void {
 fn updateValueFromButtonPos(self: *ScrollBar) void {
 	const range: f32 = self.size[1] - self.button.size[1];
 	const value = self.button.pos[1]/range;
-	if(value != self.currentState) {
+	if (value != self.currentState) {
 		self.currentState = value;
 	}
 }
@@ -76,13 +76,13 @@ pub fn scroll(self: *ScrollBar, offset: f32) void {
 }
 
 pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
 		self.button.updateHovered(mousePosition - self.pos);
 	}
 }
 
 pub fn mainButtonPressed(self: *ScrollBar, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
 		self.button.mainButtonPressed(mousePosition - self.pos);
 		self.mouseAnchor = mousePosition[1] - self.button.pos[1];
 	}
@@ -100,7 +100,7 @@ pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
 
 	const range: f32 = self.size[1] - self.button.size[1];
 	self.setButtonPosFromValue();
-	if(self.button.pressed) {
+	if (self.button.pressed) {
 		self.button.pos[1] = mousePosition[1] - self.mouseAnchor;
 		self.button.pos[1] = @min(@max(self.button.pos[1], 0), range - 0.001);
 		self.updateValueFromButtonPos();

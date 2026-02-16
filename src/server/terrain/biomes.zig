@@ -20,9 +20,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		water_surface,
 	};
 	const VTable = struct {
-		loadModel: *const fn(parameters: ZonElement) ?*anyopaque,
-		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
-		hashFunction: *const fn(self: *anyopaque) u64,
+		loadModel: *const fn (parameters: ZonElement) ?*anyopaque,
+		generate: *const fn (self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
+		hashFunction: *const fn (self: *anyopaque) u64,
 		generationMode: GenerationMode,
 	};
 
@@ -87,7 +87,7 @@ const Stripe = struct { // MARK: Stripe
 
 	pub fn init(parameters: ZonElement) Stripe {
 		var dir: ?Vec3d = parameters.get(?Vec3d, "direction", null);
-		if(dir != null) {
+		if (dir != null) {
 			dir = main.vec.normalize(dir.?);
 		}
 
@@ -95,7 +95,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
-		if(parameters.object.get("distance")) |dist| {
+		if (parameters.object.get("distance")) |dist| {
 			minDistance = dist.as(f64, 0);
 			maxDistance = dist.as(f64, 0);
 		} else {
@@ -105,7 +105,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minOffset: f64 = 0;
 		var maxOffset: f64 = 0;
-		if(parameters.object.get("offset")) |off| {
+		if (parameters.object.get("offset")) |off| {
 			minOffset = off.as(f64, 0);
 			maxOffset = off.as(f64, 0);
 		} else {
@@ -115,7 +115,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minWidth: f64 = 0;
 		var maxWidth: f64 = 0;
-		if(parameters.object.get("width")) |width| {
+		if (parameters.object.get("width")) |width| {
 			minWidth = width.as(f64, 0);
 			maxWidth = width.as(f64, 0);
 		} else {
@@ -141,7 +141,7 @@ const Stripe = struct { // MARK: Stripe
 
 fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
-	return switch(@typeInfo(T)) {
+	return switch (@typeInfo(T)) {
 		.bool => hashCombine(hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
 		.@"enum" => hashCombine(hashInt(@as(u64, @intFromEnum(input))), 0x94d049bb133111eb),
 		.int, .float => blk: {
@@ -149,11 +149,11 @@ fn hashGeneric(input: anytype) u64 {
 			break :blk hashInt(@as(u64, value));
 		},
 		.@"struct" => blk: {
-			if(@hasDecl(T, "getHash")) {
+			if (@hasDecl(T, "getHash")) {
 				break :blk input.getHash();
 			}
 			var result: u64 = hashGeneric(@typeName(T));
-			inline for(@typeInfo(T).@"struct".fields) |field| {
+			inline for (@typeInfo(T).@"struct".fields) |field| {
 				const keyHash = hashGeneric(@as([]const u8, field.name));
 				const valueHash = hashGeneric(@field(input, field.name));
 				const keyValueHash = hashCombine(keyHash, valueHash);
@@ -161,17 +161,17 @@ fn hashGeneric(input: anytype) u64 {
 			}
 			break :blk result;
 		},
-		.optional => if(input) |_input| hashGeneric(_input) else 0,
-		.pointer => switch(@typeInfo(T).pointer.size) {
+		.optional => if (input) |_input| hashGeneric(_input) else 0,
+		.pointer => switch (@typeInfo(T).pointer.size) {
 			.one => blk: {
-				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
-				if(@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
-				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
+				if (@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
+				if (@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
+				if (@typeInfo(T).pointer.child == anyopaque) break :blk 0;
 				break :blk hashGeneric(input.*);
 			},
 			.slice => blk: {
 				var result: u64 = hashInt(input.len);
-				for(input) |val| {
+				for (input) |val| {
 					const valueHash = hashGeneric(val);
 					result = hashCombine(result, valueHash);
 				}
@@ -181,7 +181,7 @@ fn hashGeneric(input: anytype) u64 {
 		},
 		.array => blk: {
 			var result: u64 = 0xbf58476d1ce4e5b9;
-			for(input) |val| {
+			for (input) |val| {
 				const valueHash = hashGeneric(val);
 				result = hashCombine(result, valueHash);
 			}
@@ -189,7 +189,7 @@ fn hashGeneric(input: anytype) u64 {
 		},
 		.vector => blk: {
 			var result: u64 = 0x94d049bb133111eb;
-			inline for(0..@typeInfo(T).vector.len) |i| {
+			inline for (0..@typeInfo(T).vector.len) |i| {
 				const valueHash = hashGeneric(input[i]);
 				result = hashCombine(result, valueHash);
 			}
@@ -255,15 +255,15 @@ pub const Biome = struct { // MARK: Biome
 
 		pub fn fromZon(zon: ZonElement, initMidValues: bool) GenerationProperties {
 			var result: GenerationProperties = .{};
-			for(zon.toSlice()) |child| {
+			for (zon.toSlice()) |child| {
 				const property = child.as([]const u8, "");
-				inline for(@typeInfo(GenerationProperties).@"struct".fields) |field| {
-					if(std.mem.eql(u8, field.name, property)) {
+				inline for (@typeInfo(GenerationProperties).@"struct".fields) |field| {
+					if (std.mem.eql(u8, field.name, property)) {
 						@field(result, field.name) = true;
 					}
 				}
 			}
-			if(initMidValues) {
+			if (initMidValues) {
 				// Fill all mid values if no value was specified in a group:
 				const val: u15 = @bitCast(result);
 				const empty = ~val & ~val >> 1 & ~val >> 2 & mask;
@@ -351,28 +351,28 @@ pub const Biome = struct { // MARK: Biome
 			.supportsRivers = zon.get(bool, "rivers", false),
 			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:TotalDemented/Cubyz")),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
-			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
+			.chance = zon.get(f32, "chance", if (zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
-		if(minRadius > maxRadius) {
+		if (minRadius > maxRadius) {
 			std.log.err("Biome {s} has invalid radius range ({d}, {d})", .{self.id, minRadius, maxRadius});
 		}
-		if(minRadius < terrain.SurfaceMap.MapFragment.biomeSize/2) {
+		if (minRadius < terrain.SurfaceMap.MapFragment.biomeSize/2) {
 			std.log.err("Biome {s} has radius {d}, smaller than grid resolution. It should be at least {d}", .{self.id, minRadius, terrain.SurfaceMap.MapFragment.biomeSize/2});
 		}
-		if(self.minHeight > self.maxHeight) {
+		if (self.minHeight > self.maxHeight) {
 			std.log.err("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
 		}
 		const parentBiomeList = zon.getChild("parentBiomes");
-		for(parentBiomeList.toSlice()) |parent| {
+		for (parentBiomeList.toSlice()) |parent| {
 			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
 			result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
 		}
 
 		const transitionBiomeList = zon.getChild("transitionBiomes").toSlice();
-		if(transitionBiomeList.len != 0) {
+		if (transitionBiomeList.len != 0) {
 			const transitionBiomes = main.globalAllocator.alloc(UnfinishedTransitionBiomeData, transitionBiomeList.len);
-			for(transitionBiomes, transitionBiomeList) |*dst, src| {
+			for (transitionBiomes, transitionBiomeList) |*dst, src| {
 				dst.* = .{
 					.biomeId = src.get([]const u8, "id", ""),
 					.chance = src.get(f32, "chance", 1),
@@ -394,14 +394,14 @@ pub const Biome = struct { // MARK: Biome
 		var vegetation = main.ListUnmanaged(SimpleStructureModel){};
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
-		for(structures.toSlice()) |elem| {
-			if(SimpleStructureModel.initModel(elem)) |model| {
+		for (structures.toSlice()) |elem| {
+			if (SimpleStructureModel.initModel(elem)) |model| {
 				vegetation.append(main.stackAllocator, model);
 				totalChance += model.chance;
 			}
 		}
-		if(totalChance > 1) {
-			for(vegetation.items) |*model| {
+		if (totalChance > 1) {
+			for (vegetation.items) |*model| {
 				model.chance /= totalChance;
 			}
 		}
@@ -409,7 +409,7 @@ pub const Biome = struct { // MARK: Biome
 
 		const stripes = zon.getChild("stripes");
 		self.stripes = main.worldArena.alloc(Stripe, stripes.toSlice().len);
-		for(stripes.toSlice(), 0..) |elem, i| {
+		for (stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
 		}
 	}
@@ -430,15 +430,15 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 			var tokenIt = std.mem.tokenizeAny(u8, string, &std.ascii.whitespace);
 			const first = tokenIt.next() orelse return error.@"String is empty.";
 			var blockId: []const u8 = first;
-			if(tokenIt.next()) |second| {
+			if (tokenIt.next()) |second| {
 				self.min = try std.fmt.parseInt(u31, first, 0);
-				if(tokenIt.next()) |third| {
+				if (tokenIt.next()) |third| {
 					const fourth = tokenIt.next() orelse return error.@"Expected 1, 2 or 4 parameters, found 3.";
-					if(!std.mem.eql(u8, second, "to")) return error.@"Expected layout '<min> to <max> <block>'. Missing 'to'.";
+					if (!std.mem.eql(u8, second, "to")) return error.@"Expected layout '<min> to <max> <block>'. Missing 'to'.";
 					self.max = try std.fmt.parseInt(u31, third, 0);
 					blockId = fourth;
-					if(tokenIt.next() != null) return error.@"Found too many parameters. Expected 1, 2 or 4.";
-					if(self.max < self.min) return error.@"The max value must be bigger than the min value.";
+					if (tokenIt.next() != null) return error.@"Found too many parameters. Expected 1, 2 or 4.";
+					if (self.max < self.min) return error.@"The max value must be bigger than the min value.";
 				} else {
 					self.max = self.min;
 					blockId = second;
@@ -457,7 +457,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 		const self = BlockStructure{
 			.structure = allocator.alloc(BlockStack, blockStackDescriptions.len),
 		};
-		for(blockStackDescriptions, self.structure) |zonString, *blockStack| {
+		for (blockStackDescriptions, self.structure) |zonString, *blockStack| {
 			blockStack.init(zonString.as([]const u8, "That's not a zon string.")) catch |err| {
 				std.log.err("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8, "(not a zon string)"), @errorName(err)});
 				blockStack.* = .{};
@@ -473,18 +473,18 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, slope: i32, soilCreep: f32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
 		var remainingSkippedBlocks = @as(i32, @intFromFloat(@as(f32, @floatFromInt(slope))*soilCreep)) - 1;
-		for(self.structure) |blockStack| {
+		for (self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
-			for(0..total) |_| {
-				if(remainingSkippedBlocks > 0) {
+			for (0..total) |_| {
+				if (remainingSkippedBlocks > 0) {
 					remainingSkippedBlocks -= 1;
 					continue;
 				}
-				if(chunk.liesInChunk(x, y, depth)) {
+				if (chunk.liesInChunk(x, y, depth)) {
 					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
 				}
 				depth -%= chunk.super.pos.voxelSize;
-				if(depth -% minDepth <= 0)
+				if (depth -% minDepth <= 0)
 					return depth +% chunk.super.pos.voxelSize;
 			}
 		}
@@ -505,9 +505,9 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 
 	pub fn init(arena: NeverFailingAllocator, currentSlice: []Biome, parameterShift: u5) *TreeNode {
 		const self = arena.create(TreeNode);
-		if(currentSlice.len <= 1 or parameterShift >= @bitSizeOf(Biome.GenerationProperties)) {
+		if (currentSlice.len <= 1 or parameterShift >= @bitSizeOf(Biome.GenerationProperties)) {
 			self.* = .{.leaf = .{}};
-			for(currentSlice) |biome| {
+			for (currentSlice) |biome| {
 				self.leaf.totalChance += biome.chance;
 			}
 			self.leaf.aliasTable = .init(arena, currentSlice);
@@ -516,13 +516,13 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var chanceLower: f32 = 0;
 		var chanceMiddle: f32 = 0;
 		var chanceUpper: f32 = 0;
-		for(currentSlice) |*biome| {
+		for (currentSlice) |*biome| {
 			var properties: u32 = @as(u15, @bitCast(biome.properties));
 			properties >>= parameterShift;
 			properties = properties & 7;
-			if(properties == 1) {
+			if (properties == 1) {
 				chanceLower += biome.chance;
-			} else if(properties == 4) {
+			} else if (properties == 4) {
 				chanceUpper += biome.chance;
 			} else {
 				chanceMiddle += biome.chance;
@@ -548,10 +548,10 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 				.initCapacity(main.stackAllocator, currentSlice.len),
 				.initCapacity(main.stackAllocator, currentSlice.len),
 			};
-			defer for(lists) |list| {
+			defer for (lists) |list| {
 				list.deinit(main.stackAllocator);
 			};
-			for(currentSlice) |biome| {
+			for (currentSlice) |biome| {
 				var properties: u32 = @as(u15, @bitCast(biome.properties));
 				properties >>= parameterShift;
 				const valueMap = [8]usize{1, 0, 1, 1, 2, 1, 1, 1};
@@ -572,7 +572,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 	}
 
 	pub fn getBiome(self: *const TreeNode, seed: *u64, x: i32, y: i32, depth: usize) *const Biome {
-		switch(self.*) {
+		switch (self.*) {
 			.leaf => |leaf| {
 				var biomeSeed = main.random.initSeed2D(seed.*, main.vec.Vec2i{x, y});
 				const result = leaf.aliasTable.sample(&biomeSeed);
@@ -582,8 +582,8 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 				const wavelength = main.server.world.?.chunkManager.terrainGenerationProfile.climateWavelengths[depth];
 				const value = terrain.noise.ValueNoise.samplePoint2D(@as(f32, @floatFromInt(x))/wavelength, @as(f32, @floatFromInt(y))/wavelength, main.random.nextInt(u32, seed));
 				var index: u2 = 0;
-				if(value >= branch.lowerBorder) {
-					if(value >= branch.upperBorder) {
+				if (value >= branch.lowerBorder) {
+					if (value >= branch.upperBorder) {
 						index = 2;
 					} else {
 						index = 1;
@@ -628,7 +628,7 @@ var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitio
 
 pub fn init() void {
 	const list = @import("simple_structures/_list.zig");
-	inline for(@typeInfo(list).@"struct".decls) |decl| {
+	inline for (@typeInfo(list).@"struct".decls) |decl| {
 		SimpleStructureModel.registerGenerator(@field(list, decl.name));
 	}
 }
@@ -646,7 +646,7 @@ pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
 	std.debug.assert(!finishedLoading);
 	var biome: Biome = undefined;
 	biome.init(id, paletteId, zon);
-	if(biome.isCave) {
+	if (biome.isCave) {
 		caveBiomes.append(main.worldArena, biome);
 		std.log.debug("Registered    cave biome: {d: >5} '{s}'", .{paletteId, id});
 	} else {
@@ -659,12 +659,12 @@ pub fn finishLoading() void {
 	std.debug.assert(!finishedLoading);
 	finishedLoading = true;
 	var nonZeroBiomes: usize = biomes.items.len;
-	for(0..biomes.items.len) |_i| {
+	for (0..biomes.items.len) |_i| {
 		const i = biomes.items.len - _i - 1;
-		if(biomes.items[i].chance == 0) {
+		if (biomes.items[i].chance == 0) {
 			nonZeroBiomes -= 1;
 			const biome = biomes.items[i];
-			for(i..nonZeroBiomes) |j| {
+			for (i..nonZeroBiomes) |j| {
 				biomes.items[j] = biomes.items[j + 1];
 			}
 			biomes.items[nonZeroBiomes] = biome;
@@ -674,23 +674,23 @@ pub fn finishLoading() void {
 	biomesByIndex.resize(main.worldArena, biomes.items.len + caveBiomes.items.len);
 	biomesById.ensureTotalCapacity(main.worldArena.allocator, @intCast(biomes.items.len + caveBiomes.items.len)) catch unreachable;
 
-	for(biomes.items) |*biome| {
+	for (biomes.items) |*biome| {
 		biomesById.putAssumeCapacity(biome.id, biome);
 		biomesByIndex.items[biome.paletteId] = biome;
 	}
-	for(caveBiomes.items) |*biome| {
+	for (caveBiomes.items) |*biome| {
 		biomesById.putAssumeCapacity(biome.id, biome);
 		biomesByIndex.items[biome.paletteId] = biome;
 	}
 	var subBiomeIterator = unfinishedSubBiomes.iterator();
-	while(subBiomeIterator.next()) |subBiomeData| {
+	while (subBiomeIterator.next()) |subBiomeData| {
 		const subBiomeDataList = subBiomeData.value_ptr;
 		defer subBiomeDataList.deinit(main.globalAllocator);
 		const parentBiome = biomesById.get(subBiomeData.key_ptr.*) orelse {
 			std.log.err("Couldn't find biome with id {s}. Cannot add sub-biomes.", .{subBiomeData.key_ptr.*});
 			continue;
 		};
-		for(subBiomeDataList.items) |item| {
+		for (subBiomeDataList.items) |item| {
 			parentBiome.subBiomeTotalChance += item.chance;
 		}
 		parentBiome.subBiomes = .initFromContext(main.worldArena, subBiomeDataList.items);
@@ -698,11 +698,11 @@ pub fn finishLoading() void {
 	unfinishedSubBiomes.clearAndFree(main.globalAllocator.allocator);
 
 	var transitionBiomeIterator = unfinishedTransitionBiomes.iterator();
-	while(transitionBiomeIterator.next()) |transitionBiomeData| {
+	while (transitionBiomeIterator.next()) |transitionBiomeData| {
 		const parentBiome = biomesById.get(transitionBiomeData.key_ptr.*) orelse unreachable;
 		const transitionBiomes = transitionBiomeData.value_ptr.*;
 		parentBiome.transitionBiomes = main.worldArena.alloc(TransitionBiome, transitionBiomes.len);
-		for(parentBiome.transitionBiomes, transitionBiomes) |*res, src| {
+		for (parentBiome.transitionBiomes, transitionBiomes) |*res, src| {
 			res.* = .{
 				.biome = biomesById.get(src.biomeId) orelse {
 					std.log.err("Skipping transition biome with unknown id {s}", .{src.biomeId});
@@ -725,13 +725,13 @@ pub fn finishLoading() void {
 }
 
 pub fn hasRegistered(id: []const u8) bool {
-	for(biomes.items) |*biome| {
-		if(std.mem.eql(u8, biome.id, id)) {
+	for (biomes.items) |*biome| {
+		if (std.mem.eql(u8, biome.id, id)) {
 			return true;
 		}
 	}
-	for(caveBiomes.items) |*biome| {
-		if(std.mem.eql(u8, biome.id, id)) {
+	for (caveBiomes.items) |*biome| {
+		if (std.mem.eql(u8, biome.id, id)) {
 			return true;
 		}
 	}
@@ -762,10 +762,10 @@ pub fn getCaveBiomes() []const Biome {
 /// A checksum that can be used to check for changes i nthe biomes being used.
 pub fn getBiomeCheckSum(seed: u64) u64 {
 	var result: u64 = seed;
-	for(biomes.items) |*biome| {
+	for (biomes.items) |*biome| {
 		result ^= biome.getCheckSum();
 	}
-	for(caveBiomes.items) |*biome| {
+	for (caveBiomes.items) |*biome| {
 		result ^= biome.getCheckSum();
 	}
 	return result;

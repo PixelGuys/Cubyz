@@ -21,10 +21,23 @@ fn toggleStreamerMode(value: bool) void {
 	main.settings.save();
 }
 
+fn logout() void {
+	main.settings.storedAccount.deinit(main.globalAllocator);
+	main.settings.storedAccount = .empty;
+	main.settings.save();
+	for (gui.openWindows.items) |openWindow| {
+		gui.closeWindowFromRef(openWindow);
+	}
+	gui.openWindow("authentication/login");
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	list.add(CheckBox.init(.{0, 0}, 316, "Streamer Mode (hides sensitive data)", main.settings.streamerMode, &toggleStreamerMode));
-	list.add(Button.initText(.{0, 0}, 128, "Change Name", gui.openWindowCallback("change_name")));
+	if (main.game.world == null) {
+		list.add(Button.initText(.{0, 0}, 128, "Change Name", gui.openWindowCallback("change_name")));
+		list.add(Button.initText(.{0, 0}, 128, "Logout", .init(logout)));
+	}
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -32,7 +45,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

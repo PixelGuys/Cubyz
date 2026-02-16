@@ -43,7 +43,7 @@ pub fn execute(args: []const u8, source: *User) void {
 
 	const selection = Blueprint.capture(main.globalAllocator, posStart, posEnd);
 
-	switch(selection) {
+	switch (selection) {
 		.success => |blueprint| {
 			source.worldEditData.undoHistory.push(.init(blueprint, posStart, "replace"));
 			source.worldEditData.redoHistory.clear();

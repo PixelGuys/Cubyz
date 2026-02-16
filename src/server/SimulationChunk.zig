@@ -25,7 +25,7 @@ pub fn initAndIncreaseRefCount(pos: ChunkPosition) *SimulationChunk {
 fn deinit(self: *SimulationChunk) void {
 	std.debug.assert(self.refCount.load(.monotonic) == 0);
 	self.blockUpdateSystem.deinit();
-	if(self.chunk.raw) |ch| ch.decreaseRefCount();
+	if (self.chunk.raw) |ch| ch.decreaseRefCount();
 	main.globalAllocator.destroy(self);
 }
 
@@ -37,10 +37,10 @@ pub fn increaseRefCount(self: *SimulationChunk) void {
 pub fn decreaseRefCount(self: *SimulationChunk) void {
 	const prevVal = self.refCount.fetchSub(1, .monotonic);
 	std.debug.assert(prevVal != 0);
-	if(prevVal == 2) {
+	if (prevVal == 2) {
 		main.server.world_zig.ChunkManager.tryRemoveSimulationChunk(self);
 	}
-	if(prevVal == 1) {
+	if (prevVal == 1) {
 		self.deinit();
 	}
 }
@@ -60,7 +60,7 @@ pub fn update(self: *SimulationChunk, randomTickSpeed: u32) void {
 }
 
 fn tickBlocksInChunk(_chunk: *ServerChunk, randomTickSpeed: u32) void {
-	for(0..randomTickSpeed) |_| {
+	for (0..randomTickSpeed) |_| {
 		const blockIndex = main.random.nextInt(u15, &main.seed);
 		const pos = main.chunk.BlockPos.fromIndex(blockIndex);
 

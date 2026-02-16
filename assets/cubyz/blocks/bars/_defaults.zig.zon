@@ -1,0 +1,9 @@
+.{
+	.tags = .{.mineable},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = "cubyz:fence",
+	.model = "cubyz:bars",
+}
