@@ -198,12 +198,10 @@ const SignGenerator = struct {
 		const relX = self.wx - chunk.super.pos.wx;
 		const relY = self.wy - chunk.super.pos.wy;
 		const relZ = self.wz - chunk.super.pos.wz;
-		if (signBlock.blockEntity()) |blockEntity| {
-			chunk.updateBlockIfDegradable(relX, relY, relZ, signBlock);
-			var reader: main.utils.BinaryReader = .init(self.id);
-			blockEntity.onLoadServer(.{self.wx, self.wy, self.wz}, &chunk.super, &reader) catch |err| {
-				std.log.err("Error while loading id to sign: {s}", .{@errorName(err)});
-			};
-		}
+		chunk.updateBlockIfDegradable(relX, relY, relZ, signBlock);
+		var reader: main.utils.BinaryReader = .init(self.id);
+		_ = main.block_entity.BlockEntity.initAndLoad(.{self.wx, self.wy, self.wz}, &chunk.super, &reader, .server) catch |err| {
+			std.log.err("Error while loading id to sign: {s}", .{@errorName(err)});
+		};
 	}
 };

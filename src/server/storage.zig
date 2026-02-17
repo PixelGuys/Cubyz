@@ -442,20 +442,12 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 			const blockEntityData = try reader.readSlice(dataLength);
 			const block = ch.data.getValue(pos.toIndex());
-			const blockEntity = block.blockEntity() orelse {
-				std.log.err("Could not load BlockEntity at position {} for block {s}: Block has no block entity", .{globalPos, block.id()});
-				continue;
-			};
 
 			var tempReader = BinaryReader.init(blockEntityData);
-			if (side == .server) {
-				blockEntity.onLoadServer(globalPos, ch, &tempReader) catch |err| {
-					std.log.err("Could not load BlockEntity at position {} for block {s}: {s}", .{globalPos, block.id(), @errorName(err)});
-					continue;
-				};
-			} else {
-				try blockEntity.onLoadClient(globalPos, ch, &tempReader);
-			}
+			_ = main.block_entity.BlockEntity.initAndLoad(globalPos, ch, &tempReader, side) catch |err| {
+				std.log.err("Could not load BlockEntity at position {} for block {s}: {s}", .{globalPos, block.id(), @errorName(err)});
+				continue;
+			};
 		}
 	}
 };
