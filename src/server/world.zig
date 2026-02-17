@@ -1254,9 +1254,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer baseChunk.mutex.unlock();
 
 		if (currentBlock != _newBlock) {
-			if (currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
-			};
+			main.block_entity.destroyBlockEntityByPosition(.{wx, wy, wz}, &baseChunk.super, .server);
 		}
 		baseChunk.updateBlockAndSetChanged(pos.x, pos.y, pos.z, newBlock);
 

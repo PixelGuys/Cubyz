@@ -1177,11 +1177,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
-		if (oldBlock.blockEntity()) |blockEntity| {
-			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{_x, _y, _z}, oldBlock.id()});
-			};
-		}
+		main.block_entity.destroyBlockEntityByPosition(.{_x, _y, _z}, self.chunk, .client);
 
 		var neighborBlocks: [6]Block = undefined;
 		@memset(&neighborBlocks, .{.typ = 0, .data = 0});

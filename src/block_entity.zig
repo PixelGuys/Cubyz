@@ -19,15 +19,16 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
 const UpdateEvent = union(enum) {
-	remove: void,
 	update: *BinaryReader,
 };
 
 pub const ErrorSet = BinaryReader.AllErrors || error{Invalid};
 
+const BlockEntityComponentTypeIndex = main.utils.DenseId(u16);
+
 pub const BlockEntityType = struct {
 	id: []const u8,
-	index: main.utils.DenseId(u16) = .noValue,
+	index: BlockEntityComponentTypeIndex = .noValue,
 	vtable: VTable,
 
 	const VTable = struct {
@@ -42,6 +43,8 @@ pub const BlockEntityType = struct {
 		updateServerData: *const fn (pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
 		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
+		removeClient: *const fn (entity: BlockEntityIndex) void,
+		removeServer: *const fn (entity: BlockEntityIndex) void,
 	};
 	pub fn init(comptime BlockEntityTypeT: type, comptime name: []const u8) BlockEntityType {
 		BlockEntityTypeT.init();
@@ -91,6 +94,12 @@ pub const BlockEntityType = struct {
 	pub inline fn getClientToServerData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getClientToServerData(pos, chunk, writer);
 	}
+	pub inline fn removeClient(self: *const BlockEntityType, entity: BlockEntityIndex) void {
+		return self.vtable.removeClient(entity);
+	}
+	pub inline fn removeServer(self: *const BlockEntityType, entity: BlockEntityIndex) void {
+		return self.vtable.removeServer(entity);
+	}
 };
 
 pub const BlockEntityIndex = enum(u32) {
@@ -112,7 +121,7 @@ pub const BlockEntityIndex = enum(u32) {
 		nextIndex = @enumFromInt(0);
 	}
 
-	fn create() BlockEntityIndex {
+	fn createIndex() BlockEntityIndex {
 		mutex.lock();
 		defer mutex.unlock();
 		return freeIndexList.popOrNull() orelse {
@@ -121,12 +130,82 @@ pub const BlockEntityIndex = enum(u32) {
 		};
 	}
 
-	fn destroy(self: BlockEntityIndex) void {
+	fn destroyIndex(self: BlockEntityIndex) void {
 		mutex.lock();
 		defer mutex.unlock();
 		freeIndexList.append(main.globalAllocator, self);
 	}
+
+	pub fn init(pos: Vec3i, chunk: *Chunk) BlockEntityIndex {
+		const self = createIndex();
+		if (@intFromEnum(self) >= sharedBlockEntityData.committedCapacity) {
+			sharedBlockEntityDataMutex.lock();
+			defer sharedBlockEntityDataMutex.unlock();
+			sharedBlockEntityData.ensureCapacity(@intFromEnum(self) + 1);
+		}
+		sharedBlockEntityData.mem[@intFromEnum(self)] = .{
+			.components = .{},
+			.pos = pos,
+		};
+		const localPos = chunk.getLocalBlockPos(pos);
+
+		chunk.blockPosToEntityDataMapMutex.lock();
+		chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, localPos, self) catch unreachable;
+		chunk.blockPosToEntityDataMapMutex.unlock();
+
+		return self;
+	}
+
+	pub fn deinit(self: BlockEntityIndex, comptime side: main.sync.Side) void {
+		const sharedData = &sharedBlockEntityData.mem[@intFromEnum(self)];
+		for (sharedData.components.items) |component| {
+			if (side == .client) {
+				blockEntityComponentTypes.items[@intFromEnum(component)].removeClient(self);
+			} else {
+				blockEntityComponentTypes.items[@intFromEnum(component)].removeServer(self);
+			}
+		}
+		sharedData.components.deinit(main.globalAllocator);
+		self.destroyIndex();
+	}
+
+	pub fn removeComponent(self: BlockEntityIndex, componentType: BlockEntityComponentTypeIndex, comptime side: main.sync.Side) void {
+		const sharedData = &sharedBlockEntityData.mem[@intFromEnum(self)];
+		for (sharedData.components.items, 0..) |component, i| {
+			if (component == componentType) {
+				if (side == .client) {
+					blockEntityComponentTypes.items[@intFromEnum(component)].removeClient(self);
+				} else {
+					blockEntityComponentTypes.items[@intFromEnum(component)].removeServer(self);
+				}
+				_ = sharedData.components.swapRemove(i);
+				return;
+			}
+		}
+		@panic("Component not found.");
+	}
 };
+
+var sharedBlockEntityData: main.utils.VirtualList(SharedBlockEntityData, 0xffffffff) = undefined;
+var sharedBlockEntityDataMutex: std.Thread.Mutex = .{};
+
+pub const SharedBlockEntityData = struct {
+	pos: Vec3i,
+	components: main.ListUnmanaged(BlockEntityComponentTypeIndex),
+};
+
+pub fn getByPosition(pos: Vec3i, chunk: *Chunk) ?BlockEntityIndex {
+	const localPos = chunk.getLocalBlockPos(pos);
+
+	chunk.blockPosToEntityDataMapMutex.lock();
+	defer chunk.blockPosToEntityDataMapMutex.unlock();
+	return chunk.blockPosToEntityDataMap.get(localPos);
+}
+
+pub fn destroyBlockEntityByPosition(pos: Vec3i, chunk: *Chunk, comptime side: main.sync.Side) void {
+	const entity = getByPosition(pos, chunk) orelse return;
+	entity.deinit(side);
+}
 
 fn BlockEntityDataStorage(T: type) type {
 	return struct {
@@ -144,29 +223,18 @@ fn BlockEntityDataStorage(T: type) type {
 		pub fn reset() void {
 			storage.clear();
 		}
-		fn createEntry(pos: Vec3i, chunk: *Chunk) BlockEntityIndex {
-			main.utils.assertLocked(&mutex);
-			const dataIndex: BlockEntityIndex = .create();
-			const localPos = chunk.getLocalBlockPos(pos);
-
-			chunk.blockPosToEntityDataMapMutex.lock();
-			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, localPos, dataIndex) catch unreachable;
-			chunk.blockPosToEntityDataMapMutex.unlock();
-			return dataIndex;
-		}
 		pub fn add(pos: Vec3i, value: DataT, chunk: *Chunk) void {
 			mutex.lock();
 			defer mutex.unlock();
 
-			const dataIndex = createEntry(pos, chunk);
+			const dataIndex = BlockEntityIndex.init(pos, chunk);
 			storage.set(main.globalAllocator, dataIndex, value);
 		}
 		pub fn removeAtIndex(dataIndex: BlockEntityIndex) ?DataT {
 			main.utils.assertLocked(&mutex);
-			dataIndex.destroy();
 			return storage.fetchRemove(dataIndex) catch null;
 		}
-		pub fn remove(pos: Vec3i, chunk: *Chunk) ?DataT {
+		pub fn remove2(pos: Vec3i, chunk: *Chunk) ?DataT {
 			mutex.lock();
 			defer mutex.unlock();
 
@@ -205,7 +273,7 @@ fn BlockEntityDataStorage(T: type) type {
 			main.utils.assertLocked(&mutex);
 			if (get(pos, chunk)) |result| return .{.valuePtr = result, .foundExisting = true};
 
-			const dataIndex = createEntry(pos, chunk);
+			const dataIndex = BlockEntityIndex.init(pos, chunk);
 			return .{.valuePtr = storage.add(main.globalAllocator, dataIndex), .foundExisting = false};
 		}
 	};
@@ -286,12 +354,9 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
+		pub fn removeClient(_: BlockEntityIndex) void {}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 			switch (event) {
-				.remove => {
-					const chestComponent = StorageServer.remove(pos, chunk) orelse return;
-					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
-				},
 				.update => |_| {
 					StorageServer.mutex.lock();
 					defer StorageServer.mutex.unlock();
@@ -301,6 +366,10 @@ pub const BlockEntityTypes = struct {
 					data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
 				},
 			}
+		}
+		pub fn removeServer(entity: BlockEntityIndex) void {
+			const entry = StorageServer.removeAtIndex(entity) orelse return;
+			main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(entry.invId, sharedBlockEntityData.mem[@intFromEnum(entity)].pos);
 		}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
@@ -399,12 +468,13 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
-			return updateClientData(pos, chunk, .{.update = reader});
+			return sign.updateClientData(pos, chunk, .{.update = reader}); // TODO: Remove namespace
 		}
 		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-			if (event == .remove or event.update.remaining.len == 0) {
-				const entry = StorageClient.remove(pos, chunk) orelse return;
-				entry.deinit();
+			if (event.update.remaining.len == 0) {
+				const entity = getByPosition(pos, chunk) orelse return;
+				const index = blockyEntityComponentTypesMap.get("cubyz:sign").?.index; // TODO
+				entity.removeComponent(index, .client);
 				return;
 			}
 
@@ -422,14 +492,19 @@ pub const BlockEntityTypes = struct {
 				.text = main.globalAllocator.dupe(u8, event.update.remaining),
 			};
 		}
+		pub fn removeClient(entity: BlockEntityIndex) void {
+			const entry = StorageClient.removeAtIndex(entity) orelse return;
+			entry.deinit();
+		}
 
 		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 			return updateServerData(pos, chunk, .{.update = reader});
 		}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-			if (event == .remove or event.update.remaining.len == 0) {
-				const entry = StorageServer.remove(pos, chunk) orelse return;
-				main.globalAllocator.free(entry.text);
+			if (event.update.remaining.len == 0) {
+				const entity = getByPosition(pos, chunk) orelse return;
+				const index = blockyEntityComponentTypesMap.get("cubyz:sign").?.index; // TODO
+				entity.removeComponent(index, .server);
 				return;
 			}
 
@@ -446,6 +521,10 @@ pub const BlockEntityTypes = struct {
 			const data = StorageServer.getOrPut(pos, chunk);
 			if (data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
 			data.valuePtr.text = main.globalAllocator.dupe(u8, event.update.remaining);
+		}
+		pub fn removeServer(entity: BlockEntityIndex) void {
+			const entry = StorageServer.removeAtIndex(entity) orelse return;
+			main.globalAllocator.free(entry.text);
 		}
 
 		pub const onStoreServerToClient = onStoreServerToDisk;
@@ -569,6 +648,7 @@ var palette: *main.assets.Palette = undefined;
 var blockEntityComponentTypes: main.ListUnmanaged(*BlockEntityType) = undefined;
 
 pub fn globalInit() void {
+	sharedBlockEntityData = .init();
 	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		const class = main.globalArena.create(BlockEntityType);
 		class.* = BlockEntityType.init(@field(BlockEntityTypes, declaration.name), declaration.name);
@@ -583,6 +663,7 @@ pub fn globalDeinit() void {
 	}
 	BlockEntityIndex.globalDeinit();
 	blockyEntityComponentTypesMap.deinit(main.globalAllocator.allocator);
+	sharedBlockEntityData.deinit();
 }
 
 pub fn init(palette_: *main.assets.Palette) void {
