@@ -139,7 +139,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 			defer sharedBlockEntityDataMutex.unlock();
 			sharedBlockEntityData.ensureCapacity(@intFromEnum(self) + 1);
 		}
-		sharedBlockEntityData.mem[@intFromEnum(self)] = .{
+		self.sharedData().* = .{
 			.components = .{},
 			.pos = pos,
 		};
@@ -153,32 +153,34 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	}
 
 	pub fn deinit(self: BlockEntity, comptime side: main.sync.Side) void {
-		const sharedData = &sharedBlockEntityData.mem[@intFromEnum(self)];
-		for (sharedData.components.items) |component| {
+		for (self.sharedData().components.items) |component| {
 			if (side == .client) {
 				blockEntityComponentTypes.items[@intFromEnum(component)].removeClient(self);
 			} else {
 				blockEntityComponentTypes.items[@intFromEnum(component)].removeServer(self);
 			}
 		}
-		sharedData.components.deinit(main.globalAllocator);
+		self.sharedData().components.deinit(main.globalAllocator);
 		self.destroyIndex();
 	}
 
 	pub fn removeComponent(self: BlockEntity, componentType: BlockEntityComponentTypeIndex, comptime side: main.sync.Side) void {
-		const sharedData = &sharedBlockEntityData.mem[@intFromEnum(self)];
-		for (sharedData.components.items, 0..) |component, i| {
+		for (self.sharedData().components.items, 0..) |component, i| {
 			if (component == componentType) {
 				if (side == .client) {
 					blockEntityComponentTypes.items[@intFromEnum(component)].removeClient(self);
 				} else {
 					blockEntityComponentTypes.items[@intFromEnum(component)].removeServer(self);
 				}
-				_ = sharedData.components.swapRemove(i);
+				_ = self.sharedData().components.swapRemove(i);
 				return;
 			}
 		}
 		@panic("Component not found.");
+	}
+
+	pub fn sharedData(self: BlockEntity) *SharedBlockEntityData {
+		return &sharedBlockEntityData.mem[@intFromEnum(self)];
 	}
 };
 
@@ -354,7 +356,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		}
 		pub fn removeServer(entity: BlockEntity) void {
 			const entry = StorageServer.removeAtIndex(entity) orelse return;
-			main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(entry.invId, sharedBlockEntityData.mem[@intFromEnum(entity)].pos);
+			main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(entry.invId, entity.sharedData().pos);
 		}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
