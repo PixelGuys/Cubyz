@@ -64,14 +64,14 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
+			.block = "cubyz:grass/vegetation/dew",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:grass_vegetation",
+			.block = "cubyz:grass/vegetation/dew",
 			.chance = 0.1,
 			.width = 3,
 			.variation = 6,
