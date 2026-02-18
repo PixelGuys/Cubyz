@@ -15,4 +15,7 @@
 	},
 	.blockEntity = "cubyz:sign",
 	.lodReplacement = "cubyz:air",
+	.onTrigger = .{
+		.type = .updateSignText,
+	},
 }

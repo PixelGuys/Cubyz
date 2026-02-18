@@ -207,6 +207,17 @@ pub const SharedBlockEntityData = struct {
 	components: main.ListUnmanaged(BlockEntityComponentTypeIndex),
 };
 
+pub fn getOrCreateByPosition(pos: Vec3i, chunk: *Chunk) BlockEntity {
+	const localPos = chunk.getLocalBlockPos(pos);
+
+	{
+		chunk.blockPosToEntityDataMapMutex.lock();
+		defer chunk.blockPosToEntityDataMapMutex.unlock();
+		if (chunk.blockPosToEntityDataMap.get(localPos)) |entity| return entity;
+	}
+	return BlockEntity.init(pos, chunk);
+}
+
 pub fn getByPosition(pos: Vec3i, chunk: *Chunk) ?BlockEntity {
 	const localPos = chunk.getLocalBlockPos(pos);
 
@@ -578,33 +589,34 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			writer.writeSlice(data.text);
 		}
 
-		pub fn updateTextFromClient(pos: Vec3i, newText: []const u8) void {
-			{
-				const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
-				mesh.mutex.lock();
-				defer mesh.mutex.unlock();
-				const localPos = mesh.chunk.getLocalBlockPos(pos);
-				const block = mesh.chunk.data.getValue(localPos.toIndex());
-				const blockEntity = block.blockEntity() orelse return;
-				if (!std.mem.eql(u8, blockEntity.id, "cubyz:sign")) return;
+		pub fn updateText(pos: Vec3i, chunk: *Chunk, block: main.blocks.Block, newText: []const u8, side: main.sync.Side) void {
+			if (!std.unicode.utf8ValidateSlice(newText)) {
+				std.log.err("Received sign text with invalid UTF-8 characters.", .{});
+				return;
+			}
 
-				const entity = getByPosition(pos, mesh.chunk) orelse BlockEntity.init(pos, mesh.chunk);
-
+			const entity = getOrCreateByPosition(pos, chunk);
+			if (side == .client) {
 				StorageClient.mutex.lock();
 				defer StorageClient.mutex.unlock();
 
 				const data = StorageClient.getOrPut(entity);
-				if (data.foundExisting) {
-					data.valuePtr.deinit();
-				}
+				if (data.foundExisting) data.valuePtr.deinit();
 				data.valuePtr.* = .{
-					.block = mesh.chunk.data.getValue(localPos.toIndex()),
+					.block = block,
 					.renderedTexture = null,
 					.text = main.globalAllocator.dupe(u8, newText),
 				};
-			}
+			} else {
+				StorageServer.mutex.lock();
+				defer StorageServer.mutex.unlock();
 
-			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+				const data = StorageServer.getOrPut(entity);
+				if (data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
+				data.valuePtr.* = .{
+					.text = main.globalAllocator.dupe(u8, newText),
+				};
+			}
 		}
 
 		pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
