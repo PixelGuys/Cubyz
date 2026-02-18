@@ -58,7 +58,7 @@ pub var buttonUniforms: struct {
 
 const Style = enum {
 	default,
-	mainMenu
+	mainMenu,
 };
 
 pos: Vec2f,
@@ -201,8 +201,8 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 	}
 	if (self.style == .mainMenu) {
 		nailTexture.bindTo(0);
-		graphics.draw.boundImage(self.pos + Vec2f{6, self.size[1] / 2 - 4}, Vec2f{8, 8});
-		graphics.draw.boundImage(self.pos + Vec2f{self.size[0] - 12, self.size[1] / 2 - 4}, Vec2f{8, 8});
+		graphics.draw.boundImage(self.pos + Vec2f{6, self.size[1]/2 - 4}, Vec2f{8, 8});
+		graphics.draw.boundImage(self.pos + Vec2f{self.size[0] - 12, self.size[1]/2 - 4}, Vec2f{8, 8});
 	}
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
