@@ -40,11 +40,11 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 2);
 	list.add(Icon.init(.{0, 0}, .{384, 96}, logo, true));
 	list.add(Icon.init(.{0, 0}, .{0, 64}, .{.textureID = 0}, false));
-	list.add(Button.initText(.{0, 0}, 192, "Singleplayer", gui.openWindowCallback("save_selection")));
-	list.add(Button.initText(.{0, 0}, 192, "Multiplayer", gui.openWindowCallback("multiplayer")));
-	list.add(Button.initText(.{0, 0}, 192, "Settings", gui.openWindowCallback("settings")));
+	list.add(Button.initMainMenuText(.{0, 0}, 192, "Singleplayer", gui.openWindowCallback("save_selection")));
+	list.add(Button.initMainMenuText(.{0, 0}, 192, "Multiplayer", gui.openWindowCallback("multiplayer")));
+	list.add(Button.initMainMenuText(.{0, 0}, 192, "Settings", gui.openWindowCallback("settings")));
 	list.add(Icon.init(.{0, 0}, .{0, 8}, .{.textureID = 0}, false));
-	list.add(Button.initText(.{0, 0}, 128, "Quit Game", .init(exitGame)));
+	list.add(Button.initMainMenuText(.{0, 0}, 128, "Quit Game", .init(exitGame)));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
