@@ -26,7 +26,7 @@ pub const ErrorSet = BinaryReader.AllErrors || error{Invalid};
 
 const BlockEntityComponentTypeIndex = main.utils.DenseId(u16);
 
-pub const BlockEntityType = struct {
+pub const BlockEntityType = struct { // MARK: BlockEntityType
 	id: []const u8,
 	index: BlockEntityComponentTypeIndex = .noValue,
 	vtable: VTable,
@@ -102,7 +102,7 @@ pub const BlockEntityType = struct {
 	}
 };
 
-pub const BlockEntity = enum(u32) {
+pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	noValue = std.math.maxInt(u32),
 	_,
 
@@ -220,7 +220,7 @@ pub fn destroyBlockEntityByPosition(pos: Vec3i, chunk: *Chunk, comptime side: ma
 	entity.deinit(side);
 }
 
-fn BlockEntityDataStorage(T: type) type {
+fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 	return struct {
 		pub const DataT = T;
 		var storage: main.utils.SparseSet(DataT, BlockEntity) = undefined;
@@ -290,8 +290,8 @@ fn BlockEntityDataStorage(T: type) type {
 	};
 }
 
-pub const BlockEntityTypes = struct {
-	pub const chest = struct {
+pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
+	pub const chest = struct { // MARK: chest
 		const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
@@ -389,7 +389,7 @@ pub const BlockEntityTypes = struct {
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
-	pub const sign = struct {
+	pub const sign = struct { // MARK: sign
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
