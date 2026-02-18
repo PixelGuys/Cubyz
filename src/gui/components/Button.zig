@@ -167,9 +167,9 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	const pressed = if(self.style == .mainMenu) pressedMainMenuTextures else pressedTextures;
-	const hovered = if(self.style == .mainMenu) hoveredMainMenuTextures else hoveredTextures;
-	const normal = if(self.style == .mainMenu) normalMainMenuTextures else normalTextures;
+	const pressed = if (self.style == .mainMenu) pressedMainMenuTextures else pressedTextures;
+	const hovered = if (self.style == .mainMenu) hoveredMainMenuTextures else hoveredTextures;
+	const normal = if (self.style == .mainMenu) normalMainMenuTextures else normalTextures;
 	const textures = if (self.pressed)
 		pressed
 	else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)

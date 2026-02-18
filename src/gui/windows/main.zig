@@ -62,6 +62,9 @@ pub fn render() void {
 	draw.restoreTranslation(.{0, 0});
 	defer draw.restoreTranslation(old);
 
+	draw.setColor(0xffffffff);
+	draw.print("Cubyz {s}", .{main.settings.version.version}, 8, 8, 8, .left);
+
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	draw.setColor(0x60ffffff);
 	draw.rectBorder(.{7, 7}, windowSize - Vec2f{14, 14}, 1);
