@@ -63,6 +63,6 @@ pub fn render() void {
 	defer draw.restoreTranslation(old);
 
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	draw.setColor(0x30ffffff);
-	draw.rectBorder(.{5, 5}, windowSize - Vec2f{10, 10}, 1);
+	draw.setColor(0x60ffffff);
+	draw.rectBorder(.{7, 7}, windowSize - Vec2f{14, 14}, 1);
 }
