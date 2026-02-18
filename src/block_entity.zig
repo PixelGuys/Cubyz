@@ -27,7 +27,7 @@ const UpdateEvent = union(enum) {
 
 pub const ErrorSet = BinaryReader.AllErrors || error{Invalid};
 
-pub const BlockEntityType = struct {
+pub const BlockEntityType = struct { // MARK: BlockEntityType
 	id: []const u8,
 	vtable: VTable,
 
@@ -90,7 +90,7 @@ pub const BlockEntityType = struct {
 	}
 };
 
-fn BlockEntityDataStorage(T: type) type {
+fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 	return struct {
 		pub const DataT = T;
 		var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
@@ -181,8 +181,8 @@ fn BlockEntityDataStorage(T: type) type {
 	};
 }
 
-pub const BlockEntityTypes = struct {
-	pub const chest = struct {
+pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
+	pub const chest = struct { // MARK: chest
 		pub const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
@@ -267,7 +267,7 @@ pub const BlockEntityTypes = struct {
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
-	pub const sign = struct {
+	pub const sign = struct { // MARK: sign
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
