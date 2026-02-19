@@ -608,14 +608,21 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 					.text = main.globalAllocator.dupe(u8, newText),
 				};
 			} else {
-				StorageServer.mutex.lock();
-				defer StorageServer.mutex.unlock();
+				{
+					StorageServer.mutex.lock();
+					defer StorageServer.mutex.unlock();
 
-				const data = StorageServer.getOrPut(entity);
-				if (data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
-				data.valuePtr.* = .{
-					.text = main.globalAllocator.dupe(u8, newText),
-				};
+					const data = StorageServer.getOrPut(entity);
+					if (data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
+					data.valuePtr.* = .{
+						.text = main.globalAllocator.dupe(u8, newText),
+					};
+				}
+
+				const serverChunk: *main.chunk.ServerChunk = @fieldParentPtr("super", chunk);
+				serverChunk.mutex.lock();
+				serverChunk.setChanged();
+				serverChunk.mutex.unlock();
 			}
 		}
 
