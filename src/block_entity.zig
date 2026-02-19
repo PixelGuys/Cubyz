@@ -43,10 +43,10 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
-	pub fn init(comptime BlockEntityTypeT: type, comptime name: []const u8) BlockEntityType {
+	pub fn init(comptime BlockEntityTypeT: type, comptime id: []const u8) BlockEntityType {
 		BlockEntityTypeT.init();
 		var class = BlockEntityType{
-			.id = "cubyz:" ++ name,
+			.id = id,
 			.vtable = undefined,
 		};
 
@@ -182,7 +182,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 }
 
 pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
-	pub const chest = struct { // MARK: chest
+	pub const @"cubyz:chest" = struct { // MARK: cubyz:chest
 		pub const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
@@ -267,7 +267,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
-	pub const sign = struct { // MARK: sign
+	pub const @"cubyz:sign" = struct { // MARK: cubyz:sign
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
