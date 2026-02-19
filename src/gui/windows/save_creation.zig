@@ -28,12 +28,12 @@ const padding: f32 = 8;
 var nameInput: *TextInput = undefined;
 var seedInput: *TextInput = undefined;
 
-var gamemode: main.game.Gamemode = .creative;
+var gamemode = main.server.world_zig.Settings.defaults.defaultGamemode;
 var gamemodeInput: *Button = undefined;
 
-var allowCheats: bool = true;
+var allowCheats = main.server.world_zig.Settings.defaults.allowCheats;
 
-var testingMode: bool = false;
+var testingMode = main.server.world_zig.Settings.defaults.testingMode;
 
 const ZonMapEntry = std.StringHashMapUnmanaged(ZonElement).Entry;
 var worldPresets: []ZonMapEntry = &.{};

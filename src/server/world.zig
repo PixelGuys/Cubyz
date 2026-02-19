@@ -31,9 +31,11 @@ const SimulationChunk = main.server.SimulationChunk;
 
 pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
-	allowCheats: bool = false,
+	allowCheats: bool = true,
 	testingMode: bool = false,
 	seed: u64 = undefined,
+
+	pub const defaults: Settings = .{};
 
 	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
 		return .{
@@ -41,9 +43,9 @@ pub const Settings = struct {
 				std.log.err("Cannot load world. World has no seed!", .{});
 				return error.NoSeed;
 			},
-			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", "creative")) orelse .creative,
-			.allowCheats = zon.get(bool, "allowCheats", true),
-			.testingMode = zon.get(bool, "testingMode", false),
+			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", @tagName(defaults.defaultGamemode))) orelse defaults.defaultGamemode,
+			.allowCheats = zon.get(bool, "allowCheats", defaults.allowCheats),
+			.testingMode = zon.get(bool, "testingMode", defaults.testingMode),
 		};
 	}
 
@@ -624,7 +626,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const worldData = try files.cubyzDir().readToZon(main.stackAllocator, path);
 		defer worldData.deinit(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
-		worldData.put("seed", self.settings.seed);
 		worldData.put("doGameTimeCycle", self.doGameTimeCycle);
 		worldData.put("gameTime", self.gameTime);
 		worldData.put("spawn", self.spawn);
