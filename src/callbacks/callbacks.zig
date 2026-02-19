@@ -5,7 +5,7 @@ const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-pub const ClientBlockCallback = Callback(struct { block: Block, blockPos: Vec3i }, @import("block/client/_list.zig"));
+pub const ClientBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.Chunk, blockPos: Vec3i }, @import("block/client/_list.zig"));
 pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.ServerChunk, blockPos: main.chunk.BlockPos }, @import("block/server/_list.zig"));
 pub const BlockCallbackWithData = Callback(struct { block: Block, chunk: *main.chunk.Chunk, pos: Vec3i, data: *main.utils.BinaryReader, ctx: main.sync.Command.Context }, @import("block/data/_list.zig"));
 

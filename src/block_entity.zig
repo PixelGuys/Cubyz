@@ -46,10 +46,10 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 		removeClient: *const fn (entity: BlockEntity) void,
 		removeServer: *const fn (entity: BlockEntity) void,
 	};
-	pub fn init(comptime BlockEntityTypeT: type, comptime name: []const u8) BlockEntityType {
+	pub fn init(comptime BlockEntityTypeT: type, comptime id: []const u8) BlockEntityType {
 		BlockEntityTypeT.init();
 		var class = BlockEntityType{
-			.id = "cubyz:" ++ name,
+			.id = id,
 			.vtable = undefined,
 		};
 
@@ -197,6 +197,21 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	pub fn sharedData(self: BlockEntity) *SharedBlockEntityData {
 		return &sharedBlockEntityData.mem[@intFromEnum(self)];
 	}
+
+	fn ComponentStorageType(comptime side: main.sync.Side, comptime id: []const u8) type {
+		const Type = @field(BlockEntityTypes, id);
+		switch (side) {
+			.client => return Type.StorageClient,
+			.server => return Type.StorageServer,
+		}
+	}
+
+	pub fn getComponent(self: BlockEntity, comptime side: main.sync.Side, comptime id: []const u8) ?ComponentStorageType(side, id).DataT {
+		const StorageType = ComponentStorageType(side, id);
+		StorageType.mutex.lock();
+		defer StorageType.mutex.unlock();
+		return (StorageType.getByIndex(self) orelse return null).*;
+	}
 };
 
 var sharedBlockEntityData: main.utils.VirtualList(SharedBlockEntityData, 0xffffffff) = undefined;
@@ -302,7 +317,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 }
 
 pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
-	pub const chest = struct { // MARK: chest
+	pub const @"cubyz:chest" = struct { // MARK: cubyz:chest
 		const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
@@ -400,7 +415,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
-	pub const sign = struct { // MARK: sign
+	pub const @"cubyz:sign" = struct { // MARK: cubyz:sign
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
@@ -480,13 +495,8 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			const entry = StorageServer.removeAtIndex(entity) orelse unreachable;
 			main.globalAllocator.free(entry.text);
 		}
-		pub fn onInteract(pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
-			StorageClient.mutex.lock();
-			defer StorageClient.mutex.unlock();
-			const data = StorageClient.get(pos, chunk);
-			main.gui.windowlist.sign_editor.openFromSignData(pos, if (data) |_data| _data.text else "");
-
-			return .handled;
+		pub fn onInteract(_: Vec3i, _: *Chunk) main.callbacks.Result { // TODO: Remove
+			return .ignored;
 		}
 
 		pub fn onLoadClient(entity: BlockEntity, block: Block, reader: *BinaryReader) ErrorSet!void {
