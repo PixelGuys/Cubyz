@@ -193,6 +193,21 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	pub fn sharedData(self: BlockEntity) *SharedBlockEntityData {
 		return &sharedBlockEntityData.mem[@intFromEnum(self)];
 	}
+
+	fn ComponentStorageType(comptime side: main.sync.Side, comptime id: []const u8) type {
+		const Type = @field(BlockEntityTypes, id);
+		switch (side) {
+			.client => return Type.StorageClient,
+			.server => return Type.StorageServer,
+		}
+	}
+
+	pub fn getComponent(self: BlockEntity, comptime side: main.sync.Side, comptime id: []const u8) ?ComponentStorageType(side, id).DataT {
+		const StorageType = ComponentStorageType(side, id);
+		StorageType.mutex.lock();
+		defer StorageType.mutex.unlock();
+		return (StorageType.getByIndex(self) orelse return null).*;
+	}
 };
 
 var sharedBlockEntityData: main.utils.VirtualList(SharedBlockEntityData, 0xffffffff) = undefined;

@@ -21,4 +21,7 @@
 	.onTrigger = .{
 		.type = .updateSignText,
 	},
+	.onInteract = .{
+		.type = .editSign,
+	},
 }
