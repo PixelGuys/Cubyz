@@ -10,4 +10,7 @@
 	.onInteract = .{
 		.type = .openChest,
 	},
+	.onTrigger = .{
+		.type = .createChest,
+	},
 }
