@@ -38,7 +38,7 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 		onUnloadServer: *const fn (entity: BlockEntity) void,
 		onStoreServerToDisk: *const fn (entity: BlockEntity, writer: *BinaryWriter) void,
 		onStoreServerToClient: *const fn (entity: BlockEntity, writer: *BinaryWriter) void,
-		updateClientData: *const fn (pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
+		updateClientData: *const fn (entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void,
 		updateServerData: *const fn (pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
 		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
@@ -78,8 +78,8 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 	pub inline fn onStoreServerToClient(self: *const BlockEntityType, entity: BlockEntity, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(entity, writer);
 	}
-	pub inline fn updateClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-		return try self.vtable.updateClientData(pos, chunk, event);
+	pub inline fn updateClientData(self: *const BlockEntityType, entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void {
+		return try self.vtable.updateClientData(entity, block, event);
 	}
 	pub inline fn updateServerData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateServerData(pos, chunk, event);
@@ -217,6 +217,13 @@ pub const SharedBlockEntityData = struct {
 	pos: Vec3i,
 	components: main.ListUnmanaged(BlockEntityComponentTypeIndex),
 };
+
+pub fn updateClientData(pos: Vec3i, chunk: *Chunk, block: main.blocks.Block, data: *BinaryReader) !void {
+	if (block.blockEntity()) |blockEntity| {
+		const entity = getOrCreateByPosition(pos, chunk);
+		try blockEntity.updateClientData(entity, block, .{.update = data});
+	}
+}
 
 pub fn getOrCreateByPosition(pos: Vec3i, chunk: *Chunk) BlockEntity {
 	const localPos = chunk.getLocalBlockPos(pos);
@@ -375,7 +382,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		}
 		pub fn onStoreServerToClient(_: BlockEntity, _: *BinaryWriter) void {}
 
-		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
+		pub fn updateClientData(_: BlockEntity, _: main.blocks.Block, _: UpdateEvent) ErrorSet!void {}
 		pub fn removeClient(_: BlockEntity) void {}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 			if (true) @panic("TODO");
@@ -493,10 +500,13 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				.text = main.globalAllocator.dupe(u8, reader.remaining),
 			};
 		}
-		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-			if (true) @panic("TODO");
+		pub fn updateClientData(entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void {
 			if (event.update.remaining.len == 0) {
-				const entity = getByPosition(pos, chunk) orelse return;
+				{
+					StorageClient.mutex.lock();
+					defer StorageClient.mutex.unlock();
+					if (StorageClient.getByIndex(entity) == null) return;
+				}
 				const index = blockyEntityComponentTypesMap.get("cubyz:sign").?.index; // TODO
 				entity.removeComponent(index, .client);
 				return;
@@ -505,13 +515,12 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 
-			const data = StorageClient.getOrPut(pos, chunk);
+			const data = StorageClient.getOrPut(entity);
 			if (data.foundExisting) {
 				data.valuePtr.deinit();
 			}
 			data.valuePtr.* = .{
-				.blockPos = pos,
-				.block = chunk.data.getValue(chunk.getLocalBlockPos(pos).toIndex()),
+				.block = block,
 				.renderedTexture = null,
 				.text = main.globalAllocator.dupe(u8, event.update.remaining),
 			};
