@@ -14,14 +14,11 @@
 		.floor = "cubyz:sign/floor",
 	},
 	.blockEntity = "cubyz:sign",
-	.onInteract = .{
-		.type = .editSign,
-	},
-	.lodReplacement = "cubyz:air",
 	.onTrigger = .{
 		.type = .updateSignText,
 	},
 	.onInteract = .{
 		.type = .editSign,
 	},
+	.lodReplacement = "cubyz:air",
 }

@@ -11,14 +11,11 @@ pub fn init(_: ZonElement) ?*anyopaque {
 }
 
 pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) main.callbacks.Result {
-	if (params.block.blockEntity() == null or !std.mem.eql(u8, params.block.blockEntity().?.id, "cubyz:sign")) {
-		std.log.err("Can only edit sign if block entity of the block is a sign.", .{});
-		return .ignored;
-	}
-	main.block_entity.BlockEntityTypes.@"cubyz:sign".StorageClient.mutex.lock();
-	defer main.block_entity.BlockEntityTypes.@"cubyz:sign".StorageClient.mutex.unlock();
-	const data = main.block_entity.BlockEntityTypes.@"cubyz:sign".StorageClient.get(params.blockPos, params.chunk);
-	main.gui.windowlist.sign_editor.openFromSignData(params.blockPos, if (data) |_data| _data.text else "");
-
+	const text: []const u8 = blk: {
+		const entity = main.block_entity.getByPosition(params.blockPos, params.chunk) orelse break :blk &.{};
+		const data = entity.getComponent(.client, "cubyz:sign") orelse break :blk &.{};
+		break :blk data.text;
+	};
+	main.gui.windowlist.sign_editor.openFromSignData(params.blockPos, text);
 	return .handled;
 }

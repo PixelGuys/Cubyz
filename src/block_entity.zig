@@ -403,7 +403,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 
 			const data = StorageServer.getOrPut(entity);
 			if (data.foundExisting) return;
-			data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(size, .normal, .{.blockInventory = pos}, reader, inventoryCallbacks);
+			data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(size, .{.blockInventory = pos}, reader, inventoryCallbacks);
 		}
 
 		pub fn updateClientData(_: BlockEntity, _: main.blocks.Block, _: UpdateEvent) ErrorSet!void {}

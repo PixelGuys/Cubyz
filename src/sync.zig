@@ -235,7 +235,7 @@ pub const Command = struct { // MARK: Command
 		craftTool = 15,
 		clear = 8,
 		updateBlock = 9,
-		triggerBlock = 14,
+		triggerBlock = 16,
 		addHealth = 10,
 		chatCommand = 12,
 	};
