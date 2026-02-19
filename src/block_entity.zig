@@ -40,7 +40,6 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 		onStoreServerToClient: *const fn (entity: BlockEntity, writer: *BinaryWriter) void,
 		onInteract: *const fn (pos: Vec3i, chunk: *Chunk) main.callbacks.Result,
 		updateClientData: *const fn (entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void,
-		updateServerData: *const fn (pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
 		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		removeClient: *const fn (entity: BlockEntity) void,
@@ -84,9 +83,6 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 	}
 	pub inline fn updateClientData(self: *const BlockEntityType, entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateClientData(entity, block, event);
-	}
-	pub inline fn updateServerData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-		return try self.vtable.updateServerData(pos, chunk, event);
 	}
 	pub inline fn getServerToClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getServerToClientData(pos, chunk, writer);
@@ -385,8 +381,10 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			inv.toBytes(writer);
 		}
 		pub fn onStoreServerToClient(_: BlockEntity, _: *BinaryWriter) void {}
-		pub fn onInteract(pos: Vec3i, _: *Chunk) main.callbacks.Result {
-			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+		pub fn onInteract(pos: Vec3i, ch: *Chunk) main.callbacks.Result {
+			const block = ch.getBlock(pos[0] & main.chunk.chunkMask, pos[1] & main.chunk.chunkMask, pos[2] & main.chunk.chunkMask);
+			if (block.onTrigger().inner != &main.callbacks.BlockCallbackWithData.list.createChest.run) return .ignored;
+			main.sync.ClientSide.executeCommand(.{.triggerBlock = .init(block, pos, &.{})});
 
 			const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, inventorySize, .normal, .serverShared, .{.blockInventory = pos}, .{});
 
@@ -397,21 +395,23 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			return .handled;
 		}
 
+		pub fn createServer(pos: Vec3i, chunk: *Chunk, size: usize, reader: *BinaryReader) void {
+			if (reader.remaining.len != 0) {
+				std.log.err("Received invalid data when creating a chest at position {}: {any}", .{pos, reader.remaining});
+				return;
+			}
+			const entity = getOrCreateByPosition(pos, chunk);
+
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getOrPut(entity);
+			if (data.foundExisting) return;
+			data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(size, .normal, .{.blockInventory = pos}, reader, inventoryCallbacks);
+		}
+
 		pub fn updateClientData(_: BlockEntity, _: main.blocks.Block, _: UpdateEvent) ErrorSet!void {}
 		pub fn removeClient(_: BlockEntity) void {}
-		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-			if (true) @panic("TODO");
-			switch (event) {
-				.update => |_| {
-					StorageServer.mutex.lock();
-					defer StorageServer.mutex.unlock();
-					const data = StorageServer.getOrPut(pos, chunk);
-					if (data.foundExisting) return;
-					var reader = BinaryReader.init(&.{});
-					data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
-				},
-			}
-		}
 		pub fn removeServer(entity: BlockEntity) void {
 			const entry = StorageServer.removeAtIndex(entity) orelse return;
 			main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(entry.invId, entity.sharedData().pos);
@@ -555,29 +555,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			const data = StorageServer.getOrPut(entity);
 			std.debug.assert(!data.foundExisting);
 			data.valuePtr.text = main.globalAllocator.dupe(u8, reader.remaining);
-		}
-		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-			if (true) @panic("TODO");
-			if (event.update.remaining.len == 0) {
-				const entity = getByPosition(pos, chunk) orelse return;
-				const index = blockyEntityComponentTypesMap.get("cubyz:sign").?.index; // TODO
-				entity.removeComponent(index, .server);
-				return;
-			}
-
-			StorageServer.mutex.lock();
-			defer StorageServer.mutex.unlock();
-
-			const newText = event.update.remaining;
-
-			if (!std.unicode.utf8ValidateSlice(newText)) {
-				std.log.err("Received sign text with invalid UTF-8 characters.", .{});
-				return error.Invalid;
-			}
-
-			const data = StorageServer.getOrPut(pos, chunk);
-			if (data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
-			data.valuePtr.text = main.globalAllocator.dupe(u8, event.update.remaining);
 		}
 		pub fn removeServer(entity: BlockEntity) void {
 			const entry = StorageServer.removeAtIndex(entity) orelse return;
