@@ -711,7 +711,7 @@ pub fn connectInternal(user: *User) void {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Check if a user with that account is already present
-	if (!world.?.testingMode) {
+	if (!world.?.settings.testingMode) {
 		for (userList) |other| {
 			if (other.playerIndex == user.playerIndex) {
 				user.conn.disconnect();
