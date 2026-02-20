@@ -1261,7 +1261,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer baseChunk.mutex.unlock();
 
 		if (currentBlock != _newBlock) {
-			main.block_entity.destroyBlockEntityByPosition(.{wx, wy, wz}, &baseChunk.super, .server);
+			main.block_entity.destroyBlockEntityByPosition(.{wx, wy, wz}, &baseChunk.super, .server, .destroy);
 		}
 		baseChunk.updateBlockAndSetChanged(pos.x, pos.y, pos.z, newBlock);
 
