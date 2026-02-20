@@ -377,19 +377,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			inv.toBytes(writer);
 		}
 		pub fn onStoreServerToClient(_: BlockEntity, _: *BinaryWriter) void {}
-		pub fn onInteract(pos: Vec3i, ch: *Chunk) main.callbacks.Result {
-			const block = ch.getBlock(pos[0] & main.chunk.chunkMask, pos[1] & main.chunk.chunkMask, pos[2] & main.chunk.chunkMask);
-			if (block.onTrigger().inner != &main.callbacks.BlockCallbackWithData.list.createChest.run) return .ignored;
-			main.sync.ClientSide.executeCommand(.{.triggerBlock = .init(block, pos, &.{})});
-
-			const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, inventorySize, .serverShared, .{.blockInventory = pos}, .{});
-
-			main.gui.windowlist.chest.setInventory(inventory);
-			main.gui.openWindow("chest");
-			main.Window.setMouseGrabbed(false);
-
-			return .handled;
-		}
 
 		pub fn createServer(pos: Vec3i, chunk: *Chunk, size: usize, reader: *BinaryReader) void {
 			if (reader.remaining.len != 0) {
