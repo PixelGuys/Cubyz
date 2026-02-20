@@ -40,7 +40,6 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 		onStoreServerToClient: *const fn (entity: BlockEntity, writer: *BinaryWriter) void,
 		updateClientData: *const fn (entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void,
 		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
-		getClientToServerData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		removeClient: *const fn (entity: BlockEntity) void,
 		removeServer: *const fn (entity: BlockEntity) void,
 	};
@@ -82,9 +81,6 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 	}
 	pub inline fn getServerToClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getServerToClientData(pos, chunk, writer);
-	}
-	pub inline fn getClientToServerData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
-		return self.vtable.getClientToServerData(pos, chunk, writer);
 	}
 	pub inline fn removeClient(self: *const BlockEntityType, entity: BlockEntity) void {
 		return self.vtable.removeClient(entity);
@@ -400,7 +396,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(entry.invId, entity.sharedData().pos);
 		}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
-		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
@@ -554,14 +549,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			defer StorageServer.mutex.unlock();
 
 			const data = StorageServer.get(pos, chunk) orelse return;
-			writer.writeSlice(data.text);
-		}
-
-		pub fn getClientToServerData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
-			StorageClient.mutex.lock();
-			defer StorageClient.mutex.unlock();
-
-			const data = StorageClient.get(pos, chunk) orelse return;
 			writer.writeSlice(data.text);
 		}
 
