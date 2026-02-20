@@ -531,9 +531,6 @@ pub const Player = struct { // MARK: Player
 
 	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| blk: {
-			if (!mods.shift) {
-				if (main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
-			}
 			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse break :blk;
 			const block = mesh.chunk.getBlock(blockPos[0] & main.chunk.chunkMask, blockPos[1] & main.chunk.chunkMask, blockPos[2] & main.chunk.chunkMask);
 			const onInteract = block.onInteract();

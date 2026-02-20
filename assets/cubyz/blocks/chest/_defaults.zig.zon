@@ -7,6 +7,9 @@
 	.model = "cubyz:cube",
 	.rotation = "cubyz:planar",
 	.blockEntity = "cubyz:chest",
+	.onInteract = .{
+		.type = .openChest,
+	},
 	.onTrigger = .{
 		.type = .createChest,
 	},
