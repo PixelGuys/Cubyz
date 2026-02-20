@@ -1175,7 +1175,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
-		main.block_entity.destroyBlockEntityByPosition(.{_x, _y, _z}, self.chunk, .client);
+		main.block_entity.destroyBlockEntityByPosition(.{_x, _y, _z}, self.chunk, .client, .destroy);
 
 		var neighborBlocks: [6]Block = undefined;
 		@memset(&neighborBlocks, .{.typ = 0, .data = 0});

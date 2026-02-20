@@ -413,20 +413,9 @@ pub const Chunk = struct { // MARK: Chunk
 	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
 		self.blockPosToEntityDataMapMutex.lock();
 		defer self.blockPosToEntityDataMapMutex.unlock();
-		var iterator = self.blockPosToEntityDataMap.iterator();
-		while (iterator.next()) |elem| {
-			const pos = elem.key_ptr.*;
-			const entity = elem.value_ptr.*;
-			const block = self.data.getValue(pos.toIndex());
-			const blockEntity = block.blockEntity() orelse unreachable;
-			switch (side) {
-				.client => {
-					blockEntity.onUnloadClient(entity);
-				},
-				.server => {
-					blockEntity.onUnloadServer(entity);
-				},
-			}
+		var iterator = self.blockPosToEntityDataMap.valueIterator();
+		while (iterator.next()) |entity| {
+			entity.deinit(side, .unload);
 		}
 		self.blockPosToEntityDataMap.clearRetainingCapacity();
 	}
