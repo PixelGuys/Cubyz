@@ -21,7 +21,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:bridges/bridges",
 			.placeMode = .degradable,
-			.chance = 0.00005,
+			.chance = 0.00003,
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
