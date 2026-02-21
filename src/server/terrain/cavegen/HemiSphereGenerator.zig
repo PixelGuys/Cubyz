@@ -28,7 +28,7 @@ pub fn init(parameters: ZonElement) void {
 
 pub fn deinit() void {}
 
-const scale = 64;
+const scale = 16;
 const interpolatedPart = 4;
 
 const smoothness = 4;
@@ -75,26 +75,40 @@ fn generateSphere(output: Array3D(f32), rx: i32, ry: i32, rz: i32, radius: i32, 
 	}
 }
 
-fn generateHalfCones(map: *const CaveMapFragment, output: Array3D(f32), voxelSize: u31, voxelSizeShift: u5) void {
-	const maxRadius = 16;
-	var wx: i32 = map.pos.wx -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
-	while (wx < map.pos.wx +% (@as(i32, CaveMapFragment.width) << map.voxelShift) +% maxRadius +% perimeter) : (wx +%= maxRadius) {
-		var wy: i32 = map.pos.wy -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
-		while (wy < map.pos.wy +% (@as(i32, CaveMapFragment.width) << map.voxelShift) +% maxRadius +% perimeter) : (wy +%= maxRadius) {
-			var wz: i32 = map.pos.wz -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
-			while (wz < map.pos.wz +% (@as(i32, CaveMapFragment.height) << map.voxelShift) +% maxRadius +% perimeter) : (wz +%= maxRadius) {
-				var seed = main.random.initSeed3D(532856, .{wx, wy, wz});
-				for (0..1) |_| {
-					if (main.random.nextFloat(&seed) > 0.1) break;
-					const rx = main.random.nextIntBounded(i32, &seed, maxRadius) +% wx -% map.pos.wx;
-					const ry = main.random.nextIntBounded(i32, &seed, maxRadius) +% wy -% map.pos.wy;
-					const rz = main.random.nextIntBounded(i32, &seed, maxRadius) +% wz -% map.pos.wz;
+fn generateSdf(map: *const CaveMapFragment, biomeMap: *const InterpolatableCaveBiomeMapView, output: Array3D(f32), interpolationSmoothness: Array3D(f32), voxelSize: u31, voxelSizeShift: u5, worldSeed: u64) void {
+	for (output.mem) |*val| {
+		val.* = 1000;
+	}
+	const mapPos: Vec3i = .{map.pos.wx, map.pos.wy, map.pos.wz};
+	const margin: Vec3i = @splat(256 + perimeter + terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize);
+	const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{CaveMapFragment.width, CaveMapFragment.width, CaveMapFragment.height});
+	defer main.stackAllocator.free(biomePoints);
 
-					generateSphere(output, rx, ry, rz, main.random.nextIntBounded(i32, &seed, maxRadius/2) + maxRadius/2, voxelSize, voxelSizeShift);
-				}
-			}
+	for (biomePoints) |biomePoint| {
+		var seed = main.random.initSeed3D(worldSeed, biomePoint.worldPos);
+		for (biomePoint.biome.caveSdfModels) |sdfModel| {
+			sdfModel.generate(output, interpolationSmoothness, mapPos, biomePoint.worldPos, &seed, perimeter, voxelSize, voxelSizeShift);
 		}
 	}
+	//const maxRadius = 16;
+	//var wx: i32 = map.pos.wx -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
+	//while (wx < map.pos.wx +% (@as(i32, CaveMapFragment.width) << map.voxelShift) +% maxRadius +% perimeter) : (wx +%= maxRadius) {
+	//var wy: i32 = map.pos.wy -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
+	//while (wy < map.pos.wy +% (@as(i32, CaveMapFragment.width) << map.voxelShift) +% maxRadius +% perimeter) : (wy +%= maxRadius) {
+	//var wz: i32 = map.pos.wz -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
+	//while (wz < map.pos.wz +% (@as(i32, CaveMapFragment.height) << map.voxelShift) +% maxRadius +% perimeter) : (wz +%= maxRadius) {
+	//var seed = main.random.initSeed3D(532856, .{wx, wy, wz});
+	//for (0..1) |_| {
+	//if (main.random.nextFloat(&seed) > 0.1) break;
+	//const rx = main.random.nextIntBounded(i32, &seed, maxRadius) +% wx -% map.pos.wx;
+	//const ry = main.random.nextIntBounded(i32, &seed, maxRadius) +% wy -% map.pos.wy;
+	//const rz = main.random.nextIntBounded(i32, &seed, maxRadius) +% wz -% map.pos.wz;
+	//
+	//generateSphere(output, rx, ry, rz, main.random.nextIntBounded(i32, &seed, maxRadius/2) + maxRadius/2, voxelSize, voxelSizeShift);
+	//}
+	//}
+	//}
+	//}
 }
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
@@ -106,10 +120,23 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
 	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed ^ 4329561871, scale);
 	defer noise.deinit(main.stackAllocator);
-	for (noise.mem) |*val| {
-		val.* = 1000;
+
+	const output = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
+	defer output.deinit(main.stackAllocator);
+	@memset(output.mem, 1000);
+	const biomeSmoothness = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
+	defer biomeSmoothness.deinit(main.stackAllocator);
+	@memset(biomeSmoothness.mem, 0);
+	biomeMap.bulkInterpolateValue("caveSmoothness", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, biomeSmoothness, .addToMap, 1);
+	generateSdf(map, &biomeMap, output, biomeSmoothness, outerSize, outerSizeShift, worldSeed);
+
+	const biomeNoiseStrength = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
+	defer biomeNoiseStrength.deinit(main.stackAllocator);
+	@memset(biomeNoiseStrength.mem, 0);
+	biomeMap.bulkInterpolateValue("caveNoiseStrength", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, biomeNoiseStrength, .addToMap, 1);
+	for (noise.mem, output.mem, biomeNoiseStrength.mem) |*val, sdfVal, noiseStrength| {
+		val.* = val.*/scale*noiseStrength + sdfVal;
 	}
-	generateHalfCones(map, noise, outerSize, outerSizeShift);
 
 	// TODO: biomeMap.bulkInterpolateValue("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, scale);
 	var x: u31 = 0;

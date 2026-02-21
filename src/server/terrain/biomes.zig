@@ -288,7 +288,8 @@ pub const Biome = struct { // MARK: Biome
 	hills: f32,
 	mountains: f32,
 	keepOriginalTerrain: f32,
-	caves: f32,
+	caveSmoothness: f32,
+	caveNoiseStrength: f32,
 	caveRadiusFactor: f32,
 	crystals: u32,
 	/// How much of the surface structure should be eroded depending on the slope.
@@ -306,6 +307,7 @@ pub const Biome = struct { // MARK: Biome
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
 	vegetationModels: []SimpleStructureModel = &.{},
+	caveSdfModels: []terrain.sdf.SdfModel = &.{},
 	stripes: []Stripe = &.{},
 	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
 	transitionBiomes: []TransitionBiome = &.{},
@@ -339,7 +341,8 @@ pub const Biome = struct { // MARK: Biome
 			.keepOriginalTerrain = zon.get(f32, "keepOriginalTerrain", 0),
 			.interpolation = std.meta.stringToEnum(Interpolation, zon.get([]const u8, "interpolation", "square")) orelse .square,
 			.interpolationWeight = @max(zon.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
-			.caves = zon.get(f32, "caves", -0.375),
+			.caveSmoothness = std.math.clamp(zon.get(f32, "caveSmoothness", 4.0), 0.00001, 4.0),
+			.caveNoiseStrength = zon.get(f32, "caveNoiseStrength", 8),
 			.caveRadiusFactor = @max(-2, @min(2, zon.get(f32, "caveRadiusFactor", 1))),
 			.crystals = zon.get(u32, "crystals", 0),
 			.soilCreep = zon.get(f32, "soilCreep", 0.5),
@@ -391,14 +394,13 @@ pub const Biome = struct { // MARK: Biome
 		self.structure = BlockStructure.init(main.worldArena, zon.getChild("ground_structure"));
 
 		const structures = zon.getChild("structures");
-		var vegetation = main.ListUnmanaged(SimpleStructureModel){};
+		var vegetation: main.ListUnmanaged(SimpleStructureModel) = .{};
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		for (structures.toSlice()) |elem| {
-			if (SimpleStructureModel.initModel(elem)) |model| {
-				vegetation.append(main.stackAllocator, model);
-				totalChance += model.chance;
-			}
+			const model = SimpleStructureModel.initModel(elem) orelse continue;
+			vegetation.append(main.stackAllocator, model);
+			totalChance += model.chance;
 		}
 		if (totalChance > 1) {
 			for (vegetation.items) |*model| {
@@ -406,6 +408,15 @@ pub const Biome = struct { // MARK: Biome
 			}
 		}
 		self.vegetationModels = main.worldArena.dupe(SimpleStructureModel, vegetation.items);
+
+		const caves = zon.getChild("caveModels");
+		var caveSdfs: main.ListUnmanaged(terrain.sdf.SdfModel) = .{};
+		defer caveSdfs.deinit(main.stackAllocator);
+		for (caves.toSlice()) |elem| {
+			const model = terrain.sdf.SdfModel.initModel(elem) orelse continue;
+			caveSdfs.append(main.stackAllocator, model);
+		}
+		self.caveSdfModels = main.worldArena.dupe(terrain.sdf.SdfModel, caveSdfs.items);
 
 		const stripes = zon.getChild("stripes");
 		self.stripes = main.worldArena.alloc(Stripe, stripes.toSlice().len);

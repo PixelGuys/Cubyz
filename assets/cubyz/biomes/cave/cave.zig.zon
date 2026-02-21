@@ -1,42 +1,40 @@
-.{
-	.isCave = true,
-	.maxHeight = 0,
-	.minHeight = -48250,
-
-	.fogDensity = 2,
-
-	.music = "cubyz:heart-of-the-beast",
-
-	.structures = .{
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:gravel",
-			.chance = 0.064,
-			.width = 5,
-			.variation = 5,
-			.depth = 3,
-			.smoothness = 0.1,
-		},
-		.{
-			.id = "cubyz:stalagmite",
-			.block = "cubyz:slate/base",
-			.chance = 0.048,
-			.size = 3,
-			.size_variation = 6,
-		},
-		.{
-			.id = "cubyz:boulder",
-			.chance = 0.016,
-			.block = "cubyz:slate/cobble",
-			.size = 4,
-			.size_variance = 3,
-		},
-		.{
-			.id = "cubyz:boulder",
-			.chance = 0.016,
-			.block = "cubyz:slate/base",
-			.size = 4,
-			.size_variance = 4,
-		},
+.{.isCave = true, .maxHeight = 0, .minHeight = -48250, .fogDensity = 2, .caveNoiseStrength = 10, .music = "cubyz:heart-of-the-beast", .structures = .{
+	.{
+		.id = "cubyz:ground_patch",
+		.block = "cubyz:gravel",
+		.chance = 0.064,
+		.width = 5,
+		.variation = 5,
+		.depth = 3,
+		.smoothness = 0.1,
 	},
-}
+	.{
+		.id = "cubyz:stalagmite",
+		.block = "cubyz:slate/base",
+		.chance = 0.048,
+		.size = 3,
+		.size_variation = 6,
+	},
+	.{
+		.id = "cubyz:boulder",
+		.chance = 0.016,
+		.block = "cubyz:slate/cobble",
+		.size = 4,
+		.size_variance = 3,
+	},
+	.{
+		.id = "cubyz:boulder",
+		.chance = 0.016,
+		.block = "cubyz:slate/base",
+		.size = 4,
+		.size_variance = 4,
+	},
+}, .caveModels = .{
+	.{
+		.id = "cubyz:hemisphere",
+		.minAmount = 10,
+		.maxAmount = 20,
+		.minRadius = 8,
+		.maxRadius = 16,
+	},
+}}

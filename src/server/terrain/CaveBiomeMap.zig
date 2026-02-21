@@ -246,6 +246,36 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return @select(i32, in >= Vec3i{0, 0, 0}, Vec3i{1, 1, 1}, Vec3i{-1, -1, -1});
 	}
 
+	const CaveBiomesResult = struct { worldPos: Vec3i, biome: *const Biome };
+
+	pub fn getCaveBiomesInRange(self: InterpolatableCaveBiomeMapView, allocator: NeverFailingAllocator, min: Vec3i, max: Vec3i) []CaveBiomesResult {
+		var list: main.ListUnmanaged(CaveBiomesResult) = .{};
+
+		for (self.fragments.mem) |map| {
+			var x: u31 = 0;
+			while (x < CaveBiomeMapFragment.caveBiomeMapSize) : (x += CaveBiomeMapFragment.caveBiomeSize) {
+				var y: u31 = 0;
+				while (y < CaveBiomeMapFragment.caveBiomeMapSize) : (y += CaveBiomeMapFragment.caveBiomeSize) {
+					var z: u31 = 0;
+					while (z < CaveBiomeMapFragment.caveBiomeMapSize) : (z += CaveBiomeMapFragment.caveBiomeSize) {
+						const biomeWorldPos: [2]Vec3i = .{
+							CaveBiomeMapFragment.rotateInverse(.{map.pos.wx + x, map.pos.wy + y, map.pos.wz + z}),
+							CaveBiomeMapFragment.rotateInverse(.{map.pos.wx + x + CaveBiomeMapFragment.caveBiomeSize/2, map.pos.wy + y + CaveBiomeMapFragment.caveBiomeSize/2, map.pos.wz + z + CaveBiomeMapFragment.caveBiomeSize/2}),
+						};
+						for (0..2) |variant| {
+							if (@reduce(.Or, biomeWorldPos[variant] -% min < Vec3i{0, 0, 0})) continue;
+							if (@reduce(.Or, biomeWorldPos[variant] -% max >= Vec3i{0, 0, 0})) continue;
+							const index = CaveBiomeMapFragment.getIndex(x, y, z);
+							list.append(allocator, .{.worldPos = biomeWorldPos[variant], .biome = map.biomeMap[index][variant]});
+						}
+					}
+				}
+			}
+		}
+
+		return list.toOwnedSlice(allocator);
+	}
+
 	pub fn bulkInterpolateValue(self: InterpolatableCaveBiomeMapView, comptime field: []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, map: Array3D(f32), comptime mode: enum { addToMap }, comptime scale: f32) void {
 		var x: u31 = 0;
 		while (x < map.width) : (x += 1) {
