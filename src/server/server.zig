@@ -224,9 +224,9 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
-		try self.key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+		try self.key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
 		if (self.legacyKey) |key| {
-			try key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+			try key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
 		}
 	}
 
@@ -365,15 +365,19 @@ pub const User = struct { // MARK: User
 				};
 			}
 		}
-		if (self.isNetworkQueueFull() or self.jobQueue.size == 0) {
+		if (self.isNetworkQueueFull()) {
 			self.jobQueueScheduled = false;
 			return null;
 		}
+		const task = self.jobQueue.extractMax() orelse {
+			self.jobQueueScheduled = false;
+			return null;
+		};
 		if (self.jobQueue.size == 0) {
 			self.jobQueueScheduled = false;
-			return .{self.jobQueue.extractMax().?, .empty};
+			return .{task, .empty};
 		} else {
-			return .{self.jobQueue.extractMax().?, .hasMoreTasks};
+			return .{task, .hasMoreTasks};
 		}
 	}
 
@@ -388,7 +392,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn isNetworkQueueFull(self: *User) bool {
-		return self.conn.fastChannel.super.sendBuffer.buffer.len > 900000;
+		return self.conn.secureChannel.super.sendBuffer.buffer.len > 900000;
 	}
 
 	fn scheduleJobQueue(self: *User) void {
@@ -707,7 +711,7 @@ pub fn connectInternal(user: *User) void {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Check if a user with that account is already present
-	if (!world.?.testingMode) {
+	if (!world.?.settings.testingMode) {
 		for (userList) |other| {
 			if (other.playerIndex == user.playerIndex) {
 				user.conn.disconnect();

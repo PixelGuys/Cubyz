@@ -333,8 +333,8 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
 		var xNoise: [MapFragment.mapSize]f32 = undefined;
 		var yNoise: [MapFragment.mapSize]f32 = undefined;
-		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wx, 32, main.server.world.?.seed, &xNoise);
-		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wy, 32, main.server.world.?.seed ^ 0x785298638131, &yNoise);
+		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wx, 32, main.server.world.?.settings.seed, &xNoise);
+		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wy, 32, main.server.world.?.settings.seed ^ 0x785298638131, &yNoise);
 		var originalHeightMap: [MapFragment.mapSize][MapFragment.mapSize]i32 = undefined;
 		const oldNeighborInfo = mapFragment.load(main.server.world.?.biomePalette, &originalHeightMap) catch |err| {
 			std.log.err("Error loading map at position {}: {s}", .{pos, @errorName(err)});
