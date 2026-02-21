@@ -22,8 +22,8 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var seedPhraseLabel: *Label = undefined;
-var seedPhrase: main.network.authentication.SeedPhrase = undefined;
+var accountCodeLabel: *Label = undefined;
+var accountCode: main.network.authentication.AccountCode = undefined;
 
 fn next() void {
 	gui.closeWindowFromRef(&window);
@@ -31,22 +31,21 @@ fn next() void {
 }
 
 fn copy() void {
-	main.Window.setClipboardString(seedPhrase.text);
-	gui.openWindow("clipboard_deleted");
+	main.Window.setClipboardString(accountCode.text);
 }
 
 pub fn onOpen() void {
-	seedPhrase = .initRandomly();
+	accountCode = .initRandomly();
 
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 420;
-	list.add(Label.init(.{0, 0}, width, "This is your Account seed phrase:", .left));
+	list.add(Label.init(.{0, 0}, width, "This is your Account Code:", .left));
 	const row = HorizontalList.init();
-	seedPhraseLabel = Label.init(.{0, 0}, 350, seedPhrase.text, .left);
-	row.add(seedPhraseLabel);
+	accountCodeLabel = Label.init(.{0, 0}, 350, accountCode.text, .left);
+	row.add(accountCodeLabel);
 	row.add(Button.initText(.{0, 0}, 70, "Copy", .init(copy)));
 	list.add(row);
-	list.add(Label.init(.{0, 0}, width, "Note: Do not give this to anyone else. We will only ask for the seed phrase on the start of the game.", .left));
+	list.add(Label.init(.{0, 0}, width, "Note: Do not give this to anyone else. We will only ask for the Account Code on the start of the game.", .left));
 	list.add(Label.init(.{0, 0}, width, "Note 2: Make sure you store this somewhere safely and securely, there is no recovery option if you lose it. We recommend a password manager.", .left));
 	list.add(Button.initText(.{0, 0}, 140, "Return to login", .init(next)));
 	list.finish(.center);
@@ -56,9 +55,9 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	// Make sure there remains no trace of the seed phrase in memory
-	main.network.authentication.secureZero(@TypeOf(seedPhraseLabel.text.glyphs[0]), seedPhraseLabel.text.glyphs);
-	seedPhrase.deinit();
+	// Make sure there remains no trace of the account code in memory
+	main.network.authentication.secureZero(@TypeOf(accountCodeLabel.text.glyphs[0]), accountCodeLabel.text.glyphs);
+	accountCode.deinit();
 	// This also serves as a measure to ensure that the user indeed copied it somewhere else before closing the window
 	main.Window.setClipboardString("");
 	gui.openWindow("clipboard_deleted");
