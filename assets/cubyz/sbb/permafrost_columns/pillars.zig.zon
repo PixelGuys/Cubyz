@@ -10,5 +10,10 @@
 		.{.id = "cubyz:permafrost_columns/pillars/7", .chance = 1},
 		.{.id = "cubyz:permafrost_columns/pillars/8", .chance = 1},
 		.{.id = "cubyz:permafrost_columns/pillars/9", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/10", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/11", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/12", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/13", .chance = 1},
+		.{.id = "cubyz:permafrost_columns/pillars/14", .chance = 1},
 	},
 }
