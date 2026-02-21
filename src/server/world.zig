@@ -32,9 +32,34 @@ const SimulationChunk = main.server.SimulationChunk;
 
 pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
-	allowCheats: bool = false,
+	allowCheats: bool = true,
 	testingMode: bool = false,
 	seed: u64 = undefined,
+
+	pub const defaults: Settings = .{};
+
+	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
+		return .{
+			.seed = zon.get(?u64, "seed", null) orelse {
+				std.log.err("Cannot load world. World has no seed!", .{});
+				return error.NoSeed;
+			},
+			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", @tagName(defaults.defaultGamemode))) orelse defaults.defaultGamemode,
+			.allowCheats = zon.get(bool, "allowCheats", defaults.allowCheats),
+			.testingMode = zon.get(bool, "testingMode", defaults.testingMode),
+		};
+	}
+
+	pub fn toZon(self: Settings, allocator: NeverFailingAllocator) ZonElement {
+		const zon = main.ZonElement.initObject(allocator);
+
+		zon.put("defaultGamemode", @tagName(self.defaultGamemode));
+		zon.put("allowCheats", self.allowCheats);
+		zon.put("testingMode", self.testingMode);
+		zon.put("seed", self.seed);
+
+		return zon;
+	}
 };
 
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
@@ -77,17 +102,8 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: Zo
 	defer worldInfo.deinit(main.stackAllocator);
 
 	worldInfo.put("generatorSettings", preset.clone(main.stackAllocator));
+	worldInfo.put("settings", worldSettings.toZon(main.stackAllocator));
 
-	{
-		const settings = main.ZonElement.initObject(main.stackAllocator);
-
-		settings.put("defaultGamemode", @tagName(worldSettings.defaultGamemode));
-		settings.put("allowCheats", worldSettings.allowCheats);
-		settings.put("testingMode", worldSettings.testingMode);
-		settings.put("seed", worldSettings.seed);
-
-		worldInfo.put("settings", settings);
-	}
 	{
 		const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(worldInfoPath);
@@ -295,7 +311,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	pub fn init(world: *ServerWorld, settings: ZonElement) !ChunkManager { // MARK: init()
 		const self = ChunkManager{
 			.world = world,
-			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
+			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.settings.seed),
 		};
 		simulationChunkHashMap = .init(main.globalAllocator.allocator);
 		server.terrain.init(self.terrainGenerationProfile);
@@ -371,7 +387,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 		defer biomeMap.deinit();
 		for (server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
-			generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
+			generator.generate(server.world.?.settings.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
 		}
 		if (pos.voxelSize != 1) { // Generate LOD replacements
 			for (ch.super.data.palette()) |*block| {
@@ -420,10 +436,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
 
-	defaultGamemode: main.game.Gamemode = undefined,
-	allowCheats: bool = undefined,
-	testingMode: bool = undefined,
-	seed: u64 = undefined,
+	settings: Settings = undefined,
 
 	path: []const u8,
 	name: []const u8 = &.{},
@@ -601,11 +614,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
 		}
-		const settings = worldData.getChild("settings");
-		self.seed = settings.get(?u64, "seed", null) orelse {
-			std.log.err("Cannot load world. World has no seed!", .{});
-			return error.NoSeed;
-		};
+		self.settings = try .fromZon(worldData.getChild("settings"));
 
 		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.gameTime = worldData.get(i64, "gameTime", 0);
@@ -613,10 +622,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
-
-		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, settings.get([]const u8, "defaultGamemode", "creative")) orelse .creative;
-		self.allowCheats = settings.get(bool, "allowCheats", true);
-		self.testingMode = settings.get(bool, "testingMode", false);
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -625,7 +630,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const worldData = try files.cubyzDir().readToZon(main.stackAllocator, path);
 		defer worldData.deinit(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
-		worldData.put("seed", self.seed);
 		worldData.put("doGameTimeCycle", self.doGameTimeCycle);
 		worldData.put("gameTime", self.gameTime);
 		worldData.put("spawn", self.spawn);
@@ -852,7 +856,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn generate(self: *ServerWorld) !void {
 		if (@reduce(.And, self.spawn == Vec3i{0, 0, 0})) {
-			var seed: u64 = self.seed ^ 275892235728371;
+			var seed: u64 = self.settings.seed ^ 275892235728371;
 			std.log.info("Finding spawn position...", .{});
 			foundPosition: {
 				// Explore chunks in a spiral from the center:
@@ -907,9 +911,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
 			self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 		}
-		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.seed));
+		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.settings.seed));
 		if (newBiomeCheckSum != self.biomeChecksum) {
-			if (self.testingMode) {
+			if (self.settings.testingMode) {
 				const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 				defer main.stackAllocator.free(dir);
 				main.files.cubyzDir().deleteTree("maps") catch |err| {
@@ -963,14 +967,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
-			main.sync.setGamemode(user, self.defaultGamemode);
+			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
 			user.permissions.fromZon(playerData);
 			user.groupListFromZon(playerData.getChild("permissionGroups"));
 
-			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
+			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);

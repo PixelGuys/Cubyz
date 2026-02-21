@@ -603,56 +603,78 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		defer self.mutex.unlock();
 		main.utils.assertLocked(&other.mutex);
 
-		var x: u31 = 0;
-		while (x < chunkSize/2) : (x += 1) {
-			var y: u31 = 0;
-			while (y < chunkSize/2) : (y += 1) {
-				var z: u31 = 0;
-				while (z < chunkSize/2) : (z += 1) {
-					// Count the neighbors for each subblock. An transparent block counts 5. A chunk border(unknown block) only counts 1.
-					var neighborCount: [8]u31 = undefined;
-					var octantBlocks: [8]Block = undefined;
-					var maxCount: i32 = 0;
-					var dx: u31 = 0;
-					while (dx <= 1) : (dx += 1) {
-						var dy: u31 = 0;
-						while (dy <= 1) : (dy += 1) {
-							var dz: u31 = 0;
-							while (dz <= 1) : (dz += 1) {
-								const pos = BlockPos.fromCoords(@intCast(x*2 + dx), @intCast(y*2 + dy), @intCast(z*2 + dz));
-								const i = dx*4 + dz*2 + dy;
-								octantBlocks[i] = other.super.data.getValue(pos.toIndex());
-								octantBlocks[i].typ = octantBlocks[i].lodReplacement();
-								if (octantBlocks[i].typ == 0) {
-									neighborCount[i] = 0;
-									continue; // I don't care about air blocks.
-								}
+		// Count the neighbors for each subblock. An transparent block counts 5. A chunk border(unknown block) only counts 1.
 
-								var count: u31 = 0;
-								for (Neighbor.iterable) |n| {
-									const neighborPos, const chunkLocation = pos.neighbor(n);
-									if (chunkLocation == .inSameChunk) {
-										if (other.super.data.getValue(neighborPos.toIndex()).transparent()) {
-											count += 5;
-										}
-									} else {
-										count += 1;
-									}
-								}
-								maxCount = @max(maxCount, count);
-								neighborCount[i] = count;
+		comptime std.debug.assert(chunkSize == 32);
+		var isTransparent: [32][32]u32 = @splat(@splat(0));
+		var count: [32][32][32]u8 = @splat(@splat(@splat(128)));
+		for (0..32) |x| {
+			for (0..32) |y| {
+				for (0..32) |z| {
+					const pos = BlockPos.fromCoords(@intCast(x), @intCast(y), @intCast(z));
+					var block = other.super.data.getValue(pos.toIndex());
+					block.typ = block.lodReplacement();
+					if (block.typ == 0) count[x][y][z] = 0; // Air blocks should be avoided
+					if (block.transparent()) isTransparent[x][y] |= @as(u32, 1) << @intCast(z);
+				}
+			}
+		}
+		for (0..32) |x| {
+			for (0..32) |y| {
+				var columnCount: @Vector(32, u8) = @splat(0);
+				columnCount[0] = 1;
+				columnCount[31] = 1;
+				if (x == 0 or x == 31) columnCount += @splat(1);
+				if (y == 0 or y == 31) columnCount += @splat(1);
+				const zero: @Vector(32, u8) = @splat(0);
+				const weight: @Vector(32, u8) = @splat(5);
+				if (x != 0) {
+					columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x - 1][y])), weight, zero);
+				}
+				if (x != 31) {
+					columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x + 1][y])), weight, zero);
+				}
+				if (y != 0) {
+					columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x][y - 1])), weight, zero);
+				}
+				if (y != 31) {
+					columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x][y + 1])), weight, zero);
+				}
+				columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x][y] >> 1)), weight, zero);
+				columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x][y] << 1)), weight, zero);
+				count[x][y] = columnCount;
+			}
+		}
+
+		for (0..chunkSize/2) |x| {
+			for (0..chunkSize/2) |y| {
+				for (0..chunkSize/2) |z| {
+					var neighborCount: [8]u31 = undefined;
+					var maxCount: i32 = 0;
+					for (0..2) |dx| {
+						for (0..2) |dy| {
+							for (0..2) |dz| {
+								const i = dx*4 + dz*2 + dy;
+								neighborCount[i] = count[x*2 + dx][y*2 + dy][z*2 + dz];
+								maxCount = @max(maxCount, neighborCount[i]);
 							}
 						}
 					}
 					// Uses a specific permutation here that keeps high resolution patterns in lower resolution.
 					const permutationStart = (x & 1)*4 + (z & 1)*2 + (y & 1);
-					var block = Block{.typ = 0, .data = 0};
+					var finalPermutation = permutationStart;
 					for (0..8) |i| {
 						const appliedPermutation = permutationStart ^ i;
 						if (neighborCount[appliedPermutation] >= maxCount - 1) { // Avoid pattern breaks at chunk borders.
-							block = octantBlocks[appliedPermutation];
+							finalPermutation = appliedPermutation;
 						}
 					}
+					const dx = finalPermutation/4 & 1;
+					const dy = finalPermutation/2 & 1;
+					const dz = finalPermutation & 1;
+					const pos = BlockPos.fromCoords(@intCast(x*2 + dx), @intCast(y*2 + dy), @intCast(z*2 + dz));
+					var block = other.super.data.getValue(pos.toIndex());
+					block.typ = block.lodReplacement();
 					// Update the block:
 					const thisPos = BlockPos.fromCoords(@intCast(x + xOffset), @intCast(y + yOffset), @intCast(z + zOffset));
 					self.super.data.setValue(thisPos.toIndex(), block);
