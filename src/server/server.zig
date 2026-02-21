@@ -115,7 +115,17 @@ pub const User = struct { // MARK: User
 	spawnPos: Vec3d = .{0, 0, 0},
 	worldEditData: WorldEditData = undefined,
 
+	playerIndex: usize = undefined,
+
+	jobQueue: main.utils.ConcurrentMaxHeap(main.utils.ThreadPool.Task) = undefined,
+	jobQueueScheduled: bool = false,
+	jobQueueLastUpdate: struct { position: Vec3i, time: std.Io.Timestamp, alreadyInUpdate: bool = false } = .{.position = @splat(0), .time = .{.nanoseconds = 0}},
+
 	lastSentBiomeId: u32 = 0xffffffff,
+
+	newKeyString: []const u8 = &.{},
+	key: network.authentication.PublicKey = undefined,
+	legacyKey: ?network.authentication.PublicKey = null,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
 	inventory: ?InventoryId = null,
@@ -134,6 +144,7 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
+		self.jobQueue = .init(main.globalAllocator);
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -162,7 +173,9 @@ pub const User = struct { // MARK: User
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
+		self.jobQueue.deinit();
 		main.globalAllocator.free(self.name);
+		main.globalAllocator.free(self.newKeyString);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
@@ -183,9 +196,38 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	pub fn setName(self: *User, name: []const u8) void {
+	pub fn identifyFromKeysAndName(self: *User, name: []const u8, keys: main.ZonElement) !void {
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
+		{
+			const keyBase64 = keys.get(?[]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), null) orelse return error.PublicKeyNotPresent;
+			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
+			self.newKeyString = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64}) catch unreachable;
+		}
+		var foundKey: bool = false;
+		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
+			const keyBase64 = keys.get(?[]const u8, keyTypeName, null) orelse continue;
+			const keyWithType = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{s}", .{keyTypeName, keyBase64}) catch unreachable;
+			defer main.stackAllocator.free(keyWithType);
+			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
+			foundKey = true;
+			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName) orelse unreachable;
+			if (keyType == self.key) break;
+			self.legacyKey = try .initFromBase64(keyBase64, keyType);
+			break;
+		}
+		if (!foundKey) {
+			const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
+			defer main.stackAllocator.free(nameEntry);
+			self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+		}
+	}
+
+	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
+		try self.key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
+		if (self.legacyKey) |key| {
+			try key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
+		}
 	}
 
 	var freeId: u32 = 0;
@@ -193,7 +235,7 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		world.?.findPlayer(self);
+		world.?.loadPlayer(self);
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.loadUnloadChunks();
 	}
@@ -260,8 +302,111 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn getTaskFromJobQueue(self: *User) ?struct { main.utils.ThreadPool.Task, enum { hasMoreTasks, empty } } {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		if (vec.lengthSquare(@as(@Vector(3, i64), self.jobQueueLastUpdate.position -% self.lastPos)) > 32*32) {
+			const startTime = main.timestamp();
+			if (self.jobQueueLastUpdate.time.durationTo(startTime).toMilliseconds() > 100 and !self.jobQueueLastUpdate.alreadyInUpdate) {
+				const ResortTaskTask = struct { // MARK: ResortTaskTask
+					const vtable = utils.ThreadPool.VTable{
+						.getPriority = &getPriority,
+						.isStillNeeded = &isStillNeeded,
+						.run = main.meta.castFunctionSelfToAnyopaque(run),
+						.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+						.taskType = .taskPriorityUpdate,
+					};
+
+					pub fn getPriority(_: *anyopaque) f32 {
+						return undefined;
+					}
+
+					pub fn isStillNeeded(_: *anyopaque) bool {
+						return true;
+					}
+
+					pub fn run(user: *User) void {
+						defer user.decreaseRefCount();
+
+						var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
+						defer newTasks.deinit(main.stackAllocator);
+						while (user.jobQueue.extractAny()) |_task| {
+							var task = _task;
+							if (!task.vtable.isStillNeeded(task.self)) {
+								task.vtable.clean(task.self);
+								continue;
+							}
+							task.cachedPriority = task.vtable.getPriority(task.self);
+							newTasks.append(main.stackAllocator, task);
+						}
+						user.jobQueue.addMany(newTasks.items);
+						user.mutex.lock();
+						defer user.mutex.unlock();
+						user.jobQueueLastUpdate = .{
+							.position = user.lastPos,
+							.time = main.timestamp(),
+						};
+					}
+
+					pub fn clean(user: *User) void {
+						user.decreaseRefCount();
+					}
+				};
+				// Create a task to resort tasks:
+				self.jobQueueLastUpdate.alreadyInUpdate = true;
+				self.increaseRefCount();
+				return .{
+					.{
+						.cachedPriority = undefined,
+						.vtable = &ResortTaskTask.vtable,
+						.self = self,
+					},
+					.hasMoreTasks,
+				};
+			}
+		}
+		if (self.isNetworkQueueFull()) {
+			self.jobQueueScheduled = false;
+			return null;
+		}
+		const task = self.jobQueue.extractMax() orelse {
+			self.jobQueueScheduled = false;
+			return null;
+		};
+		if (self.jobQueue.size == 0) {
+			self.jobQueueScheduled = false;
+			return .{task, .empty};
+		} else {
+			return .{task, .hasMoreTasks};
+		}
+	}
+
+	pub fn addTask(self: *User, task: *anyopaque, vtable: *const main.utils.ThreadPool.VTable) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.jobQueue.add(.{
+			.cachedPriority = vtable.getPriority(task),
+			.vtable = vtable,
+			.self = task,
+		});
+	}
+
+	fn isNetworkQueueFull(self: *User) bool {
+		return self.conn.secureChannel.super.sendBuffer.buffer.len > 900000;
+	}
+
+	fn scheduleJobQueue(self: *User) void {
+		main.utils.assertLocked(&self.mutex);
+		if (self.jobQueueScheduled) return;
+		if (self.jobQueue.size == 0) return;
+		if (self.isNetworkQueueFull()) return;
+		self.jobQueueScheduled = true;
+		main.threadPool.addPlayer(self);
+	}
+
 	pub fn update(self: *User) void {
 		self.mutex.lock();
+		self.scheduleJobQueue();
 		const commands = self.inventoryCommands;
 		defer commands.deinit(main.globalAllocator);
 		self.inventoryCommands = .{};
@@ -565,10 +710,10 @@ pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-	// Check if a user with that name is already present
-	if (!world.?.testingMode) {
+	// Check if a user with that account is already present
+	if (!world.?.settings.testingMode) {
 		for (userList) |other| {
-			if (std.mem.eql(u8, other.name, user.name)) {
+			if (other.playerIndex == user.playerIndex) {
 				user.conn.disconnect();
 				return;
 			}
