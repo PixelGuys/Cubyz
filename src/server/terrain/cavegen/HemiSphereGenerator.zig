@@ -31,14 +31,17 @@ pub fn deinit() void {}
 const scale = 64;
 const interpolatedPart = 4;
 
-const perimeter = 32;
+const smoothness = 4;
+const perimeter = interpolatedPart*2 + smoothness*4;
 
 fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ: u31) f32 {
 	return noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
 }
 
-fn sdfUnion(a: f32, b: f32) f32 {
-	return @min(a + b, a, b);
+fn sdfSmoothUnion(a: f32, b: f32) f32 { // https://iquilezles.org/articles/smin/ quadratic polynomial
+	const k = 4*smoothness;
+	const h = @max(k - @abs(a - b), 0.0)/k;
+	return @min(a, b) - h*h*smoothness;
 }
 
 fn sdfIntersection(a: f32, b: f32) f32 {
@@ -60,12 +63,13 @@ fn generateSphere(output: Array3D(f32), rx: i32, ry: i32, rz: i32, radius: i32, 
 			while (z < maxZ) : (z += voxelSize) {
 				const distanceSquare = (x - rx)*(x - rx) + (y - ry)*(y - ry) + (z - rz)*(z - rz);
 				if (distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
-				if (rz - z < -perimeter) continue;
-				const signedDistanceSquare: f32 = sdfIntersection(@floatFromInt(distanceSquare - radius*radius), @floatFromInt(std.math.sign(rz - z)*(rz - z)*(rz - z)));
+				if (rz - z > perimeter) continue;
+				const sphereSdf = @sqrt(@as(f32, @floatFromInt(distanceSquare))) - @as(f32, @floatFromInt(radius));
+				const signedDistanceSquare: f32 = sdfIntersection(sphereSdf, @as(f32, @floatFromInt(rz - z)));
 
 				const out = output.ptr(x >> voxelSizeShift, y >> voxelSizeShift, z >> voxelSizeShift);
 
-				out.* = sdfUnion(signedDistanceSquare, out.*);
+				out.* = sdfSmoothUnion(signedDistanceSquare, out.*);
 			}
 		}
 	}
@@ -73,15 +77,15 @@ fn generateSphere(output: Array3D(f32), rx: i32, ry: i32, rz: i32, radius: i32, 
 
 fn generateHalfCones(map: *const CaveMapFragment, output: Array3D(f32), voxelSize: u31, voxelSizeShift: u5) void {
 	const maxRadius = 16;
-	var wx: i32 = map.pos.wx -% maxRadius & ~@as(i32, maxRadius - 1);
-	while (wx < map.pos.wx +% (@as(i32, CaveMapFragment.width) << map.voxelShift) +% 2*maxRadius) : (wx +%= maxRadius) {
-		var wy: i32 = map.pos.wy -% maxRadius & ~@as(i32, maxRadius - 1);
-		while (wy < map.pos.wy +% (@as(i32, CaveMapFragment.width) << map.voxelShift) +% 2*maxRadius) : (wy +%= maxRadius) {
-			var wz: i32 = map.pos.wz -% maxRadius & ~@as(i32, maxRadius - 1);
-			while (wz < map.pos.wz +% (@as(i32, CaveMapFragment.height) << map.voxelShift) +% 2*maxRadius) : (wz +%= maxRadius) {
+	var wx: i32 = map.pos.wx -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
+	while (wx < map.pos.wx +% (@as(i32, CaveMapFragment.width) << map.voxelShift) +% maxRadius +% perimeter) : (wx +%= maxRadius) {
+		var wy: i32 = map.pos.wy -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
+		while (wy < map.pos.wy +% (@as(i32, CaveMapFragment.width) << map.voxelShift) +% maxRadius +% perimeter) : (wy +%= maxRadius) {
+			var wz: i32 = map.pos.wz -% maxRadius -% perimeter & ~@as(i32, maxRadius - 1);
+			while (wz < map.pos.wz +% (@as(i32, CaveMapFragment.height) << map.voxelShift) +% maxRadius +% perimeter) : (wz +%= maxRadius) {
 				var seed = main.random.initSeed3D(532856, .{wx, wy, wz});
 				for (0..1) |_| {
-					if (main.random.nextFloat(&seed) > 0.01) break;
+					if (main.random.nextFloat(&seed) > 0.1) break;
 					const rx = main.random.nextIntBounded(i32, &seed, maxRadius) +% wx -% map.pos.wx;
 					const ry = main.random.nextIntBounded(i32, &seed, maxRadius) +% wy -% map.pos.wy;
 					const rz = main.random.nextIntBounded(i32, &seed, maxRadius) +% wz -% map.pos.wz;
