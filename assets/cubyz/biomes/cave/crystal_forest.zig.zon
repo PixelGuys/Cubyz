@@ -26,4 +26,13 @@
 			.height_variation = 2,
 		},
 	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 20,
+			.maxRadius = 30,
+		},
+	},
 }

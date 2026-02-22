@@ -47,4 +47,14 @@
 			.chance = 0.02,
 		},
 	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 1,
+			.maxAmount = 5,
+			.minRadius = 30,
+			.maxRadius = 40,
+			.maxBiomeCenterDistance = 100,
+		},
+	},
 }

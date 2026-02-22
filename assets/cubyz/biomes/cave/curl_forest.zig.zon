@@ -1,5 +1,6 @@
 .{
 	.isCave = true,
+	.caveNoiseStrength = 10,
 	.maxHeight = -512,
 	.minHeight = -48250,
 
@@ -40,6 +41,15 @@
 			.block = "cubyz:slate/base",
 			.size = 4,
 			.size_variance = 4,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 10,
+			.maxAmount = 30,
+			.minRadius = 10,
+			.maxRadius = 20,
 		},
 	},
 }

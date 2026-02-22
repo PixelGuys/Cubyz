@@ -1,5 +1,7 @@
 .{
 	.isCave = true,
+	.caveNoiseStrength = 12,
+
 	.maxHeight = -48125,
 	.minHeight = -48500,
 	.stoneBlock = "cubyz:slate/base",
@@ -10,4 +12,13 @@
 	.music = "cubyz:heart-of-the-beast",
 
 	.structures = .{},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 15,
+			.maxRadius = 25,
+		},
+	},
 }
