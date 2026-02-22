@@ -64,7 +64,7 @@ const Style = enum {
 		const pressed = if (self == .mainMenu) pressedMainMenuTextures else pressedTextures;
 		const hovered = if (self == .mainMenu) hoveredMainMenuTextures else hoveredTextures;
 		const normal = if (self == .mainMenu) normalMainMenuTextures else normalTextures;
-		return if(isPressed) pressed else if(isHovered) hovered else normal;
+		return if (isPressed) pressed else if (isHovered) hovered else normal;
 	}
 };
 
