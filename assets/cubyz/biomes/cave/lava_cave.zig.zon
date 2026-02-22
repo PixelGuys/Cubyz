@@ -1,6 +1,5 @@
 .{
 	.isCave = true,
-	.caveNoiseStrength = 10,
 	.maxHeight = -1500,
 	.minHeight = -48250,
 	.fogDensity = 20,

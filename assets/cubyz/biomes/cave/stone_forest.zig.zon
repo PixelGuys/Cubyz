@@ -1,6 +1,5 @@
 .{
 	.isCave = true,
-	.caveNoiseStrength = 10,
 	
 	.chance = 0.01,
 	.maxHeight = -50,
