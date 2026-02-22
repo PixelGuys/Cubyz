@@ -3,7 +3,7 @@
 	.blockHealth = 50,
 	.blockResistance = 8.5,
 	.ore = .{
-		.veins = 3,
+		.veins = 2,
 		.size = 12,
 		.height = -600,
 		.density = 0.25,
