@@ -13,8 +13,6 @@ pub fn init(zon: main.ZonElement) ?*@This() {
 	return result;
 }
 
-//TODO: no deinits yet
-
 fn initAfterBiomesHaveBeenInited(self: *@This()) void {
 	var vegetation = main.ListUnmanaged(SimpleStructureModel){};
 	var totalChance: f32 = 0;
@@ -49,35 +47,12 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const biomeMap = main.server.terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 	defer biomeMap.deinit();
 
-	//copied from SimpleStructureGen.generate.
+	// copied from SimpleStructureGen.generate.
 	var seed = main.random.initSeed3D(main.seed, .{wx, wy, wz});
 	var randomValue = main.random.nextFloat(&seed);
 	for (vegetationModels) |*model| { // TODO: Could probably use an alias table here.
 		if (randomValue < model.chance) {
-
-			//const heightFinalized = adjustToCaveMap(biomeMap, caveMap, wpx, wpy, map.pos.wz +% relZ, model, &seed) orelse break;
 			model.generate(params.blockPos.x, params.blockPos.y, params.blockPos.z, params.chunk, caveMap, biomeMap, &main.seed, false, false);
-			//ch.setChanged();
-			//const data = map.allocator.create(SimpleStructure);
-			// data.* = .{
-			// .wx = wpx,
-			// .wy = wpy,
-			// .wz = map.pos.wz +% heightFinalized.relZ,
-			// .seed = seed,
-			// .model = model,
-			// .isCeiling = heightFinalized.isCeiling,
-			// };
-			// if(model.generationMode == .water_surface) {
-			// if(wpz != 0) break;
-			// data.wz = 0;
-			// }
-			// map.addStructure(.{
-			// .internal = .{
-			// .data = @ptrCast(data),
-			// .generateFn = &SimpleStructure.generate,
-			// },
-			// .priority = model.priority,
-			// }, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% marginZ}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% marginZ});
 
 			break;
 		} else {
