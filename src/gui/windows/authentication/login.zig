@@ -123,7 +123,7 @@ pub fn onOpen() void {
 	textRow.add(CheckBox.init(.{10, 0}, 70, "Show", false, &showTextCallback));
 	textRow.finish(.{0, 0}, .center);
 	list.add(textRow);
-	list.add(Label.init(.{0, 0}, width, "#ff8080**Do not share your Accound Code with anyone!**", .left));
+	list.add(Label.init(.{0, 0}, width, "#ff8080**Do not share your Account Code with anyone!**", .left));
 	const createAccountRow = HorizontalList.init();
 	createAccountRow.add(Label.init(.{0, 3}, 240, "Don't have an Account Code yet?", .left));
 	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .init(openCreateAccountWindow)));
