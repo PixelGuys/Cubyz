@@ -110,9 +110,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	defer main.stackAllocator.free(block_tags);
 	_blockTags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
 
-	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
-	for(_blockTags[size]) |tag| {
-		if(tag == Tag.sbbChild) {
+	if (_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	for (_blockTags[size]) |tag| {
+		if (tag == Tag.sbbChild) {
 			sbb.registerChildBlock(@intCast(size), _id[size]);
 			break;
 		}
@@ -139,8 +139,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
 	const oreProperties = zon.getChild("ore");
-	if(oreProperties != .null) blk: {
-		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
+	if (oreProperties != .null) blk: {
+		if (!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
 			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
@@ -164,27 +164,27 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
-	for(drops, 0..) |blockDrop, i| {
+	for (drops, 0..) |blockDrop, i| {
 		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
 		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
 
-		for(itemZons) |itemZon| {
+		for (itemZons) |itemZon| {
 			var string = itemZon.as([]const u8, "auto");
 			string = std.mem.trim(u8, string, " ");
 			var iterator = std.mem.splitScalar(u8, string, ' ');
 			var name = iterator.first();
 			var amount: u16 = 1;
-			while(iterator.next()) |next| {
-				if(next.len == 0) continue; // skip multiple spaces.
+			while (iterator.next()) |next| {
+				if (next.len == 0) continue; // skip multiple spaces.
 				amount = std.fmt.parseInt(u16, name, 0) catch 1;
 				name = next;
 				break;
 			}
 
-			if(std.mem.eql(u8, name, "auto")) {
-				if(blockId) |id| {
+			if (std.mem.eql(u8, name, "auto")) {
+				if (blockId) |id| {
 					name = id;
 				} else std.log.err("Cannot use 'auto' in this context", .{});
 			}
@@ -202,7 +202,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 }
 
 fn registerLodReplacement(typ: u16, zon: ZonElement) void {
-	if(zon.get(?[]const u8, "lodReplacement", null)) |replacement| {
+	if (zon.get(?[]const u8, "lodReplacement", null)) |replacement| {
 		_lodReplacement[typ] = getTypeById(replacement);
 	} else {
 		_lodReplacement[typ] = typ;
@@ -210,7 +210,7 @@ fn registerLodReplacement(typ: u16, zon: ZonElement) void {
 }
 
 fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
-	if(zon.get(?[]const u8, "opaqueVariant", null)) |replacement| {
+	if (zon.get(?[]const u8, "opaqueVariant", null)) |replacement| {
 		_opaqueVariant[typ] = getTypeById(replacement);
 	} else {
 		_opaqueVariant[typ] = typ;
@@ -252,7 +252,7 @@ fn registerCallbacks(typ: u16, zon: ZonElement) void {
 
 pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
-	while(i < size) : (i += 1) {
+	while (i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
@@ -270,7 +270,7 @@ pub fn reset() void {
 }
 
 pub fn getTypeById(id: []const u8) u16 {
-	if(reverseIndices.get(id)) |result| {
+	if (reverseIndices.get(id)) |result| {
 		return result;
 	} else {
 		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
@@ -279,9 +279,9 @@ pub fn getTypeById(id: []const u8) u16 {
 }
 
 fn parseBlockData(fullBlockId: []const u8, data: []const u8) ?u16 {
-	if(std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
+	if (std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
 		const oreChild = parseBlock(data);
-		if(oreChild.data != 0) {
+		if (oreChild.data != 0) {
 			std.log.warn("Error while parsing ore block data of '{s}': Parent block data must be 0.", .{fullBlockId});
 		}
 		return oreChild.typ;
@@ -295,11 +295,11 @@ fn parseBlockData(fullBlockId: []const u8, data: []const u8) ?u16 {
 pub fn parseBlock(data: []const u8) Block {
 	var id: []const u8 = data;
 	var blockData: ?u16 = null;
-	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
+	if (std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
 		blockData = parseBlockData(data, data[pos + 1 ..]);
 	}
-	if(reverseIndices.get(id)) |resultType| {
+	if (reverseIndices.get(id)) |resultType| {
 		var result: Block = .{.typ = resultType, .data = 0};
 		result.data = blockData orelse result.mode().naturalStandard;
 		return result;
@@ -328,7 +328,7 @@ pub fn getBlockData(idLikeString: []const u8) !?u16 {
 	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
 	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
 	const dataString = idLikeString[blockIdEndIndex + 1 ..];
-	if(dataString.len == 0) return error.EmptyDataString;
+	if (dataString.len == 0) return error.EmptyDataString;
 	return std.fmt.parseInt(u16, dataString, 0) catch return error.InvalidData;
 }
 
@@ -559,13 +559,13 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn deinit() void {
-		if(animationSSBO) |ssbo| {
+		if (animationSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		if(animatedTextureSSBO) |ssbo| {
+		if (animatedTextureSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		if(fogSSBO) |ssbo| {
+		if (fogSSBO) |ssbo| {
 			ssbo.deinit();
 		}
 		animationComputePipeline.deinit();
@@ -610,7 +610,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub inline fn textureIndex(block: Block, orientation: usize) u16 {
-		if(orientation < 16) {
+		if (orientation < 16) {
 			return textureIndices[block.typ][orientation];
 		} else {
 			return textureIndices[block.data][orientation - 16];
@@ -628,11 +628,11 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
-		if(image.height < frames) return image;
+		if (image.height < frames) return image;
 		var startHeight = image.height/frames*frame;
-		if(image.height%frames > frame) startHeight += frame else startHeight += image.height%frames;
+		if (image.height%frames > frame) startHeight += frame else startHeight += image.height%frames;
 		var endHeight = image.height/frames*(frame + 1);
-		if(image.height%frames > frame + 1) endHeight += frame + 1 else endHeight += image.height%frames;
+		if (image.height%frames > frame + 1) endHeight += frame + 1 else endHeight += image.height%frames;
 		var result = image;
 		result.height = @intCast(endHeight - startHeight);
 		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
@@ -652,7 +652,7 @@ pub const meshes = struct { // MARK: meshes
 		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
 		const reflectivity = readTextureFile(path, "_reflectivity.png", Image.emptyImage);
 		const absorption = readTextureFile(path, "_absorption.png", Image.whiteEmptyImage);
-		for(0..animationFrames) |i| {
+		for (0..animationFrames) |i| {
 			blockTextures.append(main.worldArena, extractAnimationSlice(base, i, animationFrames));
 			emissionTextures.append(main.worldArena, extractAnimationSlice(emission, i, animationFrames));
 			reflectivityTextures.append(main.worldArena, extractAnimationSlice(reflectivity, i, animationFrames));
@@ -662,7 +662,7 @@ pub const meshes = struct { // MARK: meshes
 				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
 			});
 		}
-		textureOcclusionData[index].store(textureInfoZon.get(bool, "hasOcclusion", true), .unordered);
+		textureOcclusionData[index].store(textureInfoZon.get(bool, "hasOcclusion", true), .monotonic);
 	}
 
 	pub fn findTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
@@ -674,14 +674,14 @@ pub const meshes = struct { // MARK: meshes
 		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
 		defer main.stackAllocator.free(path);
 		// Test if it's already in the list:
-		for(textureIDs.items, 0..) |other, j| {
-			if(std.mem.eql(u8, other, path)) {
+		for (textureIDs.items, 0..) |other, j| {
+			if (std.mem.eql(u8, other, path)) {
 				result = @intCast(j);
 				return result;
 			}
 		}
 		const file = main.files.cwd().openFile(path) catch |err| blk: {
-			if(err != error.FileNotFound) {
+			if (err != error.FileNotFound) {
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
 			main.stackAllocator.free(path);
@@ -701,9 +701,9 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: *[16]u16) void {
 		const defaultIndex = findTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
-		inline for(textureIndicesRef, 0..) |*ref, i| {
+		inline for (textureIndicesRef, 0..) |*ref, i| {
 			var textureId = zon.get(?[]const u8, std.fmt.comptimePrint("texture{}", .{i}), null);
-			if(i < sideNames.len) {
+			if (i < sideNames.len) {
 				textureId = zon.get(?[]const u8, sideNames[i], textureId);
 			}
 			ref.* = findTexture(textureId, assetFolder) catch defaultIndex;
@@ -725,12 +725,12 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) void {
 		var i: usize = 0;
-		while(true) : (i += 1) {
+		while (true) : (i += 1) {
 			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/breaking/{}.png", .{i}) catch unreachable;
 			defer main.stackAllocator.free(path1);
 			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
 			defer main.stackAllocator.free(path2);
-			if(!main.files.cwd().hasFile(path1) and !main.files.cwd().hasFile(path2)) break;
+			if (!main.files.cwd().hasFile(path1) and !main.files.cwd().hasFile(path2)) break;
 
 			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
 			defer main.stackAllocator.free(id);
@@ -749,7 +749,7 @@ pub const meshes = struct { // MARK: meshes
 	fn finishTextureLoading() void {
 		animationData = main.worldArena.alloc(AnimationData, textureIDs.items.len);
 		textureOcclusionData = main.worldArena.alloc(std.atomic.Value(bool), textureIDs.items.len);
-		for(textureIDs.items, 0..) |path, i| {
+		for (textureIDs.items, 0..) |path, i| {
 			readTextureData(i, path);
 		}
 	}
@@ -760,7 +760,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearRetainingCapacity();
-		for(textureIDs.items, 0..) |path, i| {
+		for (textureIDs.items, 0..) |path, i| {
 			readTextureData(i, path);
 		}
 		generateTextureArray();
@@ -774,15 +774,15 @@ pub const meshes = struct { // MARK: meshes
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		const reflectivityAndAbsorptionTextures = main.stackAllocator.alloc(Image, reflectivityTextures.items.len);
 		defer main.stackAllocator.free(reflectivityAndAbsorptionTextures);
-		defer for(reflectivityAndAbsorptionTextures) |texture| {
+		defer for (reflectivityAndAbsorptionTextures) |texture| {
 			texture.deinit(main.stackAllocator);
 		};
-		for(reflectivityTextures.items, absorptionTextures.items, reflectivityAndAbsorptionTextures) |reflecitivityTexture, absorptionTexture, *resultTexture| {
+		for (reflectivityTextures.items, absorptionTextures.items, reflectivityAndAbsorptionTextures) |reflecitivityTexture, absorptionTexture, *resultTexture| {
 			const width = @max(reflecitivityTexture.width, absorptionTexture.width);
 			const height = @max(reflecitivityTexture.height, absorptionTexture.height);
 			resultTexture.* = Image.init(main.stackAllocator, width, height);
-			for(0..width) |x| {
-				for(0..height) |y| {
+			for (0..width) |x| {
+				for (0..height) |y| {
 					const reflectivity = reflecitivityTexture.getRGB(x*reflecitivityTexture.width/width, y*reflecitivityTexture.height/height);
 					const absorption = absorptionTexture.getRGB(x*absorptionTexture.width/width, y*absorptionTexture.height/height);
 					resultTexture.setRGB(x, y, .{.r = absorption.r, .g = absorption.g, .b = absorption.b, .a = reflectivity.r});
@@ -793,13 +793,13 @@ pub const meshes = struct { // MARK: meshes
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
 		// Also generate additional buffers:
-		if(animationSSBO) |ssbo| {
+		if (animationSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		if(animatedTextureSSBO) |ssbo| {
+		if (animatedTextureSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		if(fogSSBO) |ssbo| {
+		if (fogSSBO) |ssbo| {
 			ssbo.deinit();
 		}
 		animationSSBO = SSBO.initStatic(AnimationData, animationData);

@@ -22,7 +22,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	var neighborSupportive: [6]bool = undefined;
 
-	for(Neighbor.iterable) |neighbor| {
+	for (Neighbor.iterable) |neighbor| {
 		const neighborBlock: Block = main.server.world.?.getBlock(wx +% neighbor.relX(), wy +% neighbor.relY(), wz +% neighbor.relZ()) orelse .{.typ = 0, .data = 0};
 		const neighborModel = main.blocks.meshes.model(neighborBlock).model();
 		neighborSupportive[neighbor.toInt()] = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
@@ -30,9 +30,9 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	var newBlock: Block = params.block;
 
-	inline for(comptime std.meta.declarations(main.rotation.list)) |rotationMode| {
-		if(params.block.mode() == main.rotation.getByID(rotationMode.name)) {
-			if(@hasDecl(@field(main.rotation.list, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
+	inline for (comptime std.meta.declarations(main.rotation.list)) |rotationMode| {
+		if (params.block.mode() == main.rotation.getByID(rotationMode.name)) {
+			if (@hasDecl(@field(main.rotation.list, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
 				@field(main.rotation.list, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
 			} else {
 				std.log.err("Rotation mode {s} has no updateBlockFromNeighborConnectivity function and cannot be used for {s} callback", .{rotationMode.name, @typeName(@This())});
@@ -40,15 +40,15 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 		}
 	}
 
-	if(newBlock == params.block) return .ignored;
+	if (newBlock == params.block) return .ignored;
 
-	if(main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock) == null) {
+	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock) == null) {
 		const dropAmount = params.block.mode().itemDropsOnChange(params.block, newBlock);
 		const drops = params.block.blockDrops();
-		for(0..dropAmount) |_| {
-			for(drops) |drop| {
-				if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-					for(drop.items) |stack| {
+		for (0..dropAmount) |_| {
+			for (drops) |drop| {
+				if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
+					for (drop.items) |stack| {
 						var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
 						// Bias upwards
 						dir[2] += main.random.nextFloat(&main.seed)*4.0;

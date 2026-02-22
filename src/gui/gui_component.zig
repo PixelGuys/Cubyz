@@ -32,9 +32,9 @@ pub const GuiComponent = union(enum) {
 	verticalList: *VerticalList,
 
 	pub fn deinit(self: GuiComponent) void {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
-				if(@hasDecl(@TypeOf(impl.*), "deinit")) {
+				if (@hasDecl(@TypeOf(impl.*), "deinit")) {
 					impl.deinit();
 				}
 			},
@@ -42,7 +42,7 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn mutPos(self: GuiComponent) *Vec2f {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
 				return &impl.pos;
 			},
@@ -50,7 +50,7 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn mutSize(self: GuiComponent) *Vec2f {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
 				return &impl.size;
 			},
@@ -58,7 +58,7 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn pos(self: GuiComponent) Vec2f {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
 				return impl.pos;
 			},
@@ -66,7 +66,7 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn size(self: GuiComponent) Vec2f {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
 				return impl.size;
 			},
@@ -74,9 +74,9 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn updateSelected(self: GuiComponent) void {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
-				if(@hasDecl(@TypeOf(impl.*), "updateSelected")) {
+				if (@hasDecl(@TypeOf(impl.*), "updateSelected")) {
 					impl.updateSelected();
 				}
 			},
@@ -84,9 +84,9 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn updateHovered(self: GuiComponent, mousePosition: Vec2f) void {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
-				if(@hasDecl(@TypeOf(impl.*), "updateHovered")) {
+				if (@hasDecl(@TypeOf(impl.*), "updateHovered")) {
 					impl.updateHovered(mousePosition);
 				}
 			},
@@ -94,9 +94,9 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn render(self: GuiComponent, mousePosition: Vec2f) void {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
-				if(@hasDecl(@TypeOf(impl.*), "render")) {
+				if (@hasDecl(@TypeOf(impl.*), "render")) {
 					impl.render(mousePosition);
 				}
 			},
@@ -104,9 +104,9 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn mainButtonPressed(self: GuiComponent, mousePosition: Vec2f) void {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
-				if(@hasDecl(@TypeOf(impl.*), "mainButtonPressed")) {
+				if (@hasDecl(@TypeOf(impl.*), "mainButtonPressed")) {
 					impl.mainButtonPressed(mousePosition);
 				}
 			},
@@ -114,9 +114,9 @@ pub const GuiComponent = union(enum) {
 	}
 
 	pub fn mainButtonReleased(self: GuiComponent, mousePosition: Vec2f) void {
-		switch(self) {
+		switch (self) {
 			inline else => |impl| {
-				if(@hasDecl(@TypeOf(impl.*), "mainButtonReleased")) {
+				if (@hasDecl(@TypeOf(impl.*), "mainButtonReleased")) {
 					impl.mainButtonReleased(mousePosition);
 				}
 			},

@@ -23,7 +23,7 @@ var texture: Texture = undefined;
 
 pos: Vec2f,
 size: Vec2f,
-callback: *const fn(u16) void,
+callback: *const fn (u16) void,
 currentSelection: u16,
 text: []const u8,
 currentText: []u8,
@@ -40,10 +40,10 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) *DiscreteSlider {
+pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn (u16) void) *DiscreteSlider {
 	const values = main.globalAllocator.alloc([]const u8, valueList.len);
 	var maxLen: usize = 0;
-	for(valueList, 0..) |value, i| {
+	for (valueList, 0..) |value, i| {
 		values[i] = std.fmt.allocPrint(main.globalAllocator.allocator, fmt, .{value}) catch unreachable;
 		maxLen = @max(maxLen, values[i].len);
 	}
@@ -75,7 +75,7 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 pub fn deinit(self: *const DiscreteSlider) void {
 	self.label.deinit();
 	self.button.deinit();
-	for(self.values) |value| {
+	for (self.values) |value| {
 		main.globalAllocator.free(value);
 	}
 	main.globalAllocator.free(self.values);
@@ -109,7 +109,7 @@ fn updateValueFromButtonPos(self: *DiscreteSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = @floatFromInt(self.values.len);
 	const selection: u16 = @intFromFloat((self.button.pos[0] - 1.5*border)/range*len);
-	if(selection != self.currentSelection) {
+	if (selection != self.currentSelection) {
 		self.currentSelection = selection;
 		self.updateLabel(self.values[selection], self.size[0]);
 		self.callback(selection);
@@ -117,13 +117,13 @@ fn updateValueFromButtonPos(self: *DiscreteSlider) void {
 }
 
 pub fn updateHovered(self: *DiscreteSlider, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
 		self.button.updateHovered(mousePosition - self.pos);
 	}
 }
 
 pub fn mainButtonPressed(self: *DiscreteSlider, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
 		self.button.mainButtonPressed(mousePosition - self.pos);
 		self.mouseAnchor = mousePosition[0] - self.button.pos[0];
 	}
@@ -146,7 +146,7 @@ pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) void {
 	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
 	self.label.render(mousePosition);
 
-	if(self.button.pressed) {
+	if (self.button.pressed) {
 		self.button.pos[0] = mousePosition[0] - self.mouseAnchor;
 		self.button.pos[0] = @min(@max(self.button.pos[0], 1.5*border), 1.5*border + range - 0.001);
 		self.updateValueFromButtonPos();

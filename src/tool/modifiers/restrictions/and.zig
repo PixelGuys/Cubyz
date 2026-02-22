@@ -11,8 +11,8 @@ const And = struct {
 };
 
 pub fn satisfied(self: *const And, tool: *const Tool, x: i32, y: i32) bool {
-	for(self.children) |child| {
-		if(!child.satisfied(tool, x, y)) return false;
+	for (self.children) |child| {
+		if (!child.satisfied(tool, x, y)) return false;
 	}
 	return true;
 }
@@ -21,7 +21,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const And
 	const result = allocator.create(And);
 	const childrenZon = zon.getChild("children").toSlice();
 	result.children = allocator.alloc(ModifierRestriction, childrenZon.len);
-	for(result.children, childrenZon) |*child, childZon| {
+	for (result.children, childrenZon) |*child, childZon| {
 		child.* = ModifierRestriction.loadFromZon(allocator, childZon);
 	}
 	return result;
@@ -29,8 +29,8 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const And
 
 pub fn printTooltip(self: *const And, outString: *main.List(u8)) void {
 	outString.append('(');
-	for(self.children, 0..) |child, i| {
-		if(i != 0) outString.appendSlice(" and ");
+	for (self.children, 0..) |child, i| {
+		if (i != 0) outString.appendSlice(" and ");
 		child.printTooltip(outString);
 	}
 	outString.append(')');

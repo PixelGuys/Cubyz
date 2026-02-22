@@ -21,9 +21,9 @@ pub fn init(parameters: ZonElement) void {
 
 /// Assumes the 2 points are at tᵢ = (0, 1)
 fn interpolationWeights(t: f32, interpolation: terrain.biomes.Interpolation) Vec2f {
-	switch(interpolation) {
+	switch (interpolation) {
 		.none => {
-			if(t < 0.5) {
+			if (t < 0.5) {
 				return .{1, 0};
 			} else {
 				return .{0, 1};
@@ -33,7 +33,7 @@ fn interpolationWeights(t: f32, interpolation: terrain.biomes.Interpolation) Vec
 			return .{1 - t, t};
 		},
 		.square => {
-			if(t < 0.5) {
+			if (t < 0.5) {
 				const tSqr = 2*t*t;
 				return .{1 - tSqr, tSqr};
 			} else {
@@ -78,9 +78,9 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	FractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, 64, worldSeed ^ 954936678493, roughMap, map.pos.voxelSize);
 
 	var x: u31 = 0;
-	while(x < map.heightMap.len) : (x += 1) {
+	while (x < map.heightMap.len) : (x += 1) {
 		var y: u31 = 0;
-		while(y < map.heightMap.len) : (y += 1) {
+		while (y < map.heightMap.len) : (y += 1) {
 			// Do the biome interpolation:
 			var height: f32 = 0;
 			var roughness: f32 = 0;
@@ -103,8 +103,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			var coefficientsX: vec.Vec2f = .{0, 0};
 			var coefficientsY: vec.Vec2f = .{0, 0};
 			var totalWeight: f32 = 0;
-			for(0..2) |dx| {
-				for(0..2) |dy| {
+			for (0..2) |dx| {
+				for (0..2) |dy| {
 					const biomeMapX = @as(usize, @intCast(xBiome)) + dx;
 					const biomeMapY = @as(usize, @intCast(yBiome)) + dy;
 					const biomeSample = biomePositions.get(biomeMapX, biomeMapY);
@@ -116,8 +116,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			}
 			coefficientsX /= @splat(totalWeight);
 			coefficientsY /= @splat(totalWeight);
-			for(0..2) |dx| {
-				for(0..2) |dy| {
+			for (0..2) |dx| {
+				for (0..2) |dy| {
 					const biomeMapX = @as(usize, @intCast(xBiome)) + dx;
 					const biomeMapY = @as(usize, @intCast(yBiome)) + dy;
 					const weight = @as([2]f32, coefficientsX)[dx]*@as([2]f32, coefficientsY)[dy];

@@ -28,12 +28,9 @@ const padding: f32 = 8;
 var nameInput: *TextInput = undefined;
 var seedInput: *TextInput = undefined;
 
-var gamemode: main.game.Gamemode = .creative;
 var gamemodeInput: *Button = undefined;
 
-var allowCheats: bool = true;
-
-var testingMode: bool = false;
+var worldSettings = main.server.world_zig.Settings.defaults;
 
 const ZonMapEntry = std.StringHashMapUnmanaged(ZonElement).Entry;
 var worldPresets: []ZonMapEntry = &.{};
@@ -42,7 +39,7 @@ var defaultPreset: usize = 0;
 var presetButton: *Button = undefined;
 
 fn chooseSeed(seedStr: []const u8) u64 {
-	if(seedStr.len == 0) {
+	if (seedStr.len == 0) {
 		return main.random.nextInt(u64, &main.seed);
 	} else {
 		return std.fmt.parseInt(u64, seedStr, 0) catch {
@@ -52,34 +49,27 @@ fn chooseSeed(seedStr: []const u8) u64 {
 }
 
 fn gamemodeCallback() void {
-	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
-	gamemodeInput.child.label.updateText(@tagName(gamemode));
+	worldSettings.defaultGamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) catch @enumFromInt(0);
+	gamemodeInput.child.label.updateText(@tagName(worldSettings.defaultGamemode));
 }
 
 fn worldPresetCallback() void {
 	selectedPreset += 1;
-	if(selectedPreset == worldPresets.len) selectedPreset = 0;
+	if (selectedPreset == worldPresets.len) selectedPreset = 0;
 	presetButton.child.label.updateText(worldPresets[selectedPreset].key_ptr.*);
 }
 
 fn allowCheatsCallback(allow: bool) void {
-	allowCheats = allow;
+	worldSettings.allowCheats = allow;
 }
 
 fn testingModeCallback(enabled: bool) void {
-	testingMode = enabled;
+	worldSettings.testingMode = enabled;
 }
 
 fn createWorld() void {
 	const worldName = nameInput.currentString.items;
-	const worldSeed = chooseSeed(seedInput.currentString.items);
-
-	const worldSettings: main.server.world_zig.Settings = .{
-		.defaultGamemode = gamemode,
-		.allowCheats = allowCheats,
-		.testingMode = testingMode,
-		.seed = worldSeed,
-	};
+	worldSettings.seed = chooseSeed(seedInput.currentString.items);
 
 	main.server.world_zig.tryCreateWorld(worldName, worldSettings, worldPresets[selectedPreset].value_ptr.*) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
@@ -92,11 +82,11 @@ fn createWorld() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 
-	if(worldPresets.len == 0) {
+	if (worldPresets.len == 0) {
 		var presetMap = main.assets.worldPresets();
 		var entryList: main.ListUnmanaged(ZonMapEntry) = .initCapacity(main.globalArena, presetMap.count());
 		var iterator = presetMap.iterator();
-		while(iterator.next()) |entry| {
+		while (iterator.next()) |entry| {
 			entryList.appendAssumeCapacity(entry);
 		}
 
@@ -106,8 +96,8 @@ pub fn onOpen() void {
 			}
 		}.lessThanFn);
 		worldPresets = entryList.items;
-		for(worldPresets, 0..) |entry, i| {
-			if(std.mem.eql(u8, entry.key_ptr.*, "cubyz:default")) {
+		for (worldPresets, 0..) |entry, i| {
+			if (std.mem.eql(u8, entry.key_ptr.*, "cubyz:default")) {
 				defaultPreset = i;
 			}
 		}
@@ -115,10 +105,10 @@ pub fn onOpen() void {
 	selectedPreset = defaultPreset;
 
 	var num: usize = 1;
-	while(true) {
+	while (true) {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		if(!main.files.cubyzDir().hasDir(path)) break;
+		if (!main.files.cubyzDir().hasDir(path)) break;
 		num += 1;
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
@@ -126,13 +116,13 @@ pub fn onOpen() void {
 	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.onNewline = .init(createWorld)});
 	list.add(nameInput);
 
-	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .init(gamemodeCallback));
+	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .init(gamemodeCallback));
 	list.add(gamemodeInput);
 
-	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", allowCheats, &allowCheatsCallback));
+	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
 
-	if(!build_options.isTaggedRelease) {
-		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", testingMode, &testingModeCallback));
+	if (!build_options.isTaggedRelease) {
+		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
 	}
 
 	presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .init(worldPresetCallback));
@@ -155,7 +145,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
