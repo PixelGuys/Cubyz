@@ -5,58 +5,49 @@ const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
 
-pub const description = "Performs changes on the permissions of the player or a groupp.";
+pub const description = "Performs changes on the permissions of the player or shows the if has permission for a specific permission path";
 pub const usage =
-	\\/perm <whitelist/blacklist> <permissionPath>
+	\\/perm add <whitelist/blacklist> <permissionPath>
 	\\/perm remove <whitelist/blacklist> <permissionPath>
+	\\/perm <permissionPath> 
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (args.len == 0) {
-		source.sendMessage("#ff0000Too few arguments for command /perm. Expected at least two arguments.", .{});
+		source.sendMessage("#ff0000Too few arguments for command /perm. Expected at least one arguments.", .{});
 		return;
 	}
 	var split = std.mem.splitScalar(u8, args, ' ');
 	if (split.next()) |arg| {
 		if (std.ascii.eqlIgnoreCase(arg, "remove")) {
-			const helper = Helper.parseHelper(source, &split) catch |err| switch (err) {
-				error.InvalidAmount => {
-					source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
-					return;
-				},
-				error.InvalidArg => return,
-			};
-			if (helper.permissionPath) |permissionPath| {
-				_ = source.permissions.removePermission(helper.listType, permissionPath);
-				return;
-			} else {
-				source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
+			const helper = Helper.parseHelper(source, &split) catch return;
+			if (!source.permissions.removePermission(helper.listType, helper.permissionPath)) {
+				source.sendMessage("#ff0000Permission path {s} is not present inside users permission {s}list", .{helper.permissionPath, @tagName(helper.listType)});
+			}
+		} else if (std.ascii.eqlIgnoreCase(arg, "add")) {
+			const helper = Helper.parseHelper(source, &split) catch return;
+			source.permissions.addPermission(helper.listType, helper.permissionPath);
+		} else if (arg[0] == '/') {
+			if (split.next() != null) {
+				source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
 				return;
 			}
+			if (source.hasPermission(arg)) {
+				source.sendMessage("#00ff00User has permission for path: {s}", .{arg});
+			} else {
+				source.sendMessage("#ff0000User has no permission for path: {s}", .{arg});
+			}
 		}
-	}
-	split.reset();
-	const helper = Helper.parseHelper(source, &split) catch |err| switch (err) {
-		error.InvalidAmount => {
-			source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
-			return;
-		},
-		error.InvalidArg => return,
-	};
-	if (helper.permissionPath) |permissionPath| {
-		source.permissions.addPermission(helper.listType, permissionPath);
-		return;
-	} else {
-		source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
 		return;
 	}
+	source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
 }
 
 const Helper = struct {
 	listType: ListType,
-	permissionPath: ?[]const u8,
+	permissionPath: []const u8,
 
-	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{ InvalidAmount, InvalidArg }!Helper {
+	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{InvalidArgs}!Helper {
 		var listType: ListType = undefined;
 		if (split.next()) |arg| {
 			if (std.ascii.eqlIgnoreCase(arg, "whitelist")) {
@@ -65,20 +56,25 @@ const Helper = struct {
 				listType = .black;
 			} else {
 				source.sendMessage("#ff0000Expected either whitelist or blacklist, found \"{s}\"", .{arg});
-				return error.InvalidArg;
+				return error.InvalidArgs;
 			}
-		} else return error.InvalidAmount;
+		} else {
+			source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
+			return error.InvalidArgs;
+		}
 
 		var permissionPath = split.next();
 
 		if (permissionPath != null and permissionPath.?[0] != '/') {
 			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{permissionPath.?});
-			return error.InvalidArg;
+			return error.InvalidArgs;
 		}
 
-		return .{
-			.listType = listType,
-			.permissionPath = permissionPath,
-		};
+		if (split.next() != null or permissionPath == null) {
+			source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
+			return error.InvalidArgs;
+		}
+
+		return .{.listType = listType, .permissionPath = permissionPath.?};
 	}
 };

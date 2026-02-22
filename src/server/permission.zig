@@ -11,21 +11,15 @@ const sync = main.sync;
 const PermissionMap = struct { // MARK: PermissionMap
 	map: std.StringHashMapUnmanaged(void) = .{},
 
-	pub fn fromZon(self: *PermissionMap, allocator: NeverFailingAllocator, zon: ZonElement) void {
+	pub fn fromZon(self: *PermissionMap, arena: NeverFailingAllocator, zon: ZonElement) void {
 		for (zon.toSlice()) |item| {
-			switch (item) {
-				.string, .stringOwned => |string| {
-					if (self.map.contains(string)) return;
-					const duped = allocator.dupe(u8, string);
-					self.put(allocator, duped);
-				},
-				else => {},
-			}
+			const string = item.as(?[]const u8, null) orelse continue;
+			self.put(arena, string);
 		}
 	}
 
-	pub fn toZon(self: *PermissionMap, allocator: NeverFailingAllocator) ZonElement {
-		const zon: ZonElement = .initArray(allocator);
+	pub fn toZon(self: *PermissionMap, arena: NeverFailingAllocator) ZonElement {
+		const zon: ZonElement = .initArray(arena);
 
 		var it = self.map.keyIterator();
 		while (it.next()) |key| {
@@ -34,8 +28,9 @@ const PermissionMap = struct { // MARK: PermissionMap
 		return zon;
 	}
 
-	pub fn put(self: *PermissionMap, allocator: NeverFailingAllocator, key: []const u8) void {
-		_ = self.map.getOrPut(allocator.allocator, key) catch unreachable;
+	pub fn put(self: *PermissionMap, arena: NeverFailingAllocator, key: []const u8) void {
+		if (self.map.contains(key)) return;
+		self.map.put(arena.allocator, arena.dupe(u8, key), {}) catch unreachable;
 	}
 };
 
@@ -74,24 +69,25 @@ pub const Permissions = struct { // MARK: Permissions
 	}
 
 	pub fn fromZon(self: *Permissions, zon: ZonElement) void {
+		sync.threadContext.assertCorrectContext(.server);
 		self.list(.white).fromZon(self.arena.allocator(), zon.getChild("permissionWhitelist"));
 		self.list(.black).fromZon(self.arena.allocator(), zon.getChild("permissionBlacklist"));
 	}
 
 	pub fn toZon(self: *Permissions, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+		sync.threadContext.assertCorrectContext(.server);
 		zon.put("permissionWhitelist", self.list(.white).toZon(allocator));
 		zon.put("permissionBlacklist", self.list(.black).toZon(allocator));
 	}
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
 		sync.threadContext.assertCorrectContext(.server);
-		self.list(listType).put(self.arena.allocator(), self.arena.allocator().dupe(u8, permissionPath));
+		self.list(listType).put(self.arena.allocator(), permissionPath);
 	}
 
 	pub fn removePermission(self: *Permissions, listType: ListType, permissionPath: []const u8) bool {
 		sync.threadContext.assertCorrectContext(.server);
-		_ = self.list(listType).map.remove(permissionPath);
-		return true;
+		return self.list(listType).map.remove(permissionPath);
 	}
 
 	pub fn hasPermission(self: *Permissions, permissionPath: []const u8) PermissionResult {
@@ -117,6 +113,8 @@ test "WhitePermission" {
 
 	permissions.addPermission(.white, "/command/test");
 	try std.testing.expectEqual(.yes, permissions.hasPermission("/command/test"));
+	try std.testing.expectEqual(.neutral, permissions.hasPermission("/command"));
+	try std.testing.expectEqual(.neutral, permissions.hasPermission("/"));
 }
 
 test "Blacklist" {
@@ -128,6 +126,7 @@ test "Blacklist" {
 
 	try std.testing.expectEqual(.no, permissions.hasPermission("/command/test"));
 	try std.testing.expectEqual(.yes, permissions.hasPermission("/command"));
+	try std.testing.expectEqual(.neutral, permissions.hasPermission("/"));
 }
 
 test "DeepPermission" {
@@ -140,6 +139,7 @@ test "DeepPermission" {
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server/command/testing"));
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server/command"));
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server"));
+	try std.testing.expectEqual(.neutral, permissions.hasPermission("/"));
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server/command/testing/test2"));
 }
 
@@ -152,13 +152,33 @@ test "RootPermission" {
 	try std.testing.expectEqual(.yes, permissions.hasPermission("/command/test"));
 }
 
-test "ddRemovePermission" {
+test "RootBlackPermission" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/");
+	permissions.addPermission(.black, "/command/test");
+
+	try std.testing.expectEqual(.no, permissions.hasPermission("/command/test"));
+	try std.testing.expectEqual(.yes, permissions.hasPermission("/command/test2"));
+}
+
+test "addRemovePermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
 	permissions.addPermission(.white, "/command/test");
 
 	try std.testing.expectEqual(true, permissions.removePermission(.white, "/command/test"));
+}
+
+test "RemoveNonExistentPermission" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/command/test");
+
+	try std.testing.expectEqual(false, permissions.removePermission(.white, "/command/test2"));
 }
 
 test "PermissionListToFromZon" {
