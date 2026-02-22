@@ -45,7 +45,7 @@ pub const SdfModel = struct { // MARK: SdfModel
 		const amount: usize = @intFromFloat(@floor(self.minAmount + main.random.nextFloat(seed)*(self.maxAmount - self.minAmount) + main.random.nextFloat(seed)));
 		for (0..amount) |_| {
 			const offsetDir = blk: while (true) {
-				const offset = main.random.nextFloatVector(3, seed);
+				const offset = main.random.nextFloatVectorSigned(3, seed);
 				if (vec.lengthSquare(offset) < 1) break :blk offset;
 			};
 			const pos = biomePos +% @as(Vec3i, @intFromFloat(offsetDir*@as(Vec3f, @splat(self.maxBiomeCenterDistance))));
