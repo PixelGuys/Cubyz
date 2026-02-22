@@ -38,7 +38,7 @@ fn exitGame() void {
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 2);
-	list.add(Icon.init(.{0, 0}, .{384, 96}, logo, true));
+	list.add(Icon.init(.{0, 0}, .{330, 88}, logo, true));
 	list.add(Icon.init(.{0, 0}, .{0, 64}, .{.textureID = 0}, false));
 	list.add(Button.initMainMenuText(.{0, 0}, 192, "Singleplayer", gui.openWindowCallback("save_selection")));
 	list.add(Button.initMainMenuText(.{0, 0}, 192, "Multiplayer", gui.openWindowCallback("multiplayer")));
