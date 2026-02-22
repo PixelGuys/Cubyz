@@ -46,8 +46,8 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 				const zDifference: f32 = @floatFromInt(z - relPos[2])
 				const adjustedWidthMult = self.widthMult*self.widthMult
 				const adjustedHeightMult = self.HeightMult*self.widthMult
-				const distanceSquare: f32 = @floatFromInt(xDifference*xDifference*adjustedWidthMult + yDifference*yDifference*adjustedWidthMult + zDifference*zDifference*adjustedHeightMult);
-				if (distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
+				const distanceSquare: f32 = @floatFromInt(xDifference*xDifference/adjustedWidthMult + yDifference*yDifference/adjustedWidthMult + zDifference*zDifference/adjustedHeightMult);
+				if (distanceSquare > (radius + perimeter)*(radius + perimeter))/(largestMult*largestMult) continue;
 				if (@as(f32, @floatFromInt(relPos[2] - z)) > perimeter) continue;
 
 				const sphereSdf = @sqrt(distanceSquare) - radius;
