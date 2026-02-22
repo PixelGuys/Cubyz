@@ -106,3 +106,80 @@ pub const Permissions = struct { // MARK: Permissions
 		return if (self.whitelist.map.contains("/")) .yes else .neutral;
 	}
 };
+
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+// MARK: Testing
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+test "WhitePermission" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/command/test");
+	try std.testing.expectEqual(.yes, permissions.hasPermission("/command/test"));
+}
+
+test "Blacklist" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/command");
+	permissions.addPermission(.black, "/command/test");
+
+	try std.testing.expectEqual(.no, permissions.hasPermission("/command/test"));
+	try std.testing.expectEqual(.yes, permissions.hasPermission("/command"));
+}
+
+test "DeepPermission" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/server/command/testing/test");
+
+	try std.testing.expectEqual(.yes, permissions.hasPermission("/server/command/testing/test"));
+	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server/command/testing"));
+	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server/command"));
+	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server"));
+	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server/command/testing/test2"));
+}
+
+test "RootPermission" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/");
+
+	try std.testing.expectEqual(.yes, permissions.hasPermission("/command/test"));
+}
+
+test "ddRemovePermission" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/command/test");
+
+	try std.testing.expectEqual(true, permissions.removePermission(.white, "/command/test"));
+}
+
+test "PermissionListToFromZon" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/command/test");
+	permissions.addPermission(.white, "/command/spawn");
+
+	const zon = permissions.whitelist.toZon(main.heap.testingAllocator);
+	defer zon.deinit(main.heap.testingAllocator);
+
+	var testPermissions: Permissions = .init(main.heap.testingAllocator);
+	defer testPermissions.deinit();
+
+	testPermissions.whitelist.fromZon(testPermissions.arena.allocator(), zon);
+
+	try std.testing.expectEqual(2, testPermissions.whitelist.map.size);
+
+	var it = testPermissions.whitelist.map.keyIterator();
+	while (it.next()) |item| {
+		try std.testing.expectEqual(true, permissions.whitelist.map.contains(item.*));
+	}
+}
