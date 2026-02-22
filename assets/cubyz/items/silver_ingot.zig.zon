@@ -5,7 +5,7 @@
 		.durability = 800,
 		.massDamage = 8.0,
 		.hardnessDamage = 3.0,
-		.swingSpeed = 3.3,
+		.swingSpeed = 2.1,
 		.textureRoughness = 0.05,
 		.colors = .{
 			0xff67727f, 0xff89919e, 0xffbdc2c6, 0xffe4e6e6, 0xfffcfcfc,
