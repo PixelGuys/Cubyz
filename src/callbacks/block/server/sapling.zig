@@ -3,39 +3,38 @@ const std = @import("std");
 const main = @import("main");
 const SimpleStructureModel = main.server.terrain.biomes.SimpleStructureModel;
 
-
-structures:main.ZonElement,
+structures: main.ZonElement,
 vegetationModels: ?[]SimpleStructureModel,
 
 pub fn init(zon: main.ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
-    result.structures = zon.getChild("structures").clone(main.worldArena);
+	result.structures = zon.getChild("structures").clone(main.worldArena);
 	result.vegetationModels = null;
 	return result;
 }
 
 //TODO: no deinits yet
 
-fn initAfterBiomesHaveBeenInited(self: *@This())void{
+fn initAfterBiomesHaveBeenInited(self: *@This()) void {
 	var vegetation = main.ListUnmanaged(SimpleStructureModel){};
 	var totalChance: f32 = 0;
 	defer vegetation.deinit(main.stackAllocator);
-	for(self.structures.toSlice()) |elem| {
-		if(SimpleStructureModel.initModel(elem)) |model| {
+	for (self.structures.toSlice()) |elem| {
+		if (SimpleStructureModel.initModel(elem)) |model| {
 			vegetation.append(main.stackAllocator, model);
 			totalChance += model.chance;
 		}
 	}
-	if(totalChance > 1) {
-		for(vegetation.items) |*model| {
+	if (totalChance > 1) {
+		for (vegetation.items) |*model| {
 			model.chance /= totalChance;
 		}
 	}
 	self.vegetationModels = main.worldArena.dupe(SimpleStructureModel, vegetation.items);
 }
-	
+
 pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
-	if(self.vegetationModels == null)
+	if (self.vegetationModels == null)
 		self.initAfterBiomesHaveBeenInited();
 	const vegetationModels = self.vegetationModels.?;
 
@@ -53,11 +52,11 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	//copied from SimpleStructureGen.generate.
 	var seed = main.random.initSeed3D(main.seed, .{wx, wy, wz});
 	var randomValue = main.random.nextFloat(&seed);
-	for(vegetationModels) |*model| { // TODO: Could probably use an alias table here.
-		if(randomValue < model.chance) {
+	for (vegetationModels) |*model| { // TODO: Could probably use an alias table here.
+		if (randomValue < model.chance) {
 
 			//const heightFinalized = adjustToCaveMap(biomeMap, caveMap, wpx, wpy, map.pos.wz +% relZ, model, &seed) orelse break;
-			model.generate(params.blockPos.x, params.blockPos.y, params.blockPos.z, params.chunk, caveMap, biomeMap, &main.seed, false,false);
+			model.generate(params.blockPos.x, params.blockPos.y, params.blockPos.z, params.chunk, caveMap, biomeMap, &main.seed, false, false);
 			//ch.setChanged();
 			//const data = map.allocator.create(SimpleStructure);
 			// data.* = .{
@@ -79,13 +78,12 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 			// },
 			// .priority = model.priority,
 			// }, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% marginZ}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% marginZ});
-			
+
 			break;
 		} else {
 			randomValue -= model.chance;
 		}
 	}
-
 
 	return .handled;
 }

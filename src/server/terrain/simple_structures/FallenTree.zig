@@ -101,7 +101,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 	}
 }
 
-pub fn generate(self: *FallenTree, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool,_:bool) void {
+pub fn generate(self: *FallenTree, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool, _: bool) void {
 	const height = self.height0 + random.nextIntBounded(u31, seed, self.deltaHeight);
 
 	generateStump(self, x, y, z, chunk);

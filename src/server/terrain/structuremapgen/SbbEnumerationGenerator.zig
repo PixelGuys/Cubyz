@@ -193,7 +193,7 @@ const SignGenerator = struct {
 	wz: i32,
 	id: []const u8,
 
-	pub fn generate(self: *const SignGenerator, chunk: *ServerChunk, _: terrain.CaveMap.CaveMapView, _: terrain.CaveBiomeMap.CaveBiomeMapView,_:bool) void {
+	pub fn generate(self: *const SignGenerator, chunk: *ServerChunk, _: terrain.CaveMap.CaveMapView, _: terrain.CaveBiomeMap.CaveBiomeMapView, _: bool) void {
 		if (chunk.super.pos.voxelSize != 1) return;
 		const relX = self.wx - chunk.super.pos.wx;
 		const relY = self.wy - chunk.super.pos.wy;

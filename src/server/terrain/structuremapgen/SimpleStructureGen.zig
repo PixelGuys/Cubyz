@@ -196,7 +196,7 @@ pub const SimpleStructure = struct {
 	wz: i32,
 	isCeiling: bool,
 
-	pub fn generate(self: *const SimpleStructure, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView,inGeneration:bool) void {
+	pub fn generate(self: *const SimpleStructure, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, inGeneration: bool) void {
 		var seed = self.seed;
 		const relX = self.wx - chunk.super.pos.wx;
 		const relY = self.wy - chunk.super.pos.wy;
