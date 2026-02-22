@@ -4,7 +4,7 @@ Cubyz is a 3D voxel sandbox game (inspired by Minecraft).
 Cubyz has a bunch of interesting/unique features such as:
 - Level of Detail (→ This enables far view distances.)
 - 3D Chunks (→ There is no height or depth limit.)
-- Procedural Crafting (→ There are near-infinite possibilites for tool crafting.)
+- Procedural Crafting (→ There are infinite possibilites for tool crafting.)
 
 # About
 Cubyz is written in <img src="https://github.com/PixelGuys/Cubyz/assets/43880493/04dc89ca-3ef2-4167-9e1a-e23f25feb67c" width="20" height="20">
