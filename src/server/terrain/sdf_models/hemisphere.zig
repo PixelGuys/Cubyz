@@ -28,7 +28,7 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 
 	const relPosF32: Vec3f = @floatFromInt(relPos);
 	const dimVector: Vec3f = @floatFromInt(@Vector(3, u32){output.width*voxelSize, output.depth*voxelSize, output.height*voxelSize});
-	const largestMult = @max(self.HeightMult, self.widthMult)
+	const largestMult = @max(self.HeightMult, self.widthMult);
 	const min = @max(@as(Vec3f, @splat(0)), largestMult*(relPosF32 - @as(Vec3f, @splat(radius + perimeter))));
 	const max = @min(dimVector, largestMult*(relPosF32 + @as(Vec3f, @splat(radius + perimeter))));
 
@@ -41,11 +41,11 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 		while (y < maxInt[1]) : (y += voxelSize) {
 			var z = minInt[2] & ~(voxelSize - 1);
 			while (z < maxInt[2]) : (z += voxelSize) {
-				const xDifference: f32 = @floatFromInt(x - relPos[0])
-				const yDifference: f32 = @floatFromInt(y - relPos[1])
-				const zDifference: f32 = @floatFromInt(z - relPos[2])
-				const adjustedWidthMult = self.widthMult*self.widthMult
-				const adjustedHeightMult = self.HeightMult*self.widthMult
+				const xDifference: f32 = @floatFromInt(x - relPos[0]);
+				const yDifference: f32 = @floatFromInt(y - relPos[1]);
+				const zDifference: f32 = @floatFromInt(z - relPos[2]);
+				const adjustedWidthMult = self.widthMult*self.widthMult;
+				const adjustedHeightMult = self.HeightMult*self.widthMult;
 				const distanceSquare: f32 = @floatFromInt(xDifference*xDifference/adjustedWidthMult + yDifference*yDifference/adjustedWidthMult + zDifference*zDifference/adjustedHeightMult);
 				if (distanceSquare > (radius + perimeter)*(radius + perimeter))/(largestMult*largestMult) continue;
 				if (@as(f32, @floatFromInt(relPos[2] - z)) > perimeter) continue;
