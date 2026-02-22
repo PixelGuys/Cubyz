@@ -25,12 +25,20 @@
 	},
 	.caveModels = .{
 		.{
-			.id = "cubyz:hemisphere",
+			.id = "cubyz:sphere",
 			.minAmount = 1,
 			.maxAmount = 1,
-			.minRadius = 50,
-			.maxRadius = 50,
+			.minRadius = 30,
+			.maxRadius = 40,
 			.maxBiomeCenterDistance = 0,
+		},
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 20,
+			.maxAmount = 30,
+			.minRadius = 8,
+			.maxRadius = 16,
+			.maxBiomeCenterDistance = 50,
 		},
 	},
 }
