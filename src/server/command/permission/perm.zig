@@ -8,9 +8,7 @@ const ListType = permission.Permissions.ListType;
 pub const description = "Performs changes on the permissions of the player or a groupp.";
 pub const usage =
 	\\/perm <whitelist/blacklist> <permissionPath>
-	\\/perm <whitelist/blacklist> <groupName> <permissionPath>
 	\\/perm remove <whitelist/blacklist> <permissionPath>
-	\\/perm remove <whitelist/blacklist> <groupName> <permissionPath>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
@@ -29,15 +27,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				error.InvalidArg => return,
 			};
 			if (helper.permissionPath) |permissionPath| {
-				if (helper.group) |groupName| {
-					const group = permission.getGroup(groupName) catch {
-						source.sendMessage("#ff0000Group {s}#ff0000 does not exist.", .{groupName});
-						return;
-					};
-					_ = group.permissions.removePermission(helper.listType, permissionPath);
-				} else {
-					_ = source.permissions.removePermission(helper.listType, permissionPath);
-				}
+				_ = source.permissions.removePermission(helper.listType, permissionPath);
 				return;
 			} else {
 				source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
@@ -54,15 +44,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		error.InvalidArg => return,
 	};
 	if (helper.permissionPath) |permissionPath| {
-		if (helper.group) |groupName| {
-			const group = permission.getGroup(groupName) catch {
-				source.sendMessage("#ff0000Group {s}#ff0000 does not exist.", .{groupName});
-				return;
-			};
-			group.permissions.addPermission(helper.listType, permissionPath);
-		} else {
-			source.permissions.addPermission(helper.listType, permissionPath);
-		}
+		source.permissions.addPermission(helper.listType, permissionPath);
 		return;
 	} else {
 		source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
@@ -72,7 +54,6 @@ pub fn execute(args: []const u8, source: *User) void {
 
 const Helper = struct {
 	listType: ListType,
-	group: ?[]const u8,
 	permissionPath: ?[]const u8,
 
 	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{ InvalidAmount, InvalidArg }!Helper {
@@ -88,18 +69,7 @@ const Helper = struct {
 			}
 		} else return error.InvalidAmount;
 
-		var group: ?[]const u8 = null;
-		var permissionPath: ?[]const u8 = null;
-		if (split.next()) |arg| {
-			if (split.peek() != null) {
-				group = arg;
-			} else {
-				permissionPath = arg;
-			}
-		}
-		if (permissionPath == null) {
-			permissionPath = split.next();
-		}
+		var permissionPath = split.next();
 
 		if (permissionPath != null and permissionPath.?[0] != '/') {
 			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{permissionPath.?});
@@ -108,7 +78,6 @@ const Helper = struct {
 
 		return .{
 			.listType = listType,
-			.group = group,
 			.permissionPath = permissionPath,
 		};
 	}
