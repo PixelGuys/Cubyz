@@ -9,7 +9,7 @@ vegetationModels: ?[]SimpleStructureModel,
 
 pub fn init(zon: main.ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
-    result.structures = zon.getChild("structures").clone(main.globalAllocator);
+    result.structures = zon.getChild("structures").clone(main.worldArena);
 	result.vegetationModels = null;
 	return result;
 }
@@ -39,9 +39,9 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		self.initAfterBiomesHaveBeenInited();
 	const vegetationModels = self.vegetationModels.?;
 
-	const wx = params.chunk.super.pos.wx + params.x;
-	const wy = params.chunk.super.pos.wy + params.y;
-	const wz = params.chunk.super.pos.wz + params.z;
+	const wx = params.chunk.super.pos.wx + params.blockPos.x;
+	const wy = params.chunk.super.pos.wy + params.blockPos.y;
+	const wz = params.chunk.super.pos.wz + params.blockPos.z;
 	const ch = params.chunk;
 
 	// the originals have already deinited long time ago at this point :(
@@ -54,10 +54,10 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	var seed = main.random.initSeed3D(main.seed, .{wx, wy, wz});
 	var randomValue = main.random.nextFloat(&seed);
 	for(vegetationModels) |*model| { // TODO: Could probably use an alias table here.
-		if(randomValue < model.chance or true) {
+		if(randomValue < model.chance) {
 
 			//const heightFinalized = adjustToCaveMap(biomeMap, caveMap, wpx, wpy, map.pos.wz +% relZ, model, &seed) orelse break;
-			model.generate(params.x, params.y, params.z, params.chunk, caveMap, biomeMap, &main.seed, false,false);
+			model.generate(params.blockPos.x, params.blockPos.y, params.blockPos.z, params.chunk, caveMap, biomeMap, &main.seed, false,false);
 			//ch.setChanged();
 			//const data = map.allocator.create(SimpleStructure);
 			// data.* = .{
