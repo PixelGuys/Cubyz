@@ -263,8 +263,10 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 							CaveBiomeMapFragment.rotateInverse(.{map.pos.wx + x + CaveBiomeMapFragment.caveBiomeSize/2, map.pos.wy + y + CaveBiomeMapFragment.caveBiomeSize/2, map.pos.wz + z + CaveBiomeMapFragment.caveBiomeSize/2}),
 						};
 						for (0..2) |variant| {
-							if (@reduce(.Or, biomeWorldPos[variant] -% min < Vec3i{0, 0, 0})) continue;
-							if (@reduce(.Or, biomeWorldPos[variant] -% max >= Vec3i{0, 0, 0})) continue;
+							var realPos = biomeWorldPos[variant];
+							realPos[2] +%= self.getCaveBiomeOffset(biomeWorldPos[variant][0], biomeWorldPos[variant][1]);
+							if (@reduce(.Or, realPos -% min < Vec3i{0, 0, 0})) continue;
+							if (@reduce(.Or, realPos -% max >= Vec3i{0, 0, 0})) continue;
 							const index = CaveBiomeMapFragment.getIndex(x, y, z);
 							list.append(allocator, .{.worldPos = biomeWorldPos[variant], .biome = map.biomeMap[index][variant]});
 						}
@@ -366,7 +368,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return self.surfaceFragments[index].getHeight(wx, wy);
 	}
 
-	pub fn getCaveBiomeOffset(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32) f32 {
+	pub fn getCaveBiomeOffset(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32) i16 {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
@@ -511,9 +513,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		if (self.super.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 			return surfaceBiome;
 		}
-		if (self.super.pos.voxelSize < 8) {
-			wz +%= @intFromFloat(self.super.getCaveBiomeOffset(wx, wy));
-		}
+		wz +%= self.super.getCaveBiomeOffset(wx, wy);
 
 		return self.super.getRoughBiome(wx, wy, wz, getSeed, seed, false);
 	}
@@ -530,9 +530,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		if (self.super.checkSurfaceBiomeWithHeight(wx, wy, wz, returnHeight)) |surfaceBiome| {
 			return surfaceBiome;
 		}
-		if (self.super.pos.voxelSize < 8) {
-			wz +%= @intFromFloat(self.super.getCaveBiomeOffset(wx, wy));
-		}
+		wz +%= self.super.getCaveBiomeOffset(wx, wy);
 
 		return self.super.getRoughBiomeAndHeight(wx, wy, wz, getSeed, seed, false, returnHeight);
 	}

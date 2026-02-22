@@ -49,7 +49,7 @@ pub const SdfModel = struct { // MARK: SdfModel
 				if (vec.lengthSquare(offset) < 1) break :blk offset;
 			};
 			var pos = biomePos +% @as(Vec3i, @intFromFloat(offsetDir*@as(Vec3f, @splat(self.maxBiomeCenterDistance))));
-			pos[2] +%= @intFromFloat(biomeMap.getCaveBiomeOffset(pos[0], pos[1]));
+			pos[2] +%= biomeMap.getCaveBiomeOffset(pos[0], pos[1]);
 			self.generateFn(self.data, sdf, interpolationSmoothness, pos -% sdfPos, seed.*, perimeter, voxelSize, voxelSizeShift);
 		}
 	}
