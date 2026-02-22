@@ -50,7 +50,7 @@ fn generateSdf(map: *const CaveMapFragment, biomeMap: *const InterpolatableCaveB
 	for (biomePoints) |biomePoint| {
 		var seed = main.random.initSeed3D(worldSeed, biomePoint.worldPos);
 		for (biomePoint.biome.caveSdfModels) |sdfModel| {
-			sdfModel.generate(output, interpolationSmoothness, mapPos, biomePoint.worldPos, &seed, perimeter, voxelSize, voxelSizeShift);
+			sdfModel.generate(output, biomeMap, interpolationSmoothness, mapPos, biomePoint.worldPos, &seed, perimeter, voxelSize, voxelSizeShift);
 		}
 	}
 }

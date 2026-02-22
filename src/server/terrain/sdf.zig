@@ -41,14 +41,15 @@ pub const SdfModel = struct { // MARK: SdfModel
 		};
 	}
 
-	pub fn generate(self: SdfModel, sdf: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), sdfPos: Vec3i, biomePos: Vec3i, seed: *u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
+	pub fn generate(self: SdfModel, sdf: main.utils.Array3D(f32), biomeMap: *const InterpolatableCaveBiomeMapView, interpolationSmoothness: main.utils.Array3D(f32), sdfPos: Vec3i, biomePos: Vec3i, seed: *u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
 		const amount: usize = @intFromFloat(@floor(self.minAmount + main.random.nextFloat(seed)*(self.maxAmount - self.minAmount) + main.random.nextFloat(seed)));
 		for (0..amount) |_| {
 			const offsetDir = blk: while (true) {
 				const offset = main.random.nextFloatVectorSigned(3, seed);
 				if (vec.lengthSquare(offset) < 1) break :blk offset;
 			};
-			const pos = biomePos +% @as(Vec3i, @intFromFloat(offsetDir*@as(Vec3f, @splat(self.maxBiomeCenterDistance))));
+			var pos = biomePos +% @as(Vec3i, @intFromFloat(offsetDir*@as(Vec3f, @splat(self.maxBiomeCenterDistance))));
+			pos[2] +%= @intFromFloat(biomeMap.getCaveBiomeOffset(pos[0], pos[1]));
 			self.generateFn(self.data, sdf, interpolationSmoothness, pos -% sdfPos, seed.*, perimeter, voxelSize, voxelSizeShift);
 		}
 	}

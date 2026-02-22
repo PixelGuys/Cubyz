@@ -366,6 +366,17 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return self.surfaceFragments[index].getHeight(wx, wy);
 	}
 
+	pub fn getCaveBiomeOffset(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32) f32 {
+		var index: u8 = 0;
+		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
+			index += 2;
+		}
+		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
+			index += 1;
+		}
+		return self.surfaceFragments[index].getCaveBiomeOffset(wx, wy);
+	}
+
 	noinline fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
 		const indexX: usize = @intCast((wx -% self.fragments.mem[0].pos.wx) >> CaveBiomeMapFragment.caveBiomeMapShift);
 		const indexY: usize = @intCast((wy -% self.fragments.mem[0].pos.wy) >> CaveBiomeMapFragment.caveBiomeMapShift);
@@ -470,25 +481,15 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	const CachedFractalNoise = terrain.noise.CachedFractalNoise;
 
 	super: InterpolatableCaveBiomeMapView,
-	noise: ?CachedFractalNoise = null,
 
 	pub fn init(allocator: NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) CaveBiomeMapView {
-		var self = CaveBiomeMapView{
+		return .{
 			.super = InterpolatableCaveBiomeMapView.init(allocator, pos, width, margin),
 		};
-		if (pos.voxelSize < 8) {
-			const startX = (pos.wx -% margin) & ~@as(i32, 63);
-			const startY = (pos.wy -% margin) & ~@as(i32, 63);
-			self.noise = CachedFractalNoise.init(startX, startY, pos.voxelSize, width + 64 + 2*margin, main.server.world.?.settings.seed ^ 0x764923684396, 64);
-		}
-		return self;
 	}
 
 	pub fn deinit(self: CaveBiomeMapView) void {
 		self.super.deinit();
-		if (self.noise) |noise| {
-			noise.deinit();
-		}
 	}
 
 	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) i32 {
@@ -510,9 +511,8 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		if (self.super.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 			return surfaceBiome;
 		}
-		if (self.noise) |noise| {
-			const value = noise.getValue(wx, wy);
-			wz +%= @intFromFloat(value);
+		if (self.super.pos.voxelSize < 8) {
+			wz +%= @intFromFloat(self.super.getCaveBiomeOffset(wx, wy));
 		}
 
 		return self.super.getRoughBiome(wx, wy, wz, getSeed, seed, false);
@@ -530,9 +530,8 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		if (self.super.checkSurfaceBiomeWithHeight(wx, wy, wz, returnHeight)) |surfaceBiome| {
 			return surfaceBiome;
 		}
-		if (self.noise) |noise| {
-			const value = noise.getValue(wx, wy);
-			wz +%= @intFromFloat(value);
+		if (self.super.pos.voxelSize < 8) {
+			wz +%= @intFromFloat(self.super.getCaveBiomeOffset(wx, wy));
 		}
 
 		return self.super.getRoughBiomeAndHeight(wx, wy, wz, getSeed, seed, false, returnHeight);
