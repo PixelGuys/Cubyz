@@ -59,6 +59,13 @@ pub var buttonUniforms: struct {
 const Style = enum {
 	default,
 	mainMenu,
+
+	pub fn getTextures(self: Style, isPressed: bool, isHovered: bool) Textures {
+		const pressed = if (self == .mainMenu) pressedMainMenuTextures else pressedTextures;
+		const hovered = if (self == .mainMenu) hoveredMainMenuTextures else hoveredTextures;
+		const normal = if (self == .mainMenu) normalMainMenuTextures else normalTextures;
+		return if(isPressed) pressed else if(isHovered) hovered else normal;
+	}
 };
 
 pos: Vec2f,
@@ -167,15 +174,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	const pressed = if (self.style == .mainMenu) pressedMainMenuTextures else pressedTextures;
-	const hovered = if (self.style == .mainMenu) hoveredMainMenuTextures else hoveredTextures;
-	const normal = if (self.style == .mainMenu) normalMainMenuTextures else normalTextures;
-	const textures = if (self.pressed)
-		pressed
-	else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
-		hovered
-	else
-		normal;
+	const textures = self.style.getTextures(self.pressed, GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered);
 	draw.setColor(0xff000000);
 	textures.texture.bindTo(0);
 	pipeline.bind(draw.getScissor());
