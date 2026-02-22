@@ -9,7 +9,7 @@ pub const description = "Performs changes on the permissions of the player or sh
 pub const usage =
 	\\/perm add <whitelist/blacklist> <permissionPath>
 	\\/perm remove <whitelist/blacklist> <permissionPath>
-	\\/perm <permissionPath> 
+	\\/perm <permissionPath>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
