@@ -510,6 +510,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
+		try self.loadPermissionGroups();
 		return self;
 	}
 
@@ -542,6 +543,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
+		permission.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -637,6 +639,24 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
 
 		try files.cubyzDir().writeZon(path, worldData);
+	}
+
+	pub fn loadPermissionGroups(self: *ServerWorld) !void {
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups.zig.zon", .{self.path}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		const groups = files.cubyzDir().readToZon(main.stackAllocator, path) catch return;
+		defer groups.deinit(main.stackAllocator);
+		permission.init(main.globalAllocator, groups);
+	}
+
+	pub fn savePermissionGroups(self: *ServerWorld) !void {
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups.zig.zon", .{self.path}) catch unreachable;
+		defer main.stackAllocator.free(path);
+
+		files.cubyzDir().deleteFile(path) catch {};
+		const groups = permission.groupsToZon(main.stackAllocator);
+		defer groups.deinit(main.stackAllocator);
+		try files.cubyzDir().writeZon(path, groups);
 	}
 
 	pub fn loadPlayerLoginInfo(self: *ServerWorld, dir: main.files.Dir) !void {
@@ -952,6 +972,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			player.loadFrom(playerData.getChild("entity"));
 
 			user.permissions.fromZon(playerData);
+			user.groupListFromZon(playerData.getChild("permissionGroups"));
 
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
@@ -1007,6 +1028,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		playerZon.put("entity", user.player.save(main.stackAllocator));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
+		playerZon.put("permissionGroups", user.groupListToZon(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
@@ -1044,6 +1066,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.saveWorldConfig();
 
 		try self.saveAllPlayers();
+		try self.savePermissionGroups();
 
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();

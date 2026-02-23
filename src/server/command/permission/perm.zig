@@ -8,8 +8,11 @@ const ListType = permission.Permissions.ListType;
 pub const description = "Performs changes on the permissions of the player or shows the if has permission for a specific permission path";
 pub const usage =
 	\\/perm add <whitelist/blacklist> <permissionPath>
+	\\/perm add <whitelist/blacklist> <groupName> <permissionPath>
 	\\/perm remove <whitelist/blacklist> <permissionPath>
+	\\/perm remove <whitelist/blacklist> <groupName> <permissionPath>
 	\\/perm <permissionPath>
+	\\/perm <groupName> <permissionPath>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
@@ -45,7 +48,8 @@ pub fn execute(args: []const u8, source: *User) void {
 
 const Helper = struct {
 	listType: ListType,
-	permissionPath: []const u8,
+	group: ?[]const u8,
+	permissionPath: ?[]const u8,
 
 	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{InvalidArgs}!Helper {
 		var listType: ListType = undefined;

@@ -106,6 +106,95 @@ pub const Permissions = struct { // MARK: Permissions
 	}
 };
 
+pub const PermissionGroup = struct { // MARK: PermissionGroup
+	permissions: Permissions,
+	id: u32,
+
+	pub fn init(allocator: NeverFailingAllocator) PermissionGroup {
+		sync.threadContext.assertCorrectContext(.server);
+		currentId += 1;
+		return .{
+			.permissions = .init(allocator),
+			.id = currentId,
+		};
+	}
+
+	pub fn deinit(self: *PermissionGroup) void {
+		sync.threadContext.assertCorrectContext(.server);
+		self.permissions.deinit();
+	}
+
+	pub fn hasPermission(self: *PermissionGroup, permissionPath: []const u8) Permissions.PermissionResult {
+		return self.permissions.hasPermission(permissionPath);
+	}
+};
+
+var groups: std.StringHashMapUnmanaged(PermissionGroup) = .{};
+var groupsArena: NeverFailingArenaAllocator = undefined;
+var currentId: u32 = 0;
+
+pub fn init(allocator: NeverFailingAllocator, _zon: ?ZonElement) void {
+	groupsArena = .init(allocator);
+	const zon = _zon orelse return;
+	currentId = zon.get(u32, "currentId", 0);
+
+	if (zon.getChild("groups") != .object) return;
+	var it = zon.getChild("groups").object.iterator();
+	while (it.next()) |entry| {
+		groups.put(groupsArena.allocator().allocator, groupsArena.allocator().dupe(u8, entry.key_ptr.*), .{
+			.id = entry.value_ptr.get(u32, "id", 0),
+			.permissions = .init(groupsArena.allocator()),
+		}) catch unreachable;
+
+		const group = groups.getPtr(entry.key_ptr.*).?;
+		group.permissions.fromZon(entry.value_ptr.*);
+	}
+}
+
+pub fn deinit() void {
+	groupsArena.deinit();
+	groups = .{};
+}
+
+pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
+	var zon: ZonElement = .initObject(allocator);
+	zon.put("currentId", currentId);
+
+	var groupsZon: ZonElement = .initObject(allocator);
+	var it = groups.iterator();
+	while (it.next()) |group| {
+		var groupZon: ZonElement = .initObject(allocator);
+		groupZon.put("id", group.value_ptr.id);
+		group.value_ptr.permissions.toZon(allocator, &groupZon);
+		groupsZon.put(group.key_ptr.*, groupZon);
+	}
+	zon.put("groups", groupsZon);
+	return zon;
+}
+
+pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
+	sync.threadContext.assertCorrectContext(.server);
+	if (groups.contains(name)) return error.AlreadyExists;
+	groups.put(groupsArena.allocator().allocator, groupsArena.allocator().dupe(u8, name), .init(groupsArena.allocator())) catch unreachable;
+}
+
+pub fn getGroup(name: []const u8) error{GroupNotFound}!*PermissionGroup {
+	return groups.getPtr(name) orelse return error.GroupNotFound;
+}
+
+pub fn deleteGroup(name: []const u8) bool {
+	sync.threadContext.assertCorrectContext(.server);
+	const users = server.getUserListAndIncreaseRefCount(main.globalAllocator);
+	for (users) |user| {
+		const key = user.permissionGroups.getKeyPtr(name) orelse continue;
+		const slice = key.*;
+		_ = user.permissionGroups.remove(name);
+		main.globalAllocator.free(slice);
+	}
+	server.freeUserListAndDecreaseRefCount(main.globalAllocator, users);
+	return groups.remove(name);
+}
+
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 // MARK: Testing
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -182,6 +271,29 @@ test "RemoveNonExistentPermission" {
 	permissions.addPermission(.white, "/command/test");
 
 	try std.testing.expectEqual(false, permissions.removePermission(.white, "/command/test2"));
+}
+
+test "invalidGroupPermission" {
+	init(main.heap.testingAllocator, null);
+	defer deinit();
+
+	try createGroup("test");
+	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
+}
+
+test "invalidGroupPermissionEmptyGroups" {
+	init(main.heap.testingAllocator, null);
+	defer deinit();
+
+	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
+}
+
+test "invalidGroupCreation" {
+	init(main.heap.testingAllocator, null);
+	defer deinit();
+
+	try createGroup("test");
+	try std.testing.expectError(error.AlreadyExists, createGroup("test"));
 }
 
 test "PermissionListToFromZon" {
