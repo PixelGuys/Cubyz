@@ -12,6 +12,7 @@ const PermissionMap = struct { // MARK: PermissionMap
 	map: std.StringHashMapUnmanaged(void) = .{},
 
 	pub fn fromZon(self: *PermissionMap, arena: NeverFailingAllocator, zon: ZonElement) void {
+		sync.threadContext.assertCorrectContext(.server);
 		for (zon.toSlice()) |item| {
 			const string = item.as(?[]const u8, null) orelse continue;
 			self.put(arena, string);
@@ -19,6 +20,7 @@ const PermissionMap = struct { // MARK: PermissionMap
 	}
 
 	pub fn toZon(self: *PermissionMap, arena: NeverFailingAllocator) ZonElement {
+		sync.threadContext.assertCorrectContext(.server);
 		const zon: ZonElement = .initArray(arena);
 
 		var it = self.map.keyIterator();
@@ -29,8 +31,8 @@ const PermissionMap = struct { // MARK: PermissionMap
 	}
 
 	pub fn put(self: *PermissionMap, arena: NeverFailingAllocator, key: []const u8) void {
-		if (self.map.contains(key)) return;
-		self.map.put(arena.allocator, arena.dupe(u8, key), {}) catch unreachable;
+		const result = self.map.getOrPut(arena.allocator, key) catch unreachable;
+		if (!result.found_existing) result.key_ptr.* = arena.dupe(u8, key);
 	}
 };
 

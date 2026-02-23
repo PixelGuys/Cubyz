@@ -37,10 +37,10 @@ pub fn execute(args: []const u8, source: *User) void {
 			} else {
 				source.sendMessage("#ff0000User has no permission for path: {s}", .{arg});
 			}
+		} else {
+			source.sendMessage("#ff0000Expected either add, remove or a valid permission path, found \"{s}\"", .{arg});
 		}
-		return;
 	}
-	source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
 }
 
 const Helper = struct {
@@ -49,17 +49,16 @@ const Helper = struct {
 
 	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{InvalidArgs}!Helper {
 		var listType: ListType = undefined;
-		if (split.next()) |arg| {
-			if (std.ascii.eqlIgnoreCase(arg, "whitelist")) {
-				listType = .white;
-			} else if (std.ascii.eqlIgnoreCase(arg, "blacklist")) {
-				listType = .black;
-			} else {
-				source.sendMessage("#ff0000Expected either whitelist or blacklist, found \"{s}\"", .{arg});
-				return error.InvalidArgs;
-			}
+		const arg = split.next() orelse {
+			source.sendMessage("#ff0000Too few arguments for command /perm", .{});
+			return error.InvalidArgs;
+		};
+		if (std.ascii.eqlIgnoreCase(arg, "whitelist")) {
+			listType = .white;
+		} else if (std.ascii.eqlIgnoreCase(arg, "blacklist")) {
+			listType = .black;
 		} else {
-			source.sendMessage("#ff0000Not the right amount of arguments for /perm remove", .{});
+			source.sendMessage("#ff0000Expected either whitelist or blacklist, found \"{s}\"", .{arg});
 			return error.InvalidArgs;
 		}
 
@@ -70,8 +69,13 @@ const Helper = struct {
 			return error.InvalidArgs;
 		}
 
-		if (split.next() != null or permissionPath == null) {
-			source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
+		if (permissionPath == null) {
+			source.sendMessage("#ff0000Too few arguments for command /perm.", .{});
+			return error.InvalidArgs;
+		}
+
+		if (split.next() != null) {
+			source.sendMessage("#ff0000Too many arguments for command /perm", .{});
 			return error.InvalidArgs;
 		}
 
