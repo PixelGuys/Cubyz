@@ -93,6 +93,7 @@ pub const Permissions = struct { // MARK: Permissions
 	}
 
 	pub fn hasPermission(self: *Permissions, permissionPath: []const u8) PermissionResult {
+		sync.threadContext.assertCorrectContext(.server);
 		var current = permissionPath;
 
 		while (std.mem.lastIndexOfScalar(u8, current, '/')) |nextPos| {
