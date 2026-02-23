@@ -47,5 +47,14 @@
 			.minRadius = 4,
 			.maxRadius = 8,
 		},
+		.{
+			.id = "cubyz:cylinder",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 4,
+			.maxRadius = 6,
+			.minHeight = 40,
+			.maxHeight = 80,
+		},
 	},
 }
