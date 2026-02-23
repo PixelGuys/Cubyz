@@ -62,15 +62,13 @@ const Helper = struct {
 			return error.InvalidArgs;
 		}
 
-		var permissionPath = split.next();
-
-		if (permissionPath != null and permissionPath.?[0] != '/') {
-			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{permissionPath.?});
-			return error.InvalidArgs;
-		}
-
-		if (permissionPath == null) {
+		var permissionPath = split.next() orelse {
 			source.sendMessage("#ff0000Too few arguments for command /perm.", .{});
+			return error.InvalidArgs;
+		};
+
+		if (permissionPath[0] != '/') {
+			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{permissionPath});
 			return error.InvalidArgs;
 		}
 
@@ -79,6 +77,6 @@ const Helper = struct {
 			return error.InvalidArgs;
 		}
 
-		return .{.listType = listType, .permissionPath = permissionPath.?};
+		return .{.listType = listType, .permissionPath = permissionPath};
 	}
 };
