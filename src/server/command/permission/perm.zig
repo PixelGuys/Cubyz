@@ -62,7 +62,7 @@ const Helper = struct {
 			return error.InvalidArgs;
 		}
 
-		var permissionPath = split.next() orelse {
+		const permissionPath = split.next() orelse {
 			source.sendMessage("#ff0000Too few arguments for command /perm.", .{});
 			return error.InvalidArgs;
 		};
