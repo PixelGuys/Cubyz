@@ -1,6 +1,5 @@
 .{
 	.isCave = true,
-	.caveNoiseStrength = 10,
 	.maxHeight = -512,
 	.minHeight = -48250,
 	.music = "cubyz:la_kubisa_caverna",

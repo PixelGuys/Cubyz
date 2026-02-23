@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-
+	
 	.chance = 0.01,
 	.maxHeight = -50,
 	.minHeight = -48250,
@@ -53,6 +53,15 @@
 			.type = .round,
 			.height = 3,
 			.height_variation = 2,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 10,
+			.maxAmount = 30,
+			.minRadius = 10,
+			.maxRadius = 20,
 		},
 	},
 }
