@@ -41,7 +41,6 @@ const maxCaveDensity = 1.0/32.0;
 // TODO: Should probably use fixed point arithmetic to avoid crashes at the world border.
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
-	if (true) return;
 	if (map.pos.voxelSize > 2) return;
 
 	const biomeMap: InterpolatableCaveBiomeMapView = InterpolatableCaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize + maxCaveHeight*3);

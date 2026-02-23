@@ -1,3 +1,3 @@
 pub const FractalCaveGenerator = @import("FractalCaveGenerator.zig");
-pub const NoiseCaveGenerator = @import("HemiSphereGenerator.zig");
+pub const SdfCaveGenerator = @import("SdfCaveGenerator.zig");
 pub const SurfaceGenerator = @import("SurfaceGenerator.zig");

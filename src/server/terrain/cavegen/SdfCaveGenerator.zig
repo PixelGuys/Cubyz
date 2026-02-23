@@ -14,7 +14,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
-pub const id = "cubyz:noise_cave";
+pub const id = "cubyz:sdf_cave";
 
 pub const priority = 65536;
 
