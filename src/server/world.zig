@@ -21,6 +21,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
+const permission = server.permission;
 const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
@@ -508,6 +509,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
+
 		return self;
 	}
 
@@ -949,6 +951,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
+			user.permissions.fromZon(playerData);
+
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
@@ -1002,6 +1006,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("publicKey", user.newKeyString);
 
 		playerZon.put("entity", user.player.save(main.stackAllocator));
+		user.permissions.toZon(main.stackAllocator, &playerZon);
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
