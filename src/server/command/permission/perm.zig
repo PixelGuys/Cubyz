@@ -30,8 +30,25 @@ pub fn execute(args: []const u8, source: *User) void {
 		} else if (std.ascii.eqlIgnoreCase(arg, "add")) {
 			const helper = Helper.parseHelper(source, &split) catch return;
 			helper.permissions.addPermission(helper.listType, helper.permissionPath);
+		} else if (arg[0] != '/') {
+			const group = permission.getGroup(arg) catch {
+				source.sendMessage("#ff0000Group with name {s} not found", .{arg});
+				return;
+			};
+			const permissionPath = split.next() orelse {
+				source.sendMessage("#ff0000Too few arguments for command /perm", .{});
+				return;
+			};
+			if (split.next() != null) {
+				source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
+				return;
+			}
+			if (group.hasPermission(permissionPath) == .yes) {
+				source.sendMessage("#00ff00Group {s} has permission for path: {s}", .{arg, permissionPath});
+			} else {
+				source.sendMessage("#ff0000Group {s} has no permission for path: {s}", .{arg, permissionPath});
+			}
 		} else if (arg[0] == '/') {
-			// TODO: Implement for groups
 			if (split.next() != null) {
 				source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
 				return;

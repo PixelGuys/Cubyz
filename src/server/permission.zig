@@ -125,6 +125,7 @@ pub const PermissionGroup = struct { // MARK: PermissionGroup
 	}
 
 	pub fn hasPermission(self: *PermissionGroup, permissionPath: []const u8) Permissions.PermissionResult {
+		sync.threadContext.assertCorrectContext(.server);
 		return self.permissions.hasPermission(permissionPath);
 	}
 };
@@ -134,6 +135,7 @@ var groupsArena: NeverFailingArenaAllocator = undefined;
 var currentId: u32 = 0;
 
 pub fn init(allocator: NeverFailingAllocator, _zon: ?ZonElement) void {
+	sync.threadContext.assertCorrectContext(.server);
 	groupsArena = .init(allocator);
 	const zon = _zon orelse return;
 	currentId = zon.get(u32, "currentId", 0);
@@ -152,11 +154,13 @@ pub fn init(allocator: NeverFailingAllocator, _zon: ?ZonElement) void {
 }
 
 pub fn deinit() void {
+	sync.threadContext.assertCorrectContext(.server);
 	groupsArena.deinit();
 	groups = .{};
 }
 
 pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
+	sync.threadContext.assertCorrectContext(.server);
 	var zon: ZonElement = .initObject(allocator);
 	zon.put("currentId", currentId);
 
