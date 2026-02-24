@@ -174,8 +174,11 @@ pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
 
 pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
 	sync.threadContext.assertCorrectContext(.server);
-	if (groups.contains(name)) return error.AlreadyExists;
-	groups.put(groupsArena.allocator().allocator, groupsArena.allocator().dupe(u8, name), .init(groupsArena.allocator())) catch unreachable;
+	const result = groups.getOrPut(groupsArena.allocator().allocator, name) catch unreachable;
+	if (result.found_existing) return error.AlreadyExists;
+
+	result.key_ptr.* = groupsArena.allocator().dupe(u8, name);
+	result.value_ptr.* = .init(groupsArena.allocator());
 }
 
 pub fn getGroup(name: []const u8) error{GroupNotFound}!*PermissionGroup {
