@@ -4,6 +4,7 @@
 	.radius = 32,
 	.minHeight = 22,
 	.maxHeight = 40,
+	.keepOriginalTerrain = 1,
 	.roughness = 1,
 	.hills = 5,
 	.music = "cubyz:sunrise",
@@ -74,7 +75,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:forest/mixed/oak_birch",
-			.chance = 0.25,
+			.chance = 6,
 		},
 	},
 }
