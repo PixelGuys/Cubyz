@@ -1,0 +1,46 @@
+.{
+	.chance = 0.7,
+	.caves = -0.03,
+	.structures = .{
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:pyrolite/base",
+			.chance = 0.1,
+			.size = 12,
+			.size_variation = 4,
+			.baseSlope = 0,
+			.topSlope = 8,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:pyrolite/base",
+			.chance = 0.2,
+			.size = 4,
+			.size_variation = 6,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cave/mantle/lava_pool",
+			.placeMode = .degradable,
+			.chance = 0.02,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:magma",
+			.chance = 0.04,
+			.width = 4,
+			.variation = 2,
+			.depth = 2,
+			.smoothness = 1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:ash",
+			.chance = 0.1,
+			.width = 5,
+			.variation = 5,
+			.depth = 4,
+			.smoothness = 0.1,
+		},
+	},
+}
