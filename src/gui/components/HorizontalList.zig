@@ -77,6 +77,7 @@ pub fn updateSelected(self: *HorizontalList) void {
 }
 
 pub fn updateHovered(self: *HorizontalList, mousePosition: Vec2f) main.callbacks.Result {
+	// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
 	var i: usize = self.children.items.len;
 	while (i != 0) {
 		i -= 1;
@@ -97,6 +98,7 @@ pub fn render(self: *HorizontalList, mousePosition: Vec2f) void {
 }
 
 pub fn mainButtonPressed(self: *HorizontalList, mousePosition: Vec2f) main.callbacks.Result {
+	// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
 	var iterator = std.mem.reverseIterator(self.children.items);
 	while (iterator.next()) |child| {
 		if (GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {

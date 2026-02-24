@@ -464,6 +464,7 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	setSelectedTextInput(null);
 	const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 
+	// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
 	var i: usize = openWindows.items.len;
 	while (i > 0) {
 		i -= 1;
@@ -534,6 +535,7 @@ pub fn updateAndRenderGui() void {
 			selected.updateSelected(mousePos);
 		}
 		hoveredItemSlot = null;
+		// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
 		var i: usize = openWindows.items.len;
 		while (i != 0) {
 			i -= 1;
