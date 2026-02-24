@@ -45,11 +45,11 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:hills/cold",
-			.chance = 0.5,
+			.chance = 2,
 		},
 		.{
 			.id = "cubyz:hills/large/cold",
-			.chance = 0.5,
+			.chance = 2,
 		},
 	},
 }

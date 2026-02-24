@@ -39,19 +39,19 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:grassland",
-			.chance = 0.5,
+			.chance = 1.5,
 		},
 		.{
 			.id = "cubyz:rocky_grassland",
-			.chance = 0.2,
+			.chance = 1,
 		},
 		.{
 			.id = "cubyz:hills/temperate",
-			.chance = 0.5,
+			.chance = 2,
 		},
 		.{
 			.id = "cubyz:hills/large/temperate",
-			.chance = 0.5,
+			.chance = 2,
 		},
 	},
 }
