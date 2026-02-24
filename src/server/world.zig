@@ -644,7 +644,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	pub fn loadPermissionGroups(self: *ServerWorld) !void {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups.zig.zon", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		const groups = files.cubyzDir().readToZon(main.stackAllocator, path) catch return;
+		const groups: ZonElement = files.cubyzDir().readToZon(main.stackAllocator, path) catch .initObject(main.stackAllocator);
 		defer groups.deinit(main.stackAllocator);
 		permission.init(main.globalAllocator, groups);
 	}
@@ -653,7 +653,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups.zig.zon", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
-		files.cubyzDir().deleteFile(path) catch {};
 		const groups = permission.groupsToZon(main.stackAllocator);
 		defer groups.deinit(main.stackAllocator);
 		try files.cubyzDir().writeZon(path, groups);
