@@ -5,7 +5,7 @@ const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
-const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const vec = main.vec;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
@@ -43,7 +43,7 @@ const maxCaveDensity = 1.0/32.0;
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if (map.pos.voxelSize > 2) return;
 
-	const biomeMap: InterpolatableCaveBiomeMapView = InterpolatableCaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize + maxCaveHeight*3);
+	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize + maxCaveHeight*3);
 	defer biomeMap.deinit();
 	// Generate caves from all nearby chunks:
 	var wx = map.pos.wx -% range;
@@ -168,7 +168,7 @@ fn generateCaveBetween(_seed: u64, map: *CaveMapFragment, startRelPos: Vec3f, en
 	}
 }
 
-fn generateCaveBetweenAndCheckBiomeProperties(_seed: u64, map: *CaveMapFragment, biomeMap: *const InterpolatableCaveBiomeMapView, startRelPos: Vec3f, endRelPos: Vec3f, bias: Vec3f, startRadius: f32, endRadius: f32, randomness: f32) void {
+fn generateCaveBetweenAndCheckBiomeProperties(_seed: u64, map: *CaveMapFragment, biomeMap: *const CaveBiomeMapView, startRelPos: Vec3f, endRelPos: Vec3f, bias: Vec3f, startRadius: f32, endRadius: f32, randomness: f32) void {
 	// Check if the segment can cross this chunk:
 	const maxHeight = @max(@abs(startRadius), @abs(endRadius));
 	const distance = vec.length(startRelPos - endRelPos);
@@ -186,7 +186,7 @@ fn generateCaveBetweenAndCheckBiomeProperties(_seed: u64, map: *CaveMapFragment,
 	generateCaveBetween(_seed, map, startRelPos, endRelPos, bias, startRadius*startRadiusFactor, endRadius*endRadiusFactor, randomness);
 }
 
-fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, biomeMap: *const InterpolatableCaveBiomeMapView, startRelPos: Vec3f, endRelPos: Vec3f, bias: Vec3f, startRadius: f32, endRadius: f32, seedPos: Vec3f, branchLength: f32, randomness: f32, isStart: bool, isEnd: bool) void {
+fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, biomeMap: *const CaveBiomeMapView, startRelPos: Vec3f, endRelPos: Vec3f, bias: Vec3f, startRadius: f32, endRadius: f32, seedPos: Vec3f, branchLength: f32, randomness: f32, isStart: bool, isEnd: bool) void {
 	const distance = vec.length(startRelPos - endRelPos);
 	var seed = _seed;
 	random.scrambleSeed(&seed);
@@ -271,7 +271,7 @@ fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, biomeMap: *co
 	generateBranchingCaveBetween(random.nextInt(u64, &seed), map, biomeMap, mid, endRelPos, bias*@as(Vec3f, @splat(w2)), midRadius, endRadius, seedPos, branchLength, randomness, false, isEnd);
 }
 
-fn considerCoordinates(wx: i32, wy: i32, wz: i32, map: *CaveMapFragment, biomeMap: *const InterpolatableCaveBiomeMapView, seed: *u64, worldSeed: u64) void {
+fn considerCoordinates(wx: i32, wy: i32, wz: i32, map: *CaveMapFragment, biomeMap: *const CaveBiomeMapView, seed: *u64, worldSeed: u64) void {
 	// Choose some in world coordinates to start generating:
 	const startWorldPos = Vec3f{
 		@floatFromInt(wx +% random.nextIntBounded(u8, seed, chunkSize) -% map.pos.wx),

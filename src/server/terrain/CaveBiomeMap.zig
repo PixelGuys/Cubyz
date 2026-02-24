@@ -135,15 +135,14 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	}
 };
 
-/// Doesn't allow getting the biome at one point and instead is only useful for interpolating values between biomes.
-pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveBiomeMapView
+pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	fragments: Array3D(*CaveBiomeMapFragment),
 	surfaceFragments: [4]*MapFragment,
 	pos: ChunkPosition,
 	width: i32,
 	allocator: NeverFailingAllocator,
 
-	pub fn init(allocator: main.heap.NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) InterpolatableCaveBiomeMapView {
+	pub fn init(allocator: main.heap.NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) CaveBiomeMapView {
 		const center = Vec3i{
 			pos.wx +% width/2,
 			pos.wy +% width/2,
@@ -153,7 +152,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		const marginDiv = 1024;
 		const marginMul: comptime_int = @reduce(.Max, @abs(comptime CaveBiomeMapFragment.rotate(.{marginDiv, marginDiv, marginDiv})));
 		const caveBiomeFragmentWidth = 1 + (width + margin + CaveBiomeMapFragment.caveBiomeMapSize)*marginMul/marginDiv/CaveBiomeMapFragment.caveBiomeMapSize;
-		var result = InterpolatableCaveBiomeMapView{
+		var result: CaveBiomeMapView = .{
 			.fragments = Array3D(*CaveBiomeMapFragment).init(allocator, caveBiomeFragmentWidth, caveBiomeFragmentWidth, caveBiomeFragmentWidth),
 			.surfaceFragments = [_]*MapFragment{
 				SurfaceMap.getOrGenerateFragment(center[0] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
@@ -182,7 +181,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return result;
 	}
 
-	pub fn deinit(self: InterpolatableCaveBiomeMapView) void {
+	pub fn deinit(self: CaveBiomeMapView) void {
 		self.fragments.deinit(self.allocator);
 	}
 
@@ -248,7 +247,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 
 	const CaveBiomesResult = struct { worldPos: Vec3i, biome: *const Biome };
 
-	pub fn getCaveBiomesInRange(self: InterpolatableCaveBiomeMapView, allocator: NeverFailingAllocator, min: Vec3i, max: Vec3i) []CaveBiomesResult {
+	pub fn getCaveBiomesInRange(self: CaveBiomeMapView, allocator: NeverFailingAllocator, min: Vec3i, max: Vec3i) []CaveBiomesResult {
 		var list: main.ListUnmanaged(CaveBiomesResult) = .{};
 
 		for (self.fragments.mem) |map| {
@@ -278,7 +277,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return list.toOwnedSlice(allocator);
 	}
 
-	pub fn bulkInterpolateValue(self: InterpolatableCaveBiomeMapView, comptime field: []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, map: Array3D(f32), comptime mode: enum { addToMap }, comptime scale: f32) void {
+	pub fn bulkInterpolateValue(self: CaveBiomeMapView, comptime field: []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, map: Array3D(f32), comptime mode: enum { addToMap }, comptime scale: f32) void {
 		var x: u31 = 0;
 		while (x < map.width) : (x += 1) {
 			var y: u31 = 0;
@@ -296,7 +295,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		}
 	}
 
-	pub noinline fn interpolateValue(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime field: []const u8) f32 {
+	pub noinline fn interpolateValue(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime field: []const u8) f32 {
 		const worldPos = CaveBiomeMapFragment.rotate(.{wx, wy, wz});
 		const closestGridpoint0 = (worldPos +% @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2))) & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)));
 		const distance0 = worldPos -% closestGridpoint0;
@@ -326,7 +325,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 	}
 
 	/// On failure returnHeight contains the lower border of the terrain height.
-	fn checkSurfaceBiomeWithHeight(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, returnHeight: *i32) ?*const Biome {
+	fn checkSurfaceBiomeWithHeight(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, returnHeight: *i32) ?*const Biome {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
@@ -344,7 +343,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return self.surfaceFragments[index].getBiome(wx, wy);
 	}
 
-	fn checkSurfaceBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) ?*const Biome {
+	fn checkSurfaceBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32) ?*const Biome {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
@@ -357,7 +356,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return self.surfaceFragments[index].getBiome(wx, wy);
 	}
 
-	pub fn getSurfaceHeight(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32) i32 {
+	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) i32 {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
@@ -368,7 +367,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return self.surfaceFragments[index].getHeight(wx, wy);
 	}
 
-	pub fn getCaveBiomeOffset(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32) i16 {
+	pub fn getCaveBiomeOffset(self: CaveBiomeMapView, wx: i32, wy: i32) i16 {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
@@ -379,7 +378,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return self.surfaceFragments[index].getCaveBiomeOffset(wx, wy);
 	}
 
-	noinline fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
+	noinline fn _getBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
 		const indexX: usize = @intCast((wx -% self.fragments.mem[0].pos.wx) >> CaveBiomeMapFragment.caveBiomeMapShift);
 		const indexY: usize = @intCast((wy -% self.fragments.mem[0].pos.wy) >> CaveBiomeMapFragment.caveBiomeMapShift);
 		const indexZ: usize = @intCast((wz -% self.fragments.mem[0].pos.wz) >> CaveBiomeMapFragment.caveBiomeMapShift);
@@ -443,7 +442,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 	}
 
 	/// Useful when the rough biome location is enough, for example for music.
-	pub noinline fn getRoughBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64, comptime _checkSurfaceBiome: bool) *const Biome {
+	pub noinline fn getRoughBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64, comptime _checkSurfaceBiome: bool) *const Biome {
 		if (_checkSurfaceBiome) {
 			if (self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 				return surfaceBiome;
@@ -461,7 +460,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 	}
 
 	/// returnHeight should contain an upper estimate for the biome size.
-	fn getRoughBiomeAndHeight(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64, comptime _checkSurfaceBiome: bool, returnHeight: *i32) *const Biome {
+	fn getRoughBiomeAndHeight(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64, comptime _checkSurfaceBiome: bool, returnHeight: *i32) *const Biome {
 		if (_checkSurfaceBiome) {
 			if (self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 				return surfaceBiome;
@@ -477,26 +476,6 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 
 		return self._getBiome(gridPoint[0], gridPoint[1], gridPoint[2], map);
 	}
-};
-
-pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
-	const CachedFractalNoise = terrain.noise.CachedFractalNoise;
-
-	super: InterpolatableCaveBiomeMapView,
-
-	pub fn init(allocator: NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) CaveBiomeMapView {
-		return .{
-			.super = InterpolatableCaveBiomeMapView.init(allocator, pos, width, margin),
-		};
-	}
-
-	pub fn deinit(self: CaveBiomeMapView) void {
-		self.super.deinit();
-	}
-
-	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) i32 {
-		return self.super.getSurfaceHeight(wx, wy);
-	}
 
 	pub fn getBiome(self: CaveBiomeMapView, relX: i32, relY: i32, relZ: i32) *const Biome {
 		return self.getBiomeAndSeed(relX, relY, relZ, false, undefined);
@@ -504,35 +483,35 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 	/// Also returns a seed that is unique for the corresponding biome position.
 	pub noinline fn getBiomeAndSeed(self: CaveBiomeMapView, relX: i32, relY: i32, relZ: i32, comptime getSeed: bool, seed: *u64) *const Biome {
-		std.debug.assert(relX >= -32 and relX < self.super.width + 32); // coordinate out of bounds
-		std.debug.assert(relY >= -32 and relY < self.super.width + 32); // coordinate out of bounds
-		std.debug.assert(relZ >= -32 and relZ < self.super.width + 32); // coordinate out of bounds
-		const wx = relX +% self.super.pos.wx;
-		const wy = relY +% self.super.pos.wy;
-		var wz = relZ +% self.super.pos.wz;
-		if (self.super.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
+		std.debug.assert(relX >= -32 and relX < self.width + 32); // coordinate out of bounds
+		std.debug.assert(relY >= -32 and relY < self.width + 32); // coordinate out of bounds
+		std.debug.assert(relZ >= -32 and relZ < self.width + 32); // coordinate out of bounds
+		const wx = relX +% self.pos.wx;
+		const wy = relY +% self.pos.wy;
+		var wz = relZ +% self.pos.wz;
+		if (self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 			return surfaceBiome;
 		}
-		wz +%= self.super.getCaveBiomeOffset(wx, wy);
+		wz +%= self.getCaveBiomeOffset(wx, wy);
 
-		return self.super.getRoughBiome(wx, wy, wz, getSeed, seed, false);
+		return self.getRoughBiome(wx, wy, wz, getSeed, seed, false);
 	}
 
 	/// Also returns a seed that is unique for the corresponding biome position.
 	/// returnHeight should contain an upper estimate for the biome size.
 	pub noinline fn getBiomeColumnAndSeed(self: CaveBiomeMapView, relX: i32, relY: i32, relZ: i32, comptime getSeed: bool, seed: *u64, returnHeight: *i32) *const Biome {
-		std.debug.assert(relX >= -32 and relX < self.super.width + 32); // coordinate out of bounds
-		std.debug.assert(relY >= -32 and relY < self.super.width + 32); // coordinate out of bounds
-		std.debug.assert(relZ >= -32 and relZ < self.super.width + 32); // coordinate out of bounds
-		const wx = relX +% self.super.pos.wx;
-		const wy = relY +% self.super.pos.wy;
-		var wz = relZ +% self.super.pos.wz;
-		if (self.super.checkSurfaceBiomeWithHeight(wx, wy, wz, returnHeight)) |surfaceBiome| {
+		std.debug.assert(relX >= -32 and relX < self.width + 32); // coordinate out of bounds
+		std.debug.assert(relY >= -32 and relY < self.width + 32); // coordinate out of bounds
+		std.debug.assert(relZ >= -32 and relZ < self.width + 32); // coordinate out of bounds
+		const wx = relX +% self.pos.wx;
+		const wy = relY +% self.pos.wy;
+		var wz = relZ +% self.pos.wz;
+		if (self.checkSurfaceBiomeWithHeight(wx, wy, wz, returnHeight)) |surfaceBiome| {
 			return surfaceBiome;
 		}
-		wz +%= self.super.getCaveBiomeOffset(wx, wy);
+		wz +%= self.getCaveBiomeOffset(wx, wy);
 
-		return self.super.getRoughBiomeAndHeight(wx, wy, wz, getSeed, seed, false, returnHeight);
+		return self.getRoughBiomeAndHeight(wx, wy, wz, getSeed, seed, false, returnHeight);
 	}
 };
 

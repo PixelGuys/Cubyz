@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const terrain = main.server.terrain;
-const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const vec = main.vec;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
@@ -41,7 +41,7 @@ pub const SdfModel = struct { // MARK: SdfModel
 		};
 	}
 
-	pub fn generate(self: SdfModel, sdf: main.utils.Array3D(f32), biomeMap: *const InterpolatableCaveBiomeMapView, interpolationSmoothness: main.utils.Array3D(f32), sdfPos: Vec3i, biomePos: Vec3i, seed: *u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
+	pub fn generate(self: SdfModel, sdf: main.utils.Array3D(f32), biomeMap: *const CaveBiomeMapView, interpolationSmoothness: main.utils.Array3D(f32), sdfPos: Vec3i, biomePos: Vec3i, seed: *u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
 		const amount: usize = @intFromFloat(@floor(self.minAmount + main.random.nextFloat(seed)*(self.maxAmount - self.minAmount) + main.random.nextFloat(seed)));
 		for (0..amount) |_| {
 			const offsetDir = blk: while (true) {

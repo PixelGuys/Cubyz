@@ -7,7 +7,7 @@ const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
-const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const FractalNoise3D = terrain.noise.FractalNoise3D;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
@@ -38,7 +38,7 @@ fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ:
 	return noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
 }
 
-fn generateSdf(map: *const CaveMapFragment, biomeMap: *const InterpolatableCaveBiomeMapView, output: Array3D(f32), interpolationSmoothness: Array3D(f32), voxelSize: u31, voxelSizeShift: u5, worldSeed: u64) void {
+fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, output: Array3D(f32), interpolationSmoothness: Array3D(f32), voxelSize: u31, voxelSizeShift: u5, worldSeed: u64) void {
 	@memset(output.mem, 1000);
 	const mapPos: Vec3i = .{map.pos.wx, map.pos.wy, map.pos.wz};
 	const margin: Vec3i = @splat(256 + perimeter + terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize);
@@ -55,7 +55,7 @@ fn generateSdf(map: *const CaveMapFragment, biomeMap: *const InterpolatableCaveB
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if (map.pos.voxelSize > 2) return;
-	const biomeMap = InterpolatableCaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, 0);
+	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, 0);
 	defer biomeMap.deinit();
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);

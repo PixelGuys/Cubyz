@@ -1165,9 +1165,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
-		const map = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1, 0);
+		const map = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1, 0);
 		defer map.deinit();
-		return map.getRoughBiome(wx, wy, wz, false, undefined, true);
+		return map.getBiome(wx - map.pos.wx, wy - map.pos.wy, wz - map.pos.wz);
 	}
 
 	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) ?Block {
