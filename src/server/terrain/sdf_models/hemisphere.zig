@@ -12,11 +12,13 @@ pub const id = "cubyz:hemisphere";
 
 minRadius: f32,
 maxRadius: f32,
+tallnessMult: f32,
 
 pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.minRadius = zon.get(f32, "minRadius", 16);
 	result.maxRadius = zon.get(f32, "maxRadius", result.minRadius);
+	result.tallnessMult = zon.get(f32, "tallnessMult", 1);
 	return result;
 }
 
@@ -26,8 +28,8 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 
 	const relPosF32: Vec3f = @floatFromInt(relPos);
 	const dimVector: Vec3f = @floatFromInt(@Vector(3, u32){output.width*voxelSize, output.depth*voxelSize, output.height*voxelSize});
-	const min = @max(@as(Vec3f, @splat(0)), relPosF32 - @as(Vec3f, @splat(radius + perimeter)));
-	const max = @min(dimVector, relPosF32 + @as(Vec3f, @splat(radius + perimeter)));
+	const min = @max(@as(Vec3f, @splat(0)), relPosF32 - @as(Vec3f, @splat(radius*self.tallnessMult + perimeter)));
+	const max = @min(dimVector, relPosF32 + @as(Vec3f, @splat(radius*self.tallnessMult + perimeter)));
 
 	const minInt: @Vector(3, u31) = @intFromFloat(min);
 	const maxInt: Vec3i = @intFromFloat(@ceil(max));
@@ -38,7 +40,10 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 		while (y < maxInt[1]) : (y += voxelSize) {
 			var z = minInt[2] & ~(voxelSize - 1);
 			while (z < maxInt[2]) : (z += voxelSize) {
-				const distanceSquare: f32 = @floatFromInt((x - relPos[0])*(x - relPos[0]) + (y - relPos[1])*(y - relPos[1]) + (z - relPos[2])*(z - relPos[2]));
+				const xDifference: f32 = @floatFromInt(x - relPos[0]);
+				const yDifference: f32 = @floatFromInt(y - relPos[1]);
+				const zDifference: f32 = @floatFromInt(z - relPos[2]);
+				const distanceSquare: f32 = (xDifference*xDifference + yDifference*yDifference + zDifference*zDifference/(self.tallnessMult*self.tallnessMult));
 				if (distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
 				if (@as(f32, @floatFromInt(relPos[2] - z)) > perimeter) continue;
 
