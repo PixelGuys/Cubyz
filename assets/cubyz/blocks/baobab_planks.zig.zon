@@ -13,7 +13,7 @@
 			.modifiers = .{
 				.{
 					.id = "durable",
-					.strength = 0.4,
+					.strength = 0.25,
 				},
 			},
 		},
