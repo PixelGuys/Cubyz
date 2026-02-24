@@ -28,7 +28,7 @@ pub fn init(parameters: ZonElement) void {
 
 pub fn deinit() void {}
 
-const scale = 16;
+const noiseScale = 16;
 const interpolatedPart = 4;
 
 const smoothness = 4;
@@ -60,7 +60,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
-	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed ^ 4329561871, scale);
+	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed ^ 4329561871, noiseScale);
 	defer noise.deinit(main.stackAllocator);
 
 	const output = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
@@ -76,7 +76,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	@memset(biomeNoiseStrength.mem, 0);
 	biomeMap.bulkInterpolateValue("caveNoiseStrength", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, biomeNoiseStrength, .addToMap, 1);
 	for (noise.mem, output.mem, biomeNoiseStrength.mem) |*val, sdfVal, noiseStrength| {
-		val.* = val.*/scale*noiseStrength + sdfVal;
+		val.* = val.*/noiseScale*noiseStrength + sdfVal;
 	}
 
 	var x: u31 = 0;

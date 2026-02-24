@@ -2,9 +2,11 @@
 	.isCave = true,
 	.maxHeight = 0,
 	.minHeight = -48250,
+
 	.fogDensity = 2,
 	.caveNoiseStrength = 10,
 	.music = "cubyz:heart-of-the-beast",
+
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
