@@ -30,8 +30,8 @@
 			},
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.10,
+					.id = "durable",
+					.strength = 0.35,
 				},
 			},
 		},

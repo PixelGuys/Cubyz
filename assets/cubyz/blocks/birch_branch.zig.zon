@@ -24,17 +24,14 @@
 			.massDamage = 0.45,
 			.hardnessDamage = 0.45,
 			.swingSpeed = 6.9,
-			.density = 0.3,
-			.elasticity = 3.5,
-			.hardness = 1.25,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xffb8aa9e, 0xffd0c2b5, 0xffeedfd0, 0xfffff6ed, 0xffeedfd0,
 			},
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.10,
+					.id = "durable",
+					.strength = 0.35,
 				},
 			},
 		},
