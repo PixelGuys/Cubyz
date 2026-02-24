@@ -16,7 +16,7 @@ const Vec3i = vec.Vec3i;
 
 pub const id = "cubyz:sdf_cave";
 
-pub const priority = 65536;
+pub const priority = 32768;
 
 pub const generatorSeed = 0x76490367012869;
 
@@ -82,7 +82,6 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 		val.* = val.*/scale*noiseStrength + sdfVal;
 	}
 
-	// TODO: biomeMap.bulkInterpolateValue("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, scale);
 	var x: u31 = 0;
 	while (x < map.pos.voxelSize*CaveMapFragment.width) : (x += outerSize) {
 		var y: u31 = 0;

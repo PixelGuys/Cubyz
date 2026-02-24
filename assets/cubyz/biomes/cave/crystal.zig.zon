@@ -3,7 +3,6 @@
 	.maxHeight = -512,
 	.minHeight = -48250,
 	.chance = 0.2,
-	.caves = -0.1,
 	.crystals = 32,
 	.music = "cubyz:la_kubisa_caverna",
 	.stoneBlock = "cubyz:slate/base",

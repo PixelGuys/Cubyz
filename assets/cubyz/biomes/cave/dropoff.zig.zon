@@ -20,5 +20,13 @@
 			.minRadius = 15,
 			.maxRadius = 25,
 		},
+		.{
+			.id = "cubyz:sphere",
+			.minAmount = 0.1,
+			.maxAmount = 0.1,
+			.minRadius = 80,
+			.maxRadius = 80,
+			.maxBiomeCenterDistance = 0,
+		},
 	},
 }
