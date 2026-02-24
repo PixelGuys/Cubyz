@@ -502,7 +502,7 @@ pub const User = struct { // MARK: User
 		if (zon != .array) return;
 
 		for (zon.toSlice()) |item| {
-			const groupName = item.get([]const u8, "name", "");
+			const groupName = item.get(?[]const u8, "name", null) orelse continue;
 			const group = permission.getGroup(groupName) catch continue;
 			if (group.id != item.get(u32, "id", 0)) continue;
 			self.addToGroup(groupName) catch unreachable;
