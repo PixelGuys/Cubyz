@@ -1,4 +1,11 @@
 .{
+	.{.old = "baobab_fence", .new = "fence/baobab"},
+	.{.old = "birch_fence", .new = "fence/birch"},
+	.{.old = "mahogany_fence", .new = "fence/mahogany"},
+	.{.old = "oak_fence", .new = "fence/oak"},
+	.{.old = "palm_fence", .new = "fence/palm"},
+	.{.old = "pine_fence", .new = "fence/pine"},
+	.{.old = "willow_fence", .new = "fence/willow"},
 	.{.old = "glow_crystal/dark_gray", .new = "glow_crystal/grey"},
 	.{.old = "glow_crystal/dark_green", .new = "glow_crystal/viridian"},
 	.{.old = "glow_crystal/dark_red", .new = "glow_crystal/crimson"},

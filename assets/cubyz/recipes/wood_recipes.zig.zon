@@ -17,7 +17,7 @@
 	},
 	.{
 		.inputs = .{"cubyz:{type}_planks"},
-		.output = "2 cubyz:{type}_fence",
+		.output = "2 cubyz:fence/{type}",
 	},
 	.{
 		.inputs = .{"cubyz:{type}_planks"},
