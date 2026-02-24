@@ -1,4 +1,11 @@
 .{
+	.{.old = "baobab_planks", .new = "planks/baobab"},
+	.{.old = "birch_planks", .new = "planks/birch"},
+	.{.old = "mahogany_planks", .new = "planks/mahogany"},
+	.{.old = "oak_planks", .new = "planks/oak"},
+	.{.old = "palm_planks", .new = "planks/palm"},
+	.{.old = "pine_planks", .new = "planks/pine"},
+	.{.old = "willow_planks", .new = "planks/willow"},
 	.{.old = "baobab_fence", .new = "fence/baobab"},
 	.{.old = "birch_fence", .new = "fence/birch"},
 	.{.old = "mahogany_fence", .new = "fence/mahogany"},
