@@ -17,4 +17,13 @@
 			.smoothness = 0.5,
 		},
 	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 10,
+			.maxAmount = 30,
+			.minRadius = 10,
+			.maxRadius = 20,
+		},
+	},
 }
