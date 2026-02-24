@@ -54,7 +54,6 @@
 			.maxAmount = 5,
 			.minRadius = 30,
 			.maxRadius = 40,
-			.maxBiomeCenterDistance = 100,
 		},
 	},
 }
