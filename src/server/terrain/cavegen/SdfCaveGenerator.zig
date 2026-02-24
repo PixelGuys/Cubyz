@@ -39,9 +39,7 @@ fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ:
 }
 
 fn generateSdf(map: *const CaveMapFragment, biomeMap: *const InterpolatableCaveBiomeMapView, output: Array3D(f32), interpolationSmoothness: Array3D(f32), voxelSize: u31, voxelSizeShift: u5, worldSeed: u64) void {
-	for (output.mem) |*val| {
-		val.* = 1000;
-	}
+	@memset(output.mem, 1000);
 	const mapPos: Vec3i = .{map.pos.wx, map.pos.wy, map.pos.wz};
 	const margin: Vec3i = @splat(256 + perimeter + terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize);
 	const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{CaveMapFragment.width, CaveMapFragment.width, CaveMapFragment.height});
@@ -67,7 +65,6 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 
 	const output = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
 	defer output.deinit(main.stackAllocator);
-	@memset(output.mem, 1000);
 	const biomeSmoothness = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
 	defer biomeSmoothness.deinit(main.stackAllocator);
 	@memset(biomeSmoothness.mem, 0);

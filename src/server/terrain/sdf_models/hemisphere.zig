@@ -26,7 +26,8 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 
 	const relPosF32: Vec3f = @floatFromInt(relPos);
 	const dimVector: Vec3f = @floatFromInt(@Vector(3, u32){output.width*voxelSize, output.depth*voxelSize, output.height*voxelSize});
-	const min = @max(@as(Vec3f, @splat(0)), relPosF32 - @as(Vec3f, @splat(radius + perimeter)));
+	var min = @max(@as(Vec3f, @splat(0)), relPosF32 - @as(Vec3f, @splat(radius + perimeter)));
+	min[2] = @max(min[2], relPosF32[2] - perimeter);
 	const max = @min(dimVector, relPosF32 + @as(Vec3f, @splat(radius + perimeter)));
 
 	const minInt: @Vector(3, u31) = @intFromFloat(min);
@@ -40,7 +41,6 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 			while (z < maxInt[2]) : (z += voxelSize) {
 				const distanceSquare: f32 = @floatFromInt((x - relPos[0])*(x - relPos[0]) + (y - relPos[1])*(y - relPos[1]) + (z - relPos[2])*(z - relPos[2]));
 				if (distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
-				if (@as(f32, @floatFromInt(relPos[2] - z)) > perimeter) continue;
 
 				const sphereSdf = @sqrt(distanceSquare) - radius;
 				const fullSdf: f32 = sdf.intersection(sphereSdf, @as(f32, @floatFromInt(relPos[2] - z)));
