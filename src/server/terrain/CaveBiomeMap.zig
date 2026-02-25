@@ -185,12 +185,6 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		self.fragments.deinit(self.allocator);
 	}
 
-	fn rotate231(in: Vec3i) Vec3i {
-		return @shuffle(i32, in, undefined, Vec3i{1, 2, 0});
-	}
-	fn rotate312(in: Vec3i) Vec3i {
-		return @shuffle(i32, in, undefined, Vec3i{2, 0, 1});
-	}
 	fn argMaxDistance0(distance: Vec3i) u2 {
 		const absDistance = @abs(distance);
 		if (absDistance[0] > absDistance[1]) {
@@ -250,13 +244,24 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	pub fn getCaveBiomesInRange(self: CaveBiomeMapView, allocator: NeverFailingAllocator, min: Vec3i, max: Vec3i) []CaveBiomesResult {
 		var list: main.ListUnmanaged(CaveBiomesResult) = .{};
 
+		var minRotated: Vec3i = CaveBiomeMapFragment.rotate(min);
+		var maxRotated: Vec3i = min;
+		for (1..8) |i| {
+			const in = @select(i32, @as(@Vector(3, bool), @bitCast(@as(u3, @intCast(i)))), max, min);
+			minRotated = @min(minRotated, CaveBiomeMapFragment.rotate(in));
+			maxRotated = @max(maxRotated, CaveBiomeMapFragment.rotate(in));
+		}
+
+		minRotated = minRotated & ~@as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeMask));
+		maxRotated = maxRotated + @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeMask)) & ~@as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeMask));
+
 		for (self.fragments.mem) |map| {
-			var x: u31 = 0;
-			while (x < CaveBiomeMapFragment.caveBiomeMapSize) : (x += CaveBiomeMapFragment.caveBiomeSize) {
-				var y: u31 = 0;
-				while (y < CaveBiomeMapFragment.caveBiomeMapSize) : (y += CaveBiomeMapFragment.caveBiomeSize) {
-					var z: u31 = 0;
-					while (z < CaveBiomeMapFragment.caveBiomeMapSize) : (z += CaveBiomeMapFragment.caveBiomeSize) {
+			var x: u31 = @max(0, minRotated[0] -% map.pos.wx);
+			while (x < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[0] -% map.pos.wx)) : (x += CaveBiomeMapFragment.caveBiomeSize) {
+				var y: u31 = @max(0, minRotated[1] -% map.pos.wy);
+				while (y < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[1] -% map.pos.wy)) : (y += CaveBiomeMapFragment.caveBiomeSize) {
+					var z: u31 = @max(0, minRotated[2] -% map.pos.wz);
+					while (z < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[2] -% map.pos.wz)) : (z += CaveBiomeMapFragment.caveBiomeSize) {
 						const biomeWorldPos: [2]Vec3i = .{
 							CaveBiomeMapFragment.rotateInverse(.{map.pos.wx + x, map.pos.wy + y, map.pos.wz + z}),
 							CaveBiomeMapFragment.rotateInverse(.{map.pos.wx + x + CaveBiomeMapFragment.caveBiomeSize/2, map.pos.wy + y + CaveBiomeMapFragment.caveBiomeSize/2, map.pos.wz + z + CaveBiomeMapFragment.caveBiomeSize/2}),
@@ -277,25 +282,25 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		return list.toOwnedSlice(allocator);
 	}
 
-	pub fn bulkInterpolateValue(self: CaveBiomeMapView, comptime field: []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, map: Array3D(f32), comptime mode: enum { addToMap }, comptime scale: f32) void {
+	pub fn bulkInterpolateValues(self: CaveBiomeMapView, comptime fields: []const []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, maps: []const Array3D(f32)) void {
+		std.debug.assert(fields.len == maps.len);
 		var x: u31 = 0;
-		while (x < map.width) : (x += 1) {
+		while (x < maps[0].width) : (x += 1) {
 			var y: u31 = 0;
-			while (y < map.height) : (y += 1) {
+			while (y < maps[0].depth) : (y += 1) {
 				var z: u31 = 0;
-				while (z < map.depth) : (z += 1) {
-					switch (mode) {
-						.addToMap => {
-							// TODO: Do a tetrahedron voxelization here, so parts of the tetrahedral barycentric coordinates can be precomputed.
-							map.ptr(x, y, z).* += scale*interpolateValue(self, wx +% x*voxelSize, wy +% y*voxelSize, wz +% z*voxelSize, field);
-						},
+				while (z < maps[0].height) : (z += 1) {
+					// TODO: Do a tetrahedron voxelization here, so parts of the tetrahedral barycentric coordinates can be precomputed.
+					const result = interpolateValue(self, wx +% x*voxelSize, wy +% y*voxelSize, wz +% z*voxelSize, fields);
+					inline for (0..fields.len) |i| {
+						maps[i].ptr(x, y, z).* = result[i];
 					}
 				}
 			}
 		}
 	}
 
-	pub noinline fn interpolateValue(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime field: []const u8) f32 {
+	pub noinline fn interpolateValue(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime fields: []const []const u8) [fields.len]f32 {
 		const worldPos = CaveBiomeMapFragment.rotate(.{wx, wy, wz});
 		const closestGridpoint0 = (worldPos +% @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2))) & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)));
 		const distance0 = worldPos -% closestGridpoint0;
@@ -319,9 +324,13 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		const biome01 = self._getBiome(secondGridPoint0[0], secondGridPoint0[1], secondGridPoint0[2], 0);
 		const biome10 = self._getBiome(closestGridpoint1[0], closestGridpoint1[1], closestGridpoint1[2], 1);
 		const biome11 = self._getBiome(secondGridPoint1[0], secondGridPoint1[1], secondGridPoint1[2], 1);
-		const val0 = @field(biome00, field)*(1 - interp0) + @field(biome01, field)*interp0;
-		const val1 = @field(biome10, field)*(1 - interp1) + @field(biome11, field)*interp1;
-		return val0*(1 - interpFinal) + val1*interpFinal;
+		var result: [fields.len]f32 = undefined;
+		inline for (fields, 0..) |field, i| {
+			const val0 = @field(biome00, field)*(1 - interp0) + @field(biome01, field)*interp0;
+			const val1 = @field(biome10, field)*(1 - interp1) + @field(biome11, field)*interp1;
+			result[i] = val0*(1 - interpFinal) + val1*interpFinal;
+		}
+		return result;
 	}
 
 	/// On failure returnHeight contains the lower border of the terrain height.

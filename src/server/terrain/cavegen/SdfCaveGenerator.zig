@@ -60,21 +60,18 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
-	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed ^ 4329561871, noiseScale);
+	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, worldSeed ^ 4329561871, noiseScale);
 	defer noise.deinit(main.stackAllocator);
 
 	const output = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
 	defer output.deinit(main.stackAllocator);
 	const biomeSmoothness = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
 	defer biomeSmoothness.deinit(main.stackAllocator);
-	@memset(biomeSmoothness.mem, 0);
-	biomeMap.bulkInterpolateValue("caveSmoothness", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, biomeSmoothness, .addToMap, 1);
-	generateSdf(map, &biomeMap, output, biomeSmoothness, outerSize, outerSizeShift, worldSeed);
-
 	const biomeNoiseStrength = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
 	defer biomeNoiseStrength.deinit(main.stackAllocator);
-	@memset(biomeNoiseStrength.mem, 0);
-	biomeMap.bulkInterpolateValue("caveNoiseStrength", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, biomeNoiseStrength, .addToMap, 1);
+	biomeMap.bulkInterpolateValues(&.{"caveSmoothness", "caveNoiseStrength"}, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, &.{biomeSmoothness, biomeNoiseStrength});
+	generateSdf(map, &biomeMap, output, biomeSmoothness, outerSize, outerSizeShift, worldSeed);
+
 	for (noise.mem, output.mem, biomeNoiseStrength.mem) |*val, sdfVal, noiseStrength| {
 		val.* = val.*/noiseScale*noiseStrength + sdfVal;
 	}

@@ -23,7 +23,6 @@ pub const SdfModel = struct { // MARK: SdfModel
 
 	pub fn initModel(parameters: ZonElement) ?SdfModel {
 		const id = parameters.get([]const u8, "id", "");
-		std.log.info("inid {s}", .{id});
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find SDF model with id {s}", .{id});
 			return null;
