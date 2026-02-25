@@ -68,8 +68,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	var z: ?f64 = null;
 	var split = std.mem.splitScalar(u8, args, ' ');
 	while (split.next()) |arg| {
-		const hasPrefix = arg[0] == '~' or arg[0] == '^';
-		const numberPart = if (hasPrefix) arg[1..] else arg;
+		const numberPart = if (arg[0] == '~') arg[1..] else arg;
 		var num: f64 = std.fmt.parseFloat(f64, numberPart) catch {
 			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberPart});
 			return;
@@ -83,8 +82,6 @@ pub fn execute(args: []const u8, source: *User) void {
 			} else if (z == null) {
 				num += source.player.pos[2];
 			}
-		} else if (arg[0] == '^') {
-			
 		}
 
 		if (x == null) {
