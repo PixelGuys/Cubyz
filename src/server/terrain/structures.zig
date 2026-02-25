@@ -81,7 +81,7 @@ pub const StructureTable = struct {
 	pub fn init(self: *StructureTable, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const biome_tags = zon.getChild("biomeTags");
 		var tags_list = main.ListUnmanaged([]const u8){};
-		for(biome_tags.toSlice()) |tag| {
+		for (biome_tags.toSlice()) |tag| {
 			tags_list.append(main.globalAllocator, tag.toString(main.globalAllocator));
 		}
 
@@ -96,14 +96,14 @@ pub const StructureTable = struct {
 		var total_chance: f32 = 0;
 		defer structure_list.deinit(main.stackAllocator);
 
-		for(structures.toSlice()) |elem| {
-			if(SimpleStructureModel.initModel(elem)) |model| {
+		for (structures.toSlice()) |elem| {
+			if (SimpleStructureModel.initModel(elem)) |model| {
 				structure_list.append(main.stackAllocator, model);
 				total_chance += model.chance;
 			}
 		}
-		if(total_chance > 1) {
-			for(structure_list.items) |*model| {
+		if (total_chance > 1) {
+			for (structure_list.items) |*model| {
 				model.chance /= total_chance;
 			}
 		}
@@ -116,7 +116,7 @@ var structureTablesById: std.StringHashMap(StructureTable) = undefined;
 pub fn init() void {
 	structureTables = .init(main.globalAllocator);
 	structureTablesById = .init(main.globalAllocator.allocator);
-	for(structureTables.items) |structureTable| {
+	for (structureTables.items) |structureTable| {
 		structureTablesById.put(structureTable.id, structureTable) catch unreachable;
 	}
 }
@@ -127,8 +127,8 @@ pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
 	structureTables.append(structure_table);
 }
 pub fn hasRegistered(id: []const u8) bool {
-	for(structureTables.items) |entry| {
-		if(std.mem.eql(u8, id, entry.id)) {
+	for (structureTables.items) |entry| {
+		if (std.mem.eql(u8, id, entry.id)) {
 			return true;
 		}
 	}

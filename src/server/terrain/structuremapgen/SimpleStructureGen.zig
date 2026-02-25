@@ -189,7 +189,6 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 	}
 }
 
-
 pub const SimpleStructure = struct {
 	model: *const terrain.structures.SimpleStructureModel,
 	seed: u64,

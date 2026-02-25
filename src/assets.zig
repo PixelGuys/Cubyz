@@ -116,7 +116,6 @@ pub const Assets = struct {
 		std.log.info(
 			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints and {} particles",
 			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
-
 		);
 	}
 
@@ -415,7 +414,7 @@ fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
 }
 
 fn registerStructureTable(numericId: u32, stringId: []const u8, zon: ZonElement) void {
-	if(zon == .null) std.log.err("Missing StructureTable: {s}. Will not replace.", .{stringId});
+	if (zon == .null) std.log.err("Missing StructureTable: {s}. Will not replace.", .{stringId});
 	main.server.terrain.structures.register(stringId, numericId, zon);
 }
 fn registerRecipesFromZon(zon: ZonElement) void {
@@ -527,7 +526,7 @@ pub const Palette = struct { // MARK: Palette
 var loadedAssets: bool = false;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, structureTablePalette: *Palette) !void { // MARK: loadWorldAssets()
-	if(loadedAssets) return; // The assets already got loaded by the server.
+	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
 	main.Tag.initTags();
@@ -658,16 +657,16 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	while (iterator.next()) |entry| {
 		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
-	
+
 	// StructureTables:
 	var nextStructureTableNumericId: u32 = 0;
-	for(structureTablePalette.palette.items) |id| {
+	for (structureTablePalette.palette.items) |id| {
 		registerStructureTable(nextStructureTableNumericId, id, worldAssets.structureTables.get(id) orelse .null);
 		nextStructureTableNumericId += 1;
 	}
 	iterator = worldAssets.structureTables.iterator();
-	while(iterator.next()) |entry| {
-		if(main.server.terrain.structures.hasRegistered(entry.key_ptr.*)) continue;
+	while (iterator.next()) |entry| {
+		if (main.server.terrain.structures.hasRegistered(entry.key_ptr.*)) continue;
 		registerStructureTable(nextStructureTableNumericId, entry.key_ptr.*, entry.value_ptr.*);
 		structureTablePalette.add(entry.key_ptr.*);
 		nextStructureTableNumericId += 1;

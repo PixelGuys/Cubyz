@@ -261,8 +261,8 @@ pub const Biome = struct { // MARK: Biome
 		const maxRadius = zon.get(f32, "maxRadius", minRadius);
 		const biome_tags = zon.getChild("biomeTags");
 		var tags_list = main.ListUnmanaged([]const u8){};
-		if(biome_tags.toSlice().len > 0) {
-			for(biome_tags.toSlice()) |tag| {
+		if (biome_tags.toSlice().len > 0) {
+			for (biome_tags.toSlice()) |tag| {
 				tags_list.append(main.globalAllocator, tag.toString(main.globalAllocator));
 			}
 		}
@@ -345,37 +345,37 @@ pub const Biome = struct { // MARK: Biome
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		// Add structures from the biome's internal structure table
-		for(structures.toSlice()) |elem| {
-			if(SimpleStructureModel.initModel(elem)) |model| {
+		for (structures.toSlice()) |elem| {
+			if (SimpleStructureModel.initModel(elem)) |model| {
 				vegetation.append(main.stackAllocator, model);
 				totalChance += model.chance;
 			}
 		}
 		// Add structures from structure tables outside of the biome's internal table.
 		const structure_tables = main.server.terrain.structures.getSlice();
-		for(structure_tables) |table| {
+		for (structure_tables) |table| {
 			std.log.debug("structure table biomeTags len: {}", .{table.biomeTags.len});
-			if(self.biomeTags.len > 0) {
+			if (self.biomeTags.len > 0) {
 				std.log.debug("Biome tags len: {}", .{self.biomeTags.len});
-				for(self.biomeTags) |tag| {
-					for(table.biomeTags) |st_tag| {
-						if(std.mem.eql(u8, tag, st_tag)) {
-							for(table.structures) |model| {
+				for (self.biomeTags) |tag| {
+					for (table.biomeTags) |st_tag| {
+						if (std.mem.eql(u8, tag, st_tag)) {
+							for (table.structures) |model| {
 								vegetation.append(main.stackAllocator, model);
 								totalChance += model.chance;
 							}
 						}
 					}
 				}
-			} else if(table.biomeTags.len == 0) {
-				for(table.structures) |model| {
+			} else if (table.biomeTags.len == 0) {
+				for (table.structures) |model| {
 					vegetation.append(main.stackAllocator, model);
 					totalChance += model.chance;
 				}
 			}
 		}
-		if(totalChance > 1) {
-			for(vegetation.items) |*model| {
+		if (totalChance > 1) {
+			for (vegetation.items) |*model| {
 				model.chance /= totalChance;
 			}
 		}

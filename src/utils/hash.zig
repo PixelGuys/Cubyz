@@ -7,7 +7,7 @@ const StructureTable = Structures.StructureTable;
 
 pub fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
-	return switch(@typeInfo(T)) {
+	return switch (@typeInfo(T)) {
 		.bool => hashCombine(hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
 		.@"enum" => hashCombine(hashInt(@as(u64, @intFromEnum(input))), 0x94d049bb133111eb),
 		.int, .float => blk: {
@@ -15,11 +15,11 @@ pub fn hashGeneric(input: anytype) u64 {
 			break :blk hashInt(@as(u64, value));
 		},
 		.@"struct" => blk: {
-			if(@hasDecl(T, "getHash")) {
+			if (@hasDecl(T, "getHash")) {
 				break :blk input.getHash();
 			}
 			var result: u64 = hashGeneric(@typeName(T));
-			inline for(@typeInfo(T).@"struct".fields) |field| {
+			inline for (@typeInfo(T).@"struct".fields) |field| {
 				const keyHash = hashGeneric(@as([]const u8, field.name));
 				const valueHash = hashGeneric(@field(input, field.name));
 				const keyValueHash = hashCombine(keyHash, valueHash);
@@ -27,19 +27,19 @@ pub fn hashGeneric(input: anytype) u64 {
 			}
 			break :blk result;
 		},
-		.optional => if(input) |_input| hashGeneric(_input) else 0,
-		.pointer => switch(@typeInfo(T).pointer.size) {
+		.optional => if (input) |_input| hashGeneric(_input) else 0,
+		.pointer => switch (@typeInfo(T).pointer.size) {
 			.one => blk: {
-				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
-				if(@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
-				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
-				if(@typeInfo(T).pointer.child == Structures) return hashGeneric(input.id);
-				if(@typeInfo(T).pointer.child == StructureTable) return hashGeneric(input.id);
+				if (@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
+				if (@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
+				if (@typeInfo(T).pointer.child == anyopaque) break :blk 0;
+				if (@typeInfo(T).pointer.child == Structures) return hashGeneric(input.id);
+				if (@typeInfo(T).pointer.child == StructureTable) return hashGeneric(input.id);
 				break :blk hashGeneric(input.*);
 			},
 			.slice => blk: {
 				var result: u64 = hashInt(input.len);
-				for(input) |val| {
+				for (input) |val| {
 					const valueHash = hashGeneric(val);
 					result = hashCombine(result, valueHash);
 				}
@@ -49,7 +49,7 @@ pub fn hashGeneric(input: anytype) u64 {
 		},
 		.array => blk: {
 			var result: u64 = 0xbf58476d1ce4e5b9;
-			for(input) |val| {
+			for (input) |val| {
 				const valueHash = hashGeneric(val);
 				result = hashCombine(result, valueHash);
 			}
@@ -57,7 +57,7 @@ pub fn hashGeneric(input: anytype) u64 {
 		},
 		.vector => blk: {
 			var result: u64 = 0x94d049bb133111eb;
-			inline for(0..@typeInfo(T).vector.len) |i| {
+			inline for (0..@typeInfo(T).vector.len) |i| {
 				const valueHash = hashGeneric(input[i]);
 				result = hashCombine(result, valueHash);
 			}
