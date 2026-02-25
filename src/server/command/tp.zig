@@ -4,7 +4,7 @@ const main = @import("main");
 const User = main.server.User;
 
 pub const description = "Teleport to location.";
-pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
+pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp ~<x> ~<y> ~<z>\n/tp ^<x> ^<y> ^<z>\n/tp <biome>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (std.mem.containsAtLeast(u8, args, 1, ":")) {
@@ -68,10 +68,25 @@ pub fn execute(args: []const u8, source: *User) void {
 	var z: ?f64 = null;
 	var split = std.mem.splitScalar(u8, args, ' ');
 	while (split.next()) |arg| {
-		const num: f64 = std.fmt.parseFloat(f64, arg) catch {
-			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
+		const hasPrefix = arg[0] == '~' or arg[0] == '^';
+		const numberPart = if (hasPrefix) arg[1..] else arg;
+		var num: f64 = std.fmt.parseFloat(f64, numberPart) catch {
+			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberPart});
 			return;
 		};
+
+		if (arg[0] == '~') {
+			if (x == null) {
+				num += source.player.pos[0];
+			} else if (y == null) {
+				num += source.player.pos[1];
+			} else if (z == null) {
+				num += source.player.pos[2];
+			}
+		} else if (arg[0] == '^') {
+			
+		}
+
 		if (x == null) {
 			x = num;
 		} else if (y == null) {
