@@ -1,0 +1,14 @@
+.{
+	.tags = .{.stone, .mineable},
+	.blockHealth = 40,
+	.blockResistance = 20,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:ore",
+	.model = "cubyz:cube",
+	.texture = "cubyz:meteorite_ore",
+	.item = .{
+		.texture = "raw_meteorite.png",
+	},
+}
