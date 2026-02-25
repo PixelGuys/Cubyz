@@ -7,6 +7,8 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const CheckBox = @import("../components/CheckBox.zig");
+const HorizontalList = @import("../components/HorizontalList.zig");
+const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window: GuiWindow = GuiWindow{
@@ -15,6 +17,7 @@ pub var window: GuiWindow = GuiWindow{
 };
 
 const padding: f32 = 8;
+var publicKeysZon: main.ZonElement = undefined;
 
 fn toggleStreamerMode(value: bool) void {
 	main.settings.streamerMode = value;
@@ -31,9 +34,25 @@ fn logout() void {
 	gui.openWindow("authentication/login");
 }
 
+fn copy(zon: *main.ZonElement) void {
+	main.Window.setClipboardString(zon.as(?[]const u8, null) orelse return);
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	list.add(CheckBox.init(.{0, 0}, 316, "Streamer Mode (hides sensitive data)", main.settings.streamerMode, &toggleStreamerMode));
+	publicKeysZon = main.network.authentication.KeyCollection.getPublicKeys(main.globalAllocator);
+	if (publicKeysZon == .object) {
+		list.add(Label.init(.{0, 0}, 200, "Your public keys:", .center));
+		var it = publicKeysZon.object.iterator();
+		while (it.next()) |entry| {
+			const row = HorizontalList.init();
+			const keyLabel = Label.init(.{0, 0}, 128, entry.key_ptr.*, .left);
+			row.add(keyLabel);
+			row.add(Button.initText(.{0, 0}, 70, "Copy", .initWithPtr(copy, entry.value_ptr)));
+			list.add(row);
+		}
+	}
 	if (main.game.world == null) {
 		list.add(Button.initText(.{0, 0}, 128, "Change Name", gui.openWindowCallback("change_name")));
 		list.add(Button.initText(.{0, 0}, 128, "Logout", .init(logout)));
@@ -45,6 +64,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
+	publicKeysZon.deinit(main.globalAllocator);
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
