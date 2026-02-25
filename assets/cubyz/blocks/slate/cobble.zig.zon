@@ -1,0 +1,5 @@
+.{
+	.model = "cubyz:cube",
+	.texture = "cubyz:slate/cobble",
+	.rotation = "cubyz:stairs",
+}

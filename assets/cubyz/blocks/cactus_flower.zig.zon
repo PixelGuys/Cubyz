@@ -17,4 +17,12 @@
 		.texture = "cactus_flower.png",
 	},
 	.lodReplacement = "cubyz:air",
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 0.2,
+		.damageType = .spiky,
+	},
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 }
