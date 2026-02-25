@@ -4,7 +4,7 @@ const main = @import("main");
 const User = main.server.User;
 
 pub const description = "Teleport to location.";
-pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp ~<x> ~<y> ~<z>\n/tp ^<x> ^<y> ^<z>\n/tp <biome>";
+pub const usage = "/tp <biome>\n/tp <x> <y>\n/tp <x> <y> <z>\nPut ~ before a coordinate to mark it as relative to your current position";
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (std.mem.containsAtLeast(u8, args, 1, ":")) {
@@ -68,10 +68,14 @@ pub fn execute(args: []const u8, source: *User) void {
 	var z: ?f64 = null;
 	var split = std.mem.splitScalar(u8, args, ' ');
 	while (split.next()) |arg| {
+		if (arg.len < 1) continue;
 		const numberPart = if (arg[0] == '~') arg[1..] else arg;
-		var num: f64 = std.fmt.parseFloat(f64, numberPart) catch {
-			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberPart});
-			return;
+		var num: f64 = 	std.fmt.parseFloat(f64, numberPart) catch blk: {
+			if (numberPart.len > 0) {
+				source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberPart});
+				return;
+			}
+			break :blk 0;
 		};
 
 		if (arg[0] == '~') {
