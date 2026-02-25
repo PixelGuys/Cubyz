@@ -668,6 +668,7 @@ pub const World = struct { // MARK: World
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
+		self.structureTablePalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
 		if (main.server.thread) |serverThread| {

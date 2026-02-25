@@ -354,9 +354,7 @@ pub const Biome = struct { // MARK: Biome
 		// Add structures from structure tables outside of the biome's internal table.
 		const structure_tables = main.server.terrain.structures.getSlice();
 		for (structure_tables) |table| {
-			std.log.debug("structure table biomeTags len: {}", .{table.biomeTags.len});
 			if (self.biomeTags.len > 0) {
-				std.log.debug("Biome tags len: {}", .{self.biomeTags.len});
 				for (self.biomeTags) |tag| {
 					for (table.biomeTags) |st_tag| {
 						if (std.mem.eql(u8, tag, st_tag)) {

@@ -82,11 +82,11 @@ pub const StructureTable = struct {
 		const biome_tags = zon.getChild("biomeTags");
 		var tags_list = main.ListUnmanaged([]const u8){};
 		for (biome_tags.toSlice()) |tag| {
-			tags_list.append(main.globalAllocator, tag.toString(main.globalAllocator));
+			tags_list.append(main.worldArena, tag.toString(main.worldArena));
 		}
 
 		self.* = .{
-			.id = main.globalAllocator.dupe(u8, id),
+			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
 			.biomeTags = tags_list.items,
 		};
@@ -107,26 +107,24 @@ pub const StructureTable = struct {
 				model.chance /= total_chance;
 			}
 		}
-		self.structures = main.globalAllocator.dupe(SimpleStructureModel, structure_list.items);
+		self.structures = main.worldArena.dupe(SimpleStructureModel, structure_list.items);
 	}
 };
 
-var structureTables: main.List(StructureTable) = undefined;
-var structureTablesById: std.StringHashMap(StructureTable) = undefined;
+var structureTables: main.ListUnmanaged(StructureTable) = .{};
+
 pub fn init() void {
-	structureTables = .init(main.globalAllocator);
-	structureTablesById = .init(main.globalAllocator.allocator);
-	for (structureTables.items) |structureTable| {
-		structureTablesById.put(structureTable.id, structureTable) catch unreachable;
-	}
+	structureTables = .{};
 }
 
 pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
 	var structure_table: StructureTable = undefined;
 	structure_table.init(id, paletteId, zon);
-	structureTables.append(structure_table);
+	structureTables.append(main.worldArena, structure_table);
+	std.log.debug("Registered structure table: {d: >5} '{s}'", .{paletteId, id});
 }
 pub fn hasRegistered(id: []const u8) bool {
+	if (structureTables.items.len == 0) return false;
 	for (structureTables.items) |entry| {
 		if (std.mem.eql(u8, id, entry.id)) {
 			return true;
@@ -135,16 +133,10 @@ pub fn hasRegistered(id: []const u8) bool {
 	return false;
 }
 
-pub fn getById(id: []const u8) StructureTable {
-	return structureTablesById.get(id) orelse {
-		std.log.err("Couldn't find structure table with id {s}. Replacing it with some other Structure table.", .{id});
-		return structureTables.items[0];
-	};
-}
 pub fn getSlice() []StructureTable {
 	return structureTables.items;
 }
 
-pub fn deinit() void {
-	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
+pub fn reset() void {
+	structureTables = .{};
 }

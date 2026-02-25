@@ -84,7 +84,7 @@ pub const Assets = struct {
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
-			.structureTableMigrations = self.structureTables.clone(allocator.allocator) catch unreachable,
+			.structureTableMigrations = self.structureTableMigrations.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.models = self.models.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
@@ -102,7 +102,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
-			addon.readAllZon(allocator, "structure_tables", true, &self.structureTables, &self.structureTableMigrations);
+			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, &self.structureTableMigrations);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
@@ -548,6 +548,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
 	migrations_zig.apply(.biome, biomePalette);
 
+	migrations_zig.registerAll(.structuretable, &worldAssets.structureTableMigrations);
+	migrations_zig.apply(.structuretable, structureTablePalette);
+
 	// models:
 	var modelIterator = worldAssets.models.iterator();
 	while (modelIterator.next()) |entry| {
@@ -719,6 +722,8 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	items_zig.reset();
 	migrations_zig.reset();
 	biomes_zig.reset();
+	migrations_zig.reset();
+	main.server.terrain.structures.reset();
 	migrations_zig.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
