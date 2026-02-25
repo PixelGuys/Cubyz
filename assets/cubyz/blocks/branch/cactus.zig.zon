@@ -34,6 +34,6 @@
 				0xff4f6923, 0xff687630, 0xff74842d, 0xff879b2e, 0xff74842d,
 			},
 		},
-		.texture = "cactus_arm.png",
+		.texture = "branch/cactus.png",
 	},
 }
