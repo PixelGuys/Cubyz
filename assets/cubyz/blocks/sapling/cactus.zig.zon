@@ -4,14 +4,11 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.onTick = .{
-		.type = .sapling,
-		.sbb = .{
-			.structure = "cubyz:tree/oak/white",
-			.placeMode = .degradable,
-			.chance = 0.03,
-		},
-	},
+	.onTick = .{.type = .sapling, .sbb = .{
+		.structure = "cubyz:cactus/saguaro",
+		.placeMode = .degradable,
+		.chance = 0.01,
+	}},
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,

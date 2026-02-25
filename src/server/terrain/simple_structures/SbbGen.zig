@@ -16,7 +16,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 pub const id = "cubyz:sbb";
 pub const generationMode = .floor;
 
-const SbbGen = @This();
+pub const SbbGen = @This();
 
 structureRef: *const sbb.StructureBuildingBlock,
 placeMode: Blueprint.PasteMode,
@@ -53,10 +53,10 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool, inGeneration: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.getInitialRotation(seed), chunk, seed, inGeneration);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, null, self.rotation.getInitialRotation(seed), chunk, seed, inGeneration);
 }
 
-fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64, inGeneration: bool) void {
+pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64, inGeneration: bool) void {
 	const blueprints = &(structure.getBlueprints(seed).* orelse return);
 
 	const origin = blueprints[0].originBlock;
