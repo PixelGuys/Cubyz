@@ -171,6 +171,17 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 			self.hovered = false;
 			draw.setColor(0x300000ff);
 			draw.rect(self.pos, self.size);
+		} else if(gui.hoveredItemSlot) |hoveredItemSlot| {
+			if(hoveredItemSlot.inventory.getItem(hoveredItemSlot.itemSlot)) |hoveredItem| {
+				const eql = switch(hoveredItem) {
+					.baseItem => |baseItem| item == .baseItem and item.baseItem == baseItem,
+					.tool => |tool| item == .tool and item.tool.type == tool.type,
+				};
+				if(eql) {
+					draw.setColor(0x111111ff);
+					draw.rect(self.pos, self.size);
+				}
+			}
 		}
 	}
 }
