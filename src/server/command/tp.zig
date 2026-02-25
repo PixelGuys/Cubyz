@@ -70,7 +70,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	while (split.next()) |arg| {
 		if (arg.len < 1) continue;
 		const numberPart = if (arg[0] == '~') arg[1..] else arg;
-		var num: f64 = 	std.fmt.parseFloat(f64, numberPart) catch blk: {
+		var num: f64 = std.fmt.parseFloat(f64, numberPart) catch blk: {
 			if (numberPart.len > 0) {
 				source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberPart});
 				return;
