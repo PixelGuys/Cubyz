@@ -20,6 +20,6 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const wy = params.chunk.super.pos.wy + params.blockPos.y;
 	const wz = params.chunk.super.pos.wz + params.blockPos.z;
 
-	_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, self.block);
+	_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, self.block, false);
 	return .handled;
 }

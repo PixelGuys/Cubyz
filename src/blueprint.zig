@@ -147,6 +147,7 @@ pub const Blueprint = struct {
 
 	pub const PasteFlags = struct {
 		preserveVoid: bool = false,
+		noUpdate: bool = false,
 	};
 
 	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
@@ -165,7 +166,7 @@ pub const Blueprint = struct {
 
 					const block = self.blocks.get(x, y, z);
 					if (block.typ != voidType or flags.preserveVoid)
-						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
+						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block, flags.noUpdate);
 				}
 			}
 		}

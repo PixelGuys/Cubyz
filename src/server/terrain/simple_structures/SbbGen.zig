@@ -76,7 +76,7 @@ pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, pla
 		pos[1] = chunk.super.pos.wy + pastePosition[1];
 		pos[2] = chunk.super.pos.wz + pastePosition[2];
 
-		rotated.blueprint.paste(pos, .{});
+		rotated.blueprint.paste(pos, .{.noUpdate = true});
 	}
 	for (rotated.childBlocks) |childBlock| {
 		const child = structure.getChildStructure(childBlock) orelse continue;
