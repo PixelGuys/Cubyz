@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const Tool = main.items.Tool;
 
-pub const Data = packed struct(u128) {strength: f32, pad: u96 = undefined};
+pub const Data = packed struct(u128) { strength: f32, pad: u96 = undefined };
 
 pub const priority = 1000;
 
@@ -24,5 +24,5 @@ pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.writer().print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{data.strength}) catch unreachable;
+	outString.print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{data.strength});
 }

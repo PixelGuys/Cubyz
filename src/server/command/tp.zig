@@ -7,13 +7,13 @@ pub const description = "Teleport to location.";
 pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 
 pub fn execute(args: []const u8, source: *User) void {
-	if(std.mem.containsAtLeast(u8, args, 1, ":")) {
+	if (std.mem.containsAtLeast(u8, args, 1, ":")) {
 		const biome = main.server.terrain.biomes.getById(args);
-		if(!std.mem.eql(u8, biome.id, args)) {
+		if (!std.mem.eql(u8, biome.id, args)) {
 			source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{args});
 			return;
 		}
-		if(biome.isCave) {
+		if (biome.isCave) {
 			source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 			return;
 		}
@@ -26,20 +26,20 @@ pub fn execute(args: []const u8, source: *User) void {
 		var dirChanges: usize = 1;
 		var dir: main.chunk.Neighbor = .dirNegX;
 		var stepsRemaining: usize = 1;
-		for(0..spiralLen) |_| {
+		for (0..spiralLen) |_| {
 			const map = main.server.terrain.ClimateMap.getOrGenerateFragment(wx, wy);
-			for(0..map.map.len) |_| {
+			for (0..map.map.len) |_| {
 				const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
 				const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
 				const sample = map.map[x][y];
-				if(sample.biome == biome) {
+				if (sample.biome == biome) {
 					const z = sample.height + sample.hills + sample.mountains + sample.roughness;
 					const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
-					main.network.Protocols.genericUpdate.sendTPCoordinates(source.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
+					main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
 					return;
 				}
 			}
-			switch(dir) {
+			switch (dir) {
 				.dirNegX => wx -%= mapSize,
 				.dirPosX => wx +%= mapSize,
 				.dirNegY => wy -%= mapSize,
@@ -47,8 +47,8 @@ pub fn execute(args: []const u8, source: *User) void {
 				else => unreachable,
 			}
 			stepsRemaining -= 1;
-			if(stepsRemaining == 0) {
-				switch(dir) {
+			if (stepsRemaining == 0) {
+				switch (dir) {
 					.dirNegX => dir = .dirNegY,
 					.dirPosX => dir = .dirPosY,
 					.dirNegY => dir = .dirPosX,
@@ -67,31 +67,31 @@ pub fn execute(args: []const u8, source: *User) void {
 	var y: ?f64 = null;
 	var z: ?f64 = null;
 	var split = std.mem.splitScalar(u8, args, ' ');
-	while(split.next()) |arg| {
+	while (split.next()) |arg| {
 		const num: f64 = std.fmt.parseFloat(f64, arg) catch {
 			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
 			return;
 		};
-		if(x == null) {
+		if (x == null) {
 			x = num;
-		} else if(y == null) {
+		} else if (y == null) {
 			y = num;
-		} else if(z == null) {
+		} else if (z == null) {
 			z = num;
 		} else {
 			source.sendMessage("#ff0000Too many arguments for command /tp", .{});
 			return;
 		}
 	}
-	if(x == null or y == null) {
+	if (x == null or y == null) {
 		source.sendMessage("#ff0000Too few arguments for command /tp", .{});
 		return;
 	}
-	if(z == null) {
+	if (z == null) {
 		z = source.player.pos[2];
 	}
 	x = std.math.clamp(x.?, -1e9, 1e9); // TODO: Remove after #310 is implemented
 	y = std.math.clamp(y.?, -1e9, 1e9);
 	z = std.math.clamp(z.?, -1e9, 1e9);
-	main.network.Protocols.genericUpdate.sendTPCoordinates(source.conn, .{x.?, y.?, z.?});
+	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{x.?, y.?, z.?});
 }

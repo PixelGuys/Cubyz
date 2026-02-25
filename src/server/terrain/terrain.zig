@@ -23,14 +23,19 @@ pub const StructureMap = @import("StructureMap.zig");
 
 pub const structure_building_blocks = @import("structure_building_blocks.zig");
 
+pub const sdf = @import("sdf.zig");
+
+pub const GeneratorState = enum { enabled, disabled };
+
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {
-	init: *const fn(parameters: ZonElement) void,
-	generate: *const fn(seed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
+	init: *const fn (parameters: ZonElement) void,
+	generate: *const fn (seed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
+	defaultState: GeneratorState,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(BlockGenerator) = .{};
 
@@ -40,26 +45,28 @@ pub const BlockGenerator = struct {
 			.generate = &GeneratorType.generate,
 			.priority = GeneratorType.priority,
 			.generatorSeed = GeneratorType.generatorSeed,
+			.defaultState = GeneratorType.defaultState,
 		};
 		generatorRegistry.put(main.globalAllocator.allocator, GeneratorType.id, self) catch unreachable;
 	}
 
 	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []BlockGenerator {
-		const list = allocator.alloc(BlockGenerator, generatorRegistry.size);
+		var list: main.ListUnmanaged(BlockGenerator) = .initCapacity(allocator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
-		var i: usize = 0;
-		while(iterator.next()) |generator| {
-			list[i] = generator.value_ptr.*;
-			list[i].init(settings.getChild(generator.key_ptr.*));
-			i += 1;
+		while (iterator.next()) |generatorEntry| {
+			const generator = generatorEntry.value_ptr.*;
+			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
+			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			generator.init(generatorSettings);
+			list.appendAssumeCapacity(generator);
 		}
 		const lessThan = struct {
 			fn lessThan(_: void, lhs: BlockGenerator, rhs: BlockGenerator) bool {
 				return lhs.priority < rhs.priority;
 			}
 		}.lessThan;
-		std.sort.insertion(BlockGenerator, list, {}, lessThan);
-		return list;
+		std.sort.insertion(BlockGenerator, list.items, {}, lessThan);
+		return list.toOwnedSlice(allocator);
 	}
 };
 
@@ -117,13 +124,21 @@ pub fn globalInit() void {
 	CaveBiomeMap.globalInit();
 	CaveMap.globalInit();
 	StructureMap.globalInit();
-	const list = @import("chunkgen/_list.zig");
-	inline for(@typeInfo(list).@"struct".decls) |decl| {
-		BlockGenerator.registerGenerator(@field(list, decl.name));
+	{
+		const list = @import("chunkgen/_list.zig");
+		inline for (@typeInfo(list).@"struct".decls) |decl| {
+			BlockGenerator.registerGenerator(@field(list, decl.name));
+		}
 	}
-	const t1 = std.time.milliTimestamp();
+	{
+		const list = @import("sdf_models/_list.zig");
+		inline for (@typeInfo(list).@"struct".decls) |decl| {
+			sdf.SdfModel.registerGenerator(@field(list, decl.name));
+		}
+	}
+	const t1 = main.timestamp();
 	noise.BlueNoise.load();
-	std.log.info("Blue noise took {} ms to load", .{std.time.milliTimestamp() -% t1});
+	std.log.info("Blue noise took {} ms to load", .{t1.durationTo(main.timestamp()).toMilliseconds()});
 }
 
 pub fn globalDeinit() void {

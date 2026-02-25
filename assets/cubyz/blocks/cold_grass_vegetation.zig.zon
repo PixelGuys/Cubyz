@@ -14,4 +14,7 @@
 		.texture = "cold_grass.png",
 	},
 	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 }

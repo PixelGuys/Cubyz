@@ -124,7 +124,7 @@ pub const ClientEntityManager = struct {
 	}
 
 	pub fn deinit() void {
-		for(entities.items()) |ent| {
+		for (entities.items()) |ent| {
 			ent.deinit(main.globalAllocator);
 		}
 		entities.deinit();
@@ -132,7 +132,7 @@ pub const ClientEntityManager = struct {
 	}
 
 	pub fn clear() void {
-		for(entities.items()) |ent| {
+		for (entities.items()) |ent| {
 			ent.deinit(main.globalAllocator);
 		}
 		entities.clearRetainingCapacity();
@@ -141,9 +141,9 @@ pub const ClientEntityManager = struct {
 
 	fn update() void {
 		main.utils.assertLocked(&mutex);
-		var time: i16 = @truncate(std.time.milliTimestamp() -% settings.entityLookback);
+		var time: i16 = @truncate(main.timestamp().toMilliseconds() -% settings.entityLookback);
 		time -%= timeDifference.difference.load(.monotonic);
-		for(entities.items()) |*ent| {
+		for (entities.items()) |*ent| {
 			ent.update(time, lastTime);
 		}
 		lastTime = time;
@@ -153,27 +153,36 @@ pub const ClientEntityManager = struct {
 		mutex.lock();
 		defer mutex.unlock();
 
-		for(entities.items()) |ent| {
-			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
+		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
+		const fontBaseSize = 128.0;
+		const fontMinScreenSize = 16.0;
+		const fontScreenSize = fontBaseSize*screenUnits;
+
+		for (entities.items()) |ent| {
+			if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
 				@floatCast(pos3d[1]),
-				@floatCast(pos3d[2] + 1.0),
+				@floatCast(pos3d[2] + 1.1),
 				1,
 			};
 
 			const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
 			const projectedPos = projMatrix.mulVec(rotatedPos);
-			if(projectedPos[2] < 0) continue;
+			if (projectedPos[2] < 0) continue;
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
-			graphics.draw.setColor(0xff000000);
+			const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
+			const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
+			graphics.draw.setColor(alpha << 24);
+
 			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
 			defer buf.deinit();
-			const size = buf.calculateLineBreaks(32, 1024);
-			buf.render(xCenter - size[0]/2, yCenter - size[1], 32);
+			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
+			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
+			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
 
@@ -188,8 +197,8 @@ pub const ClientEntityManager = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for(entities.items()) |ent| {
-			if(ent.id == game.Player.id) continue; // don't render local player
+		for (entities.items()) |ent| {
+			if (ent.id == game.Player.id) continue; // don't render local player
 
 			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
@@ -226,11 +235,11 @@ pub const ClientEntityManager = struct {
 	pub fn removeEntity(id: u32) void {
 		mutex.lock();
 		defer mutex.unlock();
-		for(entities.items(), 0..) |*ent, i| {
-			if(ent.id == id) {
+		for (entities.items(), 0..) |*ent, i| {
+			if (ent.id == id) {
 				ent.deinit(main.globalAllocator);
 				_ = entities.swapRemove(i);
-				if(i != entities.len) {
+				if (i != entities.len) {
 					entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
 					entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
 				}
@@ -244,7 +253,7 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 		timeDifference.addDataPoint(time);
 
-		for(entityData) |data| {
+		for (entityData) |data| {
 			const pos = [_]f64{
 				data.pos[0],
 				data.pos[1],
@@ -261,8 +270,8 @@ pub const ClientEntityManager = struct {
 				0,
 				0,
 			};
-			for(entities.items()) |*ent| {
-				if(ent.id == data.id) {
+			for (entities.items()) |*ent| {
+				if (ent.id == data.id) {
 					ent.updatePosition(&pos, &vel, time);
 					break;
 				}
