@@ -7,7 +7,6 @@ const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const biomes = terrain.biomes;
 const noise = terrain.noise;
-const structures = terrain.structures;
 const StructureMapFragment = terrain.StructureMap.StructureMapFragment;
 const SurfaceMap = terrain.SurfaceMap;
 const MapFragment = SurfaceMap.MapFragment;
