@@ -135,10 +135,10 @@ pub fn hasRegistered(id: []const u8) bool {
 	return false;
 }
 
-pub fn getById(id: []const u8) *const StructureTable {
+pub fn getById(id: []const u8) StructureTable {
 	return structureTablesById.get(id) orelse {
 		std.log.err("Couldn't find structure table with id {s}. Replacing it with some other Structure table.", .{id});
-		return &structureTables[0];
+		return structureTables.items[0];
 	};
 }
 pub fn getSlice() []StructureTable {
