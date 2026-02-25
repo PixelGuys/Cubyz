@@ -10,8 +10,7 @@ const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
-const structures_zig = @import("structures.zig");
-pub const SimpleStructureModel = structures_zig.SimpleStructureModel;
+pub const SimpleStructureModel = terrain.structures.SimpleStructureModel;
 
 const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
