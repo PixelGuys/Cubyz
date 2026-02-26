@@ -1,0 +1,51 @@
+.{
+	.minHeight = 96,
+	.maxHeight = 128,
+	.smoothBeaches = true,
+
+	.roughness = 10,
+	.mountains = 50,
+	.radius = 400,
+	.chance = 0,
+	.validPlayerSpawn = false,
+	.structures = .{
+		.{
+			.id = "cubyz:stalagmite",
+			.chance = 0.016,
+			.block = "cubyz:chalk/yellow",
+			.size = 12,
+			.size_variation = 10,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.chance = 0.2,
+			.block = "cubyz:chalk/yellow",
+			.size = 3,
+			.size_variation = 5,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:chalk/yellow",
+			.chance = 0.1,
+			.width = 6,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:chalk/lime",
+			.chance = 0.05,
+			.width = 6,
+			.variation = 2,
+			.depth = 3,
+			.smoothness = 0.8,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/sulfuric_crater/rim2",
+			.chance = 1.0,
+		},
+	},
+}
