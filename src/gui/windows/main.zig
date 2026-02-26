@@ -16,6 +16,7 @@ const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
+	.relativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.75}},
 	.closeable = false,
 	.hasBackground = false,
 	.showTitleBar = false,
@@ -23,23 +24,13 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var wordmark: Texture = undefined;
-
-pub fn init() void {
-	wordmark = Texture.initFromFile("assets/cubyz/ui/wordmark.png");
-}
-
-pub fn deinit() void {
-	wordmark.deinit();
-}
-
 fn exitGame() void {
 	main.Window.c.glfwSetWindowShouldClose(main.Window.window, main.Window.c.GLFW_TRUE);
 }
 pub fn onOpen() void {
+	main.gui.openWindow("wordmark");
+
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 2);
-	list.add(Icon.init(.{0, 0}, .{360, 104}, wordmark, false));
-	list.add(Icon.init(.{0, 0}, .{0, 64}, .{.textureID = 0}, false));
 	list.add(Button.initMainMenuText(.{0, 0}, 192, "Singleplayer", gui.openWindowCallback("save_selection")));
 	list.add(Button.initMainMenuText(.{0, 0}, 192, "Multiplayer", gui.openWindowCallback("multiplayer")));
 	list.add(Button.initMainMenuText(.{0, 0}, 192, "Settings", gui.openWindowCallback("settings")));
@@ -52,6 +43,8 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
+	main.gui.closeWindow("wordmark");
+
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
