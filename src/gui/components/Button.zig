@@ -122,7 +122,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: main.callbac
 }
 
 pub fn initMainMenuText(pos: Vec2f, width: f32, text: []const u8, onAction: main.callbacks.SimpleCallback) *Button {
-	const label = Label.init(undefined, width - 3*border, text, .center);
+	const label = Label.init(undefined, width - 3*border - 3*6, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
