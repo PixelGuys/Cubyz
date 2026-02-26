@@ -932,7 +932,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
-	Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
+	Player.crouching = main.Window.grabbed and KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
 	if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,
