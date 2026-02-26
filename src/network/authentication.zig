@@ -95,6 +95,15 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 		return result;
 	}
 
+	pub fn getPublicKey(allocator: NeverFailingAllocator, comptime keyType: KeyTypeEnum) []const u8 {
+		const bytes = if (@hasDecl(@TypeOf(@field(Storage, @tagName(keyType)).public_key), "toBytes"))
+			@field(Storage, @tagName(keyType)).public_key.toBytes()
+		else
+			@field(Storage, @tagName(keyType)).public_key.toUncompressedSec1();
+		var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
+		return allocator.dupe(u8, std.base64.standard.Encoder.encode(&base64, &bytes));
+	}
+
 	pub fn sign(writer: *BinaryWriter, typ: KeyTypeEnum, message: []const u8) void {
 		switch (typ) {
 			inline else => |_typ| {
