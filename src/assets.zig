@@ -327,19 +327,6 @@ fn createAssetStringID(
 		return error.InvalidId;
 	}
 
-	for (pathNoExtension) |char| {
-		switch (char) {
-			'_', 'a'...'z', '0'...'9', '/' => continue,
-			else => {
-				std.log.err(
-					"Invalid {s} asset name for addon '{s}' and subpath '{s}': Asset name must only contain lowercase letters 'a' - 'z', numbers '0' - '9', underscores '_' and path separators '/'.",
-					.{assetType, addonName, relativeFilePath},
-				);
-				return error.InvalidId;
-			},
-		}
-	}
-
 	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + pathNoExtension.len);
 
 	@memcpy(assetId[0..addonName.len], addonName);
@@ -351,6 +338,19 @@ fn createAssetStringID(
 			assetId[addonName.len + 1 + i] = '/';
 		} else {
 			assetId[addonName.len + 1 + i] = pathNoExtension[i];
+		}
+	}
+
+	for (assetId[addonName.len + 1 ..]) |char| {
+		switch (char) {
+			'_', 'a'...'z', '0'...'9', '/' => continue,
+			else => {
+				std.log.err(
+					"Invalid {s} asset name for addon '{s}' and subpath '{s}': Asset name must only contain lowercase letters 'a' - 'z', numbers '0' - '9', underscores '_' and path separators '/'.",
+					.{assetType, addonName, relativeFilePath},
+				);
+				return error.InvalidId;
+			},
 		}
 	}
 
