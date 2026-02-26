@@ -2,6 +2,7 @@
 
 layout(location = 0) out vec3 textureCoords;
 layout(location = 1) flat out vec3 light;
+layout(location = 2) flat out float alpha;
 
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionAndViewMatrix;
@@ -83,4 +84,5 @@ void main() {
 
 	float textureIndex = floor(particle.lifeRatio*particleType.animationFrames + particleType.startFrame);
 	textureCoords = vec3(uvPositions[vertexID], textureIndex);
+	alpha = particle.lifeRatio;
 }
