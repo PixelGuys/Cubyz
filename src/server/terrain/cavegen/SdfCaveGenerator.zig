@@ -16,7 +16,7 @@ const Vec3i = vec.Vec3i;
 
 pub const id = "cubyz:sdf_cave";
 
-pub const priority = 32768;
+pub const priority = 65536;
 
 pub const generatorSeed = 0x76490367012869;
 

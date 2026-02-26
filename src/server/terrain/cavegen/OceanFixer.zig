@@ -14,9 +14,9 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
-pub const id = "cubyz:surface";
+pub const id = "cubyz:ocean_fixer";
 
-pub const priority = 32768;
+pub const priority = 262144;
 
 pub const generatorSeed = 0x7658930674389;
 
@@ -36,8 +36,17 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 		var y: u31 = 0;
 		while (y < width) : (y += map.pos.voxelSize) {
 			const height = biomeMap.getSurfaceHeight(map.pos.wx + x, map.pos.wy + y);
+			const smallestHeight: i32 = @min(
+				biomeMap.getSurfaceHeight(map.pos.wx +% x +% 1, map.pos.wy +% y),
+				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y +% 1),
+				biomeMap.getSurfaceHeight(map.pos.wx +% x -% 1, map.pos.wy +% y),
+				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y -% 1),
+				height,
+			);
 			const relativeHeight: i32 = height -% map.pos.wz;
-			map.removeRange(x, y, relativeHeight, CaveMapFragment.height*map.pos.voxelSize);
+			if (smallestHeight < 1) { // Seal off caves that intersect the ocean floor.
+				map.addRange(x, y, smallestHeight -% map.pos.voxelSize -% map.pos.wz, relativeHeight);
+			}
 		}
 	}
 }
