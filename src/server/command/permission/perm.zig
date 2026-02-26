@@ -5,7 +5,7 @@ const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
 
-pub const description = "Performs changes on the permissions of the player or shows the if has permission for a specific permission path";
+pub const description = "Performs changes on the permissions of the player or a group. It also shows if the player or a group have permission for a specific permission path";
 pub const usage =
 	\\/perm add <whitelist/blacklist> <permissionPath>
 	\\/perm add <whitelist/blacklist> <groupName> <permissionPath>
