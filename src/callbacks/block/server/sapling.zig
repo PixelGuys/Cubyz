@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const Vec3i = main.vec.Vec3i;
-const sbbGen = main.server.terrain.biomes.SimpleStructures.SbbGen;
+const sbbGen = @import("../../../server/terrain/simple_structures/SbbGen.zig");
 const SimpleStructureModel = main.server.terrain.biomes.SimpleStructureModel;
 
 structures: main.ZonElement,
