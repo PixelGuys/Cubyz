@@ -8,11 +8,11 @@ pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (std.mem.containsAtLeast(u8, args, 1, ":")) {
-		const biome = main.server.terrain.biomes.getById(args);
-		if (!std.mem.eql(u8, biome.id, args)) {
+		if (!main.server.terrain.biomes.idExists(args)) {
 			source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{args});
 			return;
 		}
+		const biome = main.server.terrain.biomes.getById(args);
 		if (biome.isCave) {
 			source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 			return;
