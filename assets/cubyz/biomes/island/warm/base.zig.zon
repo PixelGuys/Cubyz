@@ -1,14 +1,7 @@
 .{
-	.chance = 0,
-	.properties = .{
-		.ocean,
-		.hot,
-	},
 	.minHeight = 5,
 	.maxHeight = 5,
-	.music = "cubyz:Sincerely",
 	.radius = 24,
-	.stoneBlock = "cubyz:sandstone/base",
 	.ground_structure = .{
 		"2 to 3 cubyz:sand",
 	},

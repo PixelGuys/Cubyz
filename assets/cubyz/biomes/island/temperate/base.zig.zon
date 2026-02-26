@@ -1,11 +1,6 @@
 .{
-	.chance = 0,
-	.properties = .{
-		.ocean,
-	},
 	.minHeight = 5,
 	.maxHeight = 5,
-	.music = "cubyz:Sincerely",
 	.radius = 24,
 	.soilCreep = 2,
 	.ground_structure = .{
