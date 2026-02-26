@@ -8,13 +8,11 @@ const Assets = main.assets.Assets;
 var blockMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 var itemMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 var biomeMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
-var structureTableMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 
 const MigrationType = enum {
 	block,
 	item,
 	biome,
-	structuretable,
 };
 
 pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZonMap) void {
@@ -23,7 +21,6 @@ pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZ
 		.block => &blockMigrations,
 		.item => &itemMigrations,
 		.biome => &biomeMigrations,
-		.structuretable => &structureTableMigrations,
 	};
 	var migrationIterator = migrations.iterator();
 	while (migrationIterator.next()) |migration| {
@@ -91,7 +88,6 @@ pub fn applySingle(comptime typ: MigrationType, assetName: []const u8) []const u
 		.block => blockMigrations,
 		.item => itemMigrations,
 		.biome => biomeMigrations,
-		.structuretable => structureTableMigrations,
 	};
 
 	const newAssetName = migrations.get(assetName) orelse return assetName;
@@ -104,7 +100,6 @@ pub fn apply(comptime typ: MigrationType, palette: *Palette) void {
 		.block => blockMigrations,
 		.item => itemMigrations,
 		.biome => biomeMigrations,
-		.structuretable => structureTableMigrations,
 	};
 	std.log.info("Applying {} migrations to {s} palette", .{migrations.count(), @tagName(typ)});
 
@@ -119,5 +114,4 @@ pub fn reset() void {
 	biomeMigrations = .{};
 	blockMigrations = .{};
 	itemMigrations = .{};
-	structureTableMigrations = .{};
 }

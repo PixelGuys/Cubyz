@@ -30,7 +30,6 @@ pub const Assets = struct {
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
 	structureTables: ZonHashMap,
-	structureTableMigrations: AddonNameToZonMap,
 	recipes: ZonHashMap,
 	models: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
@@ -48,7 +47,6 @@ pub const Assets = struct {
 			.biomes = .{},
 			.biomeMigrations = .{},
 			.structureTables = .{},
-			.structureTableMigrations = .{},
 			.recipes = .{},
 			.models = .{},
 			.structureBuildingBlocks = .{},
@@ -66,7 +64,6 @@ pub const Assets = struct {
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
 		self.structureTables.deinit(allocator.allocator);
-		self.structureTableMigrations.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.models.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
@@ -84,7 +81,6 @@ pub const Assets = struct {
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
-			.structureTableMigrations = self.structureTableMigrations.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.models = self.models.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
@@ -102,7 +98,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
-			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, &self.structureTableMigrations);
+			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
@@ -114,8 +110,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints and {} particles",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -367,7 +363,6 @@ fn createAssetStringID(
 }
 
 pub fn init() void {
-	main.server.terrain.structures.init();
 	biomes_zig.init();
 
 	common = .init();
@@ -547,9 +542,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
 	migrations_zig.apply(.biome, biomePalette);
-
-	migrations_zig.registerAll(.structuretable, &worldAssets.structureTableMigrations);
-	migrations_zig.apply(.structuretable, structureTablePalette);
 
 	// models:
 	var modelIterator = worldAssets.models.iterator();

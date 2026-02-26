@@ -10,6 +10,7 @@ const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
+const Tag = main.Tag;
 const StructureTable = terrain.structures.StructureTable;
 pub const SimpleStructureModel = terrain.structures.SimpleStructureModel;
 
@@ -254,18 +255,11 @@ pub const Biome = struct { // MARK: Biome
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
 	isValidPlayerSpawn: bool,
 	chance: f32,
-	biomeTags: [][]const u8,
+	tags: []const Tag,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
 		const maxRadius = zon.get(f32, "maxRadius", minRadius);
-		const biome_tags = zon.getChild("biomeTags");
-		var tags_list = main.ListUnmanaged([]const u8){};
-		if (biome_tags.toSlice().len > 0) {
-			for (biome_tags.toSlice()) |tag| {
-				tags_list.append(main.globalAllocator, tag.toString(main.globalAllocator));
-			}
-		}
 		self.* = Biome{
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
@@ -302,7 +296,7 @@ pub const Biome = struct { // MARK: Biome
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if (zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
-			.biomeTags = tags_list.items,
+			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
 		if (minRadius > maxRadius) {
 			std.log.err("Biome {s} has invalid radius range ({d}, {d})", .{self.id, minRadius, maxRadius});
@@ -351,25 +345,22 @@ pub const Biome = struct { // MARK: Biome
 				totalChance += model.chance;
 			}
 		}
-		// Add structures from structure tables outside of the biome's internal table.
 		const structure_tables = main.server.terrain.structures.getSlice();
-		for (structure_tables) |table| {
-			if (self.biomeTags.len > 0) {
-				for (self.biomeTags) |tag| {
-					for (table.biomeTags) |st_tag| {
-						if (std.mem.eql(u8, tag, st_tag)) {
-							for (table.structures) |model| {
-								vegetation.append(main.stackAllocator, model);
-								totalChance += model.chance;
-							}
-						}
+		next_table: for (structure_tables) |table| {
+			if (table.tags.len > 0) {
+				for (table.tags) |tableTag| {
+					var found_biomeTag: bool = false;
+					for (self.tags) |biomeTag| {
+						if (biomeTag == tableTag)
+							found_biomeTag = true;
 					}
+					if (!found_biomeTag)
+						continue :next_table;
 				}
-			} else if (table.biomeTags.len == 0) {
-				for (table.structures) |model| {
-					vegetation.append(main.stackAllocator, model);
-					totalChance += model.chance;
-				}
+			}
+			for (table.structures) |model| {
+				vegetation.append(main.stackAllocator, model);
+				totalChance += model.chance;
 			}
 		}
 		if (totalChance > 1) {

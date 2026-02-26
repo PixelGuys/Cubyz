@@ -6,6 +6,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ServerChunk = main.chunk.ServerChunk;
 const terrain = main.server.terrain;
 const Biome = main.server.terrain.biomes;
+const Tag = main.Tag;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -74,21 +75,15 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 pub const StructureTable = struct {
 	id: []const u8,
-	biomeTags: [][]const u8,
+	tags: []const Tag,
 	structures: []SimpleStructureModel = &.{},
 	paletteId: u32,
 
 	pub fn init(self: *StructureTable, id: []const u8, paletteId: u32, zon: ZonElement) void {
-		const biome_tags = zon.getChild("biomeTags");
-		var tags_list = main.ListUnmanaged([]const u8){};
-		for (biome_tags.toSlice()) |tag| {
-			tags_list.append(main.worldArena, tag.toString(main.worldArena));
-		}
-
 		self.* = .{
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
-			.biomeTags = tags_list.items,
+			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
 
 		const structures = zon.getChild("structures");
@@ -113,14 +108,10 @@ pub const StructureTable = struct {
 
 var structureTables: main.ListUnmanaged(StructureTable) = .{};
 
-pub fn init() void {
-	structureTables = .{};
-}
-
 pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
-	var structure_table: StructureTable = undefined;
-	structure_table.init(id, paletteId, zon);
-	structureTables.append(main.worldArena, structure_table);
+	var structureTable: StructureTable = undefined;
+	structureTable.init(id, paletteId, zon);
+	structureTables.append(main.worldArena, structureTable);
 	std.log.debug("Registered structure table: {d: >5} '{s}'", .{paletteId, id});
 }
 pub fn hasRegistered(id: []const u8) bool {
