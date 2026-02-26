@@ -17,7 +17,7 @@ pub var window: GuiWindow = GuiWindow{
 };
 
 const padding: f32 = 8;
-var publicKeysZon: main.ZonElement = undefined;
+var key: ?[]const u8 = null;
 
 fn toggleStreamerMode(value: bool) void {
 	main.settings.streamerMode = value;
@@ -34,24 +34,24 @@ fn logout() void {
 	gui.openWindow("authentication/login");
 }
 
-fn copy(zon: *main.ZonElement) void {
-	main.Window.setClipboardString(zon.as(?[]const u8, null) orelse return);
+fn copy() void {
+	main.Window.setClipboardString(key orelse return);
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	list.add(CheckBox.init(.{0, 0}, 316, "Streamer Mode (hides sensitive data)", main.settings.streamerMode, &toggleStreamerMode));
-	publicKeysZon = main.network.authentication.KeyCollection.getPublicKeys(main.globalAllocator);
-	if (publicKeysZon == .object) {
-		list.add(Label.init(.{0, 0}, 200, "Your public keys:", .center));
+	const publicKeysZon = main.network.authentication.KeyCollection.getPublicKeys(main.globalAllocator);
+	defer publicKeysZon.deinit(main.globalAllocator);
+	if (publicKeysZon == .object) key: {
 		var it = publicKeysZon.object.iterator();
-		while (it.next()) |entry| {
-			const row = HorizontalList.init();
-			const keyLabel = Label.init(.{0, 0}, 128, entry.key_ptr.*, .left);
-			row.add(keyLabel);
-			row.add(Button.initText(.{0, 0}, 70, "Copy", .initWithPtr(copy, entry.value_ptr)));
-			list.add(row);
-		}
+		const entry = it.next() orelse break :key;
+		key = main.globalAllocator.dupe(u8, entry.value_ptr.as(?[]const u8, null) orelse break :key);
+		const row = HorizontalList.init();
+		list.add(Label.init(.{0, 0}, 128, "Your public key", .left));
+		row.add(Label.init(.{0, 0}, 200, key.?, .left));
+		row.add(Button.initText(.{padding, 0}, 70, "Copy", .init(copy)));
+		list.add(row);
 	}
 	if (main.game.world == null) {
 		list.add(Button.initText(.{0, 0}, 128, "Change Name", gui.openWindowCallback("change_name")));
@@ -64,7 +64,8 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	publicKeysZon.deinit(main.globalAllocator);
+	if (key) |_key| main.globalAllocator.free(_key);
+	key = null;
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
