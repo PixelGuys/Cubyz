@@ -1,4 +1,6 @@
 .{
+	.{.old = "candy_cane/block", .new = "candy_cane_block"},
+	.{.old = "candy_cane/branch", .new = "branch/candy_cane"},
 	.{.old = "cactus_arm", .new = "branch/cactus"},
 	.{.old = "glimmergill_branch", .new = "branch/glimmergill"},
 	.{.old = "toadstool_branch", .new = "branch/toadstool"},
