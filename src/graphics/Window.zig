@@ -390,9 +390,7 @@ pub const Key = struct { // MARK: Key
 
 	pub fn getName(self: Key) []const u8 {
 		if (self.mouseButton == -1) {
-			const cName = c.glfwGetKeyName(self.key, self.scancode);
-			if (cName != null) return std.mem.span(cName);
-			return switch (self.key) {
+			const key_name = switch (self.key) {
 				c.GLFW_KEY_SPACE => "Space",
 				c.GLFW_KEY_GRAVE_ACCENT => "Grave Accent",
 				c.GLFW_KEY_ESCAPE => "Escape",
@@ -439,7 +437,23 @@ pub const Key = struct { // MARK: Key
 				c.GLFW_KEY_F23 => "F23",
 				c.GLFW_KEY_F24 => "F24",
 				c.GLFW_KEY_F25 => "F25",
+				c.GLFW_KEY_KP_0 => "Keypad 0",
+				c.GLFW_KEY_KP_1 => "Keypad 1",
+				c.GLFW_KEY_KP_2 => "Keypad 2",
+				c.GLFW_KEY_KP_3 => "Keypad 3",
+				c.GLFW_KEY_KP_4 => "Keypad 4",
+				c.GLFW_KEY_KP_5 => "Keypad 5",
+				c.GLFW_KEY_KP_6 => "Keypad 6",
+				c.GLFW_KEY_KP_7 => "Keypad 7",
+				c.GLFW_KEY_KP_8 => "Keypad 8",
+				c.GLFW_KEY_KP_9 => "Keypad 9",
+				c.GLFW_KEY_KP_DECIMAL => "Keypad .",
+				c.GLFW_KEY_KP_DIVIDE => "Keypad /",
+				c.GLFW_KEY_KP_MULTIPLY => "Keypad *",
+				c.GLFW_KEY_KP_SUBTRACT => "Keypad -",
+				c.GLFW_KEY_KP_ADD => "Keypad +",
 				c.GLFW_KEY_KP_ENTER => "Keypad Enter",
+				c.GLFW_KEY_KP_EQUAL => "Keypad =",
 				c.GLFW_KEY_LEFT_SHIFT => "Left Shift",
 				c.GLFW_KEY_LEFT_CONTROL => "Left Control",
 				c.GLFW_KEY_LEFT_ALT => "Left Alt",
@@ -452,6 +466,16 @@ pub const Key = struct { // MARK: Key
 				c.GLFW_KEY_UNKNOWN => "(Unbound)",
 				else => "Unknown Key",
 			};
+			if (std.mem.eql(u8, key_name, "Unknown Key")) {
+				const cName = c.glfwGetKeyName(self.key, self.scancode);
+				if (cName != null) {
+					return std.mem.span(cName);
+				} else {
+					return key_name;
+				}
+			} else {
+				return key_name;
+			}
 		} else {
 			return switch (self.mouseButton) {
 				c.GLFW_MOUSE_BUTTON_LEFT => "Left Button",
