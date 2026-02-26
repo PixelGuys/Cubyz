@@ -23,14 +23,14 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var logo: Texture = undefined;
+var wordmark: Texture = undefined;
 
 pub fn init() void {
-	logo = Texture.initFromFile("assets/cubyz/ui/logo.png");
+	wordmark = Texture.initFromFile("assets/cubyz/ui/wordmark.png");
 }
 
 pub fn deinit() void {
-	logo.deinit();
+	wordmark.deinit();
 }
 
 fn exitGame() void {
@@ -38,7 +38,7 @@ fn exitGame() void {
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 2);
-	list.add(Icon.init(.{0, 0}, .{330, 88}, logo, true));
+	list.add(Icon.init(.{0, 0}, .{360, 104}, wordmark, false));
 	list.add(Icon.init(.{0, 0}, .{0, 64}, .{.textureID = 0}, false));
 	list.add(Button.initMainMenuText(.{0, 0}, 192, "Singleplayer", gui.openWindowCallback("save_selection")));
 	list.add(Button.initMainMenuText(.{0, 0}, 192, "Multiplayer", gui.openWindowCallback("multiplayer")));
