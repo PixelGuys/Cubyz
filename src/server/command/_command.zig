@@ -47,11 +47,11 @@ pub fn execute(msg: []const u8, source: *User) void {
 	}
 }
 
-pub fn parseCoordinate(arg: []const u8, playerPos: f64, source: *User) anyerror!f64 {
+fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
 	const numberSlice = if (hasTilde) arg[1..] else arg;
 	const num: f64 = std.fmt.parseFloat(f64, numberSlice) catch ret: {
-		if (arg.len > 1 or arg.len == 0) {
+		if (!hasTilde) {
 			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
 			return error.InvalidNumber;
 		}
@@ -59,4 +59,10 @@ pub fn parseCoordinate(arg: []const u8, playerPos: f64, source: *User) anyerror!
 	};
 
 	return if (hasTilde) playerPos + num else num;
+}
+
+pub fn parseCoordinates(x: *f64, y: *f64, z: *f64, split: *std.mem.SplitIterator(u8, .scalar), source: *User) !void {
+	x.* = try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[0], source);
+	y.* = try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[1], source);
+	z.* = try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[2], source);
 }

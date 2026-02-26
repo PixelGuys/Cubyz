@@ -3,6 +3,8 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
+const command = @import("_command.zig");
+
 pub const description = "Teleport to location.";
 pub const usage = "/tp <biome>\n/tp <x> <y>\n/tp <x> <y> <z>\nPut ~ before a coordinate to mark it as relative to your current position";
 
@@ -63,51 +65,22 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 		return;
 	}
-	var x: ?f64 = null;
-	var y: ?f64 = null;
-	var z: ?f64 = null;
+	var x: f64 = undefined;
+	var y: f64 = undefined;
+	var z: f64 = undefined;
 	var split = std.mem.splitScalar(u8, args, ' ');
-	while (split.next()) |arg| {
-		if (arg.len < 1) continue;
-		const numberPart = if (arg[0] == '~') arg[1..] else arg;
-		var num: f64 = std.fmt.parseFloat(f64, numberPart) catch blk: {
-			if (numberPart.len > 0) {
-				source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberPart});
-				return;
-			}
-			break :blk 0;
-		};
-
-		if (arg[0] == '~') {
-			if (x == null) {
-				num += source.player.pos[0];
-			} else if (y == null) {
-				num += source.player.pos[1];
-			} else if (z == null) {
-				num += source.player.pos[2];
-			}
+	command.parseCoordinates(&x, &y, &z, &split, source) catch |err| {
+		if (err == error.TooFewArguments) {
+			source.sendMessage("#ff0000Too few arguments for command /tp", .{});
 		}
-
-		if (x == null) {
-			x = num;
-		} else if (y == null) {
-			y = num;
-		} else if (z == null) {
-			z = num;
-		} else {
-			source.sendMessage("#ff0000Too many arguments for command /tp", .{});
-			return;
-		}
-	}
-	if (x == null or y == null) {
-		source.sendMessage("#ff0000Too few arguments for command /tp", .{});
+		return;
+	};
+	if (split.next()) |_| {
+		source.sendMessage("#ff0000Too many arguments for command /tp", .{});
 		return;
 	}
-	if (z == null) {
-		z = source.player.pos[2];
-	}
-	x = std.math.clamp(x.?, -1e9, 1e9); // TODO: Remove after #310 is implemented
-	y = std.math.clamp(y.?, -1e9, 1e9);
-	z = std.math.clamp(z.?, -1e9, 1e9);
-	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{x.?, y.?, z.?});
+	x = std.math.clamp(x, -1e9, 1e9); // TODO: Remove after #310 is implemented
+	y = std.math.clamp(y, -1e9, 1e9);
+	z = std.math.clamp(z, -1e9, 1e9);
+	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{x, y, z});
 }
