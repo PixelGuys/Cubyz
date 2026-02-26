@@ -46,3 +46,17 @@ pub fn execute(msg: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Unrecognized Command \"{s}\"", .{command});
 	}
 }
+
+pub fn parseCoordinate(arg: []const u8, playerPos: f64, source: *User) anyerror!f64 {
+	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
+	const numberSlice = if (hasTilde) arg[1..] else arg;
+	const num: f64 = std.fmt.parseFloat(f64, numberSlice) catch ret: {
+		if (arg.len > 1 or arg.len == 0) {
+			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
+			return error.InvalidNumber;
+		}
+		break :ret 0;
+	};
+
+	return if (hasTilde) playerPos + num else num;
+}
