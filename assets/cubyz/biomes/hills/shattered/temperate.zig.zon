@@ -2,7 +2,7 @@
 	.properties = .{},
 	.ground_structure = .{
 		"cubyz:grass",
-		"1 to 2 cubyz:soil",
+		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
 		.{
@@ -34,32 +34,6 @@
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
 			.chance = 0.01,
-		},
-	},
-	.parentBiomes = .{
-		.{
-			.id = "cubyz:grassland",
-			.chance = 0.5,
-		},
-		.{
-			.id = "cubyz:rocky_grassland",
-			.chance = 0.2,
-		},
-		.{
-			.id = "cubyz:hills/temperate",
-			.chance = 0.5,
-		},
-		.{
-			.id = "cubyz:hills/large/temperate",
-			.chance = 0.5,
-		},
-		.{
-			.id = "cubyz:hills/shattered/temperate",
-			.chance = 4,
-		},
-		.{
-			.id = "cubyz:hills/shattered/large/temperate",
-			.chance = 4,
 		},
 	},
 }

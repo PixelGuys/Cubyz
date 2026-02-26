@@ -2,7 +2,7 @@
 	.properties = .{.cold},
 	.ground_structure = .{
 		"cubyz:cold_grass",
-		"1 to 2 cubyz:soil",
+		"cubyz:soil",
 	},
 	.structures = .{
 		.{
@@ -33,31 +33,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/eastern_white",
 			.placeMode = .degradable,
-			.chance = 0.01,
+			.chance = 0.008,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
-			.chance = 0.007,
-		},
-	},
-	.parentBiomes = .{
-		.{
-			.id = "cubyz:hills/cold",
-			.chance = 0.5,
-		},
-		.{
-			.id = "cubyz:hills/large/cold",
-			.chance = 0.5,
-		},
-		.{
-			.id = "cubyz:hills/shattered/cold",
-			.chance = 4,
-		},
-		.{
-			.id = "cubyz:hills/shattered/large/cold",
-			.chance = 4,
+			.chance = 0.004,
 		},
 	},
 }
