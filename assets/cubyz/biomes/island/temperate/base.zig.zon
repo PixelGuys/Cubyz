@@ -3,16 +3,14 @@
 	.properties = .{
 		.ocean,
 	},
-	.minHeight = 4,
-	.maxHeight = 4,
-
-	.music = "cubyz:sunrise",
-
+	.minHeight = 5,
+	.maxHeight = 5,
+	.music = "cubyz:Sincerely",
 	.radius = 24,
-
+	.soilCreep = 2,
 	.ground_structure = .{
 		"cubyz:grass",
-		"2 to 3 cubyz:soil",
+		"2 to 3 cubyz:sand",
 	},
 	.structures = .{
 		.{
@@ -28,10 +26,9 @@
 			.leafRadius_variation = 6,
 		},
 	},
-
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:island_shelf",
+			.id = "cubyz:island/temperate/shelf",
 			.chance = 1,
 		},
 	},

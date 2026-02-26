@@ -2,23 +2,17 @@
 	.chance = 0,
 	.properties = .{
 		.ocean,
+		.hot,
 	},
 	.minHeight = -10,
 	.maxHeight = -10,
-
 	.music = "cubyz:Sincerely",
-
-	.radius = 64,
-
-	.ground_structure = .{
-		"3 to 4 cubyz:slate/base",
-	},
-
+	.radius = 48,
+	.stoneBlock = "cubyz:sandstone/base",
 	.maxSubBiomeCount = 1,
-
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:ocean/temperate/base",
+			.id = "cubyz:ocean/warm/base",
 			.chance = 1,
 		},
 	},

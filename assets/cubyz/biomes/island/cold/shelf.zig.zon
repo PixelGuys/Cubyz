@@ -1,0 +1,18 @@
+.{
+	.chance = 0,
+	.properties = .{
+		.ocean,
+		.cold,
+	},
+	.minHeight = -10,
+	.maxHeight = -10,
+	.music = "cubyz:Sincerely",
+	.radius = 48,
+	.maxSubBiomeCount = 1,
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/cold/base",
+			.chance = 1,
+		},
+	},
+}
