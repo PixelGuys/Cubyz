@@ -1,0 +1,41 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 12,
+	.blockResistance = 6,
+	.item = .{
+		.texture = "jade.png",
+		.material = .{
+			.durability = 600,
+			.massDamage = 0.4,
+			.hardnessDamage = 7,
+			.swingSpeed = 5,
+			.textureRoughness = 0.1,
+			.colors = .{
+				0xff487c54, 0xff56926e, 0xff66af71, 0xff82c994, 0xffbceab9,
+			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 1.5,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 4,
+					},
+				},
+			},
+		},
+	},
+	.ore = .{
+		.veins = 2,
+		.size = 3,
+		.minHeight = 400,
+		.density = 0.15,
+	},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:ore",
+	.model = "cubyz:cube",
+	.texture = "cubyz:jade_ore",
+}
