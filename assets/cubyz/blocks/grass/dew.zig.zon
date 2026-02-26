@@ -1,0 +1,11 @@
+.{
+	.tags = .{.diggable},
+	.blockHealth = 7,
+	.drops = .{
+		.{.items = .{"cubyz:clay"}},
+	},
+	.model = "cubyz:cube",
+	.rotation = "cubyz:stairs",
+	.texture = "cubyz:grass/dew",
+	.texture_bottom = "cubyz:clay",
+}

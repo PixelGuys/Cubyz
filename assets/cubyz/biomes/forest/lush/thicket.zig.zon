@@ -1,0 +1,65 @@
+.{
+	.chance = 0,
+	.keepOriginalTerrain = 1,
+	.minRadius = 16,
+	.maxRadius = 48,
+	.ground_structure = .{
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
+			.chance = 0.1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/loblolly",
+			.placeMode = .degradable,
+			.chance = 0.08,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.08,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.08,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/standalone_roots",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:clay",
+			.chance = 0.08,
+			.width = 6,
+			.variation = 4,
+			.depth = 2,
+			.smoothness = 0.3,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:ivy",
+			.chance = 0.04,
+			.width = 6,
+			.variation = 3,
+			.density = 0.8,
+			.priority = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:forest/lush/base",
+			.chance = 10,
+		},
+	},
+}
