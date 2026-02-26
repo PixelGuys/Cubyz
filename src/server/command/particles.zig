@@ -49,7 +49,7 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	var y: f64 = undefined;
 	var z: f64 = undefined;
 	try command.parseCoordinates(&x, &y, &z, &split, source);
-	
+
 	const collides = try parseBool(split.next() orelse "true");
 	const particleCount = try parseNumber(split.next() orelse "1", source);
 
