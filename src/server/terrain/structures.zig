@@ -79,7 +79,7 @@ pub const StructureTable = struct {
 	structures: []const SimpleStructureModel = &.{},
 	paletteId: u32,
 
-	pub fn init(self: *StructureTable, id: []const u8, paletteId: u32, zon: ZonElement) void {
+	pub fn init(self: *StructureTable, id: []const u8, paletteId: u32, zon: ZonElement) StructureTable {
 		self.* = .{
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
@@ -109,8 +109,7 @@ pub const StructureTable = struct {
 var structureTables: main.ListUnmanaged(StructureTable) = .{};
 
 pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
-	var structureTable: StructureTable = undefined;
-	structureTable.init(id, paletteId, zon);
+	const structureTable = StructureTable.init(id, paletteId, zon);
 	structureTables.append(main.worldArena, structureTable);
 	std.log.debug("Registered structure table: {d: >5} '{s}'", .{paletteId, id});
 }
