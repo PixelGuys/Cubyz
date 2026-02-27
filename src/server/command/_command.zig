@@ -54,6 +54,9 @@ fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 		if (!hasTilde) {
 			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
 			return error.InvalidNumber;
+		} else if (arg.len > 1) {
+			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberSlice});
+			return error.InvalidNumber;
 		}
 		break :ret 0;
 	};
