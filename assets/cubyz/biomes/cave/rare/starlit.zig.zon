@@ -2,7 +2,7 @@
 	.isCave = true,
 	.chance = 0.01,
 	.maxHeight = -25000,
-	.minHeight = -48250,
+	.minHeight = -40000,
 	.music = "cubyz:cubyz",
 
 	.structures = .{
