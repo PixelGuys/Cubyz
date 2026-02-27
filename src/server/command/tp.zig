@@ -67,7 +67,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 
 	var split = std.mem.splitScalar(u8, args, ' ');
-	var x, var y, var z = command.parseCoordinates(&split, source) catch |err| {
+	var pos = command.parseCoordinates(&split, source) catch |err| {
 		if (err == error.TooFewArguments) {
 			source.sendMessage("#ff0000Too few arguments for command /tp", .{});
 		}
@@ -77,8 +77,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /tp", .{});
 		return;
 	}
-	x = std.math.clamp(x, -1e9, 1e9); // TODO: Remove after #310 is implemented
-	y = std.math.clamp(y, -1e9, 1e9);
-	z = std.math.clamp(z, -1e9, 1e9);
-	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{x, y, z});
+	const clampValue = @as(main.vec.Vec3d, @splat(1e9));
+	pos = std.math.clamp(pos, -clampValue, clampValue); // TODO: Remove after #310 is implemented
+	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, pos);
 }
