@@ -43,6 +43,10 @@ const Textures = struct {
 var normalTextures: Textures = undefined;
 var hoveredTextures: Textures = undefined;
 var pressedTextures: Textures = undefined;
+var normalMainMenuTextures: Textures = undefined;
+var hoveredMainMenuTextures: Textures = undefined;
+var pressedMainMenuTextures: Textures = undefined;
+var nailTexture: Texture = undefined;
 pub var pipeline: graphics.Pipeline = undefined;
 pub var buttonUniforms: struct {
 	screen: c_int,
@@ -52,12 +56,25 @@ pub var buttonUniforms: struct {
 	scale: c_int,
 } = undefined;
 
+const Style = enum {
+	default,
+	mainMenu,
+
+	pub fn getTextures(self: Style, isPressed: bool, isHovered: bool) Textures {
+		const pressed = if (self == .mainMenu) pressedMainMenuTextures else pressedTextures;
+		const hovered = if (self == .mainMenu) hoveredMainMenuTextures else hoveredTextures;
+		const normal = if (self == .mainMenu) normalMainMenuTextures else normalTextures;
+		return if (isPressed) pressed else if (isHovered) hovered else normal;
+	}
+};
+
 pos: Vec2f,
 size: Vec2f,
 pressed: bool = false,
 hovered: bool = false,
 onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
+style: Style,
 
 pub fn __init() void {
 	pipeline = graphics.Pipeline.init(
@@ -72,6 +89,10 @@ pub fn __init() void {
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");
 	pressedTextures = Textures.init("assets/cubyz/ui/button_pressed");
+	normalMainMenuTextures = Textures.init("assets/cubyz/ui/main_menu_button");
+	hoveredMainMenuTextures = Textures.init("assets/cubyz/ui/main_menu_button_hovered");
+	pressedMainMenuTextures = Textures.init("assets/cubyz/ui/main_menu_button_pressed");
+	nailTexture = Texture.initFromFile("assets/cubyz/ui/nail.png");
 }
 
 pub fn __deinit() void {
@@ -79,6 +100,10 @@ pub fn __deinit() void {
 	normalTextures.deinit();
 	hoveredTextures.deinit();
 	pressedTextures.deinit();
+	normalMainMenuTextures.deinit();
+	hoveredMainMenuTextures.deinit();
+	pressedMainMenuTextures.deinit();
+	nailTexture.deinit();
 }
 
 fn defaultOnAction(_: usize) void {}
@@ -91,6 +116,20 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: main.callbac
 		.size = Vec2f{width, label.size[1] + 3*border},
 		.onAction = onAction,
 		.child = label.toComponent(),
+		.style = .default,
+	};
+	return self;
+}
+
+pub fn initMainMenuText(pos: Vec2f, width: f32, text: []const u8, onAction: main.callbacks.SimpleCallback) *Button {
+	const label = Label.init(undefined, width - 3*border - 3*6, text, .center);
+	const self = main.globalAllocator.create(Button);
+	self.* = Button{
+		.pos = pos,
+		.size = Vec2f{width, label.size[1] + 3*border},
+		.onAction = onAction,
+		.child = label.toComponent(),
+		.style = .mainMenu,
 	};
 	return self;
 }
@@ -103,6 +142,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bo
 		.size = icon.size + @as(Vec2f, @splat(3*border)),
 		.onAction = onAction,
 		.child = icon.toComponent(),
+		.style = .default,
 	};
 	return self;
 }
@@ -136,12 +176,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	const textures = if (self.pressed)
-		pressedTextures
-	else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
-		hoveredTextures
-	else
-		normalTextures;
+	const textures = self.style.getTextures(self.pressed, GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered);
 	draw.setColor(0xff000000);
 	textures.texture.bindTo(0);
 	pipeline.bind(draw.getScissor());
@@ -164,6 +199,11 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		graphics.draw.boundSubImage(self.pos + Vec2f{cornerSize[0], self.size[1] - cornerSize[1]}, Vec2f{self.size[0] - 2*cornerSize[0], cornerSize[1]}, .{lowerTexture[0], upperTexture[1]}, .{upperTexture[0] - lowerTexture[0], cornerSizeUV[1]});
 		graphics.draw.boundSubImage(self.pos + Vec2f{0, cornerSize[1]}, Vec2f{cornerSize[0], self.size[1] - 2*cornerSize[1]}, .{0, lowerTexture[1]}, .{cornerSizeUV[0], upperTexture[1] - lowerTexture[1]});
 		graphics.draw.boundSubImage(self.pos + Vec2f{self.size[0] - cornerSize[0], cornerSize[1]}, Vec2f{cornerSize[0], self.size[1] - 2*cornerSize[1]}, .{upperTexture[0], lowerTexture[1]}, .{cornerSizeUV[0], upperTexture[1] - lowerTexture[1]});
+	}
+	if (self.style == .mainMenu) {
+		nailTexture.bindTo(0);
+		graphics.draw.boundImage(self.pos + Vec2f{6, self.size[1]/2 - 4}, Vec2f{8, 8});
+		graphics.draw.boundImage(self.pos + Vec2f{self.size[0] - 12, self.size[1]/2 - 4}, Vec2f{8, 8});
 	}
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
