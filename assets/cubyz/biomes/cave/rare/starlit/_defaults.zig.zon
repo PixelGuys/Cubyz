@@ -1,6 +1,0 @@
-.{
-	.isCave = true,
-	.maxHeight = -25000,
-	.minHeight = -40000,
-	.music = "cubyz:heart-of-the-beast",
-}

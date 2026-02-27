@@ -1,27 +1,25 @@
 .{
-	.chance = 0,
+	.isCave = true,
+	.maxHeight = -25000,
+	.minHeight = -40000,
+	.music = "cubyz:heart-of-the-beast",
+	.chance = 1,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:starlit/star",
 			.placeMode = .degradable,
-			.chance = 0.06,
+			.chance = 0.1,
 			.generationMode = .air,
 		},
 	},
 	.caveModels = .{
 		.{
 			.id = "cubyz:hemisphere",
-			.minAmount = 1,
-			.maxAmount = 3,
-			.minRadius = 32,
-			.maxRadius = 80,
-		},
-	},
-	.parentBiomes = .{
-		.{
-			.id = "cubyz:cave/rare/starlit/base",
-			.chance = 3,
+			.minAmount = 8,
+			.maxAmount = 18,
+			.minRadius = 12,
+			.maxRadius = 64,
 		},
 	},
 }
