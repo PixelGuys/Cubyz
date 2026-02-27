@@ -1,4 +1,5 @@
 .{
+	.chance = 0,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
