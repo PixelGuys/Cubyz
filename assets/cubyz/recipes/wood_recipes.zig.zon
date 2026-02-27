@@ -28,10 +28,6 @@
 		.output = "cubyz:chest/{type}",
 	},
 	.{
-		.inputs = .{"cubyz:log/cactus"},
-		.output = "2 cubyz:branch/cactus",
-	},
-	.{
 		.inputs = .{"cubyz:candy_cane_block"},
 		.output = "2 cubyz:branch/candy_cane",
 	},
