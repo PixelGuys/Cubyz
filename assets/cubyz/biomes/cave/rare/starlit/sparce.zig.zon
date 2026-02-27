@@ -21,7 +21,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:cave/rare/starlit/base",
-			.chance = 0.8,
+			.chance = 8,
 		},
 	},
 }
