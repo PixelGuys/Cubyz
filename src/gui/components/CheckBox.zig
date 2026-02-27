@@ -75,12 +75,14 @@ pub fn toComponent(self: *CheckBox) GuiComponent {
 	return .{.checkBox = self};
 }
 
-pub fn updateHovered(self: *CheckBox, _: Vec2f) void {
+pub fn updateHovered(self: *CheckBox, _: Vec2f) main.callbacks.Result {
 	self.hovered = true;
+	return .handled;
 }
 
-pub fn mainButtonPressed(self: *CheckBox, _: Vec2f) void {
+pub fn mainButtonPressed(self: *CheckBox, _: Vec2f) main.callbacks.Result {
 	self.pressed = true;
+	return .handled;
 }
 
 pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {

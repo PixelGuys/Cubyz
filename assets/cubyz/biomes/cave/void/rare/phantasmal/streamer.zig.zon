@@ -13,4 +13,13 @@
 			.chance = 0.04,
 		},
 	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 5,
+			.maxAmount = 10,
+			.minRadius = 30,
+			.maxRadius = 40,
+		},
+	},
 }

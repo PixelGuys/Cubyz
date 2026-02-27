@@ -4,11 +4,12 @@
 	.item = .{
 		.material = .{
 			.durability = 20,
-			.massDamage = 0.8,
-			.hardnessDamage = 0.8,
-			.swingSpeed = 4.2,
+			.massDamage = 0.75,
+			.hardnessDamage = 0.75,
+			.swingSpeed = 4.4,
+			.textureRoughness = 0.7,
 			.colors = .{
-				0xff8c6f59, 0xffa07f66, 0xffb8917b, 0xffd7b194, 0xffe4c29f,
+				0xff533f27, 0xff664c2e, 0xff795a37, 0xff8c6b41, 0xffa37b46,
 			},
 			.modifiers = .{
 				.{
@@ -24,5 +25,5 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:stairs",
-	.texture = "cubyz:baobab_planks",
+	.texture = "cubyz:planks/pine",
 }
