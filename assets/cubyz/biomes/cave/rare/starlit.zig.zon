@@ -9,7 +9,7 @@
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:starlit/star",
-			.placeMode = .degradable,
+			.placeMode = .air,
 			.chance = 0.4,
 		},
 	},
