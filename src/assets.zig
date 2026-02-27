@@ -409,7 +409,10 @@ fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
 }
 
 fn registerStructureTable(numericId: u32, stringId: []const u8, zon: ZonElement) void {
-	if (zon == .null) std.log.err("Missing StructureTable: {s}. Will not replace.", .{stringId});
+	if (zon == .null) {
+		std.log.err("Missing StructureTable: {s}. Will not replace.", .{stringId});
+		return;
+	}
 	main.server.terrain.structures.register(stringId, numericId, zon);
 }
 fn registerRecipesFromZon(zon: ZonElement) void {

@@ -340,22 +340,15 @@ pub const Biome = struct { // MARK: Biome
 		defer vegetation.deinit(main.stackAllocator);
 		// Add structures from the biome's internal structure table
 		for (structures.toSlice()) |elem| {
-			if (SimpleStructureModel.initModel(elem)) |model| {
-				vegetation.append(main.stackAllocator, model);
-				totalChance += model.chance;
-			}
+			const model = SimpleStructureModel.initModel(elem) orelse continue;
+			vegetation.append(main.stackAllocator, model);
+			totalChance += model.chance;
 		}
-		const structure_tables = main.server.terrain.structures.getSlice();
-		next_table: for (structure_tables) |table| {
+		const structureTables = main.server.terrain.structures.getSlice();
+		nextTable: for (structureTables) |table| {
 			if (table.tags.len > 0) {
 				for (table.tags) |tableTag| {
-					var found_biomeTag: bool = false;
-					for (self.tags) |biomeTag| {
-						if (biomeTag == tableTag)
-							found_biomeTag = true;
-					}
-					if (!found_biomeTag)
-						continue :next_table;
+					if (!self.hasTag(tableTag)) continue :nextTable;
 				}
 			}
 			for (table.structures) |model| {
@@ -388,6 +381,10 @@ pub const Biome = struct { // MARK: Biome
 
 	fn getCheckSum(self: *Biome) u64 {
 		return hashGeneric(self.*);
+	}
+
+	fn hasTag(self: Biome, tag: Tag) bool {
+		return std.mem.containsAtLeastScalar(Tag, self.tags, 1, tag);
 	}
 };
 

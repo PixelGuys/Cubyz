@@ -76,7 +76,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 pub const StructureTable = struct {
 	id: []const u8,
 	tags: []const Tag,
-	structures: []SimpleStructureModel = &.{},
+	structures: []const SimpleStructureModel = &.{},
 	paletteId: u32,
 
 	pub fn init(self: *StructureTable, id: []const u8, paletteId: u32, zon: ZonElement) void {
