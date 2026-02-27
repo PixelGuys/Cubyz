@@ -10,70 +10,7 @@ const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
-pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
-	pub const GenerationMode = enum {
-		floor,
-		ceiling,
-		floor_and_ceiling,
-		air,
-		underground,
-		water_surface,
-	};
-	const VTable = struct {
-		loadModel: *const fn (parameters: ZonElement) ?*anyopaque,
-		generate: *const fn (self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
-		hashFunction: *const fn (self: *anyopaque) u64,
-		generationMode: GenerationMode,
-	};
-
-	vtable: VTable,
-	data: *anyopaque,
-	chance: f32,
-	priority: f32,
-	generationMode: GenerationMode,
-
-	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
-		const id = parameters.get([]const u8, "id", "");
-		const vtable = modelRegistry.get(id) orelse {
-			std.log.err("Couldn't find structure model with id {s}", .{id});
-			return null;
-		};
-		const vtableModel = vtable.loadModel(parameters) orelse {
-			std.log.err("Error occurred while loading structure with id '{s}'. Dropping model from biome.", .{id});
-			return null;
-		};
-		return SimpleStructureModel{
-			.vtable = vtable,
-			.data = vtableModel,
-			.chance = parameters.get(f32, "chance", 0.1),
-			.priority = parameters.get(f32, "priority", 1),
-			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
-		};
-	}
-
-	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
-		self.vtable.generate(self.data, self.generationMode, x, y, z, chunk, caveMap, biomeMap, seed, isCeiling);
-	}
-
-	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		var self: VTable = undefined;
-		self.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
-		self.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate);
-		self.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
-			fn hash(ptr: *Generator) u64 {
-				return hashGeneric(ptr.*);
-			}
-		}.hash);
-		self.generationMode = Generator.generationMode;
-		modelRegistry.put(main.globalArena.allocator, Generator.id, self) catch unreachable;
-	}
-
-	fn getHash(self: SimpleStructureModel) u64 {
-		return self.vtable.hashFunction(self.data);
-	}
-};
+pub const SimpleStructureModel = terrain.structures.SimpleStructureModel;
 
 const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
@@ -139,7 +76,7 @@ const Stripe = struct { // MARK: Stripe
 	}
 };
 
-fn hashGeneric(input: anytype) u64 {
+pub fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
 	return switch (@typeInfo(T)) {
 		.bool => hashCombine(hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
@@ -288,7 +225,8 @@ pub const Biome = struct { // MARK: Biome
 	hills: f32,
 	mountains: f32,
 	keepOriginalTerrain: f32,
-	caves: f32,
+	caveSmoothness: f32,
+	caveNoiseStrength: f32,
 	caveRadiusFactor: f32,
 	crystals: u32,
 	/// How much of the surface structure should be eroded depending on the slope.
@@ -306,6 +244,7 @@ pub const Biome = struct { // MARK: Biome
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
 	vegetationModels: []SimpleStructureModel = &.{},
+	caveSdfModels: []terrain.sdf.SdfModel = &.{},
 	stripes: []Stripe = &.{},
 	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
 	transitionBiomes: []TransitionBiome = &.{},
@@ -339,7 +278,8 @@ pub const Biome = struct { // MARK: Biome
 			.keepOriginalTerrain = zon.get(f32, "keepOriginalTerrain", 0),
 			.interpolation = std.meta.stringToEnum(Interpolation, zon.get([]const u8, "interpolation", "square")) orelse .square,
 			.interpolationWeight = @max(zon.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
-			.caves = zon.get(f32, "caves", -0.375),
+			.caveSmoothness = std.math.clamp(zon.get(f32, "caveSmoothness", 4.0), 0.00001, 4.0),
+			.caveNoiseStrength = zon.get(f32, "caveNoiseStrength", 8),
 			.caveRadiusFactor = @max(-2, @min(2, zon.get(f32, "caveRadiusFactor", 1))),
 			.crystals = zon.get(u32, "crystals", 0),
 			.soilCreep = zon.get(f32, "soilCreep", 0.5),
@@ -391,14 +331,13 @@ pub const Biome = struct { // MARK: Biome
 		self.structure = BlockStructure.init(main.worldArena, zon.getChild("ground_structure"));
 
 		const structures = zon.getChild("structures");
-		var vegetation = main.ListUnmanaged(SimpleStructureModel){};
+		var vegetation: main.ListUnmanaged(SimpleStructureModel) = .{};
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		for (structures.toSlice()) |elem| {
-			if (SimpleStructureModel.initModel(elem)) |model| {
-				vegetation.append(main.stackAllocator, model);
-				totalChance += model.chance;
-			}
+			const model = SimpleStructureModel.initModel(elem) orelse continue;
+			vegetation.append(main.stackAllocator, model);
+			totalChance += model.chance;
 		}
 		if (totalChance > 1) {
 			for (vegetation.items) |*model| {
@@ -406,6 +345,15 @@ pub const Biome = struct { // MARK: Biome
 			}
 		}
 		self.vegetationModels = main.worldArena.dupe(SimpleStructureModel, vegetation.items);
+
+		const caves = zon.getChild("caveModels");
+		var caveSdfs: main.ListUnmanaged(terrain.sdf.SdfModel) = .{};
+		defer caveSdfs.deinit(main.stackAllocator);
+		for (caves.toSlice()) |elem| {
+			const model = terrain.sdf.SdfModel.initModel(elem) orelse continue;
+			caveSdfs.append(main.stackAllocator, model);
+		}
+		self.caveSdfModels = main.worldArena.dupe(terrain.sdf.SdfModel, caveSdfs.items);
 
 		const stripes = zon.getChild("stripes");
 		self.stripes = main.worldArena.alloc(Stripe, stripes.toSlice().len);

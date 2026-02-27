@@ -462,21 +462,23 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	inventory.update();
 	selectedWindow = null;
 	setSelectedTextInput(null);
-	var selectedI: usize = 0;
-	for (openWindows.items, 0..) |window, i| {
-		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
-		mousePosition -= window.pos;
-		if (@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
-			selectedWindow = window;
-			selectedI = i;
+	const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
+
+	// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
+	var i: usize = openWindows.items.len;
+	while (i > 0) {
+		i -= 1;
+		const window = openWindows.items[i];
+		if (@reduce(.And, mousePosition >= window.pos) and @reduce(.And, mousePosition < window.pos + window.size)) {
+			if (window.mainButtonPressed(mousePosition) == .handled) {
+				_ = openWindows.orderedRemove(i);
+				openWindows.appendAssumeCapacity(window);
+				selectedWindow = window;
+				return;
+			}
 		}
 	}
-	if (selectedWindow) |_selectedWindow| {
-		const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
-		_selectedWindow.mainButtonPressed(mousePosition);
-		_ = openWindows.orderedRemove(selectedI);
-		openWindows.appendAssumeCapacity(_selectedWindow);
-	} else if (main.game.world != null and inventory.carried.getItem(0) == .null) {
+	if (main.game.world != null and inventory.carried.getItem(0) == .null) {
 		toggleGameMenu();
 	}
 }
@@ -533,14 +535,16 @@ pub fn updateAndRenderGui() void {
 			selected.updateSelected(mousePos);
 		}
 		hoveredItemSlot = null;
+		// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
 		var i: usize = openWindows.items.len;
 		while (i != 0) {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
 			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
-				window.updateHovered(mousePos);
-				hoveredAWindow = true;
-				break;
+				if (window.updateHovered(mousePos) == .handled) {
+					hoveredAWindow = true;
+					break;
+				}
 			}
 		}
 		inventory.update();

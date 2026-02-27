@@ -3,12 +3,13 @@
 	.blockHealth = 6,
 	.item = .{
 		.material = .{
-			.durability = 23,
-			.massDamage = 0.8,
-			.hardnessDamage = 0.8,
-			.swingSpeed = 5.2,
+			.durability = 24,
+			.massDamage = 0.9,
+			.hardnessDamage = 0.9,
+			.swingSpeed = 4.6,
+			.textureRoughness = 0.7,
 			.colors = .{
-				0xffa38041, 0xffc78a49, 0xffdcab5a, 0xfff1c061, 0xfffed87c,
+				0xff9b7a5b, 0xffbf9872, 0xffdeb287, 0xfff2c89c, 0xffffdfb7,
 			},
 			.modifiers = .{
 				.{
@@ -24,5 +25,5 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:stairs",
-	.texture = "cubyz:palm_planks",
+	.texture = "cubyz:planks/birch",
 }
