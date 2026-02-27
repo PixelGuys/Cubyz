@@ -61,8 +61,10 @@ fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 	return if (hasTilde) playerPos + num else num;
 }
 
-pub fn parseCoordinates(x: *f64, y: *f64, z: *f64, split: *std.mem.SplitIterator(u8, .scalar), source: *User) !void {
-	x.* = try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[0], source);
-	y.* = try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[1], source);
-	z.* = try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[2], source);
+pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !main.vec.Vec3d {
+	return .{
+		try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[0], source),
+		try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[1], source),
+		try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[2], source),
+	};
 }

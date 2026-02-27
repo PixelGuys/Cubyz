@@ -45,10 +45,7 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	var split = std.mem.splitScalar(u8, std.mem.trimRight(u8, args[0..zonIndex], " "), ' ');
 	const particleId = split.next() orelse return error.TooFewArguments;
 
-	var x: f64 = undefined;
-	var y: f64 = undefined;
-	var z: f64 = undefined;
-	try command.parseCoordinates(&x, &y, &z, &split, source);
+	const x, const y, const z = try command.parseCoordinates(&split, source);
 
 	const collides = try parseBool(split.next() orelse "true");
 	const particleCount = try parseNumber(split.next() orelse "1", source);

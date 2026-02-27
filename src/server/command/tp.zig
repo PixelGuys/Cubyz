@@ -65,11 +65,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 		return;
 	}
-	var x: f64 = undefined;
-	var y: f64 = undefined;
-	var z: f64 = undefined;
+	
 	var split = std.mem.splitScalar(u8, args, ' ');
-	command.parseCoordinates(&x, &y, &z, &split, source) catch |err| {
+	var x, var y, var z = command.parseCoordinates(&split, source) catch |err| {
 		if (err == error.TooFewArguments) {
 			source.sendMessage("#ff0000Too few arguments for command /tp", .{});
 		}
