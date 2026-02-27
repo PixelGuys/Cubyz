@@ -65,7 +65,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 		return;
 	}
-	
+
 	var split = std.mem.splitScalar(u8, args, ' ');
 	var x, var y, var z = command.parseCoordinates(&split, source) catch |err| {
 		if (err == error.TooFewArguments) {
