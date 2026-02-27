@@ -58,7 +58,7 @@ fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 		break :ret 0;
 	};
 
-	return if (hasTilde) playerPos + num else num;
+	return std.math.clamp(if (hasTilde) playerPos + num else num, -1e9, 1e9);  // TODO: Remove clamp after #310 is implemented
 }
 
 pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !main.vec.Vec3d {
