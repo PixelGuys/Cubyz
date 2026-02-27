@@ -4,23 +4,39 @@ const main = @import("main");
 const User = main.server.User;
 
 pub const description = "Teleport to location.";
-pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
+pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>\n/tp <biome> <radius>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (std.mem.containsAtLeast(u8, args, 1, ":")) {
-		const biome = main.server.terrain.biomes.getById(args);
-		if (!std.mem.eql(u8, biome.id, args)) {
-			source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{args});
+		var split = std.mem.splitScalar(u8, args, ' ');
+		const biomeName = split.next().?;
+		const biome = main.server.terrain.biomes.getById(biomeName);
+		if (!std.mem.eql(u8, biome.id, biomeName)) {
+			source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{biomeName});
 			return;
 		}
 		if (biome.isCave) {
 			source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 			return;
 		}
-		const radius = 16384;
+		const radius = blk: {
+			if (split.next()) |radiusText| {
+				const radiusNumber = std.fmt.parseInt(u32, radiusText, 10) catch {
+					source.sendMessage("#ff0000Expected positive number, found \"{s}\"", .{radiusText});
+					return;
+				};
+				if (radiusNumber > 100000000) { // not specific, the actual limit before overflow is somewhere between 200000000 and 300000000
+					source.sendMessage("#ff0000Maximum search radius is 100000000", .{});
+					return;
+				}
+				break :blk radiusNumber;
+			} else {
+				break :blk 16384;
+			}
+		};
 		const mapSize: i32 = main.server.terrain.ClimateMap.ClimateMapFragment.mapSize;
 		// Explore chunks in a spiral from the center:
-		const spiralLen = 2*radius/mapSize*2*radius/mapSize;
+		const spiralLen = @divTrunc(2*radius, mapSize)*@divTrunc(2*radius, mapSize);
 		var wx = source.lastPos[0] & ~(mapSize - 1);
 		var wy = source.lastPos[1] & ~(mapSize - 1);
 		var dirChanges: usize = 1;
@@ -60,7 +76,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				stepsRemaining = dirChanges/2;
 			}
 		}
-		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
+		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of {d} blocks.", .{radius});
 		return;
 	}
 	var x: ?f64 = null;
