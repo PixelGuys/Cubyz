@@ -24,11 +24,11 @@ const UpdateEvent = union(enum) {
 
 pub const ErrorSet = BinaryReader.AllErrors || error{Invalid};
 
-const BlockEntityComponentTypeIndex = main.utils.DenseId(u16);
+const ComponentTypeIndex = main.utils.DenseId(u16);
 
-pub const BlockEntityType = struct { // MARK: BlockEntityType
+pub const ComponentType = struct { // MARK: ComponentType
 	id: []const u8,
-	index: BlockEntityComponentTypeIndex = .noValue,
+	index: ComponentTypeIndex = .noValue,
 	vtable: VTable,
 
 	const VTable = struct {
@@ -43,49 +43,49 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 		updateClientData: *const fn (entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void,
 		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
-	pub fn init(comptime BlockEntityTypeT: type, comptime id: []const u8) BlockEntityType {
-		BlockEntityTypeT.init();
-		var class = BlockEntityType{
+	pub fn init(comptime ComponentTypeT: type, comptime id: []const u8) ComponentType {
+		ComponentTypeT.init();
+		var class = ComponentType{
 			.id = id,
 			.vtable = undefined,
 		};
 
-		inline for (@typeInfo(BlockEntityType.VTable).@"struct".fields) |field| {
-			if (!@hasDecl(BlockEntityTypeT, field.name)) {
-				@compileError("BlockEntityType missing field '" ++ field.name ++ "'");
+		inline for (@typeInfo(ComponentType.VTable).@"struct".fields) |field| {
+			if (!@hasDecl(ComponentTypeT, field.name)) {
+				@compileError("ComponentType '" ++ @typeName(ComponentTypeT) ++ "' missing field '" ++ field.name ++ "'");
 			}
-			@field(class.vtable, field.name) = &@field(BlockEntityTypeT, field.name);
+			@field(class.vtable, field.name) = &@field(ComponentTypeT, field.name);
 		}
 		return class;
 	}
-	pub inline fn onLoadClient(self: *const BlockEntityType, entity: BlockEntity, block: Block, reader: *BinaryReader) ErrorSet!void {
+	pub inline fn onLoadClient(self: *const ComponentType, entity: BlockEntity, block: Block, reader: *BinaryReader) ErrorSet!void {
 		return self.vtable.onLoadClient(entity, block, reader);
 	}
-	pub inline fn onUnloadClient(self: *const BlockEntityType, entity: BlockEntity) void {
+	pub inline fn onUnloadClient(self: *const ComponentType, entity: BlockEntity) void {
 		return self.vtable.onUnloadClient(entity);
 	}
-	pub inline fn onDestroyClient(self: *const BlockEntityType, entity: BlockEntity) void {
+	pub inline fn onDestroyClient(self: *const ComponentType, entity: BlockEntity) void {
 		return self.vtable.onDestroyClient(entity);
 	}
-	pub inline fn onLoadServer(self: *const BlockEntityType, entity: BlockEntity, block: Block, reader: *BinaryReader) ErrorSet!void {
+	pub inline fn onLoadServer(self: *const ComponentType, entity: BlockEntity, block: Block, reader: *BinaryReader) ErrorSet!void {
 		return self.vtable.onLoadServer(entity, block, reader);
 	}
-	pub inline fn onUnloadServer(self: *const BlockEntityType, entity: BlockEntity) void {
+	pub inline fn onUnloadServer(self: *const ComponentType, entity: BlockEntity) void {
 		return self.vtable.onUnloadServer(entity);
 	}
-	pub inline fn onDestroyServer(self: *const BlockEntityType, entity: BlockEntity) void {
+	pub inline fn onDestroyServer(self: *const ComponentType, entity: BlockEntity) void {
 		return self.vtable.onDestroyClient(entity);
 	}
-	pub inline fn onStoreServerToDisk(self: *const BlockEntityType, entity: BlockEntity, writer: *BinaryWriter) void {
+	pub inline fn onStoreServerToDisk(self: *const ComponentType, entity: BlockEntity, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToDisk(entity, writer);
 	}
-	pub inline fn onStoreServerToClient(self: *const BlockEntityType, entity: BlockEntity, writer: *BinaryWriter) void {
+	pub inline fn onStoreServerToClient(self: *const ComponentType, entity: BlockEntity, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(entity, writer);
 	}
-	pub inline fn updateClientData(self: *const BlockEntityType, entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void {
+	pub inline fn updateClientData(self: *const ComponentType, entity: BlockEntity, block: main.blocks.Block, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateClientData(entity, block, event);
 	}
-	pub inline fn getServerToClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+	pub inline fn getServerToClientData(self: *const ComponentType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getServerToClientData(pos, chunk, writer);
 	}
 };
@@ -161,16 +161,16 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 			switch (context) {
 				.unload => {
 					if (side == .client) {
-						blockEntityComponentTypes.items[@intFromEnum(component)].onUnloadClient(self);
+						componentTypes.items[@intFromEnum(component)].onUnloadClient(self);
 					} else {
-						blockEntityComponentTypes.items[@intFromEnum(component)].onUnloadServer(self);
+						componentTypes.items[@intFromEnum(component)].onUnloadServer(self);
 					}
 				},
 				.destroy => {
 					if (side == .client) {
-						blockEntityComponentTypes.items[@intFromEnum(component)].onDestroyClient(self);
+						componentTypes.items[@intFromEnum(component)].onDestroyClient(self);
 					} else {
-						blockEntityComponentTypes.items[@intFromEnum(component)].onDestroyServer(self);
+						componentTypes.items[@intFromEnum(component)].onDestroyServer(self);
 					}
 				},
 			}
@@ -179,13 +179,13 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 		self.destroyIndex();
 	}
 
-	pub fn removeComponent(self: BlockEntity, componentType: BlockEntityComponentTypeIndex, comptime side: main.sync.Side) void {
+	pub fn removeComponent(self: BlockEntity, componentType: ComponentTypeIndex, comptime side: main.sync.Side) void {
 		for (self.sharedData().components.items, 0..) |component, i| {
 			if (component == componentType) {
 				if (side == .client) {
-					blockEntityComponentTypes.items[@intFromEnum(component)].onDestroyClient(self);
+					componentTypes.items[@intFromEnum(component)].onDestroyClient(self);
 				} else {
-					blockEntityComponentTypes.items[@intFromEnum(component)].onDestroyServer(self);
+					componentTypes.items[@intFromEnum(component)].onDestroyServer(self);
 				}
 				_ = self.sharedData().components.swapRemove(i);
 				return;
@@ -199,7 +199,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	}
 
 	fn ComponentStorageType(comptime side: main.sync.Side, comptime id: []const u8) type {
-		const Type = @field(BlockEntityTypes, id);
+		const Type = @field(ComponentTypes, id);
 		switch (side) {
 			.client => return Type.StorageClient,
 			.server => return Type.StorageServer,
@@ -217,7 +217,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 		const StorageType = ComponentStorageType(side, id);
 		const result = StorageType.getOrPut(self);
 		if (!result.foundExisting) {
-			self.sharedData().components.append(main.globalAllocator, @field(BlockEntityTypes, id).index);
+			self.sharedData().components.append(main.globalAllocator, @field(ComponentTypes, id).index);
 		}
 		return result;
 	}
@@ -228,7 +228,7 @@ var sharedBlockEntityDataMutex: std.Thread.Mutex = .{};
 
 pub const SharedBlockEntityData = struct {
 	pos: Vec3i,
-	components: main.ListUnmanaged(BlockEntityComponentTypeIndex),
+	components: main.ListUnmanaged(ComponentTypeIndex),
 };
 
 pub fn updateClientData(pos: Vec3i, chunk: *Chunk, block: main.blocks.Block, data: *BinaryReader) !void {
@@ -332,14 +332,14 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 	};
 }
 
-pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
+pub const ComponentTypes = struct { // MARK: ComponentTypes
 	pub const @"cubyz:chest" = struct { // MARK: cubyz:chest
 		const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
 		});
 
-		pub var index: BlockEntityComponentTypeIndex = .noValue;
+		pub var index: ComponentTypeIndex = .noValue;
 
 		pub fn init() void {
 			StorageServer.init();
@@ -444,7 +444,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			}
 		});
 
-		pub var index: BlockEntityComponentTypeIndex = .noValue;
+		pub var index: ComponentTypeIndex = .noValue;
 
 		var textureDeinitList: main.List(graphics.Texture) = undefined;
 		var textureDeinitLock: std.Thread.Mutex = .{};
@@ -674,74 +674,74 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 	};
 };
 
-var blockyEntityComponentTypesMap: std.StringHashMapUnmanaged(*BlockEntityType) = .{};
+var componentTypesMap: std.StringHashMapUnmanaged(*ComponentType) = .{};
 var palette: *main.assets.Palette = undefined;
-var blockEntityComponentTypes: main.ListUnmanaged(*BlockEntityType) = undefined;
+var componentTypes: main.ListUnmanaged(*ComponentType) = undefined;
 
 pub fn globalInit() void {
 	sharedBlockEntityData = .init();
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		const class = main.globalArena.create(BlockEntityType);
-		class.* = BlockEntityType.init(@field(BlockEntityTypes, declaration.name), declaration.name);
-		blockyEntityComponentTypesMap.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
-		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
+	inline for (@typeInfo(ComponentTypes).@"struct".decls) |declaration| {
+		const class = main.globalArena.create(ComponentType);
+		class.* = ComponentType.init(@field(ComponentTypes, declaration.name), declaration.name);
+		componentTypesMap.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
+		std.log.debug("Registered ComponentType '{s}'", .{class.id});
 	}
 }
 
 pub fn globalDeinit() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).deinit();
+	inline for (@typeInfo(ComponentTypes).@"struct".decls) |declaration| {
+		@field(ComponentTypes, declaration.name).deinit();
 	}
 	BlockEntity.globalDeinit();
-	blockyEntityComponentTypesMap.deinit(main.globalAllocator.allocator);
+	componentTypesMap.deinit(main.globalAllocator.allocator);
 	sharedBlockEntityData.deinit();
 }
 
 pub fn init(palette_: *main.assets.Palette) void {
 	palette = palette_;
-	blockEntityComponentTypes = .{};
+	componentTypes = .{};
 	for (palette.palette.items) |entry| {
-		const index = blockEntityComponentTypes.items.len;
-		blockEntityComponentTypes.append(main.worldArena, blockyEntityComponentTypesMap.get(entry) orelse blk: {
+		const index = componentTypes.items.len;
+		componentTypes.append(main.worldArena, componentTypesMap.get(entry) orelse blk: {
 			std.log.err("Couldn't find block entity with id {s}. Loading may fail.", .{entry});
 			break :blk undefined; // TODO: Add an empty placeholder component instead.
 		});
-		blockEntityComponentTypes.items[index].index = @enumFromInt(@as(u16, @intCast(index)));
+		componentTypes.items[index].index = @enumFromInt(@as(u16, @intCast(index)));
 	}
-	var iterator = blockyEntityComponentTypesMap.valueIterator();
+	var iterator = componentTypesMap.valueIterator();
 	while (iterator.next()) |componentType| {
 		if (componentType.*.index == .noValue) {
 			palette.add(componentType.*.id);
-			const index = blockEntityComponentTypes.items.len;
-			blockEntityComponentTypes.append(main.worldArena, componentType.*);
-			blockEntityComponentTypes.items[index].index = @enumFromInt(@as(u16, @intCast(index)));
+			const index = componentTypes.items.len;
+			componentTypes.append(main.worldArena, componentType.*);
+			componentTypes.items[index].index = @enumFromInt(@as(u16, @intCast(index)));
 		}
 	}
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).index = blockyEntityComponentTypesMap.get(declaration.name).?.index;
+	inline for (@typeInfo(ComponentTypes).@"struct".decls) |declaration| {
+		@field(ComponentTypes, declaration.name).index = componentTypesMap.get(declaration.name).?.index;
 	}
-	std.debug.assert(blockEntityComponentTypes.items.len == palette.palette.items.len);
+	std.debug.assert(componentTypes.items.len == palette.palette.items.len);
 }
 
 pub fn reset() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).reset();
+	inline for (@typeInfo(ComponentTypes).@"struct".decls) |declaration| {
+		@field(ComponentTypes, declaration.name).reset();
 	}
 	BlockEntity.reset();
-	blockyEntityComponentTypesMap = undefined;
+	componentTypesMap = undefined;
 	palette = undefined;
-	blockEntityComponentTypes = undefined;
+	componentTypes = undefined;
 }
 
-pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
+pub fn getByID(_id: ?[]const u8) ?*const ComponentType {
 	const id = _id orelse return null;
-	if (blockyEntityComponentTypesMap.get(id)) |cls| return cls;
-	std.log.err("BlockEntityType with id '{s}' not found", .{id});
+	if (componentTypesMap.get(id)) |cls| return cls;
+	std.log.err("ComponentType with id '{s}' not found", .{id});
 	return null;
 }
 
 pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).renderAll(projectionMatrix, ambientLight, playerPos);
+	inline for (@typeInfo(ComponentTypes).@"struct".decls) |declaration| {
+		@field(ComponentTypes, declaration.name).renderAll(projectionMatrix, ambientLight, playerPos);
 	}
 }

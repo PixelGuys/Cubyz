@@ -20,7 +20,6 @@ const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
 const block_entity = @import("block_entity.zig");
-const BlockEntityType = block_entity.BlockEntityType;
 const ClientBlockCallback = main.callbacks.ClientBlockCallback;
 const ServerBlockCallback = main.callbacks.ServerBlockCallback;
 const BlockCallbackWithData = main.callbacks.BlockCallbackWithData;
@@ -92,7 +91,7 @@ var _mobility: [maxBlockCount]f32 = undefined;
 var _allowOres: [maxBlockCount]bool = undefined;
 var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
 var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
-var _blockEntity: [maxBlockCount]?*const BlockEntityType = undefined;
+var _blockEntity: [maxBlockCount]?*const block_entity.ComponentType = undefined;
 
 var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
@@ -489,7 +488,7 @@ pub const Block = packed struct { // MARK: Block
 		return _onTouch[self.typ];
 	}
 
-	pub fn blockEntity(self: Block) ?*const BlockEntityType {
+	pub fn blockEntity(self: Block) ?*const block_entity.ComponentType {
 		return _blockEntity[self.typ];
 	}
 

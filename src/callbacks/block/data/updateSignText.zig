@@ -11,6 +11,6 @@ pub fn init(_: ZonElement) ?*anyopaque {
 }
 
 pub fn run(_: *anyopaque, params: main.callbacks.BlockCallbackWithData.Params) main.callbacks.Result {
-	main.block_entity.BlockEntityTypes.@"cubyz:sign".updateText(params.pos, params.chunk, params.block, params.data.remaining, params.ctx.side);
+	main.block_entity.ComponentTypes.@"cubyz:sign".updateText(params.pos, params.chunk, params.block, params.data.remaining, params.ctx.side);
 	return .handled;
 }
