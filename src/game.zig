@@ -26,6 +26,7 @@ const settings = @import("settings.zig");
 const Block = main.blocks.Block;
 const physics = main.physics;
 const KeyBoard = main.KeyBoard;
+const Tag = main.Tag;
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -529,14 +530,15 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
+	pub fn placeBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
-			if (!mods.shift) {
+			std.debug.assert(KeyBoard.modByTag(Tag.controlModifier0) != null);
+			if (!KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 				if (main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
 			}
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
 			const onInteract = block.onInteract();
-			if (!mods.shift) {
+			if (!KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 				if (onInteract.run(.{.blockPos = blockPos, .block = block}) == .handled) return;
 			}
 		}
@@ -555,8 +557,9 @@ pub const Player = struct { // MARK: Player
 		Player.jumpCoyote = 0;
 	}
 
-	pub fn dropFromHand(mods: main.Window.Key.Modifiers) void {
-		if (mods.shift) {
+	pub fn dropFromHand() void {
+		std.debug.assert(KeyBoard.modByTag(Tag.controlModifier0) != null);
+		if (KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 			inventory.dropStack(selectedSlot);
 		} else {
 			inventory.dropOne(selectedSlot);
@@ -767,31 +770,31 @@ pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .densi
 var nextBlockPlaceTime: ?std.Io.Timestamp = null;
 var nextBlockBreakTime: ?std.Io.Timestamp = null;
 
-pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
+pub fn pressPlace() void {
 	const time = main.timestamp();
 	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
-	Player.placeBlock(mods);
+	Player.placeBlock();
 }
 
-pub fn releasePlace(_: main.Window.Key.Modifiers) void {
+pub fn releasePlace() void {
 	nextBlockPlaceTime = null;
 }
 
-pub fn pressBreak(_: main.Window.Key.Modifiers) void {
+pub fn pressBreak() void {
 	const time = main.timestamp();
 	nextBlockBreakTime = time.addDuration(main.settings.updateRepeatDelay);
 	Player.breakBlock(0);
 }
 
-pub fn releaseBreak(_: main.Window.Key.Modifiers) void {
+pub fn releaseBreak() void {
 	nextBlockBreakTime = null;
 }
 
-pub fn pressAcquireSelectedBlock(_: main.Window.Key.Modifiers) void {
+pub fn pressAcquireSelectedBlock() void {
 	Player.acquireSelectedBlock();
 }
 
-pub fn flyToggle(_: main.Window.Key.Modifiers) void {
+pub fn flyToggle() void {
 	if (!Player.isCreative()) return;
 
 	const newIsFlying = !Player.isActuallyFlying();
@@ -800,7 +803,7 @@ pub fn flyToggle(_: main.Window.Key.Modifiers) void {
 	Player.isGhost.store(false, .monotonic);
 }
 
-pub fn ghostToggle(_: main.Window.Key.Modifiers) void {
+pub fn ghostToggle() void {
 	if (!Player.isCreative()) return;
 
 	const newIsGhost = !Player.isGhost.load(.monotonic);
@@ -809,7 +812,7 @@ pub fn ghostToggle(_: main.Window.Key.Modifiers) void {
 	Player.isFlying.store(newIsGhost, .monotonic);
 }
 
-pub fn hyperSpeedToggle(_: main.Window.Key.Modifiers) void {
+pub fn hyperSpeedToggle() void {
 	if (!Player.isCreative()) return;
 
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
@@ -972,7 +975,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if (nextBlockPlaceTime) |*placeTime| {
 		if (placeTime.durationTo(time).nanoseconds >= 0) {
 			placeTime.* = placeTime.addDuration(main.settings.updateRepeatSpeed);
-			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
+			Player.placeBlock();
 		}
 	}
 	if (nextBlockBreakTime) |*breakTime| {

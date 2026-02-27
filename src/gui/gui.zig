@@ -5,6 +5,7 @@ const graphics = main.graphics;
 const draw = graphics.draw;
 const ZonElement = main.ZonElement;
 const settings = main.settings;
+const Tag = main.Tag;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const List = main.List;
@@ -391,74 +392,74 @@ pub const textCallbacks = struct {
 			current.inputCharacter(codepoint);
 		}
 	}
-	pub fn left(mods: main.Window.Key.Modifiers) void {
+	pub fn left() void {
 		if (selectedTextInput) |current| {
-			current.left(mods);
+			current.left();
 		}
 	}
-	pub fn right(mods: main.Window.Key.Modifiers) void {
+	pub fn right() void {
 		if (selectedTextInput) |current| {
-			current.right(mods);
+			current.right();
 		}
 	}
-	pub fn down(mods: main.Window.Key.Modifiers) void {
+	pub fn down() void {
 		if (selectedTextInput) |current| {
-			current.down(mods);
+			current.down();
 		}
 	}
-	pub fn up(mods: main.Window.Key.Modifiers) void {
+	pub fn up() void {
 		if (selectedTextInput) |current| {
-			current.up(mods);
+			current.up();
 		}
 	}
-	pub fn gotoStart(mods: main.Window.Key.Modifiers) void {
+	pub fn gotoStart() void {
 		if (selectedTextInput) |current| {
-			current.gotoStart(mods);
+			current.gotoStart();
 		}
 	}
-	pub fn gotoEnd(mods: main.Window.Key.Modifiers) void {
+	pub fn gotoEnd() void {
 		if (selectedTextInput) |current| {
-			current.gotoEnd(mods);
+			current.gotoEnd();
 		}
 	}
-	pub fn deleteLeft(mods: main.Window.Key.Modifiers) void {
+	pub fn deleteLeft() void {
 		if (selectedTextInput) |current| {
-			current.deleteLeft(mods);
+			current.deleteLeft();
 		}
 	}
-	pub fn deleteRight(mods: main.Window.Key.Modifiers) void {
+	pub fn deleteRight() void {
 		if (selectedTextInput) |current| {
-			current.deleteRight(mods);
+			current.deleteRight();
 		}
 	}
-	pub fn selectAll(mods: main.Window.Key.Modifiers) void {
+	pub fn selectAll() void {
 		if (selectedTextInput) |current| {
-			current.selectAll(mods);
+			current.selectAll();
 		}
 	}
-	pub fn copy(mods: main.Window.Key.Modifiers) void {
+	pub fn copy() void {
 		if (selectedTextInput) |current| {
-			current.copy(mods);
+			current.copy();
 		}
 	}
-	pub fn paste(mods: main.Window.Key.Modifiers) void {
+	pub fn paste() void {
 		if (selectedTextInput) |current| {
-			current.paste(mods);
+			current.paste();
 		}
 	}
-	pub fn cut(mods: main.Window.Key.Modifiers) void {
+	pub fn cut() void {
 		if (selectedTextInput) |current| {
-			current.cut(mods);
+			current.cut();
 		}
 	}
-	pub fn newline(mods: main.Window.Key.Modifiers) void {
+	pub fn newline() void {
 		if (selectedTextInput) |current| {
-			current.newline(mods);
+			current.newline();
 		}
 	}
 };
 
-pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
+pub fn mainButtonPressed() void {
 	inventory.update();
 	selectedWindow = null;
 	setSelectedTextInput(null);
@@ -483,7 +484,7 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	}
 }
 
-pub fn mainButtonReleased(_: main.Window.Key.Modifiers) void {
+pub fn mainButtonReleased() void {
 	inventory.applyChanges(true);
 	const oldWindow = selectedWindow;
 	selectedWindow = null;
@@ -503,11 +504,11 @@ pub fn mainButtonReleased(_: main.Window.Key.Modifiers) void {
 	}
 }
 
-pub fn secondaryButtonPressed(_: main.Window.Key.Modifiers) void {
+pub fn secondaryButtonPressed() void {
 	inventory.update();
 }
 
-pub fn secondaryButtonReleased(_: main.Window.Key.Modifiers) void {
+pub fn secondaryButtonReleased() void {
 	inventory.applyChanges(false);
 }
 
@@ -668,7 +669,8 @@ pub const inventory = struct { // MARK: inventory
 			while (time.durationTo(nextCraftingAction).nanoseconds <= 0) {
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
-				if (mainGuiButton.modsOnPress.shift) {
+				std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+				if (main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 					main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
 				} else {
 					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
@@ -681,8 +683,8 @@ pub const inventory = struct { // MARK: inventory
 
 		if (recipeItem != .null) return;
 		if (itemSlot.mode != .normal) return;
-
-		if (mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
+		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+		if (mainGuiButton.pressed and main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while (iterator.next()) |window| {

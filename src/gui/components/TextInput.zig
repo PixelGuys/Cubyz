@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
+const Tag = main.Tag;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
 const vec = main.vec;
@@ -169,8 +170,9 @@ fn reloadText(self: *TextInput) void {
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
 }
 
-fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (mods.control) {
+fn moveCursorLeft(self: *TextInput) void {
+	std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier1) != null);
+	if (main.KeyBoard.modByTag(Tag.controlModifier1).?.pressed) {
 		const text = self.currentString.items;
 		if (self.cursor.? == 0) return;
 		self.cursor.? -= 1;
@@ -193,13 +195,14 @@ fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-pub fn left(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+pub fn left(self: *TextInput) void {
 	if (self.cursor) |*cursor| {
-		if (mods.shift) {
+		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+		if (main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 			if (self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
-			self.moveCursorLeft(mods);
+			self.moveCursorLeft();
 			if (self.selectionStart == self.cursor) {
 				self.selectionStart = null;
 			}
@@ -208,16 +211,17 @@ pub fn left(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @min(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				self.moveCursorLeft(mods);
+				self.moveCursorLeft();
 			}
 		}
 		self.ensureCursorVisibility();
 	}
 }
 
-fn moveCursorRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+fn moveCursorRight(self: *TextInput) void {
 	if (self.cursor.? < self.currentString.items.len) {
-		if (mods.control) {
+		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier1) != null);
+		if (main.KeyBoard.modByTag(Tag.controlModifier1).?.pressed) {
 			const text = self.currentString.items;
 			// Find start of next "word":
 			while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
@@ -235,13 +239,14 @@ fn moveCursorRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-pub fn right(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+pub fn right(self: *TextInput) void {
 	if (self.cursor) |*cursor| {
-		if (mods.shift) {
+		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+		if (main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 			if (self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
-			self.moveCursorRight(mods);
+			self.moveCursorRight();
 			if (self.selectionStart == self.cursor) {
 				self.selectionStart = null;
 			}
@@ -250,7 +255,7 @@ pub fn right(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @max(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				self.moveCursorRight(mods);
+				self.moveCursorRight();
 			}
 		}
 		self.ensureCursorVisibility();
@@ -266,9 +271,10 @@ fn moveCursorVertically(self: *TextInput, relativeLines: f32) enum { changed, sa
 	return .same;
 }
 
-pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+pub fn down(self: *TextInput) void {
 	if (self.cursor) |*cursor| {
-		if (mods.shift) {
+		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+		if (main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 			if (self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
@@ -290,9 +296,10 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+pub fn up(self: *TextInput) void {
 	if (self.cursor) |*cursor| {
-		if (mods.shift) {
+		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+		if (main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 			if (self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
@@ -314,21 +321,23 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-fn moveCursorToStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (mods.control) {
+fn moveCursorToStart(self: *TextInput) void {
+	std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier1) != null);
+	if (main.KeyBoard.modByTag(Tag.controlModifier1).?.pressed) {
 		self.cursor.? = 0;
 	} else {
 		self.cursor.? = @intCast(if (std.mem.lastIndexOf(u8, self.currentString.items[0..self.cursor.?], "\n")) |nextPos| nextPos + 1 else 0);
 	}
 }
 
-pub fn gotoStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+pub fn gotoStart(self: *TextInput) void {
 	if (self.cursor) |*cursor| {
-		if (mods.shift) {
+		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+		if (main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 			if (self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
-			self.moveCursorToStart(mods);
+			self.moveCursorToStart();
 			if (self.selectionStart == self.cursor) {
 				self.selectionStart = null;
 			}
@@ -337,28 +346,30 @@ pub fn gotoStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @min(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				self.moveCursorToStart(mods);
+				self.moveCursorToStart();
 			}
 		}
 		self.ensureCursorVisibility();
 	}
 }
 
-fn moveCursorToEnd(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (mods.control) {
+fn moveCursorToEnd(self: *TextInput) void {
+	std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier1) != null);
+	if (main.KeyBoard.modByTag(Tag.controlModifier1).?.pressed) {
 		self.cursor.? = @intCast(self.currentString.items.len);
 	} else {
 		self.cursor.? += @intCast(std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len - self.cursor.?);
 	}
 }
 
-pub fn gotoEnd(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+pub fn gotoEnd(self: *TextInput) void {
 	if (self.cursor) |*cursor| {
-		if (mods.shift) {
+		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+		if (main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
 			if (self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
-			self.moveCursorToEnd(mods);
+			self.moveCursorToEnd();
 			if (self.selectionStart == self.cursor) {
 				self.selectionStart = null;
 			}
@@ -367,7 +378,7 @@ pub fn gotoEnd(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @min(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				self.moveCursorToEnd(mods);
+				self.moveCursorToEnd();
 			}
 		}
 		self.ensureCursorVisibility();
@@ -386,22 +397,22 @@ fn deleteSelection(self: *TextInput) void {
 	}
 }
 
-pub fn deleteLeft(self: *TextInput, _: main.Window.Key.Modifiers) void {
+pub fn deleteLeft(self: *TextInput) void {
 	if (self.cursor == null) return;
 	if (self.selectionStart == null) {
 		self.selectionStart = self.cursor;
-		self.moveCursorLeft(.{});
+		self.moveCursorLeft();
 	}
 	self.deleteSelection();
 	self.reloadText();
 	self.ensureCursorVisibility();
 }
 
-pub fn deleteRight(self: *TextInput, _: main.Window.Key.Modifiers) void {
+pub fn deleteRight(self: *TextInput) void {
 	if (self.cursor == null) return;
 	if (self.selectionStart == null) {
 		self.selectionStart = self.cursor;
-		self.moveCursorRight(.{});
+		self.moveCursorRight();
 	}
 	self.deleteSelection();
 	self.reloadText();
@@ -428,16 +439,18 @@ pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
 	self.ensureCursorVisibility();
 }
 
-pub fn selectAll(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (mods.control) {
+pub fn selectAll(self: *TextInput) void {
+	std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier1) != null);
+	if (main.KeyBoard.modByTag(Tag.controlModifier1).?.pressed) {
 		self.selectionStart = 0;
 		self.cursor = @intCast(self.currentString.items.len);
 		self.ensureCursorVisibility();
 	}
 }
 
-pub fn copy(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (mods.control) {
+pub fn copy(self: *TextInput) void {
+	std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier1) != null);
+	if (main.KeyBoard.modByTag(Tag.controlModifier1).?.pressed) {
 		if (self.cursor) |cursor| {
 			if (self.selectionStart) |selectionStart| {
 				const start = @min(cursor, selectionStart);
@@ -449,8 +462,9 @@ pub fn copy(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-pub fn paste(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (mods.control) {
+pub fn paste(self: *TextInput) void {
+	std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier1) != null);
+	if (main.KeyBoard.modByTag(Tag.controlModifier1).?.pressed) {
 		const string = main.Window.getClipboardString();
 		self.deleteSelection();
 		self.currentString.insertSlice(self.cursor.?, string);
@@ -460,17 +474,18 @@ pub fn paste(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-pub fn cut(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (mods.control) {
-		self.copy(mods);
+pub fn cut(self: *TextInput) void {
+	std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier1) != null);
+	if (main.KeyBoard.modByTag(Tag.controlModifier1).?.pressed) {
 		self.deleteSelection();
 		self.reloadText();
 		self.ensureCursorVisibility();
 	}
 }
 
-pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (!mods.shift and self.callbacks.onNewline.inner != null) {
+pub fn newline(self: *TextInput) void {
+	std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
+	if (!main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed and self.callbacks.onNewline.inner != null) {
 		self.callbacks.onNewline.run();
 		return;
 	}
