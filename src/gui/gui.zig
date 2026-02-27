@@ -669,8 +669,7 @@ pub const inventory = struct { // MARK: inventory
 			while (time.durationTo(nextCraftingAction).nanoseconds <= 0) {
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
-				std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
-				if (main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
+				if (main.KeyBoard.modByTag(Tag.controlModifier0).pressed) {
 					main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
 				} else {
 					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
@@ -683,8 +682,7 @@ pub const inventory = struct { // MARK: inventory
 
 		if (recipeItem != .null) return;
 		if (itemSlot.mode != .normal) return;
-		std.debug.assert(main.KeyBoard.modByTag(Tag.controlModifier0) != null);
-		if (mainGuiButton.pressed and main.KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
+		if (mainGuiButton.pressed and main.KeyBoard.modByTag(Tag.controlModifier0).pressed) {
 			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while (iterator.next()) |window| {

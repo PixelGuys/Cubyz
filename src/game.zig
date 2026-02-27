@@ -532,13 +532,12 @@ pub const Player = struct { // MARK: Player
 
 	pub fn placeBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
-			std.debug.assert(KeyBoard.modByTag(Tag.controlModifier0) != null);
-			if (!KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
+			if (!KeyBoard.modByTag(Tag.controlModifier0).pressed) {
 				if (main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
 			}
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
 			const onInteract = block.onInteract();
-			if (!KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
+			if (!KeyBoard.modByTag(Tag.controlModifier0).pressed) {
 				if (onInteract.run(.{.blockPos = blockPos, .block = block}) == .handled) return;
 			}
 		}
@@ -558,8 +557,7 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn dropFromHand() void {
-		std.debug.assert(KeyBoard.modByTag(Tag.controlModifier0) != null);
-		if (KeyBoard.modByTag(Tag.controlModifier0).?.pressed) {
+		if (KeyBoard.modByTag(Tag.controlModifier0).pressed) {
 			inventory.dropStack(selectedSlot);
 		} else {
 			inventory.dropOne(selectedSlot);

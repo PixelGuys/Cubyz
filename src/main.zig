@@ -444,12 +444,13 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
 	};
 
-	pub fn modByTag(modifierTag: Tag) ?*Window.Key {
+	pub fn modByTag(modifierTag: Tag) *Window.Key {
 		for (&keys) |*_key| {
 			if (_key.tag == modifierTag) {
 				return _key;
 			}
 		}
+		std.debug.assert(unreachable);
 		return null;
 	}
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?

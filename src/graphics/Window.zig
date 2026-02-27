@@ -466,8 +466,7 @@ pub const Key = struct { // MARK: Key
 		if (!self.notifyRequirement.met(self.grabbedOnPress)) return;
 		if (self.requiredModifiers) |requiredMods| {
 			for (requiredMods) |mod| {
-				std.debug.assert(main.KeyBoard.modByTag(mod) != null);
-				if (!main.KeyBoard.modByTag(mod).?.pressed) {
+				if (!main.KeyBoard.modByTag(mod).pressed) {
 					return;
 				}
 			}
