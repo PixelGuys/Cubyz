@@ -694,8 +694,11 @@ pub fn getById(id: []const u8) *const Biome {
 	};
 }
 
-pub fn idExists(id: []const u8) bool {
-	return if (biomesById.get(id) != null) true else false;
+pub fn getByIdOptional(id: []const u8) ?*const Biome {
+	std.debug.assert(finishedLoading);
+	return biomesById.get(id) orelse {
+		return null;
+	};
 }
 pub fn getByIndex(index: u32) ?*const Biome {
 	std.debug.assert(finishedLoading);
