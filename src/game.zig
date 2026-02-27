@@ -530,14 +530,12 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
-		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
-			if (!mods.shift) {
-				if (main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
-			}
-			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
+		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| blk: {
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse break :blk;
+			const block = mesh.chunk.getBlock(blockPos[0] & main.chunk.chunkMask, blockPos[1] & main.chunk.chunkMask, blockPos[2] & main.chunk.chunkMask);
 			const onInteract = block.onInteract();
 			if (!mods.shift) {
-				if (onInteract.run(.{.blockPos = blockPos, .block = block}) == .handled) return;
+				if (onInteract.run(.{.blockPos = blockPos, .block = block, .chunk = mesh.chunk}) == .handled) return;
 			}
 		}
 
@@ -622,6 +620,7 @@ pub const World = struct { // MARK: World
 	itemPalette: *assets.Palette = undefined,
 	toolPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
+	blockEntityComponentPalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
@@ -667,6 +666,7 @@ pub const World = struct { // MARK: World
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
+		self.blockEntityComponentPalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
 		if (main.server.thread) |serverThread| {
@@ -690,10 +690,12 @@ pub const World = struct { // MARK: World
 		errdefer self.itemPalette.deinit();
 		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
 		errdefer self.toolPalette.deinit();
+		self.blockEntityComponentPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockEntityComponentPalette"), null);
+		errdefer self.blockEntityComponentPalette.deinit();
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.blockEntityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .normal, .serverShared, .{.playerInventory = Player.id}, .{});
 		Player.loadFrom(zon.getChild("player"));
