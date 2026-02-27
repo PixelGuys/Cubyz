@@ -45,7 +45,7 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	var split = std.mem.splitScalar(u8, std.mem.trimRight(u8, args[0..zonIndex], " "), ' ');
 	const particleId = split.next() orelse return error.TooFewArguments;
 
-	const x, const y, const z = try command.parseCoordinates(&split, source);
+	const pos = try command.parseCoordinates(&split, source);
 
 	const collides = try parseBool(split.next() orelse "true");
 	const particleCount = try parseNumber(split.next() orelse "1", source);
@@ -55,7 +55,7 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for (users) |user| {
-		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, .{x, y, z}, collides, particleCount, zonStr);
+		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, pos, collides, particleCount, zonStr);
 	}
 }
 
