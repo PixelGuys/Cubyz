@@ -95,13 +95,19 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 		return result;
 	}
 
-	pub fn getPublicKey(allocator: NeverFailingAllocator, comptime keyType: KeyTypeEnum) []const u8 {
-		const bytes = if (@hasDecl(@TypeOf(@field(Storage, @tagName(keyType)).public_key), "toBytes"))
-			@field(Storage, @tagName(keyType)).public_key.toBytes()
-		else
-			@field(Storage, @tagName(keyType)).public_key.toUncompressedSec1();
-		var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
-		return allocator.dupe(u8, std.base64.standard.Encoder.encode(&base64, &bytes));
+	pub fn getPublicKey(allocator: NeverFailingAllocator, keyType: KeyTypeEnum) []const u8 {
+		inline for (comptime std.meta.declarations(Storage)) |decl| {
+			if (std.mem.eql(u8, decl.name, @tagName(keyType))) {
+				const bytes = if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes"))
+					@field(Storage, decl.name).public_key.toBytes()
+				else
+					@field(Storage, decl.name).public_key.toUncompressedSec1();
+				var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
+				const key = std.base64.standard.Encoder.encode(&base64, &bytes);
+				return std.mem.concat(allocator.allocator, u8, &.{@tagName(keyType), ":", key}) catch unreachable;
+			}
+		}
+		@panic("KeyCollection.Storage does not have the same elements as KeyTypeEnum");
 	}
 
 	pub fn sign(writer: *BinaryWriter, typ: KeyTypeEnum, message: []const u8) void {

@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 
 const gui = @import("../gui.zig");
@@ -17,7 +18,6 @@ pub var window: GuiWindow = GuiWindow{
 };
 
 const padding: f32 = 8;
-var key: []const u8 = undefined;
 
 fn toggleStreamerMode(value: bool) void {
 	main.settings.streamerMode = value;
@@ -35,18 +35,15 @@ fn logout() void {
 }
 
 fn copy() void {
+	const key = main.network.authentication.KeyCollection.getPublicKey(main.globalAllocator, settings.launchConfig.preferredAuthenticationAlgorithm);
+	defer main.globalAllocator.free(key);
 	main.Window.setClipboardString(key);
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	list.add(CheckBox.init(.{0, 0}, 316, "Streamer Mode (hides sensitive data)", main.settings.streamerMode, &toggleStreamerMode));
-	key = main.network.authentication.KeyCollection.getPublicKey(main.globalAllocator, .ed25519);
-	const row = HorizontalList.init();
-	list.add(Label.init(.{0, 0}, 128, "Your public key", .left));
-	row.add(Label.init(.{0, 0}, 200, key, .left));
-	row.add(Button.initText(.{padding, 0}, 70, "Copy", .init(copy)));
-	list.add(row);
+	list.add(Button.initText(.{0, 0}, 128, "Copy public key", .init(copy)));
 	if (main.game.world == null) {
 		list.add(Button.initText(.{0, 0}, 128, "Change Name", gui.openWindowCallback("change_name")));
 		list.add(Button.initText(.{0, 0}, 128, "Logout", .init(logout)));
@@ -58,7 +55,6 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	main.globalAllocator.free(key);
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
