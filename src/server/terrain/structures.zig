@@ -79,30 +79,31 @@ pub const StructureTable = struct {
 	structures: []const SimpleStructureModel = &.{},
 	paletteId: u32,
 
-	pub fn init(self: *StructureTable, id: []const u8, paletteId: u32, zon: ZonElement) StructureTable {
-		self.* = .{
+	pub fn init(id: []const u8, paletteId: u32, zon: ZonElement) StructureTable {
+		var structureTable: StructureTable = .{
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
 
 		const structures = zon.getChild("structures");
-		var structure_list = main.ListUnmanaged(SimpleStructureModel){};
-		var total_chance: f32 = 0;
-		defer structure_list.deinit(main.stackAllocator);
+		var structureList = main.ListUnmanaged(SimpleStructureModel){};
+		var totalChance: f32 = 0;
+		defer structureList.deinit(main.stackAllocator);
 
 		for (structures.toSlice()) |elem| {
 			if (SimpleStructureModel.initModel(elem)) |model| {
-				structure_list.append(main.stackAllocator, model);
-				total_chance += model.chance;
+				structureList.append(main.stackAllocator, model);
+				totalChance += model.chance;
 			}
 		}
-		if (total_chance > 1) {
-			for (structure_list.items) |*model| {
-				model.chance /= total_chance;
+		if (totalChance > 1) {
+			for (structureList.items) |*model| {
+				model.chance /= totalChance;
 			}
 		}
-		self.structures = main.worldArena.dupe(SimpleStructureModel, structure_list.items);
+		structureTable.structures = main.worldArena.dupe(SimpleStructureModel, structureList.items);
+		return structureTable;
 	}
 };
 
