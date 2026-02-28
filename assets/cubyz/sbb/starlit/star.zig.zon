@@ -1,0 +1,7 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:starlit/star/0"},
+		.{.id = "cubyz:starlit/star/1"},
+		.{.id = "cubyz:starlit/star/2"},
+	},
+}
