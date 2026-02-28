@@ -1,9 +1,9 @@
 .{
 	.isCave = true,
-	.maxHeight = -1000,
+	.maxHeight = -20000,
 	.minHeight = -48250,
-	.chance = 0.1,
-	.caveRadiusFactor = 0.2,
+	.chance = 0.2,
+	.caveRadiusFactor = 0.5,
 
 	.music = "cubyz:heart-of-the-beast",
 
