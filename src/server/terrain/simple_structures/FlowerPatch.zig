@@ -26,30 +26,13 @@ density: f32,
 
 pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 	const self = main.worldArena.create(FlowerPatch);
-	const blockString = parameters.get([]const u8, "block", "");
 	self.* = .{
 		.blocks = blk: {
-			if (parameters.getChildOrNull("blockStates")) |blockStatesZon| {
-				if (std.mem.containsAtLeast(u8, blockString, 2, ":")) {
-					std.log.err("Block state already specified in block field ({s}). Ignoring blockStates field ({s}).", .{
-						blockString,
-						parameters.get([]const u8, "blockStates", ""),
-					});
-				} else if (blockStatesZon.toSlice().len > 0) {
-					const output = main.worldArena.alloc(main.blocks.Block, blockStatesZon.toSlice().len);
-					for (blockStatesZon.toSlice(), output) |state, *block| {
-						const combinedBlockString = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{d}", .{
-							blockString,
-							state.as(u16, 0),
-						}) catch unreachable;
-						defer main.stackAllocator.free(combinedBlockString);
-						block.* = main.blocks.parseBlock(combinedBlockString);
-					}
-					break :blk output;
-				}
+			const blockZons = parameters.getChild("blocks").toSlice();
+			const output = main.worldArena.alloc(main.blocks.Block, blockZons.len);
+			for (blockZons, output) |zon, *block| {
+				block.* = main.blocks.parseBlock(zon.as([]const u8, ""));
 			}
-			const output = main.worldArena.alloc(main.blocks.Block, 1);
-			output[0] = main.blocks.parseBlock(blockString);
 			break :blk output;
 		},
 		.width = parameters.get(f32, "width", 5),
