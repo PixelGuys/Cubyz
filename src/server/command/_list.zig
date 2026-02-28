@@ -10,6 +10,7 @@ pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
 
 pub const perm = @import("permission/perm.zig");
+pub const group = @import("permission/group.zig");
 
 pub const undo = @import("worldedit/undo.zig");
 pub const redo = @import("worldedit/redo.zig");
