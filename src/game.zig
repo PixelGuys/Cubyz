@@ -432,6 +432,7 @@ pub const Player = struct { // MARK: Player
 	pub var inventory: ClientInventory = undefined;
 	pub var selectedSlot: u32 = 0;
 	pub const defaultBlockDamage: f32 = 1;
+	pub var inputSpeed: f64 = 0;
 
 	pub var selectionPosition1: ?Vec3i = null;
 	pub var selectionPosition2: ?Vec3i = null;
@@ -931,6 +932,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}*@as(Vec2f, @splat(std.math.pi*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
+
+	Player.inputSpeed = movementSpeed*speedMultiplier;
 
 	Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
