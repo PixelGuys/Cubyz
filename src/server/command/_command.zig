@@ -65,9 +65,12 @@ fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 
 pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !main.vec.Vec3d {
 	return blk: {
-		const output: main.vec.Vec3d = undefined;
-		for (0..3) |i| {
-			output[i] = try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[i], source);
+		var output: main.vec.Vec3d = undefined;
+		inline for (0..3) |i| {
+			output[i] = try parseAxis(split.next() orelse {
+				source.sendMessage("#ff0000Too few arguments for position", .{});
+				return error.TooFewArguments;
+			}, source.player.pos[i], source);
 		}
 		break :blk output;
 	};

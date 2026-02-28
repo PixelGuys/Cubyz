@@ -3,18 +3,21 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
+const command = @import("_command.zig");
+
 pub const description = "Get or set the player spawn point";
 pub const usage =
 	\\/spawn
-	\\/spawn <x> <y>
 	\\/spawn <x> <y> <z>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
+	var split = std.mem.splitScalar(u8, args, ' ');
+	//const pos = command.parseCoordinates(&split, source);
+
 	var x: ?f64 = null;
 	var y: ?f64 = null;
 	var z: ?f64 = null;
-	var split = std.mem.splitScalar(u8, args, ' ');
 	while (split.next()) |arg| {
 		if (arg.len == 0) break;
 		const num: f64 = std.fmt.parseFloat(f64, arg) catch {

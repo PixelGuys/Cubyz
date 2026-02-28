@@ -67,12 +67,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 
 	var split = std.mem.splitScalar(u8, args, ' ');
-	const pos = command.parseCoordinates(&split, source) catch |err| {
-		if (err == error.TooFewArguments) {
-			source.sendMessage("#ff0000Too few arguments for command /tp", .{});
-		}
-		return;
-	};
+	const pos = command.parseCoordinates(&split, source) catch return;
 	if (split.next()) |_| {
 		source.sendMessage("#ff0000Too many arguments for command /tp", .{});
 		return;
