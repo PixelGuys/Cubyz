@@ -31,8 +31,8 @@ const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 const FPSPresets = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
 
 fn fpsCapRound(newValue: f32) ?u32 {
-	for(FPSPresets) |value| {
-		if(@as(u16, @intFromFloat(newValue)) <= value)
+	for (FPSPresets) |value| {
+		if (@as(u16, @intFromFloat(newValue)) <= value)
 			return value;
 	}
 	return null;
