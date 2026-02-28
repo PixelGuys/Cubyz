@@ -29,6 +29,16 @@
 			.height = 6,
 			.height_variation = 3,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/temperate/temperate_landmarks",
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/forest/oak/oak_landmarks",
+			.chance = 0.01,
+		},
 	},
 
 	.parentBiomes = .{

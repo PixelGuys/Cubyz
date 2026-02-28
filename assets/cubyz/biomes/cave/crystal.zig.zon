@@ -23,6 +23,11 @@
 			.size = 4,
 			.size_variance = 2,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/cave/cave_landmarks",
+			.chance = 0.01,
+		},
 	},
 	.caveModels = .{
 		.{

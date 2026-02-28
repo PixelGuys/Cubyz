@@ -104,6 +104,11 @@
 			.density = 0.05,
 			.priority = 0.4,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/forest/willow/willow_landmarks",
+			.chance = 0.01,
+		},
 	},
 	.parentBiomes = .{
 		.{
