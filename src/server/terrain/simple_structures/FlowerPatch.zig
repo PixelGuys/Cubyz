@@ -35,7 +35,7 @@ pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 						blockString,
 						parameters.get([]const u8, "blockStates", ""),
 					});
-				} else {
+				} else if (blockStatesZon.toSlice().len > 0) {
 					const output = main.worldArena.alloc(main.blocks.Block, blockStatesZon.toSlice().len);
 					for (blockStatesZon.toSlice(), output) |state, *block| {
 						const combinedBlockString = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{d}", .{
