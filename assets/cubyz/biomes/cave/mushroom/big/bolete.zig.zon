@@ -15,7 +15,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bolete",
+			.blocks = .{"cubyz:bolete"},
 			.chance = 0.1,
 			.width = 8,
 			.variation = 4,

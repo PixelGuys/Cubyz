@@ -17,7 +17,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:lily_pad",
+			.blocks = .{"cubyz:lily_pad"},
 			.generationMode = .water_surface,
 			.chance = 0.1,
 			.width = 6,
