@@ -1,5 +1,5 @@
 .{
-	.tags = .{.choppable, .wood},
+	.tags = .{.choppable, .wood, .log},
 	.blockHealth = 8,
 	.drops = .{
 		.{.items = .{"cubyz:log/willow"}},
@@ -9,4 +9,5 @@
 	.texture = "cubyz:willow_log",
 	.texture_top = "cubyz:willow_log",
 	.texture_bottom = "cubyz:willow_log_top",
+	.decayProhibitor = true,
 }

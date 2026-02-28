@@ -50,6 +50,10 @@ const vec3 facePositions[4] = vec3[4]
 	vec3(0.5f, 0.5f, 0.0f)
 );
 
+vec3 square(vec3 x) {
+	return x*x;
+}
+
 void main() {
 	int particleID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
@@ -67,7 +71,7 @@ void main() {
 		fullLight >> 5 & 31u,
 		fullLight >> 0 & 31u
 	);
-	light = max(sunLight*ambientLight, blockLight)/31;
+	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
 
 	vec3 faceVertPos = facePositions[vertexID];
 	vec3 vertexRotationPos;

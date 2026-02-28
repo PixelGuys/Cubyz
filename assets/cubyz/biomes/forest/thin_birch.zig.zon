@@ -27,7 +27,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:moss:cubyz:cobblestone",
+			.block = "cubyz:moss:cubyz:slate/cobble",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 9,
@@ -36,9 +36,9 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:birch_leaves",
-			.log = "cubyz:birch_branch:0b11",
-			.top = "cubyz:birch_branch:0b11",
+			.leaves = "cubyz:leaves/birch",
+			.log = "cubyz:branch/birch:0b11",
+			.top = "cubyz:branch/birch:0b11",
 			.chance = 0.7,
 			.type = .round,
 			.height = 14,
@@ -51,7 +51,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:birch_leaves",
+			.leaves = "cubyz:leaves/birch",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.1,
@@ -67,7 +67,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.01,
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.size = 3,
 			.size_variance = 5,
 		},

@@ -4,26 +4,42 @@
 	.minHeight = -48250,
 
 	.chance = 0.2,
-
-	.caves = -0.1,
 	.crystals = 32,
 
 	.music = "cubyz:la_kubisa_caverna",
-	.stoneBlock = "cubyz:slate",
+	.stoneBlock = "cubyz:slate/base",
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:cobblestone",
+			.block = "cubyz:slate/cobble",
 			.size = 5,
 			.size_variance = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.size = 4,
 			.size_variance = 2,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:sphere",
+			.minAmount = 1,
+			.maxAmount = 1,
+			.minRadius = 30,
+			.maxRadius = 40,
+			.maxBiomeCenterDistance = 0,
+		},
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 20,
+			.maxAmount = 30,
+			.minRadius = 8,
+			.maxRadius = 16,
+			.maxBiomeCenterDistance = 50,
 		},
 	},
 }

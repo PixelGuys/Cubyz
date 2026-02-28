@@ -56,9 +56,9 @@ var queryObjects: [buffers][@typeInfo(Samples).@"enum".fields.len]c_uint = undef
 var activeSample: ?Samples = null;
 
 pub fn init() void {
-	for(&queryObjects) |*buf| {
+	for (&queryObjects) |*buf| {
 		c.glGenQueries(buf.len, buf);
-		for(buf) |queryObject| { // Start them to get an initial value.
+		for (buf) |queryObject| { // Start them to get an initial value.
 			c.glBeginQuery(c.GL_TIME_ELAPSED, queryObject);
 			c.glEndQuery(c.GL_TIME_ELAPSED);
 		}
@@ -98,7 +98,7 @@ pub fn render() void {
 	draw.setColor(0xffffffff);
 	var sum: isize = 0;
 	var y: f32 = 8;
-	inline for(0..queryObjects[curBuffer].len) |i| {
+	inline for (0..queryObjects[curBuffer].len) |i| {
 		var result: u32 = undefined;
 		c.glGetQueryObjectuiv(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
 		draw.print("{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8, .left);

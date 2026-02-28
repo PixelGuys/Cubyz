@@ -28,8 +28,8 @@ const Mat4f = vec.Mat4f;
 pub const chunk_meshing = @import("renderer/chunk_meshing.zig");
 pub const mesh_storage = @import("renderer/mesh_storage.zig");
 
-/// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
-const maximumMeshTime = 12;
+/// Time after which no more chunk meshes are created. This allows the game to run smoother on movement.
+const maximumMeshTime: std.Io.Duration = .fromMilliseconds(12);
 pub const zNear = 0.1;
 pub const zFar = 65536.0; // TODO: Fix z-fighting problems.
 
@@ -114,7 +114,7 @@ fn initReflectionCubeMap() void {
 	fakeReflectionPipeline.bind(null);
 	c.glUniform1f(fakeReflectionUniforms.frequency, 1);
 	c.glUniform1f(fakeReflectionUniforms.reflectionMapSize, reflectionCubeMapSize);
-	for(0..6) |face| {
+	for (0..6) |face| {
 		c.glUniform3fv(fakeReflectionUniforms.normalVector, 1, @ptrCast(&graphics.CubeMapTexture.faceNormal(face)));
 		c.glUniform3fv(fakeReflectionUniforms.upVector, 1, @ptrCast(&graphics.CubeMapTexture.faceUp(face)));
 		c.glUniform3fv(fakeReflectionUniforms.rightVector, 1, @ptrCast(&graphics.CubeMapTexture.faceRight(face)));
@@ -130,7 +130,7 @@ pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 pub fn updateFov(fov: f32) void {
-	if(lastFov != fov) {
+	if (lastFov != fov) {
 		lastFov = fov;
 		game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	}
@@ -138,6 +138,7 @@ pub fn updateFov(fov: f32) void {
 pub fn updateViewport(width: u31, height: u31) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
+	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(lastFov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
@@ -146,15 +147,14 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	// TODO: player bobbing
 	// TODO: Handle colors and sun position in the world.
 	std.debug.assert(game.world != null);
-	var ambient: Vec3f = undefined;
-	ambient[0] = @max(0.1, game.world.?.ambientLight);
-	ambient[1] = @max(0.1, game.world.?.ambientLight);
-	ambient[2] = @max(0.1, game.world.?.ambientLight);
+
+	const nightColor: Vec3f = .{0.3, 0.4, 0.5};
+	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.ambientLight)));
 
 	itemdrop.ItemDisplayManager.update(deltaTime);
 	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
-	const startTime = std.time.milliTimestamp();
-	mesh_storage.updateMeshes(startTime + maximumMeshTime);
+	const startTime = main.timestamp();
+	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
 
 pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Vec3f {
@@ -191,7 +191,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	// Uses FrustumCulling on the chunks.
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
-	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
+	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 
 	gpu_performance_measuring.startQuery(.skybox);
 	Skybox.render();
@@ -225,8 +225,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	chunk_meshing.beginRender();
 
 	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
-	defer for(chunkLists) |list| list.deinit();
-	for(meshes) |mesh| {
+	defer for (chunkLists) |list| list.deinit();
+	for (meshes) |mesh| {
 		mesh.prepareRendering(&chunkLists);
 	}
 	gpu_performance_measuring.stopQuery();
@@ -265,10 +265,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glTextureBarrier();
 
 	{
-		for(&chunkLists) |*list| list.clearRetainingCapacity();
+		for (&chunkLists) |*list| list.clearRetainingCapacity();
 		var i: usize = meshes.len;
-		while(true) {
-			if(i == 0) break;
+		while (true) {
+			if (i == 0) break;
 			i -= 1;
 			meshes[i].prepareTransparentRendering(playerPos, &chunkLists);
 		}
@@ -288,18 +288,18 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 
-	if(settings.bloom) {
+	if (settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock, playerPos, game.camera.viewMatrix);
 	} else {
 		Bloom.bindReplacementImage();
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
-	if(activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
+	if (activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
-	if(!blocks.meshes.hasFog(playerBlock)) {
+	if (!blocks.meshes.hasFog(playerBlock)) {
 		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
 		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
@@ -325,7 +325,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
+	if (!main.gui.hideGui) entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -398,7 +398,7 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
-		if(!blocks.meshes.hasFog(playerBlock)) {
+		if (!blocks.meshes.hasFog(playerBlock)) {
 			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
 			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
@@ -438,7 +438,7 @@ const Bloom = struct { // MARK: Bloom
 	}
 
 	fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
-		if(width != currentWidth or height != currentHeight) {
+		if (width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
 			buffer1.updateSize(width/4, height/4, c.GL_R11F_G11F_B10F);
@@ -480,10 +480,8 @@ pub const MenuBackGround = struct {
 	var texture: graphics.Texture = undefined;
 
 	var angle: f32 = 0;
-	var lastTime: i128 = undefined;
 
 	fn init() void {
-		lastTime = std.time.nanoTimestamp();
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/background/vertex.vert",
 			"assets/cubyz/shaders/background/fragment.frag",
@@ -544,7 +542,7 @@ pub const MenuBackGround = struct {
 		defer dir.close();
 
 		// Whenever the version changes copy over the new background image and display it.
-		if(!std.mem.eql(u8, settings.lastVersionString, settings.version.version)) {
+		if (!std.mem.eql(u8, settings.lastVersionString, settings.version.version)) {
 			const defaultImageData = try main.files.cwd().read(main.stackAllocator, "assets/cubyz/default_background.png");
 			defer main.stackAllocator.free(defaultImageData);
 			try dir.write("default_background.png", defaultImageData);
@@ -557,18 +555,18 @@ pub const MenuBackGround = struct {
 		defer walker.deinit();
 		var fileList = main.List([]const u8).init(main.stackAllocator);
 		defer {
-			for(fileList.items) |fileName| {
+			for (fileList.items) |fileName| {
 				main.stackAllocator.free(fileName);
 			}
 			fileList.deinit();
 		}
 
-		while(try walker.next()) |entry| {
-			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
+		while (try walker.next()) |entry| {
+			if (entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
 				fileList.append(main.stackAllocator.dupe(u8, entry.path));
 			}
 		}
-		if(fileList.items.len == 0) {
+		if (fileList.items.len == 0) {
 			return error.NoBackgroundImagesFound;
 		}
 		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));
@@ -585,14 +583,12 @@ pub const MenuBackGround = struct {
 		return texture.textureID != 0;
 	}
 
-	pub fn render() void {
+	pub fn render(deltaTime: f64) void {
 		c.glViewport(0, 0, main.Window.width, main.Window.height);
-		if(texture.textureID == 0) return;
+		if (texture.textureID == 0) return;
 
 		// Use a simple rotation around the z axis, with a steadily increasing angle.
-		const newTime = std.time.nanoTimestamp();
-		angle += @as(f32, @floatFromInt(newTime - lastTime))/2e10;
-		lastTime = newTime;
+		angle += @as(f32, @floatCast(deltaTime))/20.0;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		pipeline.bind(null);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
@@ -636,7 +632,7 @@ pub const MenuBackGround = struct {
 		const image = graphics.Image.init(main.stackAllocator, 4*size, size);
 		defer image.deinit(main.stackAllocator);
 
-		for(0..4) |i| {
+		for (0..4) |i| {
 			c.glDepthFunc(c.GL_LESS);
 			c.glDepthMask(c.GL_TRUE);
 			c.glDisable(c.GL_SCISSOR_TEST);
@@ -649,8 +645,8 @@ pub const MenuBackGround = struct {
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
 
-			for(0..size) |y| {
-				for(0..size) |x| {
+			for (0..size) |y| {
+				for (0..size) |x| {
 					const index = x + y*size;
 					// Needs to flip the image in y-direction.
 					image.setRGB(x + size*i, size - 1 - y, @bitCast(pixels[index]));
@@ -699,7 +695,7 @@ pub const Skybox = struct {
 		rgb *= @as(Vec3f, @splat(light));
 
 		const m = @reduce(.Max, rgb);
-		if(m > 1.0) {
+		if (m > 1.0) {
 			rgb /= @as(Vec3f, @splat(m));
 		}
 
@@ -742,7 +738,7 @@ pub const Skybox = struct {
 
 		var seed: u64 = 0;
 
-		for(0..numStars) |i| {
+		for (0..numStars) |i| {
 			var pos: Vec3f = undefined;
 
 			var radius: f32 = undefined;
@@ -751,7 +747,7 @@ pub const Skybox = struct {
 
 			var light: f32 = 0;
 
-			while(light < 0.1) {
+			while (light < 0.1) {
 				pos = getStarPos(&seed);
 
 				radius = @floatCast(main.random.nextFloatExp(&seed)*4 + 0.2);
@@ -805,15 +801,15 @@ pub const Skybox = struct {
 
 		var starOpacity: f32 = 0;
 		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
-		if(dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
+		if (dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
 			starOpacity = 1;
-		} else if(dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
+		} else if (dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
 			starOpacity = 0;
 		} else {
 			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
 		}
 
-		if(starOpacity != 0) {
+		if (starOpacity != 0) {
 			starPipeline.bind(null);
 
 			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
@@ -856,11 +852,11 @@ pub const Frustum = struct { // MARK: Frustum
 	}
 
 	pub fn testAAB(self: Frustum, pos: Vec3f, dim: Vec3f) bool {
-		inline for(self.planes) |plane| {
+		inline for (self.planes) |plane| {
 			var dist: f32 = vec.dot(pos - plane.pos, plane.norm);
 			// Find the most positive corner:
 			dist += @reduce(.Add, @max(Vec3f{0, 0, 0}, dim*plane.norm));
-			if(dist < 0) return false;
+			if (dist < 0) return false;
 		}
 		return true;
 	}
@@ -888,23 +884,24 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		const texId = main.blocks.meshes.textureIndex(particleBlock, 0);
 		const actualTextureIdx: u16 = main.blocks.meshes.getTextureAnimationFrame(texId) orelse 0;
 
-		const emitter = particles.Emitter.init(particleId, true);
-		for(0..particleCount) |_| {
+		const emitterProperties = particles.EmitterProperties{
+			.speed = .init(1, 1.5),
+			.lifeTime = .init(0.75, 1),
+			.randomizeRotation = true,
+		};
+		const emitter = particles.Emitter.init(particleId, true, .{.cube = .{.size = Vec3f{0.5, 0.5, 0.5}}}, emitterProperties, .spread);
+		for (0..particleCount) |_| {
 			const uvOffset = particles.ParticleManager.getRandomValidUVOffset(actualTextureIdx, &main.seed);
-
-			emitter.spawnParticlesWithUV(1, particles.Emitter.SpawnCube, .{
-				.mode = .spread,
-				.position = particlePos,
-				.size = Vec3f{0.5, 0.5, 0.5},
-			}, uvOffset);
+			emitter.spawnParticlesWithUV(particlePos, 1, uvOffset);
 		}
 
-		main.network.Protocols.genericUpdate.sendParticles(
+		main.network.protocols.genericUpdate.sendParticles(
 			main.game.world.?.conn,
 			particleId,
 			particlePos,
 			true,
-			particleCount
+			particleCount,
+			"",
 		);
 	}
 
@@ -936,7 +933,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var selectionFace: chunk.Neighbor = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
-	pub fn select(pos: Vec3d, _dir: Vec3f, item: ?main.items.Item) void {
+	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
@@ -956,16 +953,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		selectedBlockPos = null;
 
-		while(total_tMax < closestDistance) {
+		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
-			if(block.typ != 0) blk: {
-				const fluidPlaceable = item != null and item.? == .baseItem and item.?.baseItem.hasTag(.fluidPlaceable);
-				const holdingTargetedBlock = item != null and item.? == .baseItem and item.?.baseItem.block() == block.typ;
-				if(block.hasTag(.air) and !holdingTargetedBlock) break :blk;
-				if(block.hasTag(.fluid) and !fluidPlaceable and !holdingTargetedBlock) break :blk; // TODO: Buckets could select fluids
+			if (block.typ != 0) blk: {
+				const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+				const holdingTargetedBlock = item == .baseItem and item.baseItem.block() == block.typ;
+				if (block.hasTag(.air) and !holdingTargetedBlock) break :blk;
+				if (block.hasTag(.fluid) and !fluidPlaceable and !holdingTargetedBlock) break :blk; // TODO: Buckets could select fluids
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
-				if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
-					if(intersection.distance <= closestDistance) {
+				if (block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
+					if (intersection.distance <= closestDistance) {
 						selectedBlockPos = voxelPos;
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
@@ -975,29 +972,29 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 			}
 			posBeforeBlock = voxelPos;
-			if(tMax[0] < tMax[1]) {
-				if(tMax[0] < tMax[2]) {
+			if (tMax[0] < tMax[1]) {
+				if (tMax[0] < tMax[2]) {
 					voxelPos[0] +%= step[0];
 					total_tMax = tMax[0];
 					tMax[0] += tDelta[0];
-					neighborOfSelection = if(step[0] == 1) .dirPosX else .dirNegX;
+					neighborOfSelection = if (step[0] == 1) .dirPosX else .dirNegX;
 				} else {
 					voxelPos[2] +%= step[2];
 					total_tMax = tMax[2];
 					tMax[2] += tDelta[2];
-					neighborOfSelection = if(step[2] == 1) .dirUp else .dirDown;
+					neighborOfSelection = if (step[2] == 1) .dirUp else .dirDown;
 				}
 			} else {
-				if(tMax[1] < tMax[2]) {
+				if (tMax[1] < tMax[2]) {
 					voxelPos[1] +%= step[1];
 					total_tMax = tMax[1];
 					tMax[1] += tDelta[1];
-					neighborOfSelection = if(step[1] == 1) .dirPosY else .dirNegY;
+					neighborOfSelection = if (step[1] == 1) .dirPosY else .dirNegY;
 				} else {
 					voxelPos[2] +%= step[2];
 					total_tMax = tMax[2];
 					tMax[2] += tDelta[2];
-					neighborOfSelection = if(step[2] == 1) .dirUp else .dirDown;
+					neighborOfSelection = if (step[2] == 1) .dirUp else .dirDown;
 				}
 			}
 		}
@@ -1005,142 +1002,151 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
-		if(main.game.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
+		if (main.game.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
 		}
 		return true; // TODO: Check other entities
 	}
 
-	pub fn placeBlock(inventory: main.items.Inventory, slot: u32) void {
-		if(selectedBlockPos) |selectedPos| {
+	pub fn placeBlock(inventory: main.items.Inventory.ClientInventory, slot: u32) void {
+		if (selectedBlockPos) |selectedPos| {
 			var oldBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			var block = oldBlock;
-			if(inventory.getItem(slot)) |item| {
-				switch(item) {
-					.baseItem => |baseItem| {
-						if(baseItem.block()) |itemBlock| {
-							const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
-							var neighborDir = Vec3i{0, 0, 0};
-							// Check if stuff can be added to the block itself:
-							if(itemBlock == block.typ) {
-								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
-									if(!canPlaceBlock(selectedPos, block)) return;
-									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
-									return;
-								}
-							} else {
-								if(rotationMode.modifyBlock(&block, itemBlock)) {
-									if(!canPlaceBlock(selectedPos, block)) return;
-									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
-									return;
-								}
+			switch (inventory.getItem(slot)) {
+				.baseItem => |baseItem| {
+					if (baseItem.block()) |itemBlock| {
+						const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
+						var neighborDir = Vec3i{0, 0, 0};
+						// Check if stuff can be added to the block itself:
+						if (itemBlock == block.typ) {
+							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+							if (rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
+								if (!canPlaceBlock(selectedPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+								return;
 							}
-							// Check the block in front of it:
-							const neighborPos = posBeforeBlock;
-							neighborDir = selectedPos - posBeforeBlock;
-							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
-							const neighborBlock = block;
-							oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
-							block = oldBlock;
-							if(block.typ == itemBlock) {
-								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
-									if(!canPlaceBlock(neighborPos, block)) return;
-									updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
-									return;
-								}
-							} else {
-								if(!block.replacable()) return;
-								block.typ = itemBlock;
-								block.data = 0;
-								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
-									if(!canPlaceBlock(neighborPos, block)) return;
-									updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
-									return;
-								}
+						} else {
+							if (rotationMode.modifyBlock(&block, itemBlock)) {
+								if (!canPlaceBlock(selectedPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+								return;
 							}
 						}
-						if(std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
-							game.Player.selectionPosition2 = selectedPos;
-							main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
-							return;
+						// Check the block in front of it:
+						const neighborPos = posBeforeBlock;
+						neighborDir = selectedPos - posBeforeBlock;
+						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
+						const neighborBlock = block;
+						oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
+						block = oldBlock;
+						if (block.typ == itemBlock) {
+							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
+								if (!canPlaceBlock(neighborPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
+								return;
+							}
+						} else {
+							if (!block.replacable()) return;
+							block.typ = itemBlock;
+							block.data = 0;
+							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
+								if (!canPlaceBlock(neighborPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
+								return;
+							}
 						}
-					},
-					.tool => |tool| {
-						_ = tool; // TODO: Tools might change existing blocks.
-					},
-				}
+					}
+					if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
+						game.Player.selectionPosition2 = selectedPos;
+						main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
+						return;
+					}
+				},
+				.tool => |tool| {
+					_ = tool; // TODO: Tools might change existing blocks.
+				},
+				.null => {},
 			}
 		}
 	}
 
-	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
-		if(selectedBlockPos) |selectedPos| {
+	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
+		if (selectedBlockPos) |selectedPos| {
 			const stack = inventory.getStack(slot);
-			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id(), "cubyz:selection_wand");
-			if(isSelectionWand) {
+			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
+			if (isSelectionWand) {
 				game.Player.selectionPosition1 = selectedPos;
-				main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
+				main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
 				return;
 			}
 
-			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
+			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				currentSwingProgress = 0;
+				currentSwingTime = 0;
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			const holdingTargetedBlock = stack.item != null and stack.item.? == .baseItem and stack.item.?.baseItem.block() == block.typ;
-			if((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
+			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
+			if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
 
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
-			main.items.Inventory.Sync.ClientSide.mutex.lock();
-			if(!game.Player.isCreative()) {
+			main.sync.ClientSide.mutex.lock();
+			if (!game.Player.isCreative()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isTool = stack.item != null and stack.item.? == .tool;
-				if(isTool) {
-					damage = stack.item.?.tool.getBlockDamage(block);
+				const isTool = stack.item == .tool;
+				if (isTool) {
+					damage = stack.item.tool.getBlockDamage(block);
 				}
 				damage -= block.blockResistance();
-				if(damage > 0) {
-					const swingTime = if(isTool and stack.item.?.tool.isEffectiveOn(block)) 1.0/stack.item.?.tool.swingSpeed else 0.5;
-					if(currentSwingTime != swingTime) {
+				if (damage > 0) {
+					const swingTime = if (isTool and stack.item.tool.isEffectiveOn(block)) 1.0/stack.item.tool.swingSpeed else 0.5;
+					if (currentSwingTime > swingTime) {
 						currentSwingProgress = 0;
-						currentSwingTime = swingTime;
+						currentSwingTime = 0;
+					}
+					if (currentSwingTime == 0) {
+						const swings = @ceil(block.blockHealth()/damage);
+						const damagePerSwing = block.blockHealth()/swings;
+						currentSwingTime = damagePerSwing/damage*swingTime;
 					}
 					currentSwingProgress += @floatCast(deltaTime);
-					while(currentSwingProgress > currentSwingTime) {
+					while (currentSwingProgress > currentSwingTime) {
 						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage/block.blockHealth();
-						if(currentBlockProgress > 1) break;
+						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
+						if (currentBlockProgress > 0.9999) break;
+						const swings = @ceil(block.blockHealth()/damage);
+						const damagePerSwing = block.blockHealth()/swings;
+						currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					if(currentBlockProgress < 1) {
+					if (currentBlockProgress < 0.9999) {
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						if(currentBlockProgress != 0) {
+						if (currentBlockProgress != 0) {
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						}
-						main.items.Inventory.Sync.ClientSide.mutex.unlock();
+						main.sync.ClientSide.mutex.unlock();
 
 						return;
 					} else {
-						currentSwingProgress += (currentBlockProgress - 1)*block.blockHealth()/damage*currentSwingTime;
+						currentSwingProgress = 0;
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
-
+						currentSwingTime = 0;
 						spawnBlockBreakParticles(block, selectedPos);
 					}
 				} else {
-					main.items.Inventory.Sync.ClientSide.mutex.unlock();
+					main.sync.ClientSide.mutex.unlock();
 					return;
 				}
 			}
 
 			var newBlock = block;
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
-			main.items.Inventory.Sync.ClientSide.mutex.unlock();
+			main.sync.ClientSide.mutex.unlock();
 
-			if(newBlock != block) {
+			if (newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 
 				if(newBlock.typ == 0 or newBlock.hasTag(.air)) {
@@ -1150,10 +1156,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
-		main.items.Inventory.Sync.ClientSide.executeCommand(.{
+	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+		main.sync.ClientSide.executeCommand(.{
 			.updateBlock = .{
-				.source = .{.inv = source, .slot = slot},
+				.source = .{.inv = source.super, .slot = slot},
 				.pos = .{x, y, z},
 				.dropLocation = .{
 					.dir = selectionFace,
@@ -1188,12 +1194,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
-		if(main.gui.hideGui) return;
-		if(selectedBlockPos) |_selectedBlockPos| {
+		if (main.gui.hideGui) return;
+		if (selectedBlockPos) |_selectedBlockPos| {
 			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
-		if(game.Player.selectionPosition1) |pos1| {
-			if(game.Player.selectionPosition2) |pos2| {
+		if (game.Player.selectionPosition1) |pos1| {
+			if (game.Player.selectionPosition2) |pos2| {
 				const bottomLeft: Vec3i = @min(pos1, pos2);
 				const topRight: Vec3i = @max(pos1, pos2);
 				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));

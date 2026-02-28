@@ -26,8 +26,8 @@ pos: Vec2f,
 size: Vec2f,
 minValue: f32,
 maxValue: f32,
-callback: *const fn(f32) void,
-formatter: *const fn(NeverFailingAllocator, f32) []const u8,
+callback: *const fn (f32) void,
+formatter: *const fn (NeverFailingAllocator, f32) []const u8,
 currentValue: f32,
 currentText: []const u8,
 label: *Label,
@@ -42,7 +42,7 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, minValue: f32, maxValue: f32, initialValue: f32, callback: *const fn(f32) void, formatter: *const fn(NeverFailingAllocator, f32) []const u8) *ContinuousSlider {
+pub fn init(pos: Vec2f, width: f32, minValue: f32, maxValue: f32, initialValue: f32, callback: *const fn (f32) void, formatter: *const fn (NeverFailingAllocator, f32) []const u8) *ContinuousSlider {
 	const initialText = formatter(main.globalAllocator, initialValue);
 	const label = Label.init(undefined, width - 3*border, initialText, .center);
 	const button = Button.initText(.{0, 0}, undefined, "", .{});
@@ -80,7 +80,8 @@ pub fn toComponent(self: *ContinuousSlider) GuiComponent {
 fn setButtonPosFromValue(self: *ContinuousSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = self.maxValue - self.minValue;
-	self.button.pos[0] = 1.5*border + range*(self.currentValue - self.minValue)/len;
+	const val = std.math.clamp(self.currentValue, self.minValue, self.maxValue);
+	self.button.pos[0] = 1.5*border + range*(val - self.minValue)/len;
 	self.updateLabel(self.currentValue, self.size[0]);
 }
 
@@ -96,24 +97,28 @@ fn updateValueFromButtonPos(self: *ContinuousSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = self.maxValue - self.minValue;
 	const value: f32 = (self.button.pos[0] - 1.5*border)/range*len + self.minValue;
-	if(value != self.currentValue) {
+	if (value != self.currentValue) {
 		self.currentValue = value;
 		self.updateLabel(value, self.size[0]);
 		self.callback(value);
 	}
 }
 
-pub fn updateHovered(self: *ContinuousSlider, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.updateHovered(mousePosition - self.pos);
+pub fn updateHovered(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 	}
+	return .ignored;
 }
 
-pub fn mainButtonPressed(self: *ContinuousSlider, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.mainButtonPressed(mousePosition - self.pos);
-		self.mouseAnchor = mousePosition[0] - self.button.pos[0];
+pub fn mainButtonPressed(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
+			self.mouseAnchor = mousePosition[0] - self.button.pos[0];
+			return .handled;
+		}
 	}
+	return .ignored;
 }
 
 pub fn mainButtonReleased(self: *ContinuousSlider, _: Vec2f) void {
@@ -133,7 +138,7 @@ pub fn render(self: *ContinuousSlider, mousePosition: Vec2f) void {
 	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
 	self.label.render(mousePosition);
 
-	if(self.button.pressed) {
+	if (self.button.pressed) {
 		self.button.pos[0] = mousePosition[0] - self.mouseAnchor;
 		self.button.pos[0] = @min(@max(self.button.pos[0], 1.5*border), 1.5*border + range - 0.001);
 		self.updateValueFromButtonPos();
