@@ -35,8 +35,8 @@ fn logout() void {
 }
 
 fn copy() void {
-	const key = main.network.authentication.KeyCollection.getPublicKey(main.globalAllocator, settings.launchConfig.preferredAuthenticationAlgorithm);
-	defer main.globalAllocator.free(key);
+	const key = main.network.authentication.KeyCollection.getPublicKey(main.stackAllocator, settings.launchConfig.preferredAuthenticationAlgorithm);
+	defer main.stackAllocator.free(key);
 	main.Window.setClipboardString(key);
 }
 
