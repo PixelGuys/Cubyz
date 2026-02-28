@@ -9,10 +9,10 @@
 	},
 	.{
 		.inputs = .{"cubyz:log/{type}"},
-		.output = "2 cubyz:{type}_branch",
+		.output = "2 cubyz:branch/{type}",
 	},
 	.{
-		.inputs = .{"cubyz:{type}_branch"},
+		.inputs = .{"cubyz:branch/{type}"},
 		.output = "2 cubyz:planks/{type}",
 	},
 	.{
@@ -28,12 +28,8 @@
 		.output = "cubyz:chest/{type}",
 	},
 	.{
-		.inputs = .{"cubyz:log/cactus"},
-		.output = "2 cubyz:cactus_arm",
-	},
-	.{
-		.inputs = .{"cubyz:candy_cane/block"},
-		.output = "2 cubyz:candy_cane/branch",
+		.inputs = .{"cubyz:candy_cane_block"},
+		.output = "2 cubyz:branch/candy_cane",
 	},
 	.{
 		.inputs = .{"{mod}:{type}_planks", "cubyz:coal_ore"},
