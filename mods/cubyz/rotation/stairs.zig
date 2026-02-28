@@ -30,11 +30,11 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	@setEvalBranchQuota(65_536);
 
 	comptime var rotationTable: [4][256]u8 = undefined;
-	comptime for(0..4) |a| {
-		for(0..256) |old| {
+	comptime for (0..4) |a| {
+		for (0..256) |old| {
 			var new: u8 = 0b11_11_11_11;
 
-			for(0..2) |i| for(0..2) |j| for(0..2) |k| {
+			for (0..2) |i| for (0..2) |j| for (0..2) |k| {
 				const sin: f32 = @sin((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
 				const cos: f32 = @cos((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
 
@@ -44,14 +44,14 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 				const rX = @intFromBool(x*cos - y*sin > 0);
 				const rY = @intFromBool(x*sin + y*cos > 0);
 
-				if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
+				if (hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
 					new &= ~subBlockMask(rX, rY, @intCast(k));
 				}
 			};
 			rotationTable[a][old] = new;
 		}
 	};
-	if(data >= 256) return 0;
+	if (data >= 256) return 0;
 	const runtimeTable = rotationTable;
 	return runtimeTable[@intFromEnum(angle)][data];
 }
@@ -62,63 +62,63 @@ pub fn reset() void {
 	modelIndex = null;
 }
 
-const GreedyFaceInfo = struct {min: Vec2f, max: Vec2f};
+const GreedyFaceInfo = struct { min: Vec2f, max: Vec2f };
 fn mergeFaces(faceVisible: [2][2]bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
 	var faces: usize = 0;
-	if(faceVisible[0][0]) {
-		if(faceVisible[0][1]) {
-			if(faceVisible[1][0] and faceVisible[1][1]) {
+	if (faceVisible[0][0]) {
+		if (faceVisible[0][1]) {
+			if (faceVisible[1][0] and faceVisible[1][1]) {
 				// One big face:
 				mem[faces] = .{.min = .{0, 0}, .max = .{1, 1}};
 				faces += 1;
 			} else {
 				mem[faces] = .{.min = .{0, 0}, .max = .{0.5, 1}};
 				faces += 1;
-				if(faceVisible[1][0]) {
+				if (faceVisible[1][0]) {
 					mem[faces] = .{.min = .{0.5, 0}, .max = .{1, 0.5}};
 					faces += 1;
 				}
-				if(faceVisible[1][1]) {
+				if (faceVisible[1][1]) {
 					mem[faces] = .{.min = .{0.5, 0.5}, .max = .{1, 1}};
 					faces += 1;
 				}
 			}
 		} else {
-			if(faceVisible[1][0]) {
+			if (faceVisible[1][0]) {
 				mem[faces] = .{.min = .{0, 0}, .max = .{1.0, 0.5}};
 				faces += 1;
 			} else {
 				mem[faces] = .{.min = .{0, 0}, .max = .{0.5, 0.5}};
 				faces += 1;
 			}
-			if(faceVisible[1][1]) {
+			if (faceVisible[1][1]) {
 				mem[faces] = .{.min = .{0.5, 0.5}, .max = .{1, 1}};
 				faces += 1;
 			}
 		}
 	} else {
-		if(faceVisible[0][1]) {
-			if(faceVisible[1][1]) {
+		if (faceVisible[0][1]) {
+			if (faceVisible[1][1]) {
 				mem[faces] = .{.min = .{0, 0.5}, .max = .{1, 1}};
 				faces += 1;
 			} else {
 				mem[faces] = .{.min = .{0, 0.5}, .max = .{0.5, 1}};
 				faces += 1;
 			}
-			if(faceVisible[1][0]) {
+			if (faceVisible[1][0]) {
 				mem[faces] = .{.min = .{0.5, 0}, .max = .{1, 0.5}};
 				faces += 1;
 			}
 		} else {
-			if(faceVisible[1][0]) {
-				if(faceVisible[1][1]) {
+			if (faceVisible[1][0]) {
+				if (faceVisible[1][1]) {
 					mem[faces] = .{.min = .{0.5, 0}, .max = .{1, 1.0}};
 					faces += 1;
 				} else {
 					mem[faces] = .{.min = .{0.5, 0}, .max = .{1, 0.5}};
 					faces += 1;
 				}
-			} else if(faceVisible[1][1]) {
+			} else if (faceVisible[1][1]) {
 				mem[faces] = .{.min = .{0.5, 0.5}, .max = .{1, 1}};
 				faces += 1;
 			}
@@ -128,20 +128,20 @@ fn mergeFaces(faceVisible: [2][2]bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
 }
 
 pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
-	if(modelIndex) |idx| return idx;
-	for(0..256) |i| {
+	if (modelIndex) |idx| return idx;
+	for (0..256) |i| {
 		var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 		defer quads.deinit();
-		for(Neighbor.iterable) |neighbor| {
+		for (Neighbor.iterable) |neighbor| {
 			const xComponent = @abs(neighbor.textureX());
 			const yComponent = @abs(neighbor.textureY());
 			const normal = Vec3i{neighbor.relX(), neighbor.relY(), neighbor.relZ()};
 			const zComponent = @abs(normal);
-			const zMap: [2]@Vector(3, u32) = if(@reduce(.Add, normal) > 0) .{@splat(0), @splat(1)} else .{@splat(1), @splat(0)};
+			const zMap: [2]@Vector(3, u32) = if (@reduce(.Add, normal) > 0) .{@splat(0), @splat(1)} else .{@splat(1), @splat(0)};
 			var visibleFront: [2][2]bool = undefined;
 			var visibleMiddle: [2][2]bool = undefined;
-			for(0..2) |x| {
-				for(0..2) |y| {
+			for (0..2) |x| {
+				for (0..2) |y| {
 					const xSplat: @TypeOf(xComponent) = @splat(@intCast(x));
 					const ySplat: @TypeOf(xComponent) = @splat(@intCast(y));
 					const posFront = xComponent*xSplat + yComponent*ySplat + zComponent*zMap[1];
@@ -156,27 +156,27 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 			// Greedy mesh it:
 			var faces: [2]GreedyFaceInfo = undefined;
 			const frontFaces = mergeFaces(visibleFront, &faces);
-			for(frontFaces) |*face| {
+			for (frontFaces) |*face| {
 				var xLower = @abs(xAxis)*@as(Vec3f, @splat(face.min[0]));
 				var xUpper = @abs(xAxis)*@as(Vec3f, @splat(face.max[0]));
-				if(@reduce(.Add, xAxis) < 0) std.mem.swap(Vec3f, &xLower, &xUpper);
+				if (@reduce(.Add, xAxis) < 0) std.mem.swap(Vec3f, &xLower, &xUpper);
 				var yLower = @abs(yAxis)*@as(Vec3f, @splat(face.min[1]));
 				var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
-				if(@reduce(.Add, yAxis) < 0) std.mem.swap(Vec3f, &yLower, &yUpper);
+				if (@reduce(.Add, yAxis) < 0) std.mem.swap(Vec3f, &yLower, &yUpper);
 				const zValue: Vec3f = @floatFromInt(zComponent*zMap[1]);
-				if(neighbor == .dirNegX or neighbor == .dirPosY) {
+				if (neighbor == .dirNegX or neighbor == .dirPosY) {
 					face.min[0] = 1 - face.min[0];
 					face.max[0] = 1 - face.max[0];
 					const swap = face.min[0];
 					face.min[0] = face.max[0];
 					face.max[0] = swap;
 				}
-				if(neighbor == .dirUp) {
+				if (neighbor == .dirUp) {
 					face.min = Vec2f{1, 1} - face.min;
 					face.max = Vec2f{1, 1} - face.max;
 					std.mem.swap(Vec2f, &face.min, &face.max);
 				}
-				if(neighbor == .dirDown) {
+				if (neighbor == .dirDown) {
 					face.min[1] = 1 - face.min[1];
 					face.max[1] = 1 - face.max[1];
 					const swap = face.min[1];
@@ -196,27 +196,27 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 				});
 			}
 			const middleFaces = mergeFaces(visibleMiddle, &faces);
-			for(middleFaces) |*face| {
+			for (middleFaces) |*face| {
 				var xLower = @abs(xAxis)*@as(Vec3f, @splat(face.min[0]));
 				var xUpper = @abs(xAxis)*@as(Vec3f, @splat(face.max[0]));
-				if(@reduce(.Add, xAxis) < 0) std.mem.swap(Vec3f, &xLower, &xUpper);
+				if (@reduce(.Add, xAxis) < 0) std.mem.swap(Vec3f, &xLower, &xUpper);
 				var yLower = @abs(yAxis)*@as(Vec3f, @splat(face.min[1]));
 				var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
-				if(@reduce(.Add, yAxis) < 0) std.mem.swap(Vec3f, &yLower, &yUpper);
+				if (@reduce(.Add, yAxis) < 0) std.mem.swap(Vec3f, &yLower, &yUpper);
 				const zValue = @as(Vec3f, @floatFromInt(zComponent))*@as(Vec3f, @splat(0.5));
-				if(neighbor == .dirNegX or neighbor == .dirPosY) {
+				if (neighbor == .dirNegX or neighbor == .dirPosY) {
 					face.min[0] = 1 - face.min[0];
 					face.max[0] = 1 - face.max[0];
 					const swap = face.min[0];
 					face.min[0] = face.max[0];
 					face.max[0] = swap;
 				}
-				if(neighbor == .dirUp) {
+				if (neighbor == .dirUp) {
 					face.min = Vec2f{1, 1} - face.min;
 					face.max = Vec2f{1, 1} - face.max;
 					std.mem.swap(Vec2f, &face.min, &face.max);
 				}
-				if(neighbor == .dirDown) {
+				if (neighbor == .dirDown) {
 					face.min[1] = 1 - face.min[1];
 					face.max[1] = 1 - face.max[1];
 					const swap = face.min[1];
@@ -237,7 +237,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 			}
 		}
 		const index = main.models.Model.init(quads.items);
-		if(i == 0) {
+		if (i == 0) {
 			modelIndex = index;
 		}
 	}
@@ -249,70 +249,66 @@ pub fn model(block: Block) ModelIndex {
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
-	if(blockPlacing) {
+	if (blockPlacing) {
 		currentData.data = 0;
 		return true;
 	}
 	return false;
 }
 
-fn closestRay(comptime typ: enum {bit, intersection}, block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+fn closestRay(comptime typ: enum { bit, intersection }, block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) if (typ == .intersection) ?RayIntersectionResult else u16 {
 	var result: ?RayIntersectionResult = null;
 	var resultBit: u16 = 0;
-	for([_]u16{1, 2, 4, 8, 16, 32, 64, 128}) |bit| {
-		if(block.data & bit == 0) {
+	for ([_]u16{1, 2, 4, 8, 16, 32, 64, 128}) |bit| {
+		if (block.data & bit == 0) {
 			const cornerModelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(255 ^ bit);
-			if(RotationMode.DefaultFunctions.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
-				if(result == null or intersection.distance < result.?.distance) {
+			if (RotationMode.DefaultFunctions.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
+				if (result == null or intersection.distance < result.?.distance) {
 					result = intersection;
 					resultBit = bit;
 				}
 			}
 		}
 	}
-	if(typ == .bit) return resultBit;
+	if (typ == .bit) return resultBit;
 	return result;
 }
 
-pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-	if(item) |_item| {
-		switch(_item) {
-			.tool => |tool| {
-				const tags = tool.type.blockTags();
-				for(tags) |tag| {
-					if(tag == .chiselable) {
-						return closestRay(.intersection, block, relativePlayerPos, playerDir);
-					}
+pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+	switch (item) {
+		.tool => |tool| {
+			const tags = tool.type.blockTags();
+			for (tags) |tag| {
+				if (tag == .chiselable) {
+					return closestRay(.intersection, block, relativePlayerPos, playerDir);
 				}
-			},
-			else => {},
-		}
+			}
+		},
+		else => {},
 	}
 	return RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir);
 }
 
-pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
-	if(item) |_item| {
-		switch(_item) {
-			.tool => |tool| {
-				for(tool.type.blockTags()) |tag| {
-					if(tag == .chiselable) {
-						currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
-						if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
-						return;
-					}
+pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+	switch (item) {
+		.tool => |tool| {
+			for (tool.type.blockTags()) |tag| {
+				if (tag == .chiselable) {
+					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
+					if (currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
+					return;
 				}
-			},
-			else => {},
-		}
+			}
+		},
+		else => {},
 	}
 	return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
-	if(oldBlock.data == newBlock.data) return .no;
-	if(item.item != null and item.item.? == .tool) {
+	if (oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
+	if (oldBlock.data == newBlock.data) return .no;
+	if (item.item == .tool) {
 		return .{.yes_costsDurability = 1};
 	}
 	return .no;

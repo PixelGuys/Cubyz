@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const items = main.items;
 const BaseItemIndex = items.BaseItemIndex;
-const Inventory = items.Inventory;
+const ClientInventory = items.Inventory.ClientInventory;
 const ItemStack = items.ItemStack;
 const Player = main.game.Player;
 const Texture = main.graphics.Texture;
@@ -34,7 +34,7 @@ const padding: f32 = 8;
 
 var availableItems: main.List(BaseItemIndex) = undefined;
 var itemAmount: main.List(u32) = undefined;
-var inventories: main.List(Inventory) = undefined;
+var inventories: main.List(ClientInventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
 
@@ -47,67 +47,73 @@ pub fn deinit() void {
 }
 
 fn addItemStackToAvailable(itemStack: ItemStack) void {
-	if(itemStack.item) |item| {
-		if(item == .baseItem) {
-			const baseItem = item.baseItem;
-			for(availableItems.items, 0..) |alreadyPresent, i| {
-				if(baseItem == alreadyPresent) {
-					itemAmount.items[i] += itemStack.amount;
-					return;
-				}
+	if (itemStack.item == .baseItem) {
+		const baseItem = itemStack.item.baseItem;
+		for (availableItems.items, 0..) |alreadyPresent, i| {
+			if (baseItem == alreadyPresent) {
+				itemAmount.items[i] += itemStack.amount;
+				return;
 			}
-			availableItems.append(baseItem);
-			itemAmount.append(itemStack.amount);
 		}
+		availableItems.append(baseItem);
+		itemAmount.append(itemStack.amount);
 	}
 }
 
 fn findAvailableRecipes(list: *VerticalList) bool {
 	const oldAmounts = main.stackAllocator.dupe(u32, itemAmount.items);
 	defer main.stackAllocator.free(oldAmounts);
-	for(itemAmount.items) |*amount| {
+	for (itemAmount.items) |*amount| {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
-	for(0..main.game.Player.inventory.size()) |i| {
+	for (0..main.game.Player.inventory.size()) |i| {
 		addItemStackToAvailable(main.game.Player.inventory.getStack(i));
 	}
-	if(std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
+	if (std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
 	// Remove no longer present items:
 	var i: u32 = 0;
-	while(i < availableItems.items.len) : (i += 1) {
-		if(itemAmount.items[i] == 0) {
+	while (i < availableItems.items.len) : (i += 1) {
+		if (itemAmount.items[i] == 0) {
 			_ = itemAmount.swapRemove(i);
 			_ = availableItems.swapRemove(i);
 		}
 	}
+	for (inventories.items) |inv| {
+		inv.deinit(main.globalAllocator);
+	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
-	outer: for(items.recipes()) |*recipe| {
-		middle: for(recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
-			for(availableItems.items, itemAmount.items) |availableItem, availableAmount| {
-				if(availableItem == sourceItem and availableAmount >= sourceAmount) {
+	outer: for (items.recipes()) |*recipe| {
+		middle: for (recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
+			for (availableItems.items, itemAmount.items) |availableItem, availableAmount| {
+				if (availableItem == sourceItem and availableAmount >= sourceAmount) {
 					continue :middle;
 				}
 			}
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
-		if(recipe.cachedInventory == null) {
-			recipe.cachedInventory = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .{.recipe = recipe}, .{});
+		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .normal, .{.crafting = recipe}, .other, .{});
+
+		for (0..recipe.sourceAmounts.len) |index| {
+			inv.super._items[index].amount = recipe.sourceAmounts[index];
+			inv.super._items[index].item = .{.baseItem = recipe.sourceItems[index]};
 		}
-		const inv = recipe.cachedInventory.?;
+		inv.super._items[inv.super._items.len - 1].amount = recipe.resultAmount;
+		inv.super._items[inv.super._items.len - 1].item = .{.baseItem = recipe.resultItem};
+
 		inventories.append(inv);
 		const rowList = HorizontalList.init();
 		const maxColumns: u32 = 4;
 		const itemsPerColumn = recipe.sourceItems.len/maxColumns;
 		const remainder = recipe.sourceItems.len%maxColumns;
 		i = 0;
-		for(0..maxColumns) |col| {
+		for (0..maxColumns) |col| {
 			var itemsThisColumn = itemsPerColumn;
-			if(col < remainder) itemsThisColumn += 1;
+			if (col < remainder) itemsThisColumn += 1;
 			const columnList = VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
-			for(0..itemsThisColumn) |_| {
+			for (0..itemsThisColumn) |_| {
 				columnList.add(ItemSlot.init(.{0, 0}, inv, i, .immutable, .immutable));
 				i += 1;
 			}
@@ -124,17 +130,17 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 }
 
 fn refresh() void {
-	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
+	const oldScrollState = if (window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
 	const recipesChanged = findAvailableRecipes(list);
-	if(!recipesChanged and window.rootComponent != null) {
+	if (!recipesChanged and window.rootComponent != null) {
 		list.deinit();
 		return;
 	}
-	if(window.rootComponent) |*comp| {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.utils.castFunctionSelfToAnyopaque(VerticalList.deinit)});
+	if (window.rootComponent) |*comp| {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.meta.castFunctionSelfToAnyopaque(VerticalList.deinit)});
 	}
-	if(list.children.items.len == 0) {
+	if (list.children.items.len == 0) {
 		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));
 	}
 	list.finish(.center);
@@ -153,12 +159,15 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
 	}
 	availableItems.deinit();
 	itemAmount.deinit();
+	for (inventories.items) |inv| {
+		inv.deinit(main.globalAllocator);
+	}
 	inventories.deinit();
 }
 

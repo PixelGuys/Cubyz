@@ -1,8 +1,10 @@
 /// A collection of things that should make dealing with opengl easier.
 /// Also contains some basic 2d drawing stuff.
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const hbft = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("freetype/ftadvanc.h");
 	@cInclude("freetype/ftbbox.h");
 	@cInclude("freetype/ftbitmap.h");
@@ -31,10 +33,12 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
-	@cInclude("glad/vulkan.h");
+	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
+	@cInclude(if (builtin.target.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
 });
 
 pub const stb_image = @cImport({
+	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("stb/stb_image.h");
 	@cInclude("stb/stb_image_write.h");
 });
@@ -88,19 +92,19 @@ pub const draw = struct { // MARK: draw
 			std.math.lossyCast(i32, clipRect[0]*scale),
 			std.math.lossyCast(i32, clipRect[1]*scale),
 		};
-		if(clip) |oldClip| {
-			if(newClip[0] < oldClip[0]) {
+		if (clip) |oldClip| {
+			if (newClip[0] < oldClip[0]) {
 				newClip[2] -= oldClip[0] - newClip[0];
 				newClip[0] += oldClip[0] - newClip[0];
 			}
-			if(newClip[1] < oldClip[1]) {
+			if (newClip[1] < oldClip[1]) {
 				newClip[3] -= oldClip[1] - newClip[1];
 				newClip[1] += oldClip[1] - newClip[1];
 			}
-			if(newClip[0] + newClip[2] > oldClip[0] + oldClip[2]) {
+			if (newClip[0] + newClip[2] > oldClip[0] + oldClip[2]) {
 				newClip[2] -= (newClip[0] + newClip[2]) - (oldClip[0] + oldClip[2]);
 			}
-			if(newClip[1] + newClip[3] > oldClip[1] + oldClip[3]) {
+			if (newClip[1] + newClip[3] > oldClip[1] + oldClip[3]) {
 				newClip[3] -= (newClip[1] + newClip[3]) - (oldClip[1] + oldClip[3]);
 			}
 			newClip[2] = @max(newClip[2], 0);
@@ -577,7 +581,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		strikethrough: bool = false,
 
 		fn hasLine(self: FontEffect, comptime isUnderline: bool) bool {
-			if(isUnderline) return self.underline;
+			if (isUnderline) return self.underline;
 			return self.strikethrough;
 		}
 	};
@@ -614,7 +618,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	lineBreaks: main.List(LineBreak),
 
 	fn addLine(self: *TextBuffer, line: Line) void {
-		if(line.start != line.end) {
+		if (line.start != line.end) {
 			self.lines.append(line);
 		}
 	}
@@ -622,24 +626,24 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	fn initLines(self: *TextBuffer, comptime isUnderline: bool) void {
 		var line: Line = Line{.start = 0, .end = 0, .color = 0, .isUnderline = isUnderline};
 		var lastFontEffect: FontEffect = .{};
-		for(self.glyphs) |glyph| {
+		for (self.glyphs) |glyph| {
 			const fontEffect = glyph.fontEffect;
-			if(lastFontEffect.hasLine(isUnderline)) {
-				if(fontEffect.color != lastFontEffect.color) {
+			if (lastFontEffect.hasLine(isUnderline)) {
+				if (fontEffect.color != lastFontEffect.color) {
 					self.addLine(line);
 					line.color = fontEffect.color;
 					line.start = line.end;
-				} else if(!fontEffect.hasLine(isUnderline)) {
+				} else if (!fontEffect.hasLine(isUnderline)) {
 					self.addLine(line);
 				}
-			} else if(fontEffect.hasLine(isUnderline)) {
+			} else if (fontEffect.hasLine(isUnderline)) {
 				line.start = line.end;
 				line.color = fontEffect.color;
 			}
 			lastFontEffect = fontEffect;
 			line.end += glyph.x_advance;
 		}
-		if(lastFontEffect.hasLine(isUnderline)) {
+		if (lastFontEffect.hasLine(isUnderline)) {
 			self.addLine(line);
 		}
 	}
@@ -655,7 +659,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		curIndex: u32 = 0,
 
 		fn appendControlGetNext(self: *Parser) ?void {
-			if(self.showControlCharacters) {
+			if (self.showControlCharacters) {
 				self.fontEffects.append(.{.color = 0x808080});
 				self.parsedText.append(self.curChar);
 				self.characterIndex.append(self.curIndex);
@@ -674,17 +678,17 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 		fn peekNextByte(self: *Parser) u8 {
 			const next = self.unicodeIterator.peek(1);
-			if(next.len == 0) return 0;
+			if (next.len == 0) return 0;
 			return next[0];
 		}
 
 		fn parse(self: *Parser) void {
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
-			while(true) switch(self.curChar) {
+			while (true) switch (self.curChar) {
 				'*' => {
 					self.appendControlGetNext() orelse return;
-					if(self.curChar == '*') {
+					if (self.curChar == '*') {
 						self.appendControlGetNext() orelse return;
 						self.currentFontEffect.bold = !self.currentFontEffect.bold;
 					} else {
@@ -692,7 +696,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 					}
 				},
 				'_' => {
-					if(self.peekNextByte() == '_') {
+					if (self.peekNextByte() == '_') {
 						self.appendControlGetNext() orelse return;
 						self.appendControlGetNext() orelse return;
 						self.currentFontEffect.underline = !self.currentFontEffect.underline;
@@ -701,7 +705,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 					}
 				},
 				'~' => {
-					if(self.peekNextByte() == '~') {
+					if (self.peekNextByte() == '~') {
 						self.appendControlGetNext() orelse return;
 						self.appendControlGetNext() orelse return;
 						self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
@@ -716,15 +720,15 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				'#' => {
 					self.appendControlGetNext() orelse return;
 					var shift: u5 = 20;
-					while(true) : (shift -= 4) {
-						self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch(self.curChar) {
+					while (true) : (shift -= 4) {
+						self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch (self.curChar) {
 							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => self.curChar - '0',
 							'a', 'b', 'c', 'd', 'e', 'f' => self.curChar - 'a' + 10,
 							'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
 							else => 0,
 						}) << shift;
 						self.appendControlGetNext() orelse return;
-						if(shift == 0) break;
+						if (shift == 0) break;
 					}
 				},
 				'§' => {
@@ -741,13 +745,13 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
 			var count: usize = 0;
 			var curChar = unicodeIterator.nextCodepoint() orelse return count;
-			outer: while(true) switch(curChar) {
+			outer: while (true) switch (curChar) {
 				'*' => {
 					curChar = unicodeIterator.nextCodepoint() orelse break;
 				},
 				'_' => {
 					curChar = unicodeIterator.nextCodepoint() orelse break;
-					if(curChar == '_') {
+					if (curChar == '_') {
 						curChar = unicodeIterator.nextCodepoint() orelse break;
 					} else {
 						count += 1;
@@ -755,7 +759,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				},
 				'~' => {
 					curChar = unicodeIterator.nextCodepoint() orelse break;
-					if(curChar == '~') {
+					if (curChar == '~') {
 						curChar = unicodeIterator.nextCodepoint() orelse break;
 					} else {
 						count += 1;
@@ -767,7 +771,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 					count += 1;
 				},
 				'#' => {
-					for(0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
+					for (0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
 				},
 				'§' => {
 					curChar = unicodeIterator.nextCodepoint() orelse break;
@@ -803,7 +807,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer parser.parsedText.deinit();
 		defer parser.characterIndex.deinit();
 		parser.parse();
-		if(parser.parsedText.items.len == 0) {
+		if (parser.parsedText.items.len == 0) {
 			self.lineBreaks.append(.{.index = 0, .width = 0});
 			return self;
 		}
@@ -829,13 +833,13 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
 		const textIndexGuess = main.stackAllocator.alloc(u32, glyphInfos.len);
 		defer main.stackAllocator.free(textIndexGuess);
-		for(textIndexGuess, 0..) |*index, i| {
-			if(i == 0 or glyphInfos[i - 1].cluster != glyphInfos[i].cluster) {
+		for (textIndexGuess, 0..) |*index, i| {
+			if (i == 0 or glyphInfos[i - 1].cluster != glyphInfos[i].cluster) {
 				index.* = glyphInfos[i].cluster;
 			} else {
 				index.* = @min(textIndexGuess[i - 1] + 1, @as(u32, @intCast(parser.parsedText.items.len - 1)));
-				for(glyphInfos[i..]) |glyphInfo| {
-					if(glyphInfo.cluster != glyphInfos[i].cluster) {
+				for (glyphInfos[i..]) |glyphInfo| {
+					if (glyphInfo.cluster != glyphInfos[i].cluster) {
 						index.* = @min(index.*, glyphInfo.cluster - 1);
 						break;
 					}
@@ -845,7 +849,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 		// Merge it all together:
 		self.glyphs = allocator.alloc(GlyphData, glyphInfos.len);
-		for(self.glyphs, 0..) |*glyph, i| {
+		for (self.glyphs, 0..) |*glyph, i| {
 			glyph.x_advance = @as(f32, @floatFromInt(glyphPositions[i].x_advance))/TextRendering.fontUnitsPerPixel;
 			glyph.y_advance = @as(f32, @floatFromInt(glyphPositions[i].y_advance))/TextRendering.fontUnitsPerPixel;
 			glyph.x_offset = @as(f32, @floatFromInt(glyphPositions[i].x_offset))/TextRendering.fontUnitsPerPixel;
@@ -872,7 +876,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	}
 
 	fn getLineOffset(self: TextBuffer, line: usize) f32 {
-		const factor: f32 = switch(self.alignment) {
+		const factor: f32 = switch (self.alignment) {
 			.left => 0,
 			.center => 0.5,
 			.right => 1,
@@ -887,24 +891,24 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		var x: f32 = self.getLineOffset(line);
 		const start = self.lineBreaks.items[line].index;
 		const end = self.lineBreaks.items[line + 1].index;
-		for(self.glyphs[start..end]) |glyph| {
-			if(mousePos[0] < x + glyph.x_advance/2) {
+		for (self.glyphs[start..end]) |glyph| {
+			if (mousePos[0] < x + glyph.x_advance/2) {
 				return @intCast(glyph.characterIndex);
 			}
 
 			x += glyph.x_advance;
 		}
-		return @intCast(if(end < self.glyphs.len) self.glyphs[end - 1].characterIndex else bufferLen);
+		return @intCast(if (end < self.glyphs.len) self.glyphs[end - 1].characterIndex else bufferLen);
 	}
 
 	pub fn indexToCursorPos(self: TextBuffer, index: u32) Vec2f {
 		var x: f32 = 0;
 		var y: f32 = 0;
 		var i: usize = 0;
-		while(true) {
+		while (true) {
 			x = self.getLineOffset(i);
-			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i + 1].index]) |glyph| {
-				if(glyph.characterIndex == index) {
+			for (self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i + 1].index]) |glyph| {
+				if (glyph.characterIndex == index) {
 					return .{x, y};
 				}
 
@@ -912,7 +916,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				y -= glyph.y_advance;
 			}
 			i += 1;
-			if(i >= self.lineBreaks.items.len - 1) {
+			if (i >= self.lineBreaks.items.len - 1) {
 				return .{x, y};
 			}
 			y += 16;
@@ -928,20 +932,20 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		var lineWidth: f32 = 0;
 		var lastSpaceWidth: f32 = 0;
 		var lastSpaceIndex: u32 = 0;
-		for(self.glyphs, 0..) |glyph, i| {
+		for (self.glyphs, 0..) |glyph, i| {
 			lineWidth += glyph.x_advance;
-			if(glyph.character == ' ') {
+			if (glyph.character == ' ') {
 				lastSpaceWidth = lineWidth;
 				lastSpaceIndex = @intCast(i + 1);
 			}
-			if(glyph.character == '\n') {
+			if (glyph.character == '\n') {
 				self.lineBreaks.append(.{.index = @intCast(i + 1), .width = lineWidth - spaceCharacterWidth});
 				lineWidth = 0;
 				lastSpaceIndex = 0;
 				lastSpaceWidth = 0;
 			}
-			if(lineWidth > scaledMaxWidth) {
-				if(lastSpaceIndex != 0) {
+			if (lineWidth > scaledMaxWidth) {
+				if (lastSpaceIndex != 0) {
 					lineWidth -= lastSpaceWidth;
 					self.lineBreaks.append(.{.index = lastSpaceIndex, .width = lastSpaceWidth - spaceCharacterWidth});
 					lastSpaceIndex = 0;
@@ -966,27 +970,27 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		var i: usize = 0;
 		var j: usize = 0;
 		// Find the start row:
-		outer: while(i < self.lineBreaks.items.len - 1) : (i += 1) {
+		outer: while (i < self.lineBreaks.items.len - 1) : (i += 1) {
 			x = self.getLineOffset(i);
-			while(j < self.lineBreaks.items[i + 1].index) : (j += 1) {
+			while (j < self.lineBreaks.items[i + 1].index) : (j += 1) {
 				const glyph = self.glyphs[j];
-				if(glyph.characterIndex >= selectionStart) break :outer;
+				if (glyph.characterIndex >= selectionStart) break :outer;
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
 			}
 			y += 16;
 		}
-		while(i < self.lineBreaks.items.len - 1) {
+		while (i < self.lineBreaks.items.len - 1) {
 			const startX = x;
-			while(j < self.lineBreaks.items[i + 1].index and j < selectionEnd) : (j += 1) {
+			while (j < self.lineBreaks.items[i + 1].index and j < selectionEnd) : (j += 1) {
 				const glyph = self.glyphs[j];
-				if(glyph.characterIndex >= selectionEnd) break;
+				if (glyph.characterIndex >= selectionEnd) break;
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
 			}
 			draw.rect(pos + Vec2f{startX, y}, .{x - startX, 16});
 			i += 1;
-			if(i >= self.lineBreaks.items.len - 1) break;
+			if (i >= self.lineBreaks.items.len - 1) break;
 			x = self.getLineOffset(i);
 			y += 16;
 		}
@@ -1016,10 +1020,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		const lineWraps: []f32 = main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
 		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
-		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
+		while (i < self.lineBreaks.items.len - 1) : (i += 1) {
 			x = self.getLineOffset(i);
-			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i + 1].index]) |glyph| {
-				if(glyph.character != '\n') {
+			for (self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i + 1].index]) |glyph| {
+				if (glyph.character != '\n') {
 					const ftGlyph = TextRendering.getGlyph(glyph.index) catch continue;
 					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(glyph.fontEffect));
 				}
@@ -1031,17 +1035,17 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			y += 16;
 		}
 
-		for(self.lines.items) |_line| {
+		for (self.lines.items) |_line| {
 			var line: Line = _line;
 			y = 0;
-			y += if(line.isUnderline) 15 else 8;
+			y += if (line.isUnderline) 15 else 8;
 			const oldColor = draw.color;
 			draw.setColor(line.color | (@as(u32, 0xff000000) & draw.color));
 			defer draw.setColor(oldColor);
-			for(lineWraps, 0..) |lineWrap, j| {
+			for (lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
-				if(lineStart < lineEnd) {
+				if (lineStart < lineEnd) {
 					const start = Vec2f{lineStart + self.getLineOffset(j), y};
 					const dim = Vec2f{lineEnd - lineStart, 1};
 					draw.rect(start, dim);
@@ -1058,7 +1062,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		const g: f32 = @floatFromInt(color >> 8 & 255);
 		const b: f32 = @floatFromInt(color & 255);
 		const perceivedBrightness = @sqrt(0.299*r*r + 0.587*g*g + 0.114*b*b);
-		if(perceivedBrightness < 64) {
+		if (perceivedBrightness < 64) {
 			return 0xffffff; // Make shadows white for better readability.
 		} else {
 			return 0;
@@ -1084,10 +1088,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		const lineWraps: []f32 = main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
 		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
-		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
+		while (i < self.lineBreaks.items.len - 1) : (i += 1) {
 			x = self.getLineOffset(i);
-			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i + 1].index]) |glyph| {
-				if(glyph.character != '\n') {
+			for (self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i + 1].index]) |glyph| {
+				if (glyph.character != '\n') {
 					const ftGlyph = TextRendering.getGlyph(glyph.index) catch continue;
 					var fontEffect = glyph.fontEffect;
 					fontEffect.color = shadowColor(fontEffect.color);
@@ -1101,17 +1105,17 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			y += 16;
 		}
 
-		for(self.lines.items) |_line| {
+		for (self.lines.items) |_line| {
 			var line: Line = _line;
 			y = 0;
-			y += if(line.isUnderline) 15 else 8;
+			y += if (line.isUnderline) 15 else 8;
 			const oldColor = draw.color;
 			draw.setColor(shadowColor(line.color) | (@as(u32, 0xff000000) & draw.color));
 			defer draw.setColor(oldColor);
-			for(lineWraps, 0..) |lineWrap, j| {
+			for (lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
-				if(lineStart < lineEnd) {
+				if (lineStart < lineEnd) {
 					const start = Vec2f{lineStart + self.getLineOffset(j), y};
 					const dim = Vec2f{lineEnd - lineStart, 1};
 					draw.rect(start, dim);
@@ -1133,7 +1137,8 @@ const TextRendering = struct { // MARK: TextRendering
 	};
 	var pipeline: Pipeline = undefined;
 	var uniforms: struct {
-		texture_rect: c_int,
+		textureBounds: c_int,
+		textureRect: c_int,
 		scene: c_int,
 		offset: c_int,
 		ratio: c_int,
@@ -1155,7 +1160,7 @@ const TextRendering = struct { // MARK: TextRendering
 	var fontUnitsPerPixel: f32 = undefined;
 
 	fn ftError(errorCode: hbft.FT_Error) !void {
-		if(errorCode == 0) return;
+		if (errorCode == 0) return;
 		const errorString = hbft.FT_Error_String(errorCode);
 		std.log.err("Got freetype error {s}", .{errorString});
 		return error.freetype;
@@ -1225,7 +1230,7 @@ const TextRendering = struct { // MARK: TextRendering
 		const width: i32 = @bitCast(bitmap.width);
 		const height: i32 = @bitCast(bitmap.rows);
 		const buffer = bitmap.buffer orelse return;
-		if(textureOffset + width > textureWidth) {
+		if (textureOffset + width > textureWidth) {
 			resizeTexture(textureWidth*2);
 		}
 		c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
@@ -1234,10 +1239,10 @@ const TextRendering = struct { // MARK: TextRendering
 	}
 
 	fn getGlyph(index: u32) !Glyph {
-		if(index >= glyphMapping.items.len) {
+		if (index >= glyphMapping.items.len) {
 			glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1);
 		}
-		if(glyphMapping.items[index] == 0) { // glyph was not initialized yet.
+		if (glyphMapping.items[index] == 0) { // glyph was not initialized yet.
 			try ftError(hbft.FT_Load_Glyph(freetypeFace, index, hbft.FT_LOAD_RENDER));
 			const glyph = freetypeFace.*.glyph;
 			const bitmap = glyph.*.bitmap;
@@ -1265,18 +1270,15 @@ const TextRendering = struct { // MARK: TextRendering
 		x = @floor(x);
 		y = @ceil(y);
 		c.glUniform1i(uniforms.fontEffects, fontEffects);
-		if(fontEffects & 0x1000000 != 0) { // bold
-			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
-			c.glUniform4f(uniforms.texture_rect, @floatFromInt(glyph.textureX), -1, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1] + 1));
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-			// Just draw another thing on top in x direction. The y-direction is handled in the shader.
-			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x + 0.5, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		c.glUniform4f(uniforms.textureBounds, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
+		if (fontEffects & 0x1000000 != 0) { // bold
+			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x - 1, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
+			c.glUniform4f(uniforms.textureRect, @floatFromInt(glyph.textureX - 1), -1, @floatFromInt(glyph.size[0] + 2), @floatFromInt(glyph.size[1] + 2));
 		} else {
 			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y);
-			c.glUniform4f(uniforms.texture_rect, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+			c.glUniform4f(uniforms.textureRect, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
 		}
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
 	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) void {
@@ -1298,7 +1300,7 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
-	if(glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
+	if (glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
 }
 
 pub fn deinit() void {
@@ -1317,7 +1319,7 @@ const Shader = struct { // MARK: Shader
 	id: c_uint,
 
 	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: glslang.glslang_stage_t) ![]c_uint {
-		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		const versionLineEnd = if (std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
 		const versionLine = source[0..versionLineEnd];
 		const sourceLines = source[versionLineEnd..];
 
@@ -1347,12 +1349,12 @@ const Shader = struct { // MARK: Shader
 		};
 		const shader = glslang.glslang_shader_create(&input);
 		defer glslang.glslang_shader_delete(shader);
-		if(glslang.glslang_shader_preprocess(shader, &input) == 0) {
+		if (glslang.glslang_shader_preprocess(shader, &input) == 0) {
 			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
 
-		if(glslang.glslang_shader_parse(shader, &input) == 0) {
+		if (glslang.glslang_shader_parse(shader, &input) == 0) {
 			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
@@ -1361,7 +1363,7 @@ const Shader = struct { // MARK: Shader
 		defer glslang.glslang_program_delete(program);
 		glslang.glslang_program_add_shader(program, shader);
 
-		if(glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
+		if (glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
 			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
@@ -1380,13 +1382,13 @@ const Shader = struct { // MARK: Shader
 		defer main.stackAllocator.free(source);
 
 		// SPIR-V will be used for the Vulkan, now it's completely useless due to lack of support in Vulkan drivers
-		const glslangStage: glslang.glslang_stage_t = if(shaderStage == c.GL_VERTEX_SHADER) glslang.GLSLANG_STAGE_VERTEX else if(shaderStage == c.GL_FRAGMENT_SHADER) glslang.GLSLANG_STAGE_FRAGMENT else glslang.GLSLANG_STAGE_COMPUTE;
+		const glslangStage: glslang.glslang_stage_t = if (shaderStage == c.GL_VERTEX_SHADER) glslang.GLSLANG_STAGE_VERTEX else if (shaderStage == c.GL_FRAGMENT_SHADER) glslang.GLSLANG_STAGE_FRAGMENT else glslang.GLSLANG_STAGE_COMPUTE;
 		main.stackAllocator.free(try compileToSpirV(main.stackAllocator, source, filename, defines, glslangStage));
 
 		const shader = c.glCreateShader(shaderStage);
 		defer c.glDeleteShader(shader);
 
-		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		const versionLineEnd = if (std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
 		const versionLine = source[0..versionLineEnd];
 		const sourceLines = source[versionLineEnd..];
 
@@ -1397,7 +1399,7 @@ const Shader = struct { // MARK: Shader
 
 		var success: c_int = undefined;
 		c.glGetShaderiv(shader, c.GL_COMPILE_STATUS, &success);
-		if(success != c.GL_TRUE) {
+		if (success != c.GL_TRUE) {
 			var len: u32 = undefined;
 			c.glGetShaderiv(shader, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
 			var buf: [4096]u8 = undefined;
@@ -1414,7 +1416,7 @@ const Shader = struct { // MARK: Shader
 
 		var success: c_int = undefined;
 		c.glGetProgramiv(self.id, c.GL_LINK_STATUS, &success);
-		if(success != c.GL_TRUE) {
+		if (success != c.GL_TRUE) {
 			var len: u32 = undefined;
 			c.glGetProgramiv(self.id, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
 			var buf: [4096]u8 = undefined;
@@ -1430,9 +1432,9 @@ const Shader = struct { // MARK: Shader
 		shader.addShader(fragment, defines, c.GL_FRAGMENT_SHADER) catch return shader;
 		shader.link(fragment) catch return shader;
 
-		if(@TypeOf(uniformStruct) != @TypeOf(null)) {
-			inline for(@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
-				if(field.type == c_int) {
+		if (@TypeOf(uniformStruct) != @TypeOf(null)) {
+			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
+				if (field.type == c_int) {
 					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
 				}
 			}
@@ -1445,9 +1447,9 @@ const Shader = struct { // MARK: Shader
 		shader.addShader(compute, defines, c.GL_COMPUTE_SHADER) catch return shader;
 		shader.link(compute) catch return shader;
 
-		if(@TypeOf(uniformStruct) != @TypeOf(null)) {
-			inline for(@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
-				if(field.type == c_int) {
+		if (@TypeOf(uniformStruct) != @TypeOf(null)) {
+			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
+				if (field.type == c_int) {
 					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
 				}
 			}
@@ -1624,7 +1626,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 			oneMinusSrc1Alpha = c.VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
 
 			fn toGl(self: BlendFactor) c.GLenum {
-				return switch(self) {
+				return switch (self) {
 					.zero => c.GL_ZERO,
 					.one => c.GL_ONE,
 					.srcColor => c.GL_SRC_COLOR,
@@ -1656,7 +1658,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 			max = c.VK_BLEND_OP_MAX,
 
 			fn toGl(self: BlendOp) c.GLenum {
-				return switch(self) {
+				return switch (self) {
 					.add => c.GL_FUNC_ADD,
 					.subtract => c.GL_FUNC_SUBTRACT,
 					.reverseSubtract => c.GL_FUNC_REVERSE_SUBTRACT,
@@ -1720,7 +1722,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 	}
 
 	fn conditionalEnable(typ: c.GLenum, val: bool) void {
-		if(val) {
+		if (val) {
 			c.glEnable(typ);
 		} else {
 			c.glDisable(typ);
@@ -1729,7 +1731,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 	pub fn bind(self: Pipeline, scissor: ?c.VkRect2D) void {
 		self.shader.bind();
-		if(scissor) |s| {
+		if (scissor) |s| {
 			c.glEnable(c.GL_SCISSOR_TEST);
 			c.glScissor(s.offset.x, s.offset.y, @intCast(s.extent.width), @intCast(s.extent.height));
 		} else {
@@ -1739,14 +1741,14 @@ pub const Pipeline = struct { // MARK: Pipeline
 		conditionalEnable(c.GL_DEPTH_CLAMP, self.rasterState.depthClamp);
 		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
 		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
-		c.glPolygonMode(c.GL_FRONT_AND_BACK, switch(self.rasterState.polygonMode) {
+		c.glPolygonMode(c.GL_FRONT_AND_BACK, switch (self.rasterState.polygonMode) {
 			.fill => c.GL_FILL,
 			.line => c.GL_LINE,
 			.point => c.GL_POINT,
 		});
-		if(self.rasterState.cullMode != .none) {
+		if (self.rasterState.cullMode != .none) {
 			c.glEnable(c.GL_CULL_FACE);
-			c.glCullFace(switch(self.rasterState.cullMode) {
+			c.glCullFace(switch (self.rasterState.cullMode) {
 				.front => c.GL_FRONT,
 				.back => c.GL_BACK,
 				.frontAndBack => c.GL_FRONT_AND_BACK,
@@ -1755,11 +1757,11 @@ pub const Pipeline = struct { // MARK: Pipeline
 		} else {
 			c.glDisable(c.GL_CULL_FACE);
 		}
-		c.glFrontFace(switch(self.rasterState.frontFace) {
+		c.glFrontFace(switch (self.rasterState.frontFace) {
 			.counterClockwise => c.GL_CCW,
 			.clockwise => c.GL_CW,
 		});
-		if(self.rasterState.depthBias) |depthBias| {
+		if (self.rasterState.depthBias) |depthBias| {
 			c.glEnable(c.GL_POLYGON_OFFSET_FILL);
 			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 			c.glEnable(c.GL_POLYGON_OFFSET_POINT);
@@ -1775,7 +1777,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		conditionalEnable(c.GL_DEPTH_TEST, self.depthStencilState.depthTest);
 		c.glDepthMask(@intFromBool(self.depthStencilState.depthWrite));
-		c.glDepthFunc(switch(self.depthStencilState.depthCompare) {
+		c.glDepthFunc(switch (self.depthStencilState.depthCompare) {
 			.never => c.GL_NEVER,
 			.less => c.GL_LESS,
 			.equal => c.GL_EQUAL,
@@ -1788,9 +1790,9 @@ pub const Pipeline = struct { // MARK: Pipeline
 		// TODO: stencilTest
 
 		// TODO: logicOp
-		for(self.blendState.attachments, 0..) |attachment, i| {
+		for (self.blendState.attachments, 0..) |attachment, i| {
 			c.glColorMask(@intFromBool(attachment.colorWriteMask.r), @intFromBool(attachment.colorWriteMask.g), @intFromBool(attachment.colorWriteMask.b), @intFromBool(attachment.colorWriteMask.a));
-			if(!attachment.enabled) {
+			if (!attachment.enabled) {
 				c.glDisable(c.GL_BLEND);
 				continue;
 			}
@@ -1905,10 +1907,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 			self.binding = binding;
 			self.createBuffer(size);
 			self.activeFence = 0;
-			for(&self.fences) |*fence| {
+			for (&self.fences) |*fence| {
 				fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 			}
-			for(&self.fencedFreeLists) |*list| {
+			for (&self.fencedFreeLists) |*list| {
 				list.* = .init(allocator);
 			}
 
@@ -1917,10 +1919,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn deinit(self: *Self) void {
-			for(self.fences) |fence| {
+			for (self.fences) |fence| {
 				c.glDeleteSync(fence);
 			}
-			for(self.fencedFreeLists) |list| {
+			for (self.fencedFreeLists) |list| {
 				list.deinit();
 			}
 			self.ssbo.deinit();
@@ -1929,11 +1931,11 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 
 		pub fn beginRender(self: *Self) void {
 			self.activeFence += 1;
-			if(self.activeFence == self.fences.len) self.activeFence = 0;
-			const startTime = std.time.milliTimestamp();
-			while(self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
+			if (self.activeFence == self.fences.len) self.activeFence = 0;
+			const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
+			while (self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
 				self.finalFree(allocation);
-				if(std.time.milliTimestamp() -% startTime > 5) break; // TODO: Remove after #1434
+				if (main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
 			}
 			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 		}
@@ -1945,16 +1947,16 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 
 		pub fn rawAlloc(self: *Self, size: u31) SubAllocation {
 			var smallestBlock: ?*SubAllocation = null;
-			for(self.freeBlocks.items, 0..) |*block, i| {
-				if(size == block.len) {
+			for (self.freeBlocks.items, 0..) |*block, i| {
+				if (size == block.len) {
 					self.used += size;
 					return self.freeBlocks.swapRemove(i);
 				}
-				if(size < block.len and if(smallestBlock) |_smallestBlock| block.len < _smallestBlock.len else true) {
+				if (size < block.len and if (smallestBlock) |_smallestBlock| block.len < _smallestBlock.len else true) {
 					smallestBlock = block;
 				}
 			}
-			if(smallestBlock) |block| {
+			if (smallestBlock) |block| {
 				const result = SubAllocation{.start = block.start, .len = size};
 				block.start += size;
 				block.len -= size;
@@ -1962,7 +1964,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				return result;
 			} else {
 				std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{@as(usize, self.capacity)*@sizeOf(Entry) >> 20, (@as(usize, self.capacity)*@sizeOf(Entry) >> 20)*2});
-				if(@as(usize, self.capacity)*@sizeOf(Entry)*2 > 1 << 31) @panic("OpenGL 2 GiB buffer size limit reached. Please lower your render distance.");
+				if (@as(usize, self.capacity)*@sizeOf(Entry)*2 > 1 << 31) @panic("OpenGL 2 GiB buffer size limit reached. Please lower your render distance.");
 				const oldBuffer = self.ssbo;
 				defer oldBuffer.deinit();
 				const oldCapacity = self.capacity;
@@ -1978,18 +1980,18 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		fn finalFree(self: *Self, _allocation: SubAllocation) void {
-			if(_allocation.len == 0) return;
+			if (_allocation.len == 0) return;
 			self.used -= _allocation.len;
 			var allocation = _allocation;
-			for(self.freeBlocks.items, 0..) |*block, i| {
-				if(allocation.start + allocation.len == block.start) {
+			for (self.freeBlocks.items, 0..) |*block, i| {
+				if (allocation.start + allocation.len == block.start) {
 					allocation.len += block.len;
 					_ = self.freeBlocks.swapRemove(i);
 					break;
 				}
 			}
-			for(self.freeBlocks.items) |*block| {
-				if(allocation.start == block.start + block.len) {
+			for (self.freeBlocks.items) |*block| {
+				if (allocation.start == block.start + block.len) {
 					block.len += allocation.len;
 					return;
 				}
@@ -1998,14 +2000,14 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn free(self: *Self, allocation: SubAllocation) void {
-			if(allocation.len == 0) return;
+			if (allocation.len == 0) return;
 			self.fencedFreeLists[self.activeFence].append(allocation);
 		}
 
 		/// Must unmap after use!
 		pub fn allocateAndMapRange(self: *Self, len: usize, allocation: *SubAllocation) []Entry {
 			self.free(allocation.*);
-			if(len == 0) {
+			if (len == 0) {
 				allocation.len = 0;
 				return &.{};
 			}
@@ -2021,14 +2023,14 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn unmapRange(self: *Self, range: []Entry) void {
-			if(range.len == 0) return;
+			if (range.len == 0) return;
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
 		}
 
 		pub fn uploadData(self: *Self, data: []const Entry, allocation: *SubAllocation) void {
 			self.free(allocation.*);
-			if(data.len == 0) {
+			if (data.len == 0) {
 				allocation.len = 0;
 				return;
 			}
@@ -2061,7 +2063,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		};
 		c.glGenFramebuffers(1, &self.frameBuffer);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		if(hasDepthTexture) {
+		if (hasDepthTexture) {
 			c.glGenTextures(1, &self.depthTexture);
 			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, textureFilter);
@@ -2083,7 +2085,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 
 	pub fn deinit(self: *FrameBuffer) void {
 		c.glDeleteFramebuffers(1, &self.frameBuffer);
-		if(self.hasDepthTexture) {
+		if (self.hasDepthTexture) {
 			c.glDeleteRenderbuffers(1, &self.depthTexture);
 		}
 		c.glDeleteTextures(1, &self.texture);
@@ -2093,7 +2095,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		const width = @max(_width, 1);
 		const height = @max(_height, 1);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		if(self.hasDepthTexture) {
+		if (self.hasDepthTexture) {
 			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
 			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
 		}
@@ -2113,7 +2115,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	pub fn validate(self: *const FrameBuffer) bool {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
 		defer c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
-		if(c.glCheckFramebufferStatus(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
+		if (c.glCheckFramebufferStatus(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
 			std.log.err("Frame Buffer Object error: {}", .{c.glCheckFramebufferStatus(c.GL_FRAMEBUFFER)});
 			return false;
 		}
@@ -2162,7 +2164,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 		var g: [4]f32 = undefined;
 		var b: [4]f32 = undefined;
 		var a: [4]f32 = undefined;
-		for(0..4) |i| {
+		for (0..4) |i| {
 			r[i] = @floatFromInt(colors[i].r);
 			g[i] = @floatFromInt(colors[i].g);
 			b[i] = @floatFromInt(colors[i].b);
@@ -2173,8 +2175,8 @@ pub const TextureArray = struct { // MARK: TextureArray
 		var rSum: f32 = 0;
 		var gSum: f32 = 0;
 		var bSum: f32 = 0;
-		for(0..4) |i| {
-			const w = if(alphaCorrection) a[i]*a[i] else 1;
+		for (0..4) |i| {
+			const w = if (alphaCorrection) a[i]*a[i] else 1;
 			aSum += a[i]*a[i];
 			rSum += w*r[i]*r[i];
 			gSum += w*g[i]*g[i];
@@ -2184,7 +2186,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 		rSum = @sqrt(rSum)/2;
 		gSum = @sqrt(gSum)/2;
 		bSum = @sqrt(bSum)/2;
-		if(alphaCorrection and aSum != 0) {
+		if (alphaCorrection and aSum != 0) {
 			rSum /= aSum;
 			gSum /= aSum;
 			bSum /= aSum;
@@ -2196,15 +2198,15 @@ pub const TextureArray = struct { // MARK: TextureArray
 	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
 		var maxWidth: u31 = 1;
 		var maxHeight: u31 = 1;
-		for(images) |image| {
+		for (images) |image| {
 			maxWidth = @max(maxWidth, image.width);
 			maxHeight = @max(maxHeight, image.height);
 		}
 		// Make sure the width and height use a power of 2:
-		if(maxWidth - 1 & maxWidth != 0) {
+		if (maxWidth - 1 & maxWidth != 0) {
 			maxWidth = @as(u31, 2) << std.math.log2_int(u31, maxWidth);
 		}
-		if(maxHeight - 1 & maxHeight != 0) {
+		if (maxHeight - 1 & maxHeight != 0) {
 			maxHeight = @as(u31, 2) << std.math.log2_int(u31, maxHeight);
 		}
 
@@ -2212,21 +2214,21 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 		self.bind();
 
-		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
-		for(0..maxLOD) |i| {
+		const maxLOD = if (mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
+		for (0..maxLOD) |i| {
 			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
 		const lodBuffer: [][]Color = arena.alloc([]Color, maxLOD);
-		for(lodBuffer, 0..) |*buffer, i| {
+		for (lodBuffer, 0..) |*buffer, i| {
 			buffer.* = arena.alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
 		}
 
-		for(images, 0..) |image, i| {
+		for (images, 0..) |image, i| {
 			// Fill the buffer using nearest sampling. Probably not the best solutions for all textures, but that's what happens when someone doesn't use power of 2 textures...
-			for(0..maxWidth) |x| {
-				for(0..maxHeight) |y| {
+			for (0..maxWidth) |x| {
+				for (0..maxHeight) |y| {
 					const index = x + y*maxWidth;
 					const imageIndex = (x*image.width)/maxWidth + image.width*((y*image.height)/maxHeight);
 					lodBuffer[0][index] = image.imageData[imageIndex];
@@ -2234,13 +2236,13 @@ pub const TextureArray = struct { // MARK: TextureArray
 			}
 
 			// Calculate the mipmap levels:
-			for(0..lodBuffer.len) |_lod| {
+			for (0..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(_lod);
 				const curWidth = maxWidth >> lod;
 				const curHeight = maxHeight >> lod;
-				if(lod != 0) {
-					for(0..curWidth) |x| {
-						for(0..curHeight) |y| {
+				if (lod != 0) {
+					for (0..curWidth) |x| {
+						for (0..curHeight) |y| {
 							const index = x + y*curWidth;
 							const index2 = 2*x + 2*y*2*curWidth;
 							const colors = [4]Color{
@@ -2255,15 +2257,15 @@ pub const TextureArray = struct { // MARK: TextureArray
 				}
 			}
 			// Give the correct color to alpha 0 pixels, to avoid dark pixels:
-			for(1..lodBuffer.len) |_lod| {
+			for (1..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
 				const curWidth = maxWidth >> lod;
 				const curHeight = maxHeight >> lod;
-				for(0..curWidth) |x| {
-					for(0..curHeight) |y| {
+				for (0..curWidth) |x| {
+					for (0..curHeight) |y| {
 						const index = x + y*curWidth;
 						const index2 = x/2 + y/2*curWidth/2;
-						if(lodBuffer[lod][index].a == 0) {
+						if (lodBuffer[lod][index].a == 0) {
 							lodBuffer[lod][index].r = lodBuffer[lod + 1][index2].r;
 							lodBuffer[lod][index].g = lodBuffer[lod + 1][index2].g;
 							lodBuffer[lod][index].b = lodBuffer[lod + 1][index2].b;
@@ -2272,7 +2274,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 				}
 			}
 			// Upload:
-			for(0..lodBuffer.len) |_lod| {
+			for (0..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
 				const curWidth = maxWidth >> lod;
 				const curHeight = maxHeight >> lod;
@@ -2314,12 +2316,12 @@ pub const Texture = struct { // MARK: Texture
 		const maxLod = std.math.log2_int(u31, largestSize);
 
 		var curSize: u31 = largestSize;
-		while(curSize != 0) : (curSize /= 2) {
+		while (curSize != 0) : (curSize /= 2) {
 			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
 
 		curSize = largestSize;
-		while(curSize != 0) : (curSize /= 2) {
+		while (curSize != 0) : (curSize /= 2) {
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{}.png", .{pathPrefix, curSize}) catch unreachable;
 			defer main.stackAllocator.free(path);
 			const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
@@ -2444,7 +2446,7 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 
 	pub fn faceRight(face: usize) Vec3f {
 		comptime var rights: [6]Vec3f = undefined;
-		inline for(0..6) |i| {
+		inline for (0..6) |i| {
 			rights[i] = comptime vec.cross(faceNormal(i), faceUp(i));
 		}
 		return rights[face];
@@ -2506,7 +2508,7 @@ pub const Image = struct { // MARK: Image
 		};
 	}
 	pub fn deinit(self: Image, allocator: NeverFailingAllocator) void {
-		if(self.imageData.ptr == &defaultImageData or self.imageData.ptr == &emptyImageData or self.imageData.ptr == &whiteImageData) return;
+		if (self.imageData.ptr == &defaultImageData or self.imageData.ptr == &emptyImageData or self.imageData.ptr == &whiteImageData) return;
 		allocator.free(self.imageData);
 	}
 	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
@@ -2614,7 +2616,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	defer frameBuffer.deinit();
 	frameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA16F);
 	frameBuffer.bind();
-	if(block.transparent()) {
+	if (block.transparent()) {
 		frameBuffer.clear(.{0.683421, 0.6854237, 0.685426, 1});
 	} else {
 		frameBuffer.clear(.{0, 0, 0, 0});
@@ -2624,23 +2626,24 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	const oldViewMatrix = main.game.camera.viewMatrix;
 	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(1.0*std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
-	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
+	const uniforms = if (block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
-	if(block.hasBackFace()) {
-		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
-		for(main.chunk.Neighbor.iterable) |neighbor| {
-			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
+	const pos: main.chunk.BlockPos = .fromCoords(1, 1, 1);
+	if (block.hasBackFace()) {
+		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, true);
+		for (main.chunk.Neighbor.iterable) |neighbor| {
+			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos, true);
 		}
 	}
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
-	for(main.chunk.Neighbor.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
+	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, false);
+	for (main.chunk.Neighbor.iterable) |neighbor| {
+		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos.neighbor(neighbor)[0], false);
 	}
 
-	for(faceData.items) |*face| {
+	for (faceData.items) |*face| {
 		face.position.lightIndex = 0;
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
@@ -2655,9 +2658,9 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		var x: f64 = -65.5 + 1.5;
 		var y: f64 = -65.5 + 1.5;
 		var z: f64 = -92.631 + 1.5;
-		if(i & 1 != 0) x = -x + 3;
-		if(i & 2 != 0) y = -y + 3;
-		if(i & 4 != 0) z = -z + 3;
+		if (i & 1 != 0) x = -x + 3;
+		if (i & 2 != 0) y = -y + 3;
+		if (i & 4 != 0) z = -z + 3;
 		var chunkAllocation: SubAllocation = .{.start = 0, .len = 0};
 		main.renderer.chunk_meshing.chunkBuffer.uploadData(&.{.{
 			.position = .{0, 0, 0},
@@ -2673,7 +2676,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 			.oldVisibilityState = 0,
 		}}, &chunkAllocation);
 		defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
-		if(block.transparent()) {
+		if (block.transparent()) {
 			c.glBlendEquation(c.GL_FUNC_ADD);
 			c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
 			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
@@ -2699,7 +2702,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	const texture = Texture{.textureID = finalFrameBuffer.texture};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	block_texture.pipeline.bind(null);
-	c.glUniform1i(block_texture.uniforms.transparent, if(block.transparent()) c.GL_TRUE else c.GL_FALSE);
+	c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);
 	frameBuffer.bindTexture(c.GL_TEXTURE3);
 
 	c.glBindVertexArray(draw.rectVAO);

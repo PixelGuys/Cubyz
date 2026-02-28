@@ -12,9 +12,9 @@ pub fn execute(args: []const u8, source: *User) void {
 	var msg = main.List(u8).init(main.stackAllocator);
 	defer msg.deinit();
 	msg.appendSlice("#ffff00");
-	if(args.len == 0) {
+	if (args.len == 0) {
 		var iterator = command.commands.valueIterator();
-		while(iterator.next()) |cmd| {
+		while (iterator.next()) |cmd| {
 			msg.append('/');
 			msg.appendSlice(cmd.name);
 			msg.appendSlice(": ");
@@ -24,8 +24,8 @@ pub fn execute(args: []const u8, source: *User) void {
 		msg.appendSlice("\nUse /help <command> for usage of a specific command.\n");
 	} else {
 		var split = std.mem.splitScalar(u8, args, ' ');
-		while(split.next()) |arg| {
-			if(command.commands.get(arg)) |cmd| {
+		while (split.next()) |arg| {
+			if (command.commands.get(arg)) |cmd| {
 				msg.append('/');
 				msg.appendSlice(cmd.name);
 				msg.appendSlice(": ");
@@ -40,6 +40,6 @@ pub fn execute(args: []const u8, source: *User) void {
 			}
 		}
 	}
-	if(msg.items[msg.items.len - 1] == '\n') _ = msg.pop();
+	if (msg.items[msg.items.len - 1] == '\n') _ = msg.pop();
 	source.sendMessage("{s}", .{msg.items});
 }

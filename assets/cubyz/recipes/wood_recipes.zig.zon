@@ -1,11 +1,11 @@
 .{
 	.{
-		.inputs = .{"4 {mod}:{type}_planks"},
+		.inputs = .{"4 {mod}:planks/{type}"},
 		.output = "cubyz:workbench",
 	},
 	.{
 		.inputs = .{"cubyz:log/{type}"},
-		.output = "4 cubyz:{type}_planks",
+		.output = "4 cubyz:planks/{type}",
 	},
 	.{
 		.inputs = .{"cubyz:log/{type}"},
@@ -13,18 +13,18 @@
 	},
 	.{
 		.inputs = .{"cubyz:{type}_branch"},
-		.output = "2 cubyz:{type}_planks",
+		.output = "2 cubyz:planks/{type}",
 	},
 	.{
-		.inputs = .{"cubyz:{type}_planks"},
-		.output = "2 cubyz:{type}_fence",
+		.inputs = .{"cubyz:planks/{type}"},
+		.output = "2 cubyz:fence/{type}",
 	},
 	.{
-		.inputs = .{"cubyz:{type}_planks"},
+		.inputs = .{"cubyz:planks/{type}"},
 		.output = "cubyz:sign/{type}",
 	},
 	.{
-		.inputs = .{"4 cubyz:{type}_planks"},
+		.inputs = .{"4 cubyz:planks/{type}"},
 		.output = "cubyz:chest/{type}",
 	},
 	.{

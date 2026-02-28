@@ -12,13 +12,13 @@ pub const usage =
 
 pub fn execute(args: []const u8, source: *User) void {
 	var angle: Degrees = .@"90";
-	if(args.len != 0) {
+	if (args.len != 0) {
 		angle = std.meta.stringToEnum(Degrees, args) orelse {
 			source.sendMessage("#ff0000Error: Invalid angle '{s}'. Use 0, 90, 180 or 270.", .{args});
 			return;
 		};
 	}
-	if(source.worldEditData.clipboard == null) {
+	if (source.worldEditData.clipboard == null) {
 		source.sendMessage("#ff0000Error: No clipboard content to rotate.", .{});
 		return;
 	}

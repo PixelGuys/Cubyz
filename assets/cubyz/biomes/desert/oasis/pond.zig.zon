@@ -1,0 +1,18 @@
+.{
+	.properties = .{
+		.wet,
+	},
+	.validPlayerSpawn = false,
+	.minHeight = -5,
+	.maxHeight = -1,
+	.maxHeightLimit = -1,
+	.minRadius = 30,
+	.maxRadius = 45,
+	.hills = 5,
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:desert/oasis/base",
+			.chance = 1,
+		},
+	},
+}

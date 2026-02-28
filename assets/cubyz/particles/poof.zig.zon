@@ -1,3 +1,6 @@
 .{
 	.texture = "cubyz:poof",
+	.density = .{0.001, 0.001},
+	.rotationVelocity = .{60, 80},
+	.dragCoefficient = .{0.7, 0.8},
 }
