@@ -894,15 +894,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			const uvOffset = particles.ParticleManager.getRandomValidUVOffset(actualTextureIdx, &main.seed);
 			emitter.spawnParticlesWithUV(particlePos, 1, uvOffset);
 		}
-
-		main.network.protocols.genericUpdate.sendParticles(
-			main.game.world.?.conn,
-			particleId,
-			particlePos,
-			true,
-			particleCount,
-			"",
-		);
 	}
 
 	pub fn init() void {
