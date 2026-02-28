@@ -50,25 +50,25 @@ pub fn execute(msg: []const u8, source: *User) void {
 fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
 	const numberSlice = if (hasTilde) arg[1..] else arg;
-	const num: f64 = std.fmt.parseFloat(f64, numberSlice) catch ret: {
-		if (!hasTilde) {
-			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
-			return error.InvalidNumber;
-		}
-		if (arg.len > 1) {
+	if (hasTilde and numberSlice.len == 0) return playerPos;
+	const num = std.fmt.parseFloat(f64, numberSlice) catch {
+		if (hasTilde) {
 			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberSlice});
-			return error.InvalidNumber;
+		} else {
+			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
 		}
-		break :ret 0;
+		return error.InvalidNumber;
 	};
 
 	return std.math.clamp(if (hasTilde) playerPos + num else num, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
 }
 
 pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !main.vec.Vec3d {
-	return .{
-		try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[0], source),
-		try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[1], source),
-		try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[2], source),
+	return blk: {
+		const output: main.vec.Vec3d = undefined;
+		for (0..3) |i| {
+			output[i] = try parseAxis(split.next() orelse return error.TooFewArguments, source.player.pos[i], source);
+		}
+		break :blk output;
 	};
 }
