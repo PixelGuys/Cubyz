@@ -19,15 +19,39 @@ pub const generationMode = .floor;
 
 const FlowerPatch = @This();
 
-block: main.blocks.Block,
+blocks: []main.blocks.Block,
 width: f32,
 variation: f32,
 density: f32,
 
 pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 	const self = main.worldArena.create(FlowerPatch);
+	const blockString = parameters.get([]const u8, "block", "");
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
+		.blocks = blk: {
+			if (parameters.getChildOrNull("blockStates")) |blockStatesZon| {
+				if (std.mem.containsAtLeast(u8, blockString, 2, ":")) {
+					std.log.err("Block state already specified in block field ({s}). Ignoring blockStates field ({s}).", .{
+						blockString,
+						parameters.get([]const u8, "blockStates", ""),
+					});
+				} else {
+					const output = main.worldArena.alloc(main.blocks.Block, blockStatesZon.toSlice().len);
+					for (blockStatesZon.toSlice(), output) |state, *block| {
+						const combinedBlockString = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{d}", .{
+							blockString,
+							state.as(u16, 0),
+						}) catch unreachable;
+						defer main.stackAllocator.free(combinedBlockString);
+						block.* = main.blocks.parseBlock(combinedBlockString);
+					}
+					break :blk output;
+				}
+			}
+			const output = main.worldArena.alloc(main.blocks.Block, 1);
+			output[0] = main.blocks.parseBlock(blockString);
+			break :blk output;
+		},
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.density = parameters.get(f32, "density", 0.5),
@@ -86,7 +110,8 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				startHeight = chunk.startIndex(startHeight + chunk.super.pos.voxelSize);
 				if (@abs(startHeight -% baseHeight) > 5) continue;
 				if (chunk.liesInChunk(px, py, startHeight)) {
-					chunk.updateBlockInGeneration(px, py, startHeight, self.block);
+					const block = self.blocks[random.nextIntBounded(u32, seed, @intCast(self.blocks.len))];
+					chunk.updateBlockInGeneration(px, py, startHeight, block);
 				}
 			}
 		}
