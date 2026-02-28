@@ -280,40 +280,40 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 }
 
 // MARK: Callbacks
-fn escape(mods: Window.Key.Modifiers) void {
+fn escape() void {
 	if (gui.selectedTextInput != null) gui.setSelectedTextInput(null);
-	inventory(mods);
+	inventory();
 }
-fn inventory(_: Window.Key.Modifiers) void {
+fn inventory() void {
 	if (game.world == null) return;
 	gui.openWindow("inventory");
 	gui.openWindow("hotbar");
 	gui.toggleGameMenu();
 }
-fn ungrabMouse(_: Window.Key.Modifiers) void {
+fn ungrabMouse() void {
 	if (Window.grabbed) {
 		gui.toggleGameMenu();
 	}
 }
-fn openCreativeInventory(mods: Window.Key.Modifiers) void {
+fn openCreativeInventory() void {
 	if (game.world == null) return;
 	if (!game.Player.isCreative()) return;
-	ungrabMouse(mods);
+	ungrabMouse();
 	gui.openWindow("creative_inventory");
 }
-fn openChat(mods: Window.Key.Modifiers) void {
+fn openChat() void {
 	if (!gui.isWindowOpen("chat")) return;
-	ungrabMouse(mods);
+	ungrabMouse();
 	gui.openWindow("chat");
 	gui.windowlist.chat.input.select();
 }
-fn openCommand(mods: Window.Key.Modifiers) void {
+fn openCommand() void {
 	if (!gui.isWindowOpen("chat")) return;
-	openChat(mods);
+	openChat();
 	gui.windowlist.chat.input.clear();
 	gui.windowlist.chat.input.inputCharacter('/');
 }
-fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
+fn takeBackgroundImageFn() void {
 	if (game.world == null) return;
 
 	const oldHideGui = gui.hideGui;
@@ -326,42 +326,41 @@ fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 	gui.hideGui = oldHideGui;
 	itemdrop.ItemDisplayManager.showItem = oldShowItem;
 }
-fn toggleHideGui(_: Window.Key.Modifiers) void {
+fn toggleHideGui() void {
 	gui.hideGui = !gui.hideGui;
 }
-fn toggleHideDisplayItem(_: Window.Key.Modifiers) void {
+fn toggleHideDisplayItem() void {
 	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
 }
-fn toggleDebugOverlay(_: Window.Key.Modifiers) void {
+fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");
 }
-fn togglePerformanceOverlay(_: Window.Key.Modifiers) void {
+fn togglePerformanceOverlay() void {
 	gui.toggleWindow("performance_graph");
 }
-fn toggleGPUPerformanceOverlay(_: Window.Key.Modifiers) void {
+fn toggleGPUPerformanceOverlay() void {
 	gui.toggleWindow("gpu_performance_measuring");
 }
-fn toggleNetworkDebugOverlay(_: Window.Key.Modifiers) void {
+fn toggleNetworkDebugOverlay() void {
 	gui.toggleWindow("debug_network");
 }
-fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
+fn toggleAdvancedNetworkDebugOverlay() void {
 	gui.toggleWindow("debug_network_advanced");
 }
-fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
+fn cycleHotbarSlot(i: comptime_int) *const fn () void {
 	return &struct {
-		fn set(_: Window.Key.Modifiers) void {
+		fn set() void {
 			game.Player.selectedSlot = @intCast(@mod(@as(i33, game.Player.selectedSlot) + i, 12));
 		}
 	}.set;
 }
-fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
+fn setHotbarSlot(i: comptime_int) *const fn () void {
 	return &struct {
-		fn set(_: Window.Key.Modifiers) void {
+		fn set() void {
 			game.Player.selectedSlot = i - 1;
 		}
 	}.set;
 }
-
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
 	pub var keys = [_]Window.Key{
@@ -381,7 +380,8 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
 		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
 		.{.name = "drop", .key = c.GLFW_KEY_Q, .repeatAction = &game.Player.dropFromHand, .notifyRequirement = .inGame},
-
+		.{.name = "modifier0", .key = c.GLFW_KEY_LEFT_SHIFT, .tag = Tag.controlModifier0},
+		.{.name = "modifier1", .key = c.GLFW_KEY_LEFT_CONTROL, .tag = Tag.controlModifier1},
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
 
@@ -409,10 +409,10 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
 		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
 		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = .{.control = true}},
-		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = .{.control = true}},
-		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = .{.control = true}},
-		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = .{.control = true}},
+		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = &[_]Tag{Tag.controlModifier1}},
+		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = &[_]Tag{Tag.controlModifier1}},
+		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = &[_]Tag{Tag.controlModifier1}},
+		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = &[_]Tag{Tag.controlModifier1}},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
 		// Hotbar shortcuts:
@@ -444,6 +444,15 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
 	};
 
+	pub fn modByTag(modifierTag: Tag) *Window.Key {
+		for (&keys) |*_key| {
+			if (_key.tag == modifierTag) {
+				return _key;
+			}
+		}
+		std.debug.assert(unreachable);
+		return null;
+	}
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
 		for (&keys) |*_key| {
 			if (std.mem.eql(u8, name, _key.name)) {
