@@ -222,6 +222,11 @@ pub const ParticleManager = struct {
 		const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
 		particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
 		types.append(arenaAllocator, particleType);
+		typesLocal.append(arenaAllocator, ParticleTypeLocal{
+			.density = .init(2, 3),
+			.rotVel = .init(0, 0),
+			.dragCoefficient = .init(0.5, 0.6),
+		});
 
 		const validRegions = computeValidUVRegions(image);
 		blockTextureValidRegions.put(arenaAllocator.allocator, textureIndex, validRegions) catch unreachable;
