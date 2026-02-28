@@ -62,7 +62,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bolete",
+			.blocks = .{"cubyz:bolete"},
 			.chance = 0.007,
 			.width = 3,
 			.variation = 3,
@@ -71,7 +71,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:toadstool",
+			.blocks = .{"cubyz:toadstool"},
 			.chance = 0.007,
 			.width = 3,
 			.variation = 3,
@@ -80,7 +80,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dead_leaf_pile",
+			.blocks = .{"cubyz:dead_leaf_pile"},
 			.chance = 0.1,
 			.width = 4,
 			.variation = 4,
@@ -89,7 +89,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:ivy",
+			.blocks = .{"cubyz:ivy"},
 			.chance = 0.05,
 			.width = 6,
 			.variation = 6,
@@ -98,7 +98,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
+			.blocks = .{"cubyz:daisies"},
 			.chance = 0.008,
 			.width = 6,
 			.variation = 3,
@@ -107,7 +107,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daffodil",
+			.blocks = .{"cubyz:daffodil"},
 			.chance = 0.01,
 			.width = 6,
 			.variation = 3,
@@ -116,7 +116,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:castilleja",
+			.blocks = .{"cubyz:castilleja"},
 			.chance = 0.006,
 			.width = 8,
 			.variation = 3,

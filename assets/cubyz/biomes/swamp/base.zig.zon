@@ -30,7 +30,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:lush_grass_vegetation",
+			.blocks = .{"cubyz:lush_grass_vegetation"},
 			.chance = 0.25,
 			.width = 10,
 			.variation = 6,
@@ -46,7 +46,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daffodil",
+			.blocks = .{"cubyz:daffodil"},
 			.chance = 0.5,
 			.width = 1,
 			.variation = 5,
@@ -55,7 +55,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bolete",
+			.blocks = .{"cubyz:bolete"},
 			.chance = 0.035,
 			.width = 6,
 			.variation = 6,
@@ -64,7 +64,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:toadstool",
+			.blocks = .{"cubyz:toadstool"},
 			.chance = 0.03,
 			.width = 6,
 			.variation = 6,
