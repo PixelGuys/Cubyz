@@ -4,12 +4,11 @@
 	.minHeight = -48250,
 	.chance = 0.01,
 
-	.caves = -0.1,
 	.crystals = 32,
 
 	.music = "cubyz:leaves",
 
-	.stoneBlock = "cubyz:slate",
+	.stoneBlock = "cubyz:slate/base",
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
@@ -24,6 +23,15 @@
 			.type = .round,
 			.height = 4,
 			.height_variation = 2,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 20,
+			.maxRadius = 30,
 		},
 	},
 }

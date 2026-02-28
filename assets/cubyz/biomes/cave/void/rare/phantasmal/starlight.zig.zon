@@ -1,0 +1,18 @@
+.{
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/star/stars",
+			.chance = 0.05,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 4,
+			.maxAmount = 6,
+			.minRadius = 30,
+			.maxRadius = 40,
+		},
+	},
+}

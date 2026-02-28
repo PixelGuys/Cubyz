@@ -20,7 +20,7 @@ pub const allocators = struct { // MARK: allocators
 		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.child.arena.queryCapacity() >> 20});
 		globalArenaAllocator.deinit();
 		globalArenaAllocator = undefined;
-		if(globalGpa.deinit() == .leak) {
+		if (globalGpa.deinit() == .leak) {
 			std.log.err("Memory leak", .{});
 		}
 		globalGpa = undefined;
@@ -29,7 +29,7 @@ pub const allocators = struct { // MARK: allocators
 	pub fn createWorldArena() void {
 		worldArenaMutex.lock();
 		defer worldArenaMutex.unlock();
-		if(worldArenaOpenCount == 0) {
+		if (worldArenaOpenCount == 0) {
 			worldArenaAllocator = .init(.init(handledGpa.allocator()));
 		}
 		worldArenaOpenCount += 1;
@@ -39,7 +39,7 @@ pub const allocators = struct { // MARK: allocators
 		worldArenaMutex.lock();
 		defer worldArenaMutex.unlock();
 		worldArenaOpenCount -= 1;
-		if(worldArenaOpenCount == 0) {
+		if (worldArenaOpenCount == 0) {
 			std.log.info("Clearing world arena with {} MiB", .{worldArenaAllocator.child.arena.queryCapacity() >> 20});
 			worldArenaAllocator.deinit();
 			worldArenaAllocator = undefined;
@@ -50,7 +50,7 @@ pub const allocators = struct { // MARK: allocators
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
 pub const StackAllocator = struct { // MARK: StackAllocator
-	const AllocationTrailer = packed struct {wasFreed: bool, previousAllocationTrailer: u31};
+	const AllocationTrailer = packed struct { wasFreed: bool, previousAllocationTrailer: u31 };
 	backingAllocator: NeverFailingAllocator,
 	buffer: []align(4096) u8,
 	index: usize,
@@ -64,7 +64,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 	}
 
 	pub fn deinit(self: StackAllocator) void {
-		if(self.index != 0) {
+		if (self.index != 0) {
 			std.log.err("Memory leak in Stack Allocator", .{});
 		}
 		self.backingAllocator.free(self.buffer);
@@ -112,7 +112,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(@intFromEnum(alignment)));
 		const end = getTrueAllocationEnd(start, len);
-		if(end >= self.buffer.len) return self.backingAllocator.rawAlloc(len, alignment, ret_addr);
+		if (end >= self.buffer.len) return self.backingAllocator.rawAlloc(len, alignment, ret_addr);
 		const trailer = self.getTrailerBefore(end);
 		trailer.* = .{.wasFreed = false, .previousAllocationTrailer = @intCast(self.index)};
 		self.index = end;
@@ -121,12 +121,12 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 
 	fn resize(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		if(self.isInsideBuffer(memory)) {
+		if (self.isInsideBuffer(memory)) {
 			const start = self.indexInBuffer(memory);
 			const end = getTrueAllocationEnd(start, memory.len);
-			if(end != self.index) return false;
+			if (end != self.index) return false;
 			const newEnd = getTrueAllocationEnd(start, new_len);
-			if(newEnd >= self.buffer.len) return false;
+			if (newEnd >= self.buffer.len) return false;
 
 			const trailer = self.getTrailerBefore(end);
 			std.debug.assert(!trailer.wasFreed);
@@ -141,25 +141,25 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 	}
 
 	fn remap(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
-		if(resize(ctx, memory, alignment, new_len, ret_addr)) return memory.ptr;
+		if (resize(ctx, memory, alignment, new_len, ret_addr)) return memory.ptr;
 		return null;
 	}
 
 	fn free(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		if(self.isInsideBuffer(memory)) {
+		if (self.isInsideBuffer(memory)) {
 			const start = self.indexInBuffer(memory);
 			const end = getTrueAllocationEnd(start, memory.len);
 			const trailer = self.getTrailerBefore(end);
 			std.debug.assert(!trailer.wasFreed); // Double Free
 
-			if(end == self.index) {
+			if (end == self.index) {
 				self.index = trailer.previousAllocationTrailer;
-				if(self.index != 0) {
+				if (self.index != 0) {
 					var previousTrailer = self.getTrailerBefore(trailer.previousAllocationTrailer);
-					while(previousTrailer.wasFreed) {
+					while (previousTrailer.wasFreed) {
 						self.index = previousTrailer.previousAllocationTrailer;
-						if(self.index == 0) break;
+						if (self.index == 0) break;
 						previousTrailer = self.getTrailerBefore(previousTrailer.previousAllocationTrailer);
 					}
 				}
@@ -353,7 +353,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	}
 
 	fn AllocWithOptionsPayload(comptime Elem: type, comptime alignment: ?u29, comptime sentinel: ?Elem) type {
-		if(sentinel) |s| {
+		if (sentinel) |s| {
 			return [:s]align(alignment orelse @alignOf(Elem)) Elem;
 		} else {
 			return []align(alignment orelse @alignOf(Elem)) Elem;
@@ -383,7 +383,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		/// null means naturally aligned
 		comptime alignment: ?Alignment,
 		n: usize,
-	) []align(if(alignment) |a| a.toByteUnits() else @alignOf(T)) T {
+	) []align(if (alignment) |a| a.toByteUnits() else @alignOf(T)) T {
 		return self.allocator.alignedAlloc(T, alignment, n) catch unreachable;
 	}
 
@@ -394,7 +394,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		comptime alignment: ?Alignment,
 		n: usize,
 		return_address: usize,
-	) []align(if(alignment) |a| a.toByteUnits() else @alignOf(T)) T {
+	) []align(if (alignment) |a| a.toByteUnits() else @alignOf(T)) T {
 		return self.allocator.allocAdvancedWithRetAddr(T, alignment, n, return_address) catch unreachable;
 	}
 
@@ -535,11 +535,11 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 	}
 
 	pub fn shrinkAndFree(self: *NeverFailingArenaAllocator) void {
-		if(true) return;
+		if (true) return;
 		const node = self.arena.state.buffer_list.first orelse return;
 		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
 		const dataSize = std.mem.alignForward(usize, @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index, @alignOf(std.SinglyLinkedList(usize).Node));
-		if(self.arena.childAllocator.rawResize(allocBuf, @enumFromInt(std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node))), dataSize, @returnAddress())) {
+		if (self.arena.childAllocator.rawResize(allocBuf, @enumFromInt(std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node))), dataSize, @returnAddress())) {
 			node.data = dataSize;
 		}
 	}
@@ -656,9 +656,9 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 
 		/// Destroys the memory pool and frees all allocated memory.
 		pub fn deinit(pool: *Pool) void {
-			if(pool.freeAllocations != pool.totalAllocations) {
+			if (pool.freeAllocations != pool.totalAllocations) {
 				std.log.err("Memory pool of type {s} leaked {} elements", .{@typeName(Item), pool.totalAllocations - pool.freeAllocations});
-			} else if(pool.totalAllocations != 0) {
+			} else if (pool.totalAllocations != 0) {
 				std.log.info("{} MiB ({} elements) in {s} Memory pool", .{pool.totalAllocations*item_size >> 20, pool.totalAllocations, @typeName(Item)});
 			}
 			pool.arena.deinit();
@@ -669,7 +669,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		pub fn create(pool: *Pool) ItemPtr {
 			pool.mutex.lock();
 			defer pool.mutex.unlock();
-			const node = if(pool.free_list) |item| blk: {
+			const node = if (pool.free_list) |item| blk: {
 				pool.free_list = item.next;
 				break :blk item;
 			} else @as(NodePtr, @ptrCast(pool.allocNew()));
@@ -711,7 +711,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 	threadlocal var lastSyncPointTime: std.Io.Timestamp = undefined;
 	const FreeItem = struct {
 		ptr: *anyopaque,
-		freeFunction: *const fn(*anyopaque) void,
+		freeFunction: *const fn (*anyopaque) void,
 	};
 	threadlocal var lists: [4]main.ListUnmanaged(FreeItem) = undefined;
 
@@ -726,16 +726,16 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		_ = old.totalThreads + 1; // Assert no overflow
 		threadCycle = old.cycle;
 		lastSyncPointTime = main.timestamp();
-		for(&lists) |*list| {
+		for (&lists) |*list| {
 			list.* = .initCapacity(main.globalAllocator, 1024);
 		}
-		if(old.waitingThreads == 0) {
+		if (old.waitingThreads == 0) {
 			startNewCycle();
 		}
 	}
 
 	fn freeItemsFromList(list: *main.ListUnmanaged(FreeItem)) void {
-		while(list.popOrNull()) |item| {
+		while (list.popOrNull()) |item| {
 			item.freeFunction(item.ptr);
 		}
 	}
@@ -743,27 +743,27 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 	pub fn removeThread() void {
 		const old: State = @bitCast(sharedState.fetchSub(@bitCast(State{.totalThreads = 1}), .monotonic));
 		_ = old.totalThreads - 1; // Assert no overflow
-		if(old.cycle != threadCycle) removeThreadFromWaiting();
+		if (old.cycle != threadCycle) removeThreadFromWaiting();
 		const newTime = main.timestamp();
-		if(lastSyncPointTime.durationTo(newTime).toSeconds() > 20) {
-			if(!build_options.isTaggedRelease) {
+		if (lastSyncPointTime.durationTo(newTime).toSeconds() > 20) {
+			if (!build_options.isTaggedRelease) {
 				std.log.err("No sync point executed in {} ms for thread. Did you forget to add a sync point in the thread's main loop?", .{lastSyncPointTime.durationTo(newTime).toMilliseconds()});
 				std.debug.dumpCurrentStackTrace(.{});
 			}
 		}
-		for(&lists) |*list| {
+		for (&lists) |*list| {
 			freeItemsFromList(list);
 			list.deinit(main.globalAllocator);
 		}
 	}
 
 	pub fn assertAllThreadsStopped() void {
-		std.debug.assert(sharedState.load(.unordered) & 0x3fffffff == 0);
+		std.debug.assert(sharedState.load(.monotonic) & 0x3fffffff == 0);
 	}
 
 	fn startNewCycle() void {
-		var cur = sharedState.load(.unordered);
-		while(true) {
+		var cur = sharedState.load(.monotonic);
+		while (true) {
 			var new: State = @bitCast(cur);
 			new.waitingThreads = new.totalThreads;
 			new.cycle +%= 1;
@@ -776,20 +776,20 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		_ = old.waitingThreads - 1; // Assert no overflow
 		threadCycle = old.cycle;
 
-		if(old.waitingThreads == 1) startNewCycle();
+		if (old.waitingThreads == 1) startNewCycle();
 	}
 
 	/// Must be called when no objects originating from other threads are held on the current function stack
 	pub fn syncPoint() void {
 		const newTime = main.timestamp();
-		if(lastSyncPointTime.durationTo(newTime).toSeconds() > 20) {
+		if (lastSyncPointTime.durationTo(newTime).toSeconds() > 20) {
 			std.log.err("No sync point executed in {} ms. Did you forget to add a sync point in the thread's main loop", .{lastSyncPointTime.durationTo(newTime).toMilliseconds()});
 			std.debug.dumpCurrentStackTrace(.{});
 		}
 		lastSyncPointTime = newTime;
 
-		const old: State = @bitCast(sharedState.load(.unordered));
-		if(old.cycle == threadCycle) return;
+		const old: State = @bitCast(sharedState.load(.monotonic));
+		if (old.cycle == threadCycle) return;
 		removeThreadFromWaiting();
 		freeItemsFromList(&lists[threadCycle]);
 		// TODO: Free all the data here and swap lists
@@ -802,11 +802,11 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 	/// Waits until all deferred frees have been completed.
 	pub fn waitForFreeCompletion() void {
 		const startCycle = threadCycle;
-		while(threadCycle == startCycle) {
+		while (threadCycle == startCycle) {
 			syncPoint();
 			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		}
-		while(threadCycle != startCycle) {
+		while (threadCycle != startCycle) {
 			syncPoint();
 			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		}
@@ -838,9 +838,9 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 			totalAllocations: usize = 0,
 
 			pub fn deinit(self: *Bucket, size: usize) void {
-				if(self.freeAllocations != self.totalAllocations) {
+				if (self.freeAllocations != self.totalAllocations) {
 					std.log.err("PowerOfTwoPoolAllocator bucket of size {} leaked {} elements", .{size, self.totalAllocations - self.freeAllocations});
-				} else if(self.totalAllocations != 0) {
+				} else if (self.totalAllocations != 0) {
 					std.log.info("{} MiB ({} elements) in size {} PowerOfTwoPoolAllocator bucket", .{self.totalAllocations*size >> 20, self.totalAllocations, size});
 				}
 				self.* = undefined;
@@ -848,7 +848,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 
 			/// Creates a new item and adds it to the memory pool.
 			pub fn create(self: *Bucket, arena: NeverFailingAllocator, size: usize) [*]u8 {
-				const node = if(self.freeLists) |item| blk: {
+				const node = if (self.freeLists) |item| blk: {
 					self.freeLists = item.next;
 					break :blk item;
 				} else @as(NodePtr, @ptrCast(self.allocNew(arena, size)));
@@ -884,7 +884,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 		}
 
 		pub fn deinit(self: *Self) void {
-			for(&self.buckets, 0..) |*bucket, i| {
+			for (&self.buckets, 0..) |*bucket, i| {
 				bucket.deinit(@as(usize, minSize) << @intCast(i));
 			}
 			self.arena.deinit();

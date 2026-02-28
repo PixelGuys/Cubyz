@@ -48,16 +48,16 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	}
 
 	pub fn fromRelPos(pos: Vec3i) ?Neighbor {
-		if(@reduce(.Add, @abs(pos)) != 1) {
+		if (@reduce(.Add, @abs(pos)) != 1) {
 			return null;
 		}
-		return switch(pos[0]) {
+		return switch (pos[0]) {
 			1 => return .dirPosX,
 			-1 => return .dirNegX,
-			else => switch(pos[1]) {
+			else => switch (pos[1]) {
 				1 => return .dirPosY,
 				-1 => return .dirNegY,
-				else => switch(pos[2]) {
+				else => switch (pos[2]) {
 					1 => return .dirUp,
 					-1 => return .dirDown,
 					else => return null,
@@ -114,14 +114,14 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub inline fn isPositive(self: Neighbor) bool {
 		return @intFromEnum(self) & 1 == 0;
 	}
-	const VectorComponentEnum = enum(u2) {x = 0, y = 1, z = 2};
+	const VectorComponentEnum = enum(u2) { x = 0, y = 1, z = 2 };
 	pub fn vectorComponent(self: Neighbor) VectorComponentEnum {
 		const arr = [_]VectorComponentEnum{.z, .z, .x, .x, .y, .y};
 		return arr[@intFromEnum(self)];
 	}
 
 	pub fn extractDirectionComponent(self: Neighbor, in: anytype) @TypeOf(in[0]) {
-		switch(self) {
+		switch (self) {
 			inline else => |val| {
 				return in[@intFromEnum(comptime val.vectorComponent())];
 			},
@@ -148,6 +148,96 @@ pub fn deinit() void {
 	serverPool.deinit();
 }
 
+pub const Lod = enum(u5) {
+	@"1" = 0,
+	@"2" = 1,
+	@"4" = 2,
+	@"8" = 3,
+	@"16" = 4,
+	@"32" = 5,
+
+	const min: Lod = @enumFromInt(@typeInfo(Lod).@"enum".fields[0].value);
+	const max: Lod = blk: {
+		const fields = @typeInfo(Lod).@"enum".fields;
+		const maxValue = fields[fields.len - 1].value;
+		break :blk @enumFromInt(maxValue);
+	};
+
+	pub inline fn next(self: Lod) Lod {
+		return @enumFromInt(@intFromEnum(self) + 1);
+	}
+
+	pub inline fn previous(self: Lod) Lod {
+		return @enumFromInt(@intFromEnum(self) - 1);
+	}
+
+	pub inline fn toInt(self: Lod) @typeInfo(Lod).@"enum".tag_type {
+		return @intFromEnum(self);
+	}
+
+	pub inline fn voxelSize(self: Lod) u31 {
+		return 1 << @intFromEnum(self);
+	}
+
+	pub inline fn chunkWidth(self: Lod) u31 {
+		return self.voxelSize()*chunkSize;
+	}
+
+	pub inline fn voxelSizeShift(self: Lod) u5 {
+		return self.toInt();
+	}
+
+	// Mask for converting global coordinates to Lod resolution coordinates.
+	pub inline fn voxelSizeMask(self: Lod) i32 {
+		return ~@as(i32, self.voxelSize() - 1);
+	}
+
+	// Mask for converting global coordinates to chunk local coordinates.
+	pub inline fn localMask(self: Lod) i32 {
+		return ~@as(i32, self.voxelSize()*chunkSize - 1);
+	}
+
+	test "Lod.voxelSize() min" {
+		try std.testing.expectEqual(1, Lod.min.voxelSize());
+	}
+
+	test "Lod.voxelSize() max" {
+		try std.testing.expectEqual(32, Lod.max.voxelSize());
+	}
+
+	test "Lod.chunkWidth() min" {
+		try std.testing.expectEqual(32, Lod.min.chunkWidth());
+	}
+
+	test "Lod.chunkWidth() max" {
+		try std.testing.expectEqual(1024, Lod.max.chunkWidth());
+	}
+
+	test "Lod.voxelSizeShift() min" {
+		try std.testing.expectEqual(0, Lod.min.voxelSizeShift());
+	}
+
+	test "Lod.voxelSizeShift() max" {
+		try std.testing.expectEqual(5, Lod.max.voxelSizeShift());
+	}
+
+	test "Lod.voxelSizeMask() min" {
+		try std.testing.expectEqual(~@as(i32, 0b00000), Lod.min.voxelSizeMask());
+	}
+
+	test "Lod.voxelSizeMask() max" {
+		try std.testing.expectEqual(~@as(i32, 0b11111), Lod.max.voxelSizeMask());
+	}
+
+	test "Lod.localMask() min" {
+		try std.testing.expectEqual(~@as(i32, 31), Lod.min.localMask());
+	}
+
+	test "Lod.localMask() max" {
+		try std.testing.expectEqual(~@as(i32, 1023), Lod.max.localMask());
+	}
+};
+
 pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wx: i32,
 	wy: i32,
@@ -165,18 +255,21 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	}
 
 	pub fn equals(self: ChunkPosition, other: anytype) bool {
-		if(@typeInfo(@TypeOf(other)) == .optional) {
-			if(other) |notNull| {
-				return self.equals(notNull);
-			}
+		if (@typeInfo(@TypeOf(other)) == .optional) {
+			if (other) |notNull| return self.equals(notNull);
 			return false;
-		} else if(@TypeOf(other) == ChunkPosition) {
-			return self.wx == other.wx and self.wy == other.wy and self.wz == other.wz and self.voxelSize == other.voxelSize;
-		} else if(@TypeOf(other.*) == ServerChunk) {
-			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
-		} else if(@typeInfo(@TypeOf(other)) == .pointer) {
-			return self.wx == other.pos.wx and self.wy == other.pos.wy and self.wz == other.pos.wz and self.voxelSize == other.pos.voxelSize;
-		} else @compileError("Unsupported");
+		}
+		if (@TypeOf(other) == ChunkPosition) {
+			return std.meta.eql(self, other);
+		}
+		if (@TypeOf(other.*) == ServerChunk) {
+			return self.equals(other.super.pos);
+		}
+		if (@typeInfo(@TypeOf(other)) == .pointer) {
+			return self.equals(other.pos);
+		}
+
+		@compileError("Unsupported");
 	}
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3i) i64 {
@@ -265,8 +358,8 @@ pub const BlockPos = packed struct(u15) { // MARK: BlockPos
 		return @bitCast(self);
 	}
 
-	pub fn neighbor(self: BlockPos, n: Neighbor) struct {BlockPos, enum {inSameChunk, inNeighborChunk}} {
-		const result: BlockPos, const isInNeighborChunk: bool = switch(n) {
+	pub fn neighbor(self: BlockPos, n: Neighbor) struct { BlockPos, enum { inSameChunk, inNeighborChunk } } {
+		const result: BlockPos, const isInNeighborChunk: bool = switch (n) {
 			.dirUp => .{.fromCoords(self.x, self.y, self.z +% 1), self.z == chunkMask},
 			.dirDown => .{.fromCoords(self.x, self.y, self.z -% 1), self.z == 0},
 			.dirPosY => .{.fromCoords(self.x, self.y +% 1, self.z), self.y == chunkMask},
@@ -274,7 +367,7 @@ pub const BlockPos = packed struct(u15) { // MARK: BlockPos
 			.dirPosX => .{.fromCoords(self.x +% 1, self.y, self.z), self.x == chunkMask},
 			.dirNegX => .{.fromCoords(self.x -% 1, self.y, self.z), self.x == 0},
 		};
-		return .{result, if(isInNeighborChunk) .inNeighborChunk else .inSameChunk};
+		return .{result, if (isInNeighborChunk) .inNeighborChunk else .inSameChunk};
 	}
 };
 
@@ -285,7 +378,6 @@ pub const Chunk = struct { // MARK: Chunk
 	width: u31,
 	voxelSizeShift: u5,
 	voxelSizeMask: i32,
-	widthShift: u5,
 
 	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntityIndex),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
@@ -300,7 +392,6 @@ pub const Chunk = struct { // MARK: Chunk
 			.width = pos.voxelSize*chunkSize,
 			.voxelSizeShift = voxelSizeShift,
 			.voxelSizeMask = pos.voxelSize - 1,
-			.widthShift = voxelSizeShift + chunkShift,
 			.blockPosToEntityDataMap = .{},
 			.blockPosToEntityDataMapMutex = .{},
 		};
@@ -323,12 +414,12 @@ pub const Chunk = struct { // MARK: Chunk
 		self.blockPosToEntityDataMapMutex.lock();
 		defer self.blockPosToEntityDataMapMutex.unlock();
 		var iterator = self.blockPosToEntityDataMap.iterator();
-		while(iterator.next()) |elem| {
+		while (iterator.next()) |elem| {
 			const pos = elem.key_ptr.*;
 			const entityDataIndex = elem.value_ptr.*;
 			const block = self.data.getValue(pos.toIndex());
 			const blockEntity = block.blockEntity() orelse unreachable;
-			switch(side) {
+			switch (side) {
 				.client => {
 					blockEntity.onUnloadClient(entityDataIndex);
 				},
@@ -399,7 +490,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.width = pos.voxelSize*chunkSize,
 				.voxelSizeShift = voxelSizeShift,
 				.voxelSizeMask = pos.voxelSize - 1,
-				.widthShift = voxelSizeShift + chunkShift,
 				.blockPosToEntityDataMap = .{},
 				.blockPosToEntityDataMapMutex = .{},
 			},
@@ -411,7 +501,10 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	pub fn deinit(self: *ServerChunk) void {
 		std.debug.assert(self.refCount.raw == 0);
-		if(self.wasChanged) {
+		const oldContext = main.sync.threadContext;
+		defer main.sync.threadContext = oldContext;
+		main.sync.threadContext = .chunkDeiniting;
+		if (self.wasChanged) {
 			self.save(main.server.world.?);
 		}
 		self.super.unloadBlockEntities(.server);
@@ -421,7 +514,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	pub fn setChanged(self: *ServerChunk) void {
 		main.utils.assertLocked(&self.mutex);
-		if(!self.wasChanged) {
+		if (!self.wasChanged) {
 			self.wasChanged = true;
 			self.increaseRefCount();
 			main.server.world.?.queueChunkUpdateAndDecreaseRefCount(self);
@@ -436,7 +529,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	pub fn decreaseRefCount(self: *ServerChunk) void {
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
+		if (prevVal == 1) {
 			self.deinit();
 		}
 	}
@@ -479,7 +572,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		main.utils.assertLocked(&self.mutex);
 		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
 		const oldBlock = self.super.data.getValue(pos.toIndex());
-		if(oldBlock.typ == 0 or oldBlock.degradable()) {
+		if (oldBlock.typ == 0 or oldBlock.degradable()) {
 			self.super.data.setValue(pos.toIndex(), newBlock);
 		}
 	}
@@ -503,63 +596,85 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	}
 
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
-		const xOffset = if(other.super.pos.wx != self.super.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
-		const yOffset = if(other.super.pos.wy != self.super.pos.wy) chunkSize/2 else 0;
-		const zOffset = if(other.super.pos.wz != self.super.pos.wz) chunkSize/2 else 0;
+		const xOffset = if (other.super.pos.wx != self.super.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
+		const yOffset = if (other.super.pos.wy != self.super.pos.wy) chunkSize/2 else 0;
+		const zOffset = if (other.super.pos.wz != self.super.pos.wz) chunkSize/2 else 0;
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		main.utils.assertLocked(&other.mutex);
 
-		var x: u31 = 0;
-		while(x < chunkSize/2) : (x += 1) {
-			var y: u31 = 0;
-			while(y < chunkSize/2) : (y += 1) {
-				var z: u31 = 0;
-				while(z < chunkSize/2) : (z += 1) {
-					// Count the neighbors for each subblock. An transparent block counts 5. A chunk border(unknown block) only counts 1.
-					var neighborCount: [8]u31 = undefined;
-					var octantBlocks: [8]Block = undefined;
-					var maxCount: i32 = 0;
-					var dx: u31 = 0;
-					while(dx <= 1) : (dx += 1) {
-						var dy: u31 = 0;
-						while(dy <= 1) : (dy += 1) {
-							var dz: u31 = 0;
-							while(dz <= 1) : (dz += 1) {
-								const pos = BlockPos.fromCoords(@intCast(x*2 + dx), @intCast(y*2 + dy), @intCast(z*2 + dz));
-								const i = dx*4 + dz*2 + dy;
-								octantBlocks[i] = other.super.data.getValue(pos.toIndex());
-								octantBlocks[i].typ = octantBlocks[i].lodReplacement();
-								if(octantBlocks[i].typ == 0) {
-									neighborCount[i] = 0;
-									continue; // I don't care about air blocks.
-								}
+		// Count the neighbors for each subblock. An transparent block counts 5. A chunk border(unknown block) only counts 1.
 
-								var count: u31 = 0;
-								for(Neighbor.iterable) |n| {
-									const neighborPos, const chunkLocation = pos.neighbor(n);
-									if(chunkLocation == .inSameChunk) {
-										if(other.super.data.getValue(neighborPos.toIndex()).transparent()) {
-											count += 5;
-										}
-									} else {
-										count += 1;
-									}
-								}
-								maxCount = @max(maxCount, count);
-								neighborCount[i] = count;
+		comptime std.debug.assert(chunkSize == 32);
+		var isTransparent: [32][32]u32 = @splat(@splat(0));
+		var count: [32][32][32]u8 = @splat(@splat(@splat(128)));
+		for (0..32) |x| {
+			for (0..32) |y| {
+				for (0..32) |z| {
+					const pos = BlockPos.fromCoords(@intCast(x), @intCast(y), @intCast(z));
+					var block = other.super.data.getValue(pos.toIndex());
+					block.typ = block.lodReplacement();
+					if (block.typ == 0) count[x][y][z] = 0; // Air blocks should be avoided
+					if (block.transparent()) isTransparent[x][y] |= @as(u32, 1) << @intCast(z);
+				}
+			}
+		}
+		for (0..32) |x| {
+			for (0..32) |y| {
+				var columnCount: @Vector(32, u8) = @splat(0);
+				columnCount[0] = 1;
+				columnCount[31] = 1;
+				if (x == 0 or x == 31) columnCount += @splat(1);
+				if (y == 0 or y == 31) columnCount += @splat(1);
+				const zero: @Vector(32, u8) = @splat(0);
+				const weight: @Vector(32, u8) = @splat(5);
+				if (x != 0) {
+					columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x - 1][y])), weight, zero);
+				}
+				if (x != 31) {
+					columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x + 1][y])), weight, zero);
+				}
+				if (y != 0) {
+					columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x][y - 1])), weight, zero);
+				}
+				if (y != 31) {
+					columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x][y + 1])), weight, zero);
+				}
+				columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x][y] >> 1)), weight, zero);
+				columnCount += @select(u8, @as(@Vector(32, bool), @bitCast(isTransparent[x][y] << 1)), weight, zero);
+				count[x][y] = columnCount;
+			}
+		}
+
+		for (0..chunkSize/2) |x| {
+			for (0..chunkSize/2) |y| {
+				for (0..chunkSize/2) |z| {
+					var neighborCount: [8]u31 = undefined;
+					var maxCount: i32 = 0;
+					for (0..2) |dx| {
+						for (0..2) |dy| {
+							for (0..2) |dz| {
+								const i = dx*4 + dz*2 + dy;
+								neighborCount[i] = count[x*2 + dx][y*2 + dy][z*2 + dz];
+								maxCount = @max(maxCount, neighborCount[i]);
 							}
 						}
 					}
 					// Uses a specific permutation here that keeps high resolution patterns in lower resolution.
 					const permutationStart = (x & 1)*4 + (z & 1)*2 + (y & 1);
-					var block = Block{.typ = 0, .data = 0};
-					for(0..8) |i| {
+					var finalPermutation = permutationStart;
+					for (0..8) |i| {
 						const appliedPermutation = permutationStart ^ i;
-						if(neighborCount[appliedPermutation] >= maxCount - 1) { // Avoid pattern breaks at chunk borders.
-							block = octantBlocks[appliedPermutation];
+						if (neighborCount[appliedPermutation] >= maxCount - 1) { // Avoid pattern breaks at chunk borders.
+							finalPermutation = appliedPermutation;
 						}
 					}
+					const dx = finalPermutation/4 & 1;
+					const dy = finalPermutation/2 & 1;
+					const dz = finalPermutation & 1;
+					const pos = BlockPos.fromCoords(@intCast(x*2 + dx), @intCast(y*2 + dy), @intCast(z*2 + dz));
+					var block = other.super.data.getValue(pos.toIndex());
+					block.typ = block.lodReplacement();
 					// Update the block:
 					const thisPos = BlockPos.fromCoords(@intCast(x + xOffset), @intCast(y + yOffset), @intCast(z + zOffset));
 					self.super.data.setValue(thisPos.toIndex(), block);
@@ -573,17 +688,17 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	pub fn save(self: *ServerChunk, world: *main.server.ServerWorld) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		if(self.shouldStoreNeighbors and self.super.pos.voxelSize == 1) {
+		if (self.shouldStoreNeighbors and self.super.pos.voxelSize == 1) {
 			// Store all the neighbor chunks as well:
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			var dx: i32 = -@as(i32, chunkSize);
-			while(dx <= chunkSize) : (dx += chunkSize) {
+			while (dx <= chunkSize) : (dx += chunkSize) {
 				var dy: i32 = -@as(i32, chunkSize);
-				while(dy <= chunkSize) : (dy += chunkSize) {
+				while (dy <= chunkSize) : (dy += chunkSize) {
 					var dz: i32 = -@as(i32, chunkSize);
-					while(dz <= chunkSize) : (dz += chunkSize) {
-						if(dx == 0 and dy == 0 and dz == 0) continue;
+					while (dz <= chunkSize) : (dz += chunkSize) {
+						if (dx == 0 and dy == 0 and dz == 0) continue;
 						const ch = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
 							.wx = self.super.pos.wx +% dx,
 							.wy = self.super.pos.wy +% dy,
@@ -593,32 +708,32 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 						defer ch.decreaseRefCount();
 						ch.mutex.lock();
 						defer ch.mutex.unlock();
-						if(!ch.wasStored) {
+						if (!ch.wasStored) {
 							ch.setChanged();
 						}
 					}
 				}
 			}
 		}
-		if(!self.wasStored and self.super.pos.voxelSize == 1) {
+		if (!self.wasStored and self.super.pos.voxelSize == 1) {
 			// Store the surrounding map pieces as well:
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			const mapStartX = self.super.pos.wx -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
 			const mapStartY = self.super.pos.wy -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
-			for(0..2) |dx| {
-				for(0..2) |dy| {
+			for (0..2) |dx| {
+				for (0..2) |dy| {
 					const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
 					const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
 					const map = main.server.terrain.SurfaceMap.getOrGenerateFragment(mapX, mapY, self.super.pos.voxelSize);
-					if(!map.wasStored.swap(true, .monotonic)) {
+					if (!map.wasStored.swap(true, .monotonic)) {
 						map.save(null, .{});
 					}
 				}
 			}
 		}
 		self.wasStored = true;
-		if(self.wasChanged) {
+		if (self.wasChanged) {
 			const pos = self.super.pos;
 			const regionSize = pos.voxelSize*chunkSize*main.server.storage.RegionFile.regionSize;
 			const regionMask: i32 = regionSize - 1;
@@ -635,7 +750,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 			self.wasChanged = false;
 			// Update the next lod chunk:
-			if(pos.voxelSize != 1 << settings.highestSupportedLod) {
+			if (pos.voxelSize != 1 << settings.highestSupportedLod) {
 				var nextPos = pos;
 				nextPos.wx &= ~@as(i32, pos.voxelSize*chunkSize);
 				nextPos.wy &= ~@as(i32, pos.voxelSize*chunkSize);

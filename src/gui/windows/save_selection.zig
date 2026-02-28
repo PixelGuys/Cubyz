@@ -61,7 +61,7 @@ pub fn openWorld(name: []const u8) void {
 		std.log.err("Failed to rename Server thread: {s}", .{@errorName(err)});
 	};
 
-	while(!main.server.running.load(.acquire)) {
+	while (!main.server.running.load(.acquire)) {
 		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		main.heap.GarbageCollection.syncPoint();
 	}
@@ -72,7 +72,7 @@ pub fn openWorld(name: []const u8) void {
 	main.game.testWorld.init(ipPort, clientConnection) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 	};
-	for(gui.openWindows.items) |openWindow| {
+	for (gui.openWindows.items) |openWindow| {
 		gui.closeWindowFromRef(openWindow);
 	}
 	gui.openHud();
@@ -96,7 +96,7 @@ fn openFolder(index: usize) void {
 }
 
 pub fn update() void {
-	if(needsUpdate) {
+	if (needsUpdate) {
 		needsUpdate = false;
 		onClose();
 		onOpen();
@@ -117,12 +117,12 @@ pub fn onOpen() void {
 		defer dir.close();
 
 		var iterator = dir.iterate();
-		while(iterator.next() catch |err| {
+		while (iterator.next() catch |err| {
 			list.add(Label.init(.{0, 0}, 128, "Encountered error while iterating over saves folder:", .center));
 			list.add(Label.init(.{0, 0}, 128, @errorName(err), .center));
 			break :readingSaves;
 		}) |entry| {
-			if(entry.kind == .directory) {
+			if (entry.kind == .directory) {
 				const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{entry.name}) catch unreachable;
 				defer main.stackAllocator.free(worldInfoPath);
 				const worldInfo = main.files.cubyzDir().readToZon(main.stackAllocator, worldInfoPath) catch |err| {
@@ -146,11 +146,11 @@ pub fn onOpen() void {
 		}
 	}.lessThan);
 
-	for(worldList.items, 0..) |worldInfo, i| {
+	for (worldList.items, 0..) |worldInfo, i| {
 		const row = HorizontalList.init();
-		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .{.callback = &openWorldWrap, .arg = i}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &deleteWorld, .arg = i}));
+		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .initWithInt(openWorldWrap, i)));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .initWithInt(openFolder, i)));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .initWithInt(deleteWorld, i)));
 		row.finish(.{0, 0}, .center);
 		list.add(row);
 	}
@@ -162,13 +162,13 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	for(worldList.items) |worldInfo| {
+	for (worldList.items) |worldInfo| {
 		main.globalAllocator.free(worldInfo.fileName);
 		main.globalAllocator.free(worldInfo.name);
 	}
 	worldList.clearAndFree(main.globalAllocator);
 	buttonNameArena.deinit();
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

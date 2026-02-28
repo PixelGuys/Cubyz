@@ -40,21 +40,21 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{floorModelId, sideModelId, ceilingModelId}) catch unreachable;
 	defer main.stackAllocator.free(key);
 
-	if(rotatedModels.get(key)) |modelIndex| return modelIndex;
+	if (rotatedModels.get(key)) |modelIndex| return modelIndex;
 
 	const floorModel = main.models.getModelIndex(floorModelId).model();
 	const sideModel = main.models.getModelIndex(sideModelId).model();
 	const ceilingModel = main.models.getModelIndex(ceilingModelId).model();
 	var modelIndex: ModelIndex = undefined;
 	// Rotate the model:
-	for(0..centerRotations) |i| {
+	for (0..centerRotations) |i| {
 		const index = floorModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(@as(f32, @floatFromInt(i))*2.0*std.math.pi/centerRotations)});
-		if(i == 0) modelIndex = index;
+		if (i == 0) modelIndex = index;
 	}
-	for(0..centerRotations) |i| {
+	for (0..centerRotations) |i| {
 		_ = ceilingModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(@as(f32, @floatFromInt(i))*2.0*std.math.pi/centerRotations)});
 	}
-	for(0..sideRotations) |i| {
+	for (0..sideRotations) |i| {
 		_ = sideModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(@as(f32, @floatFromInt(i))*2.0*std.math.pi/sideRotations)});
 	}
 	rotatedModels.put(key, modelIndex) catch unreachable;
@@ -88,7 +88,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 			19, 16, 17, 18,
 		},
 	};
-	if(data >= 2*centerRotations + sideRotations) return 0;
+	if (data >= 2*centerRotations + sideRotations) return 0;
 	return rotationTable[@intFromEnum(angle)][data];
 }
 
@@ -96,27 +96,27 @@ fn getRotationFromDir(dir: Vec3f) u16 {
 	const x = dir[0];
 	const y = dir[1];
 	var data: u3 = 0;
-	if(@abs(x) > @abs(y)) {
-		if(x < 0) {
+	if (@abs(x) > @abs(y)) {
+		if (x < 0) {
 			data = 0;
 		} else {
 			data = 4;
 		}
-		if(@abs(x) < 2*@abs(y)) {
-			if((x < 0) == (y < 0)) {
+		if (@abs(x) < 2*@abs(y)) {
+			if ((x < 0) == (y < 0)) {
 				data +%= 1;
 			} else {
 				data -%= 1;
 			}
 		}
 	} else {
-		if(y < 0) {
+		if (y < 0) {
 			data = 2;
 		} else {
 			data = 6;
 		}
-		if(@abs(y) < 2*@abs(x)) {
-			if((x < 0) == (y < 0)) {
+		if (@abs(y) < 2*@abs(x)) {
+			if ((x < 0) == (y < 0)) {
 				data -%= 1;
 			} else {
 				data +%= 1;
@@ -127,9 +127,9 @@ fn getRotationFromDir(dir: Vec3f) u16 {
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
-	if(neighbor == null) return false;
-	if(!blockPlacing) return false;
-	currentData.data = switch(Neighbor.fromRelPos(relativeDir) orelse unreachable) {
+	if (neighbor == null) return false;
+	if (!blockPlacing) return false;
+	currentData.data = switch (Neighbor.fromRelPos(relativeDir) orelse unreachable) {
 		.dirNegX => 2*centerRotations,
 		.dirNegY => 2*centerRotations + 1,
 		.dirPosX => 2*centerRotations + 2,
@@ -141,7 +141,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, r
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, _: Block) bool {
-	const shouldBeBroken = switch(neighbor) {
+	const shouldBeBroken = switch (neighbor) {
 		.dirNegX => block.data == 2*centerRotations,
 		.dirNegY => block.data == 2*centerRotations + 1,
 		.dirPosX => block.data == 2*centerRotations + 2,
@@ -149,7 +149,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, _: Block) bool {
 		.dirDown => block.data < centerRotations,
 		.dirUp => block.data >= centerRotations and block.data < 2*centerRotations,
 	};
-	if(!shouldBeBroken) return false;
+	if (!shouldBeBroken) return false;
 	block.* = .{.typ = 0, .data = 0};
 	return true;
 }

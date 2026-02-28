@@ -6,7 +6,7 @@ const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const CaveMapView = terrain.CaveMap.CaveMapView;
-const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
+const GenerationMode = terrain.structures.SimpleStructureModel.GenerationMode;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -55,8 +55,8 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
 
 	var baseHeight = z;
-	if(mode != .water_surface) {
-		if(caveMap.isSolid(x, y, baseHeight)) {
+	if (mode != .water_surface) {
+		if (caveMap.isSolid(x, y, baseHeight)) {
 			baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) - 1;
 		} else {
 			baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
@@ -64,34 +64,34 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	}
 
 	var px = chunk.startIndex(xMin);
-	while(px < xMax) : (px += 1) {
+	while (px < xMax) : (px += 1) {
 		var py = chunk.startIndex(yMin);
-		while(py < yMax) : (py += 1) {
+		while (py < yMax) : (py += 1) {
 			const mainDist = xMain*@as(f32, @floatFromInt(x - px)) + yMain*@as(f32, @floatFromInt(y - py));
 			const secnDist = xSecn*@as(f32, @floatFromInt(x - px)) + ySecn*@as(f32, @floatFromInt(y - py));
 			const dist = mainDist*mainDist + secnDist*secnDist;
-			if(dist <= 1) {
+			if (dist <= 1) {
 				var startHeight = z;
 
-				if(mode == .water_surface) {
+				if (mode == .water_surface) {
 					startHeight -%= 1;
 					startHeight &= ~chunk.super.voxelSizeMask;
 				} else {
-					if(caveMap.isSolid(px, py, startHeight)) {
+					if (caveMap.isSolid(px, py, startHeight)) {
 						startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) -% 1;
 					} else {
 						startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
 					}
 				}
 				var pz = chunk.startIndex(startHeight - self.depth + 1);
-				if(mode == .water_surface) {
+				if (mode == .water_surface) {
 					const surfaceHeight = caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py);
 					pz = @max(pz, surfaceHeight -% chunk.super.pos.wz);
 				}
-				if(@abs(startHeight -% baseHeight) > 5) continue;
-				while(pz <= startHeight) : (pz += chunk.super.pos.voxelSize) {
-					if(dist <= self.smoothness or (dist - self.smoothness)/(1 - self.smoothness) < random.nextFloat(seed)) {
-						if(chunk.liesInChunk(px, py, pz)) {
+				if (@abs(startHeight -% baseHeight) > 5) continue;
+				while (pz <= startHeight) : (pz += chunk.super.pos.voxelSize) {
+					if (dist <= self.smoothness or (dist - self.smoothness)/(1 - self.smoothness) < random.nextFloat(seed)) {
+						if (chunk.liesInChunk(px, py, pz)) {
 							chunk.updateBlockInGeneration(px, py, pz, self.block);
 						}
 					}

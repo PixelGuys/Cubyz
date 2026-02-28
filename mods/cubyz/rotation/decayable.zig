@@ -20,7 +20,7 @@ pub fn deinit() void {}
 pub fn reset() void {}
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, block: *Block, _: Block, blockPlacing: bool) bool {
-	if(blockPlacing) {
+	if (blockPlacing) {
 		block.data = 1;
 	}
 	return blockPlacing;

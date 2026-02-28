@@ -7,7 +7,7 @@
 	.maxRadius = 320,
 	.hills = 15,
 	.mountains = 15,
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:glacite/base",
 	.chance = 0.5,
 	.ground_structure = .{
 		"1 cubyz:snow",

@@ -1,0 +1,25 @@
+.{
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/auroras/high",
+			.chance = 0.03,
+			.rotation = 0,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/auroras/low",
+			.rotation = 0,
+			.chance = 0.04,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 5,
+			.maxAmount = 10,
+			.minRadius = 30,
+			.maxRadius = 40,
+		},
+	},
+}

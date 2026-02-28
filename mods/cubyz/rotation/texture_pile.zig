@@ -34,19 +34,19 @@ pub fn createBlockModel(block: Block, modeData: *u16, zon: ZonElement) ModelInde
 	const modelId = zon.get([]const u8, "model", "cubyz:cube");
 	const stateCount = zon.get(u16, "states", 2);
 	const blockId = block.id();
-	if(stateCount <= 1) {
+	if (stateCount <= 1) {
 		std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' should have at least 2 states, use 'no_rotation' instead", .{blockId, stateCount});
-	} else if(stateCount > 16) {
+	} else if (stateCount > 16) {
 		std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' can have at most 16 states.", .{blockId, stateCount});
 	}
 	modeData.* = stateCount;
 
-	if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+	if (rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex(modelId).model();
 
 	const modelIndex = baseModel.transformModel(transform, .{@as(u16, @intCast(0))});
-	for(1..16) |data| {
+	for (1..16) |data| {
 		_ = baseModel.transformModel(transform, .{@as(u16, @intCast(data))});
 	}
 	rotatedModels.put(modelId, modelIndex) catch unreachable;
@@ -58,11 +58,11 @@ pub fn model(block: Block) ModelIndex {
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
-	if(blockPlacing) {
+	if (blockPlacing) {
 		currentData.data = 0;
 		return true;
 	}
-	if(currentData.data >= currentData.modeData() - 1) {
+	if (currentData.data >= currentData.modeData() - 1) {
 		return false;
 	}
 	currentData.data = currentData.data + 1;
@@ -70,7 +70,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i,
 }
 
 pub fn onBlockBreaking(_: main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
-	if(currentData.data == 0) {
+	if (currentData.data == 0) {
 		currentData.* = .{.typ = 0, .data = 0};
 	} else {
 		currentData.data = @min(currentData.data, currentData.modeData() - 1) - 1;
@@ -82,18 +82,26 @@ fn isItemBlock(block: Block, item: main.items.ItemStack) bool {
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
-		.no, .yes_costsDurability, .yes_dropsItems => return .no,
+	switch (RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+		.no, .yes_costsDurability => return .no,
 		.yes_costsItems => |r| return .{.yes_costsItems = r},
 		.yes => {
-			const oldAmount = if(oldBlock.typ == newBlock.typ) @min(oldBlock.data, oldBlock.modeData() - 1) else 0;
-			if(oldAmount == newBlock.data) return .no;
-			if(oldAmount < newBlock.data) {
-				if(!isItemBlock(newBlock, item)) return .no;
-				return .{.yes_costsItems = newBlock.data - oldAmount};
-			} else {
-				return .{.yes_dropsItems = oldAmount - newBlock.data};
-			}
+			const oldAmount = if (oldBlock.typ == newBlock.typ) @min(oldBlock.data, oldBlock.modeData() - 1) else 0;
+			if (oldAmount == newBlock.data) return .no;
+			if (oldAmount > newBlock.data) return .yes;
+			if (!isItemBlock(newBlock, item)) return .no;
+			return .{.yes_costsItems = newBlock.data - oldAmount};
 		},
 	}
+}
+
+pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
+	if (newBlock.typ != oldBlock.typ) return oldBlock.data + 1;
+	return oldBlock.data -| newBlock.data;
+}
+
+// MARK: non-interface fns
+
+pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
+	if (!neighborSupportive[Neighbor.dirDown.toInt()]) block.* = .air;
 }

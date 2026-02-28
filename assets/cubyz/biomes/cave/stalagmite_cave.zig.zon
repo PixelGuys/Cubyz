@@ -1,5 +1,6 @@
 .{
 	.isCave = true,
+	.caveNoiseStrength = 10,
 	.maxHeight = -256,
 	.minHeight = -48250,
 	.chance = 0.2,
@@ -7,33 +8,40 @@
 	.fogDensity = 10,
 	.fogColor = 0x57575e,
 
-	.caves = -0.1,
-
 	.music = "cubyz:heart-of-the-beast",
 
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:limestone",
+			.block = "cubyz:limestone/base",
 			.chance = 0.48,
 			.size = 4,
 			.size_variation = 6,
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:limestone",
+			.block = "cubyz:limestone/base",
 			.chance = 0.08,
 			.size = 8,
 			.size_variation = 12,
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:limestone",
+			.block = "cubyz:limestone/base",
 			.chance = 0.048,
 			.width = 5,
 			.variation = 6,
 			.depth = 3,
 			.smoothness = 1,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 8,
+			.maxAmount = 16,
+			.minRadius = 10,
+			.maxRadius = 24,
 		},
 	},
 }
