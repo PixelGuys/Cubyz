@@ -6,6 +6,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ServerChunk = main.chunk.ServerChunk;
 const terrain = main.server.terrain;
 const Biome = main.server.terrain.biomes;
+const Tag = main.Tag;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -71,3 +72,62 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		return self.vtable.hashFunction(self.data);
 	}
 };
+
+pub const StructureTable = struct {
+	id: []const u8,
+	tags: []const Tag,
+	structures: []const SimpleStructureModel = &.{},
+	paletteId: u32,
+
+	pub fn init(id: []const u8, paletteId: u32, zon: ZonElement) StructureTable {
+		var structureTable: StructureTable = .{
+			.id = main.worldArena.dupe(u8, id),
+			.paletteId = paletteId,
+			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
+		};
+
+		const structures = zon.getChild("structures");
+		var structureList = main.ListUnmanaged(SimpleStructureModel){};
+		var totalChance: f32 = 0;
+		defer structureList.deinit(main.stackAllocator);
+
+		for (structures.toSlice()) |elem| {
+			if (SimpleStructureModel.initModel(elem)) |model| {
+				structureList.append(main.stackAllocator, model);
+				totalChance += model.chance;
+			}
+		}
+		if (totalChance > 1) {
+			for (structureList.items) |*model| {
+				model.chance /= totalChance;
+			}
+		}
+		structureTable.structures = main.worldArena.dupe(SimpleStructureModel, structureList.items);
+		return structureTable;
+	}
+};
+
+var structureTables: main.ListUnmanaged(StructureTable) = .{};
+
+pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
+	const structureTable = StructureTable.init(id, paletteId, zon);
+	structureTables.append(main.worldArena, structureTable);
+	std.log.debug("Registered structure table: {d: >5} '{s}'", .{paletteId, id});
+}
+pub fn hasRegistered(id: []const u8) bool {
+	if (structureTables.items.len == 0) return false;
+	for (structureTables.items) |entry| {
+		if (std.mem.eql(u8, id, entry.id)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+pub fn getSlice() []StructureTable {
+	return structureTables.items;
+}
+
+pub fn reset() void {
+	structureTables = .{};
+}
