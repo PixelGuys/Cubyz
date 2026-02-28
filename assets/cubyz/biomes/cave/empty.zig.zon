@@ -1,0 +1,20 @@
+.{
+	.isCave = true,
+	.maxHeight = -20000,
+	.minHeight = -48250,
+	.chance = 0.2,
+	.caveRadiusFactor = 0.5,
+
+	.music = "cubyz:heart-of-the-beast",
+
+	.caveModels = .{
+		.{
+			.id = "cubyz:sphere",
+			.minAmount = 1,
+			.maxAmount = 1,
+			.minRadius = 80,
+			.maxRadius = 80,
+			.maxBiomeCenterDistance = 0,
+		},
+	},
+}
