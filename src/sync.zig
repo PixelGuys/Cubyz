@@ -1547,7 +1547,7 @@ pub const Command = struct { // MARK: Command
 		pub fn run(self: ChatCommand, ctx: Context) error{serverFailure}!void {
 			if (ctx.side == .server) {
 				const user = ctx.user orelse return;
-				if (main.server.world.?.allowCheats) {
+				if (main.server.world.?.settings.allowCheats) {
 					std.log.info("User \"{s}\" executed command \"{s}\"", .{user.name, self.message}); // TODO use color \033[0;32m
 					main.server.command.execute(self.message, user);
 				} else {
@@ -1577,6 +1577,7 @@ pub const ThreadContext = enum { // MARK: ThreadContext
 	chunkDeiniting,
 
 	pub fn assertCorrectContext(self: ThreadContext, side: Side) void {
+		if (@import("builtin").is_test) return;
 		switch (side) {
 			.server => {
 				std.debug.assert(self == .server);

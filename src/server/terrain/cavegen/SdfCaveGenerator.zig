@@ -7,16 +7,16 @@ const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
-const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const FractalNoise3D = terrain.noise.FractalNoise3D;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
-pub const id = "cubyz:noise_cave";
+pub const id = "cubyz:sdf_cave";
 
-pub const priority = 65536;
+pub const priority = 32768;
 
 pub const generatorSeed = 0x76490367012869;
 
@@ -26,23 +26,56 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-const scale = 64;
+pub fn deinit() void {}
+
+const noiseScale = 16;
 const interpolatedPart = 4;
+
+const smoothness = 4;
+const perimeter = interpolatedPart*2 + smoothness*4;
 
 fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ: u31) f32 {
 	return noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
 }
 
+fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, output: Array3D(f32), interpolationSmoothness: Array3D(f32), voxelSize: u31, voxelSizeShift: u5, worldSeed: u64) void {
+	@memset(output.mem, 1000);
+	const mapPos: Vec3i = .{map.pos.wx, map.pos.wy, map.pos.wz};
+	const margin: Vec3i = @splat(256 + perimeter + terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize);
+	const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{CaveMapFragment.width, CaveMapFragment.width, CaveMapFragment.height});
+	defer main.stackAllocator.free(biomePoints);
+
+	for (biomePoints) |biomePoint| {
+		var seed = main.random.initSeed3D(worldSeed, biomePoint.worldPos);
+		for (biomePoint.biome.caveSdfModels) |sdfModel| {
+			sdfModel.generate(output, biomeMap, interpolationSmoothness, mapPos, biomePoint.worldPos, &seed, perimeter, voxelSize, voxelSizeShift);
+		}
+	}
+}
+
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if (map.pos.voxelSize > 2) return;
-	const biomeMap = InterpolatableCaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, 0);
+	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, 0);
 	defer biomeMap.deinit();
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
-	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale);
+	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, worldSeed ^ 4329561871, noiseScale);
 	defer noise.deinit(main.stackAllocator);
-	biomeMap.bulkInterpolateValue("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, scale);
+
+	const output = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
+	defer output.deinit(main.stackAllocator);
+	const biomeSmoothness = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
+	defer biomeSmoothness.deinit(main.stackAllocator);
+	const biomeNoiseStrength = Array3D(f32).init(main.stackAllocator, noise.width, noise.depth, noise.height);
+	defer biomeNoiseStrength.deinit(main.stackAllocator);
+	biomeMap.bulkInterpolateValues(&.{"caveSmoothness", "caveNoiseStrength"}, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, &.{biomeSmoothness, biomeNoiseStrength});
+	generateSdf(map, &biomeMap, output, biomeSmoothness, outerSize, outerSizeShift, worldSeed);
+
+	for (noise.mem, output.mem, biomeNoiseStrength.mem) |*val, sdfVal, noiseStrength| {
+		val.* = val.*/noiseScale*noiseStrength + sdfVal;
+	}
+
 	var x: u31 = 0;
 	while (x < map.pos.voxelSize*CaveMapFragment.width) : (x += outerSize) {
 		var y: u31 = 0;
@@ -59,11 +92,11 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 				const val111 = getValue(noise, outerSizeShift, x + outerSize, y + outerSize, z + outerSize);
 				// Test if they are all inside or all outside the cave to skip these cases:
 				const measureForEquality = sign(val000) + sign(val001) + sign(val010) + sign(val011) + sign(val100) + sign(val101) + sign(val110) + sign(val111);
-				if (measureForEquality == -8) {
+				if (measureForEquality == 8) {
 					// No cave in here :)
 					continue;
 				}
-				if (measureForEquality == 8) {
+				if (measureForEquality == -8) {
 					// All cave in here :)
 					var dx: u31 = 0;
 					while (dx < outerSize) : (dx += map.pos.voxelSize) {
@@ -85,7 +118,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 							const upperVal = ((1 - ix)*(1 - iy)*val001 + (1 - ix)*iy*val011 + ix*(1 - iy)*val101 + ix*iy*val111);
 							// TODO: Determine the range that needs to be removed, and remove it in one go.
 							if (upperVal*lowerVal > 0) { // All z values have the same sign → the entire column is the same.
-								if (upperVal > 0) {
+								if (upperVal < 0) {
 									// All cave in here :)
 									map.removeRange(x + dx, y + dy, z, z + outerSize);
 								} else {
@@ -97,7 +130,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 								while (dz < outerSize) : (dz += map.pos.voxelSize) {
 									const iz = @as(f32, @floatFromInt(dz))/outerSizeFloat;
 									const val = (1 - iz)*lowerVal + iz*upperVal;
-									if (val > 0)
+									if (val < 0)
 										map.removeRange(x + dx, y + dy, z + dz, z + dz + map.pos.voxelSize);
 								}
 							}

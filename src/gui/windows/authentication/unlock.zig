@@ -27,17 +27,17 @@ var textComponent: *TextInput = undefined;
 fn apply() void {
 	var failureText: main.List(u8) = .init(main.stackAllocator);
 	defer failureText.deinit();
-	const seedPhrase = main.settings.storedAccount.decryptFromPassword(textComponent.currentString.items, &failureText) catch |err| {
+	const accountCode = main.settings.storedAccount.decryptFromPassword(textComponent.currentString.items, &failureText) catch |err| {
 		std.log.err("Encountered error while decrypting password: {s}", .{@errorName(err)});
 		return;
 	};
-	defer seedPhrase.deinit();
+	defer accountCode.deinit();
 
 	if (failureText.items.len != 0) {
 		std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
 	}
 
-	main.network.authentication.KeyCollection.init(seedPhrase);
+	main.network.authentication.KeyCollection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
 	if (settings.playerName.len == 0) {
@@ -63,7 +63,7 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 420;
 	list.add(Label.init(.{0, 0}, width, "Please enter your local password!", .left));
-	list.add(Label.init(.{0, 0}, width, "If you lost your password you can also log out and reenter your seed phrase.", .left));
+	list.add(Label.init(.{0, 0}, width, "If you lost your password you can also log out and reenter your Account Code.", .left));
 	const passwordRow = HorizontalList.init();
 	textComponent = TextInput.init(.{0, 0}, width - 80, 22, "", .{.onNewline = .init(apply)});
 	textComponent.obfuscated = true;
