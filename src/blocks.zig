@@ -142,7 +142,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
-	_particleOverride[size] = if(zon.get(?[]const u8, "particle", null)) |particleId|
+	_particleOverride[size] = if (zon.get(?[]const u8, "particle", null)) |particleId|
 		arena.dupe(u8, particleId)
 	else
 		null;
@@ -631,7 +631,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn getTextureAnimationFrame(texId: u16) ?u16 {
-		if(texId < animationData.len) {
+		if (texId < animationData.len) {
 			return @intCast(animationData[texId].startFrame);
 		}
 		return null;
@@ -795,22 +795,22 @@ pub const meshes = struct { // MARK: meshes
 
 		// Register all block textures as particles for block break effects
 		const blockCount = @import("blocks.zig").size;
-		for(_id[0..blockCount], 0..) |blockId, i| {
-			if(blockId.len > 0) {
+		for (_id[0..blockCount], 0..) |blockId, i| {
+			if (blockId.len > 0) {
 				const block: Block = .{.typ = @intCast(i), .data = 0};
-				if(!block.hasTag(.air)) {
+				if (!block.hasTag(.air)) {
 					// Use particle override if specified, otherwise use block's own ID
 					const particleId = block.particleId();
 
-					const textureBlock = if(_particleOverride[i]) |overrideId| blk: {
+					const textureBlock = if (_particleOverride[i]) |overrideId| blk: {
 						const overrideType = getTypeById(overrideId);
 						break :blk Block{.typ = overrideType, .data = 0};
 					} else block;
 
 					const texId = textureIndex(textureBlock, 0);
-					if(texId < animationData.len) {
+					if (texId < animationData.len) {
 						const actualTextureIdx = animationData[texId].startFrame;
-						if(actualTextureIdx < blockTextures.items.len) {
+						if (actualTextureIdx < blockTextures.items.len) {
 							const image = blockTextures.items[actualTextureIdx];
 							main.particles.ParticleManager.registerBlockTextureAsParticle(particleId, @intCast(actualTextureIdx), image);
 						}

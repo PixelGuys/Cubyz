@@ -1149,7 +1149,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if (newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 
-				if(newBlock.typ == 0 or newBlock.hasTag(.air)) {
+				if (newBlock.typ == 0 or newBlock.hasTag(.air)) {
 					spawnBlockBreakParticles(block, selectedPos);
 				}
 			}

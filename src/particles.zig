@@ -40,7 +40,7 @@ pub const ParticleManager = struct {
 	const ParticleIndex = u16;
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
 
-	const UVRegion = struct {x: u16, y: u16};
+	const UVRegion = struct { x: u16, y: u16 };
 	var blockTextureValidRegions: std.AutoHashMapUnmanaged(u16, main.List(UVRegion)) = .{};
 
 	pub fn init() void {
@@ -56,7 +56,7 @@ pub const ParticleManager = struct {
 		particleTypeHashmap.deinit(arenaAllocator.allocator);
 
 		var it = blockTextureValidRegions.valueIterator();
-		while(it.next()) |validRegions| {
+		while (it.next()) |validRegions| {
 			validRegions.deinit();
 		}
 		blockTextureValidRegions.deinit(arenaAllocator.allocator);
@@ -175,37 +175,37 @@ pub const ParticleManager = struct {
 		const minVisiblePixels = (regionWidth*regionHeight)/4; // At least 25% visible
 
 		var gridY: u16 = 0;
-		while(gridY < gridSize) : (gridY += 1) {
+		while (gridY < gridSize) : (gridY += 1) {
 			var gridX: u16 = 0;
-			while(gridX < gridSize) : (gridX += 1) {
+			while (gridX < gridSize) : (gridX += 1) {
 				// Count visible pixels in this region
 				var visibleCount: u32 = 0;
 				const startX = gridX*regionWidth;
 				const startY = gridY*regionHeight;
 
 				var y: u32 = 0;
-				while(y < regionHeight) : (y += 1) {
+				while (y < regionHeight) : (y += 1) {
 					var x: u32 = 0;
-					while(x < regionWidth) : (x += 1) {
+					while (x < regionWidth) : (x += 1) {
 						const pixelX = startX + x;
 						const pixelY = startY + y;
-						if(pixelX < image.width and pixelY < image.height) {
+						if (pixelX < image.width and pixelY < image.height) {
 							const pixel = image.getRGB(pixelX, pixelY);
-							if(pixel.a >= 128) {// Consider semi-transparent as visible
+							if (pixel.a >= 128) { // Consider semi-transparent as visible
 								visibleCount += 1;
 							}
 						}
 					}
 				}
 
-				if(visibleCount >= minVisiblePixels) {
+				if (visibleCount >= minVisiblePixels) {
 					validRegions.append(.{.x = gridX, .y = gridY});
 				}
 			}
 		}
 
 		// If no valid regions found, add the center region as fallback
-		if(validRegions.items.len == 0) {
+		if (validRegions.items.len == 0) {
 			validRegions.append(.{.x = gridSize/2, .y = gridSize/2});
 		}
 
@@ -234,7 +234,7 @@ pub const ParticleManager = struct {
 			return center | (@as(u32, center) << 16) | (1 << 31);
 		};
 
-		if(validRegions.items.len == 0) {
+		if (validRegions.items.len == 0) {
 			// Fallback: return center region
 			const center = blockParticleUVGridSize/2;
 			return center | (@as(u32, center) << 16) | (1 << 31);
