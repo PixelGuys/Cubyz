@@ -24,7 +24,7 @@ pub fn loadFrom(self: *@This(), zon: ZonElement) void {
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
-	self.entityType = main.entity.clientEntityTypes.get(zon.get([]const u8, "type", "cubyz:snail"));
+	self.entityType = main.entity.clientEntityTypes.get(zon.get([]const u8, "type", "cubyz:snale"));
 }
 
 pub fn save(self: *@This(), allocator: NeverFailingAllocator) ZonElement {

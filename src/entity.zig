@@ -103,7 +103,7 @@ pub const ClientEntity = struct {
 			.width = zon.get(f64, "width", 1),
 			.height = zon.get(f64, "height", 1),
 			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
-			.type = clientEntityTypes.get(zon.get([]const u8, "type", "cubyz:snail")) orelse unreachable,
+			.type = clientEntityTypes.get(zon.get([]const u8, "type", "cubyz:snale")) orelse unreachable,
 		};
 		self._interpolationPos = [_]f64{
 			self.pos[0],
