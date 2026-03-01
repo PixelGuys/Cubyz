@@ -1,0 +1,14 @@
+.{
+	.assets = .{
+		.biomes = .{}, // for autocomplete
+		.blocks = .{},
+		.items = .{},
+		.languages = .{
+			.@"en-us" = "English (United States)",
+		},
+		.particles = .{}, // for autocomplete
+		.sbb = .{}, // for autocomplete
+		.tools = .{},
+		.world_presets = .{},
+	},
+}
