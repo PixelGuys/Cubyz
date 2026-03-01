@@ -2,7 +2,7 @@
 	.isCave = true,
 	.fogDensity = 32,
 	.fogColor = 0x56c4f0,
-	.chance = 1,
+	.chance = 0.01,
 	.maxHeight = -2500,
 	.minHeight = -7500,
 	.music = "cubyz:cubyz",
