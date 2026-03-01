@@ -431,7 +431,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
-	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
+	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.entity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
@@ -957,5 +957,27 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		const blockEntity = block.blockEntity() orelse return;
 
 		sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
+	}
+};
+pub const Customization = struct { // MARK: customization
+	pub const id: u8 = 15;
+	pub const asynchronous = false;
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
+		defer zon.deinit(main.stackAllocator);
+
+		if (zon.getChildOrNull("player_id")) |playerID| {
+			main.entity.ClientEntityManager.changeEntityType(playerID.as(u32, 0), zon.get([]const u8, "entityType", "cubyz:missing"));
+		}
+	}
+	pub fn send(conn: *Connection, playerID: u32, entityType: []const u8) void {
+		const zonObject = ZonElement.initObject(main.stackAllocator);
+		defer zonObject.deinit(main.stackAllocator);
+		zonObject.put("player_id", playerID);
+		zonObject.put("entityType", entityType);
+
+		const outData = zonObject.toString(main.stackAllocator);
+		defer main.stackAllocator.free(outData);
+		conn.send(.secure, id, outData);
 	}
 };

@@ -25,6 +25,62 @@ pub const EntityNetworkData = struct {
 	rot: Vec3f,
 };
 
+pub const ClientEntityType = struct {
+	buffer: ?main.graphics.SSBO,
+	size: c_int = 0,
+	texture: ?main.graphics.Texture,
+	height: f32,
+
+	texturePath: []const u8,
+	modelID: []const u8,
+	id: []const u8,
+
+	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) ClientEntityType {
+		var self: ClientEntityType = undefined;
+		self.id = main.worldArena.dupe(u8, id);
+		self.height = zon.getChild("height").as(f32, 1);
+		self.texture = null;
+		self.buffer = null;
+
+		// get TexturePath
+		{
+			var split = std.mem.splitScalar(u8, id, ':');
+			const mod = split.first();
+			self.texturePath = &.{};
+			if (zon.get(?[]const u8, "texture", null)) |texture| {
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entity/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
+				std.fs.cwd().access(self.texturePath, .{}) catch {
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entity/textures/{s}", .{mod, texture}) catch &.{};
+				};
+			}
+		}
+		self.modelID = main.worldArena.dupe(u8, zon.getChild("model").as([]const u8, "cubyz:entity/missing"));
+		return self;
+	}
+	fn deinit(self: *const ClientEntityType) void {
+		if (self.buffer) |buffer| {
+			buffer.deinit();
+		}
+		if (self.texture) |texture| {
+			texture.deinit();
+		}
+	}
+	fn generateGraphics(self: *ClientEntityType) void {
+		self.texture = main.graphics.Texture.initFromFile(self.texturePath);
+
+		const quadInfos = main.assets.rawModelData.get(self.modelID) orelse unreachable;
+		self.buffer = .initStatic(main.models.QuadInfo, quadInfos);
+		self.size = @intCast(quadInfos.len);
+	}
+	fn bind(self: *ClientEntityType) void {
+		if (self.buffer == null) {
+			self.generateGraphics();
+		}
+		self.buffer.?.bind(11);
+	}
+};
+pub var clientEntityTypes: std.StringHashMapUnmanaged(ClientEntityType) = .{};
+
 pub const ClientEntity = struct {
 	interpolatedValues: utils.GenericInterpolation(6) = undefined,
 	_interpolationPos: [6]f64 = undefined,
@@ -39,12 +95,15 @@ pub const ClientEntity = struct {
 	id: u32,
 	name: []const u8,
 
+	type: ClientEntityType = undefined,
+
 	pub fn init(self: *ClientEntity, zon: ZonElement, allocator: NeverFailingAllocator) void {
 		self.* = ClientEntity{
 			.id = zon.get(u32, "id", std.math.maxInt(u32)),
 			.width = zon.get(f64, "width", 1),
 			.height = zon.get(f64, "height", 1),
 			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
+			.type = clientEntityTypes.get(zon.get([]const u8, "type", "cubyz:snail")) orelse unreachable,
 		};
 		self._interpolationPos = [_]f64{
 			self.pos[0],
@@ -91,9 +150,6 @@ pub const ClientEntityManager = struct {
 		contrast: c_int,
 		ambientLight: c_int,
 	} = undefined;
-	var modelBuffer: main.graphics.SSBO = undefined;
-	var modelSize: c_int = 0;
-	var modelTexture: main.graphics.Texture = undefined;
 	var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	pub var entities: main.utils.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = .{};
@@ -109,18 +165,6 @@ pub const ClientEntityManager = struct {
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},
 		);
-
-		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snale.png");
-		const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/snale.obj") catch |err| blk: {
-			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-			break :blk &.{};
-		};
-		defer main.stackAllocator.free(modelFile);
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
-		defer main.stackAllocator.free(quadInfos);
-		modelBuffer = .initStatic(main.models.QuadInfo, quadInfos);
-		modelBuffer.bind(11);
-		modelSize = @intCast(quadInfos.len);
 	}
 
 	pub fn deinit() void {
@@ -164,7 +208,7 @@ pub const ClientEntityManager = struct {
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
 				@floatCast(pos3d[1]),
-				@floatCast(pos3d[2] + 1.1),
+				@floatCast(pos3d[2] + ent.type.height - 0.9),
 				1,
 			};
 
@@ -193,13 +237,14 @@ pub const ClientEntityManager = struct {
 		pipeline.bind(null);
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-		modelTexture.bindTo(0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (entities.items()) |ent| {
+		for (entities.items()) |*ent| {
 			if (ent.id == game.Player.id) continue; // don't render local player
 
+			ent.type.bind();
+			ent.type.texture.?.bindTo(0);
 			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
@@ -215,13 +260,13 @@ pub const ClientEntityManager = struct {
 			const modelMatrix = (Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
-					@floatCast(pos[1]),
+					@floatCast(pos[1] + @as(f64, @floatFromInt(ent.id*2))),
 					@floatCast(pos[2] - 1.0 + 0.09375),
 				}))
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glDrawElements(c.GL_TRIANGLES, 6*modelSize, c.GL_UNSIGNED_INT, null);
+			c.glDrawElements(c.GL_TRIANGLES, 6*ent.type.size, c.GL_UNSIGNED_INT, null);
 		}
 	}
 
@@ -273,6 +318,16 @@ pub const ClientEntityManager = struct {
 			for (entities.items()) |*ent| {
 				if (ent.id == data.id) {
 					ent.updatePosition(&pos, &vel, time);
+					break;
+				}
+			}
+		}
+	}
+	pub fn changeEntityType(id: u32, entityType: []const u8) void {
+		if (clientEntityTypes.get(entityType)) |entType| {
+			for (entities.items()) |*ent| {
+				if (ent.id == id) {
+					ent.type = entType;
 					break;
 				}
 			}

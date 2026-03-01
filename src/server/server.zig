@@ -741,6 +741,8 @@ pub fn connectInternal(user: *User) void {
 		const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", user.id);
 		entityZon.put("name", user.name);
+		if (user.player.entityType) |entityType|
+			entityZon.put("type", entityType.id);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -755,6 +757,8 @@ pub fn connectInternal(user: *User) void {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
 			entityZon.put("name", other.name);
+			if (other.player.entityType) |entityType|
+				entityZon.put("type", entityType.id);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
