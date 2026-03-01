@@ -1,14 +1,22 @@
 .{
 	.assets = .{
 		.biomes = .{}, // for autocomplete
-		.blocks = .{},
-		.items = .{},
+		.blocks = .{}, // i think only for autocomplete
+		.items = .{
+			.@"cubyz:iron_ore" = "Iron Ore",
+			.@"cubyz:log/oak" = "Oak Log",
+			.@"cubyz:gold_ingot" = "Gold Ingot",
+		},
 		.languages = .{
 			.@"cubyz:en_us" = "English (United States)",
 		},
 		.particles = .{}, // for autocomplete
 		.sbb = .{}, // for autocomplete
-		.tags = .{},
+		.tags = .{
+			.metal = "Metal"
+			.precious = "Precious"
+			.fluidPlaceable = "Can be placed on fluids"
+		},
 		.tools = .{},
 		.world_presets = .{},
 	},
