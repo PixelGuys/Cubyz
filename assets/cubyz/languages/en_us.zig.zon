@@ -10,9 +10,14 @@
 		.tags = .{
 			.metal = "metal",
 			.precious = "precious",
-			.fluidPlaceable = "Can be placed on fluids",
+			.fluidPlaceable = "can be placed on fluids",
 		},
 		.tools = .{},
 		.world_presets = .{},
+	},
+	.ui = .{
+		.modifiers = .{
+
+		},
 	},
 }
