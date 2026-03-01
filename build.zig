@@ -154,6 +154,16 @@ fn createLaunchConfig() !void {
 			\\    .cubyzDir = "",
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
+			\\    // This is used for world creation when autoEnterWorld is set and the world doesn't exist yet.
+			\\    .worldCreationSettings = .{
+			\\        .defaultGamemode = "survival",
+			\\        .testingMode = false,
+			\\        .allowCheats = false,
+			\\        // Empty seed will randomly generate a seed. If you enter a numeric seed, it will be interpreted as such (i.e. "12345").
+			\\        // If the number is too large, or it's not a number, a hashing algorithm will produce a numeric seed from your text.
+			\\        .seed = "",
+			\\    },
+			\\    .worldCreationPresetId = "cubyz:default",
 			\\    // .preferredAuthenticationAlgorithm = .ed25519, // Uncomment and change this if you own a server in an outdated game version where the default algorithm got compromised.
 			\\}
 		;

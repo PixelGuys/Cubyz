@@ -210,8 +210,9 @@ pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;
+	pub var worldCreationSettings: main.server.world_zig.Settings = undefined;
+	pub var worldCreationPresetId: []const u8 = "";
 	pub var preferredAuthenticationAlgorithm: main.network.authentication.KeyTypeEnum = .ed25519;
-
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
 			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
@@ -222,6 +223,8 @@ pub const launchConfig = struct {
 		cubyzDir = main.globalArena.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
+		worldCreationSettings = main.server.world_zig.Settings.createFromZon(zon.getChild("worldCreationSettings"));
+		worldCreationPresetId = main.globalArena.dupe(u8, zon.get([]const u8, "worldPresetId", "cubyz:default"));
 		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm", preferredAuthenticationAlgorithm);
 	}
 };
