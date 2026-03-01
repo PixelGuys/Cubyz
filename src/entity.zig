@@ -260,7 +260,7 @@ pub const ClientEntityManager = struct {
 			const modelMatrix = (Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
-					@floatCast(pos[1] + @as(f64, @floatFromInt(ent.id*2))),
+					@floatCast(pos[1]),
 					@floatCast(pos[2] - 1.0 + 0.09375),
 				}))
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
