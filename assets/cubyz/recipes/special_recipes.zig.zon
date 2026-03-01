@@ -156,4 +156,30 @@
 		.output = "4 cubyz:pebbles",
 		.reversible = true,
 	},
+	.{
+		.inputs = .{"cubyz:grass_vegetation"},
+		.output = "5 cubyz:grass_seeds",
+		.reversible = true,
+	},
+	.{
+		.inputs = .{"cubyz:{type}_grass_vegetation"},
+		.output = "5 cubyz:grass_seeds",
+		.reversible = true,
+	},
+	.{
+		.inputs = .{"cubyz:soil", "cubyz:grass_seeds"},
+		.output = "cubyz:grass",
+	},
+	.{
+		.inputs = .{"cubyz:dirt", "cubyz:grass_seeds"},
+		.output = "cubyz:dry_grass",
+	},
+	.{
+		.inputs = .{"cubyz:permafrost", "cubyz:grass_seeds"},
+		.output = "cubyz:cold_grass",
+	},
+	.{
+		.inputs = .{"cubyz:mud", "cubyz:grass_seeds"},
+		.output = "cubyz:lush_grass",
+	},
 }

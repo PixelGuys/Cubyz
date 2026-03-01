@@ -1,0 +1,4 @@
+.{
+	.tags = .{},
+	.texture = "grass_seeds.png",
+}
