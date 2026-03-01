@@ -2,7 +2,7 @@
 	.properties = .{.cold},
 	.ground_structure = .{
 		"cubyz:cold_grass",
-		"1 to 2 cubyz:soil",
+		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
 		.{
@@ -40,28 +40,6 @@
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
 			.chance = 0.007,
-		},
-	},
-	.parentBiomes = .{
-		.{
-			.id = "cubyz:hills/cold",
-			.chance = 0.5,
-		},
-		.{
-			.id = "cubyz:hills/large/cold",
-			.chance = 0.5,
-		},
-		.{
-			.id = "cubyz:hills/shattered/cold",
-			.chance = 4,
-		},
-		.{
-			.id = "cubyz:hills/shattered/large/cold",
-			.chance = 4,
-		},
-		.{
-			.id = "cubyz:hills/shattered/hummocky/cold",
-			.chance = 4,
 		},
 	},
 }
