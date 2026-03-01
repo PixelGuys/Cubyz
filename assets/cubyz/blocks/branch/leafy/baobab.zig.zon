@@ -2,11 +2,11 @@
 	.onUpdate = .{
 		.type = .decay,
 		.drops = .{
-			.{.items = .{"cubyz:baobab_branch"}},
+			.{.items = .{"cubyz:branch/baobab"}},
 		},
 	},
 	.drops = .{
-		.{.items = .{"cubyz:leaves/baobab", "cubyz:baobab_branch"}},
+		.{.items = .{"cubyz:leaves/baobab", "cubyz:branch/baobab"}},
 	},
 	.texture = "cubyz:leaves/baobab",
 	.texture6 = "cubyz:branch/baobab/dot",
