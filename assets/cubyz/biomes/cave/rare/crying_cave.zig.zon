@@ -64,8 +64,8 @@
 			.id = "cubyz:hemisphere",
 			.minAmount = 2,
 			.maxAmount = 5,
-			.minRadius = 45,
-			.maxRadius = 55,
+			.minRadius = 35,
+			.maxRadius = 50,
 		},
 		.{
 			.id = "cubyz:cylinder",
@@ -73,8 +73,8 @@
 			.maxAmount = 7,
 			.minRadius = 7,
 			.maxRadius = 14,
-			.minHeight = 40,
-			.maxHeight = 100,
+			.minHeight = 30,
+			.maxHeight = 50,
 		},
 	},
 }
