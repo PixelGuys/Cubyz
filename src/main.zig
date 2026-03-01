@@ -600,7 +600,14 @@ pub fn main() void { // MARK: main()
 			return;
 		}
 		if (!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
-			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings) catch |err| {
+			const preset: ZonElement = assets.worldPresets().get(settings.launchConfig.worldCreationPresetId) orelse blkServer: {
+				std.log.err("World preset not found with id: {s}. Using default instead.", .{settings.launchConfig.worldCreationPresetId});
+				break :blkServer assets.worldPresets().get("cubyz:default") orelse {
+					std.log.err("No default world preset found.", .{});
+					return;
+				};
+			};
+			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, preset) catch |err| {
 				std.log.err("Error creating world: {s}", .{@errorName(err)});
 				return;
 			};
@@ -636,6 +643,19 @@ pub fn clientMain() void { // MARK: clientMain()
 				gui.openWindow("main");
 			} else {
 				// Speed up the dev process by entering the world directly.
+				const preset: ZonElement = assets.worldPresets().get(settings.launchConfig.worldCreationPresetId) orelse blkClient: {
+					std.log.err("World preset not found with id: {s}. Using default instead.", .{settings.launchConfig.worldCreationPresetId});
+					break :blkClient assets.worldPresets().get("cubyz:default") orelse {
+						std.log.err("No default world preset found.", .{});
+						return;
+					};
+				};
+				if (!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
+					server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, preset) catch |err| {
+						std.log.err("Error creating world: {}", .{err});
+						return;
+					};
+				}
 				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 			}
 		},
@@ -646,18 +666,7 @@ pub fn clientMain() void { // MARK: clientMain()
 
 	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastBeginRendering = std.time.nanoTimestamp();
-
-	if (settings.launchConfig.autoEnterWorld.len != 0) {
-		if (!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
-			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldSettings) catch |err| {
-				std.log.err("Error creating world: {}", .{err});
-				return;
-			};
-		}
-		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
-	}
+	var lastBeginRendering = timestamp();
 
 	audio.setMusic("cubyz:TotalDemented/Cubyz");
 

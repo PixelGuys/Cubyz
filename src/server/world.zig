@@ -38,6 +38,14 @@ pub const Settings = struct {
 
 	pub const defaults: Settings = .{};
 
+	pub fn createFromZon(zon: ZonElement) Settings {
+		return .{
+			.seed = zon.get(u64, "seed", main.random.nextInt(u64, &main.seed)),
+			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", @tagName(defaults.defaultGamemode))) orelse defaults.defaultGamemode,
+			.allowCheats = zon.get(bool, "allowCheats", defaults.allowCheats),
+			.testingMode = zon.get(bool, "testingMode", defaults.testingMode),
+		};
+	}
 	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
 		return .{
 			.seed = zon.get(?u64, "seed", null) orelse {
