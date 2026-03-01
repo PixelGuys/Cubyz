@@ -80,6 +80,7 @@ pub const StructureTable = struct {
 	paletteId: u32,
 
 	pub fn init(id: []const u8, paletteId: u32, zon: ZonElement) StructureTable {
+		if (zon == .null) return undefined;
 		var structureTable: StructureTable = .{
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
