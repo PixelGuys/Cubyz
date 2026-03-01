@@ -2,8 +2,8 @@
 	.isCave = true,
 	.maxHeight = -20000,
 	.minHeight = -48250,
-	.chance = 0.2,
-	.caveRadiusFactor = 0.5,
+	.chance = 0.12,
+	.caveRadiusFactor = 0.7,
 
 	.music = "cubyz:heart-of-the-beast",
 
