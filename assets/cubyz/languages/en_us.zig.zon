@@ -4,11 +4,11 @@
 		.blocks = .{},
 		.items = .{},
 		.languages = .{
-			.@"cubyz:en-us" = "English (United States)",
+			.@"cubyz:en_us" = "English (United States)",
 		},
 		.particles = .{}, // for autocomplete
 		.sbb = .{}, // for autocomplete
-        .tags = .{},
+		.tags = .{},
 		.tools = .{},
 		.world_presets = .{},
 	},

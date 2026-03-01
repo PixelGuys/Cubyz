@@ -574,6 +574,8 @@ pub fn main() void { // MARK: main()
 
 	assets.init();
 
+	lang.init();
+
 	if (!headless) blocks.meshes.init();
 	defer if (!headless) blocks.meshes.deinit();
 
