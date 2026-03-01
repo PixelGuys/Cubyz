@@ -89,7 +89,7 @@ fn spawnBlockBreakParticles(block: blocks.Block, selectedPos: Vec3i) void {
 	const emitterProperties = particles.EmitterProperties{
 		.speed = .init(1, 1.5),
 		.lifeTime = .init(0.75, 1),
-		.randomizeRotation = true,
+		.randomizeRotation = false,
 	};
 	const emitter = particles.Emitter.init(particleId, true, .{.cube = .{.size = Vec3f{0.5, 0.5, 0.5}}}, emitterProperties, .spread);
 	for (0..particleCount) |_| {
