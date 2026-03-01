@@ -61,14 +61,16 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 		return translated;
 	}
 	if (category == .language) {
-		const zon = blk: {
-			for (languages) |entry| {
-				if (std.mem.eql(u8, entry.key_ptr.*, string)) {
-					break :blk entry.value_ptr.*;
+		for (languages) |entry| {
+			if (std.mem.eql(u8, entry.key_ptr.*, string)) {
+				const zon = entry.value_ptr.*;
+				const translated = zon.get([]const u8, "language", string);
+				if (std.mem.eql(u8, translated, string)) {
+					std.log.err("Couldn't find name for language {s}", .{string});
 				}
+				return translated;
 			}
-		};
-		return zon.get([]const u8, "language", string);
+		}
 	}
 	if (category == .tag) {
 		const zon = languageZon.getChild("assets").getChild("tags");
