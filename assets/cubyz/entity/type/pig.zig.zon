@@ -1,5 +1,0 @@
-.{
-    .model = "assets/cubyz/entity/models/pig.obj",
-    .texture = "assets/cubyz/entity/textures/pig.png",
-    .height = 1
-}

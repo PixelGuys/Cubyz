@@ -1,5 +1,0 @@
-.{
-    .model = "assets/cubyz/entity/models/snale.obj",
-    .texture = "assets/cubyz/entity/textures/snale.png",
-    .height = 2, 
-}

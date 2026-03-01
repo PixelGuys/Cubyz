@@ -1,5 +1,0 @@
-.{
-    .model = "assets/cubyz/entity/models/missing.obj",
-    .texture = "assets/cubyz/entity/textures/missing.png",
-    .height = 1
-}
