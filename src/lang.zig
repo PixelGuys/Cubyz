@@ -6,12 +6,10 @@ const ZonElement = main.ZonElement;
 const ZonMapEntry = std.StringHashMapUnmanaged(ZonElement).Entry;
 
 const Category = enum {
-	biome,
 	block,
 	item,
 	language,
-	particle,
-	sbb,
+	modifier,
 	tag,
 	tool,
 	world_preset,
@@ -63,8 +61,14 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 		return translated;
 	}
 	if (category == .language) {
-		const zon = languageZon.getChild("assets").getChild("languages");
-		return zon.get([]const u8, string, string);
+		const zon = blk: {
+			for (languages) |entry| {
+				if (std.mem.eql(u8, entry.key_ptr.*, string)) {
+					break :blk entry.value_ptr.*;
+				}
+			}
+		};
+		return zon.get([]const u8, "language", string);
 	}
 	if (category == .tag) {
 		const zon = languageZon.getChild("assets").getChild("tags");
