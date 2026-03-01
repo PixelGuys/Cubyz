@@ -38,7 +38,8 @@ pub fn init() void {
 
 pub fn setLanguage(newLanguageId: []const u8) !void {
 	try load(newLanguageId);
-	main.settings.language = newLanguageId;
+	main.globalAllocator.free(main.settings.language);
+	main.settings.language = main.globalAllocator.dupe(u8, newLanguageId);
 	main.settings.save();
 }
 
