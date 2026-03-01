@@ -594,31 +594,42 @@ pub fn main() void { // MARK: main()
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 
+	const selectedPreset: ?ZonElement = if (headless or settings.launchConfig.autoEnterWorld.len > 0)
+		assets.worldPresets().get(settings.launchConfig.worldCreationPreset) orelse blk: {
+			std.log.err("World preset not found with id: {s}. Using default instead.", .{settings.launchConfig.worldCreationPreset});
+			break :blk assets.worldPresets().get("cubyz:default") orelse {
+				std.log.err("No default world preset found.", .{});
+				return;
+			};
+		}
+	else
+		null;
+
+	const worldExists: ?bool = if (headless or settings.launchConfig.autoEnterWorld.len > 0) server.world_zig.exists(settings.launchConfig.autoEnterWorld) catch |err| {
+		std.log.err("File access error: {}", .{err});
+		return;
+	} else null;
+
 	if (headless) {
+		std.debug.assert(selectedPreset != null);
+		std.debug.assert(worldExists != null);
 		if (settings.launchConfig.autoEnterWorld.len == 0) {
 			std.log.err("Cannot run the server without a world name provided via launchConfig.autoEnterWorld.", .{});
 			return;
 		}
-		if (!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
-			const preset: ZonElement = assets.worldPresets().get(settings.launchConfig.worldCreationPresetId) orelse blkServer: {
-				std.log.err("World preset not found with id: {s}. Using default instead.", .{settings.launchConfig.worldCreationPresetId});
-				break :blkServer assets.worldPresets().get("cubyz:default") orelse {
-					std.log.err("No default world preset found.", .{});
-					return;
-				};
-			};
-			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, preset) catch |err| {
+		if (!worldExists.?) {
+			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, selectedPreset.?) catch |err| {
 				std.log.err("Error creating world: {s}", .{@errorName(err)});
 				return;
 			};
 		}
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
 	} else {
-		clientMain();
+		clientMain(selectedPreset, worldExists);
 	}
 }
 
-pub fn clientMain() void { // MARK: clientMain()
+pub fn clientMain(selectedPreset: ?ZonElement, worldExists: ?bool) void { // MARK: clientMain()
 	switch (settings.storedAccount.typ) {
 		.none => blk: {
 			if (settings.storedAccount.data.len == 0) {
@@ -642,16 +653,11 @@ pub fn clientMain() void { // MARK: clientMain()
 			} else if (settings.launchConfig.autoEnterWorld.len == 0) {
 				gui.openWindow("main");
 			} else {
+				std.debug.assert(selectedPreset != null);
+				std.debug.assert(worldExists != null);
 				// Speed up the dev process by entering the world directly.
-				const preset: ZonElement = assets.worldPresets().get(settings.launchConfig.worldCreationPresetId) orelse blkClient: {
-					std.log.err("World preset not found with id: {s}. Using default instead.", .{settings.launchConfig.worldCreationPresetId});
-					break :blkClient assets.worldPresets().get("cubyz:default") orelse {
-						std.log.err("No default world preset found.", .{});
-						return;
-					};
-				};
-				if (!server.world_zig.exists(settings.launchConfig.autoEnterWorld)) {
-					server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, preset) catch |err| {
+				if (!worldExists.?) {
+					server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, selectedPreset.?) catch |err| {
 						std.log.err("Error creating world: {}", .{err});
 						return;
 					};

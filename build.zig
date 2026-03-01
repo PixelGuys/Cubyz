@@ -163,7 +163,7 @@ fn createLaunchConfig() !void {
 			\\        // If the number is too large, or it's not a number, a hashing algorithm will produce a numeric seed from your text.
 			\\        .seed = "",
 			\\    },
-			\\    .worldCreationPresetId = "cubyz:default",
+			\\    .worldCreationPreset = "cubyz:default",
 			\\    // .preferredAuthenticationAlgorithm = .ed25519, // Uncomment and change this if you own a server in an outdated game version where the default algorithm got compromised.
 			\\}
 		;
