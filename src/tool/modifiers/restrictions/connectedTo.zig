@@ -58,10 +58,10 @@ pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
 			if (checked[getIndexInCheckArray(value, checkRange)]) continue;
 			count += 1;
 			checked[getIndexInCheckArray(value, checkRange)] = true;
-				queue.pushBack(Vec2i{1 + value[0], 0 + value[1]});
-				queue.pushBack(Vec2i{-1 + value[0], 0 + value[1]});
-				queue.pushBack(Vec2i{0 + value[0], 1 + value[1]});
-				queue.pushBack(Vec2i{0 + value[0], -1 + value[1]});
+			queue.pushBack(Vec2i{1 + value[0], 0 + value[1]});
+			queue.pushBack(Vec2i{-1 + value[0], 0 + value[1]});
+			queue.pushBack(Vec2i{0 + value[0], 1 + value[1]});
+			queue.pushBack(Vec2i{0 + value[0], -1 + value[1]});
 		}
 	}
 	return count >= self.amount;
