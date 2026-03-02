@@ -12,6 +12,7 @@ const Category = enum {
 	language,
 	modifier,
 	other,
+	restriction,
 	tag,
 	tool,
 	world_preset,
@@ -76,7 +77,8 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 			unreachable;
 		},
 		.modifier => translateHelper("ui", "modifiers", string),
-		.other => translateHelper("ui", "other", string),
+		.other => translateHelper("ui", "others", string),
+		.restriction => translateHelper("ui", "restrictions", string),
 		.tag => translateHelper("assets", "tags", string),
 		.tool => translateHelper("assets", "tools", string),
 		.world_preset => translateHelper("assets", "world_presets", string),

@@ -28,9 +28,14 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const And
 }
 
 pub fn printTooltip(self: *const And, outString: *main.List(u8)) void {
+	const translated = main.lang.translate(.restriction, "and");
 	outString.append('(');
 	for (self.children, 0..) |child, i| {
-		if (i != 0) outString.appendSlice(" and ");
+		if (i != 0) {
+			outString.append(' ');
+			outString.appendSlice(translated);
+			outString.append(' ');
+		}
 		child.printTooltip(outString);
 	}
 	outString.append(')');

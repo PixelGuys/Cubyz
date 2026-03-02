@@ -29,10 +29,15 @@
 			.Settings = "Settings",
 			.@"Touch Grass" = "Touch Grass",
 		},
-		.modifiers = .{
+		.modifiers = .{},
+		.restrictions = .{
+			.always = "always",
+			.@"and" = "and",
 			.@"encased in" = "encased in",
+			.not = "not",
+			.@"or" = "or",
 		},
-		.other = .{
+		.others = .{
 			.items = "items",
 			.@"swings/s" = "swings/s",
 			.Damage = "Damage",
