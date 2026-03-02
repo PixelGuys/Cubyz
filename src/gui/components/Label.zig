@@ -22,7 +22,7 @@ alpha: f32 = 1,
 pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) *Label {
 	const self = main.globalAllocator.create(Label);
 	self.* = Label{
-		.text = TextBuffer.init(main.globalAllocator, text, .{}, false, alignment),
+		.text = TextBuffer.init(main.globalAllocator, main.lang.translate(.label, text), .{}, false, alignment),
 		.pos = pos,
 		.size = undefined,
 	};
@@ -42,7 +42,7 @@ pub fn toComponent(self: *Label) GuiComponent {
 pub fn updateText(self: *Label, newText: []const u8) void {
 	const alignment = self.text.alignment;
 	self.text.deinit();
-	self.text = TextBuffer.init(main.globalAllocator, newText, .{}, false, alignment);
+	self.text = TextBuffer.init(main.globalAllocator, main.lang.translate(.label, newText), .{}, false, alignment);
 	self.size = self.text.calculateLineBreaks(fontSize, self.size[0]);
 }
 
