@@ -5,14 +5,11 @@ const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
 
-pub const description = "Performs changes on the permissions of the player or a group. It also shows if the player or a group have permission for a specific permission path";
+pub const description = "Performs changes on the permissions of the player or shows the if has permission for a specific permission path";
 pub const usage =
 	\\/perm add <whitelist/blacklist> <permissionPath>
-	\\/perm add <whitelist/blacklist> <groupName> <permissionPath>
 	\\/perm remove <whitelist/blacklist> <permissionPath>
-	\\/perm remove <whitelist/blacklist> <groupName> <permissionPath>
 	\\/perm <permissionPath>
-	\\/perm <groupName> <permissionPath>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
@@ -24,30 +21,12 @@ pub fn execute(args: []const u8, source: *User) void {
 	if (split.next()) |arg| {
 		if (std.ascii.eqlIgnoreCase(arg, "remove")) {
 			const helper = Helper.parseHelper(source, &split) catch return;
-			if (!helper.permissions.removePermission(helper.listType, helper.permissionPath)) {
+			if (!source.permissions.removePermission(helper.listType, helper.permissionPath)) {
 				source.sendMessage("#ff0000Permission path {s} is not present inside users permission {s}list", .{helper.permissionPath, @tagName(helper.listType)});
 			}
 		} else if (std.ascii.eqlIgnoreCase(arg, "add")) {
 			const helper = Helper.parseHelper(source, &split) catch return;
-			helper.permissions.addPermission(helper.listType, helper.permissionPath);
-		} else if (arg[0] != '/') {
-			const group = permission.getGroup(arg) catch {
-				source.sendMessage("#ff0000Group with name {s} not found", .{arg});
-				return;
-			};
-			const permissionPath = split.next() orelse {
-				source.sendMessage("#ff0000Too few arguments for command /perm", .{});
-				return;
-			};
-			if (split.next() != null) {
-				source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
-				return;
-			}
-			if (group.hasPermission(permissionPath) == .yes) {
-				source.sendMessage("#00ff00Group {s} has permission for path: {s}", .{arg, permissionPath});
-			} else {
-				source.sendMessage("#ff0000Group {s} has no permission for path: {s}", .{arg, permissionPath});
-			}
+			source.permissions.addPermission(helper.listType, helper.permissionPath);
 		} else if (arg[0] == '/') {
 			if (split.next() != null) {
 				source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
@@ -66,12 +45,11 @@ pub fn execute(args: []const u8, source: *User) void {
 
 const Helper = struct {
 	listType: ListType,
-	permissions: *permission.Permissions,
 	permissionPath: []const u8,
 
 	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{InvalidArgs}!Helper {
 		var listType: ListType = undefined;
-		var arg = split.next() orelse {
+		const arg = split.next() orelse {
 			source.sendMessage("#ff0000Too few arguments for command /perm", .{});
 			return error.InvalidArgs;
 		};
@@ -84,25 +62,13 @@ const Helper = struct {
 			return error.InvalidArgs;
 		}
 
-		arg = split.next() orelse {
+		const permissionPath = split.next() orelse {
 			source.sendMessage("#ff0000Too few arguments for command /perm.", .{});
 			return error.InvalidArgs;
 		};
 
-		const permissions: *permission.Permissions = blk: {
-			if (split.next()) |next| {
-				const group = permission.getGroup(arg) catch {
-					source.sendMessage("#ff0000Group with name {s} not found", .{arg});
-					return error.InvalidArgs;
-				};
-				arg = next;
-				break :blk &group.permissions;
-			}
-			break :blk &source.permissions;
-		};
-
-		if (arg[0] != '/') {
-			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{arg});
+		if (permissionPath[0] != '/') {
+			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{permissionPath});
 			return error.InvalidArgs;
 		}
 
@@ -111,6 +77,6 @@ const Helper = struct {
 			return error.InvalidArgs;
 		}
 
-		return .{.listType = listType, .permissions = permissions, .permissionPath = arg};
+		return .{.listType = listType, .permissionPath = permissionPath};
 	}
 };
