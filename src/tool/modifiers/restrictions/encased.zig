@@ -35,6 +35,6 @@ pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
 		main.lang.translate(.modifier, "encased in"),
 		self.amount,
 		main.lang.translate(.tag, self.tag.getName()),
-		main.lang.translate(.modifier, "items")
+		main.lang.translate(.modifier, "items"),
 	});
 }
