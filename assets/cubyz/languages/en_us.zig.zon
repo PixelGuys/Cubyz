@@ -16,8 +16,12 @@
 		.world_presets = .{},
 	},
 	.ui = .{
-		.modifiers = .{
-
+		.labels = .{
+			.Singleplayer = "Singleplayer",
+			.Multiplayer = "Multiplayer",
+			.Settings = "Settings",
+			.@"Touch Grass" = "Touch Grass",
 		},
+		.modifiers = .{},
 	},
 }

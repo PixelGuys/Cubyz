@@ -8,6 +8,7 @@ const ZonMapEntry = std.StringHashMapUnmanaged(ZonElement).Entry;
 const Category = enum {
 	block,
 	item,
+	label,
 	language,
 	modifier,
 	tag,
@@ -51,38 +52,39 @@ fn load(languageId: []const u8) !void {
 	return error.LanguageNotFound;
 }
 
+inline fn standardTranslate(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {
+	const zon = languageZon.getChild(sectionName).getChild(catrgoryName);
+	const translated = zon.get(?[]const u8, string, null);
+	return translated orelse blk: {
+		std.log.err("Couldn't find translation for {s} '{s}' in {s}", .{catrgoryName[0..(catrgoryName.len - 1)], string, main.settings.language});
+		break :blk string;
+	};
+}
+
 pub fn translate(category: Category, string: []const u8) []const u8 {
-	switch (category) {
-		.item => {
-			const zon = languageZon.getChild("assets").getChild("items");
-			const translated = zon.get([]const u8, string, string);
-			if (std.mem.eql(u8, translated, string)) {
-				std.log.err("Couldn't find translation for item {s} in {s}", .{string, main.settings.language});
-			}
-			return translated;
-		},
-		.language => {
+	if (string.len == 0) return string;
+	return switch (category) {
+		.block => standardTranslate("assets", "blocks", string),
+		.item => standardTranslate("assets", "items", string),
+		.label => standardTranslate("ui", "labels", string),
+		.language => blk: {
 			for (languages) |entry| {
 				if (std.mem.eql(u8, entry.key_ptr.*, string)) {
 					const zon = entry.value_ptr.*;
-					const translated = zon.get([]const u8, "language", string);
-					if (std.mem.eql(u8, translated, string)) {
+					const translated = zon.get(?[]const u8, "language", null);
+					break :blk translated orelse ret: {
 						std.log.err("Couldn't find name for language {s}", .{string});
-					}
-					return translated;
+						break :ret string;
+					};
 				}
 			}
+			unreachable;
 		},
-		.tag => {
-			const zon = languageZon.getChild("assets").getChild("tags");
-			const translated = zon.get([]const u8, string, string);
-			if (std.mem.eql(u8, translated, string)) {
-				std.log.err("Couldn't find translation for tag {s} in {s}", .{string, main.settings.language});
-			}
-			return translated;
-		},
-	}
-	return "temp";
+		.modifier => standardTranslate("ui", "modifiers", string),
+		.tag => standardTranslate("assets", "tags", string),
+		.tool => standardTranslate("assets", "tools", string),
+		.world_preset => standardTranslate("assets", "world_presets", string),
+	};
 }
 
 // lang.translateGame("ui", "buttonMultiplayer"): []u8 (everything fallbacks to "unknown" if not found for convenience)
