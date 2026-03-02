@@ -37,21 +37,21 @@ pub fn setLanguage(newLanguageId: []const u8) !void {
 }
 
 fn load(languageId: []const u8) !void {
-	var iterator = languagesMap.iterator();
-	while (iterator.next()) |entry| {
-		if (std.mem.eql(u8, entry.key_ptr.*, languageId)) {
-			languageZon = entry.value_ptr.*;
-			return;
-		}
-	}
-	return error.LanguageNotFound;
+	languageZon = languagesMap.get(languageId) orelse return error.LanguageNotFound;
 }
 
 fn translateHelper(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {
 	const zon = languageZon.getChild(sectionName).getChild(catrgoryName);
 	const translated = zon.get(?[]const u8, string, null);
 	return translated orelse blk: {
-		std.log.err("Couldn't find translation for {s} '{s}' in {s}", .{catrgoryName[0..(catrgoryName.len - 1)], string, main.settings.language});
+		// uncomment when english is complete
+		// std.log.err("Couldn't find translation for '{s}'. Searched at {s}/{s}/{s}/{s}", .{
+		// string,
+		// main.settings.language,
+		// sectionName,
+		// catrgoryName,
+		// string,
+		// });
 		break :blk string;
 	};
 }
@@ -63,18 +63,11 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 		.item => translateHelper("assets", "items", string),
 		.label => translateHelper("ui", "labels", string),
 		.language => blk: {
-			var iterator = languagesMap.iterator();
-			while (iterator.next()) |entry| {
-				if (std.mem.eql(u8, entry.key_ptr.*, string)) {
-					const zon = entry.value_ptr.*;
-					const translated = zon.get(?[]const u8, "language", null);
-					break :blk translated orelse blk2: {
-						std.log.err("Couldn't find name for language {s}", .{string});
-						break :blk2 string;
-					};
-				}
-			}
-			unreachable;
+			const zon = languagesMap.get(string) orelse unreachable;
+			break :blk zon.get(?[]const u8, "language", null) orelse blk2: {
+				std.log.err("Couldn't find name for language {s}", .{string});
+				break :blk2 string;
+			};
 		},
 		.modifier => translateHelper("ui", "modifiers", string),
 		.other => translateHelper("ui", "others", string),
