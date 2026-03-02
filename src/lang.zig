@@ -86,7 +86,3 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 		.world_preset => standardTranslate("assets", "world_presets", string),
 	};
 }
-
-// lang.translateGame("ui", "buttonMultiplayer"): []u8 (everything fallbacks to "unknown" if not found for convenience)
-// lang.translateTag(.metal) : ?[]u8
-// lang.translateItem("cubyz:iron_ore"): ?[]u8

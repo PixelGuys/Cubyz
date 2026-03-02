@@ -12,7 +12,9 @@
 			.precious = "precious",
 			.fluidPlaceable = "can be placed on fluids",
 		},
-		.tools = .{},
+		.tools = .{
+			.@"cubyz:pickaxe" = "Pickaxe",
+		},
 		.world_presets = .{},
 	},
 	.ui = .{
