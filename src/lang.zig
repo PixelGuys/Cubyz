@@ -52,33 +52,35 @@ fn load(languageId: []const u8) !void {
 }
 
 pub fn translate(category: Category, string: []const u8) []const u8 {
-	if (category == .item) {
-		const zon = languageZon.getChild("assets").getChild("items");
-		const translated = zon.get([]const u8, string, string);
-		if (std.mem.eql(u8, translated, string)) {
-			std.log.err("Couldn't find translation for item {s} in {s}", .{string, main.settings.language});
-		}
-		return translated;
-	}
-	if (category == .language) {
-		for (languages) |entry| {
-			if (std.mem.eql(u8, entry.key_ptr.*, string)) {
-				const zon = entry.value_ptr.*;
-				const translated = zon.get([]const u8, "language", string);
-				if (std.mem.eql(u8, translated, string)) {
-					std.log.err("Couldn't find name for language {s}", .{string});
-				}
-				return translated;
+	switch (category) {
+		.item => {
+			const zon = languageZon.getChild("assets").getChild("items");
+			const translated = zon.get([]const u8, string, string);
+			if (std.mem.eql(u8, translated, string)) {
+				std.log.err("Couldn't find translation for item {s} in {s}", .{string, main.settings.language});
 			}
-		}
-	}
-	if (category == .tag) {
-		const zon = languageZon.getChild("assets").getChild("tags");
-		const translated = zon.get([]const u8, string, string);
-		if (std.mem.eql(u8, translated, string)) {
-			std.log.err("Couldn't find translation for tag {s} in {s}", .{string, main.settings.language});
-		}
-		return translated;
+			return translated;
+		},
+		.language => {
+			for (languages) |entry| {
+				if (std.mem.eql(u8, entry.key_ptr.*, string)) {
+					const zon = entry.value_ptr.*;
+					const translated = zon.get([]const u8, "language", string);
+					if (std.mem.eql(u8, translated, string)) {
+						std.log.err("Couldn't find name for language {s}", .{string});
+					}
+					return translated;
+				}
+			}
+		},
+		.tag => {
+			const zon = languageZon.getChild("assets").getChild("tags");
+			const translated = zon.get([]const u8, string, string);
+			if (std.mem.eql(u8, translated, string)) {
+				std.log.err("Couldn't find translation for tag {s} in {s}", .{string, main.settings.language});
+			}
+			return translated;
+		},
 	}
 	return "temp";
 }
