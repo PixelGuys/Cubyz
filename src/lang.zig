@@ -17,19 +17,11 @@ const Category = enum {
 	world_preset,
 };
 
-var languages: []ZonMapEntry = &.{};
+const languagesMap: *const std.StringHashMapUnmanaged(ZonElement) = main.assets.languages();
 
 var languageZon: ZonElement = undefined;
 
 pub fn init() void {
-	var languagesMap = main.assets.languages();
-	var entryList: main.ListUnmanaged(ZonMapEntry) = .initCapacity(main.globalArena, languagesMap.count());
-	var iterator = languagesMap.iterator();
-	while (iterator.next()) |entry| {
-		entryList.appendAssumeCapacity(entry);
-	}
-	languages = entryList.items;
-
 	load(main.settings.language) catch {
 		std.log.err("Couldn't find language {s}. Switching to english...", .{main.settings.language});
 		setLanguage("cubyz:en_us") catch unreachable;
@@ -44,7 +36,8 @@ pub fn setLanguage(newLanguageId: []const u8) !void {
 }
 
 fn load(languageId: []const u8) !void {
-	for (languages) |entry| {
+	var iterator = languagesMap.iterator();
+	while (iterator.next()) |entry| {
 		if (std.mem.eql(u8, entry.key_ptr.*, languageId)) {
 			languageZon = entry.value_ptr.*;
 			return;
@@ -69,7 +62,8 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 		.item => translateHelper("assets", "items", string),
 		.label => translateHelper("ui", "labels", string),
 		.language => blk: {
-			for (languages) |entry| {
+			var iterator = languagesMap.iterator();
+			while (iterator.next()) |entry| {
 				if (std.mem.eql(u8, entry.key_ptr.*, string)) {
 					const zon = entry.value_ptr.*;
 					const translated = zon.get(?[]const u8, "language", null);
