@@ -56,7 +56,7 @@ pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk:
 	placeSbb(self, self.structureRef, Vec3i{x, y, z}, null, self.rotation.getInitialRotation(seed), chunk, seed, true);
 }
 
-pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64, duringWorldGeneration: bool) void {
+pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64, comptime duringWorldGeneration: bool) void {
 	const blueprints = &(structure.getBlueprints(seed).* orelse return);
 
 	const origin = blueprints[0].originBlock;

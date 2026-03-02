@@ -166,7 +166,7 @@ pub const Blueprint = struct {
 
 					const block = self.blocks.get(x, y, z);
 					if (block.typ != voidType or flags.preserveVoid)
-						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block, flags.noUpdate);
+						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block, false);
 				}
 			}
 		}
