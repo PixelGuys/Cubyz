@@ -55,10 +55,10 @@ pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
 				// mark as checked
 				if (checked[getIndexInCheckArray(value, checkRange)]) continue;
 				checked[getIndexInCheckArray(value, checkRange)] = true;
-					queue.pushBack(Vec2i{1 + value[0], 0 + value[1]});
-					queue.pushBack(Vec2i{-1 + value[0], 0 + value[1]});
-					queue.pushBack(Vec2i{0 + value[0], 1 + value[1]});
-					queue.pushBack(Vec2i{0 + value[0], -1 + value[1]});
+				queue.pushBack(Vec2i{1 + value[0], 0 + value[1]});
+				queue.pushBack(Vec2i{-1 + value[0], 0 + value[1]});
+				queue.pushBack(Vec2i{0 + value[0], 1 + value[1]});
+				queue.pushBack(Vec2i{0 + value[0], -1 + value[1]});
 			}
 		}
 		if ((tool.getItemAt(x + value[0], y + value[1]) orelse continue).hasTag(self.conductorTag)) {
@@ -66,10 +66,10 @@ pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
 			// mark as checked
 			if (checked[getIndexInCheckArray(value, checkRange)]) continue;
 			checked[getIndexInCheckArray(value, checkRange)] = true;
-				queue.pushBack(Vec2i{1 + value[0], 0 + value[1]});
-				queue.pushBack(Vec2i{-1 + value[0], 0 + value[1]});
-				queue.pushBack(Vec2i{0 + value[0], 1 + value[1]});
-				queue.pushBack(Vec2i{0 + value[0], -1 + value[1]});
+			queue.pushBack(Vec2i{1 + value[0], 0 + value[1]});
+			queue.pushBack(Vec2i{-1 + value[0], 0 + value[1]});
+			queue.pushBack(Vec2i{0 + value[0], 1 + value[1]});
+			queue.pushBack(Vec2i{0 + value[0], -1 + value[1]});
 		}
 	}
 	return count >= self.amount;
