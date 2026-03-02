@@ -21,6 +21,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
+const permission = server.permission;
 const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
@@ -508,6 +509,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
+
 		return self;
 	}
 
@@ -949,6 +951,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
+			user.permissions.fromZon(playerData);
+
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
@@ -1002,6 +1006,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("publicKey", user.newKeyString);
 
 		playerZon.put("entity", user.player.save(main.stackAllocator));
+		user.permissions.toZon(main.stackAllocator, &playerZon);
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
@@ -1160,9 +1165,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
-		const map = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1, 0);
+		const map = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1, 0);
 		defer map.deinit();
-		return map.getRoughBiome(wx, wy, wz, false, undefined, true);
+		return map.getBiome(wx - map.pos.wx, wy - map.pos.wy, wz - map.pos.wz);
 	}
 
 	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) ?Block {

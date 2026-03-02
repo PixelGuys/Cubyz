@@ -1137,7 +1137,8 @@ const TextRendering = struct { // MARK: TextRendering
 	};
 	var pipeline: Pipeline = undefined;
 	var uniforms: struct {
-		texture_rect: c_int,
+		textureBounds: c_int,
+		textureRect: c_int,
 		scene: c_int,
 		offset: c_int,
 		ratio: c_int,
@@ -1269,18 +1270,15 @@ const TextRendering = struct { // MARK: TextRendering
 		x = @floor(x);
 		y = @ceil(y);
 		c.glUniform1i(uniforms.fontEffects, fontEffects);
+		c.glUniform4f(uniforms.textureBounds, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
 		if (fontEffects & 0x1000000 != 0) { // bold
-			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
-			c.glUniform4f(uniforms.texture_rect, @floatFromInt(glyph.textureX), -1, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1] + 1));
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-			// Just draw another thing on top in x direction. The y-direction is handled in the shader.
-			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x + 0.5, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x - 1, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
+			c.glUniform4f(uniforms.textureRect, @floatFromInt(glyph.textureX - 1), -1, @floatFromInt(glyph.size[0] + 2), @floatFromInt(glyph.size[1] + 2));
 		} else {
 			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y);
-			c.glUniform4f(uniforms.texture_rect, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+			c.glUniform4f(uniforms.textureRect, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
 		}
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
 	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) void {
