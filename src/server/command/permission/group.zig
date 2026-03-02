@@ -8,7 +8,7 @@ pub const description = "lets you create, delete, join, leave groups and modify 
 pub const usage =
 	\\/group <create/delete/join/leave> <groupName>
 	\\/group <whitelist/blacklist> <groupName> <add/remove> <permissionPath>
-        \\/group <whitelist/blacklist> <groupName> <permissionPath>
+	\\/group <whitelist/blacklist> <groupName> <permissionPath>
 ;
 
 const Operations = enum {
@@ -121,7 +121,7 @@ fn handleGroupPermissionChanges(op: Operations, groupName: []const u8, split: *s
 		switch (_op) {
 			.add => group.permissions.addPermission(listType, path),
 			.remove => {
-				if(!group.permissions.removePermission(listType, path)) {
+				if (!group.permissions.removePermission(listType, path)) {
 					source.sendMessage("#ff0000Permission path {s} is not present inside group {s} permission {s}list", .{path, groupName, @tagName(listType)});
 				}
 			},
