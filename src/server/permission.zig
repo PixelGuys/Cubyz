@@ -132,7 +132,7 @@ pub const PermissionGroup = struct { // MARK: PermissionGroup
 
 var groups: std.StringHashMapUnmanaged(PermissionGroup) = .{};
 var groupsArena: NeverFailingArenaAllocator = undefined;
-var currentId: u32 = 0;
+var currentId: u32 = 0; // Needed to identify groups even after deletion, so that players who join a server after deletion of a group don't automatically join another group witht the same name.
 
 pub fn init(allocator: NeverFailingAllocator, _zon: ?ZonElement) void {
 	sync.threadContext.assertCorrectContext(.server);
@@ -186,6 +186,7 @@ pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
 }
 
 pub fn getGroup(name: []const u8) error{GroupNotFound}!*PermissionGroup {
+	sync.threadContext.assertCorrectContext(.server);
 	return groups.getPtr(name) orelse return error.GroupNotFound;
 }
 
