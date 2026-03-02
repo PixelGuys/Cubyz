@@ -28,25 +28,20 @@ const resolutions = [_]u16{25, 50, 100};
 
 const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 
-const FPSPresets = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
+const FPSPresetsText = [_][]const u8{"5 Hz", "10 Hz", "15 Hz", "30 Hz", "50 Hz", "60 Hz", "75 Hz", "90 Hz", "100 Hz", "120 Hz", "144 Hz", "165 Hz", "170 Hz", "180 Hz", "200 Hz", "240 Hz", "260 Hz", "280 Hz", "300 Hz", "360 Hz", "480 Hz", "unlimited"};
+const FPSPresetsValue = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
 
-fn fpsCapRound(newValue: f32) ?u32 {
-	for (FPSPresets) |value| {
-		if (@as(u16, @intFromFloat(newValue)) <= value)
-			return value;
-	}
-	return null;
+fn fpsCapGetIndex(fps: u16) u16 {
+	return @truncate(std.sort.lowerBound(u16, &FPSPresetsValue, fps, struct {
+		fn order(a: u16, b: u16) std.math.Order {
+			return std.math.order(a, b);
+		}
+	}.order));
 }
-
-fn fpsCapFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	const cap = fpsCapRound(value);
-	if (cap == null)
-		return allocator.dupe(u8, "#ffffffFPS: Unlimited");
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffFPS Limit: {d:.0}", .{cap.?}) catch unreachable;
-}
-
-fn fpsCapCallback(newValue: f32) void {
-	settings.fpsCap = fpsCapRound(newValue);
+fn fpsCapCallback(index: u16) void {
+	if (index < FPSPresetsValue.len) {
+		settings.fpsCap = FPSPresetsValue[index];
+	} else settings.fpsCap = null;
 	settings.save();
 }
 
@@ -133,7 +128,7 @@ fn vulkanTestingWindowCallback(newValue: bool) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 500.0, @floatFromInt(settings.fpsCap orelse 500), &fpsCapCallback, &fpsCapFormatter));
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffFPS Limit: ", "{s}", &FPSPresetsText, if (settings.fpsCap) |fpsCap| fpsCapGetIndex(@truncate(fpsCap)) else FPSPresetsValue.len, &fpsCapCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLOD1 Distance: ", "{} chunks", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
 	if (main.game.world == null) {
 		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffHighest LOD: ", "{s}", &lodValues, @min(settings.highestLod, settings.highestSupportedLod), &highestLodCallback));
