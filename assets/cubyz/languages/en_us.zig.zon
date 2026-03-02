@@ -11,9 +11,14 @@
 			.metal = "metal",
 			.precious = "precious",
 			.fluidPlaceable = "can be placed on fluids",
+			.material = "material",
 		},
 		.tools = .{
+			.@"cubyz:shover" = "Shover",
+			.@"cubyz:axe" = "Axe",
 			.@"cubyz:pickaxe" = "Pickaxe",
+			.@"cubyz:sickle" = "Sickle",
+			.@"cubyz:chisel" = "Chisel",
 		},
 		.world_presets = .{},
 	},
@@ -24,6 +29,14 @@
 			.Settings = "Settings",
 			.@"Touch Grass" = "Touch Grass",
 		},
-		.modifiers = .{},
+		.modifiers = .{
+			.@"encased in" = "encased in",
+		},
+		.other = .{
+			.items = "items",
+			.@"swings/s" = "swings/s",
+			.Damage = "Damage",
+			.Durability = "Durability",
+		},
 	},
 }

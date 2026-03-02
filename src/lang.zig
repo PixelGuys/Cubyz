@@ -11,6 +11,7 @@ const Category = enum {
 	label,
 	language,
 	modifier,
+	other,
 	tag,
 	tool,
 	world_preset,
@@ -52,7 +53,7 @@ fn load(languageId: []const u8) !void {
 	return error.LanguageNotFound;
 }
 
-inline fn standardTranslate(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {
+fn translateHelper(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {
 	const zon = languageZon.getChild(sectionName).getChild(catrgoryName);
 	const translated = zon.get(?[]const u8, string, null);
 	return translated orelse blk: {
@@ -64,25 +65,26 @@ inline fn standardTranslate(sectionName: []const u8, catrgoryName: []const u8, s
 pub fn translate(category: Category, string: []const u8) []const u8 {
 	if (string.len == 0) return string;
 	return switch (category) {
-		.block => standardTranslate("assets", "blocks", string),
-		.item => standardTranslate("assets", "items", string),
-		.label => standardTranslate("ui", "labels", string),
+		.block => translateHelper("assets", "blocks", string),
+		.item => translateHelper("assets", "items", string),
+		.label => translateHelper("ui", "labels", string),
 		.language => blk: {
 			for (languages) |entry| {
 				if (std.mem.eql(u8, entry.key_ptr.*, string)) {
 					const zon = entry.value_ptr.*;
 					const translated = zon.get(?[]const u8, "language", null);
-					break :blk translated orelse ret: {
+					break :blk translated orelse blk2: {
 						std.log.err("Couldn't find name for language {s}", .{string});
-						break :ret string;
+						break :blk2 string;
 					};
 				}
 			}
 			unreachable;
 		},
-		.modifier => standardTranslate("ui", "modifiers", string),
-		.tag => standardTranslate("assets", "tags", string),
-		.tool => standardTranslate("assets", "tools", string),
-		.world_preset => standardTranslate("assets", "world_presets", string),
+		.modifier => translateHelper("ui", "modifiers", string),
+		.other => translateHelper("ui", "other", string),
+		.tag => translateHelper("assets", "tags", string),
+		.tool => translateHelper("assets", "tools", string),
+		.world_preset => translateHelper("assets", "world_presets", string),
 	};
 }
