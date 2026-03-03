@@ -59,17 +59,10 @@ pub const Settings = struct {
 	}
 };
 
-pub fn exists(worldPath: []const u8) !bool {
+pub fn exists(worldPath: []const u8) bool {
 	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{"saves", worldPath, "world.zig.zon"}) catch unreachable;
 	defer main.stackAllocator.free(saveDirectory);
-	files.cubyzDir().dir.access(saveDirectory, .{}) catch |err| {
-		if (err == error.FileNotFound) {
-			return false;
-		} else {
-			return err;
-		}
-	};
-	return true;
+	return files.cubyzDir().hasDir(saveDirectory);
 }
 
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
