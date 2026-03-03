@@ -134,7 +134,7 @@ pub fn finishLoading() void {
 	std.debug.assert(!finishedLoading);
 	finishedLoading = true;
 
-	std.mem.sort(StructureTable, structureTables, {}, compareStructureTables);
+	std.mem.sort(StructureTable, structureTables.items, {}, compareStructureTables);
 	structureTablesById.ensureTotalCapacity(main.worldArena.allocator, @intCast(structureTables.items.len)) catch unreachable;
 	for (structureTables.items) |*structureTable| {
 		structureTablesById.putAssumeCapacity(structureTable.id, structureTable);
