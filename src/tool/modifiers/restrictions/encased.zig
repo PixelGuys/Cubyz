@@ -19,7 +19,7 @@ pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
 	for (lowBound..highBound) |dx| {
 		for (lowBound..highBound) |dy| {
 			const checkedX = x + @as(i32, @intCast(dx - self.range));
-			const checkedY = y + @as(i32, (@intCast(dy - self.range)));
+			const checkedY = y + @as(i32, @intCast(dy - self.range));
 			if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
