@@ -79,7 +79,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 	const result = allocator.create(Encased);
 	result.* = .{
 		.sourceTag = main.Tag.find(zon.get([]const u8, "sourceTag", "not specified")),
-		.conductorTag = main.Tag.find(zon.get([]const u8, "conductorTag", "not specified")),		
+		.conductorTag = main.Tag.find(zon.get([]const u8, "conductorTag", "not specified")),
 		.amount = zon.get(usize, "amount", 8),
 	};
 	return result;
