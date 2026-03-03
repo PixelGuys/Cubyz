@@ -619,24 +619,19 @@ pub fn main() void { // MARK: main()
 		break :blk server.world_zig.exists(settings.launchConfig.autoEnterWorld);
 	};
 
-	if (headless) {
-		if (settings.launchConfig.autoEnterWorld.len == 0) {
-			std.log.err("Cannot run the server without a world name provided via launchConfig.autoEnterWorld.", .{});
+	if (!worldExists) {
+		server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, selectedPreset) catch |err| {
+			std.log.err("Error creating world: {}", .{err});
 			return;
-		}
-		if (!worldExists) {
-			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, selectedPreset) catch |err| {
-				std.log.err("Error creating world: {s}", .{@errorName(err)});
-				return;
-			};
-		}
-		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
-	} else {
-		clientMain(selectedPreset, worldExists);
+		};
 	}
+
+	if (headless) {
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
+	} else {}
 }
 
-pub fn clientMain(selectedPreset: ZonElement, worldExists: bool) void { // MARK: clientMain()
+pub fn clientMain() void { // MARK: clientMain()
 	switch (settings.storedAccount.typ) {
 		.none => blk: {
 			if (settings.storedAccount.data.len == 0) {
@@ -661,12 +656,6 @@ pub fn clientMain(selectedPreset: ZonElement, worldExists: bool) void { // MARK:
 				gui.openWindow("main");
 			} else {
 				// Speed up the dev process by entering the world directly.
-				if (!worldExists) {
-					server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, selectedPreset) catch |err| {
-						std.log.err("Error creating world: {}", .{err});
-						return;
-					};
-				}
 				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 			}
 		},

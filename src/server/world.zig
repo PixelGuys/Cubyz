@@ -38,13 +38,26 @@ pub const Settings = struct {
 
 	pub const defaults: Settings = .{};
 
+	pub fn chooseSeed(self: *Settings, seedStr: []const u8) void {
+		if (seedStr.len == 0) {
+			self.seed = main.random.nextInt(u64, &main.seed);
+		} else {
+			self.seed = blk: {
+				break :blk std.fmt.parseInt(u64, seedStr, 0) catch {
+					break :blk std.hash.Wyhash.hash(0, seedStr);
+				};
+			};
+		}
+	}
+
 	pub fn fromZon(zon: ZonElement) Settings {
-		return .{
-			.seed = zon.get(u64, "seed", main.random.nextInt(u64, &main.seed)),
+		var self = Settings{
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", @tagName(defaults.defaultGamemode))) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats", defaults.allowCheats),
 			.testingMode = zon.get(bool, "testingMode", defaults.testingMode),
 		};
+		self.chooseSeed(zon.get([]const u8, "seed", ""));
+		return self;
 	}
 
 	pub fn toZon(self: Settings, allocator: NeverFailingAllocator) ZonElement {

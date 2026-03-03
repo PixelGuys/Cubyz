@@ -156,7 +156,7 @@ fn createLaunchConfig() !void {
 			\\    .headlessServer = false,
 			\\    // This is used for world creation when autoEnterWorld is set and the world doesn't exist yet.
 			\\    .worldCreationSettings = .{
-			\\        .defaultGamemode = "survival",
+			\\        .defaultGamemode = .survival,
 			\\        .testingMode = false,
 			\\        .allowCheats = false,
 			\\        // Empty seed will randomly generate a seed. If you enter a numeric seed, it will be interpreted as such (i.e. "12345").

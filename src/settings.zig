@@ -213,6 +213,7 @@ pub const launchConfig = struct {
 	pub var worldCreationSettings: main.server.world_zig.Settings = undefined;
 	pub var worldCreationPreset: []const u8 = "";
 	pub var preferredAuthenticationAlgorithm: main.network.authentication.KeyTypeEnum = .ed25519;
+
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
 			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
