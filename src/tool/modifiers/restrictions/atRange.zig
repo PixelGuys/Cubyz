@@ -50,6 +50,5 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 }
 
 pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
-
 	outString.print("{} .{s} {s} {}", .{self.amount, self.tag.getName(), "is at range", self.range});
 }
