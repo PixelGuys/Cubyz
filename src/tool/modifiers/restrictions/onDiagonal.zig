@@ -18,12 +18,12 @@ pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
 	const highBound = self.range*2 + 1;
 	for (lowBound..highBound) |dx| {
 		const checkedX = x + @as(i32, @intCast(dx - self.range));
-		const checkedY = y + @as(i32,(@intCast(dx - self.range)));
+		const checkedY = y + @as(i32, (@intCast(dx - self.range)));
 		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	for (lowBound..highBound) |dx| {
 		const checkedX = x + @as(i32, @intCast(dx - self.range));
-		const checkedY = y - @as(i32,(@intCast(dx - self.range)));
+		const checkedY = y - @as(i32, (@intCast(dx - self.range)));
 		if (!(dx == 0)) {
 			if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
@@ -43,8 +43,8 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 
 pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
 	if (self.range < 5) {
-		outString.print("{} .{s} {s} {}", .{self.amount, self.tag.getName(),"in diagonal range", self.range});
+		outString.print("{} .{s} {s} {}", .{self.amount, self.tag.getName(), "in diagonal range", self.range});
 	} else {
-		outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(),"on diagonal axis"});
+		outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on diagonal axis"});
 	}
 }
