@@ -23,16 +23,6 @@ fn getIndexInCheckArray(relativePosition: Vec2i, checkRange: comptime_int) usize
 
 pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
 	var count: usize = 0;
-	// checks if enough of a tag exists before calculating
-	for ([_]i32{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5}) |dx| {
-		for ([_]i32{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5}) |dy| {
-			if ((tool.getItemAt(x + dx, y + dy) orelse continue).hasTag(self.tag)) count += 1;
-		}
-	}
-	if (count < self.amount) {
-		return false;
-	}
-	count = 0;
 	// init array to mark already searched blocks.
 	const checkRange = 5;
 	const checkLength = checkRange*2 + 1;
