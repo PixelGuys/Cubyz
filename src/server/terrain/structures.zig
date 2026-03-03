@@ -77,20 +77,18 @@ pub const StructureTable = struct {
 	id: []const u8,
 	tags: []const Tag,
 	structures: []const SimpleStructureModel = &.{},
-	paletteId: u32,
 
-	pub fn init(id: []const u8, paletteId: u32, zon: ZonElement) StructureTable {
-		if (zon == .null) return undefined;
+	pub fn init(id: []const u8, zon: ZonElement) StructureTable {
 		var structureTable: StructureTable = .{
 			.id = main.worldArena.dupe(u8, id),
-			.paletteId = paletteId,
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
 
-		const structures = zon.getChild("structures");
 		var structureList = main.ListUnmanaged(SimpleStructureModel){};
-		var totalChance: f32 = 0;
 		defer structureList.deinit(main.stackAllocator);
+
+		const structures = zon.getChild("structures");
+		var totalChance: f32 = 0;
 
 		for (structures.toSlice()) |elem| {
 			if (SimpleStructureModel.initModel(elem)) |model| {
@@ -108,13 +106,16 @@ pub const StructureTable = struct {
 	}
 };
 
+var finishedLoading: bool = false;
 var structureTables: main.ListUnmanaged(StructureTable) = .{};
+var structureTablesById: std.StringHashMapUnmanaged(*StructureTable) = .{};
 
-pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
-	const structureTable = StructureTable.init(id, paletteId, zon);
+pub fn register(id: []const u8, zon: ZonElement) void {
+	const structureTable = StructureTable.init(id, zon);
 	structureTables.append(main.worldArena, structureTable);
-	std.log.debug("Registered structure table: {d: >5} '{s}'", .{paletteId, id});
+	std.log.debug("Registered structure table: '{s}'", .{id});
 }
+
 pub fn hasRegistered(id: []const u8) bool {
 	if (structureTables.items.len == 0) return false;
 	for (structureTables.items) |entry| {
@@ -125,10 +126,35 @@ pub fn hasRegistered(id: []const u8) bool {
 	return false;
 }
 
+fn compareStructureTables(_: void, lhs: StructureTable, rhs: StructureTable) bool {
+	return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .gt;
+}
+
+pub fn finishLoading() void {
+	std.debug.assert(!finishedLoading);
+	finishedLoading = true;
+
+	std.mem.sort(StructureTable, structureTables, {}, compareStructureTables);
+	structureTablesById.ensureTotalCapacity(main.worldArena.allocator, @intCast(structureTables.items.len)) catch unreachable;
+	for (structureTables.items) |*structureTable| {
+		structureTablesById.putAssumeCapacity(structureTable.id, structureTable);
+	}
+}
+
+pub fn getById(id: []const u8) *StructureTable {
+	std.debug.assert(finishedLoading);
+	return structureTablesById.get(id) orelse {
+		std.log.err("Could not find structure table by id {s}. Replacing it with some other structure table.", .{id});
+		return &structureTables.items[0];
+	};
+}
+
 pub fn getSlice() []StructureTable {
 	return structureTables.items;
 }
 
 pub fn reset() void {
+	finishedLoading = false;
 	structureTables = .{};
+	structureTablesById = .{};
 }

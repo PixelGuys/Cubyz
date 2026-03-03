@@ -346,11 +346,10 @@ pub const Biome = struct { // MARK: Biome
 		}
 		const structureTables = main.server.terrain.structures.getSlice();
 		nextTable: for (structureTables) |table| {
-			if (table.tags.len > 0) {
-				for (table.tags) |tableTag| {
-					if (!self.hasTag(tableTag)) continue :nextTable;
-				}
+			for (table.tags) |tableTag| {
+				if (!self.hasTag(tableTag)) continue :nextTable;
 			}
+
 			for (table.structures) |model| {
 				vegetation.append(main.stackAllocator, model);
 				totalChance += model.chance;

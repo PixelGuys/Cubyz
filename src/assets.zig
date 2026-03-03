@@ -408,8 +408,8 @@ fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
 	biomes_zig.register(stringId, numericId, zon);
 }
 
-fn registerStructureTable(numericId: u32, stringId: []const u8, zon: ZonElement) void {
-	main.server.terrain.structures.register(stringId, numericId, zon);
+fn registerStructureTable(stringId: []const u8, zon: ZonElement) void {
+	main.server.terrain.structures.register(stringId, zon);
 }
 fn registerRecipesFromZon(zon: ZonElement) void {
 	items_zig.registerRecipes(zon);
@@ -653,17 +653,14 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// StructureTables:
-	var nextStructureTableNumericId: u32 = 0;
 	for (structureTablePalette.palette.items) |id| {
-		registerStructureTable(nextStructureTableNumericId, id, worldAssets.structureTables.get(id) orelse .null);
-		nextStructureTableNumericId += 1;
+		registerStructureTable(id, worldAssets.structureTables.get(id) orelse .null);
 	}
 	iterator = worldAssets.structureTables.iterator();
 	while (iterator.next()) |entry| {
 		if (main.server.terrain.structures.hasRegistered(entry.key_ptr.*)) continue;
-		registerStructureTable(nextStructureTableNumericId, entry.key_ptr.*, entry.value_ptr.*);
+		registerStructureTable(entry.key_ptr.*, entry.value_ptr.*);
 		structureTablePalette.add(entry.key_ptr.*);
-		nextStructureTableNumericId += 1;
 	}
 
 	// Biomes:
