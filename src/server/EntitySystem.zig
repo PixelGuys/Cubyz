@@ -45,9 +45,9 @@ pub fn add() u32 {
 }
 pub fn remove(entityID: u32) void {
 	_ = entityID;
-	//TODO: add the entity to the freed list
+	// TODO: add the entity to the freed list
 	// if it is last one, remove until last one on entities isnt on freedList
-	//.inUse = false
+	// .inUse = false
 }
 pub fn getEntity(entityID: u32) *server.Entity {
 	return &entities.items[entityID];
