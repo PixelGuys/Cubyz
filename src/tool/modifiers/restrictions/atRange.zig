@@ -26,12 +26,12 @@ pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
 		const checkedY = y + @as(i32, @intCast(-2));
 		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
-	for ((lowBound+1)..(highBound-1)) |dy| {
+	for ((lowBound + 1)..(highBound - 1)) |dy| {
 		const checkedX = x + @as(i32, @intCast(-2));
 		const checkedY = y + @as(i32, @intCast(dy - self.range));
 		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
-	for ((lowBound+1)..(highBound-1)) |dy| {
+	for ((lowBound + 1)..(highBound - 1)) |dy| {
 		const checkedX = x + @as(i32, @intCast(2));
 		const checkedY = y + @as(i32, @intCast(dy - self.range));
 		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
