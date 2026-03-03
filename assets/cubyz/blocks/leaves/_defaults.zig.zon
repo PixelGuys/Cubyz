@@ -11,7 +11,7 @@
 		.{.chance = 0.01, .items = .{"cubyz:apple"}},
 	},
 	.rotation = "cubyz:decayable",
-	.tags = .{.cuttable, .leaf},
+	.tags = .{.cuttable, .leaf, .natural},
 	.blockHealth = 0.5,
 	.degradable = true,
 	.alwaysViewThrough = true,
