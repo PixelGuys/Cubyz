@@ -16,6 +16,8 @@ maxHealth: f32 = 8,
 energy: f32 = 8,
 maxEnergy: f32 = 8,
 entityType: ?main.entity.ClientEntityType = null,
+inUse: bool = false,
+name: ?[]const u8 = null,
 // TODO: Name
 
 pub fn loadFrom(self: *@This(), zon: ZonElement) void {
@@ -25,6 +27,17 @@ pub fn loadFrom(self: *@This(), zon: ZonElement) void {
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
 	self.entityType = main.entity.clientEntityTypes.get(zon.get([]const u8, "type", "cubyz:snale"));
+	if (zon.getChildOrNull("name")) |name| {
+		if (self.name) |oldname| {
+			main.globalAllocator.free(oldname);
+		}
+		self.name = main.globalAllocator.dupe(u8, name.as([]const u8, "invalid name"));
+	}
+}
+pub fn clone(self: *@This()) @This() {
+	var duplicate: @This() = self.*;
+	duplicate.name = if (self.name) |name| main.globalAllocator.dupe(u8, name) else null;
+	return duplicate;
 }
 
 pub fn save(self: *@This(), allocator: NeverFailingAllocator) ZonElement {
@@ -36,5 +49,13 @@ pub fn save(self: *@This(), allocator: NeverFailingAllocator) ZonElement {
 	zon.put("energy", self.energy);
 	if (self.entityType) |entityType|
 		zon.put("type", entityType.id);
+	if (self.name) |name|
+		zon.put("name", name);
 	return zon;
+}
+pub fn deinit(self: *@This()) void {
+	if (self.name) |name| {
+		main.globalAllocator.free(name);
+		self.name = null;
+	}
 }

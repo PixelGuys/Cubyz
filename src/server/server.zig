@@ -25,6 +25,7 @@ pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const EntitySystem = @import("EntitySystem.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
@@ -98,7 +99,6 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -142,6 +142,10 @@ pub const User = struct { // MARK: User
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
 	permissions: permission.Permissions = undefined,
+
+	pub fn player(self: *User) *Entity {
+		return EntitySystem.getEntity(self.id);
+	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -237,13 +241,12 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User) void {
-		self.id = freeId;
-		freeId += 1;
+		self.id = EntitySystem.add();
+		self.player().name = main.globalAllocator.dupe(u8, self.name);
 
 		world.?.loadPlayer(self);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
 
@@ -299,7 +302,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -463,7 +466,7 @@ pub const User = struct { // MARK: User
 		const position: [3]f64 = try reader.readVec(Vec3d);
 		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.player.rot = rotation;
+		self.player().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
@@ -515,6 +518,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	EntitySystem.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
 
@@ -559,6 +563,7 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
+	EntitySystem.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -616,21 +621,22 @@ fn update() void { // MARK: update()
 	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
-	for (userList) |user| {
-		const id = user.id; // TODO
+	for (EntitySystem.getAll(), 0..) |ent, id| {
+		if (!ent.inUse)
+			continue;
 		entityData.append(.{
-			.id = id,
-			.pos = user.player.pos,
-			.vel = user.player.vel,
-			.rot = user.player.rot,
+			.id = @truncate(id),
+			.pos = ent.pos,
+			.vel = ent.vel,
+			.rot = ent.rot,
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, user.player().pos, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
-		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const pos = @as(Vec3i, @intFromFloat(user.player().pos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
@@ -701,6 +707,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if (!foundUser) return;
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
+	EntitySystem.remove(user.id);
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
@@ -721,6 +728,7 @@ pub fn connect(user: *User) void {
 
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
+
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -741,7 +749,7 @@ pub fn connectInternal(user: *User) void {
 		const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", user.id);
 		entityZon.put("name", user.name);
-		if (user.player.entityType) |entityType|
+		if (user.player().entityType) |entityType|
 			entityZon.put("type", entityType.id);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -751,16 +759,8 @@ pub fn connectInternal(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = EntitySystem.getEntitiesBasicInfo();
 		defer zonArray.deinit(main.stackAllocator);
-		for (userList) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
-			entityZon.put("id", other.id);
-			entityZon.put("name", other.name);
-			if (other.player.entityType) |entityType|
-				entityZon.put("type", entityType.id);
-			zonArray.array.append(entityZon);
-		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		if (user.connected.load(.monotonic)) main.network.protocols.entity.send(user.conn, data);

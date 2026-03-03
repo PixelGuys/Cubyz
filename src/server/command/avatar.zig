@@ -18,7 +18,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		}
 		if (main.entity.clientEntityTypes.get(arg)) |entityType| {
-			source.player.entityType = entityType;
+			source.player().entityType = entityType;
 			for (main.server.connectionManager.connections.items) |value| {
 				main.network.protocols.Customization.send(value, source.id, entityType.id);
 			}
