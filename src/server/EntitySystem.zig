@@ -84,11 +84,11 @@ pub fn getEntitiesBasicInfo() main.ZonElement {
 		if (!entity.inUse)
 			continue;
 		const entityZon = entity.save(main.stackAllocator);
-		//const entityZon = main.ZonElement.initObject(main.stackAllocator);
+		// const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", i);
-		//entityZon.put("name", entity.name);
-		//if (entity.entityType) |entityType|
-		//entityZon.put("type", entityType.id);
+		// entityZon.put("name", entity.name);
+		// if (entity.entityType) |entityType|
+		// entityZon.put("type", entityType.id);
 		zonArray.array.append(entityZon);
 	}
 	return zonArray;
@@ -96,9 +96,9 @@ pub fn getEntitiesBasicInfo() main.ZonElement {
 pub fn getEntityBasicInfo(id: u32, array: *main.List(main.ZonElement)) void {
 	const entity = entities.items()[id];
 	const entityZon = entity.save(main.stackAllocator);
-	//const entityZon = main.ZonElement.initObject(main.stackAllocator);
+	// const entityZon = main.ZonElement.initObject(main.stackAllocator);
 	entityZon.put("id", id);
-	//entityZon.put("name", entity.name);
+	// entityZon.put("name", entity.name);
 
 	// if (entity.entityType) |entityType|
 	// entityZon.put("type", entityType.id);

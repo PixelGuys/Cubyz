@@ -245,7 +245,7 @@ pub const User = struct { // MARK: User
 		self.id = EntitySystem.add();
 		self.player().name = main.globalAllocator.dupe(u8, self.name);
 		main.entityComponent.entityRenderer.Server.register(self.id, "cubyz:snale", null);
-	
+
 		world.?.loadPlayer(self);
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
@@ -747,11 +747,11 @@ pub fn connectInternal(user: *User) void {
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		//const entityZon = main.ZonElement.initObject(main.stackAllocator);
+		// const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		const entityZon = user.player().save(main.stackAllocator);
 		entityZon.put("id", user.id);
 
-		//entityZon.put("type", entityType.id);
+		// entityZon.put("type", entityType.id);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);

@@ -530,13 +530,13 @@ pub const entity = struct { // MARK: entity
 			if (elem == .int) {
 				main.clientEntity.ClientEntityManager.removeEntity(elem.as(u16, 0));
 			} else {
-				//main.Window.setMouseGrabbed(false);
+				// main.Window.setMouseGrabbed(false);
 				const string = elem.toString(main.stackAllocator);
 				defer main.stackAllocator.free(string);
 				std.debug.print("{s}\n", .{string});
-				elem.put("id", elem.get(u32,"id", 0));
+				elem.put("id", elem.get(u32, "id", 0));
 				main.clientEntity.ClientEntityManager.addEntity(elem);
-				//conn.manager.world.?.itemDrops.addFromZon(elem);
+				// conn.manager.world.?.itemDrops.addFromZon(elem);
 			}
 		}
 	}

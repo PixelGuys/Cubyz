@@ -46,7 +46,7 @@ pub const ClientEntity = struct {
 			.width = zon.get(f64, "width", 1),
 			.pos = zon.get(Vec3d, "pos", .{0, 0, 0}),
 			.rot = zon.get(Vec3f, "rot", .{0, 0, 0}),
-			//.vel = zon.get(Vec3f,"vel",.{0,0,0}),
+			// .vel = zon.get(Vec3f,"vel",.{0,0,0}),
 			.height = zon.get(f64, "height", 1),
 			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 		};
@@ -62,12 +62,12 @@ pub const ClientEntity = struct {
 		self._interpolationVel = @splat(0);
 		self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 
-		//components
+		// components
 		if (zon.getChildOrNull("components")) |components| {
 			const list = main.entityComponent;
 			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				if(components.getChildOrNull(decl.name))|comp|{
-					@field(list, decl.name).Client.register(self.id,comp);
+				if (components.getChildOrNull(decl.name)) |comp| {
+					@field(list, decl.name).Client.register(self.id, comp);
 				}
 			}
 		}
@@ -148,8 +148,8 @@ pub const ClientEntityManager = struct {
 		var time: i16 = @truncate(main.timestamp().toMilliseconds() -% settings.entityLookback);
 		time -%= timeDifference.difference.load(.monotonic);
 
-		//std.debug.print("{}\n", .{entityArray.items()[0].pos});
-		//std.debug.print("{}\n", .{idToIndex.get(0) orelse 42});
+		// std.debug.print("{}\n", .{entityArray.items()[0].pos});
+		// std.debug.print("{}\n", .{idToIndex.get(0) orelse 42});
 
 		for (entityArray.items()) |*ent| {
 			ent.update(time, lastTime);

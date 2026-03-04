@@ -34,7 +34,7 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime _: Side) void
 	// @field(@field(list, decl.name).Server);
 	// }
 	// }
-	//if(zon.getChild("components"))|components|
+	// if(zon.getChild("components"))|components|
 
 	if (zon.getChildOrNull("name")) |name| {
 		if (self.name) |oldname| {
