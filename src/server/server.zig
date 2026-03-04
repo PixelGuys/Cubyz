@@ -793,3 +793,12 @@ pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
 }
+
+pub fn getUserById(id: u32) !*User {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for (userList) |user| {
+		if (user.id == id) return user;
+	}
+	return error.UserNotFound;
+}
