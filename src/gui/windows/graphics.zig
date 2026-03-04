@@ -30,25 +30,25 @@ const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 
 const fpsPresetsValue = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
 const fpsPresetsText = blk: {
-	var strings: [FPSPresetsValue.len + 1][]const u8 = undefined;
-	for (FPSPresetsValue, 0..) |value, i| {
+	var strings: [fpsPresetsValue.len + 1][]const u8 = undefined;
+	for (fpsPresetsValue, 0..) |value, i| {
 		strings[i] = std.fmt.comptimePrint("{d} Hz", .{value});
 	}
-	strings[FPSPresetsValue.len] = "unlimited";
+	strings[fpsPresetsValue.len] = "unlimited";
 	break :blk strings;
 };
 
-fn fpsCapGetIndex(fpsOptional: ?u16) u16 {
-	const fps = fpsOptional orelse return fpsPresetsValue.len;
-	return @intCast(std.sort.lowerBound(u16, &FPSPresetsValue, fps, struct {
+fn fpsCapGetIndex(fpsOptional: ?u32) u16 {
+	const fps:u16 = @truncate(fpsOptional orelse return fpsPresetsValue.len);
+	return @intCast(std.sort.lowerBound(u16, &fpsPresetsValue, fps, struct {
 		fn order(a: u16, b: u16) std.math.Order {
 			return std.math.order(a, b);
 		}
 	}.order));
 }
 fn fpsCapCallback(index: u16) void {
-	if (index < FPSPresetsValue.len) {
-		settings.fpsCap = FPSPresetsValue[index];
+	if (index < fpsPresetsValue.len) {
+		settings.fpsCap = fpsPresetsValue[index];
 	} else settings.fpsCap = null;
 	settings.save();
 }
@@ -136,7 +136,7 @@ fn vulkanTestingWindowCallback(newValue: bool) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffFPS Limit:\n", "{s}", &FPSPresetsText, if (settings.fpsCap) |fpsCap| fpsCapGetIndex(@truncate(fpsCap)) else FPSPresetsValue.len, &fpsCapCallback));
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffFPS Limit:\n", "{s}", &fpsPresetsText,  fpsCapGetIndex(settings.fpsCap), &fpsCapCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLOD1 Distance: ", "{} chunks", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
 	if (main.game.world == null) {
 		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffHighest LOD: ", "{s}", &lodValues, @min(settings.highestLod, settings.highestSupportedLod), &highestLodCallback));
