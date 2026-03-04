@@ -1,0 +1,23 @@
+.{
+	.minHeight = 5,
+	.maxHeight = 5,
+	.radius = 24,
+	.ground_structure = .{
+		"2 to 3 cubyz:sand",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/palm/coconut",
+			.placeMode = .degradable,
+			.chance = 0.015,
+		},
+	},
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:island/warm/shelf",
+			.chance = 1,
+		},
+	},
+}
