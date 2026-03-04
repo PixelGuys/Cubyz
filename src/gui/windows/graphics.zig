@@ -28,7 +28,7 @@ const resolutions = [_]u16{25, 50, 100};
 
 const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 
-const FPSPresetsValue = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
+const fpsPresetsValue = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
 const FPSPresetsText = blk: {
 	var strings: [FPSPresetsValue.len + 1][]const u8 = undefined;
 	for (FPSPresetsValue, 0..) |value, i| {
