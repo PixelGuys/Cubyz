@@ -13,10 +13,10 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 	var split = std.mem.splitScalar(u8, args, ' ');
 
-	var valueEntityType: []const u8 = undefined;
+	var valueEntityModel: []const u8 = undefined;
 	var valueName: ?[]const u8 = null;
-	if (split.next()) |entTypeName| {
-		valueEntityType = entTypeName;
+	if (split.next()) |entTypeModel| {
+		valueEntityModel = entTypeModel;
 	}
 	if (split.next()) |name| {
 		valueName = name;
@@ -25,11 +25,17 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /summon", .{});
 		return;
 	}
-	if (main.entity.clientEntityTypes.get(valueEntityType)) |entityType| {
+	if (main.entityComponent.entityRenderer.entityModels.get(valueEntityModel)) |entityModel| {
 		const id = main.server.EntitySystem.add();
 		const summoned = main.server.EntitySystem.getEntity(id);
 		summoned.* = source.player().clone();
-		summoned.entityType = entityType;
+
+		const newRc = main.entityComponent.entityRenderer.Server.RenderComponent{
+			.entity = id,
+			.customTexturePath = null,
+			.model = entityModel,
+		};
+		main.entityComponent.entityRenderer.Server.put(source.id, newRc);
 
 		if (valueName) |name| {
 			if (summoned.name) |old| {
@@ -48,8 +54,8 @@ pub fn execute(args: []const u8, source: *User) void {
 			main.network.protocols.entity.send(value, data);
 		}
 
-		source.sendMessage("#00ff00summoned {s}.", .{valueEntityType});
+		source.sendMessage("#00ff00summoned {s}.", .{valueEntityModel});
 	} else {
-		source.sendMessage("#ff0000entityTypeID {s} doesnt exist", .{valueEntityType});
+		source.sendMessage("#ff0000entityTypeID {s} doesnt exist", .{valueEntityModel});
 	}
 }

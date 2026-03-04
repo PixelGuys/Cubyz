@@ -618,7 +618,7 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (EntitySystem.getAll(), 0..) |ent, id| {
@@ -746,11 +746,11 @@ pub fn connectInternal(user: *User) void {
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		const entityZon = main.ZonElement.initObject(main.stackAllocator);
+		//const entityZon = main.ZonElement.initObject(main.stackAllocator);
+		const entityZon = user.player().save(main.stackAllocator);
 		entityZon.put("id", user.id);
-		entityZon.put("name", user.name);
-		if (user.player().entityType) |entityType|
-			entityZon.put("type", entityType.id);
+
+		//entityZon.put("type", entityType.id);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);

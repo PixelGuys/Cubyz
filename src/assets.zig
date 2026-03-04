@@ -556,11 +556,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try registerBlock(assetFolder, stringId, worldAssets.blocks.get(stringId) orelse .null);
 	}
 
-	// EntityTypes:
+	// EntityComponent: renderer
 	var entityTypeIterator = worldAssets.entityType.iterator();
-	main.entity.clientEntityTypes = .{};
+	main.entityComponent.entityRenderer.entityModels = .{};
 	while (entityTypeIterator.next()) |it| {
-		main.entity.clientEntityTypes.put(main.worldArena.allocator, it.key_ptr.*, main.entity.ClientEntityType.init(assetFolder, it.key_ptr.*, it.value_ptr.*)) catch continue;
+		const model = main.worldArena.create(main.entityComponent.entityRenderer.EntityModel);
+		model.* = main.entityComponent.entityRenderer.EntityModel.init(assetFolder, it.key_ptr.*, it.value_ptr.*);
+		main.entityComponent.entityRenderer.entityModels.put(main.worldArena.allocator, it.key_ptr.*, model) catch continue;
 	}
 
 	// Then all the blocks that were missing in palette but are present in the game.

@@ -17,10 +17,16 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("#ff0000Too many arguments for command /avatar", .{});
 			return;
 		}
-		if (main.entity.clientEntityTypes.get(arg)) |entityType| {
-			source.player().entityType = entityType;
+		if (main.entityComponent.entityRenderer.entityModels.get(arg)) |entityModel| {
+			if (main.entityComponent.entityRenderer.Server.get(source.id)) |rc| {
+				var newRc = rc;
+				newRc.customTexturePath = null;
+				newRc.model = entityModel;
+				main.entityComponent.entityRenderer.Server.put(source.id, newRc);
+			}
+
 			for (main.server.connectionManager.connections.items) |value| {
-				main.network.protocols.Customization.send(value, source.id, entityType.id);
+				main.network.protocols.Customization.send(value, source.id, entityModel.id);
 			}
 			source.sendMessage("#00ff00entityTypeID was changed to {s}.", .{arg});
 		} else {

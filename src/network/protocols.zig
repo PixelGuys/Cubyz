@@ -393,7 +393,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 		if (conn.manager.world) |world| {
 			const time = try reader.readInt(i16);
 			const playerPos = try reader.readVec(Vec3d);
-			var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+			var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
 			defer entityData.deinit();
 			var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
 			defer itemData.deinit();
@@ -414,24 +414,20 @@ pub const entityPosition = struct { // MARK: entityPosition
 						});
 					},
 					.noVelocityItem, .f16VelocityItem, .f32VelocityItem => {
-						itemData.append(.{
-							.vel = switch (typ) {
-								.noVelocityItem => @splat(0),
-								.f16VelocityItem => @floatCast(try reader.readVec(@Vector(3, f16))),
-								.f32VelocityItem => @floatCast(try reader.readVec(Vec3f)),
-								else => unreachable,
-							},
-							.index = try reader.readInt(u16),
-							.pos = playerPos + try reader.readVec(Vec3f),
-						});
+						entityData.append(.{.vel = switch (typ) {
+							.noVelocityItem => @splat(0),
+							.f16VelocityItem => @floatCast(try reader.readVec(@Vector(3, f16))),
+							.f32VelocityItem => @floatCast(try reader.readVec(Vec3f)),
+							else => unreachable,
+						}, .id = try reader.readInt(u16) + 1000, .pos = playerPos + try reader.readVec(Vec3f), .rot = .{0, 0, 0}});
 					},
 				}
 			}
-			main.entity.ClientEntityManager.serverUpdate(time, entityData.items);
+			main.clientEntity.ClientEntityManager.serverUpdate(time, entityData.items);
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
-	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.entity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
+	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.clientEntity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
@@ -503,7 +499,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 pub const entity = struct { // MARK: entity
 	pub const id: u8 = 8;
 	pub const asynchronous = false;
-	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const zonArray = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 		defer zonArray.deinit(main.stackAllocator);
 		var i: u32 = 0;
@@ -511,10 +507,14 @@ pub const entity = struct { // MARK: entity
 			const elem = zonArray.array.items[i];
 			switch (elem) {
 				.int => {
-					main.entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+					main.clientEntity.ClientEntityManager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					main.entity.ClientEntityManager.addEntity(elem);
+					const string = elem.toString(main.stackAllocator);
+					defer main.stackAllocator.free(string);
+					std.debug.print("{s}\n", .{string});
+
+					main.clientEntity.ClientEntityManager.addEntity(elem);
 				},
 				.null => {
 					i += 1;
@@ -528,11 +528,14 @@ pub const entity = struct { // MARK: entity
 		while (i < zonArray.array.items.len) : (i += 1) {
 			const elem: ZonElement = zonArray.array.items[i];
 			if (elem == .int) {
-				conn.manager.world.?.itemDrops.remove(elem.as(u16, 0));
-			} else if (!elem.getChild("array").isNull()) {
-				conn.manager.world.?.itemDrops.loadFrom(elem);
+				main.clientEntity.ClientEntityManager.removeEntity(elem.as(u16, 0));
 			} else {
-				conn.manager.world.?.itemDrops.addFromZon(elem);
+				//main.Window.setMouseGrabbed(false);
+				const string = elem.toString(main.stackAllocator);
+				defer main.stackAllocator.free(string);
+				std.debug.print("{s}\n", .{string});
+				main.clientEntity.ClientEntityManager.addEntity(elem);
+				//conn.manager.world.?.itemDrops.addFromZon(elem);
 			}
 		}
 	}
@@ -967,14 +970,14 @@ pub const Customization = struct { // MARK: customization
 		defer zon.deinit(main.stackAllocator);
 
 		if (zon.getChildOrNull("player_id")) |playerID| {
-			main.entity.ClientEntityManager.changeEntityType(playerID.as(u32, 0), zon.get([]const u8, "entityType", "cubyz:missing"));
+			main.entityComponent.entityRenderer.Client.changeEntityModel(playerID.as(u32, 0), zon.get([]const u8, "entityModel", "cubyz:missing"));
 		}
 	}
-	pub fn send(conn: *Connection, playerID: u32, entityType: []const u8) void {
+	pub fn send(conn: *Connection, playerID: u32, entityModel: []const u8) void {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.put("player_id", playerID);
-		zonObject.put("entityType", entityType);
+		zonObject.put("entityModel", entityModel);
 
 		const outData = zonObject.toString(main.stackAllocator);
 		defer main.stackAllocator.free(outData);
