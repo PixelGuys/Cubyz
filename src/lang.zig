@@ -30,8 +30,6 @@ pub fn init() void {
 }
 
 pub fn setLanguage(newLanguageId: []const u8) !void {
-	try load(newLanguageId);
-	main.globalAllocator.free(main.settings.language);
 	main.settings.language = main.globalAllocator.dupe(u8, newLanguageId);
 	main.settings.save();
 }
@@ -45,7 +43,7 @@ fn translateHelper(sectionName: []const u8, catrgoryName: []const u8, string: []
 	const translated = zon.get(?[]const u8, string, null);
 	return translated orelse blk: {
 		// uncomment when english is complete
-		// std.log.err("Couldn't find translation for '{s}'. Searched at {s}/{s}/{s}/{s}", .{
+		// std.log.err("Couldn't find translation for '{s}'. Searched at '{s}/{s}/{s}/{s}'", .{
 		// string,
 		// main.settings.language,
 		// sectionName,
