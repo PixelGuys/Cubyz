@@ -6,6 +6,7 @@ const blocks = main.blocks;
 const chunk = main.chunk;
 const game = main.game;
 const network = main.network;
+const particles = main.particles;
 const settings = main.settings;
 const utils = main.utils;
 const LightMap = main.server.terrain.LightMap;
@@ -73,6 +74,29 @@ pub const BlockUpdate = struct {
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
 
 pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
+
+fn spawnBlockBreakParticles(block: blocks.Block, selectedPos: Vec3i) void {
+	const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
+	const particleCount: u32 = 8;
+	const particleBlockId = block.particleId();
+	const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{particleBlockId}) catch unreachable;
+	defer main.stackAllocator.free(particleId);
+
+	const particleBlock = blocks.parseBlock(particleBlockId);
+	const texId = blocks.meshes.textureIndex(particleBlock, 0);
+	const actualTextureIdx: u16 = blocks.meshes.getTextureAnimationFrame(texId) orelse 0;
+
+	const emitterProperties = particles.EmitterProperties{
+		.speed = .init(1, 1.5),
+		.lifeTime = .init(0.75, 1),
+		.randomizeRotation = false,
+	};
+	const emitter = particles.Emitter.init(particleId, true, .{.cube = .{.size = Vec3f{0.5, 0.5, 0.5}}}, emitterProperties, .spread);
+	for (0..particleCount) |_| {
+		const uvOffset = particles.ParticleManager.getRandomValidUVOffset(actualTextureIdx, &main.seed);
+		emitter.spawnParticlesWithUV(particlePos, 1, uvOffset);
+	}
+}
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
@@ -809,6 +833,16 @@ fn batchUpdateBlocks() void {
 		defer blockUpdate.deinitManaged(main.globalAllocator);
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if (getMesh(pos)) |mesh| {
+			const oldBlock = mesh.chunk.getBlock(blockUpdate.x & chunk.chunkMask, blockUpdate.y & chunk.chunkMask, blockUpdate.z & chunk.chunkMask);
+
+			const wasValidBlock = oldBlock.typ != 0 and !oldBlock.hasTag(.air) and !oldBlock.hasTag(.fluid);
+			const becomesAir = blockUpdate.newBlock.typ == 0 or blockUpdate.newBlock.hasTag(.air) or blockUpdate.newBlock.replacable();
+			const actuallyChanged = oldBlock.typ != blockUpdate.newBlock.typ or oldBlock.data != blockUpdate.newBlock.data;
+
+			if (wasValidBlock and becomesAir and actuallyChanged) {
+				spawnBlockBreakParticles(oldBlock, Vec3i{blockUpdate.x, blockUpdate.y, blockUpdate.z});
+			}
+
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}

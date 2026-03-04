@@ -253,6 +253,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.blockTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE2);
+	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
 
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
@@ -871,6 +873,29 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		lineSize: c_int,
 	} = undefined;
 
+	fn spawnBlockBreakParticles(block: main.blocks.Block, selectedPos: Vec3i) void {
+		const particlePos = @as(Vec3d, @floatFromInt(selectedPos)) + Vec3d{0.5, 0.5, 0.5};
+		const particleCount: u32 = 8;
+		const particleBlockId = block.particleId();
+		const particleId = std.fmt.allocPrint(main.stackAllocator.allocator, "block:{s}", .{particleBlockId}) catch unreachable;
+		defer main.stackAllocator.free(particleId);
+
+		const particleBlock = main.blocks.parseBlock(particleBlockId);
+		const texId = main.blocks.meshes.textureIndex(particleBlock, 0);
+		const actualTextureIdx: u16 = main.blocks.meshes.getTextureAnimationFrame(texId) orelse 0;
+
+		const emitterProperties = particles.EmitterProperties{
+			.speed = .init(1, 1.5),
+			.lifeTime = .init(0.75, 1),
+			.randomizeRotation = true,
+		};
+		const emitter = particles.Emitter.init(particleId, true, .{.cube = .{.size = Vec3f{0.5, 0.5, 0.5}}}, emitterProperties, .spread);
+		for (0..particleCount) |_| {
+			const uvOffset = particles.ParticleManager.getRandomValidUVOffset(actualTextureIdx, &main.seed);
+			emitter.spawnParticlesWithUV(particlePos, 1, uvOffset);
+		}
+	}
+
 	pub fn init() void {
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/block_selection_vertex.vert",
@@ -1100,6 +1125,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 						currentSwingTime = 0;
+						spawnBlockBreakParticles(block, selectedPos);
 					}
 				} else {
 					main.sync.ClientSide.mutex.unlock();
@@ -1113,6 +1139,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			if (newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
+
+				if (newBlock.typ == 0 or newBlock.hasTag(.air)) {
+					spawnBlockBreakParticles(block, selectedPos);
+				}
 			}
 		}
 	}
