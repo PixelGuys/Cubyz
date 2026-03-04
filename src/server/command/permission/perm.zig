@@ -11,6 +11,9 @@ pub const usage =
 	\\/perm add <whitelist/blacklist> <permissionPath>
 	\\/perm remove <whitelist/blacklist> <permissionPath>
 	\\/perm <permissionPath>
+	\\/perm add <whitelist/blacklist> <playerId> <permissionPath>
+	\\/perm remove <whitelist/blacklist> <playerId> <permissionPath>
+	\\/perm <playerId> <permissionPath>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
@@ -28,18 +31,29 @@ pub fn execute(args: []const u8, source: *User) void {
 		} else if (std.ascii.eqlIgnoreCase(arg, "add")) {
 			const helper = Helper.parseHelper(source, &split) catch return;
 			helper.permissions.addPermission(helper.listType, helper.permissionPath);
-		} else if (arg[0] == '/') {
+		} else {
+			var _arg = arg;
+			const user: *User = blk: {
+				if (split.next()) |next| {
+					const user = command.parsePlayerId(arg, source) catch return;
+					_arg = next;
+					break :blk user;
+				}
+				break :blk source;
+			};
 			if (split.next() != null) {
 				source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
 				return;
 			}
-			if (source.hasPermission(arg)) {
-				source.sendMessage("#00ff00User has permission for path: {s}", .{arg});
-			} else {
-				source.sendMessage("#ff0000User has no permission for path: {s}", .{arg});
+			if (_arg[0] != '/') {
+				source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{_arg});
+				return;
 			}
-		} else {
-			source.sendMessage("#ff0000Expected either add, remove or a valid permission path, found \"{s}\"", .{arg});
+			if (user.hasPermission(_arg)) {
+				source.sendMessage("#00ff00Player {s}#ff0000 has permission for path: {s}", .{user.name, _arg});
+			} else {
+				source.sendMessage("#ff0000Player {s}#ff0000 has no permission for path: {s}", .{user.name, _arg});
+			}
 		}
 	}
 }
