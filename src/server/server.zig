@@ -244,7 +244,8 @@ pub const User = struct { // MARK: User
 	pub fn initPlayer(self: *User) void {
 		self.id = EntitySystem.add();
 		self.player().name = main.globalAllocator.dupe(u8, self.name);
-
+		main.entityComponent.entityRenderer.Server.register(self.id, "cubyz:snale", null);
+	
 		world.?.loadPlayer(self);
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();

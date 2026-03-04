@@ -21,16 +21,14 @@ name: ?[]const u8 = null,
 id: u32 = 0,
 // TODO: Name
 
-pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: Side) void {
+pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime _: Side) void {
 	self.id = id;
 	self.pos = zon.get(Vec3d, "position", .{0, 0, 0});
 	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
-	if (side == .ServerSide) {
-		main.entityComponent.entityRenderer.Server.register(self.id, "cubyz:snale", null);
-	}
+	
 	//self.entityType = main.entity.clientEntityTypes.get();
 	// const list = main.entityComponent;
 	// inline for (@typeInfo(list).@"struct".decls) |decl| {
