@@ -177,14 +177,12 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	fn storeDrop(allocator: NeverFailingAllocator, itemDrop: ItemDrop, i: u16) ZonElement {
 		const obj = ZonElement.initObject(allocator);
-		obj.put("id", i + 1000); // TODO: remove the 1000
+		obj.put("id", i); // TODO: remove the 1000
 		const name = std.fmt.allocPrint(allocator.allocator, "{d}", .{i}) catch unreachable;
 		defer allocator.free(name);
 		obj.putOwnedString("name", name);
 		obj.put("pos", itemDrop.pos);
 		obj.put("vel", itemDrop.vel);
-		// obj.put("components", ZonElement.parseFromString(allocator, "", ".{ .entityRenderer =.{.model=\"cubyz:snale\"} }"));
-		obj.put("components", ZonElement.parseFromString(allocator, "", ".{ .item =.{.model=\"cubyz:snale\"} }"));
 		itemDrop.itemStack.storeToZon(allocator, obj);
 		obj.put("despawnTime", itemDrop.despawnTime);
 		return obj;

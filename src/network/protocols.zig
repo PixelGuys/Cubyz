@@ -963,6 +963,10 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
 	}
 };
+
+// TODO; entityID componentenID add    zon
+// TODO; entityID componentenID remove zon
+// TODO; entityID componentenID change zon
 pub const Customization = struct { // MARK: customization
 	pub const id: u8 = 15;
 	pub const asynchronous = false;

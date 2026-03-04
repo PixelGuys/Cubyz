@@ -57,6 +57,10 @@ pub const Server = struct {
 		_ = id;
 		return null;
 	}
+	pub fn register(id: u32, zon: ZonElement) void {
+		_ = id;
+		_ = zon;
+	}
 	pub fn unregister(id: u32) void {
 		_ = id;
 	}

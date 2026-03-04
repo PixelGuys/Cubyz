@@ -232,7 +232,7 @@ pub const Server = struct {
 	pub const RenderComponent = struct {
 		entity: u32, // entity
 		model: *EntityModel, // model
-		customTexturePath: ?[]const u8, // name
+		customTexturePath: ?[]const u8, // customTexture
 		fn deinit(self: RenderComponent) void {
 			if (self.customTexturePath) |path| {
 				main.globalAllocator.free(path);
@@ -246,10 +246,6 @@ pub const Server = struct {
 			}
 			return obj;
 		}
-		pub fn load(self: RenderComponent, zon: ZonElement) void {
-			self.model.id = zon.get([]const u8, "model", "cubyz:missing");
-			self.customTexture = zon.get(?[]const u8, "customTexture", null);
-		}
 	};
 	var renderComponents: std.AutoHashMap(u32, RenderComponent) = undefined;
 	pub fn init() void {
@@ -262,7 +258,10 @@ pub const Server = struct {
 		}
 		renderComponents.deinit();
 	}
-	pub fn register(entity: u32, modelID: []const u8, customTexturePath: ?[]const u8) void {
+	pub fn register(entity: u32, zon: ZonElement) void {
+		const modelID = zon.get([]const u8, "model", "cubyz:missing");
+		const customTexturePath = zon.get(?[]const u8, "customTexture", null);
+
 		const model = entityModels.get(modelID) orelse {
 			std.debug.print("EntityModel {s} wasn't found", .{modelID});
 			return;

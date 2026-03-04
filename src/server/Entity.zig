@@ -21,19 +21,32 @@ name: ?[]const u8 = null,
 id: u32 = 0,
 // TODO: Name
 
-pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime _: Side) void {
+pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: Side) void {
 	self.id = id;
 	self.pos = zon.get(Vec3d, "position", .{0, 0, 0});
 	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
-	// if(zon.getChildOrNull("components"))|components|{
-	// const list = main.entityComponent;
-	// inline for (@typeInfo(list).@"struct".decls) |decl| {
-	// @field(@field(list, decl.name).Server);
-	// }
-	// }
+	if (side == .ServerSide) {
+		if (zon.getChildOrNull("components")) |components| {
+			const list = main.entityComponent;
+			inline for (@typeInfo(list).@"struct".decls) |decl| {
+				if (components.getChildOrNull(decl.name)) |comp| {
+					@field(list, decl.name).Server.register(id, comp);
+				}
+			}
+		}
+	} else {
+		if (zon.getChildOrNull("components")) |components| {
+			const list = main.entityComponent;
+			inline for (@typeInfo(list).@"struct".decls) |decl| {
+				if (components.getChildOrNull(decl.name)) |comp| {
+					@field(list, decl.name).Client.register(id, comp);
+				}
+			}
+		}
+	}
 	// if(zon.getChild("components"))|components|
 
 	if (zon.getChildOrNull("name")) |name| {
