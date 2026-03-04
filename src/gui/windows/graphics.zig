@@ -39,7 +39,7 @@ const FPSPresetsText = blk: {
 };
 
 fn fpsCapGetIndex(fps: u16) u16 {
-	return @truncate(std.sort.lowerBound(u16, &FPSPresetsValue, fps, struct {
+	return @intCast(std.sort.lowerBound(u16, &FPSPresetsValue, fps, struct {
 		fn order(a: u16, b: u16) std.math.Order {
 			return std.math.order(a, b);
 		}
