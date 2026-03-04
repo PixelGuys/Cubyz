@@ -414,12 +414,16 @@ pub const entityPosition = struct { // MARK: entityPosition
 						});
 					},
 					.noVelocityItem, .f16VelocityItem, .f32VelocityItem => {
-						entityData.append(.{.vel = switch (typ) {
-							.noVelocityItem => @splat(0),
-							.f16VelocityItem => @floatCast(try reader.readVec(@Vector(3, f16))),
-							.f32VelocityItem => @floatCast(try reader.readVec(Vec3f)),
-							else => unreachable,
-						}, .id = try reader.readInt(u16) + 1000, .pos = playerPos + try reader.readVec(Vec3f), .rot = .{0, 0, 0}});
+						itemData.append(.{
+							.vel = switch (typ) {
+								.noVelocityItem => @splat(0),
+								.f16VelocityItem => @floatCast(try reader.readVec(@Vector(3, f16))),
+								.f32VelocityItem => @floatCast(try reader.readVec(Vec3f)),
+								else => unreachable,
+							},
+							.index = try reader.readInt(u16),
+							.pos = playerPos + try reader.readVec(Vec3f),
+						});
 					},
 				}
 			}
@@ -499,7 +503,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 pub const entity = struct { // MARK: entity
 	pub const id: u8 = 8;
 	pub const asynchronous = false;
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const zonArray = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 		defer zonArray.deinit(main.stackAllocator);
 		var i: u32 = 0;
@@ -510,10 +514,6 @@ pub const entity = struct { // MARK: entity
 					main.clientEntity.ClientEntityManager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					const string = elem.toString(main.stackAllocator);
-					defer main.stackAllocator.free(string);
-					std.debug.print("{s}\n", .{string});
-
 					main.clientEntity.ClientEntityManager.addEntity(elem);
 				},
 				.null => {
@@ -528,15 +528,11 @@ pub const entity = struct { // MARK: entity
 		while (i < zonArray.array.items.len) : (i += 1) {
 			const elem: ZonElement = zonArray.array.items[i];
 			if (elem == .int) {
-				main.clientEntity.ClientEntityManager.removeEntity(elem.as(u16, 0));
+				conn.manager.world.?.itemDrops.remove(elem.as(u16, 0));
+			} else if (!elem.getChild("array").isNull()) {
+				conn.manager.world.?.itemDrops.loadFrom(elem);
 			} else {
-				// main.Window.setMouseGrabbed(false);
-				const string = elem.toString(main.stackAllocator);
-				defer main.stackAllocator.free(string);
-				std.debug.print("{s}\n", .{string});
-				elem.put("id", elem.get(u32, "id", 0));
-				main.clientEntity.ClientEntityManager.addEntity(elem);
-				// conn.manager.world.?.itemDrops.addFromZon(elem);
+				conn.manager.world.?.itemDrops.addFromZon(elem);
 			}
 		}
 	}
