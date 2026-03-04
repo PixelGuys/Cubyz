@@ -18,6 +18,8 @@ const Category = enum {
 	world_preset,
 };
 
+pub var numbersFirst = true;
+
 const languagesMap: *const std.StringHashMapUnmanaged(ZonElement) = main.assets.languages();
 
 var languageZon: ZonElement = undefined;
@@ -36,6 +38,7 @@ pub fn setLanguage(newLanguageId: []const u8) !void {
 
 fn load(languageId: []const u8) !void {
 	languageZon = languagesMap.get(languageId) orelse return error.LanguageNotFound;
+	numbersFirst = languageZon.get(bool, "numbersFirst", true);
 }
 
 fn translateHelper(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {
