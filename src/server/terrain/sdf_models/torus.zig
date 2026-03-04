@@ -49,7 +49,7 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 				const circularDistance: f32 = @sqrt(xDifference*xDifference + yDifference*yDifference);
 				const adjustedDistance: f32 = circularDistance - radius;
 				const torodialDistance: f32 = @sqrt(adjustedDistance*adjustedDistance + zDifference*zDifference) - thickness;
-				if (torodialDistance-perimeter > 0) continue;
+				if (torodialDistance - perimeter > 0) continue;
 
 				const fullSdf: f32 = torodialDistance;
 
