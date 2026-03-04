@@ -548,62 +548,56 @@ const BobManager = struct {
 	scale: f32 = 0,
 	sneakOffset: f32 = 0,
 
-	const bobSpeed: f32 = 9.5;
+	const bobSpeed = 9.5;
 
-	const bobAmountLateral: f32 = 0.08;
-	const bobAmountVertical: f32 = 0.07;
+	const bobAmountLateral = 0.08;
+	const bobAmountVertical = 0.07;
 
-	const inputSpeedMax: f32 = 10;
-	const actualSpeedMax: f32 = 5;
+	const inputSpeedMax = 10;
+	const actualSpeedMax = 5;
 
-	const phaseFadeOutSpeedAirborne: f32 = 1.6;
-	const phaseFadeOutSpeedFlying: f32 = 3;
-	const phaseFadeOutSpeedStanding: f32 = 2;
+	const phaseResetThresholdAirborne = 0.04;
+	const phaseFinishSpeedAirborne = 5;
+	const phaseResetSpeedFlying = 3;
+	const phaseResetSpeedStanding = 2;
 
-	const scaleThreshold: f32 = 0.1;
-	const scaleFadeInSpeed: f32 = 4;
-	const scaleFadeOutSpeedAirborne: f32 = 1;
-	const scaleFadeOutSpeedFlying: f32 = 3;
-	const scaleFadeOutSpeedStanding: f32 = 2;
+	const scaleThreshold = 0.1;
+	const scaleFadeSpeedWalking = 4;
+	const scaleFadeSpeedFlying = 3;
+	const scaleFadeSpeedStanding = 2;
 
-	const sneakScaleMul: f32 = 0.2;
-	const sneakFadeSpeed: f32 = 5;
+	const sneakScaleMul = 0.2;
+	const sneakFadeSpeed = 5;
 
 	fn fadeScale(self: *@This(), dt: f32, newScale: f32, fadeSpeed: f32) void {
 		self.scale = std.math.lerp(self.scale, newScale, @min(dt*fadeSpeed, 1));
+	}
+
+	fn fadePhase(self: *@This(), dt: f32, newPhase: f32, fadeSpeed: f32) void {
+		self.phase = std.math.lerp(self.phase, newPhase, @min(dt*fadeSpeed, 1));
 	}
 
 	fn phaseSpeedCurve(self: @This()) f32 {
 		return std.math.clamp(std.math.pow(f32, 2.21*self.scale - 1.28, 3) + 0.82, 0, 1);
 	}
 
-	fn updateSneakOffset(self: *@This(), dt: f32) void {
-		const targetOffset = if (game.Player.crouching) self.scale*sneakScaleMul else 0;
-		self.sneakOffset = std.math.lerp(self.sneakOffset, targetOffset, @min(dt*sneakFadeSpeed, 1));
-	}
-
-	fn bob(self: *@This(), dt: f32, newScale: f32) void {
-		self.fadeScale(dt, newScale, scaleFadeInSpeed);
-		self.updateSneakOffset(dt);
-		self.phase += dt*bobSpeed*self.phaseSpeedCurve();
-		self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
-	}
-
-	fn settle(self: *@This(), dt: f32, phaseFadeOutSpeed: f32, scaleFadeOutSpeed: f32) void {
-		self.fadeScale(dt, 0, scaleFadeOutSpeed);
-		self.updateSneakOffset(dt);
-		const targetPhase = std.math.round(self.phase/std.math.pi)*std.math.pi;
-		self.phase = std.math.lerp(self.phase, targetPhase, @min(dt*phaseFadeOutSpeed, 1));
-	}
-
 	fn update(self: *@This(), dt: f32) void {
+		defer {
+			const targetOffset = if (game.Player.crouching) self.scale*sneakScaleMul else 0;
+			self.sneakOffset = std.math.lerp(self.sneakOffset, targetOffset, @min(dt*sneakFadeSpeed, 1));
+		}
+
 		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
-			self.settle(dt, phaseFadeOutSpeedFlying, scaleFadeOutSpeedFlying);
+			self.fadeScale(dt, 0, scaleFadeSpeedFlying);
+			self.fadePhase(dt, std.math.round(self.phase/std.math.pi)*std.math.pi, phaseResetSpeedFlying);
 			return;
 		}
 
 		if (!game.Player.onGround) {
-			self.settle(dt, phaseFadeOutSpeedAirborne, scaleFadeOutSpeedAirborne);
+			const prev = std.math.floor(self.phase/std.math.pi)*std.math.pi;
+			const next = prev + std.math.pi;
+			const targetPhase = if (prev >= self.phase - phaseResetThresholdAirborne*std.math.pi) prev else next;
+			self.fadePhase(dt, targetPhase, phaseFinishSpeedAirborne);
 			return;
 		}
 
@@ -620,11 +614,14 @@ const BobManager = struct {
 		const newScale = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
 
 		if (newScale <= scaleThreshold) {
-			self.settle(dt, phaseFadeOutSpeedStanding, scaleFadeOutSpeedStanding);
+			self.fadeScale(dt, 0, scaleFadeSpeedStanding);
+			self.fadePhase(dt, std.math.round(self.phase/std.math.pi)*std.math.pi, phaseResetSpeedStanding);
 			return;
 		}
 
-		self.bob(dt, newScale);
+		self.fadeScale(dt, newScale, scaleFadeSpeedWalking);
+		self.phase += dt*bobSpeed*self.phaseSpeedCurve();
+		self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
 	}
 
 	fn getOffset(self: @This()) Vec3f {
