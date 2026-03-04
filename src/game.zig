@@ -934,8 +934,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	}
 
 	Player.inputSpeed = movementSpeed*speedMultiplier;
-
-	Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
+	Player.crouching = main.Window.grabbed and KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
 	if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,
