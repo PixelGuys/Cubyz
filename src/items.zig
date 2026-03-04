@@ -417,11 +417,14 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				if (tool.materialGrid[x][y]) |item| {
 					if (item.material()) |material| {
 						// Calculate the lighting based on the nearest free space:
-						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
-						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-						var light = 2 - @as(i32, @intFromFloat(@round((lightTL*2 + lightTR)/6)));
-						light = @max(@min(light, 4), 0);
-						img.setRGB(x, 15 - y, material.colorPalette[@intCast(light)]);
+						const lightTL = heightMap[x + 1][y + 1] - heightMap[x][y];
+						const lightTR = heightMap[x][y + 1] - heightMap[x + 1][y];
+						var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
+						light += 4; // illuminate everything by an amount
+						light /= 8; // near-normalize the light value
+						light = @max(@min(light, 1), 0);
+						const colorIndex: usize = @intFromFloat(@round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1))));
+						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
 					} else {
 						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
@@ -430,6 +433,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				}
 			}
 		}
+		std.log.info("\n", .{});
 	}
 };
 
