@@ -484,6 +484,14 @@ pub const User = struct { // MARK: User
 			.no, .neutral => false,
 		};
 	}
+
+	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		if (main.settings.showIdWithName) {
+			try writer.print("{s} [{d}]", .{user.name, user.id});
+		} else {
+			try writer.print("{s}", .{user.name});
+		}
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
@@ -700,7 +708,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	};
 	if (!foundUser) return;
 
-	sendMessage("{s}§#ffff00 left", .{user.name});
+	sendMessage("{f} left", .{user});
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
@@ -764,7 +772,7 @@ pub fn connectInternal(user: *User) void {
 	const initialList = getInitialEntityList(main.stackAllocator);
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
-	sendMessage("{s}§#ffff00 joined", .{user.name});
+	sendMessage("{f}§#ffffff joined", .{user});
 
 	userMutex.lock();
 	users.append(user);
@@ -773,7 +781,7 @@ pub fn connectInternal(user: *User) void {
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
-	sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
+	sendMessage("[{f}§#ffffff] {s}", .{source, msg});
 }
 
 fn sendRawMessage(msg: []const u8) void {
