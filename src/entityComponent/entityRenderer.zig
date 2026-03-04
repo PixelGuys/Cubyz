@@ -112,7 +112,9 @@ pub const Client = struct {
 		renderComponents.deinit();
 		renderComponents = .init(main.globalAllocator.allocator);
 	}
-	pub fn register(id: u32, modelID: []const u8, customTexture: ?main.graphics.Texture) void {
+	pub fn register(id: u32, comp: ZonElement) void {
+		const modelID = comp.get([]const u8, "model", "cubyz:snale");
+		const customTexture: ?main.graphics.Texture = null;
 		const model = entityModels.get(modelID) orelse {
 			std.debug.print("EntityModel {s} wasn't found", .{modelID});
 			return;
@@ -278,8 +280,8 @@ pub const Server = struct {
 		_ = renderComponents.remove(id);
 	}
 	pub fn put(id: u32, renderComponent: RenderComponent) void {
-		if (renderComponents.getEntry(id)) |entry| {
-			entry.value_ptr.deinit();
+		if (renderComponents.get(id)) |entry| {
+			entry.deinit();
 		}
 		renderComponents.put(id, renderComponent) catch unreachable;
 	}

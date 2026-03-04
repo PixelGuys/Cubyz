@@ -40,7 +40,6 @@ pub const ClientEntity = struct {
 	id: u32,
 	name: []const u8,
 
-	special: bool = false, //TODO:delete this
 	pub fn init(self: *ClientEntity, zon: ZonElement, allocator: NeverFailingAllocator) void {
 		self.* = ClientEntity{
 			.id = zon.get(u32, "id", std.math.maxInt(u32)),
@@ -65,9 +64,11 @@ pub const ClientEntity = struct {
 
 		//components
 		if (zon.getChildOrNull("components")) |components| {
-			if (components.getChildOrNull("entityRenderer")) |comp| {
-				entityRenderer.Client.register(self.id, comp.get([]const u8, "model", "cubyz:snale"), null);
-				self.special = true;
+			const list = main.entityComponent;
+			inline for (@typeInfo(list).@"struct".decls) |decl| {
+				if(components.getChildOrNull(decl.name))|comp|{
+					@field(list, decl.name).Client.register(self.id,comp);
+				}
 			}
 		}
 	}

@@ -583,8 +583,17 @@ pub fn main() void { // MARK: main()
 	network.init() catch @panic("Failed to initialize network");
 	defer network.deinit();
 
-	if (!headless) entityComponent.entityRenderer.Client.init();
-	defer if (!headless) entityComponent.entityRenderer.Client.deinit();
+	//Entity components
+	if (!headless) {
+		inline for (@typeInfo(entityComponent).@"struct".decls) |decl| {
+			@field(entityComponent, decl.name).Client.init();
+		}
+	}
+	defer if (!headless){
+		inline for (@typeInfo(entityComponent).@"struct".decls) |decl| {
+			@field(entityComponent, decl.name).Client.deinit();
+		}
+	};
 
 	if (!headless) clientEntity.ClientEntityManager.init();
 	defer if (!headless) clientEntity.ClientEntityManager.deinit();

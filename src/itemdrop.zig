@@ -183,7 +183,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		obj.putOwnedString("name", name);
 		obj.put("pos", itemDrop.pos);
 		obj.put("vel", itemDrop.vel);
-		obj.put("components", ZonElement.parseFromString(allocator, "", ".{ .entityRenderer =.{.model=\"cubyz:missing\"} }"));
+		//obj.put("components", ZonElement.parseFromString(allocator, "", ".{ .entityRenderer =.{.model=\"cubyz:snale\"} }"));
+		obj.put("components", ZonElement.parseFromString(allocator, "", ".{ .item =.{.model=\"cubyz:snale\"} }"));
 		itemDrop.itemStack.storeToZon(allocator, obj);
 		obj.put("despawnTime", itemDrop.despawnTime);
 		return obj;

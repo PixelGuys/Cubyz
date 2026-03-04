@@ -28,11 +28,11 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime _: Side) void
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
-	
-	//self.entityType = main.entity.clientEntityTypes.get();
+	// if(zon.getChildOrNull("components"))|components|{
 	// const list = main.entityComponent;
 	// inline for (@typeInfo(list).@"struct".decls) |decl| {
-	// @field(@field(list, decl.name),"Server");
+	// @field(@field(list, decl.name).Server);
+	// }
 	// }
 	//if(zon.getChild("components"))|components|
 
