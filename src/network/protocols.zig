@@ -534,6 +534,7 @@ pub const entity = struct { // MARK: entity
 				const string = elem.toString(main.stackAllocator);
 				defer main.stackAllocator.free(string);
 				std.debug.print("{s}\n", .{string});
+				elem.put("id", elem.get(u32,"id", 0));
 				main.clientEntity.ClientEntityManager.addEntity(elem);
 				//conn.manager.world.?.itemDrops.addFromZon(elem);
 			}
