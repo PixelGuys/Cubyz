@@ -46,7 +46,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daffodil",
+			.block = "cubyz:flowers/daffodil",
 			.chance = 0.5,
 			.width = 1,
 			.variation = 5,

@@ -10,14 +10,14 @@
 	.collide = false,
 	.model = "cubyz:flower/height_10",
 	.rotation = "cubyz:planar",
-	.texture = "cubyz:castilleja",
-	.texture_top = "cubyz:castilleja_top",
-	.texture_bottom = "cubyz:castilleja_top",
-	.item = .{
-		.texture = "castilleja.png",
-	},
-	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
 		.type = .checkSupportBlocks,
 	},
+	.texture = "cubyz:flowers/trumpet_lily",
+	.texture_top = "cubyz:flowers/trumpet_lily_top",
+	.texture_bottom = "cubyz:flowers/trumpet_lily_top",
+	.item = .{
+		.texture = "flowers/trumpet_lily.png",
+	},
+	.lodReplacement = "cubyz:air",
 }

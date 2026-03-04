@@ -9,9 +9,9 @@
 	.absorbedLight = 0x121012,
 	.collide = false,
 	.model = "cubyz:cross",
-	.texture = "cubyz:vetch",
+	.texture = "cubyz:flowers/vetch",
 	.item = .{
-		.texture = "vetch.png",
+		.texture = "flowers/vetch.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{

@@ -60,7 +60,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bluebells",
+			.block = "cubyz:flowers/bluebells",
 			.chance = 0.35,
 			.width = 6,
 			.variation = 3,
@@ -69,7 +69,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:vetch",
+			.block = "cubyz:flowers/vetch",
 			.chance = 0.2,
 			.width = 6,
 			.variation = 3,

@@ -8,13 +8,13 @@
 	.collide = false,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
-	.model = "cubyz:cactus_flower",
+	.model = "cubyz:flowers/cactus_flower",
 	.rotation = "cubyz:direction",
-	.texture = "cubyz:cactus_flower",
-	.texture_top = "cubyz:cactus_flower_top",
-	.texture_bottom = "cubyz:cactus_flower_top",
+	.texture = "cubyz:flowers/cactus_flower",
+	.texture_top = "cubyz:flowers/cactus_flower_top",
+	.texture_bottom = "cubyz:flowers/cactus_flower_top",
 	.item = .{
-		.texture = "cactus_flower.png",
+		.texture = "flowers/cactus_flower.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onTouch = .{

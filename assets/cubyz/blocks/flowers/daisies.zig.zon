@@ -13,9 +13,9 @@
 	.onUpdate = .{
 		.type = .checkSupportBlocks,
 	},
-	.texture = "cubyz:daisies",
+	.texture = "cubyz:flowers/daisies",
 	.item = .{
-		.texture = "daisies.png",
+		.texture = "flowers/daisies.png",
 	},
 	.lodReplacement = "cubyz:air",
 }
