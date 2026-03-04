@@ -87,6 +87,7 @@
 	.{.old = "daisies", .new = "flowers/daisies"},
 	.{.old = "dandelions", .new = "flowers/dandelions"},
 	.{.old = "hibiscus", .new = "flowers/hibiscus"},
+	.{.old = "marigold", .new = "flowers/marigold"},
 	.{.old = "trumpet_lily", .new = "flowers/trumpet_lily"},
 	.{.old = "vetch", .new = "flowers/vetch"},
 }

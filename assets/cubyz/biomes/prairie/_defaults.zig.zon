@@ -91,7 +91,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:marigold",
+			.block = "cubyz:flowers/marigold",
 			.chance = 0.01,
 			.width = 4,
 			.variation = 3,
