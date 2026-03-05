@@ -37,22 +37,6 @@
 			.height_variation = 3,
 		},
 		.{
-			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
-			.chance = 0.6,
-			.height = 1,
-			.height_variation = 0,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.block = "cubyz:grass_vegetation",
-			.chance = 0.1,
-			.width = 3,
-			.variation = 6,
-			.density = 0.4,
-			.priority = 0.1,
-		},
-		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:soil",
 			.chance = 0.1,
