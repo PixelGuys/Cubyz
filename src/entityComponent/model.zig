@@ -163,12 +163,17 @@ pub const Server = struct {
 		}
 		renderComponents.deinit();
 	}
-	pub fn register(entity: u32, zon: ZonElement) void {
+	pub fn registerFromData(entity: u32, zon: ZonElement) void {
 		const modelID = zon.get([]const u8, "model", "cubyz:missing");
 		const customTexturePath = zon.get(?[]const u8, "customTexture", null);
-
-		const model = entityModels.get(modelID) orelse {
-			std.debug.print("EntityModel {s} wasn't found", .{modelID});
+		register(entity,modelID,customTexturePath);
+	}
+	pub fn register(entity: u32,modelID:[]const u8,customTexturePath:?[] const u8)void{
+		const model = entityModels.get(modelID) orelse blk:{
+			std.log.err("EntityModel {s} wasn't found", .{modelID});
+			if(entityModels.get("cubyz:missing"))|missing|{
+				break :blk missing;
+			}
 			return;
 		};
 		if (renderComponents.get(entity)) |old| {

@@ -25,17 +25,12 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /summon", .{});
 		return;
 	}
-	if (main.entityComponent.model.entityModels.get(valueEntityModel)) |entityModel| {
+	if (main.entityComponent.model.entityModels.get(valueEntityModel)) |_| {
 		const id = main.server.EntitySystem.add();
 		const summoned = main.server.EntitySystem.getEntity(id);
-		summoned.* = source.player().clone();
+		source.player().clone(summoned);
 
-		const newRc = main.entityComponent.model.Server.RenderComponent{
-			.entity = id,
-			.customTexturePath = null,
-			.model = entityModel,
-		};
-		main.entityComponent.model.Server.put(source.id, newRc);
+		main.entityComponent.model.Server.register(id, valueEntityModel,null);
 
 		if (valueName) |name| {
 			if (summoned.name) |old| {
@@ -54,7 +49,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			main.network.protocols.entity.send(value, data);
 		}
 
-		source.sendMessage("#00ff00summoned {s}.", .{valueEntityModel});
+		source.sendMessage("#00ff00summoned {s}. EntityID: {}", .{valueEntityModel,id});
 	} else {
 		source.sendMessage("#ff0000entityTypeID {s} doesnt exist", .{valueEntityModel});
 	}

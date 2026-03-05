@@ -33,7 +33,7 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: Side) v
 			const list = main.entityComponent;
 			inline for (@typeInfo(list).@"struct".decls) |decl| {
 				if (components.getChildOrNull(decl.name)) |comp| {
-					@field(list, decl.name).Server.register(id, comp);
+					@field(list, decl.name).Server.registerFromData(id, comp);
 				}
 			}
 		}
@@ -56,10 +56,11 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: Side) v
 		self.name = main.globalAllocator.dupe(u8, name.as([]const u8, "invalid name"));
 	}
 }
-pub fn clone(self: *@This()) @This() {
-	var duplicate: @This() = self.*;
-	duplicate.name = if (self.name) |name| main.globalAllocator.dupe(u8, name) else null;
-	return duplicate;
+pub fn clone(self: *@This(),copy:*@This()) void {
+	const originalID = copy.id;
+	copy.* = self.*;
+	copy.name = if (self.name) |name| main.globalAllocator.dupe(u8, name) else null;
+	copy.id = originalID;
 }
 
 pub fn save(self: *const @This(), allocator: NeverFailingAllocator) ZonElement {
