@@ -1,11 +1,11 @@
 .{
 	.tags = .{.mineable},
-	.blockHealth = 60,
-	.blockResistance = 7.0,
+	.blockHealth = 35,
+	.blockResistance = 5,
 	.ore = .{
 		.veins = 3,
 		.size = 15,
-		.height = -500,
+		.height = -250,
 		.density = 0.25,
 	},
 	.drops = .{

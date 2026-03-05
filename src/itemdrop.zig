@@ -364,7 +364,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				if (move < 0) {
 					pos.*[i] = box.max[i] + radius;
 				} else {
-					pos.*[i] = box.max[i] - radius;
+					pos.*[i] = box.min[i] - radius;
 				}
 				vel.*[i] = 0;
 			} else {
