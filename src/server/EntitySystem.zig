@@ -26,9 +26,11 @@ pub var entities: main.utils.VirtualList(server.Entity, 1 << 24) = undefined;
 
 pub fn init() void {
 	entities = .init();
-	const list = main.entityComponent;
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		@field(list, decl.name).Server.init();
+	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
+		@field(main.entityComponent, decl.name).Server.init();
+	}
+	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
+		@field(main.entitySystem, decl.name).Server.init();
 	}
 }
 pub fn getAll() []server.Entity {
@@ -41,9 +43,11 @@ pub fn deinit() void {
 	}
 	entities.deinit();
 
-	const list = main.entityComponent;
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		@field(list, decl.name).Server.deinit();
+	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
+		@field(main.entityComponent, decl.name).Server.deinit();
+	}
+	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
+		@field(main.entitySystem, decl.name).Server.deinit();
 	}
 }
 

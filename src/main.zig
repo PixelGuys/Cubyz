@@ -13,6 +13,7 @@ pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const clientEntity = @import("clientEntity.zig");
 pub const entityComponent = @import("entityComponent/_list.zig");
+pub const entitySystem = @import("entitySystem/_list.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
@@ -583,15 +584,21 @@ pub fn main() void { // MARK: main()
 	network.init() catch @panic("Failed to initialize network");
 	defer network.deinit();
 
-	// Entity components
+	// Entity Component System
 	if (!headless) {
 		inline for (@typeInfo(entityComponent).@"struct".decls) |decl| {
 			@field(entityComponent, decl.name).Client.init();
+		}
+		inline for (@typeInfo(entitySystem).@"struct".decls) |decl| {
+			@field(entitySystem, decl.name).Client.init();
 		}
 	}
 	defer if (!headless) {
 		inline for (@typeInfo(entityComponent).@"struct".decls) |decl| {
 			@field(entityComponent, decl.name).Client.deinit();
+		}
+		inline for (@typeInfo(entitySystem).@"struct".decls) |decl| {
+			@field(entitySystem, decl.name).Client.deinit();
 		}
 	};
 

@@ -8,7 +8,10 @@ pub const usage = "/avatar <entityTypeID>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (args.len == 0) {
-		source.sendMessage("#ff0000Too few arguments for command /avatar. Expected one argument.", .{});
+		if(main.entityComponent.model.Server.get(source.id))|rc|{
+			source.sendMessage("#00ff00You are a {s}", .{rc.model.id});
+		}		
+		else source.sendMessage("#ff00ffYou are a invisible.", .{});
 		return;
 	}
 	var split = std.mem.splitScalar(u8, args, ' ');
@@ -17,12 +20,12 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("#ff0000Too many arguments for command /avatar", .{});
 			return;
 		}
-		if (main.entityComponent.entityRenderer.entityModels.get(arg)) |entityModel| {
-			if (main.entityComponent.entityRenderer.Server.get(source.id)) |rc| {
+		if (main.entityComponent.model.entityModels.get(arg)) |entityModel| {
+			if (main.entityComponent.model.Server.get(source.id)) |rc| {
 				var newRc = rc;
 				newRc.customTexturePath = null;
 				newRc.model = entityModel;
-				main.entityComponent.entityRenderer.Server.put(source.id, newRc);
+				main.entityComponent.model.Server.put(source.id, newRc);
 			}
 
 			for (main.server.connectionManager.connections.items) |value| {

@@ -6,7 +6,6 @@ const graphics = @import("graphics.zig");
 const c = graphics.c;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
-const entityRenderer = main.entityComponent.entityRenderer;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
@@ -82,7 +81,6 @@ pub const ClientEntity = struct {
 			@field(list, decl.name).Client.unregister(self.id);
 		}
 		allocator.free(self.name);
-		entityRenderer.Client.unregister(self.id);
 	}
 
 	pub fn getRenderPosition(self: *const ClientEntity) Vec3d {

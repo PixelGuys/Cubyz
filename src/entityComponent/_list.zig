@@ -1,3 +1,3 @@
-pub const entityRenderer = @import("entityRenderer.zig");
+pub const model = @import("model.zig");
 pub const itemDrop = @import("itemDrop.zig");
 pub const template = @import("template.zig");

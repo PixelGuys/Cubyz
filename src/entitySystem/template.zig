@@ -29,44 +29,27 @@ const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
 
-pub fn loadWorldAsset(assetFolder: []const u8,assets:*main.assets.Assets) void {
-	_ = assets;
-	_ = assetFolder;
-}
+const entityComponent = main.entityComponent;
 
 // ############################# Client only stuff ################################
 pub const Client = struct {
-	pub fn register(id: u32, comp: ZonElement) void {
-		_ = id;
-		_ = comp;
-	}
-	pub fn unregister(id: u32) void {
-		_ = id;
-	}
 	pub fn init() void {}
 	pub fn deinit() void {}
 	pub fn clear() void {}
+
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+		_ = projMatrix;
+		_ = ambientLight;
+		_ = playerPos;
+	}
+	pub fn renderInfo(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+		_ = projMatrix;
+		_ = ambientLight;
+		_ = playerPos;
+	}
 };
 // ############################# Server only stuff ################################
 pub const Server = struct {
-	pub const ItemComponent = struct {
-		pub fn save(self: ItemComponent, allocator: NeverFailingAllocator) ZonElement {
-			_ = self;
-			_ = allocator;
-			return .null;
-		}
-	};
 	pub fn init() void {}
 	pub fn deinit() void {}
-	pub fn get(id: u32) ?ItemComponent {
-		_ = id;
-		return null;
-	}
-	pub fn register(id: u32, zon: ZonElement) void {
-		_ = id;
-		_ = zon;
-	}
-	pub fn unregister(id: u32) void {
-		_ = id;
-	}
 };

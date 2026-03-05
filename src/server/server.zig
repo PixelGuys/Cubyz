@@ -246,8 +246,8 @@ pub const User = struct { // MARK: User
 		self.player().name = main.globalAllocator.dupe(u8, self.name);
 		const obj = main.ZonElement.initObject(main.stackAllocator);
 		defer obj.deinit(main.stackAllocator);
-		obj.put("model", "cubyz:snale");
-		main.entityComponent.entityRenderer.Server.register(self.id, obj);
+		obj.put("model", if(main.random.nextInt(u2, &main.seed)==1)"cubyz:snale" else "cubyz:cubert");
+		main.entityComponent.model.Server.register(self.id, obj);
 
 		world.?.loadPlayer(self);
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));

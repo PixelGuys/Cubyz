@@ -29,6 +29,11 @@ const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
 
+pub fn loadWorldAsset(assetFolder: []const u8,assets:*main.assets.Assets) void {
+	_ = assets;
+	_ = assetFolder;
+}
+
 // ############################# Client only stuff ################################
 pub const Client = struct {
 	pub fn register(id: u32, comp: ZonElement) void {

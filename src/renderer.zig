@@ -236,7 +236,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	clientEntity.ClientEntityManager.update();
-	main.entityComponent.entityRenderer.Client.render(game.projectionMatrix, ambientLight, playerPos);
+	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
+		@field(main.entitySystem, decl.name).Client.render(game.projectionMatrix, ambientLight,playerPos);
+	}
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
@@ -324,7 +326,11 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) main.entityComponent.entityRenderer.Client.renderNames(game.projectionMatrix, playerPos);
+	if (!main.gui.hideGui){
+		inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
+			@field(main.entitySystem, decl.name).Client.renderInfo(game.projectionMatrix, ambientLight,playerPos);
+		}
+	}
 	gpu_performance_measuring.stopQuery();
 }
 

@@ -25,17 +25,17 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /summon", .{});
 		return;
 	}
-	if (main.entityComponent.entityRenderer.entityModels.get(valueEntityModel)) |entityModel| {
+	if (main.entityComponent.model.entityModels.get(valueEntityModel)) |entityModel| {
 		const id = main.server.EntitySystem.add();
 		const summoned = main.server.EntitySystem.getEntity(id);
 		summoned.* = source.player().clone();
 
-		const newRc = main.entityComponent.entityRenderer.Server.RenderComponent{
+		const newRc = main.entityComponent.model.Server.RenderComponent{
 			.entity = id,
 			.customTexturePath = null,
 			.model = entityModel,
 		};
-		main.entityComponent.entityRenderer.Server.put(source.id, newRc);
+		main.entityComponent.model.Server.put(source.id, newRc);
 
 		if (valueName) |name| {
 			if (summoned.name) |old| {

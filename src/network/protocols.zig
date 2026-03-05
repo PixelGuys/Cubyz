@@ -971,7 +971,7 @@ pub const Customization = struct { // MARK: customization
 		defer zon.deinit(main.stackAllocator);
 
 		if (zon.getChildOrNull("player_id")) |playerID| {
-			main.entityComponent.entityRenderer.Client.changeEntityModel(playerID.as(u32, 0), zon.get([]const u8, "entityModel", "cubyz:missing"));
+			main.entityComponent.model.Client.changeEntityModel(playerID.as(u32, 0), zon.get([]const u8, "entityModel", "cubyz:missing"));
 		}
 	}
 	pub fn send(conn: *Connection, playerID: u32, entityModel: []const u8) void {
