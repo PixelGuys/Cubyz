@@ -74,7 +74,7 @@ pub const EntityModel = struct {
 };
 pub var entityModels: std.StringHashMapUnmanaged(*EntityModel) = .{};
 
-pub fn loadWorldAsset(assetFolder: []const u8,assets:*main.assets.Assets) void {
+pub fn loadWorldAsset(assetFolder: []const u8, assets: *main.assets.Assets) void {
 	var entityModelIterator = assets.entityType.iterator();
 	main.entityComponent.model.entityModels = .{};
 	while (entityModelIterator.next()) |it| {

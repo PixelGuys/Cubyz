@@ -33,7 +33,7 @@ const entityComponent = main.entityComponent;
 
 // ############################# Client only stuff ################################
 pub const Client = struct {
-    var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
+	var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 
 	var uniforms: struct {
 		projectionMatrix: c_int,
@@ -44,7 +44,7 @@ pub const Client = struct {
 	} = undefined;
 
 	pub fn init() void {
-        pipeline = graphics.Pipeline.init(
+		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/entity_vertex.vert",
 			"assets/cubyz/shaders/entity_fragment.frag",
 			"",
@@ -53,12 +53,11 @@ pub const Client = struct {
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},
 		);
-    }
+	}
 	pub fn deinit() void {
 		pipeline.deinit();
-    }
+	}
 	pub fn clear() void {}
-
 
 	pub fn renderInfo(projMatrix: Mat4f, _: Vec3f, playerPos: Vec3d) void {
 		main.clientEntity.ClientEntityManager.mutex.lock();

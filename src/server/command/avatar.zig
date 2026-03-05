@@ -8,10 +8,9 @@ pub const usage = "/avatar <entityTypeID>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (args.len == 0) {
-		if(main.entityComponent.model.Server.get(source.id))|rc|{
+		if (main.entityComponent.model.Server.get(source.id)) |rc| {
 			source.sendMessage("#00ff00You are a {s}", .{rc.model.id});
-		}		
-		else source.sendMessage("#ff00ffYou are a invisible.", .{});
+		} else source.sendMessage("#ff00ffYou are a invisible.", .{});
 		return;
 	}
 	var split = std.mem.splitScalar(u8, args, ' ');

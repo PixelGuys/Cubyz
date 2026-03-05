@@ -178,7 +178,7 @@ pub const User = struct { // MARK: User
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
 		}
 		EntitySystem.remove(self.id);
-	
+
 		self.permissions.deinit();
 
 		self.worldEditData.deinit();
@@ -247,7 +247,7 @@ pub const User = struct { // MARK: User
 		self.player().name = main.globalAllocator.dupe(u8, self.name);
 		const obj = main.ZonElement.initObject(main.stackAllocator);
 		defer obj.deinit(main.stackAllocator);
-		obj.put("model", if(main.random.nextInt(u2, &main.seed)==1)"cubyz:snale" else "cubyz:cubert");
+		obj.put("model", if (main.random.nextInt(u2, &main.seed) == 1) "cubyz:snale" else "cubyz:cubert");
 		main.entityComponent.model.Server.register(self.id, obj);
 
 		world.?.loadPlayer(self);
