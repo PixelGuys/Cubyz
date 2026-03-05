@@ -36,7 +36,7 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: Side) v
 					defer main.stackAllocator.free(data);
 
 					var reader = main.utils.BinaryReader.init(data);
-					const version = reader.readVarInt(usize) catch std.math.maxInt(usize);
+					const version = reader.readVarInt(u32) catch std.math.maxInt(u32);
 
 					if (side == .ServerSide) {
 						@field(list, decl.name).Server.registerFromData(id, &reader, version);
@@ -77,7 +77,7 @@ pub fn save(self: *const @This(), allocator: NeverFailingAllocator) ZonElement {
 				var writer = main.utils.BinaryWriter.init(allocator);
 				defer writer.deinit();
 
-				writer.writeVarInt(usize, @field(list, decl.name).ENTITY_COMPONENT_VERSION);
+				writer.writeVarInt(u32, @field(list, decl.name).ENTITY_COMPONENT_VERSION);
 				component.save(&writer);
 
 				var base64 = main.utils.Base64.toBase64(allocator, writer.data.items);

@@ -70,7 +70,7 @@ pub const ClientEntity = struct {
 					defer main.stackAllocator.free(data);
 
 					var reader = main.utils.BinaryReader.init(data);
-					const version = try reader.readVarInt(usize);
+					const version = try reader.readVarInt(u32);
 					@field(list, decl.name).Client.register(self.id, &reader, version);
 				}
 			}

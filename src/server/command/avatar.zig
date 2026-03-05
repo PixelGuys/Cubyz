@@ -26,13 +26,19 @@ pub fn execute(args: []const u8, source: *User) void {
 				newRc.model = entityModel;
 				main.entityComponent.model.Server.put(source.id, newRc);
 			}
-
-			for (main.server.connectionManager.connections.items) |value| {
-				main.network.protocols.Customization.send(value, source.id, entityModel.id);
-			}
 			source.sendMessage("#00ff00entityTypeID was changed to {s}.", .{arg});
 		} else {
 			source.sendMessage("#ff0000entityTypeID {s} doesnt exist", .{arg});
+		}
+		// transmit
+		if (main.entityComponent.model.Server.get(source.id)) |rc| {
+			var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+			defer binaryWriter.deinit();
+			rc.save(&binaryWriter);
+
+			for (main.server.connectionManager.connections.items) |conn| {
+				main.network.protocols.EntityComponentUpdate.set(conn, source.id, "model", main.entityComponent.model.ENTITY_COMPONENT_VERSION, binaryWriter.data.items);
+			}
 		}
 	}
 }

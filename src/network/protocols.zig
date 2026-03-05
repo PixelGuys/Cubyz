@@ -960,28 +960,58 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	}
 };
 
-// TODO; entityID componentenID add    zon
-// TODO; entityID componentenID remove zon
-// TODO; entityID componentenID change zon
-pub const Customization = struct { // MARK: customization
+// format: entityID set   componentID binary
+// format: entityID reset componentID
+pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	pub const id: u8 = 15;
 	pub const asynchronous = false;
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-		defer zon.deinit(main.stackAllocator);
 
-		if (zon.getChildOrNull("player_id")) |playerID| {
-			main.entityComponent.model.Client.changeEntityModel(playerID.as(u32, 0), zon.get([]const u8, "entityModel", "cubyz:missing"));
+	const ActionType = enum(u8) { set, reset };
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const entityID = try reader.readInt(u32);
+		const actionType: ActionType = try reader.readEnum(ActionType);
+		const componentID = try reader.readSliceWithSize();
+
+		if (actionType == .set) {
+			const list = main.entityComponent;
+			inline for (@typeInfo(list).@"struct".decls) |decl| {
+				if (std.mem.eql(u8, decl.name, componentID)) {
+					const version = reader.readVarInt(u32) catch std.math.maxInt(u32);
+					@field(list, decl.name).Client.register(entityID, reader, version);
+					break;
+				}
+			}
+		} else if (actionType == .reset) {
+			const list = main.entityComponent;
+			inline for (@typeInfo(list).@"struct".decls) |decl| {
+				if (std.mem.eql(u8, decl.name, componentID)) {
+					@field(list, decl.name).Client.unregister(entityID);
+					break;
+				}
+			}
 		}
 	}
-	pub fn send(conn: *Connection, playerID: u32, entityModel: []const u8) void {
-		const zonObject = ZonElement.initObject(main.stackAllocator);
-		defer zonObject.deinit(main.stackAllocator);
-		zonObject.put("player_id", playerID);
-		zonObject.put("entityModel", entityModel);
+	pub fn reset(conn: *Connection, entityID: u32, componentID: []const u8) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
 
-		const outData = zonObject.toString(main.stackAllocator);
-		defer main.stackAllocator.free(outData);
-		conn.send(.secure, id, outData);
+		writer.writeInt(u32, entityID);
+		writer.writeEnum(ActionType, ActionType.reset);
+		writer.writeSliceWithSize(componentID);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+	pub fn set(conn: *Connection, entityID: u32, componentID: []const u8, version: u32, componentData: []const u8) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, entityID);
+		writer.writeEnum(ActionType, ActionType.set);
+		writer.writeSliceWithSize(componentID);
+		writer.writeVarInt(u32, version);
+		writer.writeSlice(componentData);
+
+		conn.send(.secure, id, writer.data.items);
 	}
 };

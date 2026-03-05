@@ -104,7 +104,7 @@ pub const Client = struct {
 		renderComponents.deinit();
 		renderComponents = .init(main.globalAllocator.allocator);
 	}
-	pub fn register(id: u32, reader: *utils.BinaryReader, version: usize) void {
+	pub fn register(id: u32, reader: *utils.BinaryReader, version: u32) void {
 		_ = version;
 		const modelID = reader.readSliceWithSize() catch return;
 		const customTexture: ?main.graphics.Texture = null;
@@ -120,16 +120,6 @@ pub const Client = struct {
 	}
 	pub fn unregister(id: u32) void {
 		_ = renderComponents.remove(id);
-	}
-	pub fn changeEntityModel(id: u32, entityModel: []const u8) void {
-		if (entityModels.get(entityModel)) |entModel| {
-			if (renderComponents.get(id)) |rc| {
-				var newRc = rc;
-				newRc.customTexture = null;
-				newRc.model = entModel;
-				renderComponents.put(id, newRc) catch unreachable;
-			}
-		}
 	}
 };
 
