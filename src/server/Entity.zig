@@ -28,26 +28,25 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: Side) v
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
-	if (side == .ServerSide) {
-		if (zon.getChildOrNull("components")) |components| {
-			const list = main.entityComponent;
-			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				if (components.getChildOrNull(decl.name)) |comp| {
-					@field(list, decl.name).Server.registerFromData(id, comp);
-				}
-			}
-		}
-	} else {
-		if (zon.getChildOrNull("components")) |components| {
-			const list = main.entityComponent;
-			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				if (components.getChildOrNull(decl.name)) |comp| {
-					@field(list, decl.name).Client.register(id, comp);
+	if (zon.getChildOrNull("components")) |components| {
+		const list = main.entityComponent;
+		inline for (@typeInfo(list).@"struct".decls) |decl| {
+			if (components.get(?[]const u8, decl.name, null)) |base64| {
+				if (main.utils.fromBase64(main.stackAllocator, base64) catch null) |data| {
+					defer main.stackAllocator.free(data);
+
+					var reader = main.utils.BinaryReader.init(data);
+					const version = reader.readVarInt(usize) catch std.math.maxInt(usize);
+
+					if (side == .ServerSide) {
+						@field(list, decl.name).Server.registerFromData(id, &reader, version);
+					} else if (side == .ClientSide) {
+						@field(list, decl.name).Client.register(id, &reader, version);
+					}
 				}
 			}
 		}
 	}
-	// if(zon.getChild("components"))|components|
 
 	if (zon.getChildOrNull("name")) |name| {
 		if (self.name) |oldname| {
@@ -56,7 +55,7 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: Side) v
 		self.name = main.globalAllocator.dupe(u8, name.as([]const u8, "invalid name"));
 	}
 }
-pub fn clone(self: *@This(),copy:*@This()) void {
+pub fn clone(self: *@This(), copy: *@This()) void {
 	const originalID = copy.id;
 	copy.* = self.*;
 	copy.name = if (self.name) |name| main.globalAllocator.dupe(u8, name) else null;
@@ -75,7 +74,16 @@ pub fn save(self: *const @This(), allocator: NeverFailingAllocator) ZonElement {
 		const list = main.entityComponent;
 		inline for (@typeInfo(list).@"struct".decls) |decl| {
 			if (@field(list, decl.name).Server.get(self.id)) |component| {
-				components.put(decl.name, component.save(allocator));
+				var writer = main.utils.BinaryWriter.init(allocator);
+				defer writer.deinit();
+
+				writer.writeVarInt(usize, @field(list, decl.name).ENTITY_COMPONENT_VERSION);
+				component.save(&writer);
+
+				var base64 = main.utils.Base64.toBase64(allocator, writer.data.items);
+				defer base64.deinit(allocator);
+
+				components.putOwnedString(decl.name, base64.getEncodedMessage());
 			}
 		}
 	}

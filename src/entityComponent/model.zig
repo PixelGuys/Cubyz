@@ -84,6 +84,7 @@ pub fn loadWorldAsset(assetFolder: []const u8, assets: *main.assets.Assets) void
 	}
 }
 
+pub const ENTITY_COMPONENT_VERSION = 0;
 // ############################# Client only stuff ################################
 pub const Client = struct {
 	const RenderComponent = struct {
@@ -103,8 +104,9 @@ pub const Client = struct {
 		renderComponents.deinit();
 		renderComponents = .init(main.globalAllocator.allocator);
 	}
-	pub fn register(id: u32, comp: ZonElement) void {
-		const modelID = comp.get([]const u8, "model", "cubyz:missing");
+	pub fn register(id: u32, reader: *utils.BinaryReader, version: usize) void {
+		_ = version;
+		const modelID = reader.readSliceWithSize() catch return;
 		const customTexture: ?main.graphics.Texture = null;
 		const model = entityModels.get(modelID) orelse {
 			std.debug.print("EntityModel {s} wasn't found", .{modelID});
@@ -143,13 +145,11 @@ pub const Server = struct {
 				main.globalAllocator.free(path);
 			}
 		}
-		pub fn save(self: RenderComponent, allocator: NeverFailingAllocator) ZonElement {
-			var obj = ZonElement.initObject(allocator);
-			obj.put("model", self.model.id);
+		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter) void {
+			writer.writeSliceWithSize(self.model.id);
 			if (self.customTexturePath) |texutre| {
-				obj.putOwnedString("customTexture", texutre);
-			}
-			return obj;
+				writer.writeSliceWithSize(texutre);
+			} else writer.writeSliceWithSize("");
 		}
 	};
 	var renderComponents: std.AutoHashMap(u32, RenderComponent) = undefined;
@@ -163,15 +163,16 @@ pub const Server = struct {
 		}
 		renderComponents.deinit();
 	}
-	pub fn registerFromData(entity: u32, zon: ZonElement) void {
-		const modelID = zon.get([]const u8, "model", "cubyz:missing");
-		const customTexturePath = zon.get(?[]const u8, "customTexture", null);
-		register(entity,modelID,customTexturePath);
+	pub fn registerFromData(entity: u32, reader: *utils.BinaryReader, version: usize) void {
+		_ = version;
+		const modelID = reader.readSliceWithSize() catch return;
+		const customTexturePath = reader.readSliceWithSize() catch return;
+		register(entity, modelID, if (customTexturePath.len == 0) null else customTexturePath);
 	}
-	pub fn register(entity: u32,modelID:[]const u8,customTexturePath:?[] const u8)void{
-		const model = entityModels.get(modelID) orelse blk:{
+	pub fn register(entity: u32, modelID: []const u8, customTexturePath: ?[]const u8) void {
+		const model = entityModels.get(modelID) orelse blk: {
 			std.log.err("EntityModel {s} wasn't found", .{modelID});
-			if(entityModels.get("cubyz:missing"))|missing|{
+			if (entityModels.get("cubyz:missing")) |missing| {
 				break :blk missing;
 			}
 			return;

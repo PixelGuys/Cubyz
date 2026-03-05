@@ -39,7 +39,7 @@ pub const ClientEntity = struct {
 	id: u32,
 	name: []const u8,
 
-	pub fn init(self: *ClientEntity, zon: ZonElement, allocator: NeverFailingAllocator) void {
+	pub fn init(self: *ClientEntity, zon: ZonElement, allocator: NeverFailingAllocator) !void {
 		self.* = ClientEntity{
 			.id = zon.get(u32, "id", std.math.maxInt(u32)),
 			.width = zon.get(f64, "width", 1),
@@ -65,8 +65,13 @@ pub const ClientEntity = struct {
 		if (zon.getChildOrNull("components")) |components| {
 			const list = main.entityComponent;
 			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				if (components.getChildOrNull(decl.name)) |comp| {
-					@field(list, decl.name).Client.register(self.id, comp);
+				if (components.get(?[]const u8, decl.name, null)) |base64| {
+					const data = try main.utils.fromBase64(main.stackAllocator, base64);
+					defer main.stackAllocator.free(data);
+
+					var reader = main.utils.BinaryReader.init(data);
+					const version = try reader.readVarInt(usize);
+					@field(list, decl.name).Client.register(self.id, &reader, version);
 				}
 			}
 		}
@@ -161,7 +166,10 @@ pub const ClientEntityManager = struct {
 
 		const index = entityArray.len;
 		var entity = entityArray.addOne();
-		ClientEntity.init(entity, zon, main.globalAllocator);
+		ClientEntity.init(entity, zon, main.globalAllocator) catch |err| {
+			std.log.err("Failed to init Entity: {}", .{err});
+			unreachable;
+		};
 
 		if (idToIndex.get(entity.id)) |_| {
 			removeEntity(entity.id);

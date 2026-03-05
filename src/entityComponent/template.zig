@@ -34,11 +34,14 @@ pub fn loadWorldAsset(assetFolder: []const u8, assets: *main.assets.Assets) void
 	_ = assetFolder;
 }
 
+pub const ENTITY_COMPONENT_VERSION = 0;
+
 // ############################# Client only stuff ################################
 pub const Client = struct {
-	pub fn register(id: u32, comp: ZonElement) void {
+	pub fn register(id: u32, reader: *utils.BinaryReader, version: usize) void {
 		_ = id;
-		_ = comp;
+		_ = reader;
+		_ = version;
 	}
 	pub fn unregister(id: u32) void {
 		_ = id;
@@ -50,10 +53,9 @@ pub const Client = struct {
 // ############################# Server only stuff ################################
 pub const Server = struct {
 	pub const ItemComponent = struct {
-		pub fn save(self: ItemComponent, allocator: NeverFailingAllocator) ZonElement {
+		pub fn save(self: ItemComponent, writer: *utils.BinaryWriter) void {
 			_ = self;
-			_ = allocator;
-			return .null;
+			_ = writer;
 		}
 	};
 	pub fn init() void {}
@@ -62,9 +64,10 @@ pub const Server = struct {
 		_ = id;
 		return null;
 	}
-	pub fn registerFromData(id: u32, zon: ZonElement) void {
+	pub fn registerFromData(id: u32, reader: *utils.BinaryReader, version: usize) void {
 		_ = id;
-		_ = zon;
+		_ = reader;
+		_ = version;
 	}
 	pub fn unregister(id: u32) void {
 		_ = id;

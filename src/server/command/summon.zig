@@ -30,7 +30,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		const summoned = main.server.EntitySystem.getEntity(id);
 		source.player().clone(summoned);
 
-		main.entityComponent.model.Server.register(id, valueEntityModel,null);
+		main.entityComponent.model.Server.register(id, valueEntityModel, null);
 
 		if (valueName) |name| {
 			if (summoned.name) |old| {
@@ -49,7 +49,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			main.network.protocols.entity.send(value, data);
 		}
 
-		source.sendMessage("#00ff00summoned {s}. EntityID: {}", .{valueEntityModel,id});
+		source.sendMessage("#00ff00summoned {s}. EntityID: {}", .{valueEntityModel, id});
 	} else {
 		source.sendMessage("#ff0000entityTypeID {s} doesnt exist", .{valueEntityModel});
 	}
