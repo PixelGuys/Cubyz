@@ -157,9 +157,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const buffer = main.stackAllocator.alloc(ItemDropNetworkData, self.size);
 		defer main.stackAllocator.free(buffer);
 		var j: usize = 0;
-		for (self.indices[0..self.size]) |
-			i,
-		| {
+		for (self.indices[0..self.size]) |i| {
 			if (vec.lengthSquare(self.list.items(.pos)[i] - self.list.items(.oldPos)[i]) < 1e-4)
 				continue;
 			self.list.items(.oldPos)[i] = self.list.items(.pos)[i];
