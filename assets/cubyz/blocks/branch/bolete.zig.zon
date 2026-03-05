@@ -1,5 +1,5 @@
 .{
-	.tags = .{.choppable, .cuttable, .mushroom},
+	.tags = .{.choppable, .cuttable, .mushroom, .natural},
 	.blockHealth = 2,
 	.texture0 = "cubyz:branch/bolete/dot",
 	.texture1 = "cubyz:branch/bolete/half_line",
