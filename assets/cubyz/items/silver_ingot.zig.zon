@@ -13,7 +13,7 @@
 		.modifiers = .{
 			.{
 				.id = "light",
-				.strength = 0.25,
+				.strength = 0.20,
 				.restriction = .{
 					.id = .encased,
 					.tag = .copper,
