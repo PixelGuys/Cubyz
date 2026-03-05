@@ -666,6 +666,9 @@ pub fn finishLoading() void {
 				.propertyMask = src.propertyMask,
 				.width = src.width,
 			};
+			if (@as(u15, @bitCast(res.biome.properties)) & @as(u15, @bitCast(src.propertyMask)) == @as(u15, @bitCast(res.biome.properties))) {
+				std.log.err("Transition biome {s} for parent biome {s} have overlapping generation properties, this will cause the entire parent area to be replaced. Please restrict the properties field in the transitionBiomes list further to prevent this", .{res.biome.id, parentBiome.id});
+			}
 		}
 		main.globalAllocator.free(transitionBiomes);
 	}
