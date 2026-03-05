@@ -48,7 +48,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		defer main.stackAllocator.free(data);
 		self.load(path, data) catch {
 			std.log.err("Corrupted region file: {s}", .{path});
-			if(@errorReturnTrace()) |trace| std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
+			if (@errorReturnTrace()) |trace| std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
 		};
 		return self;
 	}
@@ -59,30 +59,30 @@ pub const RegionFile = struct { // MARK: RegionFile
 		const fileVersion = try reader.readInt(u32);
 		const fileSize = try reader.readInt(u32);
 
-		if(fileVersion != version) {
+		if (fileVersion != version) {
 			std.log.err("Region file {s} has incorrect version {}. Requires version {}.", .{path, fileVersion, version});
 			return error.corrupted;
 		}
 
 		var chunkDataLengths: [regionVolume]u32 = undefined;
 		var totalSize: usize = 0;
-		for(0..regionVolume) |i| {
+		for (0..regionVolume) |i| {
 			const size = try reader.readInt(u32);
 			chunkDataLengths[i] = size;
 			totalSize += size;
 		}
 
-		if(fileSize != reader.remaining.len or totalSize != fileSize) {
+		if (fileSize != reader.remaining.len or totalSize != fileSize) {
 			return error.corrupted;
 		}
 
-		for(0..regionVolume) |j| {
+		for (0..regionVolume) |j| {
 			const chunkDataLength = chunkDataLengths[j];
-			if(chunkDataLength != 0) {
+			if (chunkDataLength != 0) {
 				self.chunks[j] = main.globalAllocator.dupe(u8, try reader.readSlice(chunkDataLength));
 			}
 		}
-		if(reader.remaining.len != 0) {
+		if (reader.remaining.len != 0) {
 			return error.corrupted;
 		}
 	}
@@ -90,7 +90,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 	pub fn deinit(self: *RegionFile) void {
 		std.debug.assert(self.refCount.raw == 0);
 		std.debug.assert(!self.modified);
-		for(self.chunks) |ch| {
+		for (self.chunks) |ch| {
 			main.globalAllocator.free(ch);
 		}
 		main.globalAllocator.free(self.saveFolder);
@@ -105,12 +105,12 @@ pub const RegionFile = struct { // MARK: RegionFile
 	pub fn decreaseRefCount(self: *RegionFile) void {
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
-		if(prevVal == 1) {
-			if(self.modified) {
+		if (prevVal == 1) {
+			if (self.modified) {
 				self.store();
 			}
 			self.deinit();
-		} else if(prevVal == 2) {
+		} else if (prevVal == 2) {
 			tryHashmapDeinit(self);
 		}
 	}
@@ -121,10 +121,10 @@ pub const RegionFile = struct { // MARK: RegionFile
 		self.modified = false;
 
 		var totalSize: usize = 0;
-		for(self.chunks) |ch| {
+		for (self.chunks) |ch| {
 			totalSize += ch.len;
 		}
-		if(totalSize > std.math.maxInt(u32)) {
+		if (totalSize > std.math.maxInt(u32)) {
 			std.log.err("Size of region file {} is too big to be stored", .{self.pos});
 			return;
 		}
@@ -135,10 +135,10 @@ pub const RegionFile = struct { // MARK: RegionFile
 		writer.writeInt(u32, version);
 		writer.writeInt(u32, @intCast(totalSize));
 
-		for(0..regionVolume) |i| {
+		for (0..regionVolume) |i| {
 			writer.writeInt(u32, @intCast(self.chunks[i].len));
 		}
-		for(0..regionVolume) |i| {
+		for (0..regionVolume) |i| {
 			writer.writeSlice(self.chunks[i]);
 		}
 		std.debug.assert(writer.data.items.len == totalSize + headerSize);
@@ -163,7 +163,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		const index = getIndex(relX, relY, relZ);
 		self.chunks[index] = main.globalAllocator.realloc(self.chunks[index], ch.len);
 		@memcpy(self.chunks[index], ch);
-		if(!self.modified) {
+		if (!self.modified) {
 			self.modified = true;
 			self.increaseRefCount();
 			main.server.world.?.queueRegionFileUpdateAndDecreaseRefCount(self);
@@ -175,7 +175,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		defer self.mutex.unlock();
 		const index = getIndex(relX, relY, relZ);
 		const ch = self.chunks[index];
-		if(ch.len == 0) return null;
+		if (ch.len == 0) return null;
 		return allocator.dupe(u8, ch);
 	}
 };
@@ -197,7 +197,7 @@ var stillUsedHashMap: std.HashMap(chunk.ChunkPosition, *RegionFile, HashContext,
 var hashMapMutex: std.Thread.Mutex = .{};
 
 fn cacheDeinit(region: *RegionFile) void {
-	if(region.refCount.load(.monotonic) != 1) { // Someone else might still use it, so we store it in the hashmap.
+	if (region.refCount.load(.monotonic) != 1) { // Someone else might still use it, so we store it in the hashmap.
 		hashMapMutex.lock();
 		defer hashMapMutex.unlock();
 		region.storedInHashMap = true;
@@ -208,7 +208,7 @@ fn cacheDeinit(region: *RegionFile) void {
 }
 fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
 	hashMapMutex.lock();
-	if(stillUsedHashMap.fetchRemove(pos)) |kv| {
+	if (stillUsedHashMap.fetchRemove(pos)) |kv| {
 		const region = kv.value;
 		region.storedInHashMap = false;
 		hashMapMutex.unlock();
@@ -223,11 +223,11 @@ fn tryHashmapDeinit(region: *RegionFile) void {
 	{
 		hashMapMutex.lock();
 		defer hashMapMutex.unlock();
-		if(!region.storedInHashMap) return;
+		if (!region.storedInHashMap) return;
 		std.debug.assert(stillUsedHashMap.fetchRemove(region.pos).?.value == region);
 		region.storedInHashMap = false;
 	}
-	std.debug.assert(region.refCount.load(.unordered) == 1);
+	std.debug.assert(region.refCount.load(.monotonic) == 1);
 	region.decreaseRefCount();
 }
 
@@ -264,7 +264,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		raw = 0, // TODO: Maybe we need some basic compression at some point. For now this is good enough though.
 	};
 
-	const Target = enum {toClient, toDisk};
+	const Target = enum { toClient, toDisk };
 
 	pub fn storeChunk(allocator: main.heap.NeverFailingAllocator, ch: *chunk.Chunk, comptime target: Target, allowLossy: bool) []const u8 {
 		var writer = BinaryWriter.init(allocator);
@@ -282,36 +282,36 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	}
 
 	fn compressBlockData(ch: *chunk.Chunk, allowLossy: bool, writer: *BinaryWriter) void {
-		if(ch.data.palette().len == 1) {
+		if (ch.data.palette().len == 1) {
 			writer.writeEnum(ChunkCompressionAlgo, .uniform);
 			writer.writeInt(u32, ch.data.palette()[0].load(.unordered).toInt());
 			return;
 		}
-		if(ch.data.palette().len < 256) {
+		if (ch.data.palette().len < 256) {
 			var uncompressedData: [chunk.chunkVolume]u8 = undefined;
 			var solidMask: [chunk.chunkSize*chunk.chunkSize]u32 = undefined;
-			for(0..chunk.chunkVolume) |i| {
+			for (0..chunk.chunkVolume) |i| {
 				uncompressedData[i] = @intCast(ch.data.impl.raw.data.getValue(i));
-				if(allowLossy) {
+				if (allowLossy) {
 					const block = ch.data.palette()[uncompressedData[i]].load(.unordered);
 					const model = main.blocks.meshes.model(block).model();
 					const occluder = model.allNeighborsOccluded and !block.viewThrough();
-					if(occluder) {
+					if (occluder) {
 						solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
 					} else {
 						solidMask[i >> 5] &= ~(@as(u32, 1) << @intCast(i & 31));
 					}
 				}
 			}
-			if(allowLossy) {
-				for(0..32) |x| {
-					for(0..32) |y| {
-						if(x == 0 or x == 31 or y == 0 or y == 31) {
+			if (allowLossy) {
+				for (0..32) |x| {
+					for (0..32) |y| {
+						if (x == 0 or x == 31 or y == 0 or y == 31) {
 							continue;
 						}
 						const index = x*32 + y;
 						var colMask = solidMask[index] >> 1 & solidMask[index] << 1 & solidMask[index - 1] & solidMask[index + 1] & solidMask[index - 32] & solidMask[index + 32];
-						while(colMask != 0) {
+						while (colMask != 0) {
 							const z = @ctz(colMask);
 							colMask &= ~(@as(u32, 1) << @intCast(z));
 							uncompressedData[index*32 + z] = uncompressedData[index*32 + z - 1];
@@ -325,7 +325,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			writer.writeEnum(ChunkCompressionAlgo, .deflate_with_8bit_palette);
 			writer.writeInt(u8, @intCast(ch.data.palette().len));
 
-			for(0..ch.data.palette().len) |i| {
+			for (0..ch.data.palette().len) |i| {
 				writer.writeInt(u32, ch.data.palette()[i].load(.unordered).toInt());
 			}
 			writer.writeVarInt(usize, compressedData.len);
@@ -335,7 +335,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		var uncompressedWriter = BinaryWriter.initCapacity(main.stackAllocator, chunk.chunkVolume*@sizeOf(u32));
 		defer uncompressedWriter.deinit();
 
-		for(0..chunk.chunkVolume) |i| {
+		for (0..chunk.chunkVolume) |i| {
 			uncompressedWriter.writeInt(u32, ch.data.getValue(i).toInt());
 		}
 		const compressedData = main.utils.Compression.deflate(main.stackAllocator, uncompressedWriter.data.items, .default);
@@ -351,20 +351,20 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 		const compressionAlgorithm = try reader.readEnum(ChunkCompressionAlgo);
 
-		switch(compressionAlgorithm) {
+		switch (compressionAlgorithm) {
 			.deflate, .deflate_no_block_entities, .deflate_with_position_no_block_entities => {
-				if(compressionAlgorithm == .deflate_with_position_no_block_entities) _ = try reader.readSlice(16);
+				if (compressionAlgorithm == .deflate_with_position_no_block_entities) _ = try reader.readSlice(16);
 				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume*@sizeOf(u32));
 				defer main.stackAllocator.free(decompressedData);
 
-				const compressedDataLen = if(compressionAlgorithm == .deflate) try reader.readVarInt(usize) else reader.remaining.len;
+				const compressedDataLen = if (compressionAlgorithm == .deflate) try reader.readVarInt(usize) else reader.remaining.len;
 				const compressedData = try reader.readSlice(compressedDataLen);
 				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, compressedData);
-				if(decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
+				if (decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
 
 				var decompressedReader = BinaryReader.init(decompressedData);
 
-				for(0..chunk.chunkVolume) |i| {
+				for (0..chunk.chunkVolume) |i| {
 					ch.data.setValue(i, main.blocks.Block.fromInt(try decompressedReader.readInt(u32)));
 				}
 			},
@@ -374,20 +374,20 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				ch.data.deferredDeinit();
 				ch.data.initCapacity(paletteLength);
 
-				for(0..paletteLength) |i| {
+				for (0..paletteLength) |i| {
 					ch.data.palette()[i] = .init(main.blocks.Block.fromInt(try reader.readInt(u32)));
 				}
 
 				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
 				defer main.stackAllocator.free(decompressedData);
 
-				const compressedDataLen = if(compressionAlgorithm == .deflate_with_8bit_palette) try reader.readVarInt(usize) else reader.remaining.len;
+				const compressedDataLen = if (compressionAlgorithm == .deflate_with_8bit_palette) try reader.readVarInt(usize) else reader.remaining.len;
 				const compressedData = try reader.readSlice(compressedDataLen);
 
 				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, compressedData);
-				if(decompressedLength != chunk.chunkVolume) return error.corrupted;
+				if (decompressedLength != chunk.chunkVolume) return error.corrupted;
 
-				for(0..chunk.chunkVolume) |i| {
+				for (0..chunk.chunkVolume) |i| {
 					ch.data.setRawValue(i, decompressedData[i]);
 				}
 			},
@@ -401,12 +401,12 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		ch.blockPosToEntityDataMapMutex.lock();
 		defer ch.blockPosToEntityDataMapMutex.unlock();
 
-		if(ch.blockPosToEntityDataMap.count() == 0) return;
+		if (ch.blockPosToEntityDataMap.count() == 0) return;
 
 		writer.writeEnum(BlockEntityCompressionAlgo, .raw);
 
 		var iterator = ch.blockPosToEntityDataMap.iterator();
-		while(iterator.next()) |entry| {
+		while (iterator.next()) |entry| {
 			const pos = entry.key_ptr.*;
 			const blockEntityIndex = entry.value_ptr.*;
 			const block = ch.data.getValue(pos.toIndex());
@@ -415,13 +415,13 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			var tempWriter = BinaryWriter.init(main.stackAllocator);
 			defer tempWriter.deinit();
 
-			if(target == .toDisk) {
+			if (target == .toDisk) {
 				blockEntity.onStoreServerToDisk(blockEntityIndex, &tempWriter);
 			} else {
 				blockEntity.onStoreServerToClient(blockEntityIndex, &tempWriter);
 			}
 
-			if(tempWriter.data.items.len == 0) continue;
+			if (tempWriter.data.items.len == 0) continue;
 
 			writer.writeInt(u15, pos.toIndex());
 			writer.writeVarInt(usize, tempWriter.data.items.len);
@@ -430,12 +430,12 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	}
 
 	pub fn decompressBlockEntityData(ch: *chunk.Chunk, comptime side: main.utils.Side, reader: *BinaryReader) !void {
-		if(reader.remaining.len == 0) return;
+		if (reader.remaining.len == 0) return;
 
 		const compressionAlgo = try reader.readEnum(BlockEntityCompressionAlgo);
 		std.debug.assert(compressionAlgo == .raw);
 
-		while(reader.remaining.len != 0) {
+		while (reader.remaining.len != 0) {
 			const pos: chunk.BlockPos = .fromIndex(try reader.readInt(u15));
 			const globalPos = ch.localToGlobalPosition(pos);
 			const dataLength = try reader.readVarInt(usize);
@@ -448,7 +448,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			};
 
 			var tempReader = BinaryReader.init(blockEntityData);
-			if(side == .server) {
+			if (side == .server) {
 				blockEntity.onLoadServer(globalPos, ch, &tempReader) catch |err| {
 					std.log.err("Could not load BlockEntity at position {} for block {s}: {s}", .{globalPos, block.id(), @errorName(err)});
 					continue;

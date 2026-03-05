@@ -3,11 +3,11 @@ const builtin = @import("builtin");
 
 const main = @import("main");
 
-const CallbackFunction = *const fn(usize) void;
+const CallbackFunction = *const fn (usize) void;
 
-const Impl = if(builtin.os.tag == .windows)
+const Impl = if (builtin.os.tag == .windows)
 	WindowsImpl
-else if(builtin.os.tag == .linux)
+else if (builtin.os.tag == .linux)
 	LinuxImpl
 else
 	NoImpl;
@@ -63,7 +63,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 
 	fn init() void {
 		fd = c.inotify_init();
-		if(fd == -1) {
+		if (fd == -1) {
 			std.log.err("Error while initializing inotifiy: {}", .{std.posix.errno(fd)});
 		}
 		watchDescriptors = .init(main.globalAllocator.allocator);
@@ -72,11 +72,11 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 
 	fn deinit() void {
 		const result = c.close(fd);
-		if(result == -1) {
+		if (result == -1) {
 			std.log.err("Error while closing file descriptor: {}", .{std.posix.errno(result)});
 		}
 		var iterator = watchDescriptors.iterator();
-		while(iterator.next()) |entry| {
+		while (iterator.next()) |entry| {
 			main.globalAllocator.free(entry.key_ptr.*);
 			entry.value_ptr.*.watchDescriptors.deinit(main.globalAllocator);
 			main.globalAllocator.destroy(entry.value_ptr.*);
@@ -93,11 +93,11 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		};
 		defer iterableDir.close();
 		var iterator = iterableDir.iterate();
-		while(iterator.next() catch |err| {
+		while (iterator.next() catch |err| {
 			std.log.err("Error while iterating dir {s}: {s}", .{path, @errorName(err)});
 			return;
 		}) |entry| {
-			if(entry.kind == .directory) {
+			if (entry.kind == .directory) {
 				const subPath = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/{s}", .{path, entry.name}, 0) catch unreachable;
 				defer main.stackAllocator.free(subPath);
 				addWatchDescriptor(info, subPath);
@@ -108,7 +108,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 
 	fn updateRecursiveCallback(info: *DirectoryInfo) void {
 		main.utils.assertLocked(&mutex);
-		for(info.watchDescriptors.items[1..]) |watchDescriptor| {
+		for (info.watchDescriptors.items[1..]) |watchDescriptor| {
 			removeWatchDescriptor(watchDescriptor, info.path);
 		}
 		info.watchDescriptors.items.len = 1;
@@ -120,31 +120,31 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		defer mutex.unlock();
 		var available: c_uint = 0;
 		const result = c.ioctl(fd, c.FIONREAD, &available);
-		if(result == -1) {
+		if (result == -1) {
 			std.log.err("Error while checking the number of available bytes for the inotify file descriptor: {}", .{std.posix.errno(result)});
 		}
-		if(available == 0) return;
+		if (available == 0) return;
 		const events: []u8 = main.stackAllocator.alloc(u8, available);
 		defer main.stackAllocator.free(events);
 		const readBytes = c.read(fd, events.ptr, available);
-		if(readBytes == -1) {
+		if (readBytes == -1) {
 			std.log.err("Error while reading inotify event: {}", .{std.posix.errno(readBytes)});
 			return;
 		}
 		var triggeredCallbacks = std.AutoHashMap(*DirectoryInfo, void).init(main.stackAllocator.allocator); // Avoid duplicate calls
 		defer triggeredCallbacks.deinit();
 		var offset: usize = 0;
-		while(offset < available) {
+		while (offset < available) {
 			const eventPtr: *const c.inotify_event = @ptrCast(@alignCast(events.ptr[offset..]));
 			defer offset += @sizeOf(c.inotify_event) + eventPtr.len;
 
 			const callback = callbacks.get(eventPtr.wd) orelse continue;
-			if(eventPtr.mask & c.IN_ISDIR != 0) callback.needsUpdate = true;
+			if (eventPtr.mask & c.IN_ISDIR != 0) callback.needsUpdate = true;
 			_ = triggeredCallbacks.getOrPut(callback) catch unreachable;
 		}
 		var iterator = triggeredCallbacks.keyIterator();
-		while(iterator.next()) |callback| {
-			if(callback.*.needsUpdate) {
+		while (iterator.next()) |callback| {
+			if (callback.*.needsUpdate) {
 				callback.*.needsUpdate = false;
 				updateRecursiveCallback(callback.*);
 			}
@@ -157,7 +157,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	fn addWatchDescriptor(info: *DirectoryInfo, path: [:0]const u8) void {
 		main.utils.assertLocked(&mutex);
 		const watchDescriptor = c.inotify_add_watch(fd, path.ptr, c.IN_CLOSE_WRITE | c.IN_DELETE | c.IN_CREATE | c.IN_MOVE | c.IN_ONLYDIR);
-		if(watchDescriptor == -1) {
+		if (watchDescriptor == -1) {
 			std.log.err("Error while adding watch descriptor for path {s}: {}", .{path, std.posix.errno(watchDescriptor)});
 		}
 		callbacks.put(watchDescriptor, info) catch unreachable;
@@ -168,16 +168,16 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		main.utils.assertLocked(&mutex);
 		_ = callbacks.remove(watchDescriptor);
 		const result = c.inotify_rm_watch(fd, watchDescriptor);
-		if(result == -1) {
+		if (result == -1) {
 			const err = std.posix.errno(result);
-			if(err != .INVAL) std.log.err("Error while removing watch descriptors for path {s}: {}", .{path, err});
+			if (err != .INVAL) std.log.err("Error while removing watch descriptors for path {s}: {}", .{path, err});
 		}
 	}
 
 	fn listenToPath(path: [:0]const u8, callback: CallbackFunction, userData: usize) void {
 		mutex.lock();
 		defer mutex.unlock();
-		if(watchDescriptors.contains(path)) {
+		if (watchDescriptors.contains(path)) {
 			std.log.err("Tried to add duplicate watch descriptor for path {s}", .{path});
 			return;
 		}
@@ -197,8 +197,8 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	fn removePath(path: [:0]const u8) void {
 		mutex.lock();
 		defer mutex.unlock();
-		if(watchDescriptors.fetchRemove(path)) |kv| {
-			for(kv.value.watchDescriptors.items) |watchDescriptor| {
+		if (watchDescriptors.fetchRemove(path)) |kv| {
+			for (kv.value.watchDescriptors.items) |watchDescriptor| {
 				removeWatchDescriptor(watchDescriptor, path);
 			}
 			main.globalAllocator.free(kv.key);
@@ -236,7 +236,7 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 
 	fn deinit() void {
 		var iterator = notificationHandlers.iterator();
-		while(iterator.next()) |entry| {
+		while (iterator.next()) |entry| {
 			main.globalAllocator.free(entry.key_ptr.*);
 			main.globalAllocator.destroy(entry.value_ptr.*);
 		}
@@ -248,21 +248,21 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 	fn handleEvents() void {
 		mutex.lock();
 		defer mutex.unlock();
-		while(true) {
-			if(justTheHandles.items.len == 0) break;
+		while (true) {
+			if (justTheHandles.items.len == 0) break;
 			const waitResult = std.os.windows.kernel32.WaitForMultipleObjects(@intCast(justTheHandles.items.len), justTheHandles.items.ptr, @intFromBool(false), 0);
-			if(waitResult == std.os.windows.WAIT_TIMEOUT) break;
-			if(waitResult == std.os.windows.WAIT_FAILED) {
+			if (waitResult == std.os.windows.WAIT_TIMEOUT) break;
+			if (waitResult == std.os.windows.WAIT_FAILED) {
 				std.log.err("Error while waiting: {}", .{std.os.windows.kernel32.GetLastError()});
 				break;
 			}
-			if(waitResult < std.os.windows.WAIT_OBJECT_0 or waitResult - std.os.windows.WAIT_OBJECT_0 >= justTheHandles.items.len) {
+			if (waitResult < std.os.windows.WAIT_OBJECT_0 or waitResult - std.os.windows.WAIT_OBJECT_0 >= justTheHandles.items.len) {
 				std.log.err("Windows gave an unexpected wait result: {}", .{waitResult});
 				break;
 			}
 			const callbackInfo = callbacks.items[@intCast(waitResult - std.os.windows.WAIT_OBJECT_0)];
 			const result = c.FindNextChangeNotification(callbackInfo.notificationHandler);
-			if(result == 0) {
+			if (result == 0) {
 				std.log.err("Error on FindNextChangeNotification for path {s}: {}", .{callbackInfo.path, result});
 			}
 			mutex.unlock();
@@ -274,12 +274,12 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 	fn listenToPath(path: [:0]const u8, callback: CallbackFunction, userData: usize) void {
 		mutex.lock();
 		defer mutex.unlock();
-		if(notificationHandlers.contains(path)) {
+		if (notificationHandlers.contains(path)) {
 			std.log.err("Tried to add duplicate notification handler for path {s}", .{path});
 			return;
 		}
 		const handle = c.FindFirstChangeNotificationA(path.ptr, @intFromBool(true), c.FILE_NOTIFY_CHANGE_LAST_WRITE);
-		if(handle == std.os.windows.INVALID_HANDLE_VALUE) {
+		if (handle == std.os.windows.INVALID_HANDLE_VALUE) {
 			std.log.err("Got error while creating notification handler for path {s}: {}", .{path, std.os.windows.kernel32.GetLastError()});
 		}
 
@@ -299,11 +299,11 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 	fn removePath(path: [:0]const u8) void {
 		mutex.lock();
 		defer mutex.unlock();
-		if(notificationHandlers.fetchRemove(path)) |kv| {
+		if (notificationHandlers.fetchRemove(path)) |kv| {
 			const index = std.mem.indexOfScalar(*DirectoryInfo, callbacks.items, kv.value).?;
 			_ = callbacks.swapRemove(index);
 			_ = justTheHandles.swapRemove(index);
-			if(c.FindCloseChangeNotification(kv.value.notificationHandler) == 0) {
+			if (c.FindCloseChangeNotification(kv.value.notificationHandler) == 0) {
 				std.log.err("Error while closing notification handler for path {s}: {}", .{path, std.os.windows.kernel32.GetLastError()});
 			}
 			main.globalAllocator.free(kv.key);

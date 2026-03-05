@@ -6,7 +6,7 @@ layout(location = 0) out vec2 frag_face_pos;
 layout(location = 1) flat out vec4 color;
 
 // in pixels
-layout(location = 0) uniform vec4 texture_rect;
+layout(location = 0) uniform vec4 textureRect;
 layout(location = 1) uniform vec2 scene;
 layout(location = 2) uniform vec2 offset;
 layout(location = 3) uniform float ratio;
@@ -21,9 +21,9 @@ vec2 convert2Proportional(vec2 original, vec2 full) {
 void main() {
 	vec2 vertex_pos = face_pos*vec2(1, -1);
 	vec2 position_percentage 	= convert2Proportional(floor(offset), scene);
-	vec2 size_percentage		= convert2Proportional(floor(vec2(texture_rect.z, texture_rect.w)*ratio), scene);
+	vec2 size_percentage		= convert2Proportional(floor(vec2(textureRect.z, textureRect.w)*ratio), scene);
 	if ((fontEffects & 0x02000000) != 0) { // italic
-		vertex_pos.x += vertex_pos.y/texture_rect.z;
+		vertex_pos.x += vertex_pos.y/textureRect.z;
 	}
 
 	// convert glyph coords to opengl coords

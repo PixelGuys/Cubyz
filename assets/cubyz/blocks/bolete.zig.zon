@@ -10,6 +10,9 @@
 	.absorbedLight = 0x010101,
 	.collide = false,
 	.rotation = "cubyz:torch",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 	.model = .{
 		.base = "cubyz:bolete/floor",
 		.side = "cubyz:bolete/shelf",

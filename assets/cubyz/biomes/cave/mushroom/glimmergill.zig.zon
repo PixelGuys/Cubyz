@@ -12,5 +12,21 @@
 			.density = 0.06,
 			.priority = 0.1,
 		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:vine/glimmer_worms",
+			.generationMode = .ceiling,
+			.chance = 0.5,
+			.height = 3,
+			.height_variation = 2,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:vine/glimmer_worms",
+			.generationMode = .ceiling,
+			.chance = 0.1,
+			.height = 9,
+			.height_variation = 7,
+		},
 	},
 }

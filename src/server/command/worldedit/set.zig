@@ -12,7 +12,7 @@ pub const description = "Set all blocks within selection to a block.";
 pub const usage = "/set <pattern>";
 
 pub fn execute(args: []const u8, source: *User) void {
-	if(args.len == 0) {
+	if (args.len == 0) {
 		source.sendMessage("#ff0000Missing required <pattern> argument.", .{});
 		return;
 	}
@@ -33,7 +33,7 @@ pub fn execute(args: []const u8, source: *User) void {
 
 	const selection = Blueprint.capture(main.globalAllocator, posStart, posEnd);
 
-	switch(selection) {
+	switch (selection) {
 		.success => |blueprint| {
 			source.worldEditData.undoHistory.push(.init(blueprint, posStart, "set"));
 			source.worldEditData.redoHistory.clear();

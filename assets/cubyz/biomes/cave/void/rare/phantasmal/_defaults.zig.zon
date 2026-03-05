@@ -1,0 +1,48 @@
+.{
+	.isCave = true,
+	.fogDensity = 35,
+	.fogColor = 0x000C14,
+	.maxHeight = -50000,
+	.music = "cubyz:cubyz",
+	.stoneBlock = "cubyz:chalk/black",
+	.chance = 0.01,
+	.ground_structure = .{
+		"0 to 1 cubyz:obsidian",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/phantasmal_pillars",
+			.placeMode = .degradable,
+			.chance = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:glimmergill",
+			.chance = 0.02,
+			.width = 10,
+			.variation = 5,
+			.density = 0.07,
+			.priority = 0.13,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.008,
+			.block = "cubyz:basalt/base",
+			.size = 4,
+			.size_variance = 8,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:mushroom/small/glimmergill",
+			.placeMode = .degradable,
+			.chance = 0.03,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:mushroom/big/glimmergill",
+			.placeMode = .degradable,
+			.chance = 0.02,
+		},
+	},
+}

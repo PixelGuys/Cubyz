@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const items = main.items;
 const BaseItem = items.BaseItem;
-const Inventory = items.Inventory;
+const ClientInventory = items.Inventory.ClientInventory;
 const Item = items.Item;
 const Tool = items.Tool;
 const ToolType = items.ToolType;
@@ -35,7 +35,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var inv: Inventory = undefined;
+var inv: ClientInventory = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
@@ -54,17 +54,17 @@ fn toggleTool() void {
 }
 
 fn openInventory() void {
-	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other, .{});
+	inv = ClientInventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .serverShared, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
 		// Inventory:
-		for(0..5) |y| {
+		for (0..5) |y| {
 			const row = HorizontalList.init();
-			for(0..5) |x| {
+			for (0..5) |x| {
 				const index = x + y*5;
 				const slotInfo = toolTypes.items[currentToolType].slotInfos()[index];
-				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), if(slotInfo.disabled) .invisible else if(slotInfo.optional) .immutable else .default, if(slotInfo.disabled) .immutable else .normal);
+				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
 			}
@@ -93,14 +93,14 @@ fn openInventory() void {
 
 fn closeInventory() void {
 	inv.deinit(main.globalAllocator);
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
 	}
 }
 
 pub fn update() void {
-	if(needsUpdate) {
+	if (needsUpdate) {
 		needsUpdate = false;
 		closeInventory();
 		openInventory();
@@ -108,14 +108,14 @@ pub fn update() void {
 }
 
 pub fn render() void {
-	const currentResult = inv._items[25].item;
-	if(currentResult == .null) return;
+	const currentResult = inv.getItem(25);
+	if (currentResult == .null) return;
 
 	const offsetX = 5*ItemSlot.sizeWithBorder + 20;
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
-	main.graphics.draw.print("{s}{} durability", .{if(currentResult.tool.maxDurability != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.tool.maxDurability))}, offsetX, offsetY, fontSize, .left);
+	main.graphics.draw.print("{s}{} durability", .{if (currentResult.tool.maxDurability != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.tool.maxDurability))}, offsetX, offsetY, fontSize, .left);
 	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.tool.swingSpeed}, offsetX, offsetY + fontSize, fontSize, .left);
 	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.tool.damage}, offsetX, offsetY + 2*fontSize, fontSize, .left);
 }
@@ -125,7 +125,7 @@ pub fn onOpen() void {
 
 	toolTypes = .{};
 	var iterator = ToolTypeIndex.iterator();
-	while(iterator.next()) |toolType| {
+	while (iterator.next()) |toolType| {
 		toolTypes.append(main.globalAllocator, toolType);
 	}
 

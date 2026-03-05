@@ -46,9 +46,9 @@ fn preGeneratePercentileTable() void {
 	const values = randomNumbers;
 	var amount1D: [values + 1]u128 = undefined;
 	@memset(&amount1D, 0);
-	for(0..randomNumbers) |a| {
-		for(0..randomNumbers) |b| {
-			for(0..positions + 1) |x| {
+	for (0..randomNumbers) |a| {
+		for (0..randomNumbers) |b| {
+			for (0..positions + 1) |x| {
 				const val = x*(2*a + 1) + (positions - x)*(2*b + 1);
 				amount1D[(val*values)/totalValues/2] += 1;
 			}
@@ -56,16 +56,16 @@ fn preGeneratePercentileTable() void {
 	}
 	var amount2D: [values + 1]u128 = undefined;
 	@memset(&amount2D, 0);
-	for(0..randomNumbers) |a| {
-		for(0..randomNumbers) |b| {
-			for(0..positions + 1) |x| {
+	for (0..randomNumbers) |a| {
+		for (0..randomNumbers) |b| {
+			for (0..positions + 1) |x| {
 				const val = x*(2*a + 1) + (positions - x)*(2*b + 1);
 				amount2D[(val*values)/totalValues/2] += amount1D[a]*amount1D[b];
 			}
 		}
 	}
 	var samples: u128 = 0;
-	for(&amount2D) |val| {
+	for (&amount2D) |val| {
 		samples = std.math.add(u128, samples, val) catch @panic("Number too big");
 	}
 	std.log.info("{}", .{samples});
@@ -73,9 +73,9 @@ fn preGeneratePercentileTable() void {
 	var percentiles: [128]f32 = undefined;
 	var current: u128 = 0;
 	var i: usize = 0;
-	for(&percentiles, 0..) |*_percentile, j| {
+	for (&percentiles, 0..) |*_percentile, j| {
 		const goal = j*samples/(percentiles.len - 1);
-		while(current + amount2D[i] < goal) {
+		while (current + amount2D[i] < goal) {
 			current += amount2D[i];
 			i += 1;
 		}
@@ -83,7 +83,7 @@ fn preGeneratePercentileTable() void {
 		_percentile.* = (@as(f32, @floatFromInt(i)) + @as(f32, @floatFromInt(diff))/@as(f32, @floatFromInt(amount2D[i])))/randomNumbers;
 	}
 
-	for(&percentiles) |_percentile| {
+	for (&percentiles) |_percentile| {
 		std.log.info("{}", .{_percentile});
 	}
 }
@@ -92,7 +92,7 @@ pub fn percentile(ratio: f32) f32 {
 	std.debug.assert(ratio >= 0);
 	const scaledToList = ratio*@as(f32, @floatFromInt(percentileTable.len));
 	const index: u32 = @intFromFloat(scaledToList);
-	if(index >= percentileTable.len - 1) return 1;
+	if (index >= percentileTable.len - 1) return 1;
 	const offset = (scaledToList - @as(f32, @floatFromInt(index)));
 	return (1 - offset)*percentileTable[index] + offset*percentileTable[index + 1];
 }
