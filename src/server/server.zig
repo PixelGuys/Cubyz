@@ -798,7 +798,10 @@ pub fn getUserById(id: u32) !*User {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for (userList) |user| {
-		if (user.id == id) return user;
+		if (user.id == id) {
+			user.increaseRefCount();
+			return user;
+		}
 	}
 	return error.UserNotFound;
 }

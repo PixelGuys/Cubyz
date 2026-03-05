@@ -25,12 +25,14 @@ pub fn execute(args: []const u8, source: *User) void {
 	if (split.next()) |arg| {
 		if (std.ascii.eqlIgnoreCase(arg, "remove")) {
 			const helper = Helper.parseHelper(source, &split) catch return;
-			if (!helper.permissions.removePermission(helper.listType, helper.permissionPath)) {
+			defer if (helper.user.id != source.id) helper.user.decreaseRefCount();
+			if (!helper.user.permissions.removePermission(helper.listType, helper.permissionPath)) {
 				source.sendMessage("#ff0000Permission path {s} is not present inside users permission {s}list", .{helper.permissionPath, @tagName(helper.listType)});
 			}
 		} else if (std.ascii.eqlIgnoreCase(arg, "add")) {
 			const helper = Helper.parseHelper(source, &split) catch return;
-			helper.permissions.addPermission(helper.listType, helper.permissionPath);
+			defer if (helper.user.id != source.id) helper.user.decreaseRefCount();
+			helper.user.permissions.addPermission(helper.listType, helper.permissionPath);
 		} else {
 			var _arg = arg;
 			const user: *User = blk: {
@@ -41,6 +43,8 @@ pub fn execute(args: []const u8, source: *User) void {
 				}
 				break :blk source;
 			};
+			defer if (user.id != source.id) user.decreaseRefCount();
+
 			if (split.next() != null) {
 				source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
 				return;
@@ -61,7 +65,7 @@ pub fn execute(args: []const u8, source: *User) void {
 const Helper = struct {
 	listType: ListType,
 	permissionPath: []const u8,
-	permissions: *permission.Permissions,
+	user: *User,
 
 	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{InvalidArgs}!Helper {
 		var listType: ListType = undefined;
@@ -83,13 +87,13 @@ const Helper = struct {
 			return error.InvalidArgs;
 		};
 
-		const permissions: *permission.Permissions = blk: {
+		const user: *User = blk: {
 			if (split.next()) |next| {
 				const user = command.parsePlayerId(arg, source) catch return error.InvalidArgs;
 				arg = next;
-				break :blk &user.permissions;
+				break :blk user;
 			}
-			break :blk &source.permissions;
+			break :blk source;
 		};
 
 		if (arg[0] != '/') {
@@ -102,6 +106,6 @@ const Helper = struct {
 			return error.InvalidArgs;
 		}
 
-		return .{.listType = listType, .permissionPath = arg, .permissions = permissions};
+		return .{.listType = listType, .permissionPath = arg, .user = user};
 	}
 };
