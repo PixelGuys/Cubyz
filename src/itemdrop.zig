@@ -169,7 +169,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			j += 1;
 		}
 		const result = allocator.alloc(ItemDropNetworkData, j);
-		std.mem.copyForwards(ItemDropNetworkData, result, buffer[0..j]);
+		@memcpy( result, buffer[0..j]);
 		return result;
 	}
 
