@@ -26,6 +26,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const ItemDrop = struct { // MARK: ItemDrop
 	pos: Vec3d,
+	oldPos: Vec3d,
 	vel: Vec3d,
 	rot: Vec3f,
 	itemStack: ItemStack,
@@ -154,13 +155,18 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []ItemDropNetworkData {
 		const result = allocator.alloc(ItemDropNetworkData, self.size);
-		for (self.indices[0..self.size], result) |i, *res| {
-			res.* = .{
+		var j:usize = 0;
+		for (self.indices[0..self.size]) |i, | {
+			if(vec.lengthSquare(self.list.items(.pos)[i]-self.list.items(.oldPos)[i])<0)
+				continue;
+			result[j] = .{
 				.index = i,
 				.pos = self.list.items(.pos)[i],
 				.vel = self.list.items(.vel)[i],
 			};
+			j += 1;
 		}
+		//allocator.resize(allocator, j);
 		return result;
 	}
 
@@ -204,6 +210,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		std.debug.assert(self.world != null);
 		self.processChanges();
 		const pos = self.list.items(.pos);
+		const oldPos = self.list.items(.oldPos);
 		const vel = self.list.items(.vel);
 		const pickupCooldown = self.list.items(.pickupCooldown);
 		const despawnTime = self.list.items(.despawnTime);
@@ -214,7 +221,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				defer simChunk.decreaseRefCount();
 				if (simChunk.getChunk()) |chunk| {
 					// Check collision with blocks:
-					self.updateEnt(chunk, &pos[i], &vel[i], deltaTime);
+					self.updateEnt(chunk, &pos[i],&oldPos[i], &vel[i], deltaTime);
 				}
 			}
 			pickupCooldown[i] -= 1;
@@ -238,6 +245,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.isEmpty.unset(i);
 		const drop = ItemDrop{
 			.pos = pos,
+			.oldPos = pos,
 			.vel = vel,
 			.rot = rot,
 			.itemStack = itemStack,
@@ -270,6 +278,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.isEmpty.unset(i);
 		const drop = ItemDrop{
 			.pos = pos,
+			.oldPos = pos,
 			.vel = vel,
 			.rot = rot,
 			.itemStack = itemStack,
@@ -351,13 +360,14 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.internalRemove(i);
 	}
 
-	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
+	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d,oldPos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		const hitBox = main.game.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
 		if (main.game.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
 		vel.* += Vec3d{0, 0, -gravity*deltaTime};
+		oldPos.* = pos.*;
 		inline for (0..3) |i| {
 			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
 			if (main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
