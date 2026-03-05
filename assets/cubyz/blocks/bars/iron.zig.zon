@@ -1,6 +1,6 @@
 .{
-	.blockResistance = 5,
-	.blockHealth = 15,
+	.blockResistance = 7,
+	.blockHealth = 20,
 	.texture = "cubyz:bars/iron",
 	.item = .{
 		.texture = "bars/iron.png",
