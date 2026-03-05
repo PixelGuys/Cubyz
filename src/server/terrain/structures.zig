@@ -96,11 +96,6 @@ pub const StructureTable = struct {
 				totalChance += model.chance;
 			}
 		}
-		if (totalChance > 1) {
-			for (structureList.items) |*model| {
-				model.chance /= totalChance;
-			}
-		}
 		structureTable.structures = main.worldArena.dupe(SimpleStructureModel, structureList.items);
 		return structureTable;
 	}
