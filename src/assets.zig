@@ -519,7 +519,7 @@ pub const Palette = struct { // MARK: Palette
 
 var loadedAssets: bool = false;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, structureTablePalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -652,15 +652,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	// StructureTables:
-	for (structureTablePalette.palette.items) |id| {
-		registerStructureTable(id, worldAssets.structureTables.get(id) orelse .null);
-	}
 	iterator = worldAssets.structureTables.iterator();
 	while (iterator.next()) |entry| {
 		if (main.server.terrain.structures.hasRegistered(entry.key_ptr.*)) continue;
 		registerStructureTable(entry.key_ptr.*, entry.value_ptr.*);
-		structureTablePalette.add(entry.key_ptr.*);
 	}
 
 	// Biomes:
