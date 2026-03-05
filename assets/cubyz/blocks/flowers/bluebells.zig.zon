@@ -1,5 +1,4 @@
 .{
-	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -9,9 +8,9 @@
 	.absorbedLight = 0x121012,
 	.collide = false,
 	.model = "cubyz:cross",
-	.texture = "cubyz:marigold",
+	.texture = "cubyz:flowers/bluebells",
 	.item = .{
-		.texture = "marigold.png",
+		.texture = "flowers/bluebells.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{

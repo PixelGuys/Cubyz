@@ -64,7 +64,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:hibiscus",
+			.block = "cubyz:flowers/hibiscus",
 			.chance = 0.007,
 			.width = 8,
 			.variation = 3,

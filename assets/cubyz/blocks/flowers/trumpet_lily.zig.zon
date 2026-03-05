@@ -1,5 +1,4 @@
 .{
-	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -13,11 +12,11 @@
 	.onUpdate = .{
 		.type = .checkSupportBlocks,
 	},
-	.texture = "cubyz:trumpet_lily",
-	.texture_top = "cubyz:trumpet_lily_top",
-	.texture_bottom = "cubyz:trumpet_lily_top",
+	.texture = "cubyz:flowers/trumpet_lily",
+	.texture_top = "cubyz:flowers/trumpet_lily_top",
+	.texture_bottom = "cubyz:flowers/trumpet_lily_top",
 	.item = .{
-		.texture = "trumpet_lily.png",
+		.texture = "flowers/trumpet_lily.png",
 	},
 	.lodReplacement = "cubyz:air",
 }

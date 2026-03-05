@@ -1,5 +1,4 @@
 .{
-	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -8,13 +7,13 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:flower/height_8",
+	.model = "cubyz:flower/height_10",
 	.rotation = "cubyz:planar",
-	.texture = "cubyz:daffodil",
-	.texture_top = "cubyz:daffodil_top",
-	.texture_bottom = "cubyz:daffodil_top",
+	.texture = "cubyz:flowers/castilleja",
+	.texture_top = "cubyz:flowers/castilleja_top",
+	.texture_bottom = "cubyz:flowers/castilleja_top",
 	.item = .{
-		.texture = "daffodil.png",
+		.texture = "flowers/castilleja.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{

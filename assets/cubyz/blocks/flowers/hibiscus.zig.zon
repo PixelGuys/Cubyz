@@ -1,5 +1,4 @@
 .{
-	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -10,11 +9,11 @@
 	.collide = false,
 	.model = "cubyz:flower/height_8",
 	.rotation = "cubyz:planar",
-	.texture = "cubyz:hibiscus",
-	.texture_top = "cubyz:hibiscus_top",
-	.texture_bottom = "cubyz:hibiscus_top",
+	.texture = "cubyz:flowers/hibiscus",
+	.texture_top = "cubyz:flowers/hibiscus_top",
+	.texture_bottom = "cubyz:flowers/hibiscus_top",
 	.item = .{
-		.texture = "hibiscus.png",
+		.texture = "flowers/hibiscus.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
