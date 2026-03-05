@@ -75,3 +75,14 @@ pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *Use
 		break :blk output;
 	};
 }
+
+pub fn parsePlayerId(playerId: []const u8, source: *User) !*User {
+	const id = std.fmt.parseInt(u32, playerId, 10) catch {
+		source.sendMessage("#ff0000Player ids must be integers, found \"{s}\"", .{playerId});
+		return error.InvalidArg;
+	};
+	return main.server.getUserById(id) catch {
+		source.sendMessage("#ff0000Player with id {d} not found", .{id});
+		return error.InvalidArg;
+	};
+}
