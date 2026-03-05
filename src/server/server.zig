@@ -625,7 +625,6 @@ fn update() void { // MARK: update()
 			.rot = user.player.rot,
 		});
 	}
-	std.log.debug("itemupdates: {}\n", .{itemData.len});
 	for (userList) |user| {
 		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
 	}
