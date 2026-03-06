@@ -8,6 +8,7 @@ pub const spawn = @import("spawn.zig");
 pub const tickspeed = @import("tickspeed.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
+pub const avatar = @import("avatar.zig");
 
 pub const perm = @import("permission/perm.zig");
 
