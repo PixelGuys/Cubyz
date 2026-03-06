@@ -34,6 +34,7 @@ pub const Assets = struct {
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
+	languages: ZonHashMap,
 	worldPresets: ZonHashMap,
 
 	fn init() Assets {
@@ -50,6 +51,7 @@ pub const Assets = struct {
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
 			.particles = .{},
+			.languages = .{},
 			.worldPresets = .{},
 		};
 	}
@@ -66,6 +68,7 @@ pub const Assets = struct {
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
+		self.languages.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
@@ -82,7 +85,8 @@ pub const Assets = struct {
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
-			.worldPresets = .{}, // Not accessible inside the world
+			.languages = .{}, // Not needed inside the world
+			.worldPresets = .{},
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -100,13 +104,14 @@ pub const Assets = struct {
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, &self.models);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
+			addon.readAllZon(allocator, "languages", false, &self.languages, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} languages, {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.languages.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -716,6 +721,10 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			main.utils.file_monitor.removePath(path);
 		}
 	}
+}
+
+pub fn languages() *const Assets.ZonHashMap {
+	return &common.languages;
 }
 
 pub fn worldPresets() *const Assets.ZonHashMap {
