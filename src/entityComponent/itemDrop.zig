@@ -29,11 +29,6 @@ const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
 
-pub fn loadWorldAsset(assetFolder: []const u8, assets: *main.assets.Assets) void {
-	_ = assets;
-	_ = assetFolder;
-}
-
 pub const ENTITY_COMPONENT_VERSION = 0;
 
 // ############################# Client only stuff ################################
