@@ -10,5 +10,16 @@
 		.colors = .{
 			0xffbc7132, 0xffda972b, 0xfff2cd53, 0xfff2cd53, 0xfffae39e,
 		},
+		.modifiers = .{
+			.{
+				.id = "durable",
+				.strength = 0.20,
+				.restriction = .{
+					.id = .encased,
+					.tag = .copper,
+					.amount = 1,
+				},
+			},
+		},
 	},
 }
