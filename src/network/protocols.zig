@@ -236,7 +236,7 @@ pub const handShake = struct { // MARK: handShake
 	pub fn sendServerPlayerData(conn: *Connection) void {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
-		zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
+		zonObject.put("player", conn.user.?.player().save(main.stackAllocator));
 		zonObject.put("player_id", conn.user.?.id);
 		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
