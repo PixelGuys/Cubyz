@@ -3,7 +3,7 @@ const Atomic = std.atomic.Value;
 
 const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
-const entity = @import("entity.zig");
+const clientEntity = @import("clientEntity.zig");
 const graphics = @import("graphics.zig");
 const particles = @import("particles.zig");
 const c = graphics.c;
