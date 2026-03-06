@@ -5,8 +5,9 @@ const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-pub const ClientBlockCallback = Callback(struct { block: Block, blockPos: Vec3i }, @import("block/client/_list.zig"));
+pub const ClientBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.Chunk, blockPos: Vec3i }, @import("block/client/_list.zig"));
 pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.ServerChunk, blockPos: main.chunk.BlockPos }, @import("block/server/_list.zig"));
+pub const BlockCallbackWithData = Callback(struct { block: Block, chunk: *main.chunk.Chunk, pos: Vec3i, data: *main.utils.BinaryReader, ctx: main.sync.Command.Context }, @import("block/data/_list.zig"));
 
 pub const BlockTouchCallback = Callback(struct { entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64 }, @import("block/touch/_list.zig"));
 
@@ -15,15 +16,17 @@ pub const Result = enum { handled, ignored };
 pub fn init() void {
 	ClientBlockCallback.globalInit();
 	ServerBlockCallback.globalInit();
+	BlockCallbackWithData.globalInit();
 	BlockTouchCallback.globalInit();
 }
 
-fn Callback(_Params: type, list: type) type {
+fn Callback(_Params: type, _list: type) type {
 	return struct {
 		data: *anyopaque,
 		inner: *const fn (self: *anyopaque, params: Params) Result,
 
 		pub const Params = _Params;
+		pub const list = _list;
 
 		const VTable = struct {
 			init: *const fn (zon: main.ZonElement) ?*anyopaque,
