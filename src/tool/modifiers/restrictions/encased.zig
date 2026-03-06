@@ -31,21 +31,10 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 }
 
 pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
-	if (main.lang.numbersFirst) {
-		outString.print("{s} {}{s}{s} {s}", .{
-			main.lang.translate(.restriction, "encasedIn_1"),
-			self.amount,
-			main.lang.translate(.restriction, "encasedIn_2"),
-			main.lang.translate(.tag, self.tag.getName()),
-			main.lang.translate(.restriction, "encasedIn_3"),
-		});
-	} else {
-		outString.print("{s} {s}{s}{} {s}", .{
-			main.lang.translate(.restriction, "encasedIn_1"),
-			main.lang.translate(.tag, self.tag.getName()),
-			main.lang.translate(.restriction, "encasedIn_2"),
-			self.amount,
-			main.lang.translate(.restriction, "encasedIn_3"),
-		});
-	}
+	const amountString = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{self.amount}) catch unreachable;
+	defer main.stackAllocator.free(amountString);
+	const nameString = main.lang.translate(.tag, self.tag.getName());
+	const translated = main.lang.format(main.stackAllocator, .restriction, "encased", &.{amountString, nameString});
+	defer main.stackAllocator.free(translated);
+	outString.appendSlice(translated);
 }

@@ -1,6 +1,5 @@
 .{
 	.language = "English (United States)",
-	.numbersFirst = true,
 	.assets = .{
 		.blocks = .{}, // i think only for autocomplete
 		.items = .{
@@ -412,9 +411,7 @@
 		.restrictions = .{
 			.always = "always",
 			.@"and" = "and",
-			.encasedIn_1 = "encased in",
-			.encasedIn_2 = " ",
-			.encasedIn_3 = "items",
+			.encased = "encased in {0} {1} items",
 			.not = "not",
 			.@"or" = "or",
 		},

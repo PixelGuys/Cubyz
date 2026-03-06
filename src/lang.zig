@@ -78,3 +78,23 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 		.world_preset => translateHelper("assets", "world_presets", string),
 	};
 }
+
+pub fn format(allocator: main.heap.NeverFailingAllocator, category: Category, string: []const u8, args: []const []const u8) []const u8 {
+	const fmt = translate(category, string);
+	var iterator = std.mem.splitAny(u8, fmt, "{}");
+
+	var outputList = main.List(u8).init(allocator);
+	defer outputList.deinit();
+
+	var isNumber = false;
+	while (iterator.next()) |slice| {
+		outputList.appendSlice(if (isNumber) args[
+			std.fmt.parseInt(usize, slice, 10) catch |err| blk: {
+				std.log.err("{} when trying to parse {s} to usize. Using index 0...", .{err, slice});
+				break :blk 0;
+			}
+		] else slice);
+		isNumber = !isNumber;
+	}
+	return outputList.toOwnedSlice();
+}
