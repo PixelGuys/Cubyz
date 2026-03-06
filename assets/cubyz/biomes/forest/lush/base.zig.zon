@@ -36,14 +36,14 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.blocks = .{"cubyz:grass/vegetation/dew"},
+			.block = "cubyz:grass/vegetation/dew",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dandelions"},
+			.blocks = .{"cubyz:grass/vegetation_dew"},
 			.chance = 0.3,
 			.width = 3,
 			.variation = 6,
@@ -79,7 +79,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:daffodil"},
+			.blocks = .{"cubyz:grass/daffodil"},
 			.chance = 0.02,
 			.width = 6,
 			.variation = 3,
