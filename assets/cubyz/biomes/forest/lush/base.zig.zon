@@ -1,7 +1,7 @@
 .{
 	.ground_structure = .{
 		"cubyz:grass/dew",
-		"2 to 3 cubyz:soil",
+		"2 to 3 cubyz:clay",
 	},
 	.structures = .{
 		.{
@@ -36,14 +36,14 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass/vegetation/dew",
+			.blocks = .{"cubyz:grass/vegetation/dew"},
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:grass/vegetation/dew",
+			.blocks = .{"cubyz:dandelions"},
 			.chance = 0.3,
 			.width = 3,
 			.variation = 6,
@@ -70,7 +70,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:ivy",
+			.blocks = .{"cubyz:ivy"},
 			.chance = 0.02,
 			.width = 6,
 			.variation = 3,
@@ -79,7 +79,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daffodil",
+			.blocks = .{"cubyz:daffodil"},
 			.chance = 0.02,
 			.width = 6,
 			.variation = 3,
