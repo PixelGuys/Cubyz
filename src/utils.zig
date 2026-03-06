@@ -1769,8 +1769,10 @@ pub const BinaryReader = struct {
 		defer self.remaining = self.remaining[length..];
 		return self.remaining[0..length];
 	}
+	pub fn readSliceWithSize(self: *BinaryReader) ![]const u8 {
+		return try self.readSlice(try self.readVarInt(usize));
+	}
 };
-
 pub const BinaryWriter = struct {
 	data: main.List(u8),
 
@@ -1839,6 +1841,10 @@ pub const BinaryWriter = struct {
 
 	pub fn writeSlice(self: *BinaryWriter, slice: []const u8) void {
 		self.data.appendSlice(slice);
+	}
+	pub fn writeSliceWithSize(self: *BinaryWriter, slice: []const u8) void {
+		self.writeVarInt(usize, slice.len);
+		self.writeSlice(slice);
 	}
 
 	pub fn writeWithDelimiter(self: *BinaryWriter, slice: []const u8, delimiter: u8) void {
@@ -2259,4 +2265,30 @@ pub fn obfuscateString(allocator: NeverFailingAllocator, string: []const u8) []c
 		@memcpy(obfuscated[i .. i + obfuscationChar.len], &obfuscationChar);
 	}
 	return obfuscated;
+}
+
+pub const Base64 = struct {
+	fullBuffer: []u8,
+	base64Encoded: []const u8,
+
+	pub fn toBase64(allocator: NeverFailingAllocator, source: []const u8) Base64 {
+		const fullBuffer = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(source.len));
+		return Base64{
+			.fullBuffer = fullBuffer,
+			.base64Encoded = std.base64.url_safe.Encoder.encode(fullBuffer, source),
+		};
+	}
+	pub fn getEncodedMessage(self: Base64) []const u8 {
+		return self.base64Encoded;
+	}
+	pub fn deinit(self: Base64, allocator: NeverFailingAllocator) void {
+		allocator.free(self.fullBuffer);
+	}
+};
+pub fn fromBase64(allocator: NeverFailingAllocator, base64EncodedData: []const u8) ![]const u8 {
+	const decodedSize = try std.base64.url_safe.Decoder.calcSizeForSlice(base64EncodedData);
+	const bytes: []u8 = allocator.alloc(u8, decodedSize);
+	errdefer allocator.free(bytes);
+	try std.base64.url_safe.Decoder.decode(bytes, base64EncodedData);
+	return bytes;
 }
