@@ -1,6 +1,5 @@
 .{
 	.chance = 0.02,
-	.caves = -0.02,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
