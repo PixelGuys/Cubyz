@@ -45,7 +45,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
+			.blocks = .{"cubyz:daisies"},
 			.chance = 0.008,
 			.width = 6,
 			.variation = 3,
@@ -54,7 +54,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daffodil",
+			.blocks = .{"cubyz:daffodil"},
 			.chance = 0.01,
 			.width = 6,
 			.variation = 3,
@@ -63,7 +63,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:castilleja",
+			.blocks = .{"cubyz:castilleja"},
 			.chance = 0.006,
 			.width = 8,
 			.variation = 3,
