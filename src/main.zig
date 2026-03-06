@@ -610,16 +610,16 @@ pub fn clientMain() void { // MARK: clientMain()
 			}
 			var failureText: List(u8) = .init(stackAllocator);
 			defer failureText.deinit();
-			const seedPhrase = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
-				std.log.err("Got error while loading seed phrase: {s}", .{@errorName(err)});
+			const accountCode = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
+				std.log.err("Got error while loading Account Code: {s}", .{@errorName(err)});
 				gui.openWindow("authentication/login");
 				break :blk;
 			};
-			defer seedPhrase.deinit();
+			defer accountCode.deinit();
 			if (failureText.items.len != 0) {
 				std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
 			}
-			network.authentication.KeyCollection.init(seedPhrase);
+			network.authentication.KeyCollection.init(accountCode);
 			if (settings.playerName.len == 0) {
 				gui.openWindow("change_name");
 			} else if (settings.launchConfig.autoEnterWorld.len == 0) {

@@ -112,13 +112,15 @@ pub fn toComponent(self: *ItemSlot) GuiComponent {
 	return .{.itemSlot = self};
 }
 
-pub fn updateHovered(self: *ItemSlot, _: Vec2f) void {
+pub fn updateHovered(self: *ItemSlot, _: Vec2f) main.callbacks.Result {
 	self.hovered = true;
 	gui.hoveredItemSlot = self;
+	return .handled;
 }
 
-pub fn mainButtonPressed(self: *ItemSlot, _: Vec2f) void {
+pub fn mainButtonPressed(self: *ItemSlot, _: Vec2f) main.callbacks.Result {
 	self.pressed = true;
+	return .handled;
 }
 
 pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {

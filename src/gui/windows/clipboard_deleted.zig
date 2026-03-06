@@ -36,5 +36,5 @@ pub fn render() void {
 		return;
 	}
 	draw.setColor(0xffff8080);
-	draw.print("You clipboard was cleared.", .{}, 0, 0, 16, .left);
+	draw.print("Your clipboard was cleared.", .{}, 0, 0, 16, .left);
 }

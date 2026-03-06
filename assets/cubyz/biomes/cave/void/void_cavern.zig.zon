@@ -4,8 +4,17 @@
 	.chance = 0.1,
 	.fogDensity = 10,
 	.fogColor = 0x272334,
-	.caves = -0.1,
 
 	.music = "cubyz:heart-of-the-beast",
 	.stoneBlock = "cubyz:voidstone/base",
+
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 15,
+			.maxRadius = 30,
+		},
+	},
 }

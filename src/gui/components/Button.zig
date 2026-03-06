@@ -116,12 +116,14 @@ pub fn toComponent(self: *Button) GuiComponent {
 	return .{.button = self};
 }
 
-pub fn updateHovered(self: *Button, _: Vec2f) void {
+pub fn updateHovered(self: *Button, _: Vec2f) main.callbacks.Result {
 	self.hovered = true;
+	return .handled;
 }
 
-pub fn mainButtonPressed(self: *Button, _: Vec2f) void {
+pub fn mainButtonPressed(self: *Button, _: Vec2f) main.callbacks.Result {
 	self.pressed = true;
+	return .handled;
 }
 
 pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
