@@ -1,6 +1,5 @@
 # Blender v3.0.1 OBJ File: 'missing.blend'
 # www.blender.org
-mtllib missing.mtl
 o Cube
 v 0.500000 0.500000 0.015418
 v 0.500000 -0.500000 0.015418
@@ -30,7 +29,6 @@ vn -1.0000 0.0000 0.0000
 vn 0.0000 -1.0000 0.0000
 vn 1.0000 0.0000 0.0000
 vn 0.0000 0.0000 -1.0000
-usemtl Material
 s off
 f 1/1/1 5/2/1 7/3/1 3/4/1
 f 4/5/2 3/4/2 7/6/2 8/7/2
