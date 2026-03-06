@@ -393,7 +393,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 		if (conn.manager.world) |world| {
 			const time = try reader.readInt(i16);
 			const playerPos = try reader.readVec(Vec3d);
-			var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+			var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
 			defer entityData.deinit();
 			var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
 			defer itemData.deinit();
@@ -427,11 +427,11 @@ pub const entityPosition = struct { // MARK: entityPosition
 					},
 				}
 			}
-			main.entity.ClientEntityManager.serverUpdate(time, entityData.items);
+			main.clientEntity.ClientEntityManager.serverUpdate(time, entityData.items);
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
-	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
+	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.clientEntity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
@@ -511,10 +511,10 @@ pub const entity = struct { // MARK: entity
 			const elem = zonArray.array.items[i];
 			switch (elem) {
 				.int => {
-					main.entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+					main.clientEntity.ClientEntityManager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					main.entity.ClientEntityManager.addEntity(elem);
+					main.clientEntity.ClientEntityManager.addEntity(elem);
 				},
 				.null => {
 					i += 1;
