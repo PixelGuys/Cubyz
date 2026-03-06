@@ -12,7 +12,7 @@
 		},
 		.modifiers = .{
 			.{
-				.id = "light",
+				.id = "durable",
 				.strength = 0.20,
 				.restriction = .{
 					.id = .encased,
