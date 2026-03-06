@@ -1,9 +1,9 @@
 .{
 	.isCave = true,
-	.maxHeight = -25000,
-	.minHeight = -40000,
+	.maxHeight = -10000,
+	.minHeight = -15000,
 	.music = "cubyz:heart-of-the-beast",
-	.chance = 1,
+	.chance = 0.01,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
