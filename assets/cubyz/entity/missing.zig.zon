@@ -1,1 +1,5 @@
-.{.model = "cubyz:entity/missing", .texture = "missing.png", .height = 1}
+.{
+	.model = "cubyz:entity/missing",
+	.texture = "missing.png",
+	.height = 1,
+}
