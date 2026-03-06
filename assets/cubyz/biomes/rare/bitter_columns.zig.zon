@@ -7,8 +7,8 @@
 	.hills = 15,
 	.ground_structure = .{
 		"cubyz:cold_grass",
-		"1 to 2 cubyz:glacite/base",
-		"1 to 3 cubyz:gravel",
+		"1 to 2 cubyz:permafrost",
+		"1 to 3 cubyz:glacite/base",
 	},
 	.structures = .{
 		.{
