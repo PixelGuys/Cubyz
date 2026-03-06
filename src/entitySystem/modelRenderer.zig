@@ -71,7 +71,7 @@ pub const Client = struct {
 		var it = entityComponent.model.Client.renderComponents.iterator();
 		while (it.next()) |component| {
 			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
-			const entModel = component.value_ptr.model;
+			const entModel = component.value_ptr.entityModel.get();
 
 			if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
 			const pos3d = ent.getRenderPosition() - playerPos;
@@ -111,12 +111,12 @@ pub const Client = struct {
 		var it = entityComponent.model.Client.renderComponents.iterator();
 		while (it.next()) |component| {
 			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
-			const entModel = component.value_ptr.model;
+			const entModel = component.value_ptr.entityModel.get();
 
 			if (ent.id == game.Player.id) continue; // don't render local player
 
 			entModel.bind();
-			const entTexture = component.value_ptr.customTexture orelse component.value_ptr.model.defaultTexture;
+			const entTexture = component.value_ptr.customTexture orelse entModel.defaultTexture;
 
 			entTexture.?.bindTo(0);
 			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));

@@ -25,12 +25,12 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /summon", .{});
 		return;
 	}
-	if (main.entityComponent.model.entityModels.get(valueEntityModel)) |_| {
+	if (main.entityModel.getTypeByIdOrNull(valueEntityModel)) |entityModel| {
 		const id = main.server.EntitySystem.add();
 		const summoned = main.server.EntitySystem.getEntity(id);
 		source.player().clone(summoned);
 
-		main.entityComponent.model.Server.register(id, valueEntityModel, null);
+		main.entityComponent.model.Server.registerByIndex(id, entityModel, null);
 
 		if (valueName) |name| {
 			if (summoned.name) |old| {

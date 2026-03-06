@@ -9,26 +9,26 @@ pub const usage = "/avatar <entityTypeID>";
 pub fn execute(args: []const u8, source: *User) void {
 	if (args.len == 0) {
 		if (main.entityComponent.model.Server.get(source.id)) |rc| {
-			source.sendMessage("#00ff00You are a {s}", .{rc.model.id});
+			source.sendMessage("#00ff00You are a {s}", .{rc.entityModel.get().id});
 		} else source.sendMessage("#ff00ffYou are a invisible.", .{});
 		return;
 	}
 	var split = std.mem.splitScalar(u8, args, ' ');
-	if (split.next()) |arg| {
+	if (split.next()) |entityModelID| {
 		if (split.next() != null) {
 			source.sendMessage("#ff0000Too many arguments for command /avatar", .{});
 			return;
 		}
-		if (main.entityComponent.model.entityModels.get(arg)) |entityModel| {
+		if (main.entityModel.getTypeByIdOrNull(entityModelID)) |entityModel| {
 			if (main.entityComponent.model.Server.get(source.id)) |rc| {
 				var newRc = rc;
 				newRc.customTexturePath = null;
-				newRc.model = entityModel;
+				newRc.entityModel = entityModel;
 				main.entityComponent.model.Server.put(source.id, newRc);
 			}
-			source.sendMessage("#00ff00entityTypeID was changed to {s}.", .{arg});
+			source.sendMessage("#00ff00entityTypeID was changed to {s}.", .{entityModelID});
 		} else {
-			source.sendMessage("#ff0000entityTypeID {s} doesnt exist", .{arg});
+			source.sendMessage("#ff0000entityTypeID {s} doesnt exist", .{entityModelID});
 		}
 		// transmit
 		if (main.entityComponent.model.Server.get(source.id)) |rc| {

@@ -248,7 +248,7 @@ pub const User = struct { // MARK: User
 
 		if (world.?.playerEntityModels.items.len != 0) {
 			const defaultModel = world.?.playerEntityModels.items[main.random.nextInt(u32, &main.seed)%world.?.playerEntityModels.items.len];
-			main.entityComponent.model.Server.register(self.id, defaultModel, null);
+			main.entityComponent.model.Server.registerByID(self.id, defaultModel, null);
 		}
 
 		world.?.loadPlayer(self);
