@@ -431,7 +431,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
-	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.clientEntity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
+	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.clientEntity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
@@ -957,5 +957,61 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		const blockEntity = block.blockEntity() orelse return;
 
 		sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
+	}
+};
+
+// format: entityID set   componentID binary
+// format: entityID reset componentID
+pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
+	pub const id: u8 = 15;
+	pub const asynchronous = false;
+
+	const ActionType = enum(u8) { set, reset };
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const entityID = try reader.readInt(u32);
+		const actionType: ActionType = try reader.readEnum(ActionType);
+		const componentID = try reader.readSliceWithSize();
+
+		if (actionType == .set) {
+			const list = main.entityComponent;
+			inline for (@typeInfo(list).@"struct".decls) |decl| {
+				if (std.mem.eql(u8, decl.name, componentID)) {
+					const version = reader.readVarInt(u32) catch std.math.maxInt(u32);
+					@field(list, decl.name).Client.register(entityID, reader, version);
+					break;
+				}
+			}
+		} else if (actionType == .reset) {
+			const list = main.entityComponent;
+			inline for (@typeInfo(list).@"struct".decls) |decl| {
+				if (std.mem.eql(u8, decl.name, componentID)) {
+					@field(list, decl.name).Client.unregister(entityID);
+					break;
+				}
+			}
+		}
+	}
+	pub fn reset(conn: *Connection, entityID: u32, componentID: []const u8) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, entityID);
+		writer.writeEnum(ActionType, ActionType.reset);
+		writer.writeSliceWithSize(componentID);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+	pub fn set(conn: *Connection, entityID: u32, componentID: []const u8, version: u32, componentData: []const u8) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, entityID);
+		writer.writeEnum(ActionType, ActionType.set);
+		writer.writeSliceWithSize(componentID);
+		writer.writeVarInt(u32, version);
+		writer.writeSlice(componentData);
+
+		conn.send(.secure, id, writer.data.items);
 	}
 };
