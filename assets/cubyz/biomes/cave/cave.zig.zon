@@ -4,7 +4,7 @@
 	.minHeight = -48250,
 
 	.fogDensity = 2,
-
+	.caveNoiseStrength = 10,
 	.music = "cubyz:heart-of-the-beast",
 
 	.structures = .{
@@ -37,6 +37,15 @@
 			.block = "cubyz:slate/base",
 			.size = 4,
 			.size_variance = 4,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 8,
+			.maxRadius = 16,
 		},
 	},
 }

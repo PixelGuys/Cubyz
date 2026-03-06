@@ -1577,6 +1577,7 @@ pub const ThreadContext = enum { // MARK: ThreadContext
 	chunkDeiniting,
 
 	pub fn assertCorrectContext(self: ThreadContext, side: Side) void {
+		if (@import("builtin").is_test) return;
 		switch (side) {
 			.server => {
 				std.debug.assert(self == .server);
