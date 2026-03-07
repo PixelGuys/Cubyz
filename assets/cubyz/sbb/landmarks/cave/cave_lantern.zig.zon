@@ -1,0 +1,5 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:landmarks/cave/cave_lantern"},
+	},
+}

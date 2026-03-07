@@ -1,0 +1,5 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:landmarks/forest/mixed/majestic_mixed_trees"},
+	},
+}
