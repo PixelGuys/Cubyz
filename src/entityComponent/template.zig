@@ -33,12 +33,12 @@ pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const Client = struct {
-	pub fn register(id: u32, reader: *utils.BinaryReader, version: u32) void {
+	pub fn load(id: u32, reader: *utils.BinaryReader, version: u32) void {
 		_ = id;
 		_ = reader;
 		_ = version;
 	}
-	pub fn unregister(id: u32) void {
+	pub fn unload(id: u32) void {
 		_ = id;
 	}
 	pub fn init() void {}
@@ -59,12 +59,12 @@ pub const Server = struct {
 		_ = id;
 		return null;
 	}
-	pub fn registerFromData(id: u32, reader: *utils.BinaryReader, version: u32) void {
+	pub fn loadFromData(id: u32, reader: *utils.BinaryReader, version: u32) void {
 		_ = id;
 		_ = reader;
 		_ = version;
 	}
-	pub fn unregister(id: u32) void {
+	pub fn unload(id: u32) void {
 		_ = id;
 	}
 };
