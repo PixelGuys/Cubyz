@@ -594,11 +594,41 @@ pub fn main() void { // MARK: main()
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 
+	if (headless and settings.launchConfig.autoEnterWorld.len == 0) {
+		std.log.err("Cannot run headless server without a world name provided via autoEnterworld in the launchConfig!", .{});
+		return;
+	}
+
+	const selectedPreset: ZonElement = blk: {
+		if (settings.launchConfig.autoEnterWorld.len == 0) {
+			break :blk undefined;
+		}
+		break :blk assets.worldPresets().get(settings.launchConfig.worldCreationPreset) orelse {
+			std.log.err("World preset not found with id: {s}. Using default instead.", .{settings.launchConfig.worldCreationPreset});
+			break :blk assets.worldPresets().get("cubyz:default") orelse {
+				std.log.err("No default world preset found.", .{});
+				return;
+			};
+		};
+	};
+
+	const worldExists: bool = blk: {
+		if (settings.launchConfig.autoEnterWorld.len == 0) {
+			break :blk undefined;
+		}
+		break :blk server.world_zig.exists(settings.launchConfig.autoEnterWorld);
+	};
+
+	if (!worldExists) {
+		server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, selectedPreset) catch |err| {
+			std.log.err("Error creating world: {}", .{err});
+			return;
+		};
+	}
+
 	if (headless) {
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
-	} else {
-		clientMain();
-	}
+	} else {}
 }
 
 pub fn clientMain() void { // MARK: clientMain()

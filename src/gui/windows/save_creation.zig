@@ -38,16 +38,6 @@ var selectedPreset: usize = undefined;
 var defaultPreset: usize = 0;
 var presetButton: *Button = undefined;
 
-fn chooseSeed(seedStr: []const u8) u64 {
-	if (seedStr.len == 0) {
-		return main.random.nextInt(u64, &main.seed);
-	} else {
-		return std.fmt.parseInt(u64, seedStr, 0) catch {
-			return std.hash.Wyhash.hash(0, seedStr);
-		};
-	}
-}
-
 fn gamemodeCallback() void {
 	worldSettings.defaultGamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(worldSettings.defaultGamemode));
@@ -69,7 +59,7 @@ fn testingModeCallback(enabled: bool) void {
 
 fn createWorld() void {
 	const worldName = nameInput.currentString.items;
-	worldSettings.seed = chooseSeed(seedInput.currentString.items);
+	worldSettings.chooseSeed(seedInput.currentString.items);
 
 	main.server.world_zig.tryCreateWorld(worldName, worldSettings, worldPresets[selectedPreset].value_ptr.*) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});

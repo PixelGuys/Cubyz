@@ -210,6 +210,8 @@ pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;
+	pub var worldCreationSettings: main.server.world_zig.Settings = undefined;
+	pub var worldCreationPreset: []const u8 = "";
 	pub var preferredAuthenticationAlgorithm: main.network.authentication.KeyTypeEnum = .ed25519;
 
 	pub fn init() void {
@@ -222,6 +224,8 @@ pub const launchConfig = struct {
 		cubyzDir = main.globalArena.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
+		worldCreationSettings = main.server.world_zig.Settings.fromZon(zon.getChild("worldCreationSettings"));
+		worldCreationPreset = main.globalArena.dupe(u8, zon.get([]const u8, "worldCreationPreset", "cubyz:default"));
 		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm", preferredAuthenticationAlgorithm);
 	}
 };

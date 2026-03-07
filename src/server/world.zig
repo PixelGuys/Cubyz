@@ -38,16 +38,26 @@ pub const Settings = struct {
 
 	pub const defaults: Settings = .{};
 
-	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
-		return .{
-			.seed = zon.get(?u64, "seed", null) orelse {
-				std.log.err("Cannot load world. World has no seed!", .{});
-				return error.NoSeed;
-			},
+	pub fn chooseSeed(self: *Settings, seedStr: []const u8) void {
+		if (seedStr.len == 0) {
+			self.seed = main.random.nextInt(u64, &main.seed);
+		} else {
+			self.seed = blk: {
+				break :blk std.fmt.parseInt(u64, seedStr, 0) catch {
+					break :blk std.hash.Wyhash.hash(0, seedStr);
+				};
+			};
+		}
+	}
+
+	pub fn fromZon(zon: ZonElement) Settings {
+		var self = Settings{
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", @tagName(defaults.defaultGamemode))) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats", defaults.allowCheats),
 			.testingMode = zon.get(bool, "testingMode", defaults.testingMode),
 		};
+		self.chooseSeed(zon.get([]const u8, "seed", ""));
+		return self;
 	}
 
 	pub fn toZon(self: Settings, allocator: NeverFailingAllocator) ZonElement {
@@ -61,6 +71,12 @@ pub const Settings = struct {
 		return zon;
 	}
 };
+
+pub fn exists(worldPath: []const u8) bool {
+	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{"saves", worldPath, "world.zig.zon"}) catch unreachable;
+	defer main.stackAllocator.free(saveDirectory);
+	return files.cubyzDir().hasDir(saveDirectory);
+}
 
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
 	// Remove illegal ASCII characters:
@@ -612,7 +628,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
 		}
-		self.settings = try .fromZon(worldData.getChild("settings"));
+		const worldCreationSettings: ZonElement = worldData.getChild("settings");
+		if (worldCreationSettings.get(?u64, "seed", null) == null) {
+			std.log.err("No seed found in save file, potential corruption detected!", .{});
+			return error.NoSeed;
+		}
+		self.settings = .fromZon(worldCreationSettings);
 
 		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.gameTime = worldData.get(i64, "gameTime", 0);
