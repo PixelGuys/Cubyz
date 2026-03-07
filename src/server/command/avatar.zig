@@ -26,6 +26,11 @@ pub fn execute(args: []const u8, source: *User) void {
 				newRc.entityModel = entityModel;
 				main.entityComponent.model.Server.put(source.id, newRc);
 			}
+			main.entityComponent.model.Server.put(source.id, .{
+				.entity = source.id,
+				.customTexturePath = null,
+				.entityModel = entityModel,
+			});
 			source.sendMessage("#00ff00entityTypeID was changed to {s}.", .{entityModelID});
 		} else {
 			source.sendMessage("#ff0000entityTypeID {s} doesnt exist", .{entityModelID});
