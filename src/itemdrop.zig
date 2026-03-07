@@ -43,7 +43,7 @@ pub const ItemDropNetworkData = struct {
 
 pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
-	pub const radius: f64 = 0.1;
+	pub const radius: f64 = 0.4;
 	/// Side length of all item entities hitboxes as a cube.
 	pub const diameter: f64 = 2*radius;
 
