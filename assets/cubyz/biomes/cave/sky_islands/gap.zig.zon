@@ -1,0 +1,4 @@
+.{
+	.chance = 10,
+	.minHeight = 9500,
+}

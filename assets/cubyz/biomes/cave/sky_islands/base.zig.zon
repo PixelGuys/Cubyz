@@ -1,9 +1,5 @@
 .{
-	.isCave = true,
-	.minHeight = 10000,
-	.chance = 0.1,
-
-	.music = "cubyz:GymnopedieNo1",
+	.chance = 1,
 
 	.caveModels = .{
 		.{

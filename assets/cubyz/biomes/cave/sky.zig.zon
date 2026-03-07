@@ -1,6 +1,7 @@
 .{
 	.isCave = true,
 	.minHeight = 0,
+	.maxHeight = 9500,
 	.caveNoiseStrength = 10,
 	.music = "cubyz:GymnopedieNo1",
 
