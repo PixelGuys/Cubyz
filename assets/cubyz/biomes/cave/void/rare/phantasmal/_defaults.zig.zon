@@ -5,7 +5,7 @@
 	.maxHeight = -50000,
 	.music = "cubyz:cubyz",
 	.stoneBlock = "cubyz:chalk/black",
-	.chance = 0.005,
+	.chance = 0.008,
 	.ground_structure = .{
 		"0 to 1 cubyz:obsidian",
 	},

@@ -51,7 +51,7 @@
 			.chance = 0.016,
 			.block = "cubyz:slate/base",
 			.size = 2,
-			.size_variance = 4,
+			.size_variance = 5,
 		},
 	},
 	.caveModels = .{
