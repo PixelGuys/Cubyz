@@ -17,17 +17,10 @@
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:duckweed:0"},
-			.chance = 0.1,
-			.width = 8,
-			.variation = 4,
-			.density = 0.9,
-			.priority = 0.2,
-			.generationMode = .water_surface,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:duckweed:1"},
+			.blocks = .{
+				"cubyz:duckweed:0",
+				"cubyz:duckweed:1",
+			},
 			.chance = 0.08,
 			.width = 6,
 			.variation = 3,
@@ -37,7 +30,10 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:duckweed:2"},
+			.blocks = .{
+				"cubyz:duckweed:1",
+				"cubyz:duckweed:2",
+			},
 			.chance = 0.05,
 			.width = 5,
 			.variation = 2,
@@ -47,7 +43,12 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:lily_pad"},
+			.blocks = .{
+				"cubyz:lily_pad:0",
+				"cubyz:lily_pad:1",
+				"cubyz:lily_pad:2",
+				"cubyz:lily_pad:3",
+			},
 			.generationMode = .water_surface,
 			.chance = 0.1,
 			.width = 6,
