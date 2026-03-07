@@ -98,7 +98,7 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	player: Entity = .{},
+	inner_player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -143,6 +143,10 @@ pub const User = struct { // MARK: User
 
 	permissions: permission.Permissions = undefined,
 
+	pub fn player(self: *User) *Entity {
+		return &self.inner_player;
+	}
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
@@ -177,6 +181,8 @@ pub const User = struct { // MARK: User
 		self.permissions.deinit();
 
 		self.worldEditData.deinit();
+
+		self.player().deinit(.ServerSide);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -243,7 +249,7 @@ pub const User = struct { // MARK: User
 		freeId += 1;
 
 		world.?.loadPlayer(self);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
 
@@ -299,7 +305,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -463,7 +469,7 @@ pub const User = struct { // MARK: User
 		const position: [3]f64 = try reader.readVec(Vec3d);
 		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.player.rot = rotation;
+		self.player().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
@@ -515,6 +521,13 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
+		@field(main.entityComponent, decl.name).Server.init();
+	}
+	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
+		@field(main.entitySystem, decl.name).Server.init();
+	}
+
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
 
@@ -559,6 +572,13 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
+
+	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
+		@field(main.entityComponent, decl.name).Server.deinit();
+	}
+	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
+		@field(main.entitySystem, decl.name).Server.deinit();
+	}
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -613,24 +633,24 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (userList) |user| {
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = user.player.pos,
-			.vel = user.player.vel,
-			.rot = user.player.rot,
+			.pos = user.player().pos,
+			.vel = user.player().vel,
+			.rot = user.player().rot,
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, user.player().pos, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
-		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const pos = @as(Vec3i, @intFromFloat(user.player().pos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;

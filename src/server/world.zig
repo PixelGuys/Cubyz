@@ -211,7 +211,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch (self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos),
+				.user => |user| return self.pos.getPriority(user.player().pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
@@ -275,7 +275,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if (self.source) |user| {
-				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(user.player().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -943,13 +943,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
-		const player = &user.player;
+		const player = user.player();
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
-			player.loadFrom(playerData.getChild("entity"));
+			player.loadFrom(user.id, playerData.getChild("entity"), .ServerSide);
 
 			user.permissions.fromZon(playerData);
 
@@ -1005,7 +1005,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("name", user.name);
 		playerZon.put("publicKey", user.newKeyString);
 
-		playerZon.put("entity", user.player.save(main.stackAllocator));
+		playerZon.put("entity", user.player().save(main.stackAllocator));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
