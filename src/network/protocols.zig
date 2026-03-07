@@ -427,7 +427,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 					},
 				}
 			}
-			main.entity.ClientEntityManager.serverUpdate(time, entityData.items);
+			main.client.EntityManager.serverUpdate(time, entityData.items);
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
@@ -511,10 +511,10 @@ pub const entity = struct { // MARK: entity
 			const elem = zonArray.array.items[i];
 			switch (elem) {
 				.int => {
-					main.entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+					main.client.EntityManager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					main.entity.ClientEntityManager.addEntity(elem);
+					main.client.EntityManager.addEntity(elem);
 				},
 				.null => {
 					i += 1;

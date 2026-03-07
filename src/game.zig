@@ -660,8 +660,10 @@ pub const World = struct { // MARK: World
 		main.items.clearRecipeCachedInventories();
 		main.sync.ClientSide.reset();
 
+		main.entity.Client.clear();
+
 		main.threadPool.clear();
-		main.entity.ClientEntityManager.clear();
+		main.client.EntityManager.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
