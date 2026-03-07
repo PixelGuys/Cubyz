@@ -661,7 +661,7 @@ pub const World = struct { // MARK: World
 		main.sync.ClientSide.reset();
 
 		main.threadPool.clear();
-		main.entity.ClientEntityManager.clear();
+		main.clientEntity.ClientEntityManager.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
