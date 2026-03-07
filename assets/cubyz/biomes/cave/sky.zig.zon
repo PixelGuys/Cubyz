@@ -8,7 +8,7 @@
 	.ground_structure = .{},
 	.caveModels = .{
 		.{
-			.id = "cubyz:hemisphere",
+			.id = "cubyz:partial_sphere",
 			.minAmount = 10,
 			.maxAmount = 16,
 			.minRadius = 6,
