@@ -3,7 +3,7 @@ const Atomic = std.atomic.Value;
 
 const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
-const clientEntity = @import("clientEntity.zig");
+const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const particles = @import("particles.zig");
 const c = graphics.c;
@@ -235,7 +235,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
-	clientEntity.ClientEntityManager.render(game.projectionMatrix, ambientLight, playerPos);
+	main.client.EntityManager.render(game.projectionMatrix, ambientLight, playerPos);
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
@@ -323,7 +323,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) clientEntity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
+	if (!main.gui.hideGui) main.client.EntityManager.renderNames(game.projectionMatrix, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 

@@ -515,12 +515,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
-	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
-		@field(main.entityComponent, decl.name).Server.init();
-	}
-	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
-		@field(main.entitySystem, decl.name).Server.init();
-	}
+	main.entity.Server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
 
@@ -565,12 +560,7 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
-	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
-		@field(main.entityComponent, decl.name).Server.deinit();
-	}
-	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
-		@field(main.entitySystem, decl.name).Server.deinit();
-	}
+	main.entity.Server.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -625,7 +615,7 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (userList) |user| {
