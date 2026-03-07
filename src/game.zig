@@ -660,6 +660,12 @@ pub const World = struct { // MARK: World
 		main.items.clearRecipeCachedInventories();
 		main.sync.ClientSide.reset();
 
+		inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
+			@field(main.entitySystem, decl.name).Client.clear();
+		}
+		inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
+			@field(main.entityComponent, decl.name).Client.clear();
+		}
 		main.threadPool.clear();
 		main.clientEntity.ClientEntityManager.clear();
 		self.itemDrops.deinit();
