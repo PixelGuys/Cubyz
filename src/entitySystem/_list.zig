@@ -1,1 +1,1 @@
-pub const template = @import("template.zig");
+pub const _ = @import("_template.zig");
