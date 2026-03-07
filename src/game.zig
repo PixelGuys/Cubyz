@@ -670,7 +670,6 @@ pub const World = struct { // MARK: World
 		main.server.stop();
 
 		Player.super.deinit(.ClientSide);
-
 		if (main.server.thread) |serverThread| {
 			serverThread.join();
 			main.server.thread = null;
