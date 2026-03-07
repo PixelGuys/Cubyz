@@ -1,0 +1,32 @@
+.{
+	.isCave = true,
+	.minHeight = 10000,
+	.chance = 0.1,
+
+	.music = "cubyz:GymnopedieNo1",
+
+	.caveModels = .{
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 0,
+			.maxAmount = 1,
+			.minRadius = 60,
+			.maxRadius = 100,
+			.cutDirection = .{0, 0, 1},
+			.cutDirectionRandomness = 0.1,
+			.cutPercentage = 0.8,
+			.mode = .additive,
+		},
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 5,
+			.maxAmount = 10,
+			.minRadius = 15,
+			.maxRadius = 30,
+			.cutDirection = .{0, 0, 1},
+			.cutDirectionRandomness = 0.1,
+			.cutPercentage = 0.8,
+			.mode = .additive,
+		},
+	},
+}
