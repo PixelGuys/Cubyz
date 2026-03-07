@@ -568,7 +568,7 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
-	
+
 	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
 		@field(main.entityComponent, decl.name).Server.deinit();
 	}
