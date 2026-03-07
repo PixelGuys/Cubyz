@@ -1,11 +1,11 @@
 .{
 	.isCave = true,
-	.fogDensity = 35,
-	.fogColor = 0x000C14,
+	.fogDensity = 10,
+	.fogColor = 0x272334,
 	.maxHeight = -50000,
 	.music = "cubyz:cubyz",
 	.stoneBlock = "cubyz:chalk/black",
-	.chance = 0.01,
+	.chance = 0.005,
 	.ground_structure = .{
 		"0 to 1 cubyz:obsidian",
 	},
