@@ -1,5 +1,9 @@
 .{
 	.isCave = true,
+	.minHeight = 10000,
+	.fogDensity = 5.0,
+	.fogLower = 1e9,
+	.fogHigher = 1e9,
 
 	.music = "cubyz:GymnopedieNo1",
 

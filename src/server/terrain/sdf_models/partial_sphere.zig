@@ -32,7 +32,7 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 
 	var relPosF32: Vec3f = @floatFromInt(relPos);
 	const cutDirection = vec.normalize(self.cutDirection + main.random.nextFloatVectorSigned(3, &seed)*@as(Vec3f, @splat(self.cutDirectionRandomness)));
-	relPosF32 += cutDirection*@as(Vec3f, @splat(self.cutPercentage/2));
+	relPosF32 += cutDirection*@as(Vec3f, @splat(self.cutPercentage/2*radius));
 	const dimVector: Vec3f = @floatFromInt(@Vector(3, u32){output.width*voxelSize, output.depth*voxelSize, output.height*voxelSize});
 	const min = @max(@as(Vec3f, @splat(0)), relPosF32 - @as(Vec3f, @splat(radius + perimeter)));
 	const max = @min(dimVector, relPosF32 + @as(Vec3f, @splat(radius + perimeter)));

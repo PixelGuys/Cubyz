@@ -43,7 +43,7 @@ fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, a
 	@memset(additiveOutput.mem, 1000);
 	const mapPos: Vec3i = .{map.pos.wx, map.pos.wy, map.pos.wz};
 	const margin: Vec3i = @splat(256 + perimeter + terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize);
-	const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{CaveMapFragment.width, CaveMapFragment.width, CaveMapFragment.height});
+	const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.height*map.pos.voxelSize});
 	defer main.stackAllocator.free(biomePoints);
 
 	for (biomePoints) |biomePoint| {
@@ -62,7 +62,7 @@ fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, a
 }
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
-	if (map.pos.voxelSize > 2) return;
+	if (map.pos.voxelSize > 4) return;
 	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, 0);
 	defer biomeMap.deinit();
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
