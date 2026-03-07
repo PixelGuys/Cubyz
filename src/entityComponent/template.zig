@@ -29,7 +29,7 @@ const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
 
-pub const ENTITY_COMPONENT_VERSION = 0;
+pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const Client = struct {
