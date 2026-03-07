@@ -211,7 +211,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch (self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos),
+				.user => |user| return self.pos.getPriority(user.player().pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
@@ -275,7 +275,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if (self.source) |user| {
-				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(user.player().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -426,6 +426,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	itemPalette: *main.assets.Palette = undefined,
 	toolPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
+	entityModelPalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
 	gameTime: i64 = 0,
@@ -452,6 +453,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	biomeChecksum: i64 = 0,
 
+	playerEntityModels: main.ListUnmanaged([]const u8),
+
 	const ChunkUpdateRequest = struct {
 		ch: *ServerChunk,
 		milliTimeStamp: i64,
@@ -465,14 +468,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	pub fn init(path: []const u8) !*ServerWorld { // MARK: init()
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
-		self.* = ServerWorld{
-			.lastUpdateTime = main.timestamp(),
-			.milliTime = main.timestamp(),
-			.lastUnimportantDataSent = main.timestamp(),
-			.path = main.globalAllocator.dupe(u8, path),
-			.chunkUpdateQueue = .init(main.globalAllocator, 256),
-			.regionUpdateQueue = .init(main.globalAllocator, 256),
-		};
+		self.* = ServerWorld{.lastUpdateTime = main.timestamp(), .milliTime = main.timestamp(), .lastUnimportantDataSent = main.timestamp(), .path = main.globalAllocator.dupe(u8, path), .chunkUpdateQueue = .init(main.globalAllocator, 256), .regionUpdateQueue = .init(main.globalAllocator, 256), .playerEntityModels = .{}};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
 
@@ -494,21 +490,32 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
 
+		self.entityModelPalette = try loadPalette(arena, path, "entityModel_palette", "cubyz:missing");
+		errdefer self.entityModelPalette.deinit();
+
 		errdefer main.assets.unloadAssets();
 
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.entityModelPalette);
 		// Store the block palette now that everything is loaded.
 		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
 		try dir.writeZon("tool_palette.zig.zon", self.toolPalette.storeToZon(arena));
 		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
+		try dir.writeZon("entityModel_palette.zig.zon", self.entityModelPalette.storeToZon(arena));
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
+
+		for (self.playerEntityModels.items) |entityModel| {
+			if (!main.entityModel.hasRegistered(entityModel)) {
+				std.log.err("EntityModel {s} is not available.", .{entityModel});
+				continue;
+			}
+		}
 
 		return self;
 	}
@@ -536,12 +543,17 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.decreaseRefCount();
 		}
 		self.regionUpdateQueue.deinit();
+		for (self.playerEntityModels.items) |value| {
+			main.globalAllocator.free(value);
+		}
+		self.playerEntityModels.deinit(main.globalAllocator);
 		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
+		self.entityModelPalette.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -620,6 +632,28 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
+
+		// playerEntityModel
+		var useDefaultModels: bool = true;
+		if (worldData.getChildOrNull("playerEntityModels")) |playerEntityModels| {
+			if (playerEntityModels != .array) {
+				std.log.err("playerEntityModels in world.zig.zon must be an Array.", .{});
+			} else {
+				useDefaultModels = false;
+				for (playerEntityModels.array.items) |value| {
+					const entityModel = value.as(?[]const u8, null) orelse {
+						std.log.err("playerEntityModels in world.zig.zon must be an Array of strings.", .{});
+						continue;
+					};
+					self.playerEntityModels.append(main.globalAllocator, main.globalAllocator.dupe(u8, entityModel));
+				}
+			}
+		}
+		if (useDefaultModels) {
+			for ([_][]const u8{"cubyz:snale", "cubyz:cubert"}) |entityModel| {
+				self.playerEntityModels.append(main.globalAllocator, main.globalAllocator.dupe(u8, entityModel));
+			}
+		}
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -635,6 +669,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
+
+		const playerEntityModels = ZonElement.initArray(main.stackAllocator);
+		for (self.playerEntityModels.items) |entityModelId| {
+			playerEntityModels.append(entityModelId);
+		}
+		worldData.put("playerEntityModels", playerEntityModels);
 
 		try files.cubyzDir().writeZon(path, worldData);
 	}
@@ -943,13 +983,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
-		const player = &user.player;
+		const player = user.player();
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
-			player.loadFrom(playerData.getChild("entity"));
+			player.loadFrom(user.id, playerData.getChild("entity"), .ServerSide);
 
 			user.permissions.fromZon(playerData);
 
@@ -1005,7 +1045,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("name", user.name);
 		playerZon.put("publicKey", user.newKeyString);
 
-		playerZon.put("entity", user.player.save(main.stackAllocator));
+		playerZon.put("entity", user.player().save(main.stackAllocator));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
