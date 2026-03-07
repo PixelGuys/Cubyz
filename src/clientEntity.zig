@@ -146,7 +146,7 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 		var time: i16 = @truncate(main.timestamp().toMilliseconds() -% settings.entityLookback);
 		time -%= timeDifference.difference.load(.monotonic);
-		
+
 		for (entityArray.items()) |*ent| {
 			ent.update(time, lastTime);
 		}
