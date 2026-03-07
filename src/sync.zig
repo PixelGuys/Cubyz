@@ -697,12 +697,12 @@ pub const Command = struct { // MARK: Command
 			},
 			.addHealth => |*info| {
 				if (side == .server) {
-					info.previous = info.target.?.player.health;
+					info.previous = info.target.?.player().health;
 
-					info.target.?.player.health = std.math.clamp(info.target.?.player.health + info.health, 0, info.target.?.player.maxHealth);
+					info.target.?.player().health = std.math.clamp(info.target.?.player().health + info.health, 0, info.target.?.player().maxHealth);
 
-					if (info.target.?.player.health <= 0) {
-						info.target.?.player.health = info.target.?.player.maxHealth;
+					if (info.target.?.player().health <= 0) {
+						info.target.?.player().health = info.target.?.player().maxHealth;
 						info.cause.sendMessage(info.target.?.name);
 
 						self.syncOperations.append(allocator, .{.kill = .{
@@ -722,9 +722,9 @@ pub const Command = struct { // MARK: Command
 			},
 			.addEnergy => |*info| {
 				if (side == .server) {
-					info.previous = info.target.?.player.energy;
+					info.previous = info.target.?.player().energy;
 
-					info.target.?.player.energy = std.math.clamp(info.target.?.player.energy + info.energy, 0, info.target.?.player.maxEnergy);
+					info.target.?.player().energy = std.math.clamp(info.target.?.player().energy + info.energy, 0, info.target.?.player().maxEnergy);
 					self.syncOperations.append(allocator, .{.energy = .{
 						.target = info.target.?,
 						.energy = info.energy,
@@ -1032,8 +1032,8 @@ pub const Command = struct { // MARK: Command
 			}
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if (ctx.side == .server) {
-				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -ctx.user.?.player.rot[0]), -ctx.user.?.player.rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, ctx.user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -ctx.user.?.player().rot[0]), -ctx.user.?.player().rot[2]);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, ctx.user.?.player().pos, direction, 20, main.server.updatesPerSec*2);
 			}
 			ctx.execute(.{.delete = .{
 				.source = self.source,
@@ -1147,7 +1147,7 @@ pub const Command = struct { // MARK: Command
 				const remainingAmount = self.destinations.putItemsInto(ctx, sourceStack.amount, .{.move = .{.inv = self.source, .slot = @intCast(sourceSlot)}});
 				if (remainingAmount == 0) continue;
 				if (ctx.side == .server) {
-					const direction = if (ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player.rot[0]), -_user.player.rot[2]) else Vec3f{0, 0, 0};
+					const direction = if (ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player().rot[0]), -_user.player().rot[2]) else Vec3f{0, 0, 0};
 					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 20);
 				}
 				ctx.execute(.{.delete = .{
@@ -1169,7 +1169,7 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.destinations = destinations,
 				.source = Inventory.getInventory(sourceId, side, user) orelse return error.InventoryNotFound,
-				.dropLocation = (user orelse return error.Invalid).player.pos,
+				.dropLocation = (user orelse return error.Invalid).player().pos,
 			};
 		}
 	};
@@ -1516,7 +1516,7 @@ pub const Command = struct { // MARK: Command
 				.target = target,
 				.health = self.health,
 				.cause = self.cause,
-				.previous = if (ctx.side == .server) target.?.player.health else main.game.Player.super.health,
+				.previous = if (ctx.side == .server) target.?.player().health else main.game.Player.super.health,
 			}});
 		}
 
