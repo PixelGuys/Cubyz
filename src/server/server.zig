@@ -182,7 +182,7 @@ pub const User = struct { // MARK: User
 
 		self.worldEditData.deinit();
 
-		self.player.deinit(.ServerSide);
+		self.player().deinit(.ServerSide);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
