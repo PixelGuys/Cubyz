@@ -6,29 +6,29 @@
 	.fogHigher = 1e10,
 
 	.music = "cubyz:GymnopedieNo1",
-
+	.stoneBlock = "cubyz:nimbusite/base",
 	.ground_structure = .{
-		"cubyz:grass",
-		"2 to 3 cubyz:soil",
+		"cubyz:grass/sky",
+		"2 to 3 cubyz:aerosoil",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
-			.chance = 0.1,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/birch/silver/1",
 			.placeMode = .degradable,
-			.chance = 0.05,
+			.chance = 0.02,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/birch/silver/2",
 			.placeMode = .degradable,
-			.chance = 0.05,
+			.chance = 0.02,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
@@ -45,13 +45,6 @@
 			.chance = 0.002,
 			.height = 6,
 			.height_variation = 3,
-		},
-		.{
-			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
-			.chance = 0.4,
-			.height = 1,
-			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",
