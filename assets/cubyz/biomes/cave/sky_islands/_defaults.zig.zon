@@ -2,8 +2,8 @@
 	.isCave = true,
 	.minHeight = 10000,
 	.fogDensity = 5.0,
-	.fogLower = 1e9,
-	.fogHigher = 1e9,
+	.fogLower = 1e10,
+	.fogHigher = 1e10,
 
 	.music = "cubyz:GymnopedieNo1",
 
