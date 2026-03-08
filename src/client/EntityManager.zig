@@ -46,8 +46,8 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snale.png");
-	const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/snale.obj") catch |err| blk: {
+	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
+	const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entities/models/snale.obj") catch |err| blk: {
 		std.log.err("Error while reading player model: {s}", .{@errorName(err)});
 		break :blk &.{};
 	};
