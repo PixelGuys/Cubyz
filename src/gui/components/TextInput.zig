@@ -40,519 +40,519 @@ lastBlinkTime: std.Io.Timestamp = .fromNanoseconds(0),
 showCusor: bool = true,
 
 pub fn __init() void {
-	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
+    texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
 }
 
 pub fn __deinit() void {
-	texture.deinit();
+    texture.deinit();
 }
 
 const Callbacks = struct {
-	onNewline: main.callbacks.SimpleCallback,
-	onUp: main.callbacks.SimpleCallback = .{},
-	onDown: main.callbacks.SimpleCallback = .{},
-	onUpdate: main.callbacks.SimpleCallback = .{},
+    onNewline: main.callbacks.SimpleCallback,
+    onUp: main.callbacks.SimpleCallback = .{},
+    onDown: main.callbacks.SimpleCallback = .{},
+    onUpdate: main.callbacks.SimpleCallback = .{},
 };
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, callbacks: Callbacks) *TextInput {
-	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
-	const self = main.globalAllocator.create(TextInput);
-	self.* = TextInput{
-		.pos = pos,
-		.size = .{maxWidth, maxHeight},
-		.currentString = .init(main.globalAllocator),
-		.textBuffer = TextBuffer.init(main.globalAllocator, text, .{}, true, .left),
-		.maxWidth = maxWidth,
-		.maxHeight = maxHeight,
-		.scrollBar = scrollBar,
-		.callbacks = callbacks,
-	};
-	self.currentString.appendSlice(text);
-	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
-	return self;
+    const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2 * border, 0);
+    const self = main.globalAllocator.create(TextInput);
+    self.* = TextInput{
+        .pos = pos,
+        .size = .{ maxWidth, maxHeight },
+        .currentString = .init(main.globalAllocator),
+        .textBuffer = TextBuffer.init(main.globalAllocator, text, .{}, true, .left),
+        .maxWidth = maxWidth,
+        .maxHeight = maxHeight,
+        .scrollBar = scrollBar,
+        .callbacks = callbacks,
+    };
+    self.currentString.appendSlice(text);
+    self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2 * border - scrollBarWidth);
+    return self;
 }
 
 pub fn deinit(self: *const TextInput) void {
-	if (gui.selectedTextInput == self) {
-		gui.setSelectedTextInput(null);
-	}
+    if (gui.selectedTextInput == self) {
+        gui.setSelectedTextInput(null);
+    }
 
-	self.textBuffer.deinit();
-	self.currentString.deinit();
-	self.scrollBar.deinit();
-	main.globalAllocator.destroy(self);
+    self.textBuffer.deinit();
+    self.currentString.deinit();
+    self.scrollBar.deinit();
+    main.globalAllocator.destroy(self);
 }
 
 pub fn clear(self: *TextInput) void {
-	if (self.cursor != null) {
-		self.cursor = 0;
-		self.selectionStart = null;
-	}
-	self.currentString.clearRetainingCapacity();
-	self.reloadText();
+    if (self.cursor != null) {
+        self.cursor = 0;
+        self.selectionStart = null;
+    }
+    self.currentString.clearRetainingCapacity();
+    self.reloadText();
 }
 
 pub fn toComponent(self: *TextInput) GuiComponent {
-	return .{.textInput = self};
+    return .{ .textInput = self };
 }
 
 pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) main.callbacks.Result {
-	if (self.textSize[1] > self.maxHeight - 2*border) {
-		const diff = self.textSize[1] - (self.maxHeight - 2*border);
-		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
-		main.Window.scrollOffset = 0;
-	}
-	if (self.textSize[1] > self.maxHeight - 2*border) {
-		self.scrollBar.pos = Vec2f{self.size[0] - border - scrollBarWidth, border};
-		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			if (self.scrollBar.updateHovered(mousePosition - self.pos) == .handled) return .handled;
-		}
-	}
-	return .handled;
+    if (self.textSize[1] > self.maxHeight - 2 * border) {
+        const diff = self.textSize[1] - (self.maxHeight - 2 * border);
+        self.scrollBar.scroll(-main.Window.scrollOffset * 32 / diff);
+        main.Window.scrollOffset = 0;
+    }
+    if (self.textSize[1] > self.maxHeight - 2 * border) {
+        self.scrollBar.pos = Vec2f{ self.size[0] - border - scrollBarWidth, border };
+        if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+            if (self.scrollBar.updateHovered(mousePosition - self.pos) == .handled) return .handled;
+        }
+    }
+    return .handled;
 }
 
 pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) main.callbacks.Result {
-	if (self.textSize[1] > self.maxHeight - 2*border) {
-		self.scrollBar.pos = Vec2f{self.size[0] - border - scrollBarWidth, border};
-		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
-			if (self.scrollBar.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
-		}
-	}
-	self.cursor = null;
-	var textPos = Vec2f{border, border};
-	if (self.textSize[1] > self.maxHeight - 2*border) {
-		const diff = self.textSize[1] - (self.maxHeight - 2*border);
-		textPos[1] -= diff*self.scrollBar.currentState;
-	}
-	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
-	self.pressed = true;
-	self.ensureCursorVisibility();
-	return .handled;
+    if (self.textSize[1] > self.maxHeight - 2 * border) {
+        self.scrollBar.pos = Vec2f{ self.size[0] - border - scrollBarWidth, border };
+        if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+            if (self.scrollBar.mainButtonPressed(mousePosition - self.pos) == .handled) return .handled;
+        }
+    }
+    self.cursor = null;
+    var textPos = Vec2f{ border, border };
+    if (self.textSize[1] > self.maxHeight - 2 * border) {
+        const diff = self.textSize[1] - (self.maxHeight - 2 * border);
+        textPos[1] -= diff * self.scrollBar.currentState;
+    }
+    self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
+    self.pressed = true;
+    self.ensureCursorVisibility();
+    return .handled;
 }
 
 pub fn mainButtonReleased(self: *TextInput, mousePosition: Vec2f) void {
-	if (self.pressed) {
-		var textPos = Vec2f{border, border};
-		if (self.textSize[1] > self.maxHeight - 2*border) {
-			const diff = self.textSize[1] - (self.maxHeight - 2*border);
-			textPos[1] -= diff*self.scrollBar.currentState;
-		}
-		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
-		if (self.cursor == self.selectionStart) {
-			self.selectionStart = null;
-		}
-		self.pressed = false;
-		gui.setSelectedTextInput(self);
-	} else if (self.textSize[1] > self.maxHeight - 2*border) {
-		self.scrollBar.pos = .{self.size[0] - border - scrollBarWidth, border};
-		self.scrollBar.mainButtonReleased(mousePosition - self.pos);
-		gui.setSelectedTextInput(self);
-	}
+    if (self.pressed) {
+        var textPos = Vec2f{ border, border };
+        if (self.textSize[1] > self.maxHeight - 2 * border) {
+            const diff = self.textSize[1] - (self.maxHeight - 2 * border);
+            textPos[1] -= diff * self.scrollBar.currentState;
+        }
+        self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
+        if (self.cursor == self.selectionStart) {
+            self.selectionStart = null;
+        }
+        self.pressed = false;
+        gui.setSelectedTextInput(self);
+    } else if (self.textSize[1] > self.maxHeight - 2 * border) {
+        self.scrollBar.pos = .{ self.size[0] - border - scrollBarWidth, border };
+        self.scrollBar.mainButtonReleased(mousePosition - self.pos);
+        gui.setSelectedTextInput(self);
+    }
 }
 
 pub fn select(self: *TextInput) void {
-	gui.setSelectedTextInput(self);
-	self.pressed = false;
-	self.selectionStart = null;
-	if (self.cursor == null)
-		self.cursor = @intCast(self.currentString.items.len);
+    gui.setSelectedTextInput(self);
+    self.pressed = false;
+    self.selectionStart = null;
+    if (self.cursor == null)
+        self.cursor = @intCast(self.currentString.items.len);
 }
 
 pub fn deselect(self: *TextInput) void {
-	self.cursor = null;
-	self.selectionStart = null;
+    self.cursor = null;
+    self.selectionStart = null;
 }
 
 fn reloadText(self: *TextInput) void {
-	self.callbacks.onUpdate.run();
-	self.textBuffer.deinit();
-	self.textBuffer = TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
-	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
+    self.callbacks.onUpdate.run();
+    self.textBuffer.deinit();
+    self.textBuffer = TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
+    self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2 * border - scrollBarWidth);
 }
 
 fn moveCursorLeft(self: *TextInput) void {
-	if (main.KeyBoard.key("textModifier").pressed) {
-		const text = self.currentString.items;
-		if (self.cursor.? == 0) return;
-		self.cursor.? -= 1;
-		// Find end of previous "word":
-		while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
-			if (self.cursor.? == 0) return;
-			self.cursor.? -= 1;
-		}
-		// Find the start of the previous "word":
-		while (std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
-			if (self.cursor.? == 0) return;
-			self.cursor.? -= 1;
-		}
-		self.cursor.? += 1;
-	} else {
-		while (self.cursor.? > 0) {
-			self.cursor.? -= 1;
-			if ((std.unicode.utf8ByteSequenceLength(self.currentString.items[self.cursor.?]) catch 0) != 0) break; // Ugly hack to check if we found a valid start byte.
-		}
-	}
+    if (main.KeyBoard.key("textModifier").pressed) {
+        const text = self.currentString.items;
+        if (self.cursor.? == 0) return;
+        self.cursor.? -= 1;
+        // Find end of previous "word":
+        while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
+            if (self.cursor.? == 0) return;
+            self.cursor.? -= 1;
+        }
+        // Find the start of the previous "word":
+        while (std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
+            if (self.cursor.? == 0) return;
+            self.cursor.? -= 1;
+        }
+        self.cursor.? += 1;
+    } else {
+        while (self.cursor.? > 0) {
+            self.cursor.? -= 1;
+            if ((std.unicode.utf8ByteSequenceLength(self.currentString.items[self.cursor.?]) catch 0) != 0) break; // Ugly hack to check if we found a valid start byte.
+        }
+    }
 }
 
 pub fn left(self: *TextInput) void {
-	if (self.cursor) |*cursor| {
-		if (main.KeyBoard.key("textModifier").pressed) {
-			if (self.selectionStart == null) {
-				self.selectionStart = cursor.*;
-			}
-			self.moveCursorLeft();
-			if (self.selectionStart == self.cursor) {
-				self.selectionStart = null;
-			}
-		} else {
-			if (self.selectionStart) |selectionStart| {
-				cursor.* = @min(cursor.*, selectionStart);
-				self.selectionStart = null;
-			} else {
-				self.moveCursorLeft();
-			}
-		}
-		self.ensureCursorVisibility();
-	}
+    if (self.cursor) |*cursor| {
+        if (main.KeyBoard.key("textModifier").pressed) {
+            if (self.selectionStart == null) {
+                self.selectionStart = cursor.*;
+            }
+            self.moveCursorLeft();
+            if (self.selectionStart == self.cursor) {
+                self.selectionStart = null;
+            }
+        } else {
+            if (self.selectionStart) |selectionStart| {
+                cursor.* = @min(cursor.*, selectionStart);
+                self.selectionStart = null;
+            } else {
+                self.moveCursorLeft();
+            }
+        }
+        self.ensureCursorVisibility();
+    }
 }
 
 fn moveCursorRight(self: *TextInput) void {
-	if (self.cursor.? < self.currentString.items.len) {
-		if (main.KeyBoard.key("textModifier").pressed) {
-			const text = self.currentString.items;
-			// Find start of next "word":
-			while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
-				self.cursor.? += 1;
-				if (self.cursor.? >= self.currentString.items.len) return;
-			}
-			// Find the end of the next "word":
-			while (std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
-				self.cursor.? += 1;
-				if (self.cursor.? >= self.currentString.items.len) return;
-			}
-		} else {
-			self.cursor.? += std.unicode.utf8ByteSequenceLength(self.currentString.items[self.cursor.?]) catch 0;
-		}
-	}
+    if (self.cursor.? < self.currentString.items.len) {
+        if (main.KeyBoard.key("textModifier").pressed) {
+            const text = self.currentString.items;
+            // Find start of next "word":
+            while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
+                self.cursor.? += 1;
+                if (self.cursor.? >= self.currentString.items.len) return;
+            }
+            // Find the end of the next "word":
+            while (std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
+                self.cursor.? += 1;
+                if (self.cursor.? >= self.currentString.items.len) return;
+            }
+        } else {
+            self.cursor.? += std.unicode.utf8ByteSequenceLength(self.currentString.items[self.cursor.?]) catch 0;
+        }
+    }
 }
 
 pub fn right(self: *TextInput) void {
-	if (self.cursor) |*cursor| {
-		if (main.KeyBoard.key("textModifier").pressed) {
-			if (self.selectionStart == null) {
-				self.selectionStart = cursor.*;
-			}
-			self.moveCursorRight();
-			if (self.selectionStart == self.cursor) {
-				self.selectionStart = null;
-			}
-		} else {
-			if (self.selectionStart) |selectionStart| {
-				cursor.* = @max(cursor.*, selectionStart);
-				self.selectionStart = null;
-			} else {
-				self.moveCursorRight();
-			}
-		}
-		self.ensureCursorVisibility();
-	}
+    if (self.cursor) |*cursor| {
+        if (main.KeyBoard.key("textModifier").pressed) {
+            if (self.selectionStart == null) {
+                self.selectionStart = cursor.*;
+            }
+            self.moveCursorRight();
+            if (self.selectionStart == self.cursor) {
+                self.selectionStart = null;
+            }
+        } else {
+            if (self.selectionStart) |selectionStart| {
+                cursor.* = @max(cursor.*, selectionStart);
+                self.selectionStart = null;
+            } else {
+                self.moveCursorRight();
+            }
+        }
+        self.ensureCursorVisibility();
+    }
 }
 
 fn moveCursorVertically(self: *TextInput, relativeLines: f32) enum { changed, same } {
-	const newCursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.currentString.items.len);
-	self.cursor = newCursor;
-	if (self.cursor != newCursor) {
-		return .changed;
-	}
-	return .same;
+    const newCursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{ 0, 16 * relativeLines }, self.currentString.items.len);
+    self.cursor = newCursor;
+    if (self.cursor != newCursor) {
+        return .changed;
+    }
+    return .same;
 }
 
 pub fn down(self: *TextInput) void {
-	if (self.cursor) |*cursor| {
-		if (main.KeyBoard.key("textModifier").pressed) {
-			if (self.selectionStart == null) {
-				self.selectionStart = cursor.*;
-			}
-			_ = self.moveCursorVertically(1);
-			if (self.selectionStart == self.cursor) {
-				self.selectionStart = null;
-			}
-		} else {
-			if (self.selectionStart) |selectionStart| {
-				cursor.* = @max(cursor.*, selectionStart);
-				self.selectionStart = null;
-			} else {
-				if (self.moveCursorVertically(1) == .same) {
-					self.callbacks.onDown.run();
-				}
-			}
-		}
-		self.ensureCursorVisibility();
-	}
+    if (self.cursor) |*cursor| {
+        if (main.KeyBoard.key("textModifier").pressed) {
+            if (self.selectionStart == null) {
+                self.selectionStart = cursor.*;
+            }
+            _ = self.moveCursorVertically(1);
+            if (self.selectionStart == self.cursor) {
+                self.selectionStart = null;
+            }
+        } else {
+            if (self.selectionStart) |selectionStart| {
+                cursor.* = @max(cursor.*, selectionStart);
+                self.selectionStart = null;
+            } else {
+                if (self.moveCursorVertically(1) == .same) {
+                    self.callbacks.onDown.run();
+                }
+            }
+        }
+        self.ensureCursorVisibility();
+    }
 }
 
 pub fn up(self: *TextInput) void {
-	if (self.cursor) |*cursor| {
-		if (main.KeyBoard.key("textModifier").pressed) {
-			if (self.selectionStart == null) {
-				self.selectionStart = cursor.*;
-			}
-			_ = self.moveCursorVertically(-1);
-			if (self.selectionStart == self.cursor) {
-				self.selectionStart = null;
-			}
-		} else {
-			if (self.selectionStart) |selectionStart| {
-				cursor.* = @min(cursor.*, selectionStart);
-				self.selectionStart = null;
-			} else {
-				if (self.moveCursorVertically(-1) == .same) {
-					self.callbacks.onUp.run();
-				}
-			}
-		}
-		self.ensureCursorVisibility();
-	}
+    if (self.cursor) |*cursor| {
+        if (main.KeyBoard.key("textModifier").pressed) {
+            if (self.selectionStart == null) {
+                self.selectionStart = cursor.*;
+            }
+            _ = self.moveCursorVertically(-1);
+            if (self.selectionStart == self.cursor) {
+                self.selectionStart = null;
+            }
+        } else {
+            if (self.selectionStart) |selectionStart| {
+                cursor.* = @min(cursor.*, selectionStart);
+                self.selectionStart = null;
+            } else {
+                if (self.moveCursorVertically(-1) == .same) {
+                    self.callbacks.onUp.run();
+                }
+            }
+        }
+        self.ensureCursorVisibility();
+    }
 }
 
 fn moveCursorToStart(self: *TextInput) void {
-	if (main.KeyBoard.key("textModifier").pressed) {
-		self.cursor.? = 0;
-	} else {
-		self.cursor.? = @intCast(if (std.mem.lastIndexOf(u8, self.currentString.items[0..self.cursor.?], "\n")) |nextPos| nextPos + 1 else 0);
-	}
+    if (main.KeyBoard.key("textModifier").pressed) {
+        self.cursor.? = 0;
+    } else {
+        self.cursor.? = @intCast(if (std.mem.lastIndexOf(u8, self.currentString.items[0..self.cursor.?], "\n")) |nextPos| nextPos + 1 else 0);
+    }
 }
 
 pub fn gotoStart(self: *TextInput) void {
-	if (self.cursor) |*cursor| {
-		if (main.KeyBoard.key("textModifier").pressed) {
-			if (self.selectionStart == null) {
-				self.selectionStart = cursor.*;
-			}
-			self.moveCursorToStart();
-			if (self.selectionStart == self.cursor) {
-				self.selectionStart = null;
-			}
-		} else {
-			if (self.selectionStart) |selectionStart| {
-				cursor.* = @min(cursor.*, selectionStart);
-				self.selectionStart = null;
-			} else {
-				self.moveCursorToStart();
-			}
-		}
-		self.ensureCursorVisibility();
-	}
+    if (self.cursor) |*cursor| {
+        if (main.KeyBoard.key("textModifier").pressed) {
+            if (self.selectionStart == null) {
+                self.selectionStart = cursor.*;
+            }
+            self.moveCursorToStart();
+            if (self.selectionStart == self.cursor) {
+                self.selectionStart = null;
+            }
+        } else {
+            if (self.selectionStart) |selectionStart| {
+                cursor.* = @min(cursor.*, selectionStart);
+                self.selectionStart = null;
+            } else {
+                self.moveCursorToStart();
+            }
+        }
+        self.ensureCursorVisibility();
+    }
 }
 
 fn moveCursorToEnd(self: *TextInput) void {
-	if (main.KeyBoard.key("textModifier").pressed) {
-		self.cursor.? = @intCast(self.currentString.items.len);
-	} else {
-		self.cursor.? += @intCast(std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len - self.cursor.?);
-	}
+    if (main.KeyBoard.key("textModifier").pressed) {
+        self.cursor.? = @intCast(self.currentString.items.len);
+    } else {
+        self.cursor.? += @intCast(std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len - self.cursor.?);
+    }
 }
 
 pub fn gotoEnd(self: *TextInput) void {
-	if (self.cursor) |*cursor| {
-		if (main.KeyBoard.key("textModifier").pressed) {
-			if (self.selectionStart == null) {
-				self.selectionStart = cursor.*;
-			}
-			self.moveCursorToEnd();
-			if (self.selectionStart == self.cursor) {
-				self.selectionStart = null;
-			}
-		} else {
-			if (self.selectionStart) |selectionStart| {
-				cursor.* = @min(cursor.*, selectionStart);
-				self.selectionStart = null;
-			} else {
-				self.moveCursorToEnd();
-			}
-		}
-		self.ensureCursorVisibility();
-	}
+    if (self.cursor) |*cursor| {
+        if (main.KeyBoard.key("textModifier").pressed) {
+            if (self.selectionStart == null) {
+                self.selectionStart = cursor.*;
+            }
+            self.moveCursorToEnd();
+            if (self.selectionStart == self.cursor) {
+                self.selectionStart = null;
+            }
+        } else {
+            if (self.selectionStart) |selectionStart| {
+                cursor.* = @min(cursor.*, selectionStart);
+                self.selectionStart = null;
+            } else {
+                self.moveCursorToEnd();
+            }
+        }
+        self.ensureCursorVisibility();
+    }
 }
 
 fn deleteSelection(self: *TextInput) void {
-	if (self.selectionStart) |selectionStart| {
-		const start = @min(selectionStart, self.cursor.?);
-		const end = @max(selectionStart, self.cursor.?);
+    if (self.selectionStart) |selectionStart| {
+        const start = @min(selectionStart, self.cursor.?);
+        const end = @max(selectionStart, self.cursor.?);
 
-		self.currentString.replaceRange(start, end - start, &[0]u8{});
-		self.cursor.? = start;
-		self.selectionStart = null;
-		self.ensureCursorVisibility();
-	}
+        self.currentString.replaceRange(start, end - start, &[0]u8{});
+        self.cursor.? = start;
+        self.selectionStart = null;
+        self.ensureCursorVisibility();
+    }
 }
 
 pub fn deleteLeft(self: *TextInput) void {
-	if (self.cursor == null) return;
-	if (self.selectionStart == null) {
-		self.selectionStart = self.cursor;
-		self.moveCursorLeft();
-	}
-	self.deleteSelection();
-	self.reloadText();
-	self.ensureCursorVisibility();
+    if (self.cursor == null) return;
+    if (self.selectionStart == null) {
+        self.selectionStart = self.cursor;
+        self.moveCursorLeft();
+    }
+    self.deleteSelection();
+    self.reloadText();
+    self.ensureCursorVisibility();
 }
 
 pub fn deleteRight(self: *TextInput) void {
-	if (self.cursor == null) return;
-	if (self.selectionStart == null) {
-		self.selectionStart = self.cursor;
-		self.moveCursorRight();
-	}
-	self.deleteSelection();
-	self.reloadText();
-	self.ensureCursorVisibility();
+    if (self.cursor == null) return;
+    if (self.selectionStart == null) {
+        self.selectionStart = self.cursor;
+        self.moveCursorRight();
+    }
+    self.deleteSelection();
+    self.reloadText();
+    self.ensureCursorVisibility();
 }
 
 pub fn inputCharacter(self: *TextInput, character: u21) void {
-	if (self.cursor) |*cursor| {
-		self.deleteSelection();
-		var buf: [4]u8 = undefined;
-		const utf8 = buf[0 .. std.unicode.utf8Encode(character, &buf) catch return];
-		self.currentString.insertSlice(cursor.*, utf8);
-		self.reloadText();
-		cursor.* += @intCast(utf8.len);
-		self.ensureCursorVisibility();
-	}
+    if (self.cursor) |*cursor| {
+        self.deleteSelection();
+        var buf: [4]u8 = undefined;
+        const utf8 = buf[0 .. std.unicode.utf8Encode(character, &buf) catch return];
+        self.currentString.insertSlice(cursor.*, utf8);
+        self.reloadText();
+        cursor.* += @intCast(utf8.len);
+        self.ensureCursorVisibility();
+    }
 }
 
 pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
-	self.clear();
-	self.currentString.insertSlice(0, utf8EncodedString);
-	self.reloadText();
-	if (self.cursor != null) self.cursor = @intCast(utf8EncodedString.len);
-	self.ensureCursorVisibility();
+    self.clear();
+    self.currentString.insertSlice(0, utf8EncodedString);
+    self.reloadText();
+    if (self.cursor != null) self.cursor = @intCast(utf8EncodedString.len);
+    self.ensureCursorVisibility();
 }
 
 pub fn selectAll(self: *TextInput) void {
-	if (main.KeyBoard.key("textModifier").pressed) {
-		self.selectionStart = 0;
-		self.cursor = @intCast(self.currentString.items.len);
-		self.ensureCursorVisibility();
-	}
+    if (main.KeyBoard.key("textModifier").pressed) {
+        self.selectionStart = 0;
+        self.cursor = @intCast(self.currentString.items.len);
+        self.ensureCursorVisibility();
+    }
 }
 
 pub fn copy(self: *TextInput) void {
-	if (main.KeyBoard.key("textModifier").pressed) {
-		if (self.cursor) |cursor| {
-			if (self.selectionStart) |selectionStart| {
-				const start = @min(cursor, selectionStart);
-				const end = @max(cursor, selectionStart);
-				main.Window.setClipboardString(self.currentString.items[start..end]);
-			}
-		}
-		self.ensureCursorVisibility();
-	}
+    if (main.KeyBoard.key("textModifier").pressed) {
+        if (self.cursor) |cursor| {
+            if (self.selectionStart) |selectionStart| {
+                const start = @min(cursor, selectionStart);
+                const end = @max(cursor, selectionStart);
+                main.Window.setClipboardString(self.currentString.items[start..end]);
+            }
+        }
+        self.ensureCursorVisibility();
+    }
 }
 
 pub fn paste(self: *TextInput) void {
-	if (main.KeyBoard.key("textModifier").pressed) {
-		const string = main.Window.getClipboardString();
-		self.deleteSelection();
-		self.currentString.insertSlice(self.cursor.?, string);
-		self.cursor.? += @intCast(string.len);
-		self.reloadText();
-		self.ensureCursorVisibility();
-	}
+    if (main.KeyBoard.key("textModifier").pressed) {
+        const string = main.Window.getClipboardString();
+        self.deleteSelection();
+        self.currentString.insertSlice(self.cursor.?, string);
+        self.cursor.? += @intCast(string.len);
+        self.reloadText();
+        self.ensureCursorVisibility();
+    }
 }
 
 pub fn cut(self: *TextInput) void {
-	if (main.KeyBoard.key("textModifier").pressed) {
-		self.deleteSelection();
-		self.reloadText();
-		self.ensureCursorVisibility();
-	}
+    if (main.KeyBoard.key("textModifier").pressed) {
+        self.deleteSelection();
+        self.reloadText();
+        self.ensureCursorVisibility();
+    }
 }
 
 pub fn newline(self: *TextInput) void {
-	if (!main.KeyBoard.key("textModifier").pressed and self.callbacks.onNewline.inner != null) {
-		self.callbacks.onNewline.run();
-		return;
-	}
-	self.inputCharacter('\n');
-	self.ensureCursorVisibility();
+    if (!main.KeyBoard.key("textModifier").pressed and self.callbacks.onNewline.inner != null) {
+        self.callbacks.onNewline.run();
+        return;
+    }
+    self.inputCharacter('\n');
+    self.ensureCursorVisibility();
 }
 
 fn ensureCursorVisibility(self: *TextInput) void {
-	self.showCusor = true;
-	self.lastBlinkTime = main.timestamp();
-	if (self.textSize[1] > self.maxHeight - 2*border) {
-		var y: f32 = 0;
-		const diff = self.textSize[1] - (self.maxHeight - 2*border);
-		y -= diff*self.scrollBar.currentState;
-		if (self.cursor) |cursor| {
-			const cursorPos = y + self.textBuffer.indexToCursorPos(cursor)[1];
-			if (cursorPos < 0) {
-				self.scrollBar.currentState += cursorPos/diff;
-			} else if (cursorPos + 16 >= self.maxHeight - 2*border) {
-				self.scrollBar.currentState += (cursorPos + 16 - (self.maxHeight - 2*border))/diff;
-			}
-		}
-	}
+    self.showCusor = true;
+    self.lastBlinkTime = main.timestamp();
+    if (self.textSize[1] > self.maxHeight - 2 * border) {
+        var y: f32 = 0;
+        const diff = self.textSize[1] - (self.maxHeight - 2 * border);
+        y -= diff * self.scrollBar.currentState;
+        if (self.cursor) |cursor| {
+            const cursorPos = y + self.textBuffer.indexToCursorPos(cursor)[1];
+            if (cursorPos < 0) {
+                self.scrollBar.currentState += cursorPos / diff;
+            } else if (cursorPos + 16 >= self.maxHeight - 2 * border) {
+                self.scrollBar.currentState += (cursorPos + 16 - (self.maxHeight - 2 * border)) / diff;
+            }
+        }
+    }
 }
 
 fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
-	if (!self.obfuscated) return pos;
-	const obfuscatedPos = (std.unicode.utf8CountCodepoints(self.currentString.items[0..pos]) catch 0)*main.utils.obfuscationChar.len;
-	return @intCast(obfuscatedPos);
+    if (!self.obfuscated) return pos;
+    const obfuscatedPos = (std.unicode.utf8CountCodepoints(self.currentString.items[0..pos]) catch 0) * main.utils.obfuscationChar.len;
+    return @intCast(obfuscatedPos);
 }
 
 pub fn render(self: *TextInput, mousePosition: Vec2f) void {
-	texture.bindTo(0);
-	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
-	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
-	const oldTranslation = draw.setTranslation(self.pos);
-	defer draw.restoreTranslation(oldTranslation);
-	const oldClip = draw.setClip(self.size);
-	defer draw.restoreClip(oldClip);
+    texture.bindTo(0);
+    Button.pipeline.bind(draw.getScissor());
+    draw.setColor(0xff000000);
+    draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
+    const oldTranslation = draw.setTranslation(self.pos);
+    defer draw.restoreTranslation(oldTranslation);
+    const oldClip = draw.setClip(self.size);
+    defer draw.restoreClip(oldClip);
 
-	var textPos = Vec2f{border, border};
-	var textSize = self.textSize;
-	const textBuffer = if (self.obfuscated) blk: {
-		const obfuscatedString = main.utils.obfuscateString(main.stackAllocator, self.currentString.items);
-		defer main.stackAllocator.free(obfuscatedString);
+    var textPos = Vec2f{ border, border };
+    var textSize = self.textSize;
+    const textBuffer = if (self.obfuscated) blk: {
+        const obfuscatedString = main.utils.obfuscateString(main.stackAllocator, self.currentString.items);
+        defer main.stackAllocator.free(obfuscatedString);
 
-		var newTextBuffer = TextBuffer.init(main.stackAllocator, obfuscatedString, .{}, true, .left);
-		textSize = newTextBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
-		break :blk newTextBuffer;
-	} else self.textBuffer;
-	defer if (self.obfuscated) textBuffer.deinit();
+        var newTextBuffer = TextBuffer.init(main.stackAllocator, obfuscatedString, .{}, true, .left);
+        textSize = newTextBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2 * border - scrollBarWidth);
+        break :blk newTextBuffer;
+    } else self.textBuffer;
+    defer if (self.obfuscated) textBuffer.deinit();
 
-	if (textSize[1] > self.maxHeight - 2*border) {
-		const diff = textSize[1] - (self.maxHeight - 2*border);
-		textPos[1] -= diff*self.scrollBar.currentState;
-		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
-		self.scrollBar.render(mousePosition - self.pos);
-	}
-	textBuffer.render(textPos[0], textPos[1], fontSize);
-	if (self.pressed) {
-		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
-	}
-	if (self.cursor) |_cursor| {
-		const cursor = self.getRenderCursorPos(_cursor);
-		const cursorPos = textPos + textBuffer.indexToCursorPos(cursor);
-		if (self.selectionStart) |_selectionStart| {
-			const selectionStart = self.getRenderCursorPos(_selectionStart);
-			draw.setColor(0x440000ff);
-			textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
-		}
+    if (textSize[1] > self.maxHeight - 2 * border) {
+        const diff = textSize[1] - (self.maxHeight - 2 * border);
+        textPos[1] -= diff * self.scrollBar.currentState;
+        self.scrollBar.pos = .{ self.size[0] - self.scrollBar.size[0] - border, border };
+        self.scrollBar.render(mousePosition - self.pos);
+    }
+    textBuffer.render(textPos[0], textPos[1], fontSize);
+    if (self.pressed) {
+        self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
+    }
+    if (self.cursor) |_cursor| {
+        const cursor = self.getRenderCursorPos(_cursor);
+        const cursorPos = textPos + textBuffer.indexToCursorPos(cursor);
+        if (self.selectionStart) |_selectionStart| {
+            const selectionStart = self.getRenderCursorPos(_selectionStart);
+            draw.setColor(0x440000ff);
+            textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
+        }
 
-		const currentTime = main.timestamp();
-		if (self.lastBlinkTime.durationTo(currentTime).nanoseconds > blinkDuration.nanoseconds) {
-			self.lastBlinkTime = currentTime;
-			self.showCusor = !self.showCusor;
-		}
+        const currentTime = main.timestamp();
+        if (self.lastBlinkTime.durationTo(currentTime).nanoseconds > blinkDuration.nanoseconds) {
+            self.lastBlinkTime = currentTime;
+            self.showCusor = !self.showCusor;
+        }
 
-		if (self.showCusor) {
-			draw.setColor(0xff000000);
-			const thickness = @min(@ceil(fontSize/8), 1);
-			draw.rect(cursorPos, Vec2f{thickness, fontSize});
-		}
-	}
+        if (self.showCusor) {
+            draw.setColor(0xff000000);
+            const thickness = @min(@ceil(fontSize / 8), 1);
+            draw.rect(cursorPos, Vec2f{ thickness, fontSize });
+        }
+    }
 }
