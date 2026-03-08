@@ -46,3 +46,32 @@ pub fn execute(msg: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Unrecognized Command \"{s}\"", .{command});
 	}
 }
+
+fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
+	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
+	const numberSlice = if (hasTilde) arg[1..] else arg;
+	if (hasTilde and numberSlice.len == 0) return playerPos;
+	const num = std.fmt.parseFloat(f64, numberSlice) catch {
+		if (hasTilde) {
+			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberSlice});
+		} else {
+			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
+		}
+		return error.InvalidNumber;
+	};
+
+	return std.math.clamp(if (hasTilde) playerPos + num else num, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
+}
+
+pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !main.vec.Vec3d {
+	return blk: {
+		var output: main.vec.Vec3d = undefined;
+		inline for (0..3) |i| {
+			output[i] = try parseAxis(split.next() orelse {
+				source.sendMessage("#ff0000Too few arguments for position", .{});
+				return error.TooFewArguments;
+			}, source.player.pos[i], source);
+		}
+		break :blk output;
+	};
+}

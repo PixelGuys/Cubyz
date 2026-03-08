@@ -96,19 +96,23 @@ fn unbindKey(keyPtr: usize) void {
 }
 
 pub fn onOpen() void {
+	const controlsListWidth: u32 = 256;
+	const keybindButtonWidth: u32 = 160;
+	const unbindButtonWidth: u32 = 64;
+
 	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
-	list.add(Button.initText(.{0, 0}, 128, if (editingKeyboard) "Gamepad" else "Keyboard", .init(toggleKeyboard)));
-	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
-	list.add(CheckBox.init(.{0, 0}, 256, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
-	list.add(CheckBox.init(.{0, 0}, 256, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
+	list.add(Button.initText(.{0, 0}, keybindButtonWidth, if (editingKeyboard) "Gamepad" else "Keyboard", .init(toggleKeyboard)));
+	list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
+	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
+	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
 
 	if (!editingKeyboard) {
-		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
+		list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
 	for (&main.KeyBoard.keys) |*key| {
-		const label = Label.init(.{0, 0}, 128, key.name, .left);
-		const button = if (key == selectedKey) (Button.initText(.{16, 0}, 128, "...", .{})) else (Button.initText(.{16, 0}, 128, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key)));
-		const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .initWithPtr(unbindKey, key));
+		const label = Label.init(.{0, 0}, keybindButtonWidth, key.name, .left);
+		const button = if (key == selectedKey) (Button.initText(.{16, 0}, keybindButtonWidth, "...", .{})) else (Button.initText(.{16, 0}, keybindButtonWidth, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key)));
+		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .initWithPtr(unbindKey, key));
 		const row = HorizontalList.init();
 		row.add(label);
 		row.add(button);

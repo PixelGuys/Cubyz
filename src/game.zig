@@ -832,10 +832,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
 	const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
 	var movementDir: Vec3d = .{0, 0, 0};
-	var movementSpeed: f64 = 0;
 
 	if (main.Window.grabbed) {
 		const walkingSpeed: f64 = if (Player.crouching) 2.5 else 4.5;
+		var movementSpeed: f64 = walkingSpeed*@min(1, vec.length(Vec2f{
+			@max(KeyBoard.key("forward").value, KeyBoard.key("backward").value),
+			@max(KeyBoard.key("left").value, KeyBoard.key("right").value),
+		}));
 		if (KeyBoard.key("forward").value > 0.0) {
 			if (KeyBoard.key("sprint").pressed and !Player.crouching) {
 				if (Player.isGhost.load(.monotonic)) {
@@ -849,20 +852,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 				}
 			} else {
-				movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("forward").value);
 				movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 			}
 		}
 		if (KeyBoard.key("backward").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("backward").value);
 			movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
 		}
 		if (KeyBoard.key("left").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("left").value);
 			movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
 		}
 		if (KeyBoard.key("right").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("right").value);
 			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 		}
 		if (KeyBoard.key("jump").pressed) {
@@ -932,7 +931,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
-	Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
+	Player.crouching = main.Window.grabbed and KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
 	if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,
