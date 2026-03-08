@@ -112,8 +112,8 @@ pub fn onOpen() void {
 	for (&main.KeyBoard.keys) |*key| {
 		if (!key.rebindAllowed) continue;
 		const label = Label.init(.{0, 0}, 128, key.name, .left);
-		const button = if (key == selectedKey) (Button.initText(.{16, 0}, 128, "...", .{})) else (Button.initText(.{16, 0}, 128, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key)));
-		const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .initWithPtr(unbindKey, key));
+		const button = if (key == selectedKey) (Button.initText(.{16, 0}, keybindButtonWidth, "...", .{})) else (Button.initText(.{16, 0}, keybindButtonWidth, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key)));
+		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .initWithPtr(unbindKey, key));
 		const row = HorizontalList.init();
 		row.add(label);
 		row.add(button);
