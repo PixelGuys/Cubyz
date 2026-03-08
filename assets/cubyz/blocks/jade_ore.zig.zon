@@ -27,10 +27,10 @@
 		},
 	},
 	.ore = .{
-		.veins = 3,
+		.veins = 4,
 		.size = 3,
-		.minHeight = 600,
-		.density = 0.15,
+		.minHeight = 500,
+		.density = 0.3,
 	},
 	.drops = .{
 		.{.items = .{.auto}},
