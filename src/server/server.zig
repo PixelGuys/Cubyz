@@ -599,6 +599,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 
 fn update() void { // MARK: update()
 	world.?.update();
+	main.entity.Server.deinit();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);

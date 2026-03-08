@@ -53,4 +53,6 @@ pub const Client = struct {
 pub const Server = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
+
+	pub fn update() void {}
 };

@@ -58,4 +58,9 @@ pub const Server = struct {
 			@field(systems, decl.name).Server.deinit();
 		}
 	}
+	pub fn update() void {
+		inline for (@typeInfo(systems).@"struct".decls) |decl| {
+			@field(systems, decl.name).Server.update();
+		}
+	}
 };
