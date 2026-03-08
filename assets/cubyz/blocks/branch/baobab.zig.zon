@@ -4,14 +4,6 @@
 		.type = .decay,
 	},
 	.blockHealth = 4,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
-	.absorbedLight = 0x202830,
-	.rotation = "cubyz:branch",
-	.model = .{
-		.radius = 4,
-	},
 	.texture0 = "cubyz:branch/baobab/dot",
 	.texture1 = "cubyz:branch/baobab/half_line",
 	.texture2 = "cubyz:branch/baobab/line",
