@@ -583,12 +583,8 @@ pub fn main() void { // MARK: main()
 	network.init() catch @panic("Failed to initialize network");
 	defer network.deinit();
 
-	// Entity Component System
-	if (!headless) entity.Client.init();
-	defer if (!headless) entity.Client.deinit();
-
-	if (!headless) client.EntityManager.init();
-	defer if (!headless) client.EntityManager.deinit();
+	if (!headless) entity.client.init();
+	defer if (!headless) entity.client.deinit();
 
 	if (!headless) gui.init();
 	defer if (!headless) gui.deinit();
