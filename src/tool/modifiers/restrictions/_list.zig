@@ -3,5 +3,4 @@ pub const @"and" = @import("and.zig");
 pub const encased = @import("encased.zig");
 pub const not = @import("not.zig");
 pub const @"or" = @import("or.zig");
-pub const connectedTo = @import("connectedTo.zig");
 pub const conductedWith = @import("conductedWith.zig");
