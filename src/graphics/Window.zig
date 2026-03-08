@@ -301,6 +301,7 @@ pub const Key = struct { // MARK: Key
 	name: []const u8,
 	pressed: bool = false,
 	isToggling: IsToggling = .never,
+	rebindAllowed: bool = true,
 	value: f32 = 0.0,
 	key: c_int = c.GLFW_KEY_UNKNOWN,
 	gamepadAxis: ?GamepadAxis = null,
@@ -312,8 +313,7 @@ pub const Key = struct { // MARK: Key
 	repeatAction: ?*const fn () void = null,
 	notifyRequirement: Requirement = .always,
 	grabbedOnPress: bool = false,
-	requiredModifiers: ?[]const Tag = null,
-	tag: ?Tag = null,
+	requiredModifiers: ?[]const []const u8 = null,
 	pub const IsToggling = enum {
 		never,
 		no,
@@ -466,7 +466,7 @@ pub const Key = struct { // MARK: Key
 		if (!self.notifyRequirement.met(self.grabbedOnPress)) return;
 		if (self.requiredModifiers) |requiredMods| {
 			for (requiredMods) |mod| {
-				if (!main.KeyBoard.modByTag(mod).pressed) {
+				if (!main.KeyBoard.key(mod).pressed) {
 					return;
 				}
 			}

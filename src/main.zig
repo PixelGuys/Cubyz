@@ -380,8 +380,8 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
 		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
 		.{.name = "drop", .key = c.GLFW_KEY_Q, .repeatAction = &game.Player.dropFromHand, .notifyRequirement = .inGame},
-		.{.name = "modifier0", .key = c.GLFW_KEY_LEFT_SHIFT, .tag = Tag.controlModifier0},
-		.{.name = "modifier1", .key = c.GLFW_KEY_LEFT_CONTROL, .tag = Tag.controlModifier1},
+		.{.name = "actionModifier", .key = c.GLFW_KEY_LEFT_SHIFT},
+
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
 
@@ -401,6 +401,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "uiDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
 		.{.name = "uiRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
 		// text:
+		.{.name = "textModifier", .key = c.GLFW_KEY_LEFT_CONTROL, .rebindAllowed = false},
 		.{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
 		.{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
 		.{.name = "textCursorDown", .key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down},
@@ -409,10 +410,30 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
 		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
 		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = &[_]Tag{Tag.controlModifier1}},
-		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = &[_]Tag{Tag.controlModifier1}},
-		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = &[_]Tag{Tag.controlModifier1}},
-		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = &[_]Tag{Tag.controlModifier1}},
+		.{
+			.name = "textSelectAll",
+			.key = c.GLFW_KEY_A,
+			.repeatAction = &gui.textCallbacks.selectAll,
+			.requiredModifiers = @as([]const []const u8, &.{"textModifier"}),
+		},
+		.{
+			.name = "textCopy",
+			.key = c.GLFW_KEY_C,
+			.repeatAction = &gui.textCallbacks.copy,
+			.requiredModifiers = @as([]const []const u8, &.{"textModifier"}),
+		},
+		.{
+			.name = "textPaste",
+			.key = c.GLFW_KEY_V,
+			.repeatAction = &gui.textCallbacks.paste,
+			.requiredModifiers = @as([]const []const u8, &.{"textModifier"}),
+		},
+		.{
+			.name = "textCut",
+			.key = c.GLFW_KEY_X,
+			.repeatAction = &gui.textCallbacks.cut,
+			.requiredModifiers = @as([]const []const u8, &.{"textModifier"}),
+		},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
 		// Hotbar shortcuts:
@@ -444,15 +465,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
 	};
 
-	pub fn modByTag(modifierTag: Tag) *Window.Key {
-		for (&keys) |*_key| {
-			if (_key.tag == modifierTag) {
-				return _key;
-			}
-		}
-		std.debug.assert(unreachable);
-		return null;
-	}
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
 		for (&keys) |*_key| {
 			if (std.mem.eql(u8, name, _key.name)) {
