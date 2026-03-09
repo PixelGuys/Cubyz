@@ -25,9 +25,9 @@ fn next(comptime T: type, seed: *u64) T {
 }
 
 pub fn nextInt(comptime T: type, seed: *u64) T {
-	if(@bitSizeOf(T) > 32) {
+	if (@bitSizeOf(T) > 32) {
 		var result: T = 0;
-		for(0..(@bitSizeOf(T) + 31)/32) |_| {
+		for (0..(@bitSizeOf(T) + 31)/32) |_| {
 			result = result << 32 | next(u32, seed);
 		}
 		return result;
@@ -37,11 +37,11 @@ pub fn nextInt(comptime T: type, seed: *u64) T {
 }
 
 pub fn nextIntBounded(comptime T: type, seed: *u64, bound: T) T {
-	if(@typeInfo(T) != .int) @compileError("Type must be integer.");
-	if(@typeInfo(T).int.signedness == .signed) return nextIntBounded(std.meta.Int(.unsigned, @bitSizeOf(T) - 1), seed, @intCast(bound));
+	if (@typeInfo(T) != .int) @compileError("Type must be integer.");
+	if (@typeInfo(T).int.signedness == .signed) return nextIntBounded(std.meta.Int(.unsigned, @bitSizeOf(T) - 1), seed, @intCast(bound));
 	const bitSize = std.math.log2_int_ceil(T, bound);
 	var result = nextWithBitSize(T, seed, bitSize);
-	while(result >= bound) {
+	while (result >= bound) {
 		result = nextWithBitSize(T, seed, bitSize);
 	}
 	return result;
@@ -68,7 +68,7 @@ pub fn nextFloatGauss(seed: *u64) f32 {
 
 pub fn nextFloatVector(len: comptime_int, seed: *u64) @Vector(len, f32) {
 	var result: @Vector(len, f32) = undefined;
-	inline for(0..len) |i| {
+	inline for (0..len) |i| {
 		result[i] = nextFloat(seed);
 	}
 	return result;
@@ -76,7 +76,7 @@ pub fn nextFloatVector(len: comptime_int, seed: *u64) @Vector(len, f32) {
 
 pub fn nextFloatVectorSigned(len: comptime_int, seed: *u64) @Vector(len, f32) {
 	var result: @Vector(len, f32) = undefined;
-	inline for(0..len) |i| {
+	inline for (0..len) |i| {
 		result[i] = nextFloatSigned(seed);
 	}
 	return result;
@@ -96,7 +96,7 @@ pub fn nextDoubleSigned(seed: *u64) f64 {
 
 pub fn nextDoubleVector(len: comptime_int, seed: *u64) @Vector(len, f64) {
 	var result: @Vector(len, f64) = undefined;
-	inline for(0..len) |i| {
+	inline for (0..len) |i| {
 		result[i] = nextDouble(seed);
 	}
 	return result;
@@ -104,17 +104,17 @@ pub fn nextDoubleVector(len: comptime_int, seed: *u64) @Vector(len, f64) {
 
 pub fn nextDoubleVectorSigned(len: comptime_int, seed: *u64) @Vector(len, f64) {
 	var result: @Vector(len, f64) = undefined;
-	inline for(0..len) |i| {
+	inline for (0..len) |i| {
 		result[i] = nextDoubleSigned(seed);
 	}
 	return result;
 }
 
 pub fn nextPointInUnitCircle(seed: *u64) Vec2f {
-	while(true) {
+	while (true) {
 		const x: f32 = nextFloatSigned(seed);
 		const y: f32 = nextFloatSigned(seed);
-		if(x*x + y*y < 1) {
+		if (x*x + y*y < 1) {
 			return Vec2f{x, y};
 		}
 	}
@@ -145,9 +145,9 @@ pub fn RandomRange(T: type) type {
 		}
 
 		pub fn fromZon(zon: ZonElement) ?@This() {
-			const vals: ?@Vector(2, T) = if(zon.as(?T, null)) |v| @splat(v) else zon.as(?@Vector(2, T), null);
+			const vals: ?@Vector(2, T) = if (zon.as(?T, null)) |v| @splat(v) else zon.as(?@Vector(2, T), null);
 
-			if(vals == null) return null;
+			if (vals == null) return null;
 
 			return .{
 				.min = vals.?[0],

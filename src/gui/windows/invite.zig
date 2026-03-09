@@ -42,12 +42,12 @@ fn discoverIpAddressFromNewThread() void {
 }
 
 fn invite() void {
-	if(thread) |_thread| {
+	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
 	}
 	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
-		if(err != error.AlreadyConnected) {
+		if (err != error.AlreadyConnected) {
 			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
 		}
 		return;
@@ -89,25 +89,25 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(thread) |_thread| {
+	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
 	}
-	if(ipAddress.len != 0) {
+	if (ipAddress.len != 0) {
 		main.globalAllocator.free(ipAddress);
 		ipAddress = "";
 	}
 
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
 
 pub fn update() void {
-	if(gotIpAddress.load(.acquire)) {
+	if (gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
 
-		if(main.settings.streamerMode) {
+		if (main.settings.streamerMode) {
 			const obfuscatedIp = main.utils.obfuscateString(main.stackAllocator, ipAddress);
 			defer main.stackAllocator.free(obfuscatedIp);
 			ipAddressLabel.updateText(obfuscatedIp);

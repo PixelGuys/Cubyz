@@ -22,4 +22,7 @@
 		.dps = 0.2,
 		.damageType = .spiky,
 	},
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 }

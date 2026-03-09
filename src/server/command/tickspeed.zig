@@ -8,9 +8,9 @@ pub const usage = "/tickspeed\n/tickspeed <rate>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
-	if(split.next()) |arg| blk: {
-		if(arg.len == 0) break :blk;
-		if(split.next() != null) {
+	if (split.next()) |arg| blk: {
+		if (arg.len == 0) break :blk;
+		if (split.next() != null) {
 			source.sendMessage("#ff0000Too many arguments for command /tickspeed", .{});
 			return;
 		}

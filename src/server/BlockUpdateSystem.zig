@@ -31,7 +31,7 @@ pub fn update(self: *@This(), ch: *main.chunk.ServerChunk) void {
 	self.mutex.unlock();
 
 	// handle events
-	for(list.items) |event| {
+	for (list.items) |event| {
 		ch.mutex.lock();
 		const block = ch.getBlock(event.x, event.y, event.z);
 		ch.mutex.unlock();

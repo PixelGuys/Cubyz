@@ -1,8 +1,18 @@
 .{
 	.isCave = true,
 	.minHeight = 0,
-
+	.maxHeight = 9500,
+	.caveNoiseStrength = 10,
 	.music = "cubyz:GymnopedieNo1",
 
 	.ground_structure = .{},
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 10,
+			.maxAmount = 16,
+			.minRadius = 6,
+			.maxRadius = 14,
+		},
+	},
 }

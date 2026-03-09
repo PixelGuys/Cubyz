@@ -23,19 +23,19 @@ fn musicCallback(newValue: f32) void {
 }
 
 fn deziBelToLinear(x: f32) f32 {
-	if(x < -59.95) return 0;
+	if (x < -59.95) return 0;
 	return std.math.pow(f32, 10, x/20);
 }
 
 fn linearToDezibel(x: f32) f32 {
 	const db = 20*std.math.log10(x);
-	if(db < -59.95) return -60;
+	if (db < -59.95) return -60;
 	return db;
 }
 
 fn musicFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
 	const percentage = 100*deziBelToLinear(value);
-	if(percentage == 0) return allocator.dupe(u8, "Music volume: Off");
+	if (percentage == 0) return allocator.dupe(u8, "Music volume: Off");
 	return std.fmt.allocPrint(allocator.allocator, "Music volume:", .{}) catch unreachable;
 }
 
@@ -51,7 +51,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
