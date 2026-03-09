@@ -30,7 +30,7 @@ pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 		.blocks = blk: {
 			const blockZons = parameters.getChild("blocks").toSlice();
 			if (blockZons.len == 0) {
-				std.log.err("'blocks' field of flower_patch cannot be empty.");
+				std.log.err("'blocks' field of flower_patch cannot be empty.", .{});
 				return null;
 			}
 			const output = main.worldArena.alloc(main.blocks.Block, blockZons.len);
