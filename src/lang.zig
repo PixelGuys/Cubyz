@@ -79,10 +79,18 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 	};
 }
 
+const Precision = enum {
+	@"{d:.0}",
+	@"{d:.1}",
+	@"{d:.2}",
+	@"{d:.3}",
+	@"{d}",
+};
+
 const FormatArg = union(enum) {
 	string: []const u8,
 	int: i128,
-	float: f128,
+	float: struct { value: f128, precision: Precision },
 	tag: main.Tag,
 
 	pub fn fromString(_string: []const u8) FormatArg {
@@ -91,8 +99,8 @@ const FormatArg = union(enum) {
 	pub fn fromInt(_int: i128) FormatArg {
 		return .{.int = _int};
 	}
-	pub fn fromFloat(_float: f128) FormatArg {
-		return .{.float = _float};
+	pub fn fromFloat(_float: f128, precision: Precision) FormatArg {
+		return .{.float = .{.value = _float, .precision = precision}};
 	}
 	pub fn fromTag(_tag: main.Tag) FormatArg {
 		return .{.tag = _tag};
@@ -122,7 +130,11 @@ pub fn format(allocator: main.heap.NeverFailingAllocator, category: Category, st
 					outputList.print("{d}", .{int});
 				},
 				.float => |float| {
-					outputList.print("{d:.2}", .{float});
+					switch (float.precision) {
+						inline else => |comptimePrecision| {
+							outputList.print(@tagName(comptimePrecision), .{float.value});
+						},
+					}
 				},
 				.tag => |tag| {
 					outputList.appendSlice(translate(.tag, tag.getName()));
