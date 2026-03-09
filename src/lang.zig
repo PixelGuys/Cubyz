@@ -79,22 +79,60 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 	};
 }
 
-pub fn format(allocator: main.heap.NeverFailingAllocator, category: Category, string: []const u8, args: []const []const u8) []const u8 {
+const FormatArg = union(enum) {
+	string: []const u8,
+	int: i128,
+	float: f128,
+	tag: main.Tag,
+
+	pub fn fromString(_string: []const u8) FormatArg {
+		return .{.string = _string};
+	}
+	pub fn fromInt(_int: i128) FormatArg {
+		return .{.int = _int};
+	}
+	pub fn fromFloat(_float: f128) FormatArg {
+		return .{.float = _float};
+	}
+	pub fn fromTag(_tag: main.Tag) FormatArg {
+		return .{.tag = _tag};
+	}
+};
+
+pub fn format(allocator: main.heap.NeverFailingAllocator, category: Category, string: []const u8, args: []const FormatArg) []const u8 {
 	const fmt = translate(category, string);
 	var iterator = std.mem.splitAny(u8, fmt, "{}");
 
 	var outputList = main.List(u8).init(allocator);
 	defer outputList.deinit();
 
-	var isNumber = false;
+	var isPlaceholder = false;
 	while (iterator.next()) |slice| {
-		outputList.appendSlice(if (isNumber) args[
-			std.fmt.parseInt(usize, slice, 10) catch |err| blk: {
+		if (isPlaceholder) {
+			const index = std.fmt.parseInt(usize, slice, 10) catch |err| blk: {
 				std.log.err("{} when trying to parse {s} to usize. Using index 0...", .{err, slice});
 				break :blk 0;
+			};
+			const arg = args[index];
+			switch (arg) {
+				.string => |str| {
+					outputList.appendSlice(str);
+				},
+				.int => |int| {
+					outputList.print("{d}", .{int});
+				},
+				.float => |float| {
+					outputList.print("{d:.2}", .{float});
+				},
+				.tag => |tag| {
+					outputList.appendSlice(translate(.tag, tag.getName()));
+				},
 			}
-		] else slice);
-		isNumber = !isNumber;
+		} else {
+			outputList.appendSlice(slice);
+		}
+		isPlaceholder = !isPlaceholder;
 	}
+
 	return outputList.toOwnedSlice();
 }
