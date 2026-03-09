@@ -141,7 +141,7 @@ pub const Dir = struct {
 	}
 
 	pub fn tryHasDir(self: Dir, path: []const u8) !bool {
-		const dir = self.dir.openDir(path, .{.iterate = false}) catch |err| {
+		var dir = self.dir.openDir(path, .{.iterate = false}) catch |err| {
 			if (err == error.FileNotFound) return false;
 			return err;
 		};
