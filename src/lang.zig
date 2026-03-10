@@ -26,8 +26,8 @@ var languageZon: ZonElement = undefined;
 
 pub fn init() void {
 	load(main.settings.language) catch {
-		std.log.err("Couldn't find language {s}. Switching to english...", .{main.settings.language});
-		main.settings.language = "cubyz:en_us";
+		std.log.err("Couldn't find language {s}. Switching to English...", .{main.settings.language});
+		main.settings.language = "cubyz:english";
 		main.settings.save();
 		load(main.settings.language) catch unreachable;
 	};

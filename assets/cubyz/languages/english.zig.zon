@@ -1,5 +1,5 @@
 .{
-	.language = "English (United States)",
+	.language = "English",
 	.assets = .{
 		.blocks = .{}, // i think only for autocomplete
 		.items = .{},
@@ -27,16 +27,16 @@
 		},
 		.modifiers = .{},
 		.restrictions = .{
-			.always = "always",
-			.@"and" = "and",
-			.encased = "encased in {0} {1} items",
-			.not = "not",
-			.@"or" = "or",
+			.@"cubyz:always" = "always",
+			.@"cubyz:and" = "and",
+			.@"cubyz:encased" = "encased in {0} {1} items",
+			.@"cubyz:not" = "not",
+			.@"cubyz:or" = "or",
 		},
 		.stats = .{
-			.@"swings/s" = "swings/s",
-			.Damage = "Damage",
-			.Durability = "Durability",
+			.swingSpeed = "swings/s",
+			.damage = "Damage",
+			.durability = "Durability",
 		},
 	},
 }
