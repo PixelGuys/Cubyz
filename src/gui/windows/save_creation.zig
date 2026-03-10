@@ -91,10 +91,10 @@ const Page = enum(u8) {
 	pub fn label(self: Page) []const u8 {
 		switch (self) {
 			.generation => {
-				return "Generation";
+				return "Generation (1/2)";
 			},
 			.gameRules => {
-				return "Game Rules";
+				return "Game Rules (2/2)";
 			},
 		}
 	}
