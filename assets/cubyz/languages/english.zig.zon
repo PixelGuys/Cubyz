@@ -20,10 +20,10 @@
 	},
 	.ui = .{
 		.labels = .{
-			.@"main/singleplayer" = "Singleplayer",
-			.@"main/multiplayer" = "Multiplayer",
-			.@"main/settings" = "Settings",
-			.@"main/touch_grass" = "Touch Grass",
+			.@"cubyz:main/singleplayer" = "Singleplayer",
+			.@"cubyz:main/multiplayer" = "Multiplayer",
+			.@"cubyz:main/settings" = "Settings",
+			.@"cubyz:main/touch_grass" = "Touch Grass",
 		},
 		.modifiers = .{},
 		.restrictions = .{
@@ -34,9 +34,9 @@
 			.@"cubyz:or" = "or",
 		},
 		.stats = .{
-			.swingSpeed = "swings/s",
-			.damage = "Damage",
-			.durability = "Durability",
+			.@"cubyz:swingSpeed" = "swings/s",
+			.@"cubyz:damage" = "Damage",
+			.@"cubyz:durability" = "Durability",
 		},
 	},
 }

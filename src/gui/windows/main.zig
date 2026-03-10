@@ -21,10 +21,10 @@ fn exitGame() void {
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Button.initText(.{0, 0}, 128, main.lang.translate(.label, "main/singleplayer"), gui.openWindowCallback("save_selection")));
-	list.add(Button.initText(.{0, 0}, 128, main.lang.translate(.label, "main/multiplayer"), gui.openWindowCallback("multiplayer")));
-	list.add(Button.initText(.{0, 0}, 128, main.lang.translate(.label, "main/settings"), gui.openWindowCallback("settings")));
-	list.add(Button.initText(.{0, 0}, 128, main.lang.translate(.label, "main/touch_grass"), .init(exitGame)));
+	list.add(Button.initText(.{0, 0}, 128, main.lang.translate(.label, "cubyz:main/singleplayer"), gui.openWindowCallback("save_selection")));
+	list.add(Button.initText(.{0, 0}, 128, main.lang.translate(.label, "cubyz:main/multiplayer"), gui.openWindowCallback("multiplayer")));
+	list.add(Button.initText(.{0, 0}, 128, main.lang.translate(.label, "cubyz:main/settings"), gui.openWindowCallback("settings")));
+	list.add(Button.initText(.{0, 0}, 128, main.lang.translate(.label, "cubyz:main/touch_grass"), .init(exitGame)));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
