@@ -52,12 +52,38 @@ const Page = enum(u8) {
 	gameRules = 1,
 
 	pub fn fillSubmenu(self: Page, submenu: *VerticalList) void {
+		const maxWidth = 192;
 		switch (self) {
 			.generation => {
-				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the first page", .center));
+				{ // world preset
+					const row = HorizontalList.init();
+					row.add(Label.init(.{0, 0}, maxWidth - 128, "Preset:", .left));
+					presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .init(worldPresetCallback));
+					row.add(presetButton);
+					row.finish(.{0, 0}, .center);
+					submenu.add(row);
+				}
+
+				{ // seed
+					const row = HorizontalList.init();
+					row.add(Label.init(.{0, 0}, 48, "Seed:", .left));
+					seedInput = TextInput.init(.{0, 0}, maxWidth - 48, 22, "", .{.onNewline = .init(createWorld)});
+					row.add(seedInput);
+					row.finish(.{0, 0}, .center);
+					submenu.add(row);
+				}
 			},
 			.gameRules => {
-				submenu.add(Label.init(.{0, 0}, 256 - 64, "this is the second page", .center));
+				{
+					const row = HorizontalList.init();
+					row.add(Label.init(.{0, 0}, maxWidth - 96, "Game Mode:", .left));
+					gamemodeInput = Button.initText(.{0, 0}, 96, @tagName(worldSettings.defaultGamemode), .init(gamemodeCallback));
+					row.add(gamemodeInput);
+					row.finish(.{0, 0}, .center);
+					submenu.add(row);
+				}
+
+				submenu.add(CheckBox.init(.{0, 0}, maxWidth, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
 			},
 		}
 	}
@@ -129,53 +155,8 @@ fn createWorld() void {
 	gui.openWindow("save_selection");
 }
 
-fn none() void {}
-
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 500, 8);
-
-	{ // name field
-		const label = Label.init(.{0, 0}, 96, "World Name:", .center);
-		var num: usize = 1;
-		while (true) {
-			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
-			defer main.stackAllocator.free(path);
-			if (!main.files.cubyzDir().hasDir(path)) break;
-			num += 1;
-		}
-		const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
-		defer main.stackAllocator.free(name);
-		const textInput = TextInput.init(.{0, 0}, 256 - 96, 22, name, .{.onNewline = .init(none)});
-		const nameRow = HorizontalList.init();
-		nameRow.add(label);
-		nameRow.add(textInput);
-		nameRow.finish(.{0, 0}, .center);
-		list.add(nameRow);
-	}
-
-	{ // page title and switch buttons
-		const leftArrow = Button.initText(.{0, 0}, 24, "<", .init(prevPage));
-		const label = Label.init(.{0, 0}, 224 - 48, page.label(), .center);
-		const rightArrow = Button.initText(.{0, 0}, 24, ">", .init(nextPage));
-		const header = HorizontalList.init();
-		header.add(leftArrow);
-		header.add(label);
-		header.add(rightArrow);
-		header.finish(.{0, 0}, .center);
-		list.add(header);
-	}
-
-	const submenu = VerticalList.init(.{0, 8}, 384, 8);
-	page.fillSubmenu(submenu);
-	submenu.finish(.center);
-	list.add(submenu);
-
-	list.add(Button.initText(.{0, 8}, 128, "Create World", .init(createWorld)));
-
-	list.finish(.center);
-	window.rootComponent = list.toComponent();
-	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
-	gui.updateWindowPositions();
 
 	if (worldPresets.len == 0) {
 		var presetMap = main.assets.worldPresets();
@@ -197,27 +178,47 @@ pub fn onOpen() void {
 			}
 		}
 	}
-	selectedPreset = defaultPreset;
+	if (!needsUpdate) selectedPreset = defaultPreset;
 
-	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .init(gamemodeCallback));
-	list.add(gamemodeInput);
-
-	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
-
-	if (!build_options.isTaggedRelease) {
-		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
+	{ // name field
+		const label = Label.init(.{0, 0}, 96, "World Name:", .center);
+		var num: usize = 1;
+		while (true) {
+			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			if (!main.files.cubyzDir().hasDir(path)) break;
+			num += 1;
+		}
+		const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
+		defer main.stackAllocator.free(name);
+		nameInput = TextInput.init(.{0, 0}, 256 - 96, 22, name, .{.onNewline = .init(createWorld)});
+		const nameRow = HorizontalList.init();
+		nameRow.add(label);
+		nameRow.add(nameInput);
+		nameRow.finish(.{0, 0}, .center);
+		list.add(nameRow);
 	}
 
-	presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .init(worldPresetCallback));
-	list.add(presetButton);
+	{ // page title and switch buttons
+		const leftArrow = Button.initText(.{0, 0}, 24, "<", .init(prevPage));
+		const label = Label.init(.{0, 0}, 224 - 48, page.label(), .center);
+		const rightArrow = Button.initText(.{0, 0}, 24, ">", .init(nextPage));
+		const header = HorizontalList.init();
+		header.add(leftArrow);
+		header.add(label);
+		header.add(rightArrow);
+		header.finish(.{0, 0}, .center);
+		list.add(header);
+	}
 
-	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .left);
-	seedInput = TextInput.init(.{0, 0}, 128 - 48, 22, "", .{.onNewline = .init(createWorld)});
-	const seedRow = HorizontalList.init();
-	seedRow.add(seedLabel);
-	seedRow.add(seedInput);
-	seedRow.finish(.{0, 0}, .center);
-	list.add(seedRow);
+	const submenu = VerticalList.init(.{0, 8}, 384, 8);
+	page.fillSubmenu(submenu);
+	submenu.finish(.center);
+	list.add(submenu);
+
+	if (!build_options.isTaggedRelease) {
+		list.add(CheckBox.init(.{0, 0}, 192, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
+	}
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .init(createWorld)));
 
@@ -234,8 +235,7 @@ pub fn onClose() void {
 }
 
 pub fn render() void {
-	if(needsUpdate) {
-		needsUpdate = false;
+	if (needsUpdate) {
 		var oldWorldName = window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.currentString.items;
 		oldWorldName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{oldWorldName}) catch unreachable;
 		defer main.stackAllocator.free(oldWorldName);
@@ -249,5 +249,7 @@ pub fn render() void {
 		onOpen();
 		window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.setString(oldWorldName);
 		window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState = oldScroll;
+
+		needsUpdate = false;
 	}
 }
