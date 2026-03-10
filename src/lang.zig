@@ -33,6 +33,21 @@ pub fn init() void {
 
 fn load(languageId: []const u8) !void {
 	languageZon = languagesMap.get(languageId) orelse return error.LanguageNotFound;
+
+	var iterator = languagesMap.iterator();
+	while (iterator.next()) |entry| {
+		const otherLanguageId = entry.key_ptr.*;
+		if (std.mem.countScalar(u8, otherLanguageId, '/') == 1) {
+			var thisLanguageIdSplit = std.mem.splitScalar(u8, languageId, ':');
+
+			_, const path = std.mem.cutScalar(u8, otherLanguageId, ':').?;
+			var otherLanguageIdSplit = std.mem.splitScalar(u8, path, '/');
+
+			if (std.mem.eql(u8, thisLanguageIdSplit.next().?, otherLanguageIdSplit.next().?) and std.mem.eql(u8, thisLanguageIdSplit.next().?, otherLanguageIdSplit.next().?)) {
+				languageZon.join(.preferRight, entry.value_ptr.*);
+			}
+		}
+	}
 }
 
 fn translateHelper(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {

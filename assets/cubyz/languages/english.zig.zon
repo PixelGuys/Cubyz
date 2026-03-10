@@ -2,7 +2,9 @@
 	.language = "English",
 	.assets = .{
 		.blocks = .{}, // i think only for autocomplete
-		.items = .{},
+		.items = .{
+			.@"cubyz:apple" = "Apple",
+		},
 		.tags = .{
 			.metal = "metal",
 			.precious = "precious",
