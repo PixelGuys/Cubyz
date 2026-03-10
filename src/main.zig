@@ -602,7 +602,7 @@ pub fn main() void { // MARK: main()
 	if (settings.launchConfig.autoEnterWorld.len > 0) {
 		const saveDirectory = std.fs.path.join(stackAllocator.allocator, &.{"saves", settings.launchConfig.autoEnterWorld, "world.zig.zon"}) catch unreachable;
 		defer stackAllocator.free(saveDirectory);
-		const worldExists: bool = files.cubyzDir().tryHasFile(saveDirectory) catch |err| {
+		const worldExists: bool = files.cubyzDir().hasFile(saveDirectory) catch |err| {
 			std.log.err("Cannot access autoEnterWorld's world.zig.zon due to error: {}", .{err});
 			return;
 		};

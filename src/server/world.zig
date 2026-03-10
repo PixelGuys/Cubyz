@@ -98,7 +98,14 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
 		defer main.stackAllocator.free(resultPath);
 
-		if (!main.files.cubyzDir().hasDir(resultPath)) break;
+		const pathExists: bool = blk: {
+			break :blk main.files.cubyzDir().hasDir(resultPath) catch |err| {
+				std.log.err("Encountered error accessing directory at path {s}: {}", .{resultPath, err});
+				break :blk false;
+			};
+		};
+
+		if (!pathExists) break;
 
 		main.stackAllocator.free(resultName);
 		resultName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_{}", .{escapedName, i}) catch unreachable;
@@ -774,7 +781,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
 		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
-		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath);
+		const hasSurfaceMaps = blk: {
+			break :blk main.files.cubyzDir().hasDir(mapsPath) catch |err| {
+				std.log.err("Error accessing surface maps: {}", .{err});
+				break :blk false;
+			};
+		};
+
 		if (hasSurfaceMaps) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}

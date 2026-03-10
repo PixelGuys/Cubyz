@@ -387,7 +387,9 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 	if (zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 
 	_ = blocks_zig.register(assetFolder, id, zon);
-	blocks_zig.meshes.register(assetFolder, id, zon);
+	blocks_zig.meshes.register(assetFolder, id, zon) catch |err| {
+		return err;
+	};
 }
 
 fn assignBlockItem(stringId: []const u8) !void {
@@ -540,7 +542,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
+	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder) catch |err| {
+		std.log.err("Could not load block breaking animation: {}", .{err});
+	};
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
@@ -674,7 +678,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			// Check for access rights
-			if (!main.files.cwd().hasDir(path)) continue;
+			const fileExists: bool = main.files.cwd().hasDir(path) catch |err| {
+				std.log.err("Error reading asset file {s}: {}", .{path, err});
+				return err;
+			};
+			if (!fileExists) continue;
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
 		}
 	}
@@ -712,7 +720,13 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			// Check for access rights
-			if (!main.files.cwd().hasDir(path)) continue;
+			const fileExists: bool = blk: {
+				break :blk main.files.cwd().hasDir(path) catch |err| {
+					std.log.err("Error reading asset file {s}: {} (during unload due to a previous error)", .{path, err});
+					break :blk false;
+				};
+			};
+			if (!fileExists) continue;
 			main.utils.file_monitor.removePath(path);
 		}
 	}
