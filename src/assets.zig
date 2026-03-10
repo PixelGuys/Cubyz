@@ -85,8 +85,8 @@ pub const Assets = struct {
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
-			.languages = .{}, // Not needed inside the world
-			.worldPresets = .{},
+			.languages = .{}, // Not accessible inside the world
+			.worldPresets = .{}, // Not accessible inside the world
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
