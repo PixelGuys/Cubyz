@@ -28,7 +28,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const And
 }
 
 pub fn printTooltip(self: *const And, outString: *main.List(u8)) void {
-	const translated = main.lang.translate(.restriction, "and");
+	const translated = main.lang.translate(.restriction, "cubyz:and");
 	outString.append('(');
 	for (self.children, 0..) |child, i| {
 		if (i != 0) {

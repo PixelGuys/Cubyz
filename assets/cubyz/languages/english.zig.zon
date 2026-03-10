@@ -20,10 +20,10 @@
 	},
 	.ui = .{
 		.labels = .{
-			.Singleplayer = "Singleplayer",
-			.Multiplayer = "Multiplayer",
-			.Settings = "Settings",
-			.@"Touch Grass" = "Touch Grass",
+			.@"main/singleplayer" = "Singleplayer",
+			.@"main/multiplayer" = "Multiplayer",
+			.@"main/settings" = "Settings",
+			.@"main/touch_grass" = "Touch Grass",
 		},
 		.modifiers = .{},
 		.restrictions = .{

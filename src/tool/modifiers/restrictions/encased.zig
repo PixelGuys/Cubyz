@@ -31,7 +31,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 }
 
 pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
-	const translated = main.lang.format(main.stackAllocator, .restriction, "encased", &.{.fromInt(self.amount), .fromTag(self.tag)});
+	const translated = main.lang.format(main.stackAllocator, .restriction, "cubyz:encased", &.{.fromInt(self.amount), .fromTag(self.tag)});
 	defer main.stackAllocator.free(translated);
 	outString.appendSlice(translated);
 }

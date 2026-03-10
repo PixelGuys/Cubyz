@@ -14,5 +14,5 @@ pub fn loadFromZon(_: NeverFailingAllocator, _: ZonElement) *const anyopaque {
 }
 
 pub fn printTooltip(_: *const anyopaque, outString: *main.List(u8)) void {
-	outString.appendSlice(main.lang.translate(.restriction, "always"));
+	outString.appendSlice(main.lang.translate(.restriction, "cubyz:always"));
 }

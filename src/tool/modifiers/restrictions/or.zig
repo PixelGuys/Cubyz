@@ -28,7 +28,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Or 
 }
 
 pub fn printTooltip(self: *const Or, outString: *main.List(u8)) void {
-	const translation = main.lang.translate(.restriction, "or");
+	const translation = main.lang.translate(.restriction, "cubyz:or");
 	outString.append('(');
 	for (self.children, 0..) |child, i| {
 		if (i != 0) {
