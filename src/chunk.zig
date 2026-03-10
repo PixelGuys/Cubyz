@@ -316,8 +316,8 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 		return dx*dx + dy*dy + dz*dz;
 	}
 
-	pub fn getPriority(self: ChunkPosition, pos: Vec3d) f32 {
-		return -@as(f32, @floatCast(self.getMinDistanceSquaredFloat(pos)))/@as(f32, @floatFromInt(self.voxelSize*self.voxelSize)) + 2*@as(f32, @floatFromInt(std.math.log2_int(u31, self.voxelSize)*chunkSize*chunkSize));
+	pub fn getPriority(self: ChunkPosition, playerPos: Vec3d, playerVel: Vec3d) f32 {
+		return -@as(f32, @floatCast(self.getMinDistanceSquaredFloat(playerPos + playerVel)))/@as(f32, @floatFromInt(self.voxelSize*self.voxelSize)) + 2*@as(f32, @floatFromInt(std.math.log2_int(u31, self.voxelSize)*chunkSize*chunkSize));
 	}
 };
 

@@ -773,7 +773,7 @@ pub fn updateMeshes(targetTime: std.Io.Timestamp) void { // MARK: updateMeshes()
 					defer mutex.lock();
 					continue;
 				}
-				const priority = pos.getPriority(playerPos + playerVel);
+				const priority = pos.getPriority(playerPos, playerVel);
 				if (priority > closestPriority) {
 					closestPriority = priority;
 					closestIndex = i;
@@ -875,7 +875,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	}
 
 	pub fn getPriority(self: *MeshGenerationTask) f32 {
-		return self.mesh.pos.getPriority(game.Player.getPosBlocking() + game.Player.getVelBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+		return self.mesh.pos.getPriority(game.Player.getPosBlocking(), game.Player.getVelBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 	}
 
 	pub fn isStillNeeded(self: *MeshGenerationTask) bool {

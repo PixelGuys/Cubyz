@@ -211,7 +211,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch (self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos + user.player.vel),
+				.user => |user| return self.pos.getPriority(user.player.pos, user.player.vel),
 				else => return std.math.floatMax(f32),
 			}
 		}
