@@ -178,11 +178,25 @@ pub const ClientEntityManager = struct {
 			const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
 			graphics.draw.setColor(alpha << 24);
 
-			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
-			defer buf.deinit();
+			var nameBuf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
+			defer nameBuf.deinit();
 			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
-			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
-			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
+			const nameSize = nameBuf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
+			nameBuf.render(xCenter - nameSize[0]/2, yCenter - nameSize[1], fontSize);
+
+			const distance = vec.length(pos3d);
+			const distString = blk: {
+				if (distance < 1000) {
+					break :blk std.fmt.allocPrint(main.stackAllocator.allocator, "{d:.0} m", .{distance}) catch unreachable;
+				} else {
+					break :blk std.fmt.allocPrint(main.stackAllocator.allocator, "{d:.1} km", .{distance/1000}) catch unreachable;
+				}
+			};
+			defer main.stackAllocator.free(distString);
+			var distBuf = graphics.TextBuffer.init(main.stackAllocator, distString, .{.color = 0xffffff}, false, .center);
+			defer distBuf.deinit();
+			const distSize = nameBuf.calculateLineBreaks(fontSize*3/4, @floatFromInt(main.Window.width*8));
+			nameBuf.render(xCenter - distSize[0]/2, yCenter - distSize[1], fontSize*3/4);
 		}
 	}
 
