@@ -33,7 +33,7 @@
 			.not = "not",
 			.@"or" = "or",
 		},
-		.other = .{
+		.stats = .{
 			.@"swings/s" = "swings/s",
 			.Damage = "Damage",
 			.Durability = "Durability",

@@ -823,10 +823,10 @@ pub const Tool = struct { // MARK: Tool
 		, .{
 			main.lang.translate(.tool, self.type.id()),
 			self.swingSpeed,
-			main.lang.translate(.other, "swings/s"),
-			main.lang.translate(.other, "Damage"),
+			main.lang.translate(.stat, "swings/s"),
+			main.lang.translate(.stat, "Damage"),
 			self.damage,
-			main.lang.translate(.other, "Durability"),
+			main.lang.translate(.stat, "Durability"),
 			self.durability,
 			std.math.lossyCast(u32, self.maxDurability),
 		});
