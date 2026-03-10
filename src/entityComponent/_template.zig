@@ -47,7 +47,7 @@ pub const Client = struct {
 };
 // ############################# Server only stuff ################################
 pub const Server = struct {
-	pub const ItemComponent = struct {
+	pub const ExampleComponent = struct {
 		pub fn save(self: ItemComponent, writer: *utils.BinaryWriter) void {
 			_ = self;
 			_ = writer;
