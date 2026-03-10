@@ -101,11 +101,17 @@ const FormatArg = union(enum) {
 };
 
 pub fn format(allocator: main.heap.NeverFailingAllocator, category: Category, string: []const u8, args: []const FormatArg) []const u8 {
+	var outString = main.List(u8).init(allocator);
+	defer outString.deinit();
+
+	formatToList(&outString, category, string, args);
+
+	return outString.toOwnedSlice();
+}
+
+pub fn formatToList(outString: *main.List(u8), category: Category, string: []const u8, args: []const FormatArg) void {
 	const fmt = translate(category, string);
 	var iterator = std.mem.splitAny(u8, fmt, "{}");
-
-	var outputList = main.List(u8).init(allocator);
-	defer outputList.deinit();
 
 	var isPlaceholder = false;
 	while (iterator.next()) |slice| {
@@ -117,27 +123,25 @@ pub fn format(allocator: main.heap.NeverFailingAllocator, category: Category, st
 			const arg = args[index];
 			switch (arg) {
 				.string => |str| {
-					outputList.appendSlice(str);
+					outString.appendSlice(str);
 				},
 				.int => |int| {
-					outputList.print("{d}", .{int});
+					outString.print("{d}", .{int});
 				},
 				.float => |float| {
 					switch (float.precision) {
 						inline else => |comptimePrecision| {
-							outputList.print(@tagName(comptimePrecision), .{float.value});
+							outString.print(@tagName(comptimePrecision), .{float.value});
 						},
 					}
 				},
 				.tag => |tag| {
-					outputList.appendSlice(translate(.tag, tag.getName()));
+					outString.appendSlice(translate(.tag, tag.getName()));
 				},
 			}
 		} else {
-			outputList.appendSlice(slice);
+			outString.appendSlice(slice);
 		}
 		isPlaceholder = !isPlaceholder;
 	}
-
-	return outputList.toOwnedSlice();
 }
