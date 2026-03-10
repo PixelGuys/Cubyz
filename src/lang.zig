@@ -45,14 +45,13 @@ fn translateHelper(sectionName: []const u8, catrgoryName: []const u8, string: []
 	const zon = languageZon.getChild(sectionName).getChild(catrgoryName);
 	const translated = zon.get(?[]const u8, string, null);
 	return translated orelse blk: {
-		// uncomment when english is complete
-		// std.log.err("Couldn't find translation for '{s}'. Searched at '{s}/{s}/{s}/{s}'", .{
-		// string,
-		// main.settings.language,
-		// sectionName,
-		// catrgoryName,
-		// string,
-		// });
+		std.log.warn("Couldn't find translation for '{s}'. Searched at '{s}/{s}/{s}/{s}'", .{
+			string,
+			main.settings.language,
+			sectionName,
+			catrgoryName,
+			string,
+		});
 		break :blk string;
 	};
 }
