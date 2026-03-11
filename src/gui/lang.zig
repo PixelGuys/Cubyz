@@ -21,7 +21,11 @@ var languageZon: ZonElement = undefined;
 const languagesMap = main.assets.languages;
 
 pub fn init() void {
-	languageZon = languagesMap().get(main.settings.language) orelse blk: {
+	load(main.settings.language);
+}
+
+pub fn load(languageId: []const u8) !void {
+	languageZon = languagesMap().get(languageId) orelse blk: {
 		std.log.err("Couldn't find language {s}. Switching to English...", .{main.settings.language});
 		main.settings.language = "cubyz:english";
 		main.settings.save();
