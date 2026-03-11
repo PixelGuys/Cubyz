@@ -4,7 +4,6 @@ const main = @import("main");
 const ZonElement = main.ZonElement;
 
 const Category = enum {
-	block,
 	item,
 	label,
 	language,
@@ -54,7 +53,6 @@ fn lookupTranslation(sectionName: []const u8, catrgoryName: []const u8, string: 
 pub fn translate(category: Category, string: []const u8) []const u8 {
 	if (string.len == 0) return string;
 	return switch (category) {
-		.block => lookupTranslation("assets", "blocks", string),
 		.item => lookupTranslation("assets", "items", string),
 		.label => lookupTranslation("ui", "labels", string),
 		.language => blk: {

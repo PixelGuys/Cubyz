@@ -1,7 +1,6 @@
 .{
 	.language = "English",
 	.assets = .{
-		.blocks = .{}, // i think only for autocomplete
 		.items = .{
 			.@"cubyz:apple" = "Apple",
 		},
