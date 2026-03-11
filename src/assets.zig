@@ -104,7 +104,7 @@ pub const Assets = struct {
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, &self.models);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
-			addon.readAllZon(allocator, "languages", false, &self.languages, null);
+			addon.readAllZon(main.globalArena, "languages", false, &self.languages, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 		}
 
@@ -700,6 +700,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
 		}
 	}
+
+	var languageIterator = worldAssets.languages.iterator();
+	while (languageIterator.next()) |entry| {
+		common.languages.put(main.globalArena.allocator, entry.key_ptr, entry.value_ptr) catch unreachable;
+	}
+	common.consolidateLanguages();
 
 	worldAssets.log(.world);
 }

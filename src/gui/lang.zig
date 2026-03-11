@@ -3,8 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const ZonElement = main.ZonElement;
 
-const ZonMapEntry = std.StringHashMapUnmanaged(ZonElement).Entry;
-
 const Category = enum {
 	block,
 	item,
@@ -18,16 +16,16 @@ const Category = enum {
 	world_preset,
 };
 
-const languagesMap: *const std.StringHashMapUnmanaged(ZonElement) = main.assets.languages();
-
 var languageZon: ZonElement = undefined;
 
+const languagesMap = main.assets.languages;
+
 pub fn init() void {
-	languageZon = languagesMap.get(main.settings.language) orelse blk: {
+	languageZon = languagesMap().get(main.settings.language) orelse blk: {
 		std.log.err("Couldn't find language {s}. Switching to English...", .{main.settings.language});
 		main.settings.language = "cubyz:english";
 		main.settings.save();
-		break :blk languagesMap.get(main.settings.language).?;
+		break :blk languagesMap().get(main.settings.language).?;
 	};
 }
 
