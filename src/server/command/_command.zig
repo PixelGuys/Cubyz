@@ -77,8 +77,12 @@ pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *Use
 }
 
 pub fn parsePlayerId(playerId: []const u8, source: *User) !*User {
-	const id = std.fmt.parseInt(u32, playerId, 10) catch {
-		source.sendMessage("#ff0000Player ids must be integers, found \"{s}\"", .{playerId});
+	if (!std.ascii.startsWithIgnoreCase(playerId, "@")) {
+		source.sendMessage("#ff0000Player id specifiers always start with @, found \"{s}\"", .{playerId});
+		return error.InvalidArg;
+	}
+	const id = std.fmt.parseInt(u32, playerId[1..], 10) catch {
+		source.sendMessage("#ff0000Player ids must be integers, found \"{s}\"", .{playerId[1..]});
 		return error.InvalidArg;
 	};
 	return main.server.getUserById(id) catch {
