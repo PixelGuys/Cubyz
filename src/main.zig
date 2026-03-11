@@ -11,6 +11,7 @@ pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
+pub const client = @import("client.zig");
 pub const entity = @import("entity.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
@@ -585,8 +586,8 @@ pub fn main() void { // MARK: main()
 	network.init() catch @panic("Failed to initialize network");
 	defer network.deinit();
 
-	if (!headless) entity.ClientEntityManager.init();
-	defer if (!headless) entity.ClientEntityManager.deinit();
+	if (!headless) entity.client.init();
+	defer if (!headless) entity.client.deinit();
 
 	if (!headless) gui.init();
 	defer if (!headless) gui.deinit();

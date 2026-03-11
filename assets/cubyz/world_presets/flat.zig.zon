@@ -15,7 +15,7 @@
 		.@"cubyz:fractal_cave" = .{
 			.state = .disabled,
 		},
-		.@"cubyz:noise_cave" = .{
+		.@"cubyz:sdf_cave" = .{
 			.state = .disabled,
 		},
 	},

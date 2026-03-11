@@ -28,7 +28,7 @@
 	},
 	.caveModels = .{
 		.{
-			.id = "cubyz:hemisphere",
+			.id = "cubyz:partial_sphere",
 			.minAmount = 20,
 			.maxAmount = 30,
 			.minRadius = 4,

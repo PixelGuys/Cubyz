@@ -15,6 +15,7 @@ pub const SdfModel = struct { // MARK: SdfModel
 	maxBiomeCenterDistance: f32,
 	minAmount: f32,
 	maxAmount: f32,
+	mode: enum { additive, subtractive },
 
 	const VTable = struct {
 		init: *const fn (parameters: ZonElement) ?*anyopaque,
@@ -37,6 +38,7 @@ pub const SdfModel = struct { // MARK: SdfModel
 			.maxBiomeCenterDistance = std.math.clamp(parameters.get(f32, "maxBiomeCenterDistance", terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2), 0, terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2),
 			.minAmount = parameters.get(f32, "minAmount", 1),
 			.maxAmount = parameters.get(f32, "maxAmount", parameters.get(f32, "minAmount", 1)),
+			.mode = parameters.get(@TypeOf(@as(SdfModel, undefined).mode), "mode", .subtractive),
 		};
 	}
 
