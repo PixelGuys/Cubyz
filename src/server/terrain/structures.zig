@@ -77,31 +77,32 @@ pub const StructureTable = struct {
 	id: []const u8,
 	tags: []const Tag,
 	structures: []SimpleStructureModel = &.{},
-	chance: f32,
 	pub fn init(id: []const u8, zon: ZonElement) StructureTable {
 		var structureTable: StructureTable = .{
 			.id = main.worldArena.dupe(u8, id),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
-			.chance = zon.get(f32, "chance", 0.0),
 		};
-
+		const tableChance: ?f32 = zon.get(?f32, "chance", null);
 		var structureList = main.ListUnmanaged(SimpleStructureModel){};
 		defer structureList.deinit(main.stackAllocator);
 
 		const structures = zon.getChild("structures");
-		var totalChance: f32 = 0;
 
+		var totalChance: f32 = 0.0;
 		for (structures.toSlice()) |elem| {
 			if (SimpleStructureModel.initModel(elem)) |model| {
 				structureList.append(main.stackAllocator, model);
 				totalChance += model.chance;
 			}
 		}
-		if (structureTable.chance > 0) {
+
+		if (tableChance) |chance| {
 			for (structureTable.structures) |*structure| {
-				structure.chance /= structureTable.chance;
+				structure.chance /= totalChance;
+				structure.chance *= chance;
 			}
 		}
+
 		structureTable.structures = main.worldArena.dupe(SimpleStructureModel, structureList.items);
 		return structureTable;
 	}
