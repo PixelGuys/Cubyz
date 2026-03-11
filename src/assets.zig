@@ -107,6 +107,23 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "languages", false, &self.languages, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 		}
+
+		self.consolidateLanguages();
+	}
+	fn consolidateLanguages(self: *Assets) void {
+		var iterator = self.languages.iterator();
+		while (iterator.next()) |entry| {
+			if (std.mem.countScalar(u8, entry.key_ptr.*, '/') == 1) {
+				_, const path = std.mem.cutScalar(u8, entry.key_ptr.*, ':').?;
+				const cut = std.mem.cutScalar(u8, path, '/').?;
+				const targetLanguageId = std.mem.concat(main.stackAllocator.allocator, u8, &.{cut.@"0", ":", cut.@"1"}) catch unreachable;
+				defer main.stackAllocator.free(targetLanguageId);
+				const targetLanguageZon = self.languages.getPtr(targetLanguageId) orelse continue;
+
+				targetLanguageZon.join(.preferRight, entry.value_ptr.*);
+				self.languages.removeByPtr(entry.key_ptr);
+			}
+		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
