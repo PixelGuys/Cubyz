@@ -129,9 +129,8 @@ pub const Dir = struct {
 		const file = self.dir.openFile(path, .{}) catch |err| {
 			if (err == error.FileNotFound) {
 				return false;
-			} else {
-				return err;
 			}
+			return err;
 		};
 		file.close();
 		return true;
@@ -141,9 +140,8 @@ pub const Dir = struct {
 		var dir = self.dir.openDir(path, .{.iterate = false}) catch |err| {
 			if (err == error.FileNotFound) {
 				return false;
-			} else {
-				return err;
 			}
+			return err;
 		};
 		dir.close();
 		return true;

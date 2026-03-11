@@ -720,11 +720,9 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
 			defer main.stackAllocator.free(path);
 			// Check for access rights
-			const fileExists: bool = blk: {
-				break :blk main.files.cwd().hasDir(path) catch |err| {
-					std.log.err("Error reading asset file {s}: {} (during unload due to a previous error)", .{path, err});
-					break :blk false;
-				};
+			const fileExists: bool = main.files.cwd().hasDir(path) catch |err| blk: {
+				std.log.err("Error reading asset file {s}: {} (during unload due to a previous error)", .{path, err});
+				break :blk false;
 			};
 			if (!fileExists) continue;
 			main.utils.file_monitor.removePath(path);

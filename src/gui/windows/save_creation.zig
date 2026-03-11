@@ -98,11 +98,9 @@ pub fn onOpen() void {
 	while (true) {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		const pathExists: bool = blk: {
-			break :blk main.files.cubyzDir().hasDir(path) catch |err| {
-				std.log.err("Filesystem error accessing {s}: {}", .{path, err});
-				break :blk true;
-			};
+		const pathExists: bool = main.files.cubyzDir().hasDir(path) catch |err| blk: {
+			std.log.err("Filesystem error accessing {s}: {}", .{path, err});
+			break :blk true;
 		};
 		if (!pathExists) break;
 		num += 1;

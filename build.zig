@@ -159,8 +159,8 @@ fn createLaunchConfig() !void {
 			\\        .defaultGamemode = .survival,
 			\\        .testingMode = false,
 			\\        .allowCheats = false,
-			\\        // Empty seed will randomly generate a seed. If you enter a numeric seed, it will be interpreted as such (i.e. "12345").
-			\\        // If the number is too large, or it's not a number, a hashing algorithm will produce a numeric seed from your text.
+			\\        // Empty seed will randomly generate a seed. seed is a string, it must be in quotations even if it's a number.
+			\\        // If the number is too large, or seed is not a number, a hashing algorithm will produce a numeric seed from your text.
 			\\        .seed = "",
 			\\    },
 			\\    .worldCreationPreset = "cubyz:default",

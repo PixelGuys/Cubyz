@@ -72,12 +72,6 @@ pub const Settings = struct {
 	}
 };
 
-pub fn exists(worldPath: []const u8) bool {
-	const saveDirectory = std.fs.path.join(main.stackAllocator.allocator, &.{"saves", worldPath, "world.zig.zon"}) catch unreachable;
-	defer main.stackAllocator.free(saveDirectory);
-	return files.cubyzDir().hasDir(saveDirectory);
-}
-
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
 	// Remove illegal ASCII characters:
 	const escapedName = main.stackAllocator.alloc(u8, name.len);
@@ -98,11 +92,9 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
 		defer main.stackAllocator.free(resultPath);
 
-		const pathExists: bool = blk: {
-			break :blk main.files.cubyzDir().hasDir(resultPath) catch |err| {
-				std.log.err("Encountered error accessing directory at path {s}: {}", .{resultPath, err});
-				break :blk false;
-			};
+		const pathExists: bool = main.files.cubyzDir().hasDir(resultPath) catch |err| blk: {
+			std.log.err("Encountered error accessing directory at path {s}: {}", .{resultPath, err});
+			break :blk false;
 		};
 
 		if (!pathExists) break;
@@ -781,13 +773,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
 		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
-		const hasSurfaceMaps = blk: {
-			break :blk main.files.cubyzDir().hasDir(mapsPath) catch |err| {
-				std.log.err("Error accessing surface maps: {}", .{err});
-				break :blk false;
-			};
+		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath) catch |err| blk: {
+			std.log.err("Error accessing surface maps: {}", .{err});
+			break :blk false;
 		};
-
 		if (hasSurfaceMaps) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}
