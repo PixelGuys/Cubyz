@@ -12,7 +12,7 @@ const Vec3i = vec.Vec3i;
 
 pub const id = "cubyz:fractal_cave";
 
-pub const priority = 65536;
+pub const priority = 131072;
 
 pub const generatorSeed = 0xb898ec9ce9d2ef37;
 
