@@ -654,7 +654,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	iterator = worldAssets.structureTables.iterator();
 	while (iterator.next()) |entry| {
-		if (main.server.terrain.structures.hasRegistered(entry.key_ptr.*)) continue;
 		registerStructureTable(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
