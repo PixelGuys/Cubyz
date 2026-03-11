@@ -51,7 +51,7 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 		.item => lookupTranslation("assets", "items", string),
 		.label => lookupTranslation("ui", "labels", string),
 		.language => blk: {
-			const zon = languagesMap.get(string) orelse unreachable;
+			const zon = languagesMap().get(string) orelse unreachable;
 			break :blk zon.get(?[]const u8, "language", null) orelse blk2: {
 				std.log.err("Couldn't find name for language {s}", .{string});
 				break :blk2 string;

@@ -113,15 +113,22 @@ pub const Assets = struct {
 	fn consolidateLanguages(self: *Assets) void {
 		var iterator = self.languages.iterator();
 		while (iterator.next()) |entry| {
-			if (std.mem.countScalar(u8, entry.key_ptr.*, '/') == 1) {
-				_, const path = std.mem.cutScalar(u8, entry.key_ptr.*, ':').?;
-				const cut = std.mem.cutScalar(u8, path, '/').?;
-				const targetLanguageId = std.mem.concat(main.stackAllocator.allocator, u8, &.{cut.@"0", ":", cut.@"1"}) catch unreachable;
-				defer main.stackAllocator.free(targetLanguageId);
-				const targetLanguageZon = self.languages.getPtr(targetLanguageId) orelse continue;
+			if (entry.value_ptr.get(bool, "isSupplement", false)) {
+				defer self.languages.removeByPtr(entry.key_ptr);
+				_, const targetlanguageName = std.mem.cutScalar(u8, entry.key_ptr.*, ':').?;
+				
+				const targetLanguageZon = blk: {
+					var targetLanguageKeyIterator = self.languages.keyIterator();
+					while (targetLanguageKeyIterator.next()) |tlKeyPtr| {
+						_, const languageName = std.mem.cutScalar(u8, tlKeyPtr.*, ':').?;
+						if (std.mem.eql(u8, languageName, targetlanguageName)) {
+							break :blk self.languages.getPtr(tlKeyPtr.*).?;
+						}
+					}
+					continue;
+				};
 
 				targetLanguageZon.join(.preferRight, entry.value_ptr.*);
-				self.languages.removeByPtr(entry.key_ptr);
 			}
 		}
 	}
@@ -703,7 +710,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	var languageIterator = worldAssets.languages.iterator();
 	while (languageIterator.next()) |entry| {
-		common.languages.put(main.globalArena.allocator, entry.key_ptr, entry.value_ptr) catch unreachable;
+		common.languages.put(main.globalArena.allocator, entry.key_ptr.*, entry.value_ptr.*) catch unreachable;
 	}
 	common.consolidateLanguages();
 
