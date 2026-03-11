@@ -707,7 +707,6 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	biomes_zig.reset();
 	migrations_zig.reset();
 	main.server.terrain.structures.reset();
-	migrations_zig.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();
