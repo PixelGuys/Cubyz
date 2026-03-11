@@ -722,7 +722,7 @@ pub fn setClipboardString(string: []const u8) void {
 
 pub fn init() void { // MARK: init()
 	_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
-	const windowTitle = "Cubyz {s}" ++ main.settings.version.version;
+	const windowTitle = "Cubyz " ++ main.settings.version.version;
 
 	if (builtin.target.os.tag == .macos) {
 		// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
