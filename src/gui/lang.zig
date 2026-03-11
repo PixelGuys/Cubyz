@@ -21,15 +21,18 @@ var languageZon: ZonElement = undefined;
 const languagesMap = main.assets.languages;
 
 pub fn init() void {
-	load(main.settings.language);
-}
-
-pub fn load(languageId: []const u8) !void {
-	languageZon = languagesMap().get(languageId) orelse blk: {
-		std.log.err("Couldn't find language {s}. Switching to English...", .{main.settings.language});
+	load(main.settings.language) catch {
+		std.log.err("Using English...", .{});
 		main.settings.language = "cubyz:english";
 		main.settings.save();
-		break :blk languagesMap().get(main.settings.language).?;
+		languageZon = languagesMap().get(main.settings.language).?;
+	};
+}
+
+pub fn load(languageId: []const u8) error{LanguageNotFound}!void {
+	languageZon = languagesMap().get(languageId) orelse {
+		std.log.err("Couldn't find language {s}.", .{main.settings.language});
+		return error.LanguageNotFound;
 	};
 }
 

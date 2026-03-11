@@ -107,8 +107,6 @@ pub const Assets = struct {
 			addon.readAllZon(main.globalArena, "languages", false, &self.languages, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 		}
-
-		self.consolidateLanguages();
 	}
 	fn consolidateLanguages(self: *Assets) void {
 		var iterator = self.languages.iterator();
@@ -116,13 +114,15 @@ pub const Assets = struct {
 			if (entry.value_ptr.get(bool, "isSupplement", false)) {
 				defer self.languages.removeByPtr(entry.key_ptr);
 				_, const targetlanguageName = std.mem.cutScalar(u8, entry.key_ptr.*, ':').?;
-				
+
 				const targetLanguageZon = blk: {
-					var targetLanguageKeyIterator = self.languages.keyIterator();
-					while (targetLanguageKeyIterator.next()) |tlKeyPtr| {
-						_, const languageName = std.mem.cutScalar(u8, tlKeyPtr.*, ':').?;
-						if (std.mem.eql(u8, languageName, targetlanguageName)) {
-							break :blk self.languages.getPtr(tlKeyPtr.*).?;
+					var targetLanguageIterator = self.languages.iterator();
+					while (targetLanguageIterator.next()) |tliEntry| {
+						if (!tliEntry.value_ptr.get(bool, "isSupplement", false)) {
+							_, const languageName = std.mem.cutScalar(u8, tliEntry.key_ptr.*, ':').?;
+							if (std.mem.eql(u8, languageName, targetlanguageName)) {
+								break :blk self.languages.getPtr(tliEntry.key_ptr.*).?;
+							}
 						}
 					}
 					continue;
@@ -554,6 +554,15 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	errdefer unloadAssets();
 
+	var languageIterator = worldAssets.languages.iterator();
+	while (languageIterator.next()) |entry| {
+		common.languages.put(main.globalArena.allocator, entry.key_ptr.*, entry.value_ptr.*) catch unreachable;
+	}
+	common.consolidateLanguages();
+	main.lang.load(main.settings.language) catch {
+		std.log.err("Failed to reload language {s}.", .{main.settings.language});
+	};
+
 	migrations_zig.registerAll(.block, &worldAssets.blockMigrations);
 	migrations_zig.apply(.block, blockPalette);
 
@@ -707,12 +716,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
 		}
 	}
-
-	var languageIterator = worldAssets.languages.iterator();
-	while (languageIterator.next()) |entry| {
-		common.languages.put(main.globalArena.allocator, entry.key_ptr.*, entry.value_ptr.*) catch unreachable;
-	}
-	common.consolidateLanguages();
 
 	worldAssets.log(.world);
 }
