@@ -31,7 +31,7 @@ pub fn init() void {
 	};
 }
 
-fn translateHelper(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {
+fn lookupTranslation(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {
 	const zon = languageZon.getChild(sectionName).getChild(catrgoryName);
 	const translated = zon.get(?[]const u8, string, null);
 	return translated orelse blk: {
@@ -49,9 +49,9 @@ fn translateHelper(sectionName: []const u8, catrgoryName: []const u8, string: []
 pub fn translate(category: Category, string: []const u8) []const u8 {
 	if (string.len == 0) return string;
 	return switch (category) {
-		.block => translateHelper("assets", "blocks", string),
-		.item => translateHelper("assets", "items", string),
-		.label => translateHelper("ui", "labels", string),
+		.block => lookupTranslation("assets", "blocks", string),
+		.item => lookupTranslation("assets", "items", string),
+		.label => lookupTranslation("ui", "labels", string),
 		.language => blk: {
 			const zon = languagesMap.get(string) orelse unreachable;
 			break :blk zon.get(?[]const u8, "language", null) orelse blk2: {
@@ -59,12 +59,12 @@ pub fn translate(category: Category, string: []const u8) []const u8 {
 				break :blk2 string;
 			};
 		},
-		.modifier => translateHelper("ui", "modifiers", string),
-		.restriction => translateHelper("ui", "restrictions", string),
-		.stat => translateHelper("ui", "stats", string),
-		.tag => translateHelper("assets", "tags", string),
-		.tool => translateHelper("assets", "tools", string),
-		.world_preset => translateHelper("assets", "world_presets", string),
+		.modifier => lookupTranslation("ui", "modifiers", string),
+		.restriction => lookupTranslation("ui", "restrictions", string),
+		.stat => lookupTranslation("ui", "stats", string),
+		.tag => lookupTranslation("assets", "tags", string),
+		.tool => lookupTranslation("assets", "tools", string),
+		.world_preset => lookupTranslation("assets", "world_presets", string),
 	};
 }
 
