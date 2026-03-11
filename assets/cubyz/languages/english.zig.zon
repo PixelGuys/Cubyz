@@ -36,9 +36,10 @@
 			.@"cubyz:or" = "or",
 		},
 		.stats = .{
-			.@"cubyz:swingSpeed" = "swings/s",
-			.@"cubyz:damage" = "Damage",
-			.@"cubyz:durability" = "Durability",
+			.@"cubyz:swingSpeed" = "{0} swings/s",
+			.@"cubyz:damage" = "Damage: {0}",
+			.@"cubyz:durability" = "Durability: {0}/{1}",
+			.@"cubyz:maxDurability" = "Durability: {0}",
 		},
 	},
 }

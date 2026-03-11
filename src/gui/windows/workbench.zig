@@ -115,9 +115,16 @@ pub fn render() void {
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
-	main.graphics.draw.print("{s}{} durability", .{if (currentResult.tool.maxDurability != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.tool.maxDurability))}, offsetX, offsetY, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.tool.swingSpeed}, offsetX, offsetY + fontSize, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.tool.damage}, offsetX, offsetY + 2*fontSize, fontSize, .left);
+	const swingSpeedString = main.lang.format(main.stackAllocator, .stat, "cubyz:swingSpeed", &.{.fromFloat(currentResult.tool.swingSpeed, .@"{d:.1}")});
+	defer main.stackAllocator.free(swingSpeedString);
+	const damageString = main.lang.format(main.stackAllocator, .stat, "cubyz:damage", &.{.fromFloat(currentResult.tool.damage, .@"{d:.1}")});
+	defer main.stackAllocator.free(damageString);
+	const durabilityString = main.lang.format(main.stackAllocator, .stat, "cubyz:maxDurability", &.{.fromFloat(currentResult.tool.maxDurability, .@"{d:.0}")});
+	defer main.stackAllocator.free(durabilityString);
+
+	main.graphics.draw.print("#ffffff{s}", .{swingSpeedString}, offsetX, offsetY, fontSize, .left);
+	main.graphics.draw.print("#ffffff{s}", .{damageString}, offsetX, offsetY + fontSize, fontSize, .left);
+	main.graphics.draw.print("{s}{s}", .{if (currentResult.tool.maxDurability != 0) "#ffffff" else "#ff0000", durabilityString}, offsetX, offsetY + 2*fontSize, fontSize, .left);
 }
 
 pub fn onOpen() void {

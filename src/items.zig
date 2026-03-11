@@ -814,21 +814,25 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	fn getTooltip(self: *Tool) []const u8 {
+		const durabilityString = main.lang.format(main.stackAllocator, .stat, "cubyz:durability", &.{.fromInt(self.durability), .fromFloat(self.maxDurability, .@"{d:.0}")});
+		defer main.stackAllocator.free(durabilityString);
+		const swingSpeedString = main.lang.format(main.stackAllocator, .stat, "cubyz:swingSpeed", &.{.fromFloat(self.swingSpeed, .@"{d:.2}")});
+		defer main.stackAllocator.free(swingSpeedString);
+		const damageString = main.lang.format(main.stackAllocator, .stat, "cubyz:damage", &.{.fromFloat(self.damage, .@"{d:.2}")});
+		defer main.stackAllocator.free(damageString);
+
 		self.tooltip.clearRetainingCapacity();
+
 		self.tooltip.print(
 			\\{s}
-			\\{d:.2} {s}
-			\\{s}: {d:.2}
-			\\{s}: {}/{}
+			\\{s}
+			\\{s}
+			\\{s}
 		, .{
 			main.lang.translate(.tool, self.type.id()),
-			self.swingSpeed,
-			main.lang.translate(.stat, "cubyz:swing_speed"),
-			main.lang.translate(.stat, "cubyz:damage"),
-			self.damage,
-			main.lang.translate(.stat, "cubyz:durability"),
-			self.durability,
-			std.math.lossyCast(u32, self.maxDurability),
+			swingSpeedString,
+			damageString,
+			durabilityString,
 		});
 		if (self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
