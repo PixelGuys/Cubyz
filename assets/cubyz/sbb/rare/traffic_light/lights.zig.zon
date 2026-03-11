@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/traffic_light/light/0"},
+		.{.id = "cubyz:rare/traffic_light/light/1"},
+		.{.id = "cubyz:rare/traffic_light/light/2"},
+		.{.id = "cubyz:rare/traffic_light/light/3", .chance = 0.1},
+		.{.id = "cubyz:rare/traffic_light/light/4", .chance = 0.1},
+	},
+}

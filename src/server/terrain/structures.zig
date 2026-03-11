@@ -76,7 +76,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 pub const StructureTable = struct {
 	id: []const u8,
 	tags: []const Tag,
-	structures: []SimpleStructureModel = &.{},
+	structures: []const SimpleStructureModel = &.{},
 	pub fn init(id: []const u8, zon: ZonElement) StructureTable {
 		var structureTable: StructureTable = .{
 			.id = main.worldArena.dupe(u8, id),
@@ -97,7 +97,7 @@ pub const StructureTable = struct {
 		}
 
 		if (tableChance) |chance| {
-			for (structureTable.structures) |*structure| {
+			for (structureList.items) |*structure| {
 				structure.chance /= totalChance;
 				structure.chance *= chance;
 			}

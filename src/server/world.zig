@@ -426,7 +426,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	itemPalette: *main.assets.Palette = undefined,
 	toolPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
-	structureTablePalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
 	gameTime: i64 = 0,
@@ -492,8 +491,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.toolPalette = try loadPalette(arena, path, "tool_palette", null);
 		errdefer self.toolPalette.deinit();
 
-		self.structureTablePalette = try loadPalette(arena, path, "structuretable_palette", null);
-		errdefer self.structureTablePalette.deinit();
 		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
 
@@ -509,7 +506,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
 		try dir.writeZon("tool_palette.zig.zon", self.toolPalette.storeToZon(arena));
 		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
-		try dir.writeZon("structuretable_palette.zig.zon", self.structureTablePalette.storeToZon(arena));
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
@@ -546,7 +542,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
-		self.structureTablePalette.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);

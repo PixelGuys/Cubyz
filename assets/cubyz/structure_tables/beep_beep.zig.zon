@@ -1,0 +1,1 @@
+.{ .id = "cubyz:beep_beep", .tags = .{}, .structures = .{.{ .id = "cubyz:sbb", .chance = 0.0001, .structure = "cubyz:rare/traffic_light/structure" }} }
