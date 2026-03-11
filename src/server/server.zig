@@ -773,7 +773,7 @@ pub fn connectInternal(user: *User) void {
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
-	main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
+	sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
 }
 
 fn sendRawMessage(msg: []const u8) void {

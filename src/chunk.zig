@@ -596,6 +596,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	}
 
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
+		if (other.super.pos.wz > 9000 and self.super.pos.voxelSize > 4) return; // We don't want to generate LODs for the sky
 		const xOffset = if (other.super.pos.wx != self.super.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
 		const yOffset = if (other.super.pos.wy != self.super.pos.wy) chunkSize/2 else 0;
 		const zOffset = if (other.super.pos.wz != self.super.pos.wz) chunkSize/2 else 0;
@@ -621,9 +622,9 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		}
 		for (0..32) |x| {
 			for (0..32) |y| {
-				var columnCount: @Vector(32, u8) = @splat(0);
-				columnCount[0] = 1;
-				columnCount[31] = 1;
+				var columnCount: @Vector(32, u8) = count[x][y];
+				columnCount[0] += 1;
+				columnCount[31] += 1;
 				if (x == 0 or x == 31) columnCount += @splat(1);
 				if (y == 0 or y == 31) columnCount += @splat(1);
 				const zero: @Vector(32, u8) = @splat(0);
@@ -654,18 +655,18 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 					for (0..2) |dx| {
 						for (0..2) |dy| {
 							for (0..2) |dz| {
-								const i = dx*4 + dz*2 + dy;
+								const i = dx*4 + dy*2 + dz;
 								neighborCount[i] = count[x*2 + dx][y*2 + dy][z*2 + dz];
 								maxCount = @max(maxCount, neighborCount[i]);
 							}
 						}
 					}
 					// Uses a specific permutation here that keeps high resolution patterns in lower resolution.
-					const permutationStart = (x & 1)*4 + (z & 1)*2 + (y & 1);
+					const permutationStart = (x & 1)*4 + (y & 1)*2 + (z & 1);
 					var finalPermutation = permutationStart;
 					for (0..8) |i| {
 						const appliedPermutation = permutationStart ^ i;
-						if (neighborCount[appliedPermutation] >= maxCount - 1) { // Avoid pattern breaks at chunk borders.
+						if (neighborCount[appliedPermutation] >= maxCount - 1) { // -1 to avoid pattern breaks at chunk borders.
 							finalPermutation = appliedPermutation;
 						}
 					}
