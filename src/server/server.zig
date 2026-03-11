@@ -515,6 +515,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	main.entity.server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
 
@@ -559,6 +560,7 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
+	main.entity.server.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -597,6 +599,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 
 fn update() void { // MARK: update()
 	world.?.update();
+	main.entity.server.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
