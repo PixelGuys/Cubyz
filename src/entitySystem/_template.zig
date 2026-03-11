@@ -32,7 +32,7 @@ const random = main.random;
 const entityComponent = main.entityComponent;
 
 // ############################# Client only stuff ################################
-pub const Client = struct {
+pub const client = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
 	pub fn clear() void {}
@@ -50,7 +50,7 @@ pub const Client = struct {
 	}
 };
 // ############################# Server only stuff ################################
-pub const Server = struct {
+pub const server = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
 

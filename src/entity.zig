@@ -19,28 +19,28 @@ pub const EntityNetworkData = struct {
 pub const client = struct {
 	pub fn init() void {
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).Client.init();
+			@field(components, decl.name).client.init();
 		}
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).Client.init();
+			@field(systems, decl.name).client.init();
 		}
 		main.client.entity_manager.init();
 	}
 	pub fn deinit() void {
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).Client.deinit();
+			@field(components, decl.name).client.deinit();
 		}
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).Client.deinit();
+			@field(systems, decl.name).client.deinit();
 		}
 		main.client.entity_manager.deinit();
 	}
 	pub fn clear() void {
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).Client.clear();
+			@field(systems, decl.name).client.clear();
 		}
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).Client.clear();
+			@field(components, decl.name).client.clear();
 		}
 		main.client.entity_manager.clear();
 	}
@@ -48,23 +48,23 @@ pub const client = struct {
 pub const server = struct {
 	pub fn init() void {
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).Server.init();
+			@field(components, decl.name).server.init();
 		}
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).Server.init();
+			@field(systems, decl.name).server.init();
 		}
 	}
 	pub fn deinit() void {
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).Server.deinit();
+			@field(components, decl.name).server.deinit();
 		}
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).Server.deinit();
+			@field(systems, decl.name).server.deinit();
 		}
 	}
 	pub fn update() void {
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).Server.update();
+			@field(systems, decl.name).server.update();
 		}
 	}
 };

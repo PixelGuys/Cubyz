@@ -32,7 +32,7 @@ const random = main.random;
 pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
-pub const Client = struct {
+pub const client = struct {
 	pub fn load(id: u32, reader: *utils.BinaryReader, version: u32) void {
 		_ = id;
 		_ = reader;
@@ -46,16 +46,16 @@ pub const Client = struct {
 	pub fn clear() void {}
 };
 // ############################# Server only stuff ################################
-pub const Server = struct {
+pub const server = struct {
 	pub const ExampleComponent = struct {
-		pub fn save(self: ItemComponent, writer: *utils.BinaryWriter) void {
+		pub fn save(self: ExampleComponent, writer: *utils.BinaryWriter) void {
 			_ = self;
 			_ = writer;
 		}
 	};
 	pub fn init() void {}
 	pub fn deinit() void {}
-	pub fn get(id: u32) ?ItemComponent {
+	pub fn get(id: u32) ?ExampleComponent {
 		_ = id;
 		return null;
 	}
