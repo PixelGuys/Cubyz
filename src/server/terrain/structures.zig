@@ -77,11 +77,12 @@ pub const StructureTable = struct {
 	id: []const u8,
 	tags: []const Tag,
 	structures: []const SimpleStructureModel = &.{},
-
+	chance: ?f32,
 	pub fn init(id: []const u8, zon: ZonElement) StructureTable {
 		var structureTable: StructureTable = .{
 			.id = main.worldArena.dupe(u8, id),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
+			.chance = zon.get(f32, "chance", null),
 		};
 
 		var structureList = main.ListUnmanaged(SimpleStructureModel){};
@@ -94,6 +95,11 @@ pub const StructureTable = struct {
 			if (SimpleStructureModel.initModel(elem)) |model| {
 				structureList.append(main.stackAllocator, model);
 				totalChance += model.chance;
+			}
+		}
+		if (structureTable.chance) |chance| {
+			for (structureTable.structures) |*structure| {
+				structure.chance /= chance;
 			}
 		}
 		structureTable.structures = main.worldArena.dupe(SimpleStructureModel, structureList.items);
