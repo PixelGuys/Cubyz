@@ -543,7 +543,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder) catch |err| {
-		std.log.err("Could not load block breaking animation: {}", .{err});
+		std.log.err("Could not load block breaking animation: {}", .{@errorName(err)});
 	};
 
 	// Blocks:
@@ -679,7 +679,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			const fileExists: bool = main.files.cwd().hasDir(path) catch |err| {
-				std.log.err("Error reading asset file {s}: {}", .{path, err});
+				std.log.err("Error reading asset file {s}: {}", .{path, @errorName(err)});
 				return err;
 			};
 			if (!fileExists) continue;
@@ -721,7 +721,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			const fileExists: bool = main.files.cwd().hasDir(path) catch |err| blk: {
-				std.log.err("Error reading asset file {s}: {} (during unload due to a previous error)", .{path, err});
+				std.log.err("Error reading asset file {s}: {} (during unload due to a previous error)", .{path, @errorName(err)});
 				break :blk false;
 			};
 			if (!fileExists) continue;

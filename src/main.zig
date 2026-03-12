@@ -603,21 +603,21 @@ pub fn main() void { // MARK: main()
 		const saveDirectory = std.fs.path.join(stackAllocator.allocator, &.{"saves", settings.launchConfig.autoEnterWorld, "world.zig.zon"}) catch unreachable;
 		defer stackAllocator.free(saveDirectory);
 		const worldExists: bool = files.cubyzDir().hasFile(saveDirectory) catch |err| {
-			std.log.err("Cannot access autoEnterWorld's world.zig.zon due to error: {}", .{err});
+			std.log.err("Cannot access autoEnterWorld's world.zig.zon due to error: {}", .{@errorName(err)});
 			return;
 		};
 		if (!worldExists) {
 			const selectedPreset: ZonElement = blk: {
 				break :blk assets.worldPresets().get(settings.launchConfig.worldCreationPreset) orelse {
-					std.log.err("World preset not found with id: {s}. Using default instead.", .{settings.launchConfig.worldCreationPreset});
+					std.log.err("World preset not found with id: {s}. Using cubyz:default instead.", .{settings.launchConfig.worldCreationPreset});
 					break :blk assets.worldPresets().get("cubyz:default") orelse {
-						std.log.err("No default world preset found.", .{});
+						std.log.err("cubyz:default world preset not found.", .{});
 						return;
 					};
 				};
 			};
 			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, selectedPreset) catch |err| {
-				std.log.err("Cannot create world {s} due to error: {}", .{settings.launchConfig.autoEnterWorld, err});
+				std.log.err("Cannot create world {s} due to error: {}", .{settings.launchConfig.autoEnterWorld, @errorName(err)});
 				return;
 			};
 		}
