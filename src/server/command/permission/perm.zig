@@ -38,7 +38,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			var isReference = false;
 			const user: *User = blk: {
 				if (split.next()) |next| {
-					const user = command.parsePlayerId(arg, source) catch return;
+					const user = command.parsePlayerIdAndIncreaseRefCount(arg, source) catch return;
 					_arg = next;
 					isReference = true;
 					break :blk user;
@@ -93,7 +93,7 @@ const Helper = struct {
 		var isReference = false;
 		const user: *User = blk: {
 			if (split.next()) |next| {
-				const user = command.parsePlayerId(arg, source) catch return error.InvalidArgs;
+				const user = command.parsePlayerIdAndIncreaseRefCount(arg, source) catch return error.InvalidArgs;
 				arg = next;
 				isReference = true;
 				break :blk user;

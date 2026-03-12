@@ -76,7 +76,7 @@ pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *Use
 	};
 }
 
-pub fn parsePlayerId(playerId: []const u8, source: *User) !*User {
+pub fn parsePlayerIdAndIncreaseRefCount(playerId: []const u8, source: *User) !*User {
 	if (!std.ascii.startsWithIgnoreCase(playerId, "@")) {
 		source.sendMessage("#ff0000Player id specifiers always start with @, found \"{s}\"", .{playerId});
 		return error.InvalidArg;
@@ -85,7 +85,7 @@ pub fn parsePlayerId(playerId: []const u8, source: *User) !*User {
 		source.sendMessage("#ff0000Player ids must be integers, found \"{s}\"", .{playerId[1..]});
 		return error.InvalidArg;
 	};
-	return main.server.getUserById(id) catch {
+	return main.server.getUserByIdAndIncreaseRefCount(id) catch {
 		source.sendMessage("#ff0000Player with id {d} not found", .{id});
 		return error.InvalidArg;
 	};
