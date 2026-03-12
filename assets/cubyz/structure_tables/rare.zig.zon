@@ -1,7 +1,7 @@
 .{.id = "cubyz:rare", .tags = .{}, .structures = .{
 	.{
 		.id = "cubyz:sbb",
-		.chance = 0.000001,
+		.chance = 0.00001,
 		.structure = "cubyz:rare/triclops_statue/structure",
 	},
 }}
