@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:abandoned_cavern/abandoned/0", .chance = 1},
+		.{.id = "cubyz:abandoned_cavern/abandoned/1", .chance = 1},
+		.{.id = "cubyz:abandoned_cavern/abandoned/2", .chance = 1},
+		.{.id = "cubyz:abandoned_cavern/abandoned/3", .chance = 1},
+		.{.id = "cubyz:abandoned_cavern/abandoned/4", .chance = 1},
+		.{.id = "cubyz:abandoned_cavern/abandoned/5", .chance = 1},
+		.{.id = "cubyz:abandoned_cavern/abandoned/6", .chance = 1},
+	},
+}
