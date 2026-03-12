@@ -99,7 +99,7 @@ pub fn onOpen() void {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		const pathExists: bool = main.files.cubyzDir().hasDir(path) catch |err| blk: {
-			std.log.err("Filesystem error accessing {s}: {}", .{path, @errorName(err)});
+			std.log.err("Filesystem error accessing {s}: {s}", .{path, @errorName(err)});
 			break :blk true;
 		};
 		if (!pathExists) break;

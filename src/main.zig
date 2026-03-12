@@ -603,7 +603,7 @@ pub fn main() void { // MARK: main()
 		const saveDirectory = std.fs.path.join(stackAllocator.allocator, &.{"saves", settings.launchConfig.autoEnterWorld, "world.zig.zon"}) catch unreachable;
 		defer stackAllocator.free(saveDirectory);
 		const worldExists: bool = files.cubyzDir().hasFile(saveDirectory) catch |err| {
-			std.log.err("Cannot access autoEnterWorld's world.zig.zon due to error: {}", .{@errorName(err)});
+			std.log.err("Cannot access autoEnterWorld's world.zig.zon due to error: {s}", .{@errorName(err)});
 			return;
 		};
 		if (!worldExists) {
@@ -617,7 +617,7 @@ pub fn main() void { // MARK: main()
 				};
 			};
 			server.world_zig.tryCreateWorld(settings.launchConfig.autoEnterWorld, settings.launchConfig.worldCreationSettings, selectedPreset) catch |err| {
-				std.log.err("Cannot create world {s} due to error: {}", .{settings.launchConfig.autoEnterWorld, @errorName(err)});
+				std.log.err("Cannot create world {s} due to error: {s}", .{settings.launchConfig.autoEnterWorld, @errorName(err)});
 				return;
 			};
 		}

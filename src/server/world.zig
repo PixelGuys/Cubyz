@@ -93,7 +93,7 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 		defer main.stackAllocator.free(resultPath);
 
 		const pathExists: bool = main.files.cubyzDir().hasDir(resultPath) catch |err| blk: {
-			std.log.err("Encountered error accessing directory at path {s}: {}", .{resultPath, @errorName(err)});
+			std.log.err("Encountered error accessing directory at path {s}: {s}", .{resultPath, @errorName(err)});
 			break :blk true;
 		};
 
@@ -774,7 +774,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
 		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath) catch |err| blk: {
-			std.log.err("Error accessing surface maps: {}", .{@errorName(err)});
+			std.log.err("Error accessing surface maps: {s}", .{@errorName(err)});
 			break :blk false;
 		};
 		if (hasSurfaceMaps) {

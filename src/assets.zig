@@ -679,7 +679,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			const fileExists: bool = main.files.cwd().hasDir(path) catch |err| {
-				std.log.err("Error reading asset file {s}: {}", .{path, @errorName(err)});
+				std.log.err("Error reading asset file {s}: {s}", .{path, @errorName(err)});
 				return err;
 			};
 			if (!fileExists) continue;
@@ -721,7 +721,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			const fileExists: bool = main.files.cwd().hasDir(path) catch |err| blk: {
-				std.log.err("Error reading asset file {s}: {} (during unload due to a previous error)", .{path, @errorName(err)});
+				std.log.err("Error reading asset file {s}: {s} (during unload due to a previous error)", .{path, @errorName(err)});
 				break :blk false;
 			};
 			if (!fileExists) continue;
