@@ -20,19 +20,20 @@ var languageZon: ZonElement = undefined;
 const languagesMap = main.assets.languages;
 
 pub fn init() void {
+	languageZon = languagesMap().get("cubyz:english").?;
 	load(main.settings.language) catch {
-		std.log.err("Using English...", .{});
+		std.log.err("Couldn't find language {s}. Using English...", .{main.settings.language});
 		main.settings.language = "cubyz:english";
 		main.settings.save();
-		languageZon = languagesMap().get(main.settings.language).?;
 	};
 }
 
 pub fn load(languageId: []const u8) error{LanguageNotFound}!void {
-	languageZon = languagesMap().get(languageId) orelse {
-		std.log.err("Couldn't find language {s}.", .{main.settings.language});
-		return error.LanguageNotFound;
-	};
+	languageZon.join(.preferRight, languagesMap().get(languageId) orelse return error.LanguageNotFound);
+	var iterator = languagesMap().iterator();
+	while (iterator.next()) |entry| {
+		std.log.info("{s}", .{entry.key_ptr.*});
+	}
 }
 
 fn lookupTranslation(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {

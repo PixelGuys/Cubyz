@@ -1,4 +1,5 @@
 .{
+	.isSupplement = false,
 	.language = "English",
 	.assets = .{
 		.items = .{

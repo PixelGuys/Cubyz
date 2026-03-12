@@ -129,6 +129,7 @@ pub const Assets = struct {
 				};
 
 				targetLanguageZon.join(.preferRight, entry.value_ptr.*);
+				targetLanguageZon.*.put("isSupplement", false);
 			}
 		}
 	}
