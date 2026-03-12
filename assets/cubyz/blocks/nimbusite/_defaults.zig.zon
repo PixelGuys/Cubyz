@@ -1,25 +1,25 @@
 .{
-	.tags = .{.stone, .mineable, .slate},
-	.blockHealth = 30,
-	.blockResistance = 1,
+	.tags = .{.stone, .mineable, .nimbusite},
+	.blockHealth = 40,
+	.blockResistance = 4,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.item = .{
 		.material = .{
-			.durability = 60,
+			.durability = 80,
 			.massDamage = 1.0,
 			.hardnessDamage = 3.9,
-			.swingSpeed = 3.2,
-			.textureRoughness = 1.0,
+			.swingSpeed = 4.8,
+			.textureRoughness = 0.5,
 			.colors = .{
-				0xff444444, 0xff626262, 0xff7A7876, 0xff878583, 0xff9c9996,
+				0xff505e5d, 0xff657771, 0xff758883, 0xff859b95, 0xff92aba5,
 			},
 			.modifiers = .{
 				.{
 					.id = "good_at",
 					.strength = 0.5,
-					.tag = .slate,
+					.tag = .nimbusite,
 					.restriction = .{
 						.id = .encased,
 						.tag = .precious,
