@@ -41,7 +41,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bolete",
+			.blocks = .{"cubyz:bolete"},
 			.chance = 0.01,
 			.width = 8,
 			.variation = 4,
@@ -59,7 +59,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:cold_grass_vegetation",
+			.blocks = .{"cubyz:cold_grass_vegetation"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
@@ -68,7 +68,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:fern",
+			.blocks = .{"cubyz:fern"},
 			.chance = 0.03,
 			.width = 4,
 			.variation = 7,
@@ -84,7 +84,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:trumpet_lily",
+			.blocks = .{"cubyz:trumpet_lily"},
 			.chance = 0.007,
 			.width = 8,
 			.variation = 3,
@@ -93,7 +93,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bluebells",
+			.blocks = .{"cubyz:bluebells"},
 			.chance = 0.01,
 			.width = 5,
 			.variation = 3,

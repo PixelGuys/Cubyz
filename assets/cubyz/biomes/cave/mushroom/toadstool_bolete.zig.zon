@@ -5,7 +5,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:toadstool",
+			.blocks = .{"cubyz:toadstool"},
 			.chance = 0.15,
 			.width = 6,
 			.variation = 3,
@@ -14,7 +14,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bolete",
+			.blocks = .{"cubyz:bolete"},
 			.chance = 0.15,
 			.width = 6,
 			.variation = 3,
