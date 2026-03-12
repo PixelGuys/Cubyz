@@ -1,0 +1,8 @@
+.{.id = "cubyz:rare", .tags = .{}, .structures = .{
+	.{
+		.id = "cubyz:sbb",
+		.chance = 0.000005,
+		.placeMode = .all,
+		.structure = "cubyz:rare/triclops_statue/structure",
+	},
+}}
