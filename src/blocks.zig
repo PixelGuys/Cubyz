@@ -710,7 +710,7 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) !void {
+	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
 		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, &_modeData[meshes.size], zon.getChild("model"));
 
 		// The actual model is loaded later, in the rendering thread.
@@ -723,7 +723,7 @@ pub const meshes = struct { // MARK: meshes
 		meshes.size += 1;
 	}
 
-	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) !void {
+	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) void {
 		var i: usize = 0;
 		while (true) : (i += 1) {
 			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/breaking/{}.png", .{i}) catch unreachable;

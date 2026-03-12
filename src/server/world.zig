@@ -774,7 +774,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
 		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath) catch |err| blk: {
-			std.log.err("Error accessing surface maps: {s}", .{@errorName(err)});
+			std.log.err("Error accessing {s}, ignoring surface map LOD regeneration: {s}", .{mapsPath, @errorName(err)});
 			break :blk false;
 		};
 		if (hasSurfaceMaps) {
