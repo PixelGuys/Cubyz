@@ -26,6 +26,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const ItemDrop = struct { // MARK: ItemDrop
 	pos: Vec3d,
+	oldPos: Vec3d,
 	vel: Vec3d,
 	rot: Vec3f,
 	itemStack: ItemStack,
@@ -153,14 +154,22 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []ItemDropNetworkData {
-		const result = allocator.alloc(ItemDropNetworkData, self.size);
-		for (self.indices[0..self.size], result) |i, *res| {
-			res.* = .{
+		const buffer = main.stackAllocator.alloc(ItemDropNetworkData, self.size);
+		defer main.stackAllocator.free(buffer);
+		var j: usize = 0;
+		for (self.indices[0..self.size]) |i| {
+			if (vec.lengthSquare(self.list.items(.pos)[i] - self.list.items(.oldPos)[i]) < 1e-4)
+				continue;
+			self.list.items(.oldPos)[i] = self.list.items(.pos)[i];
+			buffer[j] = .{
 				.index = i,
 				.pos = self.list.items(.pos)[i],
 				.vel = self.list.items(.vel)[i],
 			};
+			j += 1;
 		}
+		const result = allocator.alloc(ItemDropNetworkData, j);
+		@memcpy(result, buffer[0..j]);
 		return result;
 	}
 
@@ -238,6 +247,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.isEmpty.unset(i);
 		const drop = ItemDrop{
 			.pos = pos,
+			.oldPos = pos,
 			.vel = vel,
 			.rot = rot,
 			.itemStack = itemStack,
@@ -270,6 +280,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.isEmpty.unset(i);
 		const drop = ItemDrop{
 			.pos = pos,
+			.oldPos = pos,
 			.vel = vel,
 			.rot = rot,
 			.itemStack = itemStack,
@@ -495,6 +506,10 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.timeDifference.addDataPoint(time);
 		var pos: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		var vel: [ItemDropManager.maxCapacity]Vec3d = undefined;
+
+		@memcpy(@as(*[maxf64Capacity]f64, @ptrCast(&pos)), &self.interpolation.lastPos[self.interpolation.frontIndex]);
+		@memset(@as(*[maxf64Capacity]f64, @ptrCast(&vel)), 0);
+
 		for (itemData) |data| {
 			pos[data.index] = data.pos;
 			vel[data.index] = data.vel;
