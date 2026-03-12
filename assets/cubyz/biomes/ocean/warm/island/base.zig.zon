@@ -16,7 +16,7 @@
 
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:island/warm/shelf",
+			.id = "cubyz:ocean/warm/island/shelf",
 			.chance = 1,
 		},
 	},
