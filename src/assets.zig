@@ -408,9 +408,6 @@ fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
 	biomes_zig.register(stringId, numericId, zon);
 }
 
-fn registerStructureTable(stringId: []const u8, zon: ZonElement) void {
-	main.server.terrain.structures.register(stringId, zon);
-}
 fn registerRecipesFromZon(zon: ZonElement) void {
 	items_zig.registerRecipes(zon);
 }
@@ -646,15 +643,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
+	try main.server.terrain.structures.registerStructureTables(&worldAssets.structureTables);
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
 		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-	}
-
-	iterator = worldAssets.structureTables.iterator();
-	while (iterator.next()) |entry| {
-		registerStructureTable(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// Biomes:

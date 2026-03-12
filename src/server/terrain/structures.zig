@@ -5,6 +5,7 @@ const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ServerChunk = main.chunk.ServerChunk;
 const terrain = main.server.terrain;
+const Assets = main.assets.Assets;
 const Biome = main.server.terrain.biomes;
 const Tag = main.Tag;
 
@@ -95,6 +96,10 @@ pub const StructureTable = struct {
 				totalChance += model.chance;
 			}
 		}
+		if (totalChance == 0) {
+			std.log.err("Invalid structure chance in table {s}. Adding table without its structures.", .{structureTable.id});
+			return structureTable;
+		}
 
 		if (tableChance) |chance| {
 			for (structureList.items) |*structure| {
@@ -112,22 +117,19 @@ var finishedLoading: bool = false;
 var structureTables: main.ListUnmanaged(StructureTable) = .{};
 var structureTablesById: std.StringHashMapUnmanaged(*StructureTable) = .{};
 
-pub fn register(id: []const u8, zon: ZonElement) void {
+fn register(id: []const u8, zon: ZonElement) void {
 	const structureTable = StructureTable.init(id, zon);
 	structureTables.append(main.worldArena, structureTable);
 	std.log.debug("Registered structure table: '{s}'", .{id});
 }
 
-pub fn hasRegistered(id: []const u8) bool {
-	if (structureTables.items.len == 0) return false;
-	for (structureTables.items) |entry| {
-		if (std.mem.eql(u8, id, entry.id)) {
-			return true;
-		}
+pub fn registerStructureTables(structures: *Assets.ZonHashMap) !void {
+	var iterator = structures.iterator();
+	while (iterator.next()) |entry| {
+		register(entry.key_ptr.*, entry.value_ptr.*);
 	}
-	return false;
+	finishLoading();
 }
-
 fn compareStructureTables(_: void, lhs: StructureTable, rhs: StructureTable) bool {
 	return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .gt;
 }
@@ -143,12 +145,9 @@ pub fn finishLoading() void {
 	}
 }
 
-pub fn getById(id: []const u8) *StructureTable {
+pub fn getById(id: []const u8) ?*StructureTable {
 	std.debug.assert(finishedLoading);
-	return structureTablesById.get(id) orelse {
-		std.log.err("Could not find structure table by id {s}. Replacing it with some other structure table.", .{id});
-		return &structureTables.items[0];
-	};
+	return structureTablesById.get(id);
 }
 
 pub fn getSlice() []StructureTable {
