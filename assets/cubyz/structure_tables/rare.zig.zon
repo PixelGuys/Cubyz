@@ -2,6 +2,7 @@
 	.{
 		.id = "cubyz:sbb",
 		.chance = 0.00001,
+                .placeMode = .all,
 		.structure = "cubyz:rare/triclops_statue/structure",
 	},
 }}
