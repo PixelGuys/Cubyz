@@ -22,6 +22,11 @@ const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const Vec2f = vec.Vec2f;
 
+var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
+const arenaAllocator = arena.allocator();
+
+pub const blockParticleUVGridSize: comptime_int = 8;
+
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
 	var types: main.ListUnmanaged(ParticleType) = .{};
@@ -35,6 +40,9 @@ pub const ParticleManager = struct {
 	const ParticleIndex = u16;
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
 
+	const UVRegion = struct { x: u16, y: u16 };
+	var blockTextureValidRegions: std.AutoHashMapUnmanaged(u16, main.List(UVRegion)) = .{};
+
 	pub fn init() void {
 		textureArray = .init();
 		emissionTextureArray = .init();
@@ -45,6 +53,14 @@ pub const ParticleManager = struct {
 	pub fn deinit() void {
 		textureArray.deinit();
 		emissionTextureArray.deinit();
+		particleTypeHashmap.deinit(arenaAllocator.allocator);
+
+		var it = blockTextureValidRegions.valueIterator();
+		while (it.next()) |validRegions| {
+			validRegions.deinit();
+		}
+		blockTextureValidRegions.deinit(arenaAllocator.allocator);
+
 		ParticleSystem.deinit();
 		particleTypesSSBO.deinit();
 	}
@@ -150,6 +166,90 @@ pub const ParticleManager = struct {
 		return result;
 	}
 
+	fn computeValidUVRegions(image: Image) main.List(UVRegion) {
+		var validRegions = main.List(UVRegion).init(arenaAllocator);
+
+		const gridSize = blockParticleUVGridSize;
+		const regionWidth = image.width/gridSize;
+		const regionHeight = image.height/gridSize;
+		const minVisiblePixels = (regionWidth*regionHeight)/4; // At least 25% visible
+
+		var gridY: u16 = 0;
+		while (gridY < gridSize) : (gridY += 1) {
+			var gridX: u16 = 0;
+			while (gridX < gridSize) : (gridX += 1) {
+				// Count visible pixels in this region
+				var visibleCount: u32 = 0;
+				const startX = gridX*regionWidth;
+				const startY = gridY*regionHeight;
+
+				var y: u32 = 0;
+				while (y < regionHeight) : (y += 1) {
+					var x: u32 = 0;
+					while (x < regionWidth) : (x += 1) {
+						const pixelX = startX + x;
+						const pixelY = startY + y;
+						if (pixelX < image.width and pixelY < image.height) {
+							const pixel = image.getRGB(pixelX, pixelY);
+							if (pixel.a >= 128) { // Consider semi-transparent as visible
+								visibleCount += 1;
+							}
+						}
+					}
+				}
+
+				if (visibleCount >= minVisiblePixels) {
+					validRegions.append(.{.x = gridX, .y = gridY});
+				}
+			}
+		}
+
+		// If no valid regions found, add the center region as fallback
+		if (validRegions.items.len == 0) {
+			validRegions.append(.{.x = gridSize/2, .y = gridSize/2});
+		}
+
+		return validRegions;
+	}
+
+	pub fn registerBlockTextureAsParticle(blockId: []const u8, textureIndex: u16, image: Image) void {
+		const particleType = ParticleType{
+			.frameCount = 1,
+			.startFrame = -@as(f32, @floatFromInt(textureIndex)) - 1, // negative to indicate block texture
+			.size = 1.0/@as(f32, blockParticleUVGridSize),
+		};
+
+		const particleId = std.fmt.allocPrint(arenaAllocator.allocator, "block:{s}", .{blockId}) catch unreachable;
+		particleTypeHashmap.put(arenaAllocator.allocator, particleId, @intCast(types.items.len)) catch unreachable;
+		types.append(arenaAllocator, particleType);
+		typesLocal.append(arenaAllocator, ParticleTypeLocal{
+			.density = .init(2, 3),
+			.rotVel = .init(0, 0),
+			.dragCoefficient = .init(0.5, 0.6),
+		});
+
+		const validRegions = computeValidUVRegions(image);
+		blockTextureValidRegions.put(arenaAllocator.allocator, textureIndex, validRegions) catch unreachable;
+	}
+
+	pub fn getRandomValidUVOffset(textureIndex: u16, randomSeed: *u64) u32 {
+		const validRegions = blockTextureValidRegions.get(textureIndex) orelse {
+			// Fallback: return center region
+			const center = blockParticleUVGridSize/2;
+			return center | (@as(u32, center) << 16) | (1 << 31);
+		};
+
+		if (validRegions.items.len == 0) {
+			// Fallback: return center region
+			const center = blockParticleUVGridSize/2;
+			return center | (@as(u32, center) << 16) | (1 << 31);
+		}
+
+		const idx = main.random.nextIntBounded(u32, randomSeed, @as(u32, @intCast(validRegions.items.len)));
+		const region = validRegions.items[idx];
+		return region.x | (@as(u32, region.y) << 16) | (1 << 31);
+	}
+
 	pub fn generateTextureArray() void {
 		textureArray.generate(textures.items, true, true);
 		emissionTextureArray.generate(emissionTextures.items, true, false);
@@ -179,11 +279,12 @@ pub const ParticleSystem = struct {
 	};
 	var uniforms: UniformStruct = undefined;
 
-	fn init() void {
+	pub fn init() void {
+		const defines = std.fmt.comptimePrint("#define BLOCK_PARTICLE_UV_GRID_SIZE {d}\n", .{blockParticleUVGridSize});
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/particles/particles.vert",
 			"assets/cubyz/shaders/particles/particles.frag",
-			"",
+			defines,
 			&uniforms,
 			.{},
 			.{.depthTest = true, .depthWrite = true},
@@ -298,7 +399,7 @@ pub const ParticleSystem = struct {
 		previousPlayerPos = playerPos;
 	}
 
-	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
+	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties, uvOffset: u32) void {
 		const lifeTime = properties.lifeTime.get(&main.seed);
 		const density = particleType.density.get(&main.seed);
 		const rot = if (properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
@@ -309,6 +410,7 @@ pub const ParticleSystem = struct {
 			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
 			.rot = rot,
 			.typ = typ,
+			.uvOffset = uvOffset,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, rotVel),
@@ -337,6 +439,8 @@ pub const ParticleSystem = struct {
 		ParticleManager.textureArray.bind();
 		c.glActiveTexture(c.GL_TEXTURE1);
 		ParticleManager.emissionTextureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE2);
+		@import("blocks.zig").meshes.blockTextureArray.bind();
 
 		c.glBindVertexArray(chunk_meshing.vao);
 
@@ -531,7 +635,16 @@ pub const Emitter = struct {
 		for (0..count) |_| {
 			const particlePos, const particleVel = self.spawnShape.spawn(pos, self.properties, self.mode);
 
-			ParticleSystem.addParticle(self.typ, self.particleType, particlePos, particleVel, self.collides, self.properties);
+			ParticleSystem.addParticle(self.typ, self.particleType, particlePos, particleVel, self.collides, self.properties, 0);
+		}
+	}
+
+	pub fn spawnParticlesWithUV(self: Emitter, pos: Vec3d, spawnCount: u32, uvOffset: u32) void {
+		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
+		for (0..count) |_| {
+			const particlePos, const particleVel = self.spawnShape.spawn(pos, self.properties, self.mode);
+
+			ParticleSystem.addParticle(self.typ, self.particleType, particlePos, particleVel, self.collides, self.properties, uvOffset);
 		}
 	}
 };
@@ -554,7 +667,7 @@ pub const Particle = extern struct {
 	lifeRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
-	// 4 bytes left for use
+	uvOffset: u32 = 0, // packed: bit 31 = has UV offset, bits 0-15 = x offset, bits 16-30 = y offset
 };
 
 pub const ParticleLocal = struct {

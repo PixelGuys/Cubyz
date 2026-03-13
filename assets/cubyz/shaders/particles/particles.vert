@@ -1,5 +1,9 @@
 #version 460
 
+#ifndef BLOCK_PARTICLE_UV_GRID_SIZE
+#define BLOCK_PARTICLE_UV_GRID_SIZE 8
+#endif
+
 layout(location = 0) out vec3 textureCoords;
 layout(location = 1) flat out vec3 light;
 
@@ -13,6 +17,7 @@ struct ParticleData {
 	float lifeRatio;
 	uint light;
 	uint type;
+	uint uvOffset;
 };
 layout(std430, binding = 13) restrict readonly buffer _particleData
 {
@@ -68,19 +73,36 @@ void main() {
 	);
 	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
 
-	float rotation = particle.rotation;
 	vec3 faceVertPos = facePositions[vertexID];
-	float sn = sin(rotation);
-	float cs = cos(rotation);
-	const vec3 vertexRotationPos = vec3(
-		faceVertPos.x*cs - faceVertPos.y*sn,
-		faceVertPos.x*sn + faceVertPos.y*cs,
-		0
-	);
+	vec3 vertexRotationPos;
+
+	// Check if this is a block particle (bit 31 of uvOffset is set)
+	if ((particle.uvOffset & 0x80000000u) != 0u) {
+		// Block particles don't rotate
+		vertexRotationPos = faceVertPos;
+	} else {
+		// Regular particles rotate
+		float rotation = particle.rotation;
+		float sn = sin(rotation);
+		float cs = cos(rotation);
+		vertexRotationPos = vec3(
+			faceVertPos.x*cs - faceVertPos.y*sn,
+			faceVertPos.x*sn + faceVertPos.y*cs,
+			0
+		);
+	}
 
 	const vec3 vertexPos = (billboardMatrix*vec4(particleType.size*vertexRotationPos, 1)).xyz + particle.pos;
 	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
 
 	float textureIndex = floor(particle.lifeRatio*particleType.animationFrames + particleType.startFrame);
-	textureCoords = vec3(uvPositions[vertexID], textureIndex);
+
+	vec2 baseUV = uvPositions[vertexID];
+	if ((particle.uvOffset & 0x80000000u) != 0u) {
+		uint uvOffsetX = particle.uvOffset & 0xFFFFu;
+		uint uvOffsetY = (particle.uvOffset >> 16) & 0x7FFFu;
+		baseUV = (baseUV + vec2(uvOffsetX, uvOffsetY)) / float(BLOCK_PARTICLE_UV_GRID_SIZE);
+	}
+
+	textureCoords = vec3(baseUV, textureIndex);
 }
