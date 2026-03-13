@@ -233,6 +233,7 @@ pub const Command = struct { // MARK: Command
 		craftFrom = 13,
 		clear = 8,
 		updateBlock = 9,
+		triggerBlock = 14,
 		addHealth = 10,
 		chatCommand = 12,
 	};
@@ -249,6 +250,7 @@ pub const Command = struct { // MARK: Command
 		craftFrom: CraftFrom,
 		clear: Clear,
 		updateBlock: UpdateBlock,
+		triggerBlock: TriggerBlock,
 		addHealth: AddHealth,
 		chatCommand: ChatCommand,
 	};
@@ -1483,6 +1485,58 @@ pub const Command = struct { // MARK: Command
 				},
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),
+			};
+		}
+	};
+
+	const TriggerBlock = struct { // MARK: TriggerBlock
+		expectedBlock: Block,
+		pos: Vec3i,
+		data: []const u8,
+
+		pub fn init(expectedBlock: Block, pos: Vec3i, data: []const u8) TriggerBlock {
+			return .{
+				.expectedBlock = expectedBlock,
+				.pos = pos,
+				.data = main.globalAllocator.dupe(u8, data),
+			};
+		}
+
+		fn finalize(self: TriggerBlock, _: Side, _: *BinaryReader) !void {
+			main.globalAllocator.free(self.data);
+		}
+
+		fn run(self: TriggerBlock, ctx: Context) error{serverFailure}!void {
+			var reader = BinaryReader.init(self.data);
+			if (ctx.side == .server) {
+				const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(self.pos[0], self.pos[1], self.pos[2]) orelse return;
+				defer simChunk.decreaseRefCount();
+				const chunk = simChunk.chunk.load(.acquire) orelse return;
+				const actualBlock = chunk.super.data.getValue(main.chunk.BlockPos.fromWorldCoords(self.pos[0], self.pos[1], self.pos[2]).toIndex());
+				if (actualBlock != self.expectedBlock) return;
+
+				_ = actualBlock.onTrigger().run(.{.block = actualBlock, .pos = self.pos, .chunk = &chunk.super, .data = &reader, .ctx = ctx});
+			} else {
+				const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(self.pos, 1)) orelse return;
+				const actualBlock = mesh.chunk.data.getValue(main.chunk.BlockPos.fromWorldCoords(self.pos[0], self.pos[1], self.pos[2]).toIndex());
+				if (actualBlock != self.expectedBlock) return;
+
+				_ = actualBlock.onTrigger().run(.{.block = actualBlock, .pos = self.pos, .chunk = mesh.chunk, .data = &reader, .ctx = ctx});
+			}
+		}
+
+		fn serialize(self: TriggerBlock, writer: *BinaryWriter) void {
+			writer.writeInt(u32, @bitCast(self.expectedBlock));
+			writer.writeVec(Vec3i, self.pos);
+			writer.writeVarInt(usize, self.data.len);
+			writer.writeSlice(self.data);
+		}
+
+		fn deserialize(reader: *BinaryReader, _: Side, _: ?*main.server.User) !TriggerBlock {
+			return .{
+				.expectedBlock = @bitCast(try reader.readInt(u32)),
+				.pos = try reader.readVec(Vec3i),
+				.data = main.globalAllocator.dupe(u8, try reader.readSlice(try reader.readVarInt(usize))),
 			};
 		}
 	};

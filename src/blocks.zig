@@ -20,9 +20,9 @@ const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
 const block_entity = @import("block_entity.zig");
-const BlockEntityType = block_entity.BlockEntityType;
 const ClientBlockCallback = main.callbacks.ClientBlockCallback;
 const ServerBlockCallback = main.callbacks.ServerBlockCallback;
+const BlockCallbackWithData = main.callbacks.BlockCallbackWithData;
 const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
@@ -76,6 +76,7 @@ var _absorption: [maxBlockCount]u32 = undefined;
 var _onInteract: [maxBlockCount]ClientBlockCallback = undefined;
 var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
 var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
+var _onTrigger: [maxBlockCount]BlockCallbackWithData = undefined;
 var _mode: [maxBlockCount]*const RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
@@ -90,7 +91,7 @@ var _mobility: [maxBlockCount]f32 = undefined;
 var _allowOres: [maxBlockCount]bool = undefined;
 var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
 var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
-var _blockEntity: [maxBlockCount]?*const BlockEntityType = undefined;
+var _blockEntity: [maxBlockCount]?*const block_entity.ComponentType = undefined;
 
 var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
@@ -233,6 +234,12 @@ fn registerCallbacks(typ: u16, zon: ZonElement) void {
 	_onUpdate[typ] = blk: {
 		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
 			std.log.err("Failed to load onUpdate event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onTrigger[typ] = blk: {
+		break :blk BlockCallbackWithData.init(zon.getChildOrNull("onTrigger") orelse break :blk .noop) orelse {
+			std.log.err("Failed to load onTrigger event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
@@ -426,6 +433,9 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn onUpdate(self: Block) ServerBlockCallback {
 		return _onUpdate[self.typ];
 	}
+	pub inline fn onTrigger(self: Block) BlockCallbackWithData {
+		return _onTrigger[self.typ];
+	}
 	pub inline fn mode(self: Block) *const RotationMode {
 		return _mode[self.typ];
 	}
@@ -478,7 +488,7 @@ pub const Block = packed struct { // MARK: Block
 		return _onTouch[self.typ];
 	}
 
-	pub fn blockEntity(self: Block) ?*const BlockEntityType {
+	pub fn blockEntity(self: Block) ?*const block_entity.ComponentType {
 		return _blockEntity[self.typ];
 	}
 
