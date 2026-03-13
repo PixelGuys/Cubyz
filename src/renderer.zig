@@ -905,7 +905,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		lastDir = _dir;
 
 		// Test blocks:
-		const closestDistance: f64 = 6.0; // selection now limited
+		var closestDistance: f64 = 6.0; // selection now limited
+		if (game.Player.isCreative()) {
+			closestDistance = @as(f64, settings.creativeReach);
+		}
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 		const step: Vec3i = @intFromFloat(std.math.sign(dir));
 		const invDir = @as(Vec3d, @splat(1))/dir;
