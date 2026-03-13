@@ -16,6 +16,11 @@
 			.placeMode = .degradable,
 			.chance = 0.08,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/desert/desert_landmarks",
+			.chance = 0.01,
+		},
 	},
 	.parentBiomes = .{
 		.{

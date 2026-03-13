@@ -62,5 +62,10 @@
 			.depth = 1,
 			.smoothness = 0.5,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/forest/pine/pine_landmarks",
+			.chance = 0.01,
+		},
 	},
 }

@@ -34,5 +34,10 @@
 			.size = 5,
 			.size_variance = 4,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/temperate/temperate_landmarks",
+			.chance = 0.01,
+		},
 	},
 }

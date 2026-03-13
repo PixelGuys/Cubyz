@@ -1,0 +1,7 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:landmarks/temperate/parkour_cave"},
+		.{.id = "cubyz:landmarks/cave/marble/marble_crystal_blue"},
+		.{.id = "cubyz:landmarks/cave/marble/marble_pools"},
+	},
+}
