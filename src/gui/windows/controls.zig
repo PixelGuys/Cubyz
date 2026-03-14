@@ -110,7 +110,8 @@ pub fn onOpen() void {
 		list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
 	for (&main.KeyBoard.keys) |*key| {
-		const label = Label.init(.{0, 0}, keybindButtonWidth, key.name, .left);
+		if (!key.rebindAllowed) continue;
+		const label = Label.init(.{0, 0}, 128, key.name, .left);
 		const button = if (key == selectedKey) (Button.initText(.{16, 0}, keybindButtonWidth, "...", .{})) else (Button.initText(.{16, 0}, keybindButtonWidth, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key)));
 		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .initWithPtr(unbindKey, key));
 		const row = HorizontalList.init();
