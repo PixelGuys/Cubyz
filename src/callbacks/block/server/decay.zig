@@ -132,7 +132,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 				return .ignored;
 
 			// no, there is no log in proximity
-			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
+			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement, false) == null) {
 				const drops = if (self.blockDrops) |blockDrops| blockDrops else params.block.blockDrops();
 				for (drops) |drop| {
 					if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {

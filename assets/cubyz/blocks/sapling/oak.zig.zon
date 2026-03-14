@@ -1,0 +1,36 @@
+.{
+	.tags = .{.cuttable},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.onTick = .{
+		.type = .sapling,
+		.sbb = .{
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
+			.chance = 0.03,
+		},
+	},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:cactus_flower",
+	.rotation = "cubyz:direction",
+	.texture = "cubyz:cactus_flower",
+	.texture_top = "cubyz:cactus_flower_top",
+	.texture_bottom = "cubyz:cactus_flower_top",
+	.item = .{
+		.texture = "cactus_flower.png",
+	},
+	.lodReplacement = "cubyz:air",
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 0.2,
+		.damageType = .spiky,
+	},
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
+}
