@@ -433,7 +433,6 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				}
 			}
 		}
-		std.log.info("\n", .{});
 	}
 };
 
