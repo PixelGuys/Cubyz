@@ -24,28 +24,28 @@ pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
 	if (split.next()) |arg| {
 		if (std.ascii.eqlIgnoreCase(arg, "remove")) {
-			const helper = Helper.parseHelper(source, &split) catch return;
-			defer if (helper.isReference) helper.user.decreaseRefCount();
+			const helper = Helper.init(source, &split) catch return;
+			defer helper.deinit();
 			if (!helper.user.permissions.removePermission(helper.listType, helper.permissionPath)) {
 				source.sendMessage("#ff0000Permission path {s} is not present inside users permission {s}list", .{helper.permissionPath, @tagName(helper.listType)});
 			}
 		} else if (std.ascii.eqlIgnoreCase(arg, "add")) {
-			const helper = Helper.parseHelper(source, &split) catch return;
-			defer if (helper.isReference) helper.user.decreaseRefCount();
+			const helper = Helper.init(source, &split) catch return;
+			defer helper.deinit();
 			helper.user.permissions.addPermission(helper.listType, helper.permissionPath);
 		} else {
 			var _arg = arg;
-			var isReference = false;
+			var increasedRefCount = false;
 			const user: *User = blk: {
 				if (split.next()) |next| {
 					const user = command.parsePlayerIdAndIncreaseRefCount(arg, source) catch return;
 					_arg = next;
-					isReference = true;
+					increasedRefCount = true;
 					break :blk user;
 				}
 				break :blk source;
 			};
-			defer if (isReference) user.decreaseRefCount();
+			defer if (increasedRefCount) user.decreaseRefCount();
 
 			if (split.next() != null) {
 				source.sendMessage("#ff0000Not the right amount of arguments for /perm", .{});
@@ -68,9 +68,9 @@ const Helper = struct {
 	listType: ListType,
 	permissionPath: []const u8,
 	user: *User,
-	isReference: bool,
+	increasedRefCount: bool,
 
-	pub fn parseHelper(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{InvalidArgs}!Helper {
+	pub fn init(source: *User, split: *std.mem.SplitIterator(u8, .scalar)) error{InvalidArgs}!Helper {
 		var listType: ListType = undefined;
 		var arg = split.next() orelse {
 			source.sendMessage("#ff0000Too few arguments for command /perm", .{});
@@ -90,17 +90,17 @@ const Helper = struct {
 			return error.InvalidArgs;
 		};
 
-		var isReference = false;
+		var increasedRefCount = false;
 		const user: *User = blk: {
 			if (split.next()) |next| {
 				const user = command.parsePlayerIdAndIncreaseRefCount(arg, source) catch return error.InvalidArgs;
 				arg = next;
-				isReference = true;
+				increasedRefCount = true;
 				break :blk user;
 			}
 			break :blk source;
 		};
-		errdefer if (isReference) user.decreaseRefCount();
+		errdefer if (increasedRefCount) user.decreaseRefCount();
 
 		if (arg[0] != '/') {
 			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{arg});
@@ -112,6 +112,10 @@ const Helper = struct {
 			return error.InvalidArgs;
 		}
 
-		return .{.listType = listType, .permissionPath = arg, .user = user, .isReference = isReference};
+		return .{.listType = listType, .permissionPath = arg, .user = user, .increasedRefCount = increasedRefCount};
+	}
+
+	pub fn deinit(self: Helper) void {
+		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };

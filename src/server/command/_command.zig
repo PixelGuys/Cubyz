@@ -85,7 +85,7 @@ pub fn parsePlayerIdAndIncreaseRefCount(playerId: []const u8, source: *User) !*U
 		source.sendMessage("#ff0000Player ids must be integers, found \"{s}\"", .{playerId[1..]});
 		return error.InvalidArg;
 	};
-	return main.server.getUserByIdAndIncreaseRefCount(id) catch {
+	return main.server.getUserByIdAndIncreaseRefCount(id) orelse {
 		source.sendMessage("#ff0000Player with id {d} not found", .{id});
 		return error.InvalidArg;
 	};
