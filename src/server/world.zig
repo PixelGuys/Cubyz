@@ -38,16 +38,26 @@ pub const Settings = struct {
 
 	pub const defaults: Settings = .{};
 
-	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
-		return .{
-			.seed = zon.get(?u64, "seed", null) orelse {
-				std.log.err("Cannot load world. World has no seed!", .{});
-				return error.NoSeed;
-			},
+	pub fn chooseSeed(self: *Settings, seedStr: []const u8) void {
+		if (seedStr.len == 0) {
+			self.seed = main.random.nextInt(u64, &main.seed);
+		} else {
+			self.seed = blk: {
+				break :blk std.fmt.parseInt(u64, seedStr, 0) catch {
+					break :blk std.hash.Wyhash.hash(0, seedStr);
+				};
+			};
+		}
+	}
+
+	pub fn fromZon(zon: ZonElement) Settings {
+		var self = Settings{
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", @tagName(defaults.defaultGamemode))) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats", defaults.allowCheats),
 			.testingMode = zon.get(bool, "testingMode", defaults.testingMode),
 		};
+		self.chooseSeed(zon.get([]const u8, "seed", ""));
+		return self;
 	}
 
 	pub fn toZon(self: Settings, allocator: NeverFailingAllocator) ZonElement {
@@ -82,7 +92,12 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
 		defer main.stackAllocator.free(resultPath);
 
-		if (!main.files.cubyzDir().hasDir(resultPath)) break;
+		const pathExists: bool = main.files.cubyzDir().hasDir(resultPath) catch |err| blk: {
+			std.log.err("Encountered error accessing directory at path {s}: {s}", .{resultPath, @errorName(err)});
+			break :blk true;
+		};
+
+		if (!pathExists) break;
 
 		main.stackAllocator.free(resultName);
 		resultName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_{}", .{escapedName, i}) catch unreachable;
@@ -612,7 +627,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
 		}
-		self.settings = try .fromZon(worldData.getChild("settings"));
+		const worldCreationSettings: ZonElement = worldData.getChild("settings");
+		if (worldCreationSettings.get(?u64, "seed", null) == null) {
+			std.log.err("No seed found in save file, potential corruption detected!", .{});
+			return error.NoSeed;
+		}
+		self.settings = .fromZon(worldCreationSettings);
 
 		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.gameTime = worldData.get(i64, "gameTime", 0);
@@ -753,7 +773,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
 		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
-		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath);
+		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath) catch |err| blk: {
+			std.log.err("Error accessing {s}, ignoring surface map LOD regeneration: {s}", .{mapsPath, @errorName(err)});
+			break :blk false;
+		};
 		if (hasSurfaceMaps) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}

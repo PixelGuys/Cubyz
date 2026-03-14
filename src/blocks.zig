@@ -730,7 +730,17 @@ pub const meshes = struct { // MARK: meshes
 			defer main.stackAllocator.free(path1);
 			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
 			defer main.stackAllocator.free(path2);
-			if (!main.files.cwd().hasFile(path1) and !main.files.cwd().hasFile(path2)) break;
+			const path1Exists: bool = main.files.cwd().hasFile(path1) catch |err| blk: {
+				std.log.err("Error reading block breaking animation {s}: {s}", .{path1, @errorName(err)});
+				break :blk false;
+			};
+
+			const path2Exists: bool = main.files.cwd().hasFile(path2) catch |err| blk: {
+				std.log.err("Error reading block breaking animation {s}: {s}", .{path2, @errorName(err)});
+				break :blk false;
+			};
+
+			if (!path1Exists and !path2Exists) break;
 
 			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
 			defer main.stackAllocator.free(id);
