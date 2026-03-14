@@ -76,7 +76,7 @@ pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *Use
 	};
 }
 
-pub fn parsePlayerIdAndIncreaseRefCount(playerId: []const u8, source: *User) !*User {
+fn parsePlayerIdAndIncreaseRefCount(playerId: []const u8, source: *User) !*User {
 	if (!std.ascii.startsWithIgnoreCase(playerId, "@")) {
 		source.sendMessage("#ff0000Player id specifiers always start with @, found \"{s}\"", .{playerId});
 		return error.InvalidArg;
@@ -90,3 +90,30 @@ pub fn parsePlayerIdAndIncreaseRefCount(playerId: []const u8, source: *User) !*U
 		return error.InvalidArg;
 	};
 }
+
+pub const Target = struct {
+	user: *User,
+	increasedRefCount: bool,
+
+	pub fn init(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !Target {
+		var increasedRefCount = false;
+		const user: *User = blk: {
+			const userId = split.peek() orelse {
+				source.sendMessage("#ff0000Too few arguments for command", .{});
+				return error.TooFewArguments;
+			};
+			if (userId[0] == '@') {
+				const user = parsePlayerIdAndIncreaseRefCount(userId, source) catch return error.InvalidArgs;
+				increasedRefCount = true;
+				_ = split.next();
+				break :blk user;
+			}
+			break :blk source;
+		};
+		return .{.user = user, .increasedRefCount = increasedRefCount};
+	}
+
+	pub fn deinit(self: Target) void {
+		if (self.increasedRefCount) self.user.decreaseRefCount();
+	}
+};
