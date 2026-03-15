@@ -1,5 +1,5 @@
 .{
-	.blockhealth = 3.75
+	.blockhealth = 3.75,
 	.item = .{
 		.material = .{
 			.durability = 28,
