@@ -26,7 +26,7 @@ pub fn satisfied(self: *const OnOrthogonal, tool: *const Tool, x: i32, y: i32) b
 		}
 	}
 	const lowBound = 0;
-	const highBound = rangeChecked * 2 + 1;
+	const highBound = rangeChecked*2 + 1;
 	for (lowBound..highBound) |dx| {
 		const checkedX = x + @as(i32, @intCast(dx - rangeChecked));
 		const checkedY = y + @as(i32, @intCast(0 - rangeChecked));
@@ -54,8 +54,8 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnO
 
 pub fn printTooltip(self: *const OnOrthogonal, outString: *main.List(u8)) void {
 	if (self.range == 0) {
-		outString.print("{} .{s} {s}", .{ self.amount, self.tag.getName(), "on orthoganal axis" });
+		outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on orthoganal axis" });
 	} else {
-		outString.print("{} .{s} {s} {}", .{ self.amount, self.tag.getName(), "in orthoganal range", self.range });
+		outString.print("{} .{s} {s} {}", .{self.amount, self.tag.getName(), "in orthoganal range", self.range });
 	}
 }
