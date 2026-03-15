@@ -19,7 +19,11 @@ pub fn satisfied(self: *const OnDiagonal, tool: *const Tool, x: i32, y: i32) boo
     if (self.range > gridSize) {
         rangeChecked = gridSize;
     } else {
-        rangeChecked = self.range;
+        if (self.range == 0) {
+            rangeChecked = gridSize;
+        } else {
+            rangeChecked = self.range;
+        }
     }
     const lowBound = 0;
     const highBound = rangeChecked * 2 + 1;
@@ -43,7 +47,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnD
     result.* = .{
         .tag = main.Tag.find(zon.get([]const u8, "tag", "not specified")),
         .amount = zon.get(usize, "amount", 8),
-        .range = zon.get(usize, "range", 100),
+        .range = zon.get(usize, "range", 0),
     };
     return result;
 }
