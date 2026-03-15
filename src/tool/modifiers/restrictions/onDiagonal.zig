@@ -54,8 +54,8 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnD
 
 pub fn printTooltip(self: *const OnDiagonal, outString: *main.List(u8)) void {
     if (self.range == 0) {
-        outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on diagonal axis" });
+        outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on diagonal axis"});
     } else {
-        outString.print("{} .{s} {s} {}", .{self.amount, self.tag.getName(), "in diagonal range", self.range });
+        outString.print("{} .{s} {s} {}", .{self.amount, self.tag.getName(), "in diagonal range", self.range});
     }
 }
