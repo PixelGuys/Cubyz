@@ -57,7 +57,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dry_grass_vegetation",
+			.blocks = .{"cubyz:dry_grass_vegetation"},
 			.chance = 0.15,
 			.width = 6,
 			.variation = 6,
@@ -73,7 +73,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:grass_vegetation",
+			.blocks = .{"cubyz:grass_vegetation"},
 			.chance = 0.06,
 			.width = 6,
 			.variation = 6,
@@ -82,7 +82,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:vetch",
+			.blocks = .{"cubyz:vetch"},
 			.chance = 0.005,
 			.width = 3,
 			.variation = 3,
@@ -91,7 +91,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:marigold",
+			.blocks = .{"cubyz:marigold"},
 			.chance = 0.01,
 			.width = 4,
 			.variation = 3,
@@ -100,7 +100,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
+			.blocks = .{"cubyz:daisies"},
 			.chance = 0.02,
 			.width = 5,
 			.variation = 6,
@@ -109,7 +109,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dandelions",
+			.blocks = .{"cubyz:dandelions"},
 			.chance = 0.04,
 			.width = 5,
 			.variation = 6,

@@ -20,7 +20,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:glimmergill",
+			.blocks = .{"cubyz:glimmergill"},
 			.chance = 0.015,
 			.width = 8,
 			.variation = 4,
@@ -49,7 +49,7 @@
 	},
 	.caveModels = .{
 		.{
-			.id = "cubyz:hemisphere",
+			.id = "cubyz:partial_sphere",
 			.minAmount = 1,
 			.maxAmount = 5,
 			.minRadius = 30,

@@ -12,11 +12,11 @@ pub fn loadData(zon: main.ZonElement) Data {
 }
 
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {
-	return .{.strength = std.math.hypot(data1.strength, data2.strength)};
+	return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0))};
 }
 
 pub fn changeToolParameters(tool: *Tool, data: Data) void {
-	tool.swingSpeed /= 1 + data.strength;
+	tool.swingSpeed *= 1 - data.strength;
 }
 
 pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
@@ -24,5 +24,5 @@ pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.print("#ffcc30**Heavy**#808080 *Increases swing time by **{d:.0}%", .{data.strength*100});
+	outString.print("#ffcc30**Heavy**#808080 *Decreases swing speed by **{d:.0}%", .{data.strength*100});
 }
