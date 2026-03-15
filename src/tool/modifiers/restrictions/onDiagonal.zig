@@ -15,7 +15,7 @@ const OnDiagonal = struct {
 pub fn satisfied(self: *const OnDiagonal, tool: *const Tool, x: i32, y: i32) bool {
     var count: usize = 0;
     const gridSize: usize = @sqrt(tool.craftingGrid.len);
-    var rangeChecked: usize = -1;
+    var rangeChecked: usize = 0;
     if (self.range > gridSize) {
         rangeChecked = gridSize;
     } else {
@@ -53,7 +53,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnD
 }
 
 pub fn printTooltip(self: *const OnDiagonal, outString: *main.List(u8)) void {
-    if (self.range == 5) {
+    if (self.range == 0) {
         outString.print("{} .{s} {s}", .{ self.amount, self.tag.getName(), "on diagonal axis" });
     } else {
         outString.print("{} .{s} {s} {}", .{ self.amount, self.tag.getName(), "in diagonal range", self.range });
