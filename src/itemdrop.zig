@@ -544,11 +544,11 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 };
 
 const BobManager = struct {
-	phase: f32 = 0,
-	scale: f32 = 0,
-	sneakOffset: f32 = 0,
+	var phase: f32 = 0;
+	var amplitude: f32 = 0;
+	var crouchOffset: f32 = 0;
 
-	const bobSpeed = 9.5;
+	const bobFrequency = 1.5;
 
 	const bobAmountLateral = 0.08;
 	const bobAmountVertical = 0.07;
@@ -556,48 +556,47 @@ const BobManager = struct {
 	const inputSpeedMax = 10;
 	const actualSpeedMax = 5;
 
-	const phaseResetThresholdAirborne = 0.04;
-	const phaseFinishSpeedAirborne = 5;
-	const phaseResetSpeedFlying = 3;
-	const phaseResetSpeedStanding = 2;
+	const phaseResetThresholdAirborne = 0.05;
 
-	const scaleThreshold = 0.1;
-	const scaleFadeSpeedWalking = 4;
-	const scaleFadeSpeedFlying = 3;
-	const scaleFadeSpeedStanding = 2;
+	const phaseFinishHalfLifeAirborne = 0.14;
+	const phaseResetHalfLifeFlying = 0.23;
+	const phaseResetHalfLifeStanding = 0.35;
 
-	const sneakScaleMul = 0.2;
-	const sneakFadeSpeed = 5;
+	const amplitudeThreshold = 0.1;
 
-	fn fadeScale(self: *@This(), dt: f32, newScale: f32, fadeSpeed: f32) void {
-		self.scale = std.math.lerp(self.scale, newScale, @min(dt*fadeSpeed, 1));
+	const amplitudeHalfLifeWalking = 0.17;
+	const amplitudeHalfLifeFlying = 0.23;
+	const amplitudeHalfLifeStanding = 0.35;
+
+	const crouchOffsetAmount = 0.2;
+	const crouchHalfLife = 0.14;
+
+	fn phaseSpeedCurve() f32 {
+		return std.math.clamp(std.math.pow(f32, 2.21*amplitude - 1.28, 3) + 0.82, 0, 1);
 	}
 
-	fn fadePhase(self: *@This(), dt: f32, newPhase: f32, fadeSpeed: f32) void {
-		self.phase = std.math.lerp(self.phase, newPhase, @min(dt*fadeSpeed, 1));
+	fn transition(current: f32, target: f32, halfLife: f32, dt: f32) f32 {
+		return std.math.lerp(target, current, std.math.pow(f32, 0.5, dt/halfLife));
 	}
 
-	fn phaseSpeedCurve(self: @This()) f32 {
-		return std.math.clamp(std.math.pow(f32, 2.21*self.scale - 1.28, 3) + 0.82, 0, 1);
-	}
-
-	fn update(self: *@This(), dt: f32) void {
+	fn update(dt: f32) void {
 		defer {
-			const targetOffset = if (game.Player.crouching) self.scale*sneakScaleMul else 0;
-			self.sneakOffset = std.math.lerp(self.sneakOffset, targetOffset, @min(dt*sneakFadeSpeed, 1));
+			const targetOffset = if (game.Player.crouching) amplitude*crouchOffsetAmount else 0;
+			crouchOffset = transition(crouchOffset, targetOffset, crouchHalfLife, dt);
 		}
 
 		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
-			self.fadeScale(dt, 0, scaleFadeSpeedFlying);
-			self.fadePhase(dt, std.math.round(self.phase/std.math.pi)*std.math.pi, phaseResetSpeedFlying);
+			amplitude = transition(amplitude, 0, amplitudeHalfLifeFlying, dt);
+			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
+			phase = transition(phase, targetPhase, phaseResetHalfLifeFlying, dt);
 			return;
 		}
 
 		if (!game.Player.onGround) {
-			const prev = std.math.floor(self.phase/std.math.pi)*std.math.pi;
+			const prev = std.math.floor(phase/std.math.pi)*std.math.pi;
 			const next = prev + std.math.pi;
-			const targetPhase = if (prev >= self.phase - phaseResetThresholdAirborne*std.math.pi) prev else next;
-			self.fadePhase(dt, targetPhase, phaseFinishSpeedAirborne);
+			const targetPhase = if (prev <= phase - phaseResetThresholdAirborne*std.math.pi) next else prev;
+			phase = transition(phase, targetPhase, phaseFinishHalfLifeAirborne, dt);
 			return;
 		}
 
@@ -613,23 +612,26 @@ const BobManager = struct {
 
 		const newScale = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
 
-		if (newScale <= scaleThreshold) {
-			self.fadeScale(dt, 0, scaleFadeSpeedStanding);
-			self.fadePhase(dt, std.math.round(self.phase/std.math.pi)*std.math.pi, phaseResetSpeedStanding);
+		if (newScale <= amplitudeThreshold) {
+			amplitude = transition(amplitude, 0, amplitudeHalfLifeStanding, dt);
+			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
+			phase = transition(phase, targetPhase, phaseResetHalfLifeStanding, dt);
 			return;
 		}
 
-		self.fadeScale(dt, newScale, scaleFadeSpeedWalking);
-		self.phase += dt*bobSpeed*self.phaseSpeedCurve();
-		self.phase = std.math.mod(f32, self.phase, 2*std.math.pi) catch unreachable;
+		amplitude = transition(amplitude, newScale, amplitudeHalfLifeWalking, dt);
+		phase += dt*bobFrequency*std.math.tau*phaseSpeedCurve();
+		while (phase >= std.math.tau) {
+			phase -= std.math.tau;
+		}
 	}
 
-	fn getOffset(self: @This()) Vec3f {
-		const s = std.math.sin(self.phase);
+	fn getOffset() Vec3f {
+		const s = std.math.sin(phase);
 		return .{
-			@abs(s)*bobAmountVertical*self.scale + self.sneakOffset,
+			@abs(s)*bobAmountVertical*amplitude + crouchOffset,
 			0,
-			s*bobAmountLateral*self.scale,
+			s*bobAmountLateral*amplitude,
 		};
 	}
 };
@@ -640,7 +642,6 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	var cameraFollow: Vec3f = @splat(0);
 	var cameraFollowVel: Vec3f = @splat(0);
 	const damping: Vec3f = @splat(130);
-	var bobManager: BobManager = .{};
 
 	pub fn update(deltaTime: f64) void {
 		if (!settings.bobbing) {
@@ -651,9 +652,9 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		if (deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
-		bobManager.update(dt);
+		BobManager.update(dt);
 
-		const totalOffset = getAscentDescentOffset() + bobManager.getOffset();
+		const totalOffset = getAscentDescentOffset() + BobManager.getOffset();
 
 		// TODO: add *smooth* item sway
 		const n1: Vec3f = cameraFollowVel - (cameraFollow - totalOffset)*damping*damping*@as(Vec3f, @splat(dt));
