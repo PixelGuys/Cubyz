@@ -40,7 +40,7 @@ pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
     if (self.range == 1) {
         outString.print("encased in {} .{s}", .{ self.amount, self.tag.getName() });
     }
-    if (self.range > 1) {
+    if (!(self.range == 1)) {
         outString.print("encased in {} .{s} {s} {}", .{ self.amount, self.tag.getName(), "in range", self.range });
     }
 }
