@@ -47,7 +47,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				return;
 			}
 			if (target.user.hasPermission(permissionPath)) {
-				source.sendMessage("#00ff00Player {s}#00ff00 has permission for path: {s}", .{target.user.name, permissionPath});
+				source.sendMessage("#00ff00Player {s}§#00ff00 has permission for path: {s}", .{target.user.name, permissionPath});
 			} else {
 				source.sendMessage("#ff0000Player {s}#ff0000 has no permission for path: {s}", .{target.user.name, permissionPath});
 			}
