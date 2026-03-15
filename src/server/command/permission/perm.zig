@@ -11,9 +11,9 @@ pub const usage =
 	\\/perm add <whitelist/blacklist> <permissionPath>
 	\\/perm remove <whitelist/blacklist> <permissionPath>
 	\\/perm <permissionPath>
-	\\/perm add <whitelist/blacklist> <playerId> <permissionPath>
-	\\/perm remove <whitelist/blacklist> <playerId> <permissionPath>
-	\\/perm <playerId> <permissionPath>
+	\\/perm add <whitelist/blacklist> @<playerId> <permissionPath>
+	\\/perm remove <whitelist/blacklist> @<playerId> <permissionPath>
+	\\/perm @<playerId> <permissionPath>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
