@@ -1,0 +1,9 @@
+.{
+	.blockHealth = 4,
+	.texture = "cubyz:fence/cactus",
+	.texture_top = "cubyz:fence/top/cactus",
+	.texture_bottom = "cubyz:fence/top/cactus",
+	.item = .{
+		.texture = "fence/cactus.png",
+	},
+}

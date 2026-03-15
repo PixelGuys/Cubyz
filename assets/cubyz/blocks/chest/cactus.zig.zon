@@ -1,0 +1,9 @@
+.{
+	.blockHealth = 8,
+	.texture = "cubyz:chest/cactus/back",
+	.texture_front = "cubyz:chest/cactus/front",
+	.texture_left = "cubyz:chest/cactus/side",
+	.texture_right = "cubyz:chest/cactus/side",
+	.texture_top = "cubyz:chest/cactus/top",
+	.texture_bottom = "cubyz:chest/cactus/bottom",
+}

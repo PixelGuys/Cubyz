@@ -1,0 +1,7 @@
+.{
+	.blockHealth = 1.5,
+	.texture = "cubyz:sign/cactus",
+	.item = .{
+		.texture = "sign/cactus.png",
+	},
+}

@@ -1,0 +1,23 @@
+.{
+	.blockhealth = 3.75
+	.item = .{
+		.material = .{
+			.durability = 28,
+			.massDamage = 1.35,
+			.hardnessDamage = 1.75,
+			.swingSpeed = 3,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xffb0be4a, 0xffc5c560, 0xffd1d873, 0xffe5e289, 0xffefec98,
+			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 0.25,
+				},
+			},
+		},
+	},
+
+	.texture = "cubyz:planks/cactus",
+}
