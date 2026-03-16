@@ -20,14 +20,14 @@
 		.{
 			.id = "cubyz:stalagmite",
 			.chance = 0.016,
-			.block = "cubyz:basalt",
+			.block = "cubyz:basalt/base",
 			.size = 12,
 			.size_variation = 10,
 		},
 		.{
 			.id = "cubyz:stalagmite",
 			.chance = 0.2,
-			.block = "cubyz:basalt",
+			.block = "cubyz:basalt/base",
 			.size = 3,
 			.size_variation = 5,
 		},
@@ -49,7 +49,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:basalt",
+			.block = "cubyz:basalt/base",
 			.chance = 0.5,
 			.width = 8,
 			.variation = 2,

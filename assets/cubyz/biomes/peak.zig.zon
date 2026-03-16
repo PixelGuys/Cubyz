@@ -21,7 +21,7 @@
 		"3 to 6 cubyz:snow",
 		"1 to 3 cubyz:permafrost",
 	},
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:glacite/base",
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",

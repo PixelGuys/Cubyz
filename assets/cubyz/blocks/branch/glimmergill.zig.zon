@@ -1,0 +1,30 @@
+.{
+	.tags = .{.choppable, .cuttable, .mushroom},
+	.blockHealth = 2,
+	.texture0 = "cubyz:branch/glimmergill/dot",
+	.texture1 = "cubyz:branch/glimmergill/half_line",
+	.texture2 = "cubyz:branch/glimmergill/line",
+	.texture3 = "cubyz:branch/glimmergill/bend",
+	.texture4 = "cubyz:branch/glimmergill/intersection",
+	.texture5 = "cubyz:branch/glimmergill/cross",
+	.item = .{
+		.material = .{
+			.durability = 260,
+			.massDamage = 1.5,
+			.hardnessDamage = 0.5,
+			.swingSpeed = 4.2,
+			.textureRoughness = 0.5,
+			.colors = .{
+				0xff4a3570, 0xff564085, 0xff684a97, 0xff7555b2, 0xff7555b2,
+			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 0.45,
+				},
+			},
+		},
+		.texture = "branch/glimmergill.png",
+	},
+	.decayProhibitor = true,
+}

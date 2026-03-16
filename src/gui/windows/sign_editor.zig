@@ -37,24 +37,24 @@ pub fn openFromSignData(_pos: main.vec.Vec3i, _oldText: []const u8) void {
 	main.Window.setMouseGrabbed(false);
 }
 
-fn apply(_: usize) void {
+fn apply() void {
 	const visibleCharacterCount = main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items);
-	if(textComponent.currentString.items.len > 500 or visibleCharacterCount > 100) {
+	if (textComponent.currentString.items.len > 500 or visibleCharacterCount > 100) {
 		std.log.err("Text is too long with {}/{} characters. Limits are 100/500", .{visibleCharacterCount, textComponent.currentString.items.len});
 		return;
 	}
 
 	main.block_entity.BlockEntityTypes.Sign.updateTextFromClient(pos, textComponent.currentString.items);
 
-	gui.closeWindowFromRef(&window);
+	gui.toggleGameMenu();
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 128 + padding;
-	textComponent = TextInput.init(.{0, 0}, width, 16*4 + 8, oldText, .{.callback = &apply}, .{});
+	textComponent = TextInput.init(.{0, 0}, width, 16*4 + 8, oldText, .{.onNewline = .init(apply)});
 	list.add(textComponent);
-	list.add(Button.initText(.{0, 0}, 100, "Apply", .{.callback = &apply}));
+	list.add(Button.initText(.{0, 0}, 100, "Apply", .init(apply)));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -62,7 +62,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

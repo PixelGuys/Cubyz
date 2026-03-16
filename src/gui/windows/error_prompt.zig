@@ -32,13 +32,13 @@ pub fn deinit() void {
 	fileExplorerIcon.deinit();
 }
 
-fn openLog(_: usize) void {
+fn openLog() void {
 	main.files.openDirInWindow("logs");
 }
 
 const padding: f32 = 8;
 pub fn update() void {
-	if(main.Window.Gamepad.wereControllerMappingsDownloaded()) {
+	if (main.Window.Gamepad.wereControllerMappingsDownloaded()) {
 		gui.closeWindowFromRef(&window);
 	}
 }
@@ -46,7 +46,7 @@ pub fn update() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{padding, 16 + padding}, 128, "#ffff00The game encountered errors. Check the logs for details", .center));
-	list.add(Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openLog}));
+	list.add(Button.initIcon(.{0, 0}, .{16, 16}, fileExplorerIcon, false, .init(openLog)));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -54,7 +54,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

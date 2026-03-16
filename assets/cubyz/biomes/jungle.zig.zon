@@ -24,7 +24,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:mahogany_leaves",
+			.leaves = "cubyz:leaves/mahogany",
 			.log = "cubyz:mahogany_log",
 			.top = "cubyz:mahogany_top",
 			.chance = 0.36,
@@ -36,7 +36,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:mahogany_leaves",
+			.leaves = "cubyz:leaves/mahogany",
 			.log = "cubyz:mahogany_log",
 			.top = "cubyz:mahogany_top",
 			.chance = 0.2,
@@ -64,7 +64,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:hibiscus",
+			.blocks = .{"cubyz:hibiscus"},
 			.chance = 0.007,
 			.width = 8,
 			.variation = 3,
