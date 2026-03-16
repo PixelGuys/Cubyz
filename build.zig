@@ -181,8 +181,10 @@ pub fn build(b: *std.Build) !void {
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
 	const version = b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
 	if (b.option([]const u8, "version", "tagged version for CI")) |tagVersion| {
-		const tagParsed = try std.SemanticVersion.parse(tagVersion);
-		const versionParsed = try std.SemanticVersion.parse(version);
+		const tagVersionUpperbound: usize = if (std.mem.count(u8, tagVersion, "-") > 0) std.mem.indexOfScalar(u8, tagVersion, '-').? else tagVersion.len - 1;
+		const versionUpperbound: usize = if (std.mem.count(u8, version, "-") > 0) std.mem.indexOfScalar(u8, version, '-').? else version.len - 1;
+		const tagParsed = try std.SemanticVersion.parse(tagVersion[0..tagVersionUpperbound]);
+		const versionParsed = try std.SemanticVersion.parse(version[0..versionUpperbound]);
 		if (std.SemanticVersion.order(tagParsed, versionParsed) != .eq) {
 			std.log.err("Tagged version {s} does not match version in build.zig: {s}", .{tagVersion, version});
 			return error.VersionMismatch;
