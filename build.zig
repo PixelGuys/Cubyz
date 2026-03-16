@@ -179,7 +179,7 @@ pub fn build(b: *std.Build) !void {
 
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
-	const version = b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
+	const version = b.option([]const u8, "version", "Specifies version number, otherwise uses baked-in version number.") orelse b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
 	options.addOption([]const u8, "version", version);
 	options.addOption(bool, "isTaggedRelease", isRelease);
 
