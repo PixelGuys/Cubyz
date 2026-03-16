@@ -34,11 +34,8 @@ pub const camera = struct { // MARK: camera
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
 		// Mouse movement along the y-axis rotates the image along the x-axis.
 		rotation[0] += mouseY;
-		if (rotation[0] > std.math.pi/2.0) {
-			rotation[0] = std.math.pi/2.0;
-		} else if (rotation[0] < -std.math.pi/2.0) {
-			rotation[0] = -std.math.pi/2.0;
-		}
+		const bound = std.math.pi/2.0 - 0.001;
+		rotation[0] = std.math.clamp(rotation[0], -bound, bound);
 		// Mouse movement along the x-axis rotates the image along the z-axis.
 		rotation[2] += mouseX;
 	}
