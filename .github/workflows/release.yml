@@ -29,7 +29,7 @@ jobs:
       - run: tar -czf Windows-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz.exe
       - run: tar -xf Windows-x86_64.tar.gz && zip -r Windows-x86_64.zip Cubyz && rm -r Cubyz
 
-#      - run: zig build -Dtarget=aarch64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline
+#      - run: zig build -Dtarget=aarch64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline -Dversion="$tag"
 #      - run: tar -czf Windows-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz.exe
 #      - run: tar -xf Windows-aarch64.tar.gz && zip -r Windows-aarch64.zip Cubyz && rm -r Cubyz
 
