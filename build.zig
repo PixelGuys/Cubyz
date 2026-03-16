@@ -179,7 +179,36 @@ pub fn build(b: *std.Build) !void {
 
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
-	const version = b.option([]const u8, "version", "Specifies version number, otherwise uses baked-in version number.") orelse b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
+	const version = b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
+	if (b.option([]const u8, "version", "tagged version for CI")) |providedVersion| {
+		var tagSplit = std.mem.splitSequence(u8, providedVersion, ".");
+		var versionSplit = std.mem.splitSequence(u8, version, ".");
+
+		if (std.mem.count(u8, providedVersion, "-") > 0) {
+			tagSplit = std.mem.splitSequence(u8, providedVersion, "-");
+			const first = tagSplit.first();
+			tagSplit = std.mem.splitSequence(u8, first, ".");
+		}
+		if (std.mem.count(u8, version, "-") > 0) {
+			versionSplit = std.mem.splitSequence(u8, version, "-");
+			const first = versionSplit.first();
+			versionSplit = std.mem.splitSequence(u8, first, ".");
+		}
+		var versionChunk: ?[]const u8 = versionSplit.first();
+		var tagChunk: ?[]const u8 = tagSplit.first();
+
+		while (true) {
+			if (!((tagChunk != null and versionChunk != null) or (tagChunk == null and versionChunk == null)) or !std.mem.eql(u8, versionChunk.?, tagChunk.?)) {
+				std.log.err("Tagged version {s} does not match version in build.zig: {s}", .{providedVersion, version});
+				return error.VersionMismatch;
+			}
+			versionChunk = versionSplit.next();
+			tagChunk = tagSplit.next();
+			if (tagChunk == null and versionChunk == null) {
+				break;
+			}
+		}
+	}
 	options.addOption([]const u8, "version", version);
 	options.addOption(bool, "isTaggedRelease", isRelease);
 
