@@ -14,7 +14,7 @@ const OnOrthogonal = struct {
 
 pub fn satisfied(self: *const OnOrthogonal, tool: *const Tool, x: i32, y: i32) bool {
 	var count: usize = 0;
-	const gridSize: usize = @sqrt(tool.craftingGrid.len);
+	const gridSize: usize = @intCast(@ceil(@sqrt(@as(f32 ,@floatCast(tool.craftingGrid.len)))));
 	var rangeChecked: usize = 0;
 	if (self.range > gridSize) {
 		rangeChecked = gridSize;
