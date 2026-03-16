@@ -15,7 +15,7 @@ const Encased = struct {
 pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
 	var count: usize = 0;
 	const lowBound = 0;
-	const highBound = self.range * 2 + 1;
+	const highBound = self.range*2 + 1;
 	for (lowBound..highBound) |dx| {
 		for (lowBound..highBound) |dy| {
 			const checkedX = x + @as(i32, @intCast(dx - self.range));
@@ -38,9 +38,9 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 
 pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
 	if (self.range == 1) {
-		outString.print("encased in {} .{s}", .{ self.amount, self.tag.getName() });
+		outString.print("encased in {} .{s}", .{self.amount, self.tag.getName()});
 	}
 	if (!(self.range == 1)) {
-		outString.print("encased in {} .{s} {s} {}", .{ self.amount, self.tag.getName(), "in range", self.range });
+		outString.print("encased in {} .{s} {s} {}", .{self.amount, self.tag.getName(), "in range", self.range});
 	}
 }
