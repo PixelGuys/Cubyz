@@ -14,7 +14,7 @@ const OnDiagonal = struct {
 
 pub fn satisfied(self: *const OnDiagonal, tool: *const Tool, x: i32, y: i32) bool {
 	var count: usize = 0;
-	const gridSize: usize = @sqrt(tool.craftingGrid.len);
+	const gridSize: usize = tool.craftingGrid.len;
 	var rangeChecked: usize = 0;
 	if (self.range > gridSize) {
 		rangeChecked = gridSize;
