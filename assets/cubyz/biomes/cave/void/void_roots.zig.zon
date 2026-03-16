@@ -17,6 +17,12 @@
 			.height_variation = 0,
 		},
 		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:bridges/bridges",
+			.placeMode = .degradable,
+			.chance = 0.00003,
+		},
+		.{
 			.id = "cubyz:simple_vegetation",
 			.chance = 0.000001,
 			.block = "cubyz:workbench",

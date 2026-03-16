@@ -1,0 +1,17 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:bridges/part/o0", .chance = 1},
+		.{.id = "cubyz:bridges/part/o1", .chance = 0.05},
+		.{.id = "cubyz:bridges/part/s0", .chance = 1},
+		.{.id = "cubyz:bridges/part/s1", .chance = 0.05},
+		.{.id = "cubyz:bridges/part/c0", .chance = 1},
+		.{.id = "cubyz:bridges/part/c1", .chance = 0.05},
+
+		.{.id = null, .chance = 0.05},
+	},
+	.children = .{
+		.black = "cubyz:bridges/slate",
+		.white = "cubyz:bridges/oak",
+		.grey = "cubyz:bridges/cobble",
+	},
+}
