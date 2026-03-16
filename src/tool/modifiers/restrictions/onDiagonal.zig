@@ -35,7 +35,7 @@ pub fn satisfied(self: *const OnDiagonal, tool: *const Tool, x: i32, y: i32) boo
 	for (lowBound..highBound) |dx| {
 		const checkedX = x + @as(i32, @intCast(dx - rangeChecked));
 		const checkedY = y - @as(i32, (@intCast(dx - rangeChecked)));
-		if (!(dx == 0)) {
+		if (dx != 0) {
 			if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
