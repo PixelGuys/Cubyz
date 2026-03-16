@@ -1,9 +1,9 @@
 .{
 	.blueprints = .{
-		.{.id = "cubyz:tree/palm/coconut/fronds/big"},
-		.{.id = "cubyz:tree/palm/coconut/fronds/small"},
-		.{.id = "cubyz:tree/palm/coconut/fronds/tilt"},
-		.{.id = "cubyz:tree/palm/coconut/fronds/tilt1"},
-		.{.id = "cubyz:tree/palm/coconut/fronds/tilt2"},
+		.{.id = "cubyz:tree/palm/coconut/fronds/0"},
+		.{.id = "cubyz:tree/palm/coconut/fronds/1"},
+		.{.id = "cubyz:tree/palm/coconut/fronds/2"},
+		.{.id = "cubyz:tree/palm/coconut/fronds/3"},
+		.{.id = "cubyz:tree/palm/coconut/fronds/4"},
 	},
 }

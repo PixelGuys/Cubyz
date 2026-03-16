@@ -1,0 +1,31 @@
+.{
+	.tags = .{.stone, .mineable, .marble},
+	.blockHealth = 28,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.material = .{
+			.durability = 55,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.7,
+			.swingSpeed = 3.0,
+			.textureRoughness = 1.0,
+			.colors = .{
+				0xffA89B94, 0xffC9C0BB, 0xffECE9E3, 0xffFBF8F1, 0xffECE9E3,
+			},
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .marble,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

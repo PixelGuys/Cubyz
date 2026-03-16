@@ -1,14 +1,9 @@
 .{
-	.tags = .{.choppable, .wood},
+	.tags = .{.choppable, .wood, .branch},
+	.onUpdate = .{
+		.type = .decay,
+	},
 	.blockHealth = 4,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
-	.absorbedLight = 0x202830,
-	.rotation = "cubyz:branch",
-	.model = .{
-		.radius = 4,
-	},
 	.texture0 = "cubyz:branch/palm/dot",
 	.texture1 = "cubyz:branch/palm/half_line",
 	.texture2 = "cubyz:branch/palm/line",
@@ -34,4 +29,5 @@
 		},
 		.texture = "branch/palm.png",
 	},
+	.decayProhibitor = true,
 }

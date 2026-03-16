@@ -57,57 +57,67 @@ pub const History = struct {
 		self.down.deinit(main.globalAllocator);
 	}
 	fn clear(self: *History) void {
-		while(self.up.popFront()) |msg| {
+		while (self.up.popFront()) |msg| {
 			main.globalAllocator.free(msg);
 		}
-		while(self.down.popFront()) |msg| {
+		while (self.down.popFront()) |msg| {
 			main.globalAllocator.free(msg);
 		}
 	}
 	fn flushUp(self: *History) void {
-		while(self.down.popBack()) |msg| {
-			if(msg.len == 0) {
+		while (self.down.popBack()) |msg| {
+			if (msg.len == 0) {
 				continue;
 			}
 
-			if(self.up.forcePushBack(msg)) |old| {
+			if (self.up.forcePushBack(msg)) |old| {
 				main.globalAllocator.free(old);
 			}
 		}
 	}
 	pub fn isDuplicate(self: *History, new: []const u8) bool {
-		if(new.len == 0) return true;
-		if(self.down.peekBack()) |msg| {
-			if(std.mem.eql(u8, msg, new)) return true;
+		if (new.len == 0) return true;
+		if (self.down.peekBack()) |msg| {
+			if (std.mem.eql(u8, msg, new)) return true;
 		}
-		if(self.up.peekBack()) |msg| {
-			if(std.mem.eql(u8, msg, new)) return true;
+		if (self.up.peekBack()) |msg| {
+			if (std.mem.eql(u8, msg, new)) return true;
 		}
 		return false;
 	}
 	pub fn pushDown(self: *History, new: []const u8) void {
-		if(self.down.forcePushBack(new)) |old| {
+		if (self.down.forcePushBack(new)) |old| {
 			main.globalAllocator.free(old);
 		}
 	}
 	pub fn pushUp(self: *History, new: []const u8) void {
-		if(self.up.forcePushBack(new)) |old| {
+		if (self.up.forcePushBack(new)) |old| {
 			main.globalAllocator.free(old);
 		}
 	}
 	pub fn cycleUp(self: *History) bool {
-		if(self.down.popBack()) |msg| {
+		if (self.down.popBack()) |msg| {
 			self.pushUp(msg);
 			return true;
 		}
 		return false;
 	}
 	pub fn cycleDown(self: *History) void {
-		if(self.up.popBack()) |msg| {
+		if (self.up.popBack()) |msg| {
 			self.pushDown(msg);
 		}
 	}
 };
+
+pub fn clearChat() void {
+	while (history.popOrNull()) |label| {
+		label.deinit();
+	}
+	historyStart = 0;
+	fadeOutEnd = 0;
+	expirationTime.clearRetainingCapacity();
+	refresh();
+}
 
 pub fn init() void {
 	history = .init(main.globalAllocator);
@@ -117,11 +127,11 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
-	for(history.items) |label| {
+	for (history.items) |label| {
 		label.deinit();
 	}
 	history.deinit();
-	while(messageQueue.popFront()) |msg| {
+	while (messageQueue.popFront()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageHistory.deinit();
@@ -130,16 +140,16 @@ pub fn deinit() void {
 }
 
 fn refresh() void {
-	if(window.rootComponent) |old| {
+	if (window.rootComponent) |old| {
 		old.verticalList.children.clearRetainingCapacity();
 		old.deinit();
 	}
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 0);
-	for(history.items[if(hideInput) historyStart else 0..]) |msg| {
+	for (history.items[if (hideInput) historyStart else 0..]) |msg| {
 		msg.pos = .{0, 0};
 		list.add(msg);
 	}
-	if(!hideInput) {
+	if (!hideInput) {
 		input.pos = .{0, 0};
 		list.add(input);
 	}
@@ -149,8 +159,8 @@ fn refresh() void {
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	window.contentSize[0] = @max(window.contentSize[0], window.getMinWindowWidth());
 	gui.updateWindowPositions();
-	if(!hideInput) {
-		for(history.items) |label| {
+	if (!hideInput) {
+		for (history.items) |label| {
 			label.alpha = 1;
 		}
 	} else {
@@ -160,14 +170,14 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{.onUp = .{.callback = loadNextHistoryEntry}, .onDown = .{.callback = loadPreviousHistoryEntry}});
+	input = TextInput.init(.{0, 0}, 256, 32, "", .{.onNewline = .init(sendMessage), .onUp = .init(loadNextHistoryEntry), .onDown = .init(loadPreviousHistoryEntry)});
 	refresh();
 }
 
-pub fn loadNextHistoryEntry(_: usize) void {
+pub fn loadNextHistoryEntry() void {
 	const isSuccess = messageHistory.cycleUp();
-	if(messageHistory.isDuplicate(input.currentString.items)) {
-		if(isSuccess) messageHistory.cycleDown();
+	if (messageHistory.isDuplicate(input.currentString.items)) {
+		if (isSuccess) messageHistory.cycleDown();
 		messageHistory.cycleDown();
 	} else {
 		messageHistory.pushDown(main.globalAllocator.dupe(u8, input.currentString.items));
@@ -177,9 +187,9 @@ pub fn loadNextHistoryEntry(_: usize) void {
 	input.setString(msg);
 }
 
-pub fn loadPreviousHistoryEntry(_: usize) void {
+pub fn loadPreviousHistoryEntry() void {
 	_ = messageHistory.cycleUp();
-	if(messageHistory.isDuplicate(input.currentString.items)) {} else {
+	if (messageHistory.isDuplicate(input.currentString.items)) {} else {
 		messageHistory.pushUp(main.globalAllocator.dupe(u8, input.currentString.items));
 	}
 	const msg = messageHistory.down.peekBack() orelse "";
@@ -187,16 +197,11 @@ pub fn loadPreviousHistoryEntry(_: usize) void {
 }
 
 pub fn onClose() void {
-	while(history.popOrNull()) |label| {
-		label.deinit();
-	}
-	while(messageQueue.popFront()) |msg| {
+	clearChat();
+	while (messageQueue.popFront()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageHistory.clear();
-	expirationTime.clearRetainingCapacity();
-	historyStart = 0;
-	fadeOutEnd = 0;
 	input.deinit();
 	window.rootComponent.?.verticalList.children.clearRetainingCapacity();
 	window.rootComponent.?.deinit();
@@ -204,9 +209,9 @@ pub fn onClose() void {
 }
 
 pub fn update() void {
-	if(!messageQueue.isEmpty()) {
-		const currentTime: i32 = @truncate(std.time.milliTimestamp());
-		while(messageQueue.popFront()) |msg| {
+	if (!messageQueue.isEmpty()) {
+		const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
+		while (messageQueue.popFront()) |msg| {
 			history.append(Label.init(.{0, 0}, 256, msg, .left));
 			main.globalAllocator.free(msg);
 			expirationTime.append(currentTime +% messageTimeout);
@@ -214,17 +219,17 @@ pub fn update() void {
 		refresh();
 	}
 
-	const currentTime: i32 = @truncate(std.time.milliTimestamp());
-	while(fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
+	const currentTime: i32 = @truncate(main.timestamp().toMilliseconds());
+	while (fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
 		fadeOutEnd += 1;
 	}
-	if(hideInput != main.Window.grabbed) {
+	if (hideInput != main.Window.grabbed) {
 		hideInput = main.Window.grabbed;
 		refresh();
 	}
-	if(hideInput) {
-		for(expirationTime.items[historyStart..fadeOutEnd], history.items[historyStart..fadeOutEnd]) |time, label| {
-			if(currentTime -% time >= messageFade) {
+	if (hideInput) {
+		for (expirationTime.items[historyStart..fadeOutEnd], history.items[historyStart..fadeOutEnd]) |time, label| {
+			if (currentTime -% time >= messageFade) {
 				historyStart += 1;
 				refresh();
 			} else {
@@ -236,7 +241,7 @@ pub fn update() void {
 }
 
 pub fn render() void {
-	if(!hideInput) {
+	if (!hideInput) {
 		main.graphics.draw.setColor(0x80000000);
 		main.graphics.draw.rect(.{0, 0}, window.contentSize);
 	}
@@ -246,18 +251,22 @@ pub fn addMessage(msg: []const u8) void {
 	messageQueue.pushBack(main.globalAllocator.dupe(u8, msg));
 }
 
-pub fn sendMessage(_: usize) void {
-	if(input.currentString.items.len != 0) {
+pub fn sendMessage() void {
+	if (input.currentString.items.len != 0) {
 		const data = input.currentString.items;
-		if(data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
+		if (data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
 			std.log.err("Chat message is too long with {}/{} characters. Limits are 1000/10000", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(data), data.len});
 		} else {
 			messageHistory.flushUp();
-			if(!messageHistory.isDuplicate(data)) {
+			if (!messageHistory.isDuplicate(data)) {
 				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
 			}
 
-			main.network.Protocols.chat.send(main.game.world.?.conn, data);
+			if (input.currentString.items[0] == '/') {
+				main.sync.ClientSide.executeCommand(.{.chatCommand = .{.message = main.globalAllocator.dupe(u8, input.currentString.items[1..])}});
+			} else {
+				main.network.protocols.chat.send(main.game.world.?.conn, data);
+			}
 			input.clear();
 		}
 	}

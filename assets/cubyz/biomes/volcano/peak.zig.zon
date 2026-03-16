@@ -22,5 +22,5 @@
 		"10 to 12 cubyz:lava",
 		"10 to 12 cubyz:magma",
 	},
-	.stoneBlock = "cubyz:basalt",
+	.stoneBlock = "cubyz:basalt/base",
 }

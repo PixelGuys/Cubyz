@@ -19,8 +19,8 @@
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.00016,
-			.block = "cubyz:slate",
+			.chance = 0.0002,
+			.block = "cubyz:slate/base",
 			.size = 5,
 			.size_variance = 1,
 		},
@@ -34,8 +34,8 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
-			.chance = 0.001,
+			.blocks = .{"cubyz:daisies"},
+			.chance = 0.003,
 			.width = 10,
 			.variation = 6,
 			.density = 0.3,
@@ -43,12 +43,28 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dandelions",
-			.chance = 0.0008,
+			.blocks = .{"cubyz:dandelions"},
+			.chance = 0.002,
 			.width = 6,
 			.variation = 4,
 			.density = 0.3,
 			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass_vegetation"},
+			.chance = 0.1,
+			.width = 5,
+			.variation = 8,
+			.density = 0.5,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass_vegetation",
+			.chance = 0.4,
+			.height = 1,
+			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:sbb",

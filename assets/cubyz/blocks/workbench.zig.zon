@@ -4,7 +4,10 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.gui = .workbench,
+	.onInteract = .{
+		.type = .openWindow,
+		.name = "workbench",
+	},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:planar",
 	.texture = "cubyz:workbench_back",

@@ -1,0 +1,22 @@
+.{
+	.minHeight = 54,
+	.maxHeight = 58,
+	.minRadius = 16,
+	.maxRadius = 36,
+	.chance = 0,
+	.keepOriginalTerrain = 0.5,
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:prairie/base",
+			.chance = 5,
+		},
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
+			.chance = 0.004,
+		},
+	},
+}

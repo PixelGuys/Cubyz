@@ -11,14 +11,14 @@
 	.radius = 64,
 
 	.ground_structure = .{
-		"3 to 4 cubyz:slate",
+		"3 to 4 cubyz:slate/base",
 	},
 
 	.maxSubBiomeCount = 1,
 
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:ocean",
+			.id = "cubyz:ocean/temperate/base",
 			.chance = 1,
 		},
 	},

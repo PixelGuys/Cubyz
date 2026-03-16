@@ -11,7 +11,7 @@
 	.ground_structure = .{
 		"2 to 4 cubyz:snow",
 	},
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:glacite/base",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:snowcapped_hill/base",

@@ -6,7 +6,7 @@ const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const CaveMapView = terrain.CaveMap.CaveMapView;
-const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
+const GenerationMode = terrain.structures.SimpleStructureModel.GenerationMode;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -19,15 +19,26 @@ pub const generationMode = .floor;
 
 const FlowerPatch = @This();
 
-block: main.blocks.Block,
+blocks: []main.blocks.Block,
 width: f32,
 variation: f32,
 density: f32,
 
-pub fn loadModel(parameters: ZonElement) *FlowerPatch {
+pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 	const self = main.worldArena.create(FlowerPatch);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
+		.blocks = blk: {
+			const blockZons = parameters.getChild("blocks").toSlice();
+			if (blockZons.len == 0) {
+				std.log.err("'blocks' field of flower_patch cannot be empty.", .{});
+				return null;
+			}
+			const output = main.worldArena.alloc(main.blocks.Block, blockZons.len);
+			for (blockZons, output) |zon, *block| {
+				block.* = main.blocks.parseBlock(zon.as([]const u8, ""));
+			}
+			break :blk output;
+		},
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.density = parameters.get(f32, "density", 0.5),
@@ -53,8 +64,8 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
 
 	var baseHeight = z;
-	if(mode != .water_surface) {
-		if(caveMap.isSolid(x, y, baseHeight)) {
+	if (mode != .water_surface) {
+		if (caveMap.isSolid(x, y, baseHeight)) {
 			baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) - 1;
 		} else {
 			baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
@@ -62,21 +73,21 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	}
 
 	var px = chunk.startIndex(xMin);
-	while(px < xMax) : (px += 1) {
+	while (px < xMax) : (px += 1) {
 		var py = chunk.startIndex(yMin);
-		while(py < yMax) : (py += 1) {
+		while (py < yMax) : (py += 1) {
 			const mainDist = xMain*@as(f32, @floatFromInt(x - px)) + yMain*@as(f32, @floatFromInt(y - py));
 			const secnDist = xSecn*@as(f32, @floatFromInt(x - px)) + ySecn*@as(f32, @floatFromInt(y - py));
 			const distSqr = mainDist*mainDist + secnDist*secnDist;
-			if(distSqr <= 1) {
-				if((1 - distSqr)*self.density < random.nextFloat(seed)) continue;
+			if (distSqr <= 1) {
+				if ((1 - distSqr)*self.density < random.nextFloat(seed)) continue;
 				var startHeight = z;
 
-				if(mode == .water_surface) {
-					if(caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py) >= 0) continue;
+				if (mode == .water_surface) {
+					if (caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py) >= 0) continue;
 					startHeight = z -% 1;
 				} else {
-					if(caveMap.isSolid(px, py, startHeight)) {
+					if (caveMap.isSolid(px, py, startHeight)) {
 						startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) -% 1;
 					} else {
 						startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
@@ -84,9 +95,10 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				}
 
 				startHeight = chunk.startIndex(startHeight + chunk.super.pos.voxelSize);
-				if(@abs(startHeight -% baseHeight) > 5) continue;
-				if(chunk.liesInChunk(px, py, startHeight)) {
-					chunk.updateBlockInGeneration(px, py, startHeight, self.block);
+				if (@abs(startHeight -% baseHeight) > 5) continue;
+				if (chunk.liesInChunk(px, py, startHeight)) {
+					const block = self.blocks[random.nextIntBounded(u32, seed, @intCast(self.blocks.len))];
+					chunk.updateBlockInGeneration(px, py, startHeight, block);
 				}
 			}
 		}

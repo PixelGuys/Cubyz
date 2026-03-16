@@ -8,7 +8,7 @@ pub const description = "Select the player position as position 1.";
 pub const usage = "/pos1";
 
 pub fn execute(args: []const u8, source: *User) void {
-	if(args.len != 0) {
+	if (args.len != 0) {
 		source.sendMessage("#ff0000Too many arguments for command /pos1. Expected no arguments.", .{});
 		return;
 	}
@@ -16,7 +16,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	const pos: Vec3i = @intFromFloat(source.player.pos);
 
 	source.worldEditData.selectionPosition1 = pos;
-	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .selectedPos1, pos);
+	main.network.protocols.genericUpdate.sendWorldEditPos(source.conn, .selectedPos1, pos);
 
 	source.sendMessage("Position 1: {}", .{pos});
 }

@@ -5,9 +5,9 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 fn growCapacity(current: usize, minimum: usize) usize {
 	var new = current;
-	while(true) {
+	while (true) {
 		new +|= new/2 + 8;
-		if(new >= minimum)
+		if (new >= minimum)
 			return new;
 	}
 }
@@ -33,7 +33,7 @@ pub fn List(comptime T: type) type {
 		}
 
 		pub fn deinit(self: @This()) void {
-			if(self.capacity != 0) {
+			if (self.capacity != 0) {
 				self.allocator.free(self.items.ptr[0..self.capacity]);
 			}
 		}
@@ -67,7 +67,7 @@ pub fn List(comptime T: type) type {
 		}
 
 		fn ensureFreeCapacity(self: *@This(), freeCapacity: usize) void {
-			if(freeCapacity + self.items.len <= self.capacity) return;
+			if (freeCapacity + self.items.len <= self.capacity) return;
 			self.ensureCapacity(growCapacity(self.capacity, freeCapacity + self.items.len));
 		}
 
@@ -129,7 +129,7 @@ pub fn List(comptime T: type) type {
 
 		pub fn insertAssumeCapacity(self: *@This(), i: usize, elem: T) void {
 			std.debug.assert(i <= self.items.len);
-			if(i == self.items.len) return self.appendAssumeCapacity(elem);
+			if (i == self.items.len) return self.appendAssumeCapacity(elem);
 			_ = self.addOneAssumeCapacity();
 			std.mem.copyBackwards(T, self.items[i + 1 ..], self.items[0 .. self.items.len - 1][i..]);
 			self.items[i] = elem;
@@ -137,7 +137,7 @@ pub fn List(comptime T: type) type {
 
 		pub fn insert(self: *@This(), i: usize, elem: T) void {
 			std.debug.assert(i <= self.items.len);
-			if(i == self.items.len) return self.append(elem);
+			if (i == self.items.len) return self.append(elem);
 			_ = self.addOne();
 			std.mem.copyBackwards(T, self.items[i + 1 ..], self.items[0 .. self.items.len - 1][i..]);
 			self.items[i] = elem;
@@ -145,7 +145,7 @@ pub fn List(comptime T: type) type {
 
 		pub fn insertSliceAssumeCapacity(self: *@This(), i: usize, elems: []const T) void {
 			std.debug.assert(i <= self.items.len);
-			if(i == self.items.len) return self.appendSliceAssumeCapacity(elems);
+			if (i == self.items.len) return self.appendSliceAssumeCapacity(elems);
 			_ = self.addManyAssumeCapacity(elems.len);
 			std.mem.copyBackwards(T, self.items[i + elems.len ..], self.items[0 .. self.items.len - elems.len][i..]);
 			@memcpy(self.items[i..][0..elems.len], elems);
@@ -153,7 +153,7 @@ pub fn List(comptime T: type) type {
 
 		pub fn insertSlice(self: *@This(), i: usize, elems: []const T) void {
 			std.debug.assert(i <= self.items.len);
-			if(i == self.items.len) return self.appendSlice(elems);
+			if (i == self.items.len) return self.appendSlice(elems);
 			_ = self.addMany(elems.len);
 			std.mem.copyBackwards(T, self.items[i + elems.len ..], self.items[0 .. self.items.len - elems.len][i..]);
 			@memcpy(self.items[i..][0..elems.len], elems);
@@ -169,13 +169,13 @@ pub fn List(comptime T: type) type {
 		pub fn orderedRemove(self: *@This(), i: usize) T {
 			const newlen = self.items.len - 1;
 			const old = self.items[i];
-			for(self.items[i..newlen], i + 1..) |*b, j| b.* = self.items[j];
+			for (self.items[i..newlen], i + 1..) |*b, j| b.* = self.items[j];
 			self.items.len = newlen;
 			return old;
 		}
 
 		pub fn popOrNull(self: *@This()) ?T {
-			if(self.items.len == 0) return null;
+			if (self.items.len == 0) return null;
 			const val = self.items[self.items.len - 1];
 			self.items.len -= 1;
 			return val;
@@ -189,9 +189,9 @@ pub fn List(comptime T: type) type {
 			const after_range = start + len;
 			const range = self.items[start..after_range];
 
-			if(range.len == new_items.len)
+			if (range.len == new_items.len)
 				@memcpy(range[0..new_items.len], new_items)
-			else if(range.len < new_items.len) {
+			else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -201,7 +201,7 @@ pub fn List(comptime T: type) type {
 				@memcpy(range[0..new_items.len], new_items);
 				const after_subrange = start + new_items.len;
 
-				for(self.items[after_range..], 0..) |item, i| {
+				for (self.items[after_range..], 0..) |item, i| {
 					self.items[after_subrange..][i] = item;
 				}
 
@@ -209,19 +209,11 @@ pub fn List(comptime T: type) type {
 			}
 		}
 
-		pub const Writer = if(T != u8)
-			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
-				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
-		else
-			std.Io.GenericWriter(*@This(), error{}, appendWrite);
-
-		pub fn writer(self: *@This()) Writer {
-			return .{.context = self};
-		}
-
-		fn appendWrite(self: *@This(), m: []const u8) !usize {
-			self.appendSlice(m);
-			return m.len;
+		pub fn print(self: *@This(), comptime fmt: []const u8, args: anytype) void {
+			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator); // TODO: Is there no easier way to make this without an extra copy?
+			defer writer.deinit();
+			writer.writer.print(fmt, args) catch unreachable;
+			self.appendSlice(writer.written());
 		}
 	};
 }
@@ -239,7 +231,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 		}
 
 		pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
-			if(self.capacity != 0) {
+			if (self.capacity != 0) {
 				allocator.free(self.items.ptr[0..self.capacity]);
 			}
 		}
@@ -273,7 +265,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 		}
 
 		pub fn ensureFreeCapacity(self: *@This(), allocator: NeverFailingAllocator, freeCapacity: usize) void {
-			if(freeCapacity + self.items.len <= self.capacity) return;
+			if (freeCapacity + self.items.len <= self.capacity) return;
 			self.ensureCapacity(allocator, growCapacity(self.capacity, freeCapacity + self.items.len));
 		}
 
@@ -335,7 +327,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 
 		pub fn insertAssumeCapacity(self: *@This(), i: usize, elem: T) void {
 			std.debug.assert(i <= self.items.len);
-			if(i == self.items.len) return self.appendAssumeCapacity(elem);
+			if (i == self.items.len) return self.appendAssumeCapacity(elem);
 			_ = self.addOneAssumeCapacity();
 			std.mem.copyBackwards(T, self.items[i + 1 ..], self.items[0 .. self.items.len - 1][i..]);
 			self.items[i] = elem;
@@ -343,7 +335,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 
 		pub fn insert(self: *@This(), i: usize, elem: T) void {
 			std.debug.assert(i <= self.items.len);
-			if(i == self.items.len) return self.append(elem);
+			if (i == self.items.len) return self.append(elem);
 			_ = self.addOne();
 			std.mem.copyBackwards(T, self.items[i + 1 ..], self.items[0 .. self.items.len - 1][i..]);
 			self.items[i] = elem;
@@ -351,7 +343,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 
 		pub fn insertSliceAssumeCapacity(self: *@This(), i: usize, elems: []const T) void {
 			std.debug.assert(i <= self.items.len);
-			if(i == self.items.len) return self.appendSliceAssumeCapacity(elems);
+			if (i == self.items.len) return self.appendSliceAssumeCapacity(elems);
 			_ = self.addManyAssumeCapacity(elems.len);
 			std.mem.copyBackwards(T, self.items[i + elems.len ..], self.items[0 .. self.items.len - elems.len][i..]);
 			@memcpy(self.items[i..][0..elems.len], elems);
@@ -359,7 +351,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 
 		pub fn insertSlice(self: *@This(), i: usize, elems: []const T) void {
 			std.debug.assert(i <= self.items.len);
-			if(i == self.items.len) return self.appendSlice(elems);
+			if (i == self.items.len) return self.appendSlice(elems);
 			_ = self.addMany(elems.len);
 			std.mem.copyBackwards(T, self.items[i + elems.len ..], self.items[0 .. self.items.len - elems.len][i..]);
 			@memcpy(self.items[i..][0..elems.len], elems);
@@ -375,13 +367,13 @@ pub fn ListUnmanaged(comptime T: type) type {
 		pub fn orderedRemove(self: *@This(), i: usize) T {
 			const newlen = self.items.len - 1;
 			const old = self.items[i];
-			for(self.items[i..newlen], i + 1..) |*b, j| b.* = self.items[j];
+			for (self.items[i..newlen], i + 1..) |*b, j| b.* = self.items[j];
 			self.items.len = newlen;
 			return old;
 		}
 
 		pub fn popOrNull(self: *@This()) ?T {
-			if(self.items.len == 0) return null;
+			if (self.items.len == 0) return null;
 			const val = self.items[self.items.len - 1];
 			self.items.len -= 1;
 			return val;
@@ -395,9 +387,9 @@ pub fn ListUnmanaged(comptime T: type) type {
 			const after_range = start + len;
 			const range = self.items[start..after_range];
 
-			if(range.len == new_items.len)
+			if (range.len == new_items.len)
 				@memcpy(range[0..new_items.len], new_items)
-			else if(range.len < new_items.len) {
+			else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -407,27 +399,12 @@ pub fn ListUnmanaged(comptime T: type) type {
 				@memcpy(range[0..new_items.len], new_items);
 				const after_subrange = start + new_items.len;
 
-				for(self.items[after_range..], 0..) |item, i| {
+				for (self.items[after_range..], 0..) |item, i| {
 					self.items[after_subrange..][i] = item;
 				}
 
 				self.items.len -= len - new_items.len;
 			}
-		}
-
-		pub const Writer = if(T != u8)
-			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
-				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
-		else
-			std.io.Writer(*@This(), error{}, appendWrite);
-
-		pub fn writer(self: *@This()) Writer {
-			return .{.context = self};
-		}
-
-		fn appendWrite(self: *@This(), m: []const u8) !usize {
-			self.appendSlice(m);
-			return m.len;
 		}
 	};
 }
@@ -437,7 +414,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 pub fn MultiArray(T: type, Range: type) type {
 	const size = @typeInfo(Range).@"enum".fields.len;
 	std.debug.assert(@typeInfo(Range).@"enum".is_exhaustive);
-	for(@typeInfo(Range).@"enum".fields) |field| {
+	for (@typeInfo(Range).@"enum".fields) |field| {
 		std.debug.assert(field.value < size);
 	}
 	return struct {
@@ -453,7 +430,7 @@ pub fn MultiArray(T: type, Range: type) type {
 		}
 
 		pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
-			if(self.capacity != 0) {
+			if (self.capacity != 0) {
 				allocator.free(self.items[0..self.capacity]);
 			}
 		}
@@ -468,7 +445,7 @@ pub fn MultiArray(T: type, Range: type) type {
 		}
 
 		pub fn ensureCapacity(self: *@This(), allocator: NeverFailingAllocator, newCapacity: usize) void {
-			if(newCapacity <= self.capacity) return;
+			if (newCapacity <= self.capacity) return;
 			const newAllocation = allocator.realloc(self.items[0..self.capacity], newCapacity);
 			self.items = newAllocation.ptr;
 			self.capacity = newAllocation.len;
@@ -487,13 +464,13 @@ pub fn MultiArray(T: type, Range: type) type {
 			const newStartIndex = self.offsets[i + 1] - oldLen + elems.len;
 			const endIndex = self.offsets[size];
 			const newEndIndex = self.offsets[size] - oldLen + elems.len;
-			if(newStartIndex > startIndex) {
+			if (newStartIndex > startIndex) {
 				std.mem.copyBackwards(T, self.items[newStartIndex..newEndIndex], self.items[startIndex..endIndex]);
 			} else {
 				std.mem.copyForwards(T, self.items[newStartIndex..newEndIndex], self.items[startIndex..endIndex]);
 			}
 			@memcpy(self.items[self.offsets[i]..][0..elems.len], elems);
-			for(self.offsets[i + 1 ..]) |*offset| {
+			for (self.offsets[i + 1 ..]) |*offset| {
 				offset.* = offset.* - oldLen + elems.len;
 			}
 		}

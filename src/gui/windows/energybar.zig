@@ -43,18 +43,21 @@ pub fn deinit() void {
 }
 
 pub fn render() void {
+	if (main.game.Player.isCreative())
+		return;
+
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	var x: f32 = 0;
 	var energy: f32 = 0;
-	while(energy < main.game.Player.super.maxEnergy) : (energy += 1) {
-		if(x >= window.contentSize[0]) {
+	while (energy < main.game.Player.super.maxEnergy) : (energy += 1) {
+		if (x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
-		if(energy + 1 <= main.game.Player.super.energy) {
+		if (energy + 1 <= main.game.Player.super.energy) {
 			energyTexture.bindTo(0);
-		} else if(energy + 0.5 <= main.game.Player.super.energy) {
+		} else if (energy + 0.5 <= main.game.Player.super.energy) {
 			halfEnergyTexture.bindTo(0);
 		} else {
 			noEnergyTexture.bindTo(0);
@@ -63,7 +66,7 @@ pub fn render() void {
 		x += 20;
 	}
 	y += 20;
-	if(y != window.contentSize[1]) {
+	if (y != window.contentSize[1]) {
 		window.contentSize[1] = y;
 		gui.updateWindowPositions();
 	}

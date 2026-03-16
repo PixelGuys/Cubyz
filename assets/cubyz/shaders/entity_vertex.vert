@@ -23,6 +23,10 @@ layout(std430, binding = 11) buffer _quads
 	QuadInfo quads[];
 };
 
+vec3 square(vec3 x) {
+	return x*x;
+}
+
 vec3 calcLight(uint fullLight) {
 	vec3 sunLight = vec3(
 		fullLight >> 25 & 31u,
@@ -34,7 +38,7 @@ vec3 calcLight(uint fullLight) {
 		fullLight >> 5 & 31u,
 		fullLight >> 0 & 31u
 	);
-	return max(sunLight*ambientLight, blockLight)/31;
+	return min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
 }
 
 void main() {
