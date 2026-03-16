@@ -181,24 +181,11 @@ pub fn build(b: *std.Build) !void {
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
 	const version = b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
 	if (b.option([]const u8, "version", "tagged version for CI")) |tagVersion| {
-		const tagVersionUpperbound: usize = if (std.mem.count(u8, tagVersion, "-") > 0) std.mem.indexOfScalar(u8, tagVersion, '-').? - 1 else tagVersion.len - 1;
-		const versionUpperbound: usize = if (std.mem.count(u8, version, "-") > 0) std.mem.indexOfScalar(u8, version, '-').? - 1 else version.len - 1;
-		var tagSplit = std.mem.splitSequence(u8, tagVersion[0..tagVersionUpperbound], ".");
-		var versionSplit = std.mem.splitSequence(u8, version[0..versionUpperbound], ".");
-
-		var versionChunk: ?[]const u8 = versionSplit.first();
-		var tagChunk: ?[]const u8 = tagSplit.first();
-
-		while (true) {
-			if (!((tagChunk != null and versionChunk != null) or (tagChunk == null and versionChunk == null)) or !std.mem.eql(u8, versionChunk.?, tagChunk.?)) {
-				std.log.err("Tagged version {s} does not match version in build.zig: {s}", .{tagVersion, version});
-				return error.VersionMismatch;
-			}
-			versionChunk = versionSplit.next();
-			tagChunk = tagSplit.next();
-			if (tagChunk == null and versionChunk == null) {
-				break;
-			}
+		const tagParsed = try std.SemanticVersion.parse(tagVersion);
+		const versionParsed = try std.SemanticVersion.parse(version);
+		if (std.SemanticVersion.order(tagParsed, versionParsed) != .eq) {
+			std.log.err("Tagged version {s} does not match version in build.zig: {s}", .{tagVersion, version});
+			return error.VersionMismatch;
 		}
 	}
 	options.addOption([]const u8, "version", version);
