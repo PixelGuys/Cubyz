@@ -12,18 +12,18 @@
 	.texture5 = "cubyz:branch/willow/cross",
 	.item = .{
 		.material = .{
-			.durability = 20,
-			.massDamage = 0.5,
-			.hardnessDamage = 0.45,
-			.swingSpeed = 7.2,
+			.durability = 24,
+			.massDamage = 1.2,
+			.hardnessDamage = 0.95,
+			.swingSpeed = 4.4,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff2a2521, 0xff332d28, 0xff413930, 0xff4f453a, 0xff413930,
 			},
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.10,
+					.id = "durable",
+					.strength = 0.45,
 				},
 			},
 		},
