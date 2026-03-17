@@ -393,13 +393,13 @@ pub const DamageType = enum(u8) {
 	heat = 3,
 	spiky = 4,
 
-	pub fn sendMessage(self: DamageType, source: *main.server.User) void {
+	pub fn sendMessage(self: DamageType, target: *main.server.User) void {
 		switch (self) {
-			.heal => main.server.sendMessage("{f}§#ffffff was healed", .{source}),
-			.kill => main.server.sendMessage("{f}§#ffffff was killed", .{source}),
-			.fall => main.server.sendMessage("{f}§#ffffff died of fall damage", .{source}),
-			.heat => main.server.sendMessage("{f}§#ffffff burned to death", .{source}),
-			.spiky => main.server.sendMessage("{f}§#ffffff experienced death by 1000 needles", .{source}),
+			.heal => main.server.sendMessage("{f}§#ffffff was healed", .{target}),
+			.kill => main.server.sendMessage("{f}§#ffffff was killed", .{target}),
+			.fall => main.server.sendMessage("{f}§#ffffff died of fall damage", .{target}),
+			.heat => main.server.sendMessage("{f}§#ffffff burned to death", .{target}),
+			.spiky => main.server.sendMessage("{f}§#ffffff experienced death by 1000 needles", .{target}),
 		}
 	}
 };
