@@ -38,7 +38,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnO
 	result.* = .{
 		.tag = main.Tag.find(zon.get([]const u8, "tag", "not specified")),
 		.amount = zon.get(usize, "amount", 8),
-		.range = zon.get(usize, "range", 0),
+		.range = zon.get(?usize, "range", null),
 	};
 	return result;
 }
