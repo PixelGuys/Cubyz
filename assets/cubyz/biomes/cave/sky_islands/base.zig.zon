@@ -1,0 +1,28 @@
+.{
+	.chance = 1,
+
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 0,
+			.maxAmount = 1,
+			.minRadius = 60,
+			.maxRadius = 100,
+			.cutDirection = .{0, 0, 1},
+			.cutDirectionRandomness = 0.1,
+			.cutPercentage = 0.8,
+			.mode = .additive,
+		},
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 5,
+			.maxAmount = 10,
+			.minRadius = 15,
+			.maxRadius = 30,
+			.cutDirection = .{0, 0, 1},
+			.cutDirectionRandomness = 0.1,
+			.cutPercentage = 0.8,
+			.mode = .additive,
+		},
+	},
+}

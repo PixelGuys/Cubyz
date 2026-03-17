@@ -735,6 +735,8 @@ pub const inventory = struct { // MARK: inventory
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
 				if (hovered.inventory.type == .crafting) return;
+				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) return;
+				if (!hovered.pressed) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
 			} else if (!hoveredAWindow) {
 				carried.dropStack(0);
