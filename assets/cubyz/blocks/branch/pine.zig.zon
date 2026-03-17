@@ -12,10 +12,10 @@
 	.texture5 = "cubyz:branch/pine/cross",
 	.item = .{
 		.material = .{
-			.durability = 24,
-			.massDamage = 0.95,
+			.durability = 28,
+			.massDamage = 1.1,
 			.hardnessDamage = 0.75,
-			.swingSpeed = 4,
+			.swingSpeed = 4.75,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff312a1e, 0xff3c3324, 0xff4a3c28, 0xff614e33, 0xff4a3c28,

@@ -12,10 +12,10 @@
 	.texture5 = "cubyz:branch/palm/cross",
 	.item = .{
 		.material = .{
-			.durability = 26,
-			.massDamage = 1.2,
+			.durability = 31,
+			.massDamage = 1.15,
 			.hardnessDamage = 0.8,
-			.swingSpeed = 7.4,
+			.swingSpeed = 4.7,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff6d4f33, 0xff865f3d, 0xff9f6c46, 0xffb47f51, 0xff9f6c46,

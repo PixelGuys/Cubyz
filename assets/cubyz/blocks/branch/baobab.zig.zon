@@ -12,10 +12,10 @@
 	.texture5 = "cubyz:branch/baobab/cross",
 	.item = .{
 		.material = .{
-			.durability = 25,
+			.durability = 28,
 			.massDamage = 1.2,
-			.hardnessDamage = 0.4,
-			.swingSpeed = 4.0,
+			.hardnessDamage = 0.8,
+			.swingSpeed = 3.75,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff514438, 0xff665045, 0xff7a5d4d, 0xff93715c, 0xff7a5d4d,
