@@ -36,7 +36,7 @@ pub fn satisfied(self: *const OnOrthogonal, tool: *const Tool, x: i32, y: i32) b
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnOrthogonal {
 	const result = allocator.create(OnOrthogonal);
 	result.* = .{
-		.tag = main.Tag.find(zon.get([]const u8, "tag", "not specified")),
+		.tag = main.Tag.find(zon.get(?[]const u8, "tag", null)),
 		.amount = zon.get(usize, "amount", 8),
 		.range = zon.get(usize, "range", 0),
 	};
