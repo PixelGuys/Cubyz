@@ -74,13 +74,8 @@ pub fn init() void {
 	break :blk &.{};
 	};
 	defer main.stackAllocator.free(modelFile);
-	const quadInfos2 = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
-	defer main.stackAllocator.free(quadInfos2);
-	const quadInfos = main.models.Model.loadGltf(main.stackAllocator, "assets/cubyz/entities/models/snale.glb");
-	defer main.stackAllocator.free(quadInfos);
 	
-	std.debug.print("\n\n\n {d} {d}\n\n\n", .{quadInfos2.len, quadInfos.len});
-	model = .initFromQuads(quadInfos);
+	model = .loadGltf("assets/cubyz/entities/models/snale.glb");
 
 	addEntity(ZonElement.parseFromString(main.globalArena, null, 
 		\\ .{
