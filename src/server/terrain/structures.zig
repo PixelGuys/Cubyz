@@ -19,9 +19,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		water_surface,
 	};
 	const VTable = struct {
-		loadModel: *const fn(parameters: ZonElement) ?*anyopaque,
-		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
-		hashFunction: *const fn(self: *anyopaque) u64,
+		loadModel: *const fn (parameters: ZonElement) ?*anyopaque,
+		generate: *const fn (self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
+		hashFunction: *const fn (self: *anyopaque) u64,
 		generationMode: GenerationMode,
 	};
 
@@ -90,19 +90,19 @@ pub const StructureTable = struct {
 		const structures = zon.getChild("structures");
 
 		var totalChance: f32 = 0.0;
-		for(structures.toSlice()) |elem| {
-			if(SimpleStructureModel.initModel(elem)) |model| {
+		for (structures.toSlice()) |elem| {
+			if (SimpleStructureModel.initModel(elem)) |model| {
 				structureList.append(main.stackAllocator, model);
 				totalChance += model.chance;
 			}
 		}
-		if(totalChance == 0) {
+		if (totalChance == 0) {
 			std.log.err("Invalid structure chance in table {s}. Adding table without its structures.", .{structureTable.id});
 			return structureTable;
 		}
 
-		if(tableChance) |chance| {
-			for(structureList.items) |*structure| {
+		if (tableChance) |chance| {
+			for (structureList.items) |*structure| {
 				structure.chance /= totalChance;
 				structure.chance *= chance;
 			}
@@ -125,7 +125,7 @@ fn register(id: []const u8, zon: ZonElement) void {
 
 pub fn registerStructureTables(structures: *Assets.ZonHashMap) !void {
 	var iterator = structures.iterator();
-	while(iterator.next()) |entry| {
+	while (iterator.next()) |entry| {
 		register(entry.key_ptr.*, entry.value_ptr.*);
 	}
 	finishLoading();
@@ -140,7 +140,7 @@ pub fn finishLoading() void {
 
 	std.mem.sort(StructureTable, structureTables.items, {}, compareStructureTables);
 	structureTablesById.ensureTotalCapacity(main.worldArena.allocator, @intCast(structureTables.items.len)) catch unreachable;
-	for(structureTables.items) |*structureTable| {
+	for (structureTables.items) |*structureTable| {
 		structureTablesById.putAssumeCapacity(structureTable.id, structureTable);
 	}
 }

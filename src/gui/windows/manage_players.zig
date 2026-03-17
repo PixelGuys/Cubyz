@@ -33,11 +33,11 @@ pub fn onOpen() void {
 		defer main.server.connectionManager.mutex.unlock();
 		std.debug.assert(userList.len == 0);
 		userList = main.globalAllocator.alloc(*main.server.User, main.server.connectionManager.connections.items.len);
-		for(main.server.connectionManager.connections.items, 0..) |connection, i| {
+		for (main.server.connectionManager.connections.items, 0..) |connection, i| {
 			userList[i] = connection.user.?;
 			userList[i].increaseRefCount();
 			const row = HorizontalList.init();
-			if(connection.user.?.name.len != 0) {
+			if (connection.user.?.name.len != 0) {
 				row.add(Label.init(.{0, 0}, 200, connection.user.?.name, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithPtr(kick, connection)));
 			} else {
@@ -56,12 +56,12 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	for(userList) |user| {
+	for (userList) |user| {
 		user.decreaseRefCount();
 	}
 	main.globalAllocator.free(userList);
 	userList = &.{};
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
@@ -70,7 +70,7 @@ pub fn update() void {
 	main.server.connectionManager.mutex.lock();
 	const serverListLen = main.server.connectionManager.connections.items.len;
 	main.server.connectionManager.mutex.unlock();
-	if(userList.len != serverListLen) {
+	if (userList.len != serverListLen) {
 		onClose();
 		onOpen();
 	}

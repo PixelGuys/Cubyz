@@ -4,7 +4,7 @@ const main = @import("main");
 const User = main.server.User;
 
 pub const Command = struct {
-	exec: *const fn(args: []const u8, source: *User) void,
+	exec: *const fn (args: []const u8, source: *User) void,
 	name: []const u8,
 	description: []const u8,
 	usage: []const u8,
@@ -16,7 +16,7 @@ pub var commands: std.StringHashMap(Command) = undefined;
 pub fn init() void {
 	commands = .init(main.globalAllocator.allocator);
 	const commandList = @import("_list.zig");
-	inline for(@typeInfo(commandList).@"struct".decls) |decl| {
+	inline for (@typeInfo(commandList).@"struct".decls) |decl| {
 		commands.put(decl.name, .{
 			.name = decl.name,
 			.description = @field(commandList, decl.name).description,
@@ -35,8 +35,8 @@ pub fn deinit() void {
 pub fn execute(msg: []const u8, source: *User) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
-	if(commands.get(command)) |cmd| {
-		if(!source.hasPermission(cmd.permissionPath)) {
+	if (commands.get(command)) |cmd| {
+		if (!source.hasPermission(cmd.permissionPath)) {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
 		}
@@ -48,11 +48,11 @@ pub fn execute(msg: []const u8, source: *User) void {
 }
 
 fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
-	const hasTilde = if(arg.len == 0) false else arg[0] == '~';
-	const numberSlice = if(hasTilde) arg[1..] else arg;
-	if(hasTilde and numberSlice.len == 0) return playerPos;
+	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
+	const numberSlice = if (hasTilde) arg[1..] else arg;
+	if (hasTilde and numberSlice.len == 0) return playerPos;
 	const num = std.fmt.parseFloat(f64, numberSlice) catch {
-		if(hasTilde) {
+		if (hasTilde) {
 			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberSlice});
 		} else {
 			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
@@ -60,13 +60,13 @@ fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 		return error.InvalidNumber;
 	};
 
-	return std.math.clamp(if(hasTilde) playerPos + num else num, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
+	return std.math.clamp(if (hasTilde) playerPos + num else num, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
 }
 
 pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !main.vec.Vec3d {
 	return blk: {
 		var output: main.vec.Vec3d = undefined;
-		inline for(0..3) |i| {
+		inline for (0..3) |i| {
 			output[i] = try parseAxis(split.next() orelse {
 				source.sendMessage("#ff0000Too few arguments for position", .{});
 				return error.TooFewArguments;
@@ -77,7 +77,7 @@ pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *Use
 }
 
 fn parsePlayerIdAndIncreaseRefCount(playerId: []const u8, source: *User) !*User {
-	if(!std.ascii.startsWithIgnoreCase(playerId, "@")) {
+	if (!std.ascii.startsWithIgnoreCase(playerId, "@")) {
 		source.sendMessage("#ff0000Player id specifiers always start with @, found \"{s}\"", .{playerId});
 		return error.InvalidArg;
 	}
@@ -102,7 +102,7 @@ pub const Target = struct {
 				source.sendMessage("#ff0000Too few arguments for command", .{});
 				return error.TooFewArguments;
 			};
-			if(userId[0] == '@') {
+			if (userId[0] == '@') {
 				const user = parsePlayerIdAndIncreaseRefCount(userId, source) catch return error.InvalidArgs;
 				increasedRefCount = true;
 				_ = split.next();
@@ -114,6 +114,6 @@ pub const Target = struct {
 	}
 
 	pub fn deinit(self: Target) void {
-		if(self.increasedRefCount) self.user.decreaseRefCount();
+		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };

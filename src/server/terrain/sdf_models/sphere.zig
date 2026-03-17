@@ -33,13 +33,13 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 	const maxInt: Vec3i = @intFromFloat(@ceil(max));
 
 	var x = minInt[0] & ~(voxelSize - 1);
-	while(x < maxInt[0]) : (x += voxelSize) {
+	while (x < maxInt[0]) : (x += voxelSize) {
 		var y = minInt[1] & ~(voxelSize - 1);
-		while(y < maxInt[1]) : (y += voxelSize) {
+		while (y < maxInt[1]) : (y += voxelSize) {
 			var z = minInt[2] & ~(voxelSize - 1);
-			while(z < maxInt[2]) : (z += voxelSize) {
+			while (z < maxInt[2]) : (z += voxelSize) {
 				const distanceSquare: f32 = @floatFromInt((x - relPos[0])*(x - relPos[0]) + (y - relPos[1])*(y - relPos[1]) + (z - relPos[2])*(z - relPos[2]));
-				if(distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
+				if (distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
 
 				const sphereSdf = @sqrt(distanceSquare) - radius;
 

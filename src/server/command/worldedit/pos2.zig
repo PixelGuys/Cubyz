@@ -8,7 +8,7 @@ pub const description = "Select the player position as position 2.";
 pub const usage = "/pos2";
 
 pub fn execute(args: []const u8, source: *User) void {
-	if(args.len != 0) {
+	if (args.len != 0) {
 		source.sendMessage("#ff0000Too many arguments for command /pos2. Expected no arguments.", .{});
 		return;
 	}

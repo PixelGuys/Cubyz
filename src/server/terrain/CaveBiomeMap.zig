@@ -94,8 +94,8 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 
 /// A generator for the cave biome map.
 pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
-	init: *const fn(parameters: ZonElement) void,
-	generate: *const fn(map: *CaveBiomeMapFragment, seed: u64) void,
+	init: *const fn (parameters: ZonElement) void,
+	generate: *const fn (map: *CaveBiomeMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
@@ -118,10 +118,10 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveBiomeGenerator {
 		var list: main.ListUnmanaged(CaveBiomeGenerator) = .initCapacity(allocator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
-		while(iterator.next()) |generatorEntry| {
+		while (iterator.next()) |generatorEntry| {
 			const generator = generatorEntry.value_ptr.*;
 			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
-			if(generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -167,9 +167,9 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		const startX = rotatedCenter[0] -% CaveBiomeMapFragment.caveBiomeMapSize/2*(caveBiomeFragmentWidth - 1);
 		const startY = rotatedCenter[1] -% CaveBiomeMapFragment.caveBiomeMapSize/2*(caveBiomeFragmentWidth - 1);
 		const startZ = rotatedCenter[2] -% CaveBiomeMapFragment.caveBiomeMapSize/2*(caveBiomeFragmentWidth - 1);
-		for(0..caveBiomeFragmentWidth) |x| {
-			for(0..caveBiomeFragmentWidth) |y| {
-				for(0..caveBiomeFragmentWidth) |z| {
+		for (0..caveBiomeFragmentWidth) |x| {
+			for (0..caveBiomeFragmentWidth) |y| {
+				for (0..caveBiomeFragmentWidth) |z| {
 					result.fragments.set(x, y, z, getOrGenerateFragment(
 						startX +% CaveBiomeMapFragment.caveBiomeMapSize*@as(i32, @intCast(x)),
 						startY +% CaveBiomeMapFragment.caveBiomeMapSize*@as(i32, @intCast(y)),
@@ -187,14 +187,14 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 	fn argMaxDistance0(distance: Vec3i) u2 {
 		const absDistance = @abs(distance);
-		if(absDistance[0] > absDistance[1]) {
-			if(absDistance[0] > absDistance[2]) {
+		if (absDistance[0] > absDistance[1]) {
+			if (absDistance[0] > absDistance[2]) {
 				return 0;
 			} else {
 				return 2;
 			}
 		} else {
-			if(absDistance[1] > absDistance[2]) {
+			if (absDistance[1] > absDistance[2]) {
 				return 1;
 			} else {
 				return 2;
@@ -203,14 +203,14 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	}
 	fn argMaxDistance1(distance: Vec3i) u2 {
 		const absDistance = @abs(distance);
-		if(absDistance[0] >= absDistance[1]) {
-			if(absDistance[0] >= absDistance[2]) {
+		if (absDistance[0] >= absDistance[1]) {
+			if (absDistance[0] >= absDistance[2]) {
 				return 0;
 			} else {
 				return 2;
 			}
 		} else {
-			if(absDistance[1] >= absDistance[2]) {
+			if (absDistance[1] >= absDistance[2]) {
 				return 1;
 			} else {
 				return 2;
@@ -218,7 +218,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		}
 	}
 	fn vectorElement(val: Vec3i, i: u2) i32 {
-		return switch(i) {
+		return switch (i) {
 			0 => val[0],
 			1 => val[1],
 			2 => val[2],
@@ -226,7 +226,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		};
 	}
 	fn indexToBool(i: u2) @Vector(3, bool) {
-		return switch(i) {
+		return switch (i) {
 			0 => .{true, false, false},
 			1 => .{false, true, false},
 			2 => .{false, false, true},
@@ -239,14 +239,14 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		return @select(i32, in >= Vec3i{0, 0, 0}, Vec3i{1, 1, 1}, Vec3i{-1, -1, -1});
 	}
 
-	const CaveBiomesResult = struct {worldPos: Vec3i, biome: *const Biome};
+	const CaveBiomesResult = struct { worldPos: Vec3i, biome: *const Biome };
 
 	pub fn getCaveBiomesInRange(self: CaveBiomeMapView, allocator: NeverFailingAllocator, min: Vec3i, max: Vec3i) []CaveBiomesResult {
 		var list: main.ListUnmanaged(CaveBiomesResult) = .{};
 
 		var minRotated: Vec3i = CaveBiomeMapFragment.rotate(min);
 		var maxRotated: Vec3i = min;
-		for(1..8) |i| {
+		for (1..8) |i| {
 			const in = @select(i32, @as(@Vector(3, bool), @bitCast(@as(u3, @intCast(i)))), max, min);
 			minRotated = @min(minRotated, CaveBiomeMapFragment.rotate(in));
 			maxRotated = @max(maxRotated, CaveBiomeMapFragment.rotate(in));
@@ -255,22 +255,22 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		minRotated = minRotated & ~@as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeMask));
 		maxRotated = maxRotated + @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeMask)) & ~@as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeMask));
 
-		for(self.fragments.mem) |map| {
+		for (self.fragments.mem) |map| {
 			var x: u31 = @max(0, minRotated[0] -% map.pos.wx);
-			while(x < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[0] -% map.pos.wx)) : (x += CaveBiomeMapFragment.caveBiomeSize) {
+			while (x < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[0] -% map.pos.wx)) : (x += CaveBiomeMapFragment.caveBiomeSize) {
 				var y: u31 = @max(0, minRotated[1] -% map.pos.wy);
-				while(y < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[1] -% map.pos.wy)) : (y += CaveBiomeMapFragment.caveBiomeSize) {
+				while (y < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[1] -% map.pos.wy)) : (y += CaveBiomeMapFragment.caveBiomeSize) {
 					var z: u31 = @max(0, minRotated[2] -% map.pos.wz);
-					while(z < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[2] -% map.pos.wz)) : (z += CaveBiomeMapFragment.caveBiomeSize) {
+					while (z < @min(CaveBiomeMapFragment.caveBiomeMapSize, maxRotated[2] -% map.pos.wz)) : (z += CaveBiomeMapFragment.caveBiomeSize) {
 						const biomeWorldPos: [2]Vec3i = .{
 							CaveBiomeMapFragment.rotateInverse(.{map.pos.wx + x, map.pos.wy + y, map.pos.wz + z}),
 							CaveBiomeMapFragment.rotateInverse(.{map.pos.wx + x + CaveBiomeMapFragment.caveBiomeSize/2, map.pos.wy + y + CaveBiomeMapFragment.caveBiomeSize/2, map.pos.wz + z + CaveBiomeMapFragment.caveBiomeSize/2}),
 						};
-						for(0..2) |variant| {
+						for (0..2) |variant| {
 							var realPos = biomeWorldPos[variant];
 							realPos[2] +%= self.getCaveBiomeOffset(biomeWorldPos[variant][0], biomeWorldPos[variant][1]);
-							if(@reduce(.Or, realPos -% min < Vec3i{0, 0, 0})) continue;
-							if(@reduce(.Or, realPos -% max >= Vec3i{0, 0, 0})) continue;
+							if (@reduce(.Or, realPos -% min < Vec3i{0, 0, 0})) continue;
+							if (@reduce(.Or, realPos -% max >= Vec3i{0, 0, 0})) continue;
 							const index = CaveBiomeMapFragment.getIndex(x, y, z);
 							list.append(allocator, .{.worldPos = biomeWorldPos[variant], .biome = map.biomeMap[index][variant]});
 						}
@@ -285,14 +285,14 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	pub fn bulkInterpolateValues(self: CaveBiomeMapView, comptime fields: []const []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, maps: []const Array3D(f32)) void {
 		std.debug.assert(fields.len == maps.len);
 		var x: u31 = 0;
-		while(x < maps[0].width) : (x += 1) {
+		while (x < maps[0].width) : (x += 1) {
 			var y: u31 = 0;
-			while(y < maps[0].depth) : (y += 1) {
+			while (y < maps[0].depth) : (y += 1) {
 				var z: u31 = 0;
-				while(z < maps[0].height) : (z += 1) {
+				while (z < maps[0].height) : (z += 1) {
 					// TODO: Do a tetrahedron voxelization here, so parts of the tetrahedral barycentric coordinates can be precomputed.
 					const result = interpolateValue(self, wx +% x*voxelSize, wy +% y*voxelSize, wz +% z*voxelSize, fields);
-					inline for(0..fields.len) |i| {
+					inline for (0..fields.len) |i| {
 						maps[i].ptr(x, y, z).* = result[i];
 					}
 				}
@@ -325,7 +325,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		const biome10 = self._getBiome(closestGridpoint1[0], closestGridpoint1[1], closestGridpoint1[2], 1);
 		const biome11 = self._getBiome(secondGridPoint1[0], secondGridPoint1[1], secondGridPoint1[2], 1);
 		var result: [fields.len]f32 = undefined;
-		inline for(fields, 0..) |field, i| {
+		inline for (fields, 0..) |field, i| {
 			const val0 = @field(biome00, field)*(1 - interp0) + @field(biome01, field)*interp0;
 			const val1 = @field(biome10, field)*(1 - interp1) + @field(biome11, field)*interp1;
 			result[i] = val0*(1 - interpFinal) + val1*interpFinal;
@@ -336,16 +336,16 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	/// On failure returnHeight contains the lower border of the terrain height.
 	fn checkSurfaceBiomeWithHeight(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, returnHeight: *i32) ?*const Biome {
 		var index: u8 = 0;
-		if(wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
+		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
 		}
-		if(wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
+		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
 		const height: i32 = self.surfaceFragments[index].getHeight(wx, wy);
-		if(wz < height - 32*self.pos.voxelSize or wz >= height + 128 + self.pos.voxelSize) {
+		if (wz < height - 32*self.pos.voxelSize or wz >= height + 128 + self.pos.voxelSize) {
 			const len = height - 32*self.pos.voxelSize -% wz;
-			if(len > 0) returnHeight.* = @min(returnHeight.*, len);
+			if (len > 0) returnHeight.* = @min(returnHeight.*, len);
 			return null;
 		}
 		returnHeight.* = height + 128 + self.pos.voxelSize - wz;
@@ -354,23 +354,23 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 	fn checkSurfaceBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32) ?*const Biome {
 		var index: u8 = 0;
-		if(wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
+		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
 		}
-		if(wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
+		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
 		const height: i32 = self.surfaceFragments[index].getHeight(wx, wy);
-		if(wz < height - 32*self.pos.voxelSize or wz > height + 128 + self.pos.voxelSize) return null;
+		if (wz < height - 32*self.pos.voxelSize or wz > height + 128 + self.pos.voxelSize) return null;
 		return self.surfaceFragments[index].getBiome(wx, wy);
 	}
 
 	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) i32 {
 		var index: u8 = 0;
-		if(wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
+		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
 		}
-		if(wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
+		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
 		return self.surfaceFragments[index].getHeight(wx, wy);
@@ -378,10 +378,10 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 	pub fn getCaveBiomeOffset(self: CaveBiomeMapView, wx: i32, wy: i32) i16 {
 		var index: u8 = 0;
-		if(wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
+		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
 		}
-		if(wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
+		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
 		return self.surfaceFragments[index].getCaveBiomeOffset(wx, wy);
@@ -404,7 +404,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 		const distance = rotatedPos -% gridPoint;
 		const totalDistance = @reduce(.Add, @abs(distance));
-		if(totalDistance > CaveBiomeMapFragment.caveBiomeSize*3/4) {
+		if (totalDistance > CaveBiomeMapFragment.caveBiomeSize*3/4) {
 			// Or with 1 to prevent errors if the value is 0.
 			gridPoint +%= std.math.sign(distance)*@as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2));
 			map.* = 1;
@@ -433,13 +433,13 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		{
 			var otherMap: u1 = undefined;
 			const nextGridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos +% CaveBiomeMapFragment.transposeRotationMatrix[2]*@as(Vec3i, @splat(end)) >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &otherMap);
-			if(@reduce(.And, nextGridPoint == gridPoint) and otherMap == startMap) start = end;
+			if (@reduce(.And, nextGridPoint == gridPoint) and otherMap == startMap) start = end;
 		}
-		while(start + voxelSize < end) {
+		while (start + voxelSize < end) {
 			const mid = start +% @divTrunc(end -% start, 2) & ~@as(i32, voxelSize - 1);
 			var otherMap: u1 = undefined;
 			const nextGridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos +% CaveBiomeMapFragment.transposeRotationMatrix[2]*@as(Vec3i, @splat(mid)) >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &otherMap);
-			if(@reduce(.Or, nextGridPoint != gridPoint) or otherMap != startMap) {
+			if (@reduce(.Or, nextGridPoint != gridPoint) or otherMap != startMap) {
 				end = mid;
 			} else {
 				start = mid;
@@ -452,15 +452,15 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 	/// Useful when the rough biome location is enough, for example for music.
 	pub noinline fn getRoughBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64, comptime _checkSurfaceBiome: bool) *const Biome {
-		if(_checkSurfaceBiome) {
-			if(self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
+		if (_checkSurfaceBiome) {
+			if (self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 				return surfaceBiome;
 			}
 		}
 		var map: u1 = undefined;
 		const gridPoint = getGridPoint(.{wx, wy, wz}, &map);
 
-		if(getSeed) {
+		if (getSeed) {
 			// A good old "I don't know what I'm doing" hash (TODO: Use some standard hash maybe):
 			seed.* = @as(u64, @bitCast(@as(i64, gridPoint[0]) << 48 ^ @as(i64, gridPoint[1]) << 23 ^ @as(i64, gridPoint[2]) << 11 ^ @as(i64, gridPoint[0]) >> 5 ^ @as(i64, gridPoint[1]) << 3 ^ @as(i64, gridPoint[2]) ^ @as(i64, map)*5427642781)) ^ main.server.world.?.settings.seed;
 		}
@@ -470,15 +470,15 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 	/// returnHeight should contain an upper estimate for the biome size.
 	fn getRoughBiomeAndHeight(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64, comptime _checkSurfaceBiome: bool, returnHeight: *i32) *const Biome {
-		if(_checkSurfaceBiome) {
-			if(self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
+		if (_checkSurfaceBiome) {
+			if (self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 				return surfaceBiome;
 			}
 		}
 		var map: u1 = undefined;
 		const gridPoint = getGridPointAndHeight(.{wx, wy, wz}, &map, returnHeight, self.pos.voxelSize);
 
-		if(getSeed) {
+		if (getSeed) {
 			// A good old "I don't know what I'm doing" hash (TODO: Use some standard hash maybe):
 			seed.* = @as(u64, @bitCast(@as(i64, gridPoint[0]) << 48 ^ @as(i64, gridPoint[1]) << 23 ^ @as(i64, gridPoint[2]) << 11 ^ @as(i64, gridPoint[0]) >> 5 ^ @as(i64, gridPoint[1]) << 3 ^ @as(i64, gridPoint[2]) ^ @as(i64, map)*5427642781)) ^ main.server.world.?.settings.seed;
 		}
@@ -498,7 +498,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		const wx = relX +% self.pos.wx;
 		const wy = relY +% self.pos.wy;
 		var wz = relZ +% self.pos.wz;
-		if(self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
+		if (self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 			return surfaceBiome;
 		}
 		wz +%= self.getCaveBiomeOffset(wx, wy);
@@ -515,7 +515,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		const wx = relX +% self.pos.wx;
 		const wy = relY +% self.pos.wy;
 		var wz = relZ +% self.pos.wz;
-		if(self.checkSurfaceBiomeWithHeight(wx, wy, wz, returnHeight)) |surfaceBiome| {
+		if (self.checkSurfaceBiomeWithHeight(wx, wy, wz, returnHeight)) |surfaceBiome| {
 			return surfaceBiome;
 		}
 		wz +%= self.getCaveBiomeOffset(wx, wy);
@@ -536,7 +536,7 @@ var memoryPool: main.heap.MemoryPool(CaveBiomeMapFragment) = undefined;
 
 pub fn globalInit() void {
 	const list = @import("cavebiomegen/_list.zig");
-	inline for(@typeInfo(list).@"struct".decls) |decl| {
+	inline for (@typeInfo(list).@"struct".decls) |decl| {
 		CaveBiomeGenerator.registerGenerator(@field(list, decl.name));
 	}
 	memoryPool = .init(main.globalAllocator);
@@ -558,7 +558,7 @@ pub fn deinit() void {
 fn cacheInit(pos: ChunkPosition) *CaveBiomeMapFragment {
 	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy, pos.wz);
-	for(profile.caveBiomeGenerators) |generator| {
+	for (profile.caveBiomeGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
 	return mapFragment;

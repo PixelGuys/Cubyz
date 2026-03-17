@@ -32,9 +32,9 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, width, 0);
 	defer biomeMap.deinit();
 	var x: u31 = 0;
-	while(x < width) : (x += map.pos.voxelSize) {
+	while (x < width) : (x += map.pos.voxelSize) {
 		var y: u31 = 0;
-		while(y < width) : (y += map.pos.voxelSize) {
+		while (y < width) : (y += map.pos.voxelSize) {
 			const height = biomeMap.getSurfaceHeight(map.pos.wx + x, map.pos.wy + y);
 			const relativeHeight: i32 = height -% map.pos.wz;
 			map.removeRange(x, y, relativeHeight, CaveMapFragment.height*map.pos.voxelSize);

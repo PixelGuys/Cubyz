@@ -33,14 +33,14 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 	const maxInt: Vec3i = @intFromFloat(@ceil(max));
 
 	var x = minInt[0] & ~(voxelSize - 1);
-	while(x < maxInt[0]) : (x += voxelSize) {
+	while (x < maxInt[0]) : (x += voxelSize) {
 		var y = minInt[1] & ~(voxelSize - 1);
-		while(y < maxInt[1]) : (y += voxelSize) {
+		while (y < maxInt[1]) : (y += voxelSize) {
 			var z = minInt[2] & ~(voxelSize - 1);
-			while(z < maxInt[2]) : (z += voxelSize) {
+			while (z < maxInt[2]) : (z += voxelSize) {
 				const dimensionalSdf: Vec3f = @as(Vec3f, @floatFromInt(@abs(Vec3i{x, y, z} - relPos))) - radii;
 				const fullSdf = vec.length(@max(dimensionalSdf, @as(Vec3f, @splat(0)))) + @min(0, @max(dimensionalSdf[0], dimensionalSdf[1], dimensionalSdf[2]));
-				if(fullSdf > perimeter) continue;
+				if (fullSdf > perimeter) continue;
 
 				const out = output.ptr(x >> voxelSizeShift, y >> voxelSizeShift, z >> voxelSizeShift);
 				out.* = sdf.smoothUnion(fullSdf, out.*, interpolationSmoothness.get(x >> voxelSizeShift, y >> voxelSizeShift, z >> voxelSizeShift));

@@ -13,7 +13,7 @@ const PermissionMap = struct { // MARK: PermissionMap
 
 	pub fn fromZon(self: *PermissionMap, arena: NeverFailingAllocator, zon: ZonElement) void {
 		sync.threadContext.assertCorrectContext(.server);
-		for(zon.toSlice()) |item| {
+		for (zon.toSlice()) |item| {
 			const string = item.as(?[]const u8, null) orelse continue;
 			self.put(arena, string);
 		}
@@ -24,7 +24,7 @@ const PermissionMap = struct { // MARK: PermissionMap
 		const zon: ZonElement = .initArray(arena);
 
 		var it = self.map.keyIterator();
-		while(it.next()) |key| {
+		while (it.next()) |key| {
 			zon.append(key.*);
 		}
 		return zon;
@@ -32,7 +32,7 @@ const PermissionMap = struct { // MARK: PermissionMap
 
 	pub fn put(self: *PermissionMap, arena: NeverFailingAllocator, key: []const u8) void {
 		const result = self.map.getOrPut(arena.allocator, key) catch unreachable;
-		if(!result.found_existing) result.key_ptr.* = arena.dupe(u8, key);
+		if (!result.found_existing) result.key_ptr.* = arena.dupe(u8, key);
 	}
 };
 
@@ -64,7 +64,7 @@ pub const Permissions = struct { // MARK: Permissions
 	};
 
 	fn list(self: *Permissions, listType: ListType) *PermissionMap {
-		return switch(listType) {
+		return switch (listType) {
 			.white => &self.whitelist,
 			.black => &self.blacklist,
 		};
@@ -96,13 +96,13 @@ pub const Permissions = struct { // MARK: Permissions
 		sync.threadContext.assertCorrectContext(.server);
 		var current = permissionPath;
 
-		while(std.mem.lastIndexOfScalar(u8, current, '/')) |nextPos| {
-			if(self.blacklist.map.contains(current)) return .no;
-			if(self.whitelist.map.contains(current)) return .yes;
+		while (std.mem.lastIndexOfScalar(u8, current, '/')) |nextPos| {
+			if (self.blacklist.map.contains(current)) return .no;
+			if (self.whitelist.map.contains(current)) return .yes;
 
 			current = permissionPath[0..nextPos];
 		}
-		return if(self.whitelist.map.contains("/")) .yes else .neutral;
+		return if (self.whitelist.map.contains("/")) .yes else .neutral;
 	}
 };
 
@@ -202,7 +202,7 @@ test "PermissionListToFromZon" {
 	try std.testing.expectEqual(2, testPermissions.whitelist.map.size);
 
 	var it = testPermissions.whitelist.map.keyIterator();
-	while(it.next()) |item| {
+	while (it.next()) |item| {
 		try std.testing.expectEqual(true, permissions.whitelist.map.contains(item.*));
 	}
 }

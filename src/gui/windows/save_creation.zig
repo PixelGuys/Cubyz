@@ -39,7 +39,7 @@ var defaultPreset: usize = 0;
 var presetButton: *Button = undefined;
 
 fn chooseSeed(seedStr: []const u8) u64 {
-	if(seedStr.len == 0) {
+	if (seedStr.len == 0) {
 		return main.random.nextInt(u64, &main.seed);
 	} else {
 		return std.fmt.parseInt(u64, seedStr, 0) catch {
@@ -55,7 +55,7 @@ fn gamemodeCallback() void {
 
 fn worldPresetCallback() void {
 	selectedPreset += 1;
-	if(selectedPreset == worldPresets.len) selectedPreset = 0;
+	if (selectedPreset == worldPresets.len) selectedPreset = 0;
 	presetButton.child.label.updateText(worldPresets[selectedPreset].key_ptr.*);
 }
 
@@ -82,11 +82,11 @@ fn createWorld() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 
-	if(worldPresets.len == 0) {
+	if (worldPresets.len == 0) {
 		var presetMap = main.assets.worldPresets();
 		var entryList: main.ListUnmanaged(ZonMapEntry) = .initCapacity(main.globalArena, presetMap.count());
 		var iterator = presetMap.iterator();
-		while(iterator.next()) |entry| {
+		while (iterator.next()) |entry| {
 			entryList.appendAssumeCapacity(entry);
 		}
 
@@ -96,8 +96,8 @@ pub fn onOpen() void {
 			}
 		}.lessThanFn);
 		worldPresets = entryList.items;
-		for(worldPresets, 0..) |entry, i| {
-			if(std.mem.eql(u8, entry.key_ptr.*, "cubyz:default")) {
+		for (worldPresets, 0..) |entry, i| {
+			if (std.mem.eql(u8, entry.key_ptr.*, "cubyz:default")) {
 				defaultPreset = i;
 			}
 		}
@@ -105,10 +105,10 @@ pub fn onOpen() void {
 	selectedPreset = defaultPreset;
 
 	var num: usize = 1;
-	while(true) {
+	while (true) {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		if(!main.files.cubyzDir().hasDir(path)) break;
+		if (!main.files.cubyzDir().hasDir(path)) break;
 		num += 1;
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
@@ -121,7 +121,7 @@ pub fn onOpen() void {
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
 
-	if(!build_options.isTaggedRelease) {
+	if (!build_options.isTaggedRelease) {
 		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
 	}
 
@@ -145,7 +145,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

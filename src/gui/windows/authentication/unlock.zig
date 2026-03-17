@@ -33,14 +33,14 @@ fn apply() void {
 	};
 	defer accountCode.deinit();
 
-	if(failureText.items.len != 0) {
+	if (failureText.items.len != 0) {
 		std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
 	}
 
 	main.network.authentication.KeyCollection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
-	if(settings.playerName.len == 0) {
+	if (settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
@@ -89,7 +89,7 @@ pub fn onClose() void {
 	main.Window.setClipboardString("");
 	gui.openWindow("clipboard_deleted");
 
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

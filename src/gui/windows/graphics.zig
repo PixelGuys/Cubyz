@@ -31,7 +31,7 @@ const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 const fpsPresetsValue = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
 const fpsPresetsText = blk: {
 	var strings: [fpsPresetsValue.len + 1][]const u8 = undefined;
-	for(fpsPresetsValue, 0..) |value, i| {
+	for (fpsPresetsValue, 0..) |value, i| {
 		strings[i] = std.fmt.comptimePrint("{d} Hz", .{value});
 	}
 	strings[fpsPresetsValue.len] = "unlimited";
@@ -47,7 +47,7 @@ fn fpsCapGetIndex(fpsOptional: ?u32) u16 {
 	}.order));
 }
 fn fpsCapCallback(index: u16) void {
-	if(index < fpsPresetsValue.len) {
+	if (index < fpsPresetsValue.len) {
 		settings.fpsCap = fpsPresetsValue[index];
 	} else settings.fpsCap = null;
 	settings.save();
@@ -117,7 +117,7 @@ fn vsyncCallback(newValue: bool) void {
 fn anisotropicFilteringCallback(newValue: u16) void {
 	settings.anisotropicFiltering = anisotropy[newValue];
 	settings.save();
-	if(main.game.world != null) {
+	if (main.game.world != null) {
 		main.blocks.meshes.reloadTextures(undefined);
 	}
 }
@@ -138,7 +138,7 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffFPS Limit:\n", "{s}", &fpsPresetsText, fpsCapGetIndex(settings.fpsCap), &fpsCapCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLOD1 Distance: ", "{} chunks", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
-	if(main.game.world == null) {
+	if (main.game.world == null) {
 		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffHighest LOD: ", "{s}", &lodValues, @min(settings.highestLod, settings.highestSupportedLod), &highestLodCallback));
 	}
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLeaves Quality (TODO: requires reload): ", "{}", &leavesQualities, settings.leavesQuality - leavesQualities[0], &leavesQualityCallback));
@@ -148,7 +148,7 @@ pub fn onOpen() void {
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
-	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch(settings.anisotropicFiltering) {
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch (settings.anisotropicFiltering) {
 		1 => 0,
 		2 => 1,
 		4 => 2,
@@ -165,7 +165,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

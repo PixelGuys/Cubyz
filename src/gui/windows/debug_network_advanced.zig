@@ -42,18 +42,18 @@ fn renderConnectionData(conn: *main.network.Connection, name: []const u8, y: *f3
 pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
-	if(main.game.world != null) {
+	if (main.game.world != null) {
 		renderConnectionData(main.game.world.?.conn, "Client", &y);
 	}
 	y += 8;
-	if(main.server.world != null) {
+	if (main.server.world != null) {
 		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-		for(userList) |user| {
+		for (userList) |user| {
 			renderConnectionData(user.conn, user.name, &y);
 		}
 	}
-	if(window.contentSize[1] != y) {
+	if (window.contentSize[1] != y) {
 		window.contentSize[1] = y;
 		window.updateWindowPosition();
 	}

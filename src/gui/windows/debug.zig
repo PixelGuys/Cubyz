@@ -30,11 +30,11 @@ pub var window = GuiWindow{
 pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
-	const fpsCapText = if(main.settings.fpsCap) |fpsCap| std.fmt.allocPrint(main.stackAllocator.allocator, " (limit: {d:.0} Hz)", .{fpsCap}) catch unreachable else "";
+	const fpsCapText = if (main.settings.fpsCap) |fpsCap| std.fmt.allocPrint(main.stackAllocator.allocator, " (limit: {d:.0} Hz)", .{fpsCap}) catch unreachable else "";
 	defer main.stackAllocator.allocator.free(fpsCapText);
 	const fpsLimit = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{s}", .{
 		fpsCapText,
-		if(main.settings.vsync) " (vsync)" else "",
+		if (main.settings.vsync) " (vsync)" else "",
 	}) catch unreachable;
 	defer main.stackAllocator.allocator.free(fpsLimit);
 	draw.print("fps: {d:.0} Hz{s}", .{1.0/main.lastDeltaTime.load(.monotonic), fpsLimit}, 0, y, 8, .left);
@@ -43,7 +43,7 @@ pub fn render() void {
 	y += 8;
 	draw.print("window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8, .left);
 	y += 8;
-	if(main.game.world != null) {
+	if (main.game.world != null) {
 		const player = main.game.Player;
 		draw.print("Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8, .left);
 		y += 8;
@@ -71,9 +71,9 @@ pub fn render() void {
 		const perf = main.threadPool.performance.read();
 		const values = comptime std.enums.values(TaskType);
 		var totalUtime: i64 = 0;
-		for(values) |task|
+		for (values) |task|
 			totalUtime += perf.utime[@intFromEnum(task)];
-		for(values) |t| {
+		for (values) |t| {
 			const name = @tagName(t);
 			const i = @intFromEnum(t);
 			const taskTime = @divFloor(perf.utime[i], @max(1, perf.tasks[i]));
@@ -83,14 +83,14 @@ pub fn render() void {
 		}
 		draw.print("Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8, .left);
 		y += 8;
-		for(0..main.settings.highestLod + 1) |lod| {
+		for (0..main.settings.highestLod + 1) |lod| {
 			const faceDataSize: usize = @sizeOf(main.renderer.chunk_meshing.FaceData);
 			const size: usize = main.renderer.chunk_meshing.faceBuffers[lod].capacity*faceDataSize;
 			const used: usize = main.renderer.chunk_meshing.faceBuffers[lod].used*faceDataSize;
 			draw.print("ChunkMesh memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8, .left);
 			y += 8;
 		}
-		for(0..main.settings.highestLod + 1) |lod| {
+		for (0..main.settings.highestLod + 1) |lod| {
 			const lightDataSize: usize = @sizeOf(u32);
 			const size: usize = main.renderer.chunk_meshing.lightBuffers[lod].capacity*lightDataSize;
 			const used: usize = main.renderer.chunk_meshing.lightBuffers[lod].used*lightDataSize;
@@ -101,9 +101,9 @@ pub fn render() void {
 			const biome = main.game.world.?.playerBiome.load(.monotonic);
 			var tags = main.List(u8).init(main.stackAllocator);
 			defer tags.deinit();
-			inline for(comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.GenerationProperties)) |name| {
-				if(@field(biome.properties, name)) {
-					if(tags.items.len != 0) tags.appendSlice(", ");
+			inline for (comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.GenerationProperties)) |name| {
+				if (@field(biome.properties, name)) {
+					if (tags.items.len != 0) tags.appendSlice(", ");
 					tags.appendSlice(name);
 				}
 			}

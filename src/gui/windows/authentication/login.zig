@@ -39,12 +39,12 @@ fn login() void {
 	const accountCode = main.network.authentication.AccountCode.initFromUserInput(textComponent.currentString.items, &failureText);
 	defer accountCode.deinit();
 
-	if(accountCode.text.len == 0) {
+	if (accountCode.text.len == 0) {
 		main.gui.windowlist.notification.raiseNotification("Account Code is empty. Please enter a valid Account Code.", .{});
 		return;
 	}
 
-	if(failureText.items.len != 0 and !loginAnyways) {
+	if (failureText.items.len != 0 and !loginAnyways) {
 		failureText.insertSlice(0, "Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n\n");
 
 		main.gui.windowlist.notification.raiseNotification("{s}", .{failureText.items});
@@ -55,8 +55,8 @@ fn login() void {
 		return;
 	}
 
-	if(storeAccountCode) {
-		if(encryptAccountCode) {
+	if (storeAccountCode) {
+		if (encryptAccountCode) {
 			settings.storedAccount.deinit(main.globalAllocator);
 			settings.storedAccount = .initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items);
 		} else {
@@ -69,7 +69,7 @@ fn login() void {
 	main.network.authentication.KeyCollection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
-	if(settings.playerName.len == 0) {
+	if (settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
@@ -97,9 +97,9 @@ fn encryptAccountCodeCallback(encryptAccountCode_: bool) void {
 
 fn refreshInner() void {
 	innerList.children.clearRetainingCapacity();
-	if(storeAccountCode) {
+	if (storeAccountCode) {
 		innerList.children.append(encryptWithPasswordCheckbox.toComponent());
-		if(encryptAccountCode) {
+		if (encryptAccountCode) {
 			innerList.children.append(passwordRow.toComponent());
 		}
 	}
@@ -159,14 +159,14 @@ pub fn onClose() void {
 	main.Window.setClipboardString("");
 	gui.openWindow("clipboard_deleted");
 
-	if(!storeAccountCode) {
+	if (!storeAccountCode) {
 		encryptWithPasswordCheckbox.deinit();
 	}
-	if(!encryptAccountCode or !storeAccountCode) {
+	if (!encryptAccountCode or !storeAccountCode) {
 		passwordRow.deinit();
 	}
 
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

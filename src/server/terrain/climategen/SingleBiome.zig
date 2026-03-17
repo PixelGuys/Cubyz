@@ -29,9 +29,9 @@ pub fn init(parameters: ZonElement) void {
 
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	var x: u31 = 0;
-	while(x < map.map.len) : (x += 1) {
+	while (x < map.map.len) : (x += 1) {
 		var y: u31 = 0;
-		while(y < map.map[0].len) : (y += 1) {
+		while (y < map.map[0].len) : (y += 1) {
 			const wx = map.pos.wx +% x*ClimateMapFragment.mapSize/ClimateMapFragment.mapEntrysSize;
 			const wy = map.pos.wy +% y*ClimateMapFragment.mapSize/ClimateMapFragment.mapEntrysSize;
 			const noiseValue = terrain.noise.ValueNoise.samplePoint2D(@as(f32, @floatFromInt(wx))/biome.radius/2, @as(f32, @floatFromInt(wy))/biome.radius/2, worldSeed);

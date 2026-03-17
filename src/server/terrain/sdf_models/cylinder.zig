@@ -40,15 +40,15 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 	const maxInt: Vec3i = @intFromFloat(@ceil(max));
 
 	var x = minInt[0] & ~(voxelSize - 1);
-	while(x < maxInt[0]) : (x += voxelSize) {
+	while (x < maxInt[0]) : (x += voxelSize) {
 		var y = minInt[1] & ~(voxelSize - 1);
-		while(y < maxInt[1]) : (y += voxelSize) {
+		while (y < maxInt[1]) : (y += voxelSize) {
 			var z = minInt[2] & ~(voxelSize - 1);
-			while(z < maxInt[2]) : (z += voxelSize) {
+			while (z < maxInt[2]) : (z += voxelSize) {
 				const circleSdf: f32 = vec.length(@as(Vec2f, @floatFromInt(Vec2i{x, y} - vec.xy(relPos)))) - radius;
 				const heightSdf: f32 = @as(f32, @floatFromInt(@abs(z - relPos[2]))) - halfHeight;
 				const fullSdf = vec.length(@max(Vec2f{heightSdf, circleSdf}, Vec2f{0, 0})) + @min(0, @max(circleSdf, heightSdf));
-				if(fullSdf > perimeter) continue;
+				if (fullSdf > perimeter) continue;
 
 				const out = output.ptr(x >> voxelSizeShift, y >> voxelSizeShift, z >> voxelSizeShift);
 				out.* = sdf.smoothUnion(fullSdf, out.*, interpolationSmoothness.get(x >> voxelSizeShift, y >> voxelSizeShift, z >> voxelSizeShift));

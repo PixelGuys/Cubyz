@@ -46,9 +46,9 @@ pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) voi
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 
-	for(0..2) |y| {
+	for (0..2) |y| {
 		const row = HorizontalList.init();
-		for(0..10) |x| {
+		for (0..10) |x| {
 			const index: usize = y*10 + x;
 			const slot = ItemSlot.init(.{0, 0}, openInventory, @intCast(index), .default, .normal);
 			itemSlots.append(slot);
@@ -67,7 +67,7 @@ pub fn onClose() void {
 	openInventory.deinit(main.globalAllocator);
 
 	itemSlots.clearRetainingCapacity();
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
 	}

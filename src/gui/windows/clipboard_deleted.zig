@@ -31,7 +31,7 @@ pub fn onOpen() void {
 
 pub fn render() void {
 	const duration = time.durationTo(main.timestamp());
-	if(duration.toSeconds() > 2) {
+	if (duration.toSeconds() > 2) {
 		gui.closeWindowFromRef(&window);
 		return;
 	}
