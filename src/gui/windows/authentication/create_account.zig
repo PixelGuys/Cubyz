@@ -62,7 +62,7 @@ pub fn onClose() void {
 	main.Window.setClipboardString("");
 	gui.openWindow("clipboard_deleted");
 
-	if (window.rootComponent) |*comp| {
+	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

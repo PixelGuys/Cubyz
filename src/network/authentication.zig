@@ -9,9 +9,9 @@ const ZonElement = main.ZonElement;
 var wordlist: ?[2048][]const u8 = null;
 
 fn wordToIndex(word: []const u8) ?u11 {
-	if (wordlist == null) return null;
-	for (wordlist.?, 0..) |other, i| {
-		if (std.mem.eql(u8, word, other)) {
+	if(wordlist == null) return null;
+	for(wordlist.?, 0..) |other, i| {
+		if(std.mem.eql(u8, word, other)) {
 			return @intCast(i);
 		}
 	}
@@ -26,7 +26,7 @@ pub fn init() void {
 	var splitIterator = std.mem.splitScalar(u8, wordlistString, '\n');
 	wordlist = @splat(&.{});
 	var i: usize = 0;
-	while (splitIterator.next()) |word| {
+	while(splitIterator.next()) |word| {
 		wordlist.?[i] = std.mem.trim(u8, word, &std.ascii.whitespace);
 		i += 1;
 	}
@@ -38,7 +38,7 @@ pub const KeyTypeEnum = enum(u8) {
 	mldsa44 = 2,
 
 	pub fn getAlgorithmType(self: KeyTypeEnum) type {
-		return switch (self) {
+		return switch(self) {
 			.ed25519 => std.crypto.sign.Ed25519,
 			.ecdsaP256Sha256 => std.crypto.sign.ecdsa.EcdsaP256Sha256,
 			.mldsa44 => std.crypto.sign.mldsa.MLDSA44,
@@ -61,15 +61,15 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 			"4t7z3592a09p85z4piotfh7z",
 			"u89564epogz1qi9up5zc94309",
 		};
-		inline for (comptime std.meta.declarations(Storage), 0..) |decl, i| {
+		inline for(comptime std.meta.declarations(Storage), 0..) |decl, i| {
 			const hashableString = std.mem.concat(main.stackAllocator.allocator, u8, &.{accountCode.text, keySalts[i]}) catch unreachable;
 			defer main.stackAllocator.free(hashableString);
 			defer @memset(hashableString, 0);
 
 			var hashedResult: [64]u8 = undefined;
 
-			for (0..2048) |j| {
-				const input = if (j == 0) hashableString else &hashedResult;
+			for(0..2048) |j| {
+				const input = if(j == 0) hashableString else &hashedResult;
 				var out: [64]u8 = undefined;
 				std.crypto.hash.sha2.Sha512.hash(input, &out, .{});
 				hashedResult = out;
@@ -84,8 +84,8 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 
 	pub fn getPublicKeys(allocator: NeverFailingAllocator) ZonElement {
 		const result = ZonElement.initObject(allocator);
-		inline for (comptime std.meta.declarations(Storage)) |decl| {
-			const bytes = if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes"))
+		inline for(comptime std.meta.declarations(Storage)) |decl| {
+			const bytes = if(@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes"))
 				@field(Storage, decl.name).public_key.toBytes()
 			else
 				@field(Storage, decl.name).public_key.toUncompressedSec1();
@@ -96,9 +96,9 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	}
 
 	pub fn getPublicKey(allocator: NeverFailingAllocator, keyType: KeyTypeEnum) []const u8 {
-		switch (keyType) {
+		switch(keyType) {
 			inline else => |_typ| {
-				const bytes = if (@hasDecl(@TypeOf(@field(Storage, @tagName(_typ)).public_key), "toBytes"))
+				const bytes = if(@hasDecl(@TypeOf(@field(Storage, @tagName(_typ)).public_key), "toBytes"))
 					@field(Storage, @tagName(_typ)).public_key.toBytes()
 				else
 					@field(Storage, @tagName(_typ)).public_key.toUncompressedSec1();
@@ -110,7 +110,7 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	}
 
 	pub fn sign(writer: *BinaryWriter, typ: KeyTypeEnum, message: []const u8) void {
-		switch (typ) {
+		switch(typ) {
 			inline else => |_typ| {
 				const AlgorithmType = _typ.getAlgorithmType();
 				const randomBytes = std.crypto.random.array(u8, AlgorithmType.noise_length);
@@ -129,13 +129,13 @@ pub const PublicKey = union(KeyTypeEnum) {
 	mldsa44: std.crypto.sign.mldsa.MLDSA44.PublicKey,
 
 	pub fn initFromBase64(base64: []const u8, typ: KeyTypeEnum) !PublicKey {
-		switch (typ) {
+		switch(typ) {
 			inline else => |_typ| {
 				const KeyType = @TypeOf(@field(KeyCollection.Storage, @tagName(_typ)).public_key);
-				const length = if (@hasDecl(KeyType, "fromBytes")) KeyType.encoded_length else KeyType.uncompressed_sec1_encoded_length;
+				const length = if(@hasDecl(KeyType, "fromBytes")) KeyType.encoded_length else KeyType.uncompressed_sec1_encoded_length;
 				var bytes: [length]u8 = undefined;
 				try std.base64.standard.Decoder.decode(&bytes, base64);
-				if (@hasDecl(KeyType, "fromBytes")) {
+				if(@hasDecl(KeyType, "fromBytes")) {
 					return @unionInit(PublicKey, @tagName(_typ), try KeyType.fromBytes(bytes));
 				} else {
 					return @unionInit(PublicKey, @tagName(_typ), try KeyType.fromSec1(&bytes));
@@ -145,7 +145,7 @@ pub const PublicKey = union(KeyTypeEnum) {
 	}
 
 	pub fn verifySignature(self: PublicKey, reader: *BinaryReader, message: []const u8) !void {
-		switch (@as(KeyTypeEnum, self)) {
+		switch(@as(KeyTypeEnum, self)) {
 			inline else => |tag| {
 				const AlgorithmType = tag.getAlgorithmType();
 				const signature: error{InvalidEncoding}!AlgorithmType.Signature = AlgorithmType.Signature.fromBytes((try reader.readSlice(AlgorithmType.Signature.encoded_length))[0..AlgorithmType.Signature.encoded_length].*);
@@ -166,56 +166,56 @@ pub const AccountCode = struct {
 
 		const trimmed = std.mem.trim(u8, text, &std.ascii.whitespace);
 
-		for (trimmed) |char| {
-			if (std.ascii.isAlphabetic(char)) {
+		for(trimmed) |char| {
+			if(std.ascii.isAlphabetic(char)) {
 				result.appendAssumeCapacity(std.ascii.toLower(char));
-			} else if (std.ascii.isWhitespace(char)) {
-				if (result.items[result.items.len - 1] != ' ') {
+			} else if(std.ascii.isWhitespace(char)) {
+				if(result.items[result.items.len - 1] != ' ') {
 					result.appendAssumeCapacity(' ');
 				}
 			} else {
 				failureText.print("Account Code contains invalid character '{c}', only ASCII letters and whitespaces are allowed.\n", .{char});
 			}
 		}
-		if (result.items.len == 0) {
+		if(result.items.len == 0) {
 			failureText.print("Account Code is empty.\n", .{});
 			return .{.text = ""};
 		}
-		if (result.items[result.items.len - 1] == ' ') _ = result.pop();
+		if(result.items[result.items.len - 1] == ' ') _ = result.pop();
 
 		var split = std.mem.splitScalar(u8, result.items, ' ');
 		var wordCount: usize = 0;
 		var bits: [21]u8 = @splat(0);
 		defer std.crypto.secureZero(u8, &bits);
 		var failedWordlist: bool = false;
-		while (split.next()) |word| {
+		while(split.next()) |word| {
 			wordCount += 1;
-			if (wordToIndex(word)) |wordIndex| {
-				if (wordCount <= 15) {
+			if(wordToIndex(word)) |wordIndex| {
+				if(wordCount <= 15) {
 					const bitIndex = (wordCount - 1)*11;
 					const byteIndex = bitIndex/8;
 					const containingRegion: usize = @as(usize, wordIndex) << @intCast(8*3 - 11 - bitIndex%8);
 
 					bits[byteIndex] |= @truncate(containingRegion >> 16);
 					bits[byteIndex + 1] |= @truncate(containingRegion >> 8);
-					if (byteIndex + 2 < bits.len) bits[byteIndex + 2] |= @truncate(containingRegion);
+					if(byteIndex + 2 < bits.len) bits[byteIndex + 2] |= @truncate(containingRegion);
 				}
 			} else {
-				failureText.print("The {}{s} word of the Account Code is not a part of the wordlist.\n", .{wordCount, if (wordCount == 1) "st" else if (wordCount == 2) "nd" else if (wordCount == 3) "rd" else "th"});
+				failureText.print("The {}{s} word of the Account Code is not a part of the wordlist.\n", .{wordCount, if(wordCount == 1) "st" else if(wordCount == 2) "nd" else if(wordCount == 3) "rd" else "th"});
 				failedWordlist = true;
 			}
 		}
 
-		if (wordCount != 15) {
+		if(wordCount != 15) {
 			failureText.print("The Account Code contains an invalid number of words. Should be 15.\n", .{});
 			failedWordlist = true;
 		}
 
-		if (!failedWordlist) {
+		if(!failedWordlist) {
 			var sha256Result: [32]u8 = undefined;
 			defer std.crypto.secureZero(u8, &sha256Result);
 			std.crypto.hash.sha2.Sha256.hash(bits[0..20], &sha256Result, .{});
-			if (sha256Result[0] >> 3 != bits[20] >> 3) {
+			if(sha256Result[0] >> 3 != bits[20] >> 3) {
 				failureText.print("The Account Code has an incorrect checksum.\n", .{});
 			}
 		}
@@ -226,7 +226,7 @@ pub const AccountCode = struct {
 	}
 
 	pub fn initRandomly() AccountCode {
-		if (wordlist == null) @panic("Cannot generate new Account without a valid wordlist.");
+		if(wordlist == null) @panic("Cannot generate new Account without a valid wordlist.");
 		var bits: [21]u8 = undefined;
 		defer std.crypto.secureZero(u8, &bits);
 		std.crypto.random.bytes(bits[0..20]);
@@ -239,14 +239,14 @@ pub const AccountCode = struct {
 		defer result.deinit(main.stackAllocator);
 		defer std.crypto.secureZero(u8, result.items);
 
-		for (0..15) |i| {
+		for(0..15) |i| {
 			const bitIndex = i*11;
 			const byteIndex = bitIndex/8;
 
-			const containingRegion = @as(usize, bits[byteIndex]) << 16 | @as(usize, bits[byteIndex + 1]) << 8 | if (byteIndex + 2 < bits.len) bits[byteIndex + 2] else 0;
+			const containingRegion = @as(usize, bits[byteIndex]) << 16 | @as(usize, bits[byteIndex + 1]) << 8 | if(byteIndex + 2 < bits.len) bits[byteIndex + 2] else 0;
 			const wordIndex: u11 = @truncate(containingRegion >> @intCast(8*3 - 11 - bitIndex%8));
 
-			if (i != 0) result.append(main.stackAllocator, ' ');
+			if(i != 0) result.append(main.stackAllocator, ' ');
 			result.appendSlice(main.stackAllocator, wordlist.?[wordIndex]);
 		}
 
@@ -261,7 +261,7 @@ pub const AccountCode = struct {
 	}
 };
 
-const EncodingType = enum { none, argon2_aes_gcm };
+const EncodingType = enum {none, argon2_aes_gcm};
 
 pub const PasswordEncodedAccountCode = struct {
 	typ: EncodingType,
@@ -313,18 +313,18 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.List(u8)) !AccountCode {
-		if (self.typ == .none) {
+		if(self.typ == .none) {
 			return AccountCode.initFromUserInput(self.data, failureText);
 		}
 		var key: [32]u8 = undefined;
 		defer std.crypto.secureZero(u8, &key);
 		keyFromPassword(self.typ, self.salt, password, &key);
 
-		switch (self.typ) {
+		switch(self.typ) {
 			.none => unreachable,
 			.argon2_aes_gcm => {
-				if (self.authenticationTag.len != std.crypto.aead.aes_gcm.Aes256Gcm.tag_length) return error.Invalid;
-				if (self.nonce.len != std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length) return error.Invalid;
+				if(self.authenticationTag.len != std.crypto.aead.aes_gcm.Aes256Gcm.tag_length) return error.Invalid;
+				if(self.nonce.len != std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length) return error.Invalid;
 				const authenticationTag = self.authenticationTag[0..std.crypto.aead.aes_gcm.Aes256Gcm.tag_length];
 				const nonce = self.nonce[0..std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length];
 				const decryptedBuffer = main.stackAllocator.alloc(u8, self.data.len);
@@ -337,7 +337,7 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	fn keyFromPassword(typ: EncodingType, salt: []const u8, password: []const u8, key: *[32]u8) void {
-		switch (typ) {
+		switch(typ) {
 			.none => unreachable,
 			.argon2_aes_gcm => {
 				std.crypto.pwhash.argon2.kdf(main.globalAllocator.allocator, key, password, salt, .{
@@ -350,31 +350,31 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement) !PasswordEncodedAccountCode {
-		if (zon == .null) return .empty;
+		if(zon == .null) return .empty;
 		var self: PasswordEncodedAccountCode = undefined;
 
 		self.typ = std.meta.stringToEnum(EncodingType, zon.get(?[]const u8, "type", null) orelse return error.Invalid) orelse return error.Invalid;
 		self.salt = allocator.dupe(u8, zon.get([]const u8, "salt", ""));
 		errdefer allocator.free(self.salt);
-		if (self.salt.len < 32 and self.typ != .none) return error.Invalid;
+		if(self.salt.len < 32 and self.typ != .none) return error.Invalid;
 
 		const base64EncodedData = zon.get([]const u8, "data", "");
 		self.data = allocator.alloc(u8, try std.base64.standard.Decoder.calcSizeForSlice(base64EncodedData));
 		errdefer allocator.free(self.data);
 		try std.base64.standard.Decoder.decode(self.data, base64EncodedData);
-		if (self.data.len == 0 and self.typ != .none) return error.Invalid;
+		if(self.data.len == 0 and self.typ != .none) return error.Invalid;
 
 		const base64EncodedTag = zon.get([]const u8, "authenticationTag", "");
 		self.authenticationTag = allocator.alloc(u8, try std.base64.standard.Decoder.calcSizeForSlice(base64EncodedTag));
 		errdefer allocator.free(self.authenticationTag);
 		try std.base64.standard.Decoder.decode(self.authenticationTag, base64EncodedTag);
-		if (self.authenticationTag.len == 0 and self.typ != .none) return error.Invalid;
+		if(self.authenticationTag.len == 0 and self.typ != .none) return error.Invalid;
 
 		const base64EncodedNonce = zon.get([]const u8, "nonce", "");
 		self.nonce = allocator.alloc(u8, try std.base64.standard.Decoder.calcSizeForSlice(base64EncodedNonce));
 		errdefer allocator.free(self.nonce);
 		try std.base64.standard.Decoder.decode(self.nonce, base64EncodedNonce);
-		if (self.nonce.len == 0 and self.typ != .none) return error.Invalid;
+		if(self.nonce.len == 0 and self.typ != .none) return error.Invalid;
 
 		return self;
 	}

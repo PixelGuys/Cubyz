@@ -17,19 +17,19 @@ pub const usage =
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
-	if (args.len == 0) {
+	if(args.len == 0) {
 		source.sendMessage("#ff0000Too few arguments for command /perm. Expected at least one argument.", .{});
 		return;
 	}
 	var split = std.mem.splitScalar(u8, args, ' ');
-	if (split.next()) |arg| {
-		if (std.ascii.eqlIgnoreCase(arg, "remove")) {
+	if(split.next()) |arg| {
+		if(std.ascii.eqlIgnoreCase(arg, "remove")) {
 			const helper = Helper.init(source, &split) catch return;
 			defer helper.deinit();
-			if (!helper.target.user.permissions.removePermission(helper.listType, helper.permissionPath)) {
+			if(!helper.target.user.permissions.removePermission(helper.listType, helper.permissionPath)) {
 				source.sendMessage("#ff0000Permission path {s} is not present inside users permission {s}list", .{helper.permissionPath, @tagName(helper.listType)});
 			}
-		} else if (std.ascii.eqlIgnoreCase(arg, "add")) {
+		} else if(std.ascii.eqlIgnoreCase(arg, "add")) {
 			const helper = Helper.init(source, &split) catch return;
 			defer helper.deinit();
 			helper.target.user.permissions.addPermission(helper.listType, helper.permissionPath);
@@ -42,11 +42,11 @@ pub fn execute(args: []const u8, source: *User) void {
 				source.sendMessage("#ff0000Too few arguments for /perm", .{});
 				return;
 			};
-			if (permissionPath[0] != '/') {
+			if(permissionPath[0] != '/') {
 				source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{permissionPath});
 				return;
 			}
-			if (target.user.hasPermission(permissionPath)) {
+			if(target.user.hasPermission(permissionPath)) {
 				source.sendMessage("#00ff00Player {s}§#00ff00 has permission for path: {s}", .{target.user.name, permissionPath});
 			} else {
 				source.sendMessage("#ff0000Player {s}§#ff0000 has no permission for path: {s}", .{target.user.name, permissionPath});
@@ -66,9 +66,9 @@ const Helper = struct {
 			source.sendMessage("#ff0000Too few arguments for command /perm", .{});
 			return error.InvalidArgs;
 		};
-		if (std.ascii.eqlIgnoreCase(arg, "whitelist")) {
+		if(std.ascii.eqlIgnoreCase(arg, "whitelist")) {
 			listType = .white;
-		} else if (std.ascii.eqlIgnoreCase(arg, "blacklist")) {
+		} else if(std.ascii.eqlIgnoreCase(arg, "blacklist")) {
 			listType = .black;
 		} else {
 			source.sendMessage("#ff0000Expected either whitelist or blacklist, found \"{s}\"", .{arg});
@@ -83,12 +83,12 @@ const Helper = struct {
 			return error.InvalidArgs;
 		};
 
-		if (permissionPath[0] != '/') {
+		if(permissionPath[0] != '/') {
 			source.sendMessage("#ff0000Permission paths always begin with a \"/\", got: {s}", .{arg});
 			return error.InvalidArgs;
 		}
 
-		if (split.next() != null) {
+		if(split.next() != null) {
 			source.sendMessage("#ff0000Too many arguments for command /perm", .{});
 			return error.InvalidArgs;
 		}

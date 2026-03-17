@@ -11,15 +11,15 @@ const ZonElement = main.ZonElement;
 
 pub const SdfModel = struct { // MARK: SdfModel
 	data: *anyopaque,
-	generateFn: *const fn (self: *anyopaque, sdf: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), relPos: Vec3i, seed: u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void,
+	generateFn: *const fn(self: *anyopaque, sdf: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), relPos: Vec3i, seed: u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void,
 	maxBiomeCenterDistance: f32,
 	minAmount: f32,
 	maxAmount: f32,
-	mode: enum { additive, subtractive },
+	mode: enum {additive, subtractive},
 
 	const VTable = struct {
-		init: *const fn (parameters: ZonElement) ?*anyopaque,
-		generate: *const fn (self: *anyopaque, sdf: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), relPos: Vec3i, seed: u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void,
+		init: *const fn(parameters: ZonElement) ?*anyopaque,
+		generate: *const fn(self: *anyopaque, sdf: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), relPos: Vec3i, seed: u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void,
 	};
 
 	pub fn initModel(parameters: ZonElement) ?SdfModel {
@@ -44,10 +44,10 @@ pub const SdfModel = struct { // MARK: SdfModel
 
 	pub fn generate(self: SdfModel, sdf: main.utils.Array3D(f32), biomeMap: *const CaveBiomeMapView, interpolationSmoothness: main.utils.Array3D(f32), sdfPos: Vec3i, biomePos: Vec3i, seed: *u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
 		const amount: usize = @intFromFloat(@floor(self.minAmount + main.random.nextFloat(seed)*(self.maxAmount - self.minAmount) + main.random.nextFloat(seed)));
-		for (0..amount) |_| {
-			const offsetDir = blk: while (true) {
+		for(0..amount) |_| {
+			const offsetDir = blk: while(true) {
 				const offset = main.random.nextFloatVectorSigned(3, seed);
-				if (vec.lengthSquare(offset) < 1) break :blk offset;
+				if(vec.lengthSquare(offset) < 1) break :blk offset;
 			};
 			var pos = biomePos +% @as(Vec3i, @intFromFloat(offsetDir*@as(Vec3f, @splat(self.maxBiomeCenterDistance))));
 			pos[2] +%= biomeMap.getCaveBiomeOffset(pos[0], pos[1]);

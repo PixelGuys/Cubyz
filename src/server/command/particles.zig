@@ -27,7 +27,7 @@ pub const usage =
 
 pub fn execute(args: []const u8, source: *User) void {
 	parseArguments(source, args) catch |err| {
-		switch (err) {
+		switch(err) {
 			error.TooFewArguments => source.sendMessage("#ff0000Too few arguments for command /particles", .{}),
 			error.TooManyArguments => source.sendMessage("#ff0000Too many arguments for command /particles", .{}),
 			error.InvalidParticleId => source.sendMessage("#ff0000Invalid particle id", .{}),
@@ -50,19 +50,19 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const collides = try parseBool(split.next() orelse "true");
 	const particleCount = try parseNumber(split.next() orelse "1", source);
 
-	if (split.next() != null) return error.TooManyArguments;
+	if(split.next() != null) return error.TooManyArguments;
 
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
-	for (users) |user| {
+	for(users) |user| {
 		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, pos, collides, particleCount, zonStr);
 	}
 }
 
 fn parseBool(arg: []const u8) anyerror!bool {
-	if (std.mem.eql(u8, arg, "true")) {
+	if(std.mem.eql(u8, arg, "true")) {
 		return true;
-	} else if (std.mem.eql(u8, arg, "false")) {
+	} else if(std.mem.eql(u8, arg, "false")) {
 		return false;
 	}
 
@@ -71,7 +71,7 @@ fn parseBool(arg: []const u8) anyerror!bool {
 
 fn parseNumber(arg: []const u8, source: *User) anyerror!u32 {
 	return std.fmt.parseUnsigned(u32, arg, 0) catch |err| {
-		switch (err) {
+		switch(err) {
 			error.Overflow => {
 				const maxParticleCount = particles.ParticleSystem.maxCapacity;
 				source.sendMessage("#ff0000Too many particles spawned \"{s}\", maximum: \"{d}\"", .{arg, maxParticleCount});

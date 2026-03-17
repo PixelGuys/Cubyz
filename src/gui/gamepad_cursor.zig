@@ -20,7 +20,7 @@ pub fn deinit() void {
 }
 
 pub fn render() void {
-	if (main.Window.lastUsedMouse or main.Window.grabbed) return;
+	if(main.Window.lastUsedMouse or main.Window.grabbed) return;
 	texture.bindTo(0);
 	graphics.draw.setColor(0xffffffff);
 	const mousePos = main.Window.getMousePosition();
