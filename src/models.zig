@@ -920,7 +920,7 @@ pub const EntityModel = struct {
 		defer main.stackAllocator.free(vertices);
 		var indices: []u32 = main.stackAllocator.alloc(u32, quadInfos.len*6);
 		defer main.stackAllocator.free(indices);
-		
+
 		var cur: u32 = 0;
 		for (quadInfos) |quad| {
 			inline for (0..4) |i| {
@@ -952,7 +952,7 @@ pub const EntityModel = struct {
 
 		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
 		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len*vertSize), @ptrCast(vertices), c.GL_STATIC_DRAW);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo); 
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
 
 		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(0));
