@@ -1,6 +1,9 @@
 .{
 	.minRadius = 16,
 	.maxRadius = 32,
+	.minHeight = 500,
+	.maxHeight = 1500,
+	.keepOriginalTerrain = 0.99,
 	.chance = 0,
 	.soilCreep = 2,
 	.ground_structure = .{
