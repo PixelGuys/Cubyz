@@ -11,5 +11,41 @@
 	.hills = 10,
 	.music = "cubyz:leaves",
 	.validPlayerSpawn = true,
-	.stoneBlock = "cubyz:limestone/base"
+	.stoneBlock = "cubyz:limestone/base",
+	.structures = .{
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:hibiscus"},
+			.chance = 0.02,
+			.width = 6,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass/vegetation/dew",
+			.chance = 0.4,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/dew"},
+			.chance = 0.3,
+			.width = 3,
+			.variation = 6,
+			.density = 0.4,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:fern"},
+			.chance = 0.1,
+			.width = 3,
+			.variation = 3,
+			.density = 0.4,
+			.priority = 0.1,
+		},
+	},
 }
