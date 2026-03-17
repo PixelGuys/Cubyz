@@ -703,7 +703,7 @@ pub const Command = struct { // MARK: Command
 
 					if (info.target.?.player.health <= 0) {
 						info.target.?.player.health = info.target.?.player.maxHealth;
-						info.cause.sendMessage(info.target.?.name);
+						info.cause.sendMessage(info.target.?);
 
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
