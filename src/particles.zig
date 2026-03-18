@@ -249,7 +249,6 @@ pub const ParticleSystem = struct {
 
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
-				// Z (vertical) first, then X, Y — matches Minecraft's gravity-first ordering
 				v3Pos[2] += posDelta[2];
 				if (game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
 					v3Pos[2] = if (posDelta[2] < 0)
@@ -258,7 +257,6 @@ pub const ParticleSystem = struct {
 						box.min[2] - hitBox.max[2];
 					particleLocal.velAndRotationVel[2] = 0;
 					if (posDelta[2] < 0) {
-						// Ground friction on horizontal velocity
 						particleLocal.velAndRotationVel[0] *= 0.7;
 						particleLocal.velAndRotationVel[1] *= 0.7;
 					}
