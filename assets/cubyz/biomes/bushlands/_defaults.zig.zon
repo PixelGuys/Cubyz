@@ -1,0 +1,18 @@
+.{
+	.properties = .{
+		.hot,
+	},
+	.minHeightLimit = 7,
+	.minHeight = 24,
+	.maxHeight = 60,
+	.smoothBeaches = true,
+	.maxHeightLimit = 100,
+	.minRadius = 256,
+	.maxRadius = 320,
+	.roughness = 6,
+	.hills = 10,
+	.rivers = true,
+	.music = "cubyz:sunrise",
+
+	.stoneBlock = "cubyz:limestone/base",
+}
