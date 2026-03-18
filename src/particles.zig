@@ -72,6 +72,7 @@ pub const ParticleManager = struct {
 			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
 			.rotVel = rotVel,
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
+			.groundFriction = RandomRange(f32).fromZon(zon.getChild("groundFriction")) orelse .init(0.7, 0.7),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -257,8 +258,8 @@ pub const ParticleSystem = struct {
 						box.min[2] - hitBox.max[2];
 					particleLocal.velAndRotationVel[2] = 0;
 					if (posDelta[2] < 0) {
-						particleLocal.velAndRotationVel[0] *= 0.7;
-						particleLocal.velAndRotationVel[1] *= 0.7;
+						particleLocal.velAndRotationVel[0] *= particleLocal.groundFriction;
+						particleLocal.velAndRotationVel[1] *= particleLocal.groundFriction;
 					}
 				}
 				v3Pos[0] += posDelta[0];
@@ -311,6 +312,7 @@ pub const ParticleSystem = struct {
 		const rot = if (properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
 		const rotVel = particleType.rotVel.get(&main.seed);
 		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
+		const groundFriction = particleType.groundFriction.get(&main.seed);
 
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
@@ -322,6 +324,7 @@ pub const ParticleSystem = struct {
 			.lifeVelocity = 1/lifeTime,
 			.density = density,
 			.dragCoefficient = dragCoeff,
+			.groundFriction = groundFriction,
 			.collides = collides,
 		};
 		particleCount += 1;
@@ -553,6 +556,7 @@ pub const ParticleTypeLocal = struct {
 	density: RandomRange(f32),
 	rotVel: RandomRange(f32),
 	dragCoefficient: RandomRange(f32),
+	groundFriction: RandomRange(f32),
 };
 
 pub const Particle = extern struct {
@@ -569,5 +573,6 @@ pub const ParticleLocal = struct {
 	lifeVelocity: f32,
 	density: f32,
 	dragCoefficient: f32,
+	groundFriction: f32,
 	collides: bool,
 };
