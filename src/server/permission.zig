@@ -108,20 +108,40 @@ pub const Permissions = struct { // MARK: Permissions
 
 pub const PermissionGroup = struct { // MARK: PermissionGroup
 	permissions: Permissions,
+	// Each group must have a unique ID to avoid stale membership issues.
+	// Example scenario:
+	// - User1 joins Group1
+	// - Group1 is deleted while User1 is offline (so their data isn’t updated)
+	// - A new Group1 is created
+	// - When User1 reconnects, they are incorrectly treated as a member of the new Group1
 	id: u32,
 
-	pub fn init(allocator: NeverFailingAllocator) PermissionGroup {
+	pub fn init(allocator: NeverFailingAllocator) *PermissionGroup {
 		sync.threadContext.assertCorrectContext(.server);
 		currentId += 1;
-		return .{
+		const self = allocator.create(PermissionGroup);
+		self.* = .{
 			.permissions = .init(allocator),
 			.id = currentId,
 		};
+		return self;
 	}
 
-	pub fn deinit(self: *PermissionGroup) void {
+	pub fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement) *PermissionGroup {
+		sync.threadContext.assertCorrectContext(.server);
+		const self = allocator.create(PermissionGroup);
+		self.* = .{
+			.permissions = .init(allocator),
+			.id = zon.get(u32, "id", 0),
+		};
+		self.permissions.fromZon(zon);
+		return self;
+	}
+
+	pub fn deinit(self: *PermissionGroup, allocator: NeverFailingAllocator) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.permissions.deinit();
+		allocator.destroy(self);
 	}
 
 	pub fn hasPermission(self: *PermissionGroup, permissionPath: []const u8) Permissions.PermissionResult {
@@ -130,7 +150,7 @@ pub const PermissionGroup = struct { // MARK: PermissionGroup
 	}
 };
 
-var groups: std.StringHashMapUnmanaged(PermissionGroup) = .{};
+var groups: std.StringHashMapUnmanaged(*PermissionGroup) = .{};
 var groupsArena: NeverFailingArenaAllocator = undefined;
 var currentId: u32 = 0; // Needed to identify groups even after deletion, so that players who join a server after deletion of a group don't automatically join another group witht the same name.
 
@@ -143,13 +163,7 @@ pub fn init(allocator: NeverFailingAllocator, _zon: ?ZonElement) void {
 	if (zon.getChild("groups") != .object) return;
 	var it = zon.getChild("groups").object.iterator();
 	while (it.next()) |entry| {
-		groups.put(groupsArena.allocator().allocator, groupsArena.allocator().dupe(u8, entry.key_ptr.*), .{
-			.id = entry.value_ptr.get(u32, "id", 0),
-			.permissions = .init(groupsArena.allocator()),
-		}) catch unreachable;
-
-		const group = groups.getPtr(entry.key_ptr.*).?;
-		group.permissions.fromZon(entry.value_ptr.*);
+		groups.put(groupsArena.allocator().allocator, groupsArena.allocator().dupe(u8, entry.key_ptr.*), .fromZon(groupsArena.allocator(), entry.value_ptr.*)) catch unreachable;
 	}
 }
 
@@ -168,8 +182,8 @@ pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
 	var it = groups.iterator();
 	while (it.next()) |group| {
 		var groupZon: ZonElement = .initObject(allocator);
-		groupZon.put("id", group.value_ptr.id);
-		group.value_ptr.permissions.toZon(allocator, &groupZon);
+		groupZon.put("id", group.value_ptr.*.id);
+		group.value_ptr.*.permissions.toZon(allocator, &groupZon);
 		groupsZon.put(group.key_ptr.*, groupZon);
 	}
 	zon.put("groups", groupsZon);
@@ -187,7 +201,7 @@ pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
 
 pub fn getGroup(name: []const u8) error{GroupNotFound}!*PermissionGroup {
 	sync.threadContext.assertCorrectContext(.server);
-	return groups.getPtr(name) orelse return error.GroupNotFound;
+	return (groups.getPtr(name) orelse return error.GroupNotFound).*;
 }
 
 pub fn deleteGroup(name: []const u8) bool {
