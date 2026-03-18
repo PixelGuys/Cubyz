@@ -1030,7 +1030,7 @@ pub const EntityModel = struct {
 		defer meshVertices.deinit();
 		var meshIndices = main.List(u32).init(main.stackAllocator);
 		defer meshIndices.deinit();
-		var meshIndicesOffset: u32 = 0;
+		var baseVertex: u32 = 0;
 
 		std.log.info("\n", .{});
 
@@ -1097,63 +1097,82 @@ pub const EntityModel = struct {
 					cMat = tMat.mul(cMat);
 
 					const indicesAccessor = prim.indices.*;
-					const indicesBV = indicesAccessor.buffer_view.*;
-					var indicesBuf: []u8 = @ptrCast(indicesBV.buffer.*.data);
-					indicesBuf.len = indicesBV.buffer.*.size;
-					indicesBuf = indicesBuf[indicesBV.offset..indicesBV.offset+indicesBV.size];
-					// there is a problem that blockbench is too smart and is packing indicies in different size ints
-					var indices: []u16 = @alignCast(@ptrCast(indicesBuf));
-					indices.len = indicesAccessor.count;
-					std.debug.print("count: {d}\n", .{indices.len});
-					std.debug.print("count2: {d}\n", .{prim.attributes[0].data.*.count});
-					
-					for (indices) |value| {
-						meshIndices.append(value + meshIndicesOffset);
-						std.debug.print("{d} ", .{value});
-					}
-
 					const vertCount = prim.attributes[0].data.*.count;
-					meshIndicesOffset += @intCast(vertCount);
+					var indicesSlice = meshIndices.addMany(indicesAccessor.count);
+					baseVertex = @intCast(meshVertices.items.len);
+					std.debug.print("\naccessor count: {d} typ: {d}\n ", .{indicesAccessor.count, indicesAccessor.component_type});
+					for (0..indicesAccessor.count) |i| {
+						const idx = indicesAccessor.index(i);
+						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+						std.debug.print("{d} ", .{idx});
+					}
 					const vertSlice: []EntityVertex = meshVertices.addMany(vertCount);
 					for (prim.attributes, 0..prim.attributes_count) |attrib, _| {
 						const attribAccessor = attrib.data.*;
-						const attribBV = attribAccessor.buffer_view.*;
-						const attribData = attribBV.buffer[0].data.?;
-						var attribBuf: []u8 = @ptrCast(attribData);
+						std.debug.print("stride: {d}, {d}\n", .{attribAccessor.stride, @sizeOf([3]f32)});
+						// const attribBV = attribAccessor.buffer_view.*;
+						// const attribData = attribBV.buffer[0].data.?;
+						// var attribBuf: []u8 = @ptrCast(attribData);
 
-						attribBuf.len = attribBV.buffer[0].size;
-						attribBuf = attribBuf[attribBV.offset..attribBV.offset+attribBV.size];
-						std.debug.print("\n GOON {d}   {d}    {d}    {d}\n\n", .{attribAccessor.offset, attribBV.offset, attribBV.size, attribBV.buffer[0].size});
+						// attribBuf.len = attribBV.buffer[0].size;
+						// attribBuf = attribBuf[attribBV.offset..attribBV.offset+attribBV.size];
+						// std.debug.print("\n GOON {d}   {d}    {d}    {d}\n\n", .{attribAccessor.offset, attribBV.offset, attribBV.size, attribBV.buffer[0].size});
 
 						switch (attrib.type) {
 							gltf.cgltf_attribute_type_position => {
-								var positions: []const [3]f32 = @alignCast(@ptrCast(attribBuf));
-								positions.len = attribAccessor.count;
-								for (vertSlice, 0..) |*v, i| {
-									const p = positions[i];
-									std.debug.print("{any}\n", .{p});
+								for (0..indicesAccessor.count) |i| {
+									const idx = indicesAccessor.index(i);
+									var p: [3]f32 = undefined;
+									_ = attribAccessor.float(idx, @ptrCast(&p), 3);
+									// std.debug.print("{any}\n", .{p});
 									const pos: vec.Vec4f = cMat.mulVec(.{-p[0], p[2], p[1], 1});
-									v.pos = .{pos[0], pos[1], pos[2]};
+									vertSlice[idx].pos = .{pos[0], pos[1], pos[2]};
+									// vertSlice[idx].pos = .{-p[0], p[2], p[1]};
 								}
+								// for (vertSlice, 0..) |*v, i| {
+								//    var p: [3]f32 = undefined;
+								//    _ = attribAccessor.float(i, @ptrCast(&p), 3);
+								//    // const p = positions[i];
+								//    std.debug.print("{any}\n", .{p});
+								//    const pos: vec.Vec4f = cMat.mulVec(.{-p[0], p[2], p[1], 1});
+								//    v.pos = .{pos[0], pos[1], pos[2]};
+								// }
 								
 							}, 
 							gltf.cgltf_attribute_type_normal => {
-								var normals: []const [3]f32 = @alignCast(@ptrCast(attribBuf));
-								normals.len = attribAccessor.count;
+								// var normals: []const [3]f32 = @alignCast(@ptrCast(attribBuf));
+								// normals.len = attribAccessor.count;
 
-								for (vertSlice, 0..) |*v, i| {
-									v.normal = normals[i];
+								for (0..indicesAccessor.count) |i| {
+									const idx = indicesAccessor.index(i);
+									var n: [3]f32 = undefined;
+									_ = attribAccessor.float(idx, @ptrCast(&n), 3);
+									// std.debug.print("normal: {any}\n", .{n});
+									vertSlice[idx].normal = .{-n[0], n[2], n[1]};
 								}
+
+								// for (vertSlice, 0..) |*v, i| {
+								// v.normal = normals[i];
+								// }
 							}, 
 							gltf.cgltf_attribute_type_texcoord => {
-								var texcoords: []const [2]f32 = @alignCast(@ptrCast(attribBuf));
-								texcoords.len = attribAccessor.count;
+								// var texcoords: []const [2]f32 = @alignCast(@ptrCast(attribBuf));
+								// texcoords.len = attribAccessor.count;
 
-								for (vertSlice, 0..) |*v, i| {
-									v.uv = texcoords[i];
+								for (0..indicesAccessor.count) |i| {
+									const idx = indicesAccessor.index(i);
+									var uv: [2]f32 = undefined;
+									_ = attribAccessor.float(idx, @ptrCast(&uv), 2);
+									// std.debug.print("uv: {any}\n", .{uv});
+									vertSlice[idx].uv = uv;
 								}
+
+								// for (vertSlice, 0..) |*v, i| {
+								// v.uv = texcoords[i];
+								// // std.debug.print("{any}\n", .{texcoords[i]});
+								// }
 							}, 
-							else => unreachable,
+							else => continue,
 						}
 					}
 					
@@ -1169,6 +1188,9 @@ pub const EntityModel = struct {
 				}
 			}
 		}
+
+		var finalMeshVertices = main.List(EntityVertex).init(main.stackAllocator);
+		defer finalMeshVertices.deinit();
 		
 		var vao: c_uint = 0;
 		c.glGenVertexArrays(1, &vao);
