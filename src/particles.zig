@@ -257,6 +257,11 @@ pub const ParticleSystem = struct {
 					else
 						box.min[2] - hitBox.max[2];
 					particleLocal.velAndRotationVel[2] = 0;
+					if (posDelta[2] < 0) {
+						// Ground friction on horizontal velocity
+						particleLocal.velAndRotationVel[0] *= 0.7;
+						particleLocal.velAndRotationVel[1] *= 0.7;
+					}
 				}
 				v3Pos[0] += posDelta[0];
 				if (game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
