@@ -358,8 +358,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			return;
 		}
 		vel.* += Vec3d{0, 0, -gravity*deltaTime};
-		inline for (0..3) |i| {
-			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
+		// Z (vertical) first, then X, Y — resolve ground before horizontal
+		inline for ([_]comptime_int{2, 0, 1}) |i| {
+			const move = vel.*[i]*deltaTime;
 			if (main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
 				if (move < 0) {
 					pos.*[i] = box.max[i] + radius;
@@ -367,6 +368,11 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 					pos.*[i] = box.min[i] - radius;
 				}
 				vel.*[i] = 0;
+				if (i == 2 and move < 0) {
+					// Ground friction on horizontal velocity
+					vel.*[0] *= 0.7;
+					vel.*[1] *= 0.7;
+				}
 			} else {
 				pos.*[i] += move;
 			}
