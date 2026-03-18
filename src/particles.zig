@@ -249,6 +249,15 @@ pub const ParticleSystem = struct {
 
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
+				// Z (vertical) first, then X, Y — matches Minecraft's gravity-first ordering
+				v3Pos[2] += posDelta[2];
+				if (game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
+					v3Pos[2] = if (posDelta[2] < 0)
+						box.max[2] - hitBox.min[2]
+					else
+						box.min[2] - hitBox.max[2];
+					particleLocal.velAndRotationVel[2] = 0;
+				}
 				v3Pos[0] += posDelta[0];
 				if (game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					v3Pos[0] = if (posDelta[0] < 0)
@@ -264,14 +273,6 @@ pub const ParticleSystem = struct {
 					else
 						box.min[1] - hitBox.max[1];
 					particleLocal.velAndRotationVel[1] = 0;
-				}
-				v3Pos[2] += posDelta[2];
-				if (game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-					v3Pos[2] = if (posDelta[2] < 0)
-						box.max[2] - hitBox.min[2]
-					else
-						box.min[2] - hitBox.max[2];
-					particleLocal.velAndRotationVel[2] = 0;
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
