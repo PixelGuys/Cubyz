@@ -11,7 +11,7 @@ pub const usage =
 	\\/group <whitelist/blacklist> <groupName> <permissionPath>
 ;
 
-const Operations = enum {
+const Operation = enum {
 	create,
 	delete,
 	join,
@@ -36,7 +36,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too few arguments for command /group. Usage: " ++ usage, .{});
 		return;
 	};
-	const op: Operations = std.meta.stringToEnum(Operations, opString) orelse {
+	const op: Operation = std.meta.stringToEnum(Operation, opString) orelse {
 		source.sendMessage("#ff0000Expected either create, delete, join, leave, whitelist or blacklist, found \"{s}\"", .{opString});
 		return;
 	};
@@ -50,7 +50,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 }
 
-fn handleGroupChanges(op: Operations, groupName: []const u8, split: *std.mem.SplitIterator(u8, .scalar), source: *User) void {
+fn handleGroupChanges(op: Operation, groupName: []const u8, split: *std.mem.SplitIterator(u8, .scalar), source: *User) void {
 	if (split.next() != null) {
 		source.sendMessage("#ff0000Too many arguments for command /group. Usage: " ++ usage, .{});
 		return;
@@ -80,7 +80,7 @@ fn handleGroupChanges(op: Operations, groupName: []const u8, split: *std.mem.Spl
 	}
 }
 
-fn handleGroupPermissionChanges(op: Operations, groupName: []const u8, split: *std.mem.SplitIterator(u8, .scalar), source: *User) void {
+fn handleGroupPermissionChanges(op: Operation, groupName: []const u8, split: *std.mem.SplitIterator(u8, .scalar), source: *User) void {
 	const listType: permission.Permissions.ListType = switch (op) {
 		.whitelist => .white,
 		.blacklist => .black,
