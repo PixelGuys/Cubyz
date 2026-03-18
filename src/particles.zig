@@ -255,6 +255,7 @@ pub const ParticleSystem = struct {
 						box.max[0] - hitBox.min[0]
 					else
 						box.min[0] - hitBox.max[0];
+					particleLocal.velAndRotationVel[0] = 0;
 				}
 				v3Pos[1] += posDelta[1];
 				if (game.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
@@ -262,6 +263,7 @@ pub const ParticleSystem = struct {
 						box.max[1] - hitBox.min[1]
 					else
 						box.min[1] - hitBox.max[1];
+					particleLocal.velAndRotationVel[1] = 0;
 				}
 				v3Pos[2] += posDelta[2];
 				if (game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
@@ -269,6 +271,7 @@ pub const ParticleSystem = struct {
 						box.max[2] - hitBox.min[2]
 					else
 						box.min[2] - hitBox.max[2];
+					particleLocal.velAndRotationVel[2] = 0;
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
