@@ -38,6 +38,11 @@
 			.density = 0.2,
 			.priority = 0.1,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/desert/desert_landmarks",
+			.chance = 0.01,
+		},
 	},
 	.parentBiomes = .{
 		.{

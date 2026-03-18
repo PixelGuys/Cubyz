@@ -85,5 +85,10 @@
 			.leafElongation = 0.4,
 			.deltaLeafElongation = 0.125,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/forest/willow/willow_landmarks",
+			.chance = 0.01,
+		},
 	},
 }

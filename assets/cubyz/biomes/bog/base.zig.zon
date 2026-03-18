@@ -103,5 +103,10 @@
 			.placeMode = .degradable,
 			.chance = 0.02,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/forest/willow/willow_landmarks",
+			.chance = 0.01,
+		},
 	},
 }

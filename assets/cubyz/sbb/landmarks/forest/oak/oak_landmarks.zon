@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:landmarks/forest/oak/burnt_oak"},
+		.{.id = "cubyz:landmarks/forest/oak/grand_fallen_oak"},
+		.{.id = "cubyz:landmarks/forest/oak/majestic_oak"},
+		.{.id = "cubyz:landmarks/forest/oak/moat_oak"},
+		.{.id = "cubyz:landmarks/forest/oak/rotting_oak"},
+	},
+}

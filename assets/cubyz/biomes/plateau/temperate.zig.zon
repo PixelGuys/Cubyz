@@ -35,6 +35,11 @@
 			.placeMode = .degradable,
 			.chance = 0.01,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/temperate/temperate_landmarks",
+			.chance = 0.01,
+		},
 	},
 	.parentBiomes = .{
 		.{

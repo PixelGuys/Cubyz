@@ -34,6 +34,11 @@
 			.depth = 3,
 			.smoothness = 1,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/cave/cave_landmarks",
+			.chance = 0.01,
+		},
 	},
 	.caveModels = .{
 		.{

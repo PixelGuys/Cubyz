@@ -53,5 +53,10 @@
 			.placeMode = .degradable,
 			.chance = 0.008,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/temperate/temperate_landmarks",
+			.chance = 0.01,
+		},
 	},
 }

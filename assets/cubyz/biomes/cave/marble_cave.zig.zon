@@ -25,6 +25,16 @@
 			.depth = 1,
 			.smoothness = 1,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/cave/marble/marble_landmarks",
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/cave/cave_landmarks",
+			.chance = 0.01,
+		},
 	},
 	.caveModels = .{
 		.{

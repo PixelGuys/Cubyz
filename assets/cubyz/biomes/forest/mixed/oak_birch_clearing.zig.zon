@@ -70,6 +70,11 @@
 			.density = 0.1,
 			.priority = 0.1,
 		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:landmarks/temperate/temperate_landmarks",
+			.chance = 0.01,
+		},
 	},
 	.parentBiomes = .{
 		.{

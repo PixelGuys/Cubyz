@@ -1,0 +1,6 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:landmarks/desert/desert_pillar"},
+		.{.id = "cubyz:landmarks/desert/majestic_cactus"},
+	},
+}
