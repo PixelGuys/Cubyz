@@ -149,6 +149,7 @@ pub const User = struct { // MARK: User
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.jobQueue = .init(main.globalAllocator);
+		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
