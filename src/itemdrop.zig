@@ -49,9 +49,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	pub const pickupRange: f64 = 1.0;
 
-	const terminalVelocity = 40.0;
-	const gravity = 9.81;
-	const groundFriction = 0.9;
+	const itemDensity = 1.5;
 
 	const maxCapacity = 65536;
 
@@ -67,7 +65,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	changeQueue: main.utils.ConcurrentQueue(union(enum) { add: struct { u16, ItemDrop }, remove: u16 }),
 
 	world: ?*ServerWorld,
-	airDragFactor: f64,
 
 	size: u32 = 0,
 
@@ -78,7 +75,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.isEmpty = .initFull(),
 			.changeQueue = .init(allocator, 16),
 			.world = world,
-			.airDragFactor = gravity/terminalVelocity,
 		};
 		self.list.resize(self.allocator.allocator, maxCapacity) catch unreachable;
 	}
@@ -353,31 +349,37 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		const hitBox = main.game.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
-		if (main.game.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
+		const collision = main.game.collision;
+		const hitBox = collision.Box{ .min = @splat(-radius), .max = @splat(radius) };
+		if (collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
-		vel.* += Vec3d{0, 0, -gravity*deltaTime};
-		inline for ([_]comptime_int{2, 0, 1}) |i| {
-			const move = vel.*[i]*deltaTime;
-			if (main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
-				if (move < 0) {
-					pos.*[i] = box.max[i] + radius;
-				} else {
-					pos.*[i] = box.min[i] - radius;
-				}
-				vel.*[i] = 0;
-				if (i == 2 and move < 0) {
-					vel.*[0] *= groundFriction;
-					vel.*[1] *= groundFriction;
-				}
-			} else {
-				pos.*[i] += move;
-			}
+
+		const onGround = collision.collides(.server, .z, -0.01, pos.*, hitBox) != null;
+		const props = main.physics.computeProperties(.server, pos.*, hitBox, itemDensity, onGround, 0);
+		const acc = Vec3d{ 0, 0, -props.effectiveGravity };
+		const friction: Vec3d = @splat(@as(f64, props.frictionCoefficient));
+		const move = main.physics.computeVelocityStep(vel, acc, friction, deltaTime);
+
+		// Z first, then X, Y — same as player
+		const zMovement = collision.collideOrStep(.server, .z, move[2], pos.*, hitBox, 0);
+		pos.* += zMovement;
+		if (zMovement[2] != move[2]) {
+			vel.*[2] = 0;
 		}
-		// Apply drag:
-		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
+
+		const xMovement = collision.collideOrStep(.server, .x, move[0], pos.*, hitBox, 0);
+		pos.* += xMovement;
+		if (xMovement[0] != move[0]) {
+			vel.*[0] = 0;
+		}
+
+		const yMovement = collision.collideOrStep(.server, .y, move[1], pos.*, hitBox, 0);
+		pos.* += yMovement;
+		if (yMovement[1] != move[1]) {
+			vel.*[1] = 0;
+		}
 	}
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
