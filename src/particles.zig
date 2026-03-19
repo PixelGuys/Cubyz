@@ -162,6 +162,26 @@ pub const ParticleManager = struct {
 pub const ParticleSystem = struct {
 	pub const maxCapacity: u32 = 524288;
 	const groundFriction: f32 = 0.7;
+
+	fn clipAxis(comptime d: u2, movement: f64, pos: Vec3d, hitBox: game.collision.Box) f64 {
+		if (movement == 0) return 0;
+
+		if (game.collision.collides(.client, @enumFromInt(d), movement, pos, hitBox)) |box| {
+			const clipped = if (movement < 0)
+				box.max[d] - (pos[d] + hitBox.min[d])
+			else
+				box.min[d] - (pos[d] + hitBox.max[d]);
+
+			// Already overlapping this block, pass through it
+			const epsilon = 1e-4;
+			if (movement < 0 and clipped > epsilon) return movement;
+			if (movement > 0 and clipped < -epsilon) return movement;
+
+			return if (movement < 0) @max(movement, clipped) else @min(movement, clipped);
+		}
+		return movement;
+	}
+
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
@@ -250,34 +270,28 @@ pub const ParticleSystem = struct {
 
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
-				v3Pos[2] += posDelta[2];
-				if (game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-					v3Pos[2] = if (posDelta[2] < 0)
-						box.max[2] - hitBox.min[2]
-					else
-						box.min[2] - hitBox.max[2];
+				const clippedZ = clipAxis(2, posDelta[2], v3Pos, hitBox);
+				v3Pos[2] += clippedZ;
+				if (clippedZ != posDelta[2]) {
 					particleLocal.velAndRotationVel[2] = 0;
 					if (posDelta[2] < 0) {
 						particleLocal.velAndRotationVel[0] *= groundFriction;
 						particleLocal.velAndRotationVel[1] *= groundFriction;
 					}
 				}
-				v3Pos[0] += posDelta[0];
-				if (game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
-					v3Pos[0] = if (posDelta[0] < 0)
-						box.max[0] - hitBox.min[0]
-					else
-						box.min[0] - hitBox.max[0];
+
+				const clippedX = clipAxis(0, posDelta[0], v3Pos, hitBox);
+				v3Pos[0] += clippedX;
+				if (clippedX != posDelta[0]) {
 					particleLocal.velAndRotationVel[0] = 0;
 				}
-				v3Pos[1] += posDelta[1];
-				if (game.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
-					v3Pos[1] = if (posDelta[1] < 0)
-						box.max[1] - hitBox.min[1]
-					else
-						box.min[1] - hitBox.max[1];
+
+				const clippedY = clipAxis(1, posDelta[1], v3Pos, hitBox);
+				v3Pos[1] += clippedY;
+				if (clippedY != posDelta[1]) {
 					particleLocal.velAndRotationVel[1] = 0;
 				}
+
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
