@@ -8,7 +8,7 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
-pub const id = "cubyz:hemisphere";
+pub const id = "cubyz:torus";
 
 minRadius: f32,
 maxRadius: f32,
@@ -19,7 +19,7 @@ pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.minRadius = zon.get(f32, "minRadius", 16);
 	result.maxRadius = zon.get(f32, "maxRadius", result.minRadius);
-	result.minThickness = zon.get(f32, "minThickness", 1);
+	result.minThickness = zon.get(f32, "minThickness", 8);
 	result.maxThickness = zon.get(f32, "maxRadius", result.minThickness);
 	return result;
 }
