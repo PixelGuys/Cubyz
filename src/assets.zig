@@ -119,14 +119,14 @@ pub const Assets = struct {
 
 		var iterator = self.languages.iterator();
 		while (iterator.next()) |entry| {
-			if (entry.value_ptr.get(bool, "isSupplement", false)) {
+			if (entry.value_ptr.get(bool, "isExtension", false)) {
 				entriesToRemove.append(entry.key_ptr);
 				_, const targetlanguageName = std.mem.cutScalar(u8, entry.key_ptr.*, ':').?;
 
 				const targetLanguageZon = blk: {
 					var targetLanguageIterator = self.languages.iterator();
 					while (targetLanguageIterator.next()) |tliEntry| {
-						if (!tliEntry.value_ptr.get(bool, "isSupplement", false)) {
+						if (!tliEntry.value_ptr.get(bool, "isExtension", false)) {
 							_, const languageName = std.mem.cutScalar(u8, tliEntry.key_ptr.*, ':').?;
 							if (std.mem.eql(u8, languageName, targetlanguageName)) {
 								break :blk self.languages.getPtr(tliEntry.key_ptr.*).?;
@@ -137,7 +137,7 @@ pub const Assets = struct {
 				};
 
 				targetLanguageZon.join(.preferRight, entry.value_ptr.*);
-				targetLanguageZon.*.put("isSupplement", false);
+				targetLanguageZon.*.put("isExtension", false);
 			}
 		}
 
