@@ -51,6 +51,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	const terminalVelocity = 40.0;
 	const gravity = 9.81;
+	const groundFriction = 0.9;
 
 	const maxCapacity = 65536;
 
@@ -368,8 +369,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				}
 				vel.*[i] = 0;
 				if (i == 2 and move < 0) {
-					vel.*[0] *= 0.7;
-					vel.*[1] *= 0.7;
+					vel.*[0] *= groundFriction;
+					vel.*[1] *= groundFriction;
 				}
 			} else {
 				pos.*[i] += move;
