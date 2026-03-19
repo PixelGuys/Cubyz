@@ -36,7 +36,6 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 	const minZ = @max(@as(Vec3f, @splat(0)), relPosF32 - @as(Vec3f, @splat(thickness + perimeter)));
 	const maxZ = @min(dimVector, relPosF32 + @as(Vec3f, @splat(thickness + perimeter)));
 
-
 	const minIntXY: @Vector(3, u31) = @intFromFloat(minXY);
 	const maxIntXY: Vec3i = @intFromFloat(@ceil(maxXY));
 	const minIntZ: @Vector(3, u31) = @intFromFloat(minZ);
