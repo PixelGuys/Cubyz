@@ -161,6 +161,7 @@ pub const ParticleManager = struct {
 
 pub const ParticleSystem = struct {
 	pub const maxCapacity: u32 = 524288;
+	const groundFriction: f32 = 0.7;
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
@@ -257,8 +258,8 @@ pub const ParticleSystem = struct {
 						box.min[2] - hitBox.max[2];
 					particleLocal.velAndRotationVel[2] = 0;
 					if (posDelta[2] < 0) {
-						particleLocal.velAndRotationVel[0] *= 0.7;
-						particleLocal.velAndRotationVel[1] *= 0.7;
+						particleLocal.velAndRotationVel[0] *= groundFriction;
+						particleLocal.velAndRotationVel[1] *= groundFriction;
 					}
 				}
 				v3Pos[0] += posDelta[0];
