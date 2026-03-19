@@ -350,7 +350,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		const collision = main.game.collision;
-		const hitBox = collision.Box{ .min = @splat(-radius), .max = @splat(radius) };
+		const hitBox = collision.Box{.min = @splat(-radius), .max = @splat(radius)};
 		if (collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
@@ -358,7 +358,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 		const onGround = collision.collides(.server, .z, -0.01, pos.*, hitBox) != null;
 		const props = main.physics.computeProperties(.server, pos.*, hitBox, itemDensity, onGround, 0);
-		const acc = Vec3d{ 0, 0, -props.effectiveGravity };
+		const acc = Vec3d{0, 0, -props.effectiveGravity};
 		const friction: Vec3d = @splat(@as(f64, props.frictionCoefficient));
 		const move = main.physics.computeVelocityStep(vel, acc, friction, deltaTime);
 

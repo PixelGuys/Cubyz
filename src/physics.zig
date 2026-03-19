@@ -28,15 +28,15 @@ const volumeDefaults: collision.VolumeProperties = .{
 	.density = airDensity,
 	.terminalVelocity = airTerminalVelocity,
 	.maxDensity = airDensity,
-	.mobileFriction = 1.0 / airTerminalVelocity,
+	.mobileFriction = 1.0/airTerminalVelocity,
 };
 
 pub fn computeProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: collision.Box, entityDensity: f64, onGround: bool, defaultSurfaceFriction: f32) PhysicsProperties {
 	const volumeProperties = collision.calculateVolumeProperties(side, pos, hitBox, volumeDefaults);
 	const surfaceFriction: f32 = if (!onGround) 0 else collision.calculateSurfaceProperties(side, pos, hitBox, defaultSurfaceFriction).friction;
-	const volumeFrictionCoefficient: f32 = @floatCast(gravity / volumeProperties.terminalVelocity);
-	const mobileFrictionCoeff: f32 = @floatCast(gravity * volumeProperties.mobileFriction);
-	const effectiveGravity = gravity * (entityDensity - volumeProperties.density) / entityDensity;
+	const volumeFrictionCoefficient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
+	const mobileFrictionCoeff: f32 = @floatCast(gravity*volumeProperties.mobileFriction);
+	const effectiveGravity = gravity*(entityDensity - volumeProperties.density)/entityDensity;
 
 	return .{
 		.volumeProperties = volumeProperties,
@@ -49,10 +49,10 @@ pub fn computeProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: col
 
 pub fn computeVelocityStep(vel: *Vec3d, acc: Vec3d, friction: Vec3d, deltaTime: f64) Vec3d {
 	const dt: Vec3d = @splat(deltaTime);
-	const c_1 = vel.* - acc / friction;
-	const expTerm = @exp(-friction * dt);
-	vel.* = acc / friction + c_1 * expTerm;
-	return acc / friction * dt - c_1 / friction * expTerm + c_1 / friction;
+	const c_1 = vel.* - acc/friction;
+	const expTerm = @exp(-friction*dt);
+	vel.* = acc/friction + c_1*expTerm;
+	return acc/friction*dt - c_1/friction*expTerm + c_1/friction;
 }
 
 pub fn calculateProperties() void {

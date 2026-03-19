@@ -161,8 +161,6 @@ pub const ParticleManager = struct {
 
 pub const ParticleSystem = struct {
 	pub const maxCapacity: u32 = 524288;
-	const groundFriction: f32 = 0.7;
-
 	fn clipAxis(comptime d: u2, movement: f64, pos: Vec3d, hitBox: game.collision.Box) f64 {
 		if (movement == 0) return 0;
 
@@ -275,8 +273,10 @@ pub const ParticleSystem = struct {
 				if (clippedZ != posDelta[2]) {
 					particleLocal.velAndRotationVel[2] = 0;
 					if (posDelta[2] < 0) {
-						particleLocal.velAndRotationVel[0] *= groundFriction;
-						particleLocal.velAndRotationVel[1] *= groundFriction;
+						const surfaceFriction = game.collision.calculateSurfaceProperties(.client, v3Pos, hitBox, 0).friction;
+						const frictionMul = @exp(-surfaceFriction*deltaTime);
+						particleLocal.velAndRotationVel[0] *= frictionMul;
+						particleLocal.velAndRotationVel[1] *= frictionMul;
 					}
 				}
 
