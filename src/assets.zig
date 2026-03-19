@@ -109,10 +109,13 @@ pub const Assets = struct {
 		}
 	}
 	fn consolidateLanguages(self: *Assets) void {
+		var entriesToRemove: main.List(*[]const u8) = .init(main.stackAllocator);
+		defer entriesToRemove.deinit();
+
 		var iterator = self.languages.iterator();
 		while (iterator.next()) |entry| {
 			if (entry.value_ptr.get(bool, "isSupplement", false)) {
-				defer self.languages.removeByPtr(entry.key_ptr);
+				entriesToRemove.append(entry.key_ptr);
 				_, const targetlanguageName = std.mem.cutScalar(u8, entry.key_ptr.*, ':').?;
 
 				const targetLanguageZon = blk: {
@@ -132,6 +135,8 @@ pub const Assets = struct {
 				targetLanguageZon.*.put("isSupplement", false);
 			}
 		}
+
+		for (entriesToRemove.items) |keyPtr| self.languages.removeByPtr(keyPtr);
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
