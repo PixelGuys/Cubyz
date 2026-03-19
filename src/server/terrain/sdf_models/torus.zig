@@ -19,8 +19,8 @@ pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.minRadius = zon.get(f32, "minRadius", 16);
 	result.maxRadius = zon.get(f32, "maxRadius", result.minRadius);
-	result.minThickness = zon.get(f32, "minThickness", 8);
-	result.maxThickness = zon.get(f32, "maxRadius", result.minThickness);
+	result.minThickness = zon.get(f32, "minThickness", result.minRadius/2);
+	result.maxThickness = zon.get(f32, "maxThickness", result.minThickness);
 	return result;
 }
 
