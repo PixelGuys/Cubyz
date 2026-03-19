@@ -12,12 +12,15 @@
 		},
 		.modifiers = .{
 			.{
-				.id = "durable",
-				.strength = 0.3,
+				.id = "fragile",
+				.strength = 0.1,
 				.restriction = .{
-					.id = .encased,
-					.tag = .copper,
-					.amount = 1,
+					.id = .not,
+					.child = .{
+						.id = .encased,
+						.tag = .copper,
+						.amount = 1,
+					},
 				},
 			},
 		},
