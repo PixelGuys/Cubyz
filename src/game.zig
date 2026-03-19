@@ -221,7 +221,7 @@ pub const collision = struct {
 		};
 	}
 
-	const VolumeProperties = struct {
+	pub const VolumeProperties = struct {
 		terminalVelocity: f64,
 		density: f64,
 		maxDensity: f64,
