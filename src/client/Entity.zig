@@ -71,3 +71,11 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
 }
+
+pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+	if (main.settings.showIdWithName) {
+		try writer.print("{s}@{d}", .{self.name, self.id});
+	} else {
+		try writer.print("{s}", .{self.name});
+	}
+}

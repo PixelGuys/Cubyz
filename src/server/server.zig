@@ -711,7 +711,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	};
 	if (!foundUser) return;
 
-	sendMessage("{f}§#ffff00 left", .{user});
+	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
@@ -775,7 +775,7 @@ pub fn connectInternal(user: *User) void {
 	const initialList = getInitialEntityList(main.stackAllocator);
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
-	sendMessage("{f}§#ffff00 joined", .{user});
+	sendMessage("{s}§#ffff00 joined", .{user.name});
 
 	userMutex.lock();
 	users.append(user);
@@ -784,7 +784,7 @@ pub fn connectInternal(user: *User) void {
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
-	sendMessage("[{f}§#ffffff] {s}", .{source, msg});
+	sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
 }
 
 fn sendRawMessage(msg: []const u8) void {
