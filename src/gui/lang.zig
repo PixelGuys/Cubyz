@@ -30,10 +30,6 @@ pub fn init() void {
 
 pub fn load(languageId: []const u8) error{LanguageNotFound}!void {
 	languageZon.join(.preferRight, languagesMap().get(languageId) orelse return error.LanguageNotFound);
-	var iterator = languagesMap().iterator();
-	while (iterator.next()) |entry| {
-		std.log.info("{s}", .{entry.key_ptr.*});
-	}
 }
 
 fn lookupTranslation(sectionName: []const u8, catrgoryName: []const u8, string: []const u8) []const u8 {
