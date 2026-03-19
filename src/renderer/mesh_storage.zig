@@ -839,11 +839,11 @@ fn batchUpdateBlocks() void {
 			const becomesAir = blockUpdate.newBlock.typ == 0 or blockUpdate.newBlock.hasTag(.air) or blockUpdate.newBlock.replacable();
 			const actuallyChanged = oldBlock.typ != blockUpdate.newBlock.typ or oldBlock.data != blockUpdate.newBlock.data;
 
+			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
+
 			if (wasValidBlock and becomesAir and actuallyChanged) {
 				spawnBlockBreakParticles(oldBlock, Vec3i{blockUpdate.x, blockUpdate.y, blockUpdate.z});
 			}
-
-			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 	for (regenerateMeshList.items) |mesh| {
