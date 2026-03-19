@@ -370,10 +370,10 @@ const stun = struct { // MARK: stun
 					continue;
 				};
 				if (oldAddress) |other| {
-					std.log.info("{f}", .{result});
 					if (other.ip == result.ip and other.port == result.port) {
 						return result;
 					} else {
+						std.log.warn("Detected symmetric NAT. UDP-holepunching may not work reliably", .{});
 						result.isSymmetricNAT = true;
 						return result;
 					}
