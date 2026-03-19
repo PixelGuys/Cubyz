@@ -149,6 +149,7 @@ pub const User = struct { // MARK: User
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.jobQueue = .init(main.globalAllocator);
+		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -795,4 +796,16 @@ pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
+}
+
+pub fn getUserByIdAndIncreaseRefCount(id: u32) ?*User {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for (userList) |user| {
+		if (user.id == id) {
+			user.increaseRefCount();
+			return user;
+		}
+	}
+	return null;
 }
