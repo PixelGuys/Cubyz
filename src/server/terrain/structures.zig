@@ -5,7 +5,9 @@ const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ServerChunk = main.chunk.ServerChunk;
 const terrain = main.server.terrain;
+const Assets = main.assets.Assets;
 const Biome = main.server.terrain.biomes;
+const Tag = main.Tag;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -71,3 +73,89 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		return self.vtable.hashFunction(self.data);
 	}
 };
+
+pub const StructureTable = struct {
+	id: []const u8,
+	tags: []const Tag,
+	structures: []const SimpleStructureModel = &.{},
+	pub fn init(id: []const u8, zon: ZonElement) StructureTable {
+		var structureTable: StructureTable = .{
+			.id = main.worldArena.dupe(u8, id),
+			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
+		};
+		const tableChance: ?f32 = zon.get(?f32, "chance", null);
+		var structureList = main.ListUnmanaged(SimpleStructureModel){};
+		defer structureList.deinit(main.stackAllocator);
+
+		const structures = zon.getChild("structures");
+
+		var totalChance: f32 = 0.0;
+		for (structures.toSlice()) |elem| {
+			if (SimpleStructureModel.initModel(elem)) |model| {
+				structureList.append(main.stackAllocator, model);
+				totalChance += model.chance;
+			}
+		}
+		if (totalChance == 0) {
+			std.log.err("Invalid structure chance in table {s}. Adding table without its structures.", .{structureTable.id});
+			return structureTable;
+		}
+
+		if (tableChance) |chance| {
+			for (structureList.items) |*structure| {
+				structure.chance /= totalChance;
+				structure.chance *= chance;
+			}
+		}
+
+		structureTable.structures = main.worldArena.dupe(SimpleStructureModel, structureList.items);
+		return structureTable;
+	}
+};
+
+var finishedLoading: bool = false;
+var structureTables: main.ListUnmanaged(StructureTable) = .{};
+var structureTablesById: std.StringHashMapUnmanaged(*StructureTable) = .{};
+
+fn register(id: []const u8, zon: ZonElement) void {
+	const structureTable = StructureTable.init(id, zon);
+	structureTables.append(main.worldArena, structureTable);
+	std.log.debug("Registered structure table: '{s}'", .{id});
+}
+
+pub fn registerStructureTables(structures: *Assets.ZonHashMap) !void {
+	var iterator = structures.iterator();
+	while (iterator.next()) |entry| {
+		register(entry.key_ptr.*, entry.value_ptr.*);
+	}
+	finishLoading();
+}
+fn compareStructureTables(_: void, lhs: StructureTable, rhs: StructureTable) bool {
+	return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .gt;
+}
+
+pub fn finishLoading() void {
+	std.debug.assert(!finishedLoading);
+	finishedLoading = true;
+
+	std.mem.sort(StructureTable, structureTables.items, {}, compareStructureTables);
+	structureTablesById.ensureTotalCapacity(main.worldArena.allocator, @intCast(structureTables.items.len)) catch unreachable;
+	for (structureTables.items) |*structureTable| {
+		structureTablesById.putAssumeCapacity(structureTable.id, structureTable);
+	}
+}
+
+pub fn getById(id: []const u8) ?*StructureTable {
+	std.debug.assert(finishedLoading);
+	return structureTablesById.get(id);
+}
+
+pub fn getSlice() []StructureTable {
+	return structureTables.items;
+}
+
+pub fn reset() void {
+	finishedLoading = false;
+	structureTables = .{};
+	structureTablesById = .{};
+}
