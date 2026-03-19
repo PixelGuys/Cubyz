@@ -176,6 +176,10 @@ pub const User = struct { // MARK: User
 		}
 
 		self.permissions.deinit();
+		var permissionGroupsIterator = self.permissionGroups.keyIterator();
+		while (permissionGroupsIterator.next()) |key| {
+			main.globalAllocator.free(key.*);
+		}
 		self.permissionGroups.deinit(main.globalAllocator.allocator);
 
 		self.worldEditData.deinit();
