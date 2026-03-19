@@ -27,7 +27,7 @@ jobs:
             zig ast-check $file
           done
       - run: |
-          if ./Cubyz-fmt --zon assets/ mods/ src/ *.zig *.zon | grep -q . ; then
+          if ./Cubyz-fmt assets/ mods/ src/ *.zig *.zon | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi
