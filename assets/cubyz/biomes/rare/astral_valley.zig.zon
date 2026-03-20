@@ -1,0 +1,49 @@
+.{
+	.chance = 0.01,
+	.properties = .{
+		.cold,
+		.wet,
+	},
+	.minHeightLimit = 7,
+	.minHeight = 22,
+	.maxHeight = 40,
+	.maxHeightLimit = 50,
+	.roughness = 1,
+	.hills = 8,
+	.music = "cubyz:sunrise",
+	.ground_structure = .{
+		"3 to 5 cubyz:snow",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:astral/astral",
+			.chance = 0.1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rare/snow_snale",
+			.placeMode = .degradable,
+			.chance = 0.0005,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.005,
+			.block = "cubyz:chalk/grey",
+			.size = 6,
+			.size_variance = 3,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.03,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.007,
+		},
+	},
+}
