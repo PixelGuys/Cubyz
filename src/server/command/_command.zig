@@ -82,7 +82,7 @@ fn parsePlayerIndexAndIncreaseRefCount(playerIndex: []const u8, source: *User) !
 		return error.InvalidArg;
 	}
 	const index = std.fmt.parseInt(u32, playerIndex[1..], 10) catch {
-		source.sendMessage("#ff0000Player indexes must be integers, found \"{s}\"", .{playerIndex[1..]});
+		source.sendMessage("#ff0000Player index must be an integer, found \"{s}\"", .{playerIndex[1..]});
 		return error.InvalidArg;
 	};
 	return main.server.getUserByIndexAndIncreaseRefCount(index) orelse {
