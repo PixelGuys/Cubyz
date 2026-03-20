@@ -949,7 +949,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
-			player.loadFrom(playerData.getChild("entity"));
+			player.loadFrom(user.id, playerData.getChild("entity"), .ServerSide);
 
 			user.permissions.fromZon(playerData);
 
