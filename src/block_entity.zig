@@ -187,7 +187,7 @@ fn BlockEntityDataStorage(T: type) type {
 
 pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
-		const inventorySize = 20;
+		const inventorySize = 24;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
 		});

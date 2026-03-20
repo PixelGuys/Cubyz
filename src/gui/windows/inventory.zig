@@ -21,7 +21,7 @@ pub var window = GuiWindow{
 		.{.attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
 		.{.attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
 	},
-	.contentSize = Vec2f{64*10, 64*3},
+	.contentSize = Vec2f{64*12, 64*3},
 	.scale = 0.75,
 	.isHud = true,
 	.closeable = false,
@@ -39,7 +39,7 @@ pub fn deinit() void {
 	craftingIcon.deinit();
 }
 
-var itemSlots: [20]*ItemSlot = undefined;
+var itemSlots: [24]*ItemSlot = undefined;
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
@@ -52,8 +52,8 @@ pub fn onOpen() void {
 	}
 	for (0..2) |y| {
 		const row = HorizontalList.init();
-		for (0..10) |x| {
-			const index: usize = 12 + y*10 + x;
+		for (0..12) |x| {
+			const index: usize = 12 + y*12 + x;
 			const slot = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(index), .default, .normal);
 			itemSlots[index - 12] = slot;
 			row.add(slot);

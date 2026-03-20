@@ -21,7 +21,7 @@ pub var window = GuiWindow{
 		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
 		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
 	},
-	.contentSize = Vec2f{64*10, 64*3},
+	.contentSize = Vec2f{64*12, 64*3},
 	.scale = 0.75,
 	.closeIfMouseIsGrabbed = true,
 };
@@ -48,8 +48,8 @@ pub fn onOpen() void {
 
 	for (0..2) |y| {
 		const row = HorizontalList.init();
-		for (0..10) |x| {
-			const index: usize = y*10 + x;
+		for (0..12) |x| {
+			const index: usize = y*12 + x;
 			const slot = ItemSlot.init(.{0, 0}, openInventory, @intCast(index), .default, .normal);
 			itemSlots.append(slot);
 			row.add(slot);
