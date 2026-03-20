@@ -913,11 +913,19 @@ pub const EntityModel = struct {
 		uv: [2]f32,
 	};
 
-	pub fn initFromQuads(quadInfos: []main.models.QuadInfo) EntityModel {
-		var vertices = main.stackAllocator.alloc(EntityVertex, quadInfos.len*4);
-		defer main.stackAllocator.free(vertices);
-		var indices: []u32 = main.stackAllocator.alloc(u32, quadInfos.len*6);
-		defer main.stackAllocator.free(indices);
+	pub fn initFromObj(allocator: main.heap.NeverFailingAllocator, path: []const u8) EntityModel {
+		const modelFile = main.files.cwd().read(allocator, path) catch |err| blk: {
+			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
+			break :blk &.{};
+		};
+		defer allocator.free(modelFile);
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(allocator, modelFile);
+		defer allocator.free(quadInfos);
+
+		const vertices = allocator.alloc(EntityVertex, quadInfos.len*4);
+		defer allocator.free(vertices);
+		const indices: []u32 = allocator.alloc(u32, quadInfos.len*6);
+		defer allocator.free(indices);
 
 		var cur: u32 = 0;
 		for (quadInfos) |quad| {

@@ -46,14 +46,7 @@ pub fn init() void {
 	);
 
 	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
-	const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entities/models/snale.obj") catch |err| blk: {
-		std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-		break :blk &.{};
-	};
-	defer main.stackAllocator.free(modelFile);
-	const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
-	defer main.stackAllocator.free(quadInfos);
-	model = .initFromQuads(quadInfos);
+	model = .initFromObj(main.stackAllocator, "assets/cubyz/entities/models/snale.obj");
 }
 
 pub fn deinit() void {
