@@ -81,7 +81,7 @@ fn parsePlayerIndexAndIncreaseRefCount(playerIndex: []const u8, source: *User) !
 		source.sendMessage("#ff0000Player index specifiers always start with @, found \"{s}\"", .{playerIndex});
 		return error.InvalidArg;
 	}
-	const index = std.fmt.parseInt(u32, playerIndex[1..], 10) catch {
+	const index = std.fmt.parseInt(usize, playerIndex[1..], 10) catch {
 		source.sendMessage("#ff0000Player index must be an integer, found \"{s}\"", .{playerIndex[1..]});
 		return error.InvalidArg;
 	};
