@@ -981,6 +981,7 @@ pub const EntityModel = struct {
 	}
 
 	pub fn loadGltf(path: []const u8) EntityModel {
+		// TODO: check path's format
 		var options: gltf.cgltf_options = .{
 			.type = gltf.cgltf_file_type_glb,
 		};
@@ -994,27 +995,26 @@ pub const EntityModel = struct {
 		// for (file) |i| {
 		//     std.debug.print("{c}", .{i});
 		// }
-		
-		// const result = gltf.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
-		// TODO: make this parse from memory (important to parse null terminated array)
-		var result = gltf.cgltf_parse_file(&options, @ptrCast(path.ptr), @ptrCast(&data));
-		
-		const name = switch (result) {
-				0 =>  "result_success",
-				1 =>  "result_data_too_short",
-				2 =>  "result_unknown_format",
-				3 =>  "result_invalid_json",
-				4 =>  "result_invalid_gltf",
-				5 =>  "result_invalid_options",
-				6 =>  "result_file_not_found",
-				7 =>  "result_io_error",
-				8 =>  "result_out_of_memory",
-				9 =>  "result_legacy_gltf",
-				10 => "result_max_enum",
-				else => unreachable,
-			};
-		std.debug.print("yuppii!!!!!!!!!!!!!!! size: {s}\n", .{name});
 
+		// const result = gltf.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
+		// TODO: make this parse from memory (important to parse null terminated array) (probably unnessecary)
+		var result = gltf.cgltf_parse_file(&options, @ptrCast(path.ptr), @ptrCast(&data));
+
+		const name = switch (result) {
+			0 => "result_success",
+			1 => "result_data_too_short",
+			2 => "result_unknown_format",
+			3 => "result_invalid_json",
+			4 => "result_invalid_gltf",
+			5 => "result_invalid_options",
+			6 => "result_file_not_found",
+			7 => "result_io_error",
+			8 => "result_out_of_memory",
+			9 => "result_legacy_gltf",
+			10 => "result_max_enum",
+			else => unreachable,
+		};
+		std.debug.print("yuppii!!!!!!!!!!!!!!! size: {s}\n", .{name});
 
 		if (result != gltf.cgltf_result_success) {
 			return undefined;
@@ -1039,14 +1039,15 @@ pub const EntityModel = struct {
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count == 0) continue;
 
+			// TODO: process nodes recursively
 			for (node.children.*, 0..node.children_count) |child, _| {
 				if (child.mesh == null) continue;
-				
+
 				var tMat = Mat4f.translation(Vec3f{
 					node.translation[0],
 					node.translation[2],
 					node.translation[1],
-				}); 
+				});
 				tMat = tMat.mul(Mat4f.rotationQuat(vec.Vec4f{
 					node.rotation[0],
 					node.rotation[2],
@@ -1057,31 +1058,20 @@ pub const EntityModel = struct {
 					node.scale[0],
 					node.scale[2],
 					node.scale[1],
-				})); 
+				}));
 
 				// std.log.info("      child name: \"{s}\" count: {d}", .{child.name, child.mesh.*.primitives_count});
 				const primitives = child.mesh.*.primitives;
 				for (primitives, 0..child.mesh.*.primitives_count) |primitive, _| {
 					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
-						const typ = switch (primitive.type) {
-							0 => "cgltf_primitive_type_invalid",
-							1 => "cgltf_primitive_type_points",
-							2 => "cgltf_primitive_type_lines",
-							3 => "cgltf_primitive_type_line_loop",
-							4 => "cgltf_primitive_type_line_strip",
-							5 => "cgltf_primitive_type_triangles",
-							6 => "cgltf_primitive_type_triangle_strip",
-							7 => "cgltf_primitive_type_triangle_fan",
-							else => unreachable,
-						};
-						std.log.err("Unsupported primitive type: {s}", .{typ});
+						std.log.err("Unsupported primitive type: {d}", .{primitive.type});
 						continue;
 					}
 					var cMat = Mat4f.translation(Vec3f{
 						child.translation[0],
 						child.translation[2],
 						child.translation[1],
-					}); 
+					});
 					cMat = cMat.mul(Mat4f.rotationQuat(vec.Vec4f{
 						child.rotation[0],
 						child.rotation[2],
@@ -1092,7 +1082,7 @@ pub const EntityModel = struct {
 						child.scale[0],
 						child.scale[2],
 						child.scale[1],
-					})); 
+					}));
 					cMat = Mat4f.rotationZ(std.math.pi).mul(tMat).mul(cMat);
 
 					const indicesAccessor = primitive.indices.*;
@@ -1118,7 +1108,7 @@ pub const EntityModel = struct {
 									const pos: vec.Vec4f = cMat.mulVec(.{p[0], p[2], p[1], 1});
 									vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
 								}
-							}, 
+							},
 							gltf.cgltf_attribute_type_normal => {
 								for (0..attribAccessor.count) |v| {
 									var n: [3]f32 = undefined;
@@ -1126,8 +1116,7 @@ pub const EntityModel = struct {
 
 									vertSlice[v].normal = .{-n[0], n[2], n[1]};
 								}
-
-							}, 
+							},
 							gltf.cgltf_attribute_type_texcoord => {
 								for (0..attribAccessor.count) |v| {
 									var uv: [2]f32 = undefined;
@@ -1135,7 +1124,7 @@ pub const EntityModel = struct {
 
 									vertSlice[v].uv = .{uv[0], 1 - uv[1]};
 								}
-							}, 
+							},
 							else => continue,
 						}
 					}
@@ -1167,7 +1156,7 @@ pub const EntityModel = struct {
 		c.glEnableVertexAttribArray(2);
 
 		c.glBindVertexArray(0);
-		
+
 		gltf.cgltf_free(@ptrCast(data));
 
 		return .{
