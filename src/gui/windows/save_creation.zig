@@ -7,6 +7,7 @@ const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Texture = main.graphics.Texture;
 const ZonElement = main.ZonElement;
 
 const gui = @import("../gui.zig");
@@ -37,6 +38,81 @@ var worldPresets: []ZonMapEntry = &.{};
 var selectedPreset: usize = undefined;
 var defaultPreset: usize = 0;
 var presetButton: *Button = undefined;
+
+var needsUpdate: bool = false;
+
+var deleteIcon: Texture = undefined;
+var fileExplorerIcon: Texture = undefined;
+
+var page: Page = .generation;
+const numPages: usize = std.meta.fields(Page).len;
+
+const Page = enum(u8) {
+	generation = 0,
+	gameRules = 1,
+
+	pub fn fillSubmenu(self: Page, submenu: *VerticalList) void {
+		const maxWidth = 192;
+		switch (self) {
+			.generation => {
+				{ // world preset
+					const row = HorizontalList.init();
+					row.add(Label.init(.{0, 0}, maxWidth - 128, "Preset:", .left));
+					presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .init(worldPresetCallback));
+					row.add(presetButton);
+					row.finish(.{0, 0}, .center);
+					submenu.add(row);
+				}
+
+				{ // seed
+					const row = HorizontalList.init();
+					row.add(Label.init(.{0, 0}, 48, "Seed:", .left));
+					seedInput = TextInput.init(.{0, 0}, maxWidth - 48, 22, "", .{.onNewline = .init(createWorld)});
+					row.add(seedInput);
+					row.finish(.{0, 0}, .center);
+					submenu.add(row);
+				}
+			},
+			.gameRules => {
+				{
+					const row = HorizontalList.init();
+					row.add(Label.init(.{0, 0}, maxWidth - 96, "Game Mode:", .left));
+					gamemodeInput = Button.initText(.{0, 0}, 96, @tagName(worldSettings.defaultGamemode), .init(gamemodeCallback));
+					row.add(gamemodeInput);
+					row.finish(.{0, 0}, .center);
+					submenu.add(row);
+				}
+
+				submenu.add(CheckBox.init(.{0, 0}, maxWidth, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
+			},
+		}
+	}
+
+	pub fn label(self: Page) []const u8 {
+		switch (self) {
+			.generation => {
+				return "Generation (1/2)";
+			},
+			.gameRules => {
+				return "Game Rules (2/2)";
+			},
+		}
+	}
+};
+
+fn prevPage() void {
+	const oldPageInt = @intFromEnum(page);
+	const newPageInt = (oldPageInt -% 1);
+	page = std.meta.intToEnum(Page, newPageInt) catch .gameRules;
+	needsUpdate = true;
+}
+
+fn nextPage() void {
+	const oldPageInt = @intFromEnum(page);
+	const newPageInt = (oldPageInt + 1);
+	page = std.meta.intToEnum(Page, newPageInt) catch .generation;
+	needsUpdate = true;
+}
 
 fn chooseSeed(seedStr: []const u8) u64 {
 	if (seedStr.len == 0) {
@@ -80,7 +156,7 @@ fn createWorld() void {
 }
 
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
+	const list = VerticalList.init(.{padding, 16 + padding}, 500, 8);
 
 	if (worldPresets.len == 0) {
 		var presetMap = main.assets.worldPresets();
@@ -102,39 +178,47 @@ pub fn onOpen() void {
 			}
 		}
 	}
-	selectedPreset = defaultPreset;
+	if (!needsUpdate) selectedPreset = defaultPreset;
 
-	var num: usize = 1;
-	while (true) {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
-		defer main.stackAllocator.free(path);
-		if (!main.files.cubyzDir().hasDir(path)) break;
-		num += 1;
+	{ // name field
+		const label = Label.init(.{0, 0}, 96, "World Name:", .center);
+		var num: usize = 1;
+		while (true) {
+			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			if (!main.files.cubyzDir().hasDir(path)) break;
+			num += 1;
+		}
+		const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
+		defer main.stackAllocator.free(name);
+		nameInput = TextInput.init(.{0, 0}, 256 - 96, 22, name, .{.onNewline = .init(createWorld)});
+		const nameRow = HorizontalList.init();
+		nameRow.add(label);
+		nameRow.add(nameInput);
+		nameRow.finish(.{0, 0}, .center);
+		list.add(nameRow);
 	}
-	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
-	defer main.stackAllocator.free(name);
-	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.onNewline = .init(createWorld)});
-	list.add(nameInput);
 
-	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .init(gamemodeCallback));
-	list.add(gamemodeInput);
+	{ // page title and switch buttons
+		const leftArrow = Button.initText(.{0, 0}, 24, "<", .init(prevPage));
+		const label = Label.init(.{0, 0}, 224 - 48, page.label(), .center);
+		const rightArrow = Button.initText(.{0, 0}, 24, ">", .init(nextPage));
+		const header = HorizontalList.init();
+		header.add(leftArrow);
+		header.add(label);
+		header.add(rightArrow);
+		header.finish(.{0, 0}, .center);
+		list.add(header);
+	}
 
-	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
+	const submenu = VerticalList.init(.{0, 8}, 384, 8);
+	page.fillSubmenu(submenu);
+	submenu.finish(.center);
+	list.add(submenu);
 
 	if (!build_options.isTaggedRelease) {
-		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
+		list.add(CheckBox.init(.{0, 0}, 192, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
 	}
-
-	presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .init(worldPresetCallback));
-	list.add(presetButton);
-
-	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .left);
-	seedInput = TextInput.init(.{0, 0}, 128 - 48, 22, "", .{.onNewline = .init(createWorld)});
-	const seedRow = HorizontalList.init();
-	seedRow.add(seedLabel);
-	seedRow.add(seedInput);
-	seedRow.finish(.{0, 0}, .center);
-	list.add(seedRow);
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .init(createWorld)));
 
@@ -147,5 +231,25 @@ pub fn onOpen() void {
 pub fn onClose() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
+	}
+}
+
+pub fn render() void {
+	if (needsUpdate) {
+		var oldWorldName = window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.currentString.items;
+		oldWorldName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}", .{oldWorldName}) catch unreachable;
+		defer main.stackAllocator.free(oldWorldName);
+
+		const oldScroll = window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState;
+		const oldPage = page;
+
+		onClose();
+		page = oldPage;
+
+		onOpen();
+		window.rootComponent.?.verticalList.children.items[0].horizontalList.children.items[1].textInput.setString(oldWorldName);
+		window.rootComponent.?.verticalList.children.items[2].verticalList.scrollBar.currentState = oldScroll;
+
+		needsUpdate = false;
 	}
 }
