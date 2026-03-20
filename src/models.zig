@@ -911,8 +911,6 @@ pub const EntityModel = struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
-		textureSlot: u32,
-		opaqueInLod: u32 = 0,
 	};
 
 	pub fn initFromQuads(quadInfos: []main.models.QuadInfo) EntityModel {
@@ -926,8 +924,6 @@ pub const EntityModel = struct {
 			inline for (0..4) |i| {
 				const v = cur + @as(u32, @intCast(i));
 				vertices[v].normal = quad.normal;
-				vertices[v].textureSlot = quad.textureSlot;
-				vertices[v].opaqueInLod = quad.opaqueInLod;
 				vertices[v].pos = quad.corners[i];
 				vertices[v].uv = quad.cornerUV[i];
 			}
@@ -961,10 +957,6 @@ pub const EntityModel = struct {
 		c.glEnableVertexAttribArray(1);
 		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
 		c.glEnableVertexAttribArray(2);
-		c.glVertexAttribPointer(3, 1, c.GL_UNSIGNED_INT, c.GL_FALSE, vertSize, @ptrFromInt(32));
-		c.glEnableVertexAttribArray(3);
-		c.glVertexAttribPointer(4, 1, c.GL_INT, c.GL_FALSE, vertSize, @ptrFromInt(36));
-		c.glEnableVertexAttribArray(4);
 
 		c.glBindVertexArray(0);
 
