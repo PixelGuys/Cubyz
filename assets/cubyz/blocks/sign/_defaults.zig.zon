@@ -13,6 +13,12 @@
 		.ceiling = "cubyz:sign/ceiling",
 		.floor = "cubyz:sign/floor",
 	},
-	.blockEntity = .sign,
+	.blockEntity = "cubyz:sign",
 	.lodReplacement = "cubyz:air",
+	.onTrigger = .{
+		.type = .updateSignText,
+	},
+	.onInteract = .{
+		.type = .editSign,
+	},
 }
