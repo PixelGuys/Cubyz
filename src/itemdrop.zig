@@ -543,7 +543,100 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 	}
 };
 
-// Going to handle item animations and other things like - bobbing, interpolation, movement reactions
+const BobManager = struct {
+	var phase: f32 = 0;
+	var amplitude: f32 = 0;
+	var crouchOffset: f32 = 0;
+
+	const bobFrequency = 1.5;
+
+	const bobAmountLateral = 0.08;
+	const bobAmountVertical = 0.07;
+
+	const inputSpeedMax = 10;
+	const actualSpeedMax = 5;
+
+	const phaseResetThresholdAirborne = 0.05;
+
+	const phaseFinishHalfLifeAirborne = 0.14;
+	const phaseResetHalfLifeFlying = 0.23;
+	const phaseResetHalfLifeStanding = 0.35;
+
+	const amplitudeThreshold = 0.1;
+
+	const amplitudeHalfLifeWalking = 0.17;
+	const amplitudeHalfLifeFlying = 0.23;
+	const amplitudeHalfLifeStanding = 0.35;
+
+	const crouchOffsetAmount = 0.2;
+	const crouchHalfLife = 0.14;
+
+	fn phaseSpeedCurve() f32 {
+		return std.math.clamp(std.math.pow(f32, 2.21*amplitude - 1.28, 3) + 0.82, 0, 1);
+	}
+
+	fn transition(current: f32, target: f32, halfLife: f32, dt: f32) f32 {
+		return std.math.lerp(target, current, std.math.pow(f32, 0.5, dt/halfLife));
+	}
+
+	fn update(dt: f32) void {
+		defer {
+			const targetOffset = if (game.Player.crouching) amplitude*crouchOffsetAmount else 0;
+			crouchOffset = transition(crouchOffset, targetOffset, crouchHalfLife, dt);
+		}
+
+		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
+			amplitude = transition(amplitude, 0, amplitudeHalfLifeFlying, dt);
+			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
+			phase = transition(phase, targetPhase, phaseResetHalfLifeFlying, dt);
+			return;
+		}
+
+		if (!game.Player.onGround) {
+			const prev = std.math.floor(phase/std.math.pi)*std.math.pi;
+			const next = prev + std.math.pi;
+			const targetPhase = if (prev <= phase - phaseResetThresholdAirborne*std.math.pi) next else prev;
+			phase = transition(phase, targetPhase, phaseFinishHalfLifeAirborne, dt);
+			return;
+		}
+
+		const inputSpeed: f32 = @floatCast(game.Player.inputSpeed);
+
+		const horizontalVel: Vec3f = .{
+			@floatCast(game.Player.super.vel[0]),
+			@floatCast(game.Player.super.vel[1]),
+			0,
+		};
+
+		const actualSpeed = vec.length(horizontalVel);
+
+		const newScale = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
+
+		if (newScale <= amplitudeThreshold) {
+			amplitude = transition(amplitude, 0, amplitudeHalfLifeStanding, dt);
+			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
+			phase = transition(phase, targetPhase, phaseResetHalfLifeStanding, dt);
+			return;
+		}
+
+		amplitude = transition(amplitude, newScale, amplitudeHalfLifeWalking, dt);
+		phase += dt*bobFrequency*std.math.tau*phaseSpeedCurve();
+		while (phase >= std.math.tau) {
+			phase -= std.math.tau;
+		}
+	}
+
+	fn getOffset() Vec3f {
+		const s = std.math.sin(phase);
+		return .{
+			@abs(s)*bobAmountVertical*amplitude + crouchOffset,
+			0,
+			s*bobAmountLateral*amplitude,
+		};
+	}
+};
+
+// Going to handle item animations and other things like - interpolation, movement reactions
 pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	pub var showItem: bool = true;
 	var cameraFollow: Vec3f = @splat(0);
@@ -551,18 +644,29 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	const damping: Vec3f = @splat(130);
 
 	pub fn update(deltaTime: f64) void {
+		if (!settings.bobbing) {
+			cameraFollow = @splat(0);
+			return;
+		}
+
 		if (deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
-		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
-		playerVel = vec.clampMag(playerVel, 0.32);
+		BobManager.update(dt);
+
+		const totalOffset = getAscentDescentOffset() + BobManager.getOffset();
 
 		// TODO: add *smooth* item sway
-		const n1: Vec3f = cameraFollowVel - (cameraFollow - playerVel)*damping*damping*@as(Vec3f, @splat(dt));
+		const n1: Vec3f = cameraFollowVel - (cameraFollow - totalOffset)*damping*damping*@as(Vec3f, @splat(dt));
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
 
 		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
+	}
+
+	fn getAscentDescentOffset() Vec3f {
+		const playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
+		return vec.clampMag(playerVel, 0.32);
 	}
 };
 
