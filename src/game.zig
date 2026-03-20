@@ -221,7 +221,7 @@ pub const collision = struct {
 		};
 	}
 
-	const VolumeProperties = struct {
+	pub const VolumeProperties = struct {
 		terminalVelocity: f64,
 		density: f64,
 		maxDensity: f64,
@@ -813,17 +813,26 @@ pub fn hyperSpeedToggle(_: main.Window.Key.Modifiers) void {
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
-	physics.calculateProperties();
-	var acc = Vec3d{0, 0, 0};
+	var physicsState = physics.PhysicsState.fromPlayer();
+	var inputState: physics.InputState = .{
+		.boundingBox = Player.outerBoundingBox,
+		.isFlying = Player.isFlying.load(.monotonic),
+		.isGhost = Player.isGhost.load(.monotonic),
+		.hasCollision = !Player.isGhost.load(.monotonic),
+		.runTouchBlocks = true,
+		.entity = &Player.super,
+		.steppingHeight = Player.steppingHeight(),
+	};
+	physics.calculateProperties(&physicsState, inputState, .client);
 	const speedMultiplier: f32 = if (Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
-	const density = if (Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.density;
-	const maxDensity = if (Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;
+	const density = if (inputState.isFlying) 0.0 else physicsState.volumeProperties.density;
+	const maxDensity = if (inputState.isFlying) 0.0 else physicsState.volumeProperties.maxDensity;
 
-	var jumping = false;
+	inputState.jumping = false;
 	Player.jumpCooldown -= deltaTime;
 	// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
-	const fricMul = speedMultiplier*Player.mobileFriction;
+	const fricMul = speedMultiplier*physicsState.mobileFriction;
 
 	const horizontalForward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
@@ -838,10 +847,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}));
 		if (KeyBoard.key("forward").value > 0.0) {
 			if (KeyBoard.key("sprint").pressed and !Player.crouching) {
-				if (Player.isGhost.load(.monotonic)) {
+				if (inputState.isGhost) {
 					movementSpeed = @max(movementSpeed, 128*KeyBoard.key("forward").value);
 					movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
-				} else if (Player.isFlying.load(.monotonic)) {
+				} else if (inputState.isFlying) {
 					movementSpeed = @max(movementSpeed, 32*KeyBoard.key("forward").value);
 					movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
 				} else {
@@ -862,9 +871,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 		}
 		if (KeyBoard.key("jump").pressed) {
-			if (Player.isFlying.load(.monotonic)) {
+			if (inputState.isFlying) {
 				if (KeyBoard.key("sprint").pressed) {
-					if (Player.isGhost.load(.monotonic)) {
+					if (inputState.isGhost) {
 						movementSpeed = @max(movementSpeed, 60);
 						movementDir[2] += 60;
 					} else {
@@ -875,13 +884,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					movementSpeed = @max(movementSpeed, 5.5);
 					movementDir[2] += 5.5;
 				}
-			} else if ((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
-				jumping = true;
+			} else if ((physicsState.onGround or physicsState.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
+				inputState.jumping = true;
 				Player.jumpCooldown = Player.jumpCooldownConstant;
-				if (!Player.onGround) {
-					Player.eye.coyote = 0;
+				if (!physicsState.onGround) {
+					physicsState.eye.?.coyote = 0;
 				}
-				Player.jumpCoyote = 0;
+				physicsState.jumpCoyote = 0;
 			} else if (!KeyBoard.key("fall").pressed) {
 				movementSpeed = @max(movementSpeed, walkingSpeed);
 				movementDir[2] += walkingSpeed;
@@ -890,9 +899,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.jumpCooldown = 0;
 		}
 		if (KeyBoard.key("fall").pressed) {
-			if (Player.isFlying.load(.monotonic)) {
+			if (inputState.isFlying) {
 				if (KeyBoard.key("sprint").pressed) {
-					if (Player.isGhost.load(.monotonic)) {
+					if (inputState.isGhost) {
 						movementSpeed = @max(movementSpeed, 60);
 						movementDir[2] -= 60;
 					} else {
@@ -915,7 +924,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				movementDir /= @splat(movementSpeed);
 			}
-			acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
+			inputState.movementForce += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 		}
 
 		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
@@ -928,7 +937,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
-	Player.crouching = main.Window.grabbed and KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
+	Player.crouching = main.Window.grabbed and KeyBoard.key("crouch").pressed and !inputState.isFlying;
 
 	if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,
@@ -947,7 +956,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const newOuterBox = (Player.crouchingBoundingBoxExtent - Player.standingBoundingBoxExtent)*@as(Vec3d, @splat(smoothPerc)) + Player.standingBoundingBoxExtent;
 
-		Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - Player.outerBoundingBoxExtent[2])};
+		physicsState.pos += newOuterBox - Player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - Player.outerBoundingBoxExtent[2])};
 
 		Player.outerBoundingBoxExtent = newOuterBox;
 
@@ -955,14 +964,19 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			.min = -Player.outerBoundingBoxExtent,
 			.max = Player.outerBoundingBoxExtent,
 		};
-		Player.eye.box = .{
+		physicsState.eye.?.box = .{
 			.min = -Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.2},
 			.max = Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.05},
 		};
-		Player.eye.desiredPos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
+		physicsState.eye.?.desiredPos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 	}
-
-	physics.update(deltaTime, acc, jumping);
+	inputState.crouching = Player.crouching;
+	inputState.boundingBox = Player.outerBoundingBox;
+	physics.update(deltaTime, &physicsState, inputState, .client);
+	if (physicsState.fallDamage > 0.01) {
+		main.sync.addHealth(-physicsState.fallDamage, .fall, .client, Player.id);
+	}
+	physicsState.toPlayer();
 
 	const time = main.timestamp();
 	if (nextBlockPlaceTime) |*placeTime| {
