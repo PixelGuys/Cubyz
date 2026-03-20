@@ -1020,34 +1020,15 @@ pub const EntityModel = struct {
 			return undefined;
 		}
 		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
-		std.debug.print("yuppii>>>>>>>>> size: {s}\n", .{name});
 		if (result != gltf.cgltf_result_success) {
 			gltf.cgltf_free(@ptrCast(data));
 			return undefined;
 		}
 		result = gltf.cgltf_validate(@ptrCast(data));
-		const en = switch (result) {
-			0 => "cgltf_result_success",
-			1 => "cgltf_result_data_too_short",
-			2 => "cgltf_result_unknown_format",
-			3 => "cgltf_result_invalid_json",
-			4 => "cgltf_result_invalid_gltf",
-			5 => "cgltf_result_invalid_options",
-			6 => "cgltf_result_file_not_found",
-			7 => "cgltf_result_io_error",
-			8 => "cgltf_result_out_of_memory",
-			9 => "cgltf_result_legacy_gltf",
-			10 => "cgltf_result_max_enum",
-			else => unreachable,		
-		};
-		std.debug.print("AAAAAAAAAAAAAAAAAAA: {s}\n", .{en});
 		if (result != gltf.cgltf_result_success) {
 			gltf.cgltf_free(@ptrCast(data));
 			return undefined;
 		}
-
-
-		std.debug.print("size: {s}\n", .{name});
 
 		var meshVertices = main.List(EntityVertex).init(main.stackAllocator);
 		defer meshVertices.deinit();
@@ -1055,69 +1036,64 @@ pub const EntityModel = struct {
 		defer meshIndices.deinit();
 		var baseVertex: u32 = 0;
 
-		std.log.info("\n", .{});
-
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count == 0) continue;
-			std.log.info("node name: \"{s}\"  child count: {d}", .{node.name, node.children_count});
+
 			for (node.children.*, 0..node.children_count) |child, _| {
-				if (node.parent != null) {
-					std.log.info("      parent name: \"{s}\"", .{node.parent.*.name});
-				}
-				var tMat = Mat4f.scale(Vec3f{
-					-node.scale[0],
-					node.scale[2],
-					node.scale[1],
-				});
+				if (child.mesh == null) continue;
+				
+				var tMat = Mat4f.translation(Vec3f{
+					node.translation[0],
+					node.translation[2],
+					node.translation[1],
+				}); 
 				tMat = tMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-					-node.rotation[0],
+					node.rotation[0],
 					node.rotation[2],
 					node.rotation[1],
 					node.rotation[3],
 				}));
-				tMat = tMat.mul(Mat4f.translation(Vec3f{
-					-node.translation[0],
-					node.translation[2],
-					node.translation[1],
-				}));
-				
-				if (child.mesh == null) continue;
+				tMat = tMat.mul(Mat4f.scale(Vec3f{
+					node.scale[0],
+					node.scale[2],
+					node.scale[1],
+				})); 
 
-				std.log.info("      child name: \"{s}\" count: {d}", .{child.name, child.mesh.*.primitives_count});
+				// std.log.info("      child name: \"{s}\" count: {d}", .{child.name, child.mesh.*.primitives_count});
 				const primitives = child.mesh.*.primitives;
 				for (primitives, 0..child.mesh.*.primitives_count) |primitive, _| {
-					const typ = switch (primitive.type) {
-						0 => "cgltf_primitive_type_invalid",
-						1 => "cgltf_primitive_type_points",
-						2 => "cgltf_primitive_type_lines",
-						3 => "cgltf_primitive_type_line_loop",
-						4 => "cgltf_primitive_type_line_strip",
-						5 => "cgltf_primitive_type_triangles",
-						6 => "cgltf_primitive_type_triangle_strip",
-						7 => "cgltf_primitive_type_triangle_fan",
-						else => unreachable,
-					};
-					std.log.err("primitive type: {s}", .{typ});
 					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
+						const typ = switch (primitive.type) {
+							0 => "cgltf_primitive_type_invalid",
+							1 => "cgltf_primitive_type_points",
+							2 => "cgltf_primitive_type_lines",
+							3 => "cgltf_primitive_type_line_loop",
+							4 => "cgltf_primitive_type_line_strip",
+							5 => "cgltf_primitive_type_triangles",
+							6 => "cgltf_primitive_type_triangle_strip",
+							7 => "cgltf_primitive_type_triangle_fan",
+							else => unreachable,
+						};
+						std.log.err("Unsupported primitive type: {s}", .{typ});
 						continue;
 					}
-					var cMat = Mat4f.scale(Vec3f{
-						-child.scale[0],
-						child.scale[2],
-						child.scale[1],
-					});
+					var cMat = Mat4f.translation(Vec3f{
+						child.translation[0],
+						child.translation[2],
+						child.translation[1],
+					}); 
 					cMat = cMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-						-child.rotation[0],
+						child.rotation[0],
 						child.rotation[2],
 						child.rotation[1],
 						child.rotation[3],
 					}));
-					cMat = cMat.mul(Mat4f.translation(Vec3f{
-						-child.translation[0],
-						child.translation[2],
-						child.translation[1],
-					}));
-					cMat = tMat.mul(cMat);
+					cMat = cMat.mul(Mat4f.scale(Vec3f{
+						child.scale[0],
+						child.scale[2],
+						child.scale[1],
+					})); 
+					cMat = Mat4f.rotationZ(std.math.pi).mul(tMat).mul(cMat);
 
 					const indicesAccessor = primitive.indices.*;
 					const vertCount = primitive.attributes[0].data.*.count;
@@ -1130,20 +1106,17 @@ pub const EntityModel = struct {
 						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
 						std.debug.print("{d} ", .{idx});
 					}
-					std.debug.print("pos buffer: {any}\n", .{primitive.attributes[0].data.*.buffer_view});
-					std.debug.print("norm buffer: {any}\n", .{primitive.attributes[1].data.*.buffer_view});
+
 					for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
 						const attribAccessor = attrib.data.*;
-
-						std.debug.print("\n typ: {d} count: {d} stride: {d}", .{attrib.type, attribAccessor.count, attribAccessor.stride});
 
 						switch (attrib.type) {
 							gltf.cgltf_attribute_type_position => {
 								for (0..attribAccessor.count) |v| {
 									var p: [3]f32 = undefined;
 									_ = attribAccessor.float(v, @ptrCast(&p), 3);
-									const pos: vec.Vec4f = cMat.mulVec(.{-p[0], p[2], p[1], 1});
-									vertSlice[v].pos = .{pos[0], pos[1], pos[2]};
+									const pos: vec.Vec4f = cMat.mulVec(.{p[0], p[2], p[1], 1});
+									vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
 								}
 							}, 
 							gltf.cgltf_attribute_type_normal => {
@@ -1166,15 +1139,10 @@ pub const EntityModel = struct {
 							else => continue,
 						}
 					}
-					
-					std.debug.print("\n", .{});
 				}
 			}
 		}
 
-		var finalMeshVertices = main.List(EntityVertex).init(main.stackAllocator);
-		defer finalMeshVertices.deinit();
-		
 		var vao: c_uint = 0;
 		c.glGenVertexArrays(1, &vao);
 		c.glBindVertexArray(vao);
@@ -1197,14 +1165,9 @@ pub const EntityModel = struct {
 		c.glEnableVertexAttribArray(1);
 		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
 		c.glEnableVertexAttribArray(2);
-		c.glVertexAttribPointer(3, 1, c.GL_UNSIGNED_INT, c.GL_FALSE, vertSize, @ptrFromInt(32));
-		c.glEnableVertexAttribArray(3);
-		c.glVertexAttribPointer(4, 1, c.GL_INT, c.GL_FALSE, vertSize, @ptrFromInt(36));
-		c.glEnableVertexAttribArray(4);
 
 		c.glBindVertexArray(0);
 		
-		std.debug.print("free!!\n", .{});
 		gltf.cgltf_free(@ptrCast(data));
 
 		return .{

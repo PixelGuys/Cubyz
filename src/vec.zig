@@ -192,9 +192,8 @@ pub const Mat4f = struct { // MARK: Mat4f
 		const sqy: f32 = q[1]*q[1];
 		const sqz: f32 = q[2]*q[2];
 
-		// invs (inverse square length) is only required if quaternion is not already normalised
 		const invs: f32 = 1 / (sqx + sqy + sqz + sqw);
-		const m00 = ( sqx - sqy - sqz + sqw)*invs; // since sqw + sqx + sqy + sqz =1/invs*invs
+		const m00 = ( sqx - sqy - sqz + sqw)*invs;
 		const m11 = (-sqx + sqy - sqz + sqw)*invs;
 		const m22 = (-sqx - sqy + sqz + sqw)*invs;
 		
@@ -213,17 +212,11 @@ pub const Mat4f = struct { // MARK: Mat4f
 		const m12 = 2.0 * (tmp1 - tmp2)*invs;
         const m = Mat4f{
             .rows = [4]Vec4f{
-                Vec4f{m00, m01, m02, 0},
-                Vec4f{m10, m11, m12, 0},
-                Vec4f{m20, m21, m22, 0},
+                Vec4f{m00, m10, m20, 0},
+                Vec4f{m01, m11, m21, 0},
+                Vec4f{m02, m12, m22, 0},
                 Vec4f{0,   0,   0,   1},
             },
-            // .rows = [4]Vec4f{
-            //     Vec4f{m00, m10, m20, 0},
-            //     Vec4f{m01, m11, m21, 0},
-            //     Vec4f{m02, m12, m22, 0},
-            //     Vec4f{0,   0,   0,   1},
-            // },
 		};
 		return m;  
 	} // zig fmt: on

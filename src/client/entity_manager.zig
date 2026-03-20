@@ -34,29 +34,6 @@ pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefine
 pub var mutex: std.Thread.Mutex = .{};
 
 pub fn init() void {
-	// entities = .init();
-	// pipeline = graphics.Pipeline.init(
-	// "assets/cubyz/shaders/entity_vertex.vert",
-	// "assets/cubyz/shaders/entity_fragment.frag",
-	// "",
-	// &uniforms,
-	// .{},
-	// .{.depthTest = true},
-	// .{.attachments = &.{.alphaBlending}},
-	// );
-
-	// modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
-	// const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entities/models/snale.obj") catch |err| blk: {
-	// std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-	// break :blk &.{};
-	// };
-	// defer main.stackAllocator.free(modelFile);
-	// const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
-	// defer main.stackAllocator.free(quadInfos);
-	// modelBuffer = .initStatic(main.models.QuadInfo, quadInfos);
-	// modelBuffer.bind(11);
-	// modelSize = @intCast(quadInfos.len);
-
 	entities = .init();
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/entity_vertex.vert",
@@ -68,14 +45,8 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
-	const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entities/models/snale.obj") catch |err| blk: {
-	std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-	break :blk &.{};
-	};
-	defer main.stackAllocator.free(modelFile);
-	
-	model = .loadGltf("assets/cubyz/entities/models/snale.glb");
+	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/expie_cubyz.png");
+	model = .loadGltf("assets/cubyz/entities/models/expie_cubyz.glb");
 
 	addEntity(ZonElement.parseFromString(main.globalArena, null, 
 		\\ .{
