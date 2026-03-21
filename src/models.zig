@@ -919,7 +919,6 @@ pub const EntityModel = struct {
 		pos: Vec3f,
 		rot: Vec4f,
 		scale: Vec3f,
-		mat: Mat4f = undefined,
 		
 		idx: u16,
 		parent: u16 = undefined,
@@ -967,6 +966,7 @@ pub const EntityModel = struct {
 		}
 
 		var nodeReverse: std.StringHashMap(u16) = .init(main.globalArena);
+		var nodes: main.List(Node) = .init(main.globalArena);
 
 		var vertices = main.List(EntityVertex).init(main.stackAllocator);
 		defer vertices.deinit();
@@ -975,6 +975,13 @@ pub const EntityModel = struct {
 		var baseVertex: u32 = 0;
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
+			nodeReverse.put(node.name, nodes.items.len);
+			nodes.append(Node{
+				.pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
+				.rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
+				.scale = Vec3f{ node.scale[0], node.scale[2], node.scale[1] },
+			});
+
 			if (node.mesh != null) {
 				const finalMat = Mat4f.rotationZ(std.math.pi).mul(getHierarchyMatrix(node));
 

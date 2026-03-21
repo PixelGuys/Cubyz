@@ -28,8 +28,6 @@ height: f64,
 pos: Vec3d = undefined,
 rot: Vec3f = undefined,
 
-
-
 id: u32,
 name: []const u8,
 
