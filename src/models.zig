@@ -1051,26 +1051,6 @@ pub const EntityModel = struct {
 	}
 
 	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
-		if (node.parent == null) {
-			var parentMat = Mat4f.translation(Vec3f{
-				node.translation[0],
-				node.translation[2],
-				node.translation[1],
-			});
-			parentMat = parentMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-				node.rotation[0],
-				node.rotation[2],
-				node.rotation[1],
-				node.rotation[3],
-			}));
-			parentMat = parentMat.mul(Mat4f.scale(Vec3f{
-				node.scale[0],
-				node.scale[2],
-				node.scale[1],
-			}));
-			return parentMat;
-		}
-
 		var currentMat = Mat4f.translation(Vec3f{
 			node.translation[0],
 			node.translation[2],
@@ -1087,6 +1067,10 @@ pub const EntityModel = struct {
 			node.scale[2],
 			node.scale[1],
 		}));
+		
+		if (node.parent == null) {
+			return currentMat;
+		}
 
 		return getHierarchyMatrix(node.parent.*).mul(currentMat);
 	}
