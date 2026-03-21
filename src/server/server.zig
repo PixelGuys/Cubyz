@@ -485,6 +485,14 @@ pub const User = struct { // MARK: User
 			.no, .neutral => false,
 		};
 	}
+
+	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		if (main.settings.showIdWithName) {
+			try writer.print("{s}@{d}", .{user.name, user.playerIndex});
+		} else {
+			try writer.print("{s}", .{user.name});
+		}
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
@@ -745,6 +753,7 @@ pub fn connectInternal(user: *User) void {
 		const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", user.id);
 		entityZon.put("name", user.name);
+		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -759,6 +768,7 @@ pub fn connectInternal(user: *User) void {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
 			entityZon.put("name", other.name);
+			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -798,7 +808,7 @@ pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	sendRawMessage(msg);
 }
 
-pub fn getUserByIndexAndIncreaseRefCount(index: u32) ?*User {
+pub fn getUserByIndexAndIncreaseRefCount(index: usize) ?*User {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for (userList) |user| {

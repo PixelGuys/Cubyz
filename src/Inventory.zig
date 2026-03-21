@@ -235,7 +235,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 				switch (source) {
 					.playerInventory, .hand => |id| {
 						if (id != user.id) {
-							std.log.err("Player {s} tried to access the inventory of another player.", .{user.name});
+							std.log.err("Player {f} tried to access the inventory of another player.", .{user});
 							return error.Invalid;
 						}
 					},
