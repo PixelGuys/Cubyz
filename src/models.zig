@@ -980,52 +980,44 @@ pub const EntityModel = struct {
 		};
 	}
 
-	pub fn loadGltf(path: []const u8) EntityModel {
+	pub fn loadGltf(path: []const u8) !EntityModel {
 		// TODO: consider overriding cgltf_memory_options functions 
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
-		// var file = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/Untitled.gltf") catch |err| blk: {
-		//         std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-		//         break :blk &.{};
-		//     };
-		// defer main.stackAllocator.free(file);
 
-		// for (file) |i| {
-		//     std.debug.print("{c}", .{i});
-		// }
+		const file = main.files.cwd().read(main.stackAllocator, path) catch |err| blk: {
+		        std.log.err("Error while reading entity model: {s}", .{@errorName(err)});
+		        break :blk &.{};
+		    };
+		defer main.stackAllocator.free(file);
 
-		// const result = gltf.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
+		for (file) |i| {
+		    std.debug.print("{c}", .{i});
+		}
+
+		// var result = gltf.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
 		// TODO: make this parse from memory (important to parse null terminated array) (probably unnessecary)
 		var result = gltf.cgltf_parse_file(&options, @ptrCast(path.ptr), @ptrCast(&data));
-
-		const name = switch (result) {
-			0 => "result_success",
-			1 => "result_data_too_short",
-			2 => "result_unknown_format",
-			3 => "result_invalid_json",
-			4 => "result_invalid_gltf",
-			5 => "result_invalid_options",
-			6 => "result_file_not_found",
-			7 => "result_io_error",
-			8 => "result_out_of_memory",
-			9 => "result_legacy_gltf",
-			10 => "result_max_enum",
-			else => unreachable,
-		};
-		std.debug.print("yuppii!!!!!!!!!!!!!!! size: {s}\n", .{name});
-
 		if (result != gltf.cgltf_result_success) {
-			return undefined;
+			const err = getGltfError(result);
+			std.log.err("Failed to parse file: {s}", .{@errorName(err)});
+			return err;
 		}
+
 		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
 		if (result != gltf.cgltf_result_success) {
+			const err = getGltfError(result);
+			std.log.err("Failed to load buffers: {s}", .{@errorName(err)});
 			gltf.cgltf_free(@ptrCast(data));
-			return undefined;
+			return err;
 		}
+
 		result = gltf.cgltf_validate(@ptrCast(data));
 		if (result != gltf.cgltf_result_success) {
+			const err = getGltfError(result);
+			std.log.err("Invalid Gltf: {s}", .{@errorName(err)});
 			gltf.cgltf_free(@ptrCast(data));
-			return undefined;
+			return err;
 		}
 
 		var meshVertices = main.List(EntityVertex).init(main.stackAllocator);
@@ -1162,6 +1154,21 @@ pub const EntityModel = struct {
 			.vbo = vbo,
 			.ebo = ebo,
 			.size = @intCast(meshIndices.items.len),
+		};
+	}
+
+	fn getGltfError(result: c_int) !void {
+		return switch (result) {
+			1 => error.DataTooShort,
+			2 => error.UnknownFormat,
+			3 => error.InvalidJson,
+			4 => error.InvalidGltf,
+			5 => error.InvalidOptions,
+			6 => error.FileNotFound,
+			7 => error.IoError,
+			8 => error.OutOfMemory,
+			9 => error.LegacyGltf,
+			else => unreachable,
 		};
 	}
 

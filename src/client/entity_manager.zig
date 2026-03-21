@@ -48,7 +48,9 @@ pub fn init() void {
 	// modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
 	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/expie_cubyz.png");
 	// model = .loadGltf("assets/cubyz/entities/models/snale.glb");
-	model = .loadGltf("assets/cubyz/entities/models/expie_cubyz.glb");
+	model = .loadGltf("assets/cubyz/entities/models/expie_cubyz.glb") catch {
+		std.log.err("idk what to do here yet", .{});
+	};
 
 	addEntity(ZonElement.parseFromString(main.globalArena, null,
 		\\ .{
