@@ -981,10 +981,8 @@ pub const EntityModel = struct {
 	}
 
 	pub fn loadGltf(path: []const u8) EntityModel {
-		// TODO: check path's format
-		var options: gltf.cgltf_options = .{
-			.type = gltf.cgltf_file_type_glb,
-		};
+		// TODO: consider overriding cgltf_memory_options functions 
+		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
 		// var file = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entity/models/Untitled.gltf") catch |err| blk: {
 		//         std.log.err("Error while reading player model: {s}", .{@errorName(err)});
