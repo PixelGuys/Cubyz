@@ -991,10 +991,6 @@ pub const EntityModel = struct {
 		// };
 		// defer main.stackAllocator.free(file);
 
-		// for (file) |i| {
-		//     std.debug.print("{c}", .{i});
-		// }
-
 		// var result = gltf.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
 		// TODO: make this parse from memory (important to parse null terminated array) (probably unnessecary)
 		var result = gltf.cgltf_parse_file(&options, @ptrCast(path.ptr), @ptrCast(&data));
@@ -1027,24 +1023,59 @@ pub const EntityModel = struct {
 		var baseVertex: u32 = 0;
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
-			// std.debug.print("\n NAME: '{s}'  CHILD COUNT: {d}  HAS PARENT {any}    ", .{node.name, node.children_count, node.parent != null});
-
-			// if (node.parent != null) {
-			// std.debug.print("PARENT NAME: {s} ", .{node.parent.*.name});
-			// }
-			// if (node.children_count == 0 or node.parent != null) continue;
-			// std.debug.print("\n NAME: '{s}'  CHILD COUNT: {d}  HAS PARENT {any}", .{node.name, node.children_count, node.parent != null});
-			
-			// for (node.children, 0..node.children_count) |child, _| {
-			// std.debug.print("\n    CHILD NAME: '{s}'   PARENT NAME: '{s}'", .{child.*.name, child.*.parent.*.name});
-			// }
-
-			// std.debug.print("\n\n", .{});
-
-			std.debug.print("\n NAME: '{s}'  CHILD COUNT: {d}  HAS PARENT {any}  HAS MESH {any}", .{node.name, node.children_count, node.parent != null, node.mesh != null});
-
 			if (node.mesh != null) {
-				processNode(node, &vertices, &indices, &baseVertex);
+				const finalMat = Mat4f.rotationZ(std.math.pi).mul(getHierarchyMatrix(node));
+
+				const primitives = node.mesh.*.primitives;
+				for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
+					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
+						// we could possibly support different primitive types by storing them in the model
+						std.log.err("Unsupported primitive type: {d}", .{primitive.type});
+						continue;
+					}
+
+					const indicesAccessor = primitive.indices.*;
+					const vertCount = primitive.attributes[0].data.*.count;
+					var indicesSlice = indices.addMany(indicesAccessor.count);
+					baseVertex = @intCast(vertices.items.len);
+					const vertSlice: []EntityVertex = vertices.addMany(vertCount);
+					for (0..indicesAccessor.count) |i| {
+						const idx = indicesAccessor.index(i);
+						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+					}
+
+					for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
+						const attribAccessor = attrib.data.*;
+
+						switch (attrib.type) {
+							gltf.cgltf_attribute_type_position => {
+								for (0..attribAccessor.count) |v| {
+									var p: [3]f32 = undefined;
+									_ = attribAccessor.float(v, @ptrCast(&p), 3);
+									const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[2], p[1], 1});
+									vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
+								}
+							},
+							gltf.cgltf_attribute_type_normal => {
+								for (0..attribAccessor.count) |v| {
+									var n: [3]f32 = undefined;
+									_ = attribAccessor.float(v, @ptrCast(&n), 3);
+
+									vertSlice[v].normal = .{-n[0], n[2], n[1]};
+								}
+							},
+							gltf.cgltf_attribute_type_texcoord => {
+								for (0..attribAccessor.count) |v| {
+									var uv: [2]f32 = undefined;
+									_ = attribAccessor.float(v, @ptrCast(&uv), 2);
+
+									vertSlice[v].uv = .{uv[0], 1 - uv[1]};
+								}
+							},
+							else => continue,
+						}
+					}
+				}
 			}
 		}
 
@@ -1081,62 +1112,7 @@ pub const EntityModel = struct {
 		};
 	}
 
-	fn processNode(node: gltf.cgltf_node, vertices: *main.List(EntityVertex), indices: *main.List(u32), baseVertex: *u32) void {
-		const finalMat = Mat4f.rotationZ(std.math.pi).mul(getWorldMatrix(node));
-
-		const primitives = node.mesh.*.primitives;
-		for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
-			if (primitive.type != gltf.cgltf_primitive_type_triangles) {
-				// we could possibly support different primitive types by storing them in the model
-				std.log.err("Unsupported primitive type: {d}", .{primitive.type});
-				continue;
-			}
-
-			const indicesAccessor = primitive.indices.*;
-			const vertCount = primitive.attributes[0].data.*.count;
-			var indicesSlice = indices.addMany(indicesAccessor.count);
-			baseVertex.* = @intCast(vertices.items.len);
-			const vertSlice: []EntityVertex = vertices.addMany(vertCount);
-			for (0..indicesAccessor.count) |i| {
-				const idx = indicesAccessor.index(i);
-				indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex.*;
-			}
-
-			for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
-				const attribAccessor = attrib.data.*;
-
-				switch (attrib.type) {
-					gltf.cgltf_attribute_type_position => {
-						for (0..attribAccessor.count) |v| {
-							var p: [3]f32 = undefined;
-							_ = attribAccessor.float(v, @ptrCast(&p), 3);
-							const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[2], p[1], 1});
-							vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
-						}
-					},
-					gltf.cgltf_attribute_type_normal => {
-						for (0..attribAccessor.count) |v| {
-							var n: [3]f32 = undefined;
-							_ = attribAccessor.float(v, @ptrCast(&n), 3);
-
-							vertSlice[v].normal = .{-n[0], n[2], n[1]};
-						}
-					},
-					gltf.cgltf_attribute_type_texcoord => {
-						for (0..attribAccessor.count) |v| {
-							var uv: [2]f32 = undefined;
-							_ = attribAccessor.float(v, @ptrCast(&uv), 2);
-
-							vertSlice[v].uv = .{uv[0], 1 - uv[1]};
-						}
-					},
-					else => continue,
-				}
-			}
-		}
-	}
-
-	fn getWorldMatrix(node: gltf.cgltf_node) Mat4f {
+	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
 		if (node.parent == null) {
 			var parentMat = Mat4f.translation(Vec3f{
 				node.translation[0],
@@ -1173,9 +1149,8 @@ pub const EntityModel = struct {
 			node.scale[2],
 			node.scale[1],
 		}));
-		std.debug.print("\nhello!!! name: '{s}' parent name: '{s}'", .{node.name, node.parent.*.name});
 
-		return getWorldMatrix(node.parent.*).mul(currentMat);
+		return getHierarchyMatrix(node.parent.*).mul(currentMat);
 	}
 
 	fn getGltfError(result: c_uint) anyerror {
