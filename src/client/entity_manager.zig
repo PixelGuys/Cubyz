@@ -45,10 +45,10 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
-	// modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/expie_cubyz.png");
-	model = .loadGltf("assets/cubyz/entities/models/snale.glb");
-	// model = .loadGltf("assets/cubyz/entities/models/expie_cubyz.glb");
+	// modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
+	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/expie_cubyz.png");
+	// model = .loadGltf("assets/cubyz/entities/models/snale.glb");
+	model = .loadGltf("assets/cubyz/entities/models/expie_cubyz.glb");
 
 	addEntity(ZonElement.parseFromString(main.globalArena, null,
 		\\ .{
