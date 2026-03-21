@@ -1109,7 +1109,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 			}
 
-
 			var newBlock = block;
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
 			main.sync.ClientSide.mutex.unlock();
