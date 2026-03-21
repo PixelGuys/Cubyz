@@ -10,6 +10,26 @@ pub const Vec4i = @Vector(4, i32);
 pub const Vec4f = @Vector(4, f32);
 pub const Vec4d = @Vector(4, f64);
 
+pub const Vec4fComponent = enum { x, y, z, w };
+
+pub inline fn swizzle(
+    v: Vec4f,
+    comptime x: Vec4fComponent,
+    comptime y: Vec4fComponent,
+    comptime z: Vec4fComponent,
+    comptime w: Vec4fComponent,
+) Vec4f {
+    return @shuffle(f32, v, undefined, [4]i32{ @intFromEnum(x), @intFromEnum(y), @intFromEnum(z), @intFromEnum(w) });
+}
+
+pub inline fn andInt(v0: anytype, v1: anytype) @TypeOf(v0, v1) {
+    const T = @TypeOf(v0, v1);
+    const Tu = @Vector(@typeInfo(T).vector.len, u32);
+    const v0u = @as(Tu, @bitCast(v0));
+    const v1u = @as(Tu, @bitCast(v1));
+    return @as(T, @bitCast(v0u & v1u)); // andps
+}
+
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
 	return .{pos[0], pos[1], pos[2], w};
 }
@@ -114,6 +134,17 @@ pub const Mat4f = struct { // MARK: Mat4f
 		};
 	}
 
+	pub fn fromArr(arr: [16]f32) Mat4f { // zig fmt: off
+		return Mat4f{
+			.rows = [4]Vec4f{
+				Vec4f{arr[0],  arr[1],  arr[2],  arr[3]},
+				Vec4f{arr[4],  arr[5],  arr[6],  arr[7]},
+				Vec4f{arr[8],  arr[9],  arr[10], arr[11]},
+				Vec4f{arr[12], arr[13], arr[14], arr[15]},
+			},
+		};
+	} // zig fmt: on
+
 	pub fn translation(pos: Vec3f) Mat4f {
 		return Mat4f{
 			.rows = [4]Vec4f{
@@ -174,6 +205,56 @@ pub const Mat4f = struct { // MARK: Mat4f
 			},
 		};
 	}
+
+	pub fn rotationQuat(quat: Vec4f) Mat4f { // zig fmt: off
+		const f32x4_mask3: Vec4f = Vec4f{
+			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
+			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
+			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
+			0,
+		};
+		const q0 = quat + quat;
+		var q1 = quat * q0;
+
+		var v0 = swizzle(q1, .y, .x, .x, .w);
+		v0 = andInt(v0, f32x4_mask3);
+
+		var v1 = swizzle(q1, .z, .z, .y, .w);
+		v1 = andInt(v1, f32x4_mask3);
+
+		const r0 = (Vec4f{1.0, 1.0, 1.0, 0.0} - v0) - v1;
+
+		v0 = swizzle(quat, .x, .x, .y, .w);
+		v1 = swizzle(q0, .z, .y, .z, .w);
+		v0 = v0 * v1;
+
+		v1 = swizzle(quat, .w, .w, .w, .w);
+		const v2 = swizzle(q0, .y, .z, .x, .w);
+		v1 = v1 * v2;
+
+		const r1 = v0 + v1;
+		const r2 = v0 - v1;
+
+		v0 = @shuffle(f32, r1, r2, [4]i32{ 1, 2, ~@as(i32, 0), ~@as(i32, 1) });
+		v0 = swizzle(v0, .x, .z, .w, .y);
+		v1 = @shuffle(f32, r1, r2, [4]i32{ 0, 0, ~@as(i32, 2), ~@as(i32, 2) });
+		v1 = swizzle(v1, .x, .z, .x, .z);
+
+		q1 = @shuffle(f32, r0, v0, [4]i32{ 0, 3, ~@as(i32, 0), ~@as(i32, 1) });
+		q1 = swizzle(q1, .x, .z, .w, .y);
+
+		var m: Mat4f = undefined;
+		m.rows[0] = q1;
+
+		q1 = @shuffle(f32, r0, v0, [4]i32{ 1, 3, ~@as(i32, 2), ~@as(i32, 3) });
+		q1 = swizzle(q1, .z, .x, .w, .y);
+		m.rows[1] = q1;
+
+		q1 = @shuffle(f32, v1, r0, [4]i32{ 0, 1, ~@as(i32, 2), ~@as(i32, 3) });
+		m.rows[2] = q1;
+		m.rows[3] = Vec4f{0.0, 0.0, 0.0, 1.0};
+		return m;  
+	} // zig fmt: on
 
 	pub fn perspective(fovY: f32, aspect: f32, near: f32, far: f32) Mat4f { // zig fmt: off
 		const tanY = std.math.tan(fovY*0.5);

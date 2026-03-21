@@ -3,6 +3,7 @@ const std = @import("std");
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const graphics = @import("graphics.zig");
+const c = graphics.c;
 const main = @import("main");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
@@ -10,6 +11,10 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
+
+const gltf = @cImport({
+	@cInclude("cgltf.h");
+});
 
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -899,3 +904,277 @@ pub fn uploadModels() void {
 	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
 	quadSSBO.bind(4);
 }
+
+pub const EntityModel = struct {
+	vao: c_uint,
+	vbo: c_uint,
+	ebo: c_uint,
+	size: u32,
+
+	const EntityVertex = struct {
+		pos: [3]f32,
+		normal: [3]f32,
+		uv: [2]f32,
+	};
+
+	pub fn initFromObj(allocator: main.heap.NeverFailingAllocator, path: []const u8) EntityModel {
+		const modelFile = main.files.cwd().read(allocator, path) catch |err| blk: {
+			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
+			break :blk &.{};
+		};
+		defer allocator.free(modelFile);
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(allocator, modelFile);
+		defer allocator.free(quadInfos);
+
+		const vertices = allocator.alloc(EntityVertex, quadInfos.len*4);
+		defer allocator.free(vertices);
+		const indices: []u32 = allocator.alloc(u32, quadInfos.len*6);
+		defer allocator.free(indices);
+
+		var cur: u32 = 0;
+		for (quadInfos) |quad| {
+			inline for (0..4) |i| {
+				const v = cur + @as(u32, @intCast(i));
+				vertices[v].normal = quad.normal;
+				vertices[v].pos = quad.corners[i];
+				vertices[v].uv = quad.cornerUV[i];
+			}
+			cur += 4;
+		}
+
+		const lut = [_]u32{0, 2, 1, 1, 2, 3};
+		for (0..indices.len) |i| {
+			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
+		}
+
+		var vao: c_uint = 0;
+		c.glGenVertexArrays(1, &vao);
+		c.glBindVertexArray(vao);
+
+		var vbo: c_uint = 0;
+		c.glGenBuffers(1, &vbo);
+		var ebo: c_uint = 0;
+		c.glGenBuffers(1, &ebo);
+
+		const vertSize = @sizeOf(EntityVertex);
+
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len*vertSize), @ptrCast(vertices), c.GL_STATIC_DRAW);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
+
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(0));
+		c.glEnableVertexAttribArray(0);
+		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(12));
+		c.glEnableVertexAttribArray(1);
+		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
+		c.glEnableVertexAttribArray(2);
+
+		c.glBindVertexArray(0);
+
+		return .{
+			.vao = vao,
+			.vbo = vbo,
+			.ebo = ebo,
+			.size = @intCast(indices.len),
+		};
+	}
+
+	pub fn loadGltf(path: []const u8) !EntityModel {
+		// TODO: consider overriding cgltf_memory_options functions 
+		var options: gltf.cgltf_options = .{};
+		var data: *gltf.cgltf_data = undefined;
+
+		const file = main.files.cwd().read(main.stackAllocator, path) catch |err| blk: {
+		        std.log.err("Error while reading entity model: {s}", .{@errorName(err)});
+		        break :blk &.{};
+		    };
+		defer main.stackAllocator.free(file);
+
+		for (file) |i| {
+		    std.debug.print("{c}", .{i});
+		}
+
+		// var result = gltf.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
+		// TODO: make this parse from memory (important to parse null terminated array) (probably unnessecary)
+		var result = gltf.cgltf_parse_file(&options, @ptrCast(path.ptr), @ptrCast(&data));
+		if (result != gltf.cgltf_result_success) {
+			const err = getGltfError(result);
+			std.log.err("Failed to parse file: {s}", .{@errorName(err)});
+			return err;
+		}
+
+		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
+		if (result != gltf.cgltf_result_success) {
+			const err = getGltfError(result);
+			std.log.err("Failed to load buffers: {s}", .{@errorName(err)});
+			gltf.cgltf_free(@ptrCast(data));
+			return err;
+		}
+
+		result = gltf.cgltf_validate(@ptrCast(data));
+		if (result != gltf.cgltf_result_success) {
+			const err = getGltfError(result);
+			std.log.err("Invalid Gltf: {s}", .{@errorName(err)});
+			gltf.cgltf_free(@ptrCast(data));
+			return err;
+		}
+
+		var meshVertices = main.List(EntityVertex).init(main.stackAllocator);
+		defer meshVertices.deinit();
+		var meshIndices = main.List(u32).init(main.stackAllocator);
+		defer meshIndices.deinit();
+		var baseVertex: u32 = 0;
+
+		for (data.nodes, 0..data.nodes_count) |node, _| {
+			if (node.children_count == 0) continue;
+
+			// TODO: process nodes recursively
+			for (node.children.*, 0..node.children_count) |child, _| {
+				if (child.mesh == null) continue;
+
+				var tMat = Mat4f.translation(Vec3f{
+					node.translation[0],
+					node.translation[2],
+					node.translation[1],
+				});
+				tMat = tMat.mul(Mat4f.rotationQuat(vec.Vec4f{
+					node.rotation[0],
+					node.rotation[2],
+					node.rotation[1],
+					node.rotation[3],
+				}));
+				tMat = tMat.mul(Mat4f.scale(Vec3f{
+					node.scale[0],
+					node.scale[2],
+					node.scale[1],
+				}));
+
+				// std.log.info("      child name: \"{s}\" count: {d}", .{child.name, child.mesh.*.primitives_count});
+				const primitives = child.mesh.*.primitives;
+				for (primitives, 0..child.mesh.*.primitives_count) |primitive, _| {
+					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
+						std.log.err("Unsupported primitive type: {d}", .{primitive.type});
+						continue;
+					}
+					var cMat = Mat4f.translation(Vec3f{
+						child.translation[0],
+						child.translation[2],
+						child.translation[1],
+					});
+					cMat = cMat.mul(Mat4f.rotationQuat(vec.Vec4f{
+						child.rotation[0],
+						child.rotation[2],
+						child.rotation[1],
+						child.rotation[3],
+					}));
+					cMat = cMat.mul(Mat4f.scale(Vec3f{
+						child.scale[0],
+						child.scale[2],
+						child.scale[1],
+					}));
+					cMat = Mat4f.rotationZ(std.math.pi).mul(tMat).mul(cMat);
+
+					const indicesAccessor = primitive.indices.*;
+					const vertCount = primitive.attributes[0].data.*.count;
+					var indicesSlice = meshIndices.addMany(indicesAccessor.count);
+					baseVertex = @intCast(meshVertices.items.len);
+					const vertSlice: []EntityVertex = meshVertices.addMany(vertCount);
+					std.debug.print("{d} \n", .{indicesAccessor.component_type});
+					for (0..indicesAccessor.count) |i| {
+						const idx = indicesAccessor.index(i);
+						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+						std.debug.print("{d} ", .{idx});
+					}
+
+					for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
+						const attribAccessor = attrib.data.*;
+
+						switch (attrib.type) {
+							gltf.cgltf_attribute_type_position => {
+								for (0..attribAccessor.count) |v| {
+									var p: [3]f32 = undefined;
+									_ = attribAccessor.float(v, @ptrCast(&p), 3);
+									const pos: vec.Vec4f = cMat.mulVec(.{p[0], p[2], p[1], 1});
+									vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
+								}
+							},
+							gltf.cgltf_attribute_type_normal => {
+								for (0..attribAccessor.count) |v| {
+									var n: [3]f32 = undefined;
+									_ = attribAccessor.float(v, @ptrCast(&n), 3);
+
+									vertSlice[v].normal = .{-n[0], n[2], n[1]};
+								}
+							},
+							gltf.cgltf_attribute_type_texcoord => {
+								for (0..attribAccessor.count) |v| {
+									var uv: [2]f32 = undefined;
+									_ = attribAccessor.float(v, @ptrCast(&uv), 2);
+
+									vertSlice[v].uv = .{uv[0], 1 - uv[1]};
+								}
+							},
+							else => continue,
+						}
+					}
+				}
+			}
+		}
+
+		var vao: c_uint = 0;
+		c.glGenVertexArrays(1, &vao);
+		c.glBindVertexArray(vao);
+
+		var vbo: c_uint = 0;
+		c.glGenBuffers(1, &vbo);
+		var ebo: c_uint = 0;
+		c.glGenBuffers(1, &ebo);
+
+		const vertSize = @sizeOf(EntityVertex);
+
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(meshVertices.items.len*vertSize), @ptrCast(meshVertices.items), c.GL_STATIC_DRAW);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(meshIndices.items.len*@sizeOf(u32)), @ptrCast(meshIndices.items), c.GL_STATIC_DRAW);
+
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(0));
+		c.glEnableVertexAttribArray(0);
+		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(12));
+		c.glEnableVertexAttribArray(1);
+		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
+		c.glEnableVertexAttribArray(2);
+
+		c.glBindVertexArray(0);
+
+		gltf.cgltf_free(@ptrCast(data));
+
+		return .{
+			.vao = vao,
+			.vbo = vbo,
+			.ebo = ebo,
+			.size = @intCast(meshIndices.items.len),
+		};
+	}
+
+	fn getGltfError(result: c_int) !void {
+		return switch (result) {
+			1 => error.DataTooShort,
+			2 => error.UnknownFormat,
+			3 => error.InvalidJson,
+			4 => error.InvalidGltf,
+			5 => error.InvalidOptions,
+			6 => error.FileNotFound,
+			7 => error.IoError,
+			8 => error.OutOfMemory,
+			9 => error.LegacyGltf,
+			else => unreachable,
+		};
+	}
+
+	pub fn deinit(self: EntityModel) void {
+		c.glDeleteVertexArrays(1, &self.vao);
+		c.glDeleteBuffers(1, &self.vbo);
+		c.glDeleteBuffers(1, &self.ebo);
+	}
+};
