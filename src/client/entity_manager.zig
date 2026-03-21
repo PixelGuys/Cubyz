@@ -51,6 +51,7 @@ pub fn init() void {
 		break :blk .initEmpty();
 	};
 
+	// TODO: remove before merge
 	addEntity(ZonElement.parseFromString(main.globalArena, null,
 		\\ .{
 		\\    .id = 1,
