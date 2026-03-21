@@ -947,37 +947,7 @@ pub const EntityModel = struct {
 			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 		}
 
-		var vao: c_uint = 0;
-		c.glGenVertexArrays(1, &vao);
-		c.glBindVertexArray(vao);
-
-		var vbo: c_uint = 0;
-		c.glGenBuffers(1, &vbo);
-		var ebo: c_uint = 0;
-		c.glGenBuffers(1, &ebo);
-
-		const vertSize = @sizeOf(EntityVertex);
-
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len*vertSize), @ptrCast(vertices), c.GL_STATIC_DRAW);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
-
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(0));
-		c.glEnableVertexAttribArray(0);
-		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(12));
-		c.glEnableVertexAttribArray(1);
-		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
-		c.glEnableVertexAttribArray(2);
-
-		c.glBindVertexArray(0);
-
-		return .{
-			.vao = vao,
-			.vbo = vbo,
-			.ebo = ebo,
-			.size = @intCast(indices.len),
-		};
+		return uploadMeshAndGetModel(vertices.items, indices.items);
 	}
 
 	pub fn loadGltf(path: []const u8) !EntityModel {

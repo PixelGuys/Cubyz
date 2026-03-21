@@ -50,8 +50,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV", t)));
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
 	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
-	exe.addIncludePath(b.path("gltflib"));
-	exe.addCSourceFile(.{ .file = b.path("gltflib/cgltf.c"), .flags = &.{"-Os", "-g"} });
 
 	if (t.os.tag == .macos) {
 		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/Cubyz.app/Contents/Frameworks/libMoltenVK.dylib");
