@@ -20,10 +20,16 @@ pub fn init(zon: ZonElement) ?*@This() {
 	return result;
 }
 
-pub fn projectPointOntoPlane(a: f32, b: f32, c: f32) f32 {
-
+pub fn calculateProjectedPointValue(a: f32, b: f32, c: f32) f32 {
+	// First find a clamped point on the plane of the ocahedron
 	const calculatedValue = (a*2 - b - c + 1)/3;
-	return calculatedValue;
+	return @max(calculatedValue, 0);
+}
+
+pub fn calculateReProjectedPointValue(a: f32, b: f32, c: f32) f32 {
+	// First find a clamped point on the plane of the ocahedron
+	const calculatedValue = (a*2 - b - c + 1)/3;
+	return @max(calculatedValue, 0);
 }
 
 pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), relPos: Vec3i, _seed: u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
@@ -44,7 +50,22 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 		while (y < maxInt[1]) : (y += voxelSize) {
 			var z = minInt[2] & ~(voxelSize - 1);
 			while (z < maxInt[2]) : (z += voxelSize) {
-				const distanceSquare: f32 = @floatFromInt((x - relPos[0])*(x - relPos[0]) + (y - relPos[1])*(y - relPos[1]) + (z - relPos[2])*(z - relPos[2]));
+				const pointX = calculateProjectedPointValue(x ,y ,z);
+				const pointY = calculateProjectedPointValue(y ,x ,z);
+				const pointZ = calculateProjectedPointValue(z ,x ,y);
+				
+				var distanceSquare = 0;
+
+				if ((PointX == 0) or (PointY == 0) or (PointZ == 0)) {
+					// if the clamped point is on one of the axial planes and not the octahedron clamp to nearest line
+					const rePointX = calculateReProjectedPointValue(x ,y ,z);
+					const rePointY = calculateReProjectedPointValue(y ,x ,z);
+					const rePointZ = calculateReProjectedPointValue(z ,x ,y)
+					distanceSquare = @sqrt(rePointX + rePointY + rePointZ);
+				} else {
+					distanceSquare = @sqrt(pointX*pointX + pointY*pointY + pointZ*pointZ);
+				}
+
 				if (distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
 
 				const sphereSdf = @sqrt(distanceSquare) - radius;
