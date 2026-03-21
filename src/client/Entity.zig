@@ -18,6 +18,17 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
 
+const Node = struct {
+	pos: Vec3f,
+	rot: Vec4f,
+	scale: Vec3f,
+	mat: Mat4f,
+	
+	idx: u16,
+	parent: u16,
+	childs: []u16,
+};
+
 interpolatedValues: utils.GenericInterpolation(6) = undefined,
 _interpolationPos: [6]f64 = undefined,
 _interpolationVel: [6]f64 = undefined,
@@ -27,6 +38,8 @@ height: f64,
 
 pos: Vec3d = undefined,
 rot: Vec3f = undefined,
+
+
 
 id: u32,
 name: []const u8,
