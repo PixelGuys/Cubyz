@@ -980,7 +980,7 @@ pub const EntityModel = struct {
 		};
 	}
 
-	pub fn loadGltf(path: []const u8) anyerror!EntityModel {
+	pub fn loadGltf(path: []const u8) !EntityModel {
 		// TODO: consider overriding cgltf_memory_options functions
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
@@ -997,23 +997,17 @@ pub const EntityModel = struct {
 		defer gltf.cgltf_free(@ptrCast(data));
 
 		if (result != gltf.cgltf_result_success) {
-			const err = getGltfError(result);
-			std.log.err("Failed to parse Gltf: {s}", .{@errorName(err)});
-			return err;
+			return getGltfError(result);
 		}
 
 		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
 		if (result != gltf.cgltf_result_success) {
-			const err = getGltfError(result);
-			std.log.err("Failed to load buffers: {s}", .{@errorName(err)});
-			return err;
+			return getGltfError(result);
 		}
 
 		result = gltf.cgltf_validate(@ptrCast(data));
 		if (result != gltf.cgltf_result_success) {
-			const err = getGltfError(result);
-			std.log.err("Invalid Gltf: {s}", .{@errorName(err)});
-			return err;
+			return getGltfError(result);
 		}
 
 		var vertices = main.List(EntityVertex).init(main.stackAllocator);
@@ -1079,37 +1073,11 @@ pub const EntityModel = struct {
 			}
 		}
 
-		var vao: c_uint = 0;
-		c.glGenVertexArrays(1, &vao);
-		c.glBindVertexArray(vao);
+		return uploadMeshAndGetModel(vertices.items, indices.items);
+	}
 
-		var vbo: c_uint = 0;
-		c.glGenBuffers(1, &vbo);
-		var ebo: c_uint = 0;
-		c.glGenBuffers(1, &ebo);
-
-		const vertSize = @sizeOf(EntityVertex);
-
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.items.len*vertSize), @ptrCast(vertices.items), c.GL_STATIC_DRAW);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.items.len*@sizeOf(u32)), @ptrCast(indices.items), c.GL_STATIC_DRAW);
-
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(0));
-		c.glEnableVertexAttribArray(0);
-		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(12));
-		c.glEnableVertexAttribArray(1);
-		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
-		c.glEnableVertexAttribArray(2);
-
-		c.glBindVertexArray(0);
-
-		return .{
-			.vao = vao,
-			.vbo = vbo,
-			.ebo = ebo,
-			.size = @intCast(indices.items.len),
-		};
+	pub fn initEmpty() EntityModel {
+		return uploadMeshAndGetModel(&[0]EntityVertex{}, &[0]u32{});
 	}
 
 	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
@@ -1165,6 +1133,40 @@ pub const EntityModel = struct {
 			8 => error.OutOfMemory,
 			9 => error.LegacyGltf,
 			else => unreachable,
+		};
+	}
+
+	fn uploadMeshAndGetModel(vertices: []EntityVertex, indices: []u32) EntityModel {
+		var vao: c_uint = 0;
+		c.glGenVertexArrays(1, &vao);
+		c.glBindVertexArray(vao);
+
+		var vbo: c_uint = 0;
+		c.glGenBuffers(1, &vbo);
+		var ebo: c_uint = 0;
+		c.glGenBuffers(1, &ebo);
+
+		const vertSize = @sizeOf(EntityVertex);
+
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len*vertSize), @ptrCast(vertices), c.GL_STATIC_DRAW);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
+
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(0));
+		c.glEnableVertexAttribArray(0);
+		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(12));
+		c.glEnableVertexAttribArray(1);
+		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
+		c.glEnableVertexAttribArray(2);
+
+		c.glBindVertexArray(0);
+
+		return .{
+			.vao = vao,
+			.vbo = vbo,
+			.ebo = ebo,
+			.size = @intCast(indices.len),
 		};
 	}
 

@@ -45,17 +45,10 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	// modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
-	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/expie_cubyz.png");
-	// model = .loadGltf("assets/cubyz/entities/models/snale.glb");
-	model = main.models.EntityModel.loadGltf("assets/cubyz/entities/models/expie_cubyz.glb") catch |err| blk: {
-		std.log.err("idk what to do here yet {s}", .{@errorName(err)});
-		break :blk .{
-			.vao = 0,
-			.vbo = 0,
-			.ebo = 0,
-			.size = 0,
-		};
+	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
+	model = main.models.EntityModel.loadGltf("assets/cubyz/entities/models/snale.glb") catch |err| blk: {
+		std.log.err("Gltf loading error {s}", .{@errorName(err)});
+		break :blk .initEmpty();
 	};
 
 	addEntity(ZonElement.parseFromString(main.globalArena, null,
