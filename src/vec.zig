@@ -206,7 +206,7 @@ pub const Mat4f = struct { // MARK: Mat4f
 		};
 	}
 
-	pub fn rotationQuat(quat: Vec4f) Mat4f { // zig fmt: off
+	pub fn rotationQuat(quat: Vec4f) Mat4f {
 		const f32x4_mask3: Vec4f = Vec4f{
 			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
 			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
@@ -214,7 +214,7 @@ pub const Mat4f = struct { // MARK: Mat4f
 			0,
 		};
 		const q0 = quat + quat;
-		var q1 = quat * q0;
+		var q1 = quat*q0;
 
 		var v0 = swizzle(q1, .y, .x, .x, .w);
 		v0 = andInt(v0, f32x4_mask3);
@@ -226,35 +226,35 @@ pub const Mat4f = struct { // MARK: Mat4f
 
 		v0 = swizzle(quat, .x, .x, .y, .w);
 		v1 = swizzle(q0, .z, .y, .z, .w);
-		v0 = v0 * v1;
+		v0 = v0*v1;
 
 		v1 = swizzle(quat, .w, .w, .w, .w);
 		const v2 = swizzle(q0, .y, .z, .x, .w);
-		v1 = v1 * v2;
+		v1 = v1*v2;
 
 		const r1 = v0 + v1;
 		const r2 = v0 - v1;
 
-		v0 = @shuffle(f32, r1, r2, [4]i32{ 1, 2, ~@as(i32, 0), ~@as(i32, 1) });
+		v0 = @shuffle(f32, r1, r2, [4]i32{1, 2, ~@as(i32, 0), ~@as(i32, 1)});
 		v0 = swizzle(v0, .x, .z, .w, .y);
-		v1 = @shuffle(f32, r1, r2, [4]i32{ 0, 0, ~@as(i32, 2), ~@as(i32, 2) });
+		v1 = @shuffle(f32, r1, r2, [4]i32{0, 0, ~@as(i32, 2), ~@as(i32, 2)});
 		v1 = swizzle(v1, .x, .z, .x, .z);
 
-		q1 = @shuffle(f32, r0, v0, [4]i32{ 0, 3, ~@as(i32, 0), ~@as(i32, 1) });
+		q1 = @shuffle(f32, r0, v0, [4]i32{0, 3, ~@as(i32, 0), ~@as(i32, 1)});
 		q1 = swizzle(q1, .x, .z, .w, .y);
 
 		var m: Mat4f = undefined;
 		m.rows[0] = q1;
 
-		q1 = @shuffle(f32, r0, v0, [4]i32{ 1, 3, ~@as(i32, 2), ~@as(i32, 3) });
+		q1 = @shuffle(f32, r0, v0, [4]i32{1, 3, ~@as(i32, 2), ~@as(i32, 3)});
 		q1 = swizzle(q1, .z, .x, .w, .y);
 		m.rows[1] = q1;
 
-		q1 = @shuffle(f32, v1, r0, [4]i32{ 0, 1, ~@as(i32, 2), ~@as(i32, 3) });
+		q1 = @shuffle(f32, v1, r0, [4]i32{0, 1, ~@as(i32, 2), ~@as(i32, 3)});
 		m.rows[2] = q1;
 		m.rows[3] = Vec4f{0.0, 0.0, 0.0, 1.0};
-		return m;  
-	} // zig fmt: on
+		return m;
+	}
 
 	pub fn perspective(fovY: f32, aspect: f32, near: f32, far: f32) Mat4f { // zig fmt: off
 		const tanY = std.math.tan(fovY*0.5);
