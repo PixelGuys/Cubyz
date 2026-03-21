@@ -24,11 +24,20 @@ const padding: f32 = 8;
 
 var textComponent: *TextInput = undefined;
 
+var incorrectPassword = false;
+
 fn apply() void {
 	var failureText: main.List(u8) = .init(main.stackAllocator);
 	defer failureText.deinit();
 	const accountCode = main.settings.storedAccount.decryptFromPassword(textComponent.currentString.items, &failureText) catch |err| {
-		std.log.err("Encountered error while decrypting password: {s}", .{@errorName(err)});
+		if (err == error.AuthenticationFailed) {
+			incorrectPassword = true;
+			onClose();
+			onOpen();
+			incorrectPassword = false;
+		} else {
+			std.log.err("Encountered error while decrypting password: {s}", .{@errorName(err)});
+		}
 		return;
 	};
 	defer accountCode.deinit();
@@ -72,6 +81,7 @@ pub fn onOpen() void {
 	passwordRow.add(CheckBox.init(.{10, 0}, 70, "Show", false, &showTextCallback));
 	passwordRow.finish(.{0, 0}, .center);
 	list.add(passwordRow);
+	if (incorrectPassword) list.add(Label.init(.{0, 0}, width, "#ff0000Incorrect password.", .left));
 	const buttonRow = HorizontalList.init();
 	buttonRow.add(Button.initText(.{0, 0}, 200, "Logout", .init(logout)));
 	buttonRow.add(Button.initText(.{padding, 0}, 200, "Unlock", .init(apply)));
