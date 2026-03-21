@@ -947,7 +947,7 @@ pub const EntityModel = struct {
 			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 		}
 
-		return uploadMeshAndGetModel(vertices.items, indices.items);
+		return uploadMeshAndGetModel(vertices, indices);
 	}
 
 	pub fn loadGltf(path: []const u8) !EntityModel {
@@ -994,7 +994,7 @@ pub const EntityModel = struct {
 				for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
 					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
 						// we could possibly support different primitive types by storing them in the model
-						std.log.err("Unsupported primitive type: {d}", .{primitive.type});
+						std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
 						continue;
 					}
 
