@@ -13,21 +13,21 @@ pub const Vec4d = @Vector(4, f64);
 pub const Vec4fComponent = enum { x, y, z, w };
 
 pub inline fn swizzle(
-    v: Vec4f,
-    comptime x: Vec4fComponent,
-    comptime y: Vec4fComponent,
-    comptime z: Vec4fComponent,
-    comptime w: Vec4fComponent,
+	v: Vec4f,
+	comptime x: Vec4fComponent,
+	comptime y: Vec4fComponent,
+	comptime z: Vec4fComponent,
+	comptime w: Vec4fComponent,
 ) Vec4f {
-    return @shuffle(f32, v, undefined, [4]i32{ @intFromEnum(x), @intFromEnum(y), @intFromEnum(z), @intFromEnum(w) });
+	return @shuffle(f32, v, undefined, [4]i32{@intFromEnum(x), @intFromEnum(y), @intFromEnum(z), @intFromEnum(w)});
 }
 
 pub inline fn andInt(v0: anytype, v1: anytype) @TypeOf(v0, v1) {
-    const T = @TypeOf(v0, v1);
-    const Tu = @Vector(@typeInfo(T).vector.len, u32);
-    const v0u = @as(Tu, @bitCast(v0));
-    const v1u = @as(Tu, @bitCast(v1));
-    return @as(T, @bitCast(v0u & v1u)); // andps
+	const T = @TypeOf(v0, v1);
+	const Tu = @Vector(@typeInfo(T).vector.len, u32);
+	const v0u = @as(Tu, @bitCast(v0));
+	const v1u = @as(Tu, @bitCast(v1));
+	return @as(T, @bitCast(v0u & v1u)); // andps
 }
 
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {

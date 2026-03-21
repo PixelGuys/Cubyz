@@ -981,7 +981,7 @@ pub const EntityModel = struct {
 	}
 
 	pub fn loadGltf(path: []const u8) anyerror!EntityModel {
-		// TODO: consider overriding cgltf_memory_options functions 
+		// TODO: consider overriding cgltf_memory_options functions
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
 
