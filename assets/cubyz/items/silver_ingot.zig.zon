@@ -10,5 +10,19 @@
 		.colors = .{
 			0xff67727f, 0xff89919e, 0xffbdc2c6, 0xffe4e6e6, 0xfffcfcfc,
 		},
+		.modifiers = .{
+			.{
+				.id = "fragile",
+				.strength = 0.1,
+				.restriction = .{
+					.id = .not,
+					.child = .{
+						.id = .encased,
+						.tag = .copper,
+						.amount = 1,
+					},
+				},
+			},
+		},
 	},
 }
