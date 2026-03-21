@@ -789,27 +789,27 @@ pub fn pressAcquireSelectedBlock(_: main.Window.Key.Modifiers) void {
 }
 
 pub fn flyToggle(_: main.Window.Key.Modifiers) void {
-	if (!Player.isCreative()) return;
+	if (Player.isCreative()) {
+		const newIsFlying = !Player.isActuallyFlying();
 
-	const newIsFlying = !Player.isActuallyFlying();
-
-	Player.isFlying.store(newIsFlying, .monotonic);
-	Player.isGhost.store(false, .monotonic);
+		Player.isFlying.store(newIsFlying, .monotonic);
+		Player.isGhost.store(false, .monotonic);
+	}
 }
 
 pub fn ghostToggle(_: main.Window.Key.Modifiers) void {
-	if (!Player.isCreative()) return;
+	if (Player.isCreative()) {
+		const newIsGhost = !Player.isGhost.load(.monotonic);
 
-	const newIsGhost = !Player.isGhost.load(.monotonic);
-
-	Player.isGhost.store(newIsGhost, .monotonic);
-	Player.isFlying.store(newIsGhost, .monotonic);
+		Player.isGhost.store(newIsGhost, .monotonic);
+		Player.isFlying.store(newIsGhost, .monotonic);
+	}
 }
 
 pub fn hyperSpeedToggle(_: main.Window.Key.Modifiers) void {
-	if (!Player.isCreative()) return;
-
-	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
+	if (Player.isCreative()) {
+		Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
+	}
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
