@@ -1,0 +1,39 @@
+.{
+	.properties = .{},
+	.minRadius = 16,
+	.maxRadius = 32,
+	.chance = 0,
+	.minHeight = 1500,
+	.maxHeight = 3000,
+	.keepOriginalTerrain = 0.99,
+	.roughness = 0,
+	.mountains = 60,
+	.hills = 20,
+	.stoneBlock = "cubyz:slate/base",
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:highlands/base",
+			.chance = 6,
+		},
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:slate/base",
+			.chance = 0.2,
+			.size = 9,
+			.size_variation = 6,
+			.baseSlope = 5,
+			.topSlope = 1,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:slate/base",
+			.chance = 0.05,
+			.size = 12,
+			.size_variation = 6,
+			.baseSlope = 5,
+			.topSlope = 1,
+		},
+	},
+}
