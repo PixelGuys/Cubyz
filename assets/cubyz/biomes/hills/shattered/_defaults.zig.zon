@@ -2,13 +2,13 @@
 	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 60,
-	.maxHeightLimit = 70,
+	.maxHeightLimit = 65,
 	.smoothBeaches = true,
 	.minRadius = 128,
 	.maxRadius = 256,
 	.roughness = 1,
 	.hills = 20,
-	.chance = 0.6,
+	.chance = 0.15,
 	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
 	.structures = .{
@@ -21,7 +21,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:daisies"},
+			.block = "cubyz:daisies",
 			.chance = 0.003,
 			.width = 10,
 			.variation = 6,
@@ -30,7 +30,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dandelions"},
+			.block = "cubyz:dandelions",
 			.chance = 0.002,
 			.width = 6,
 			.variation = 4,
