@@ -125,14 +125,24 @@ pub const Dir = struct {
 		try self.write(path, string);
 	}
 
-	pub fn hasFile(self: Dir, path: []const u8) bool {
-		const file = self.dir.openFile(path, .{}) catch return false;
+	pub fn hasFile(self: Dir, path: []const u8) !bool {
+		const file = self.dir.openFile(path, .{}) catch |err| {
+			if (err == error.FileNotFound) {
+				return false;
+			}
+			return err;
+		};
 		file.close();
 		return true;
 	}
 
-	pub fn hasDir(self: Dir, path: []const u8) bool {
-		var dir = self.dir.openDir(path, .{.iterate = false}) catch return false;
+	pub fn hasDir(self: Dir, path: []const u8) !bool {
+		var dir = self.dir.openDir(path, .{.iterate = false}) catch |err| {
+			if (err == error.FileNotFound) {
+				return false;
+			}
+			return err;
+		};
 		dir.close();
 		return true;
 	}
