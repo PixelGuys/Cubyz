@@ -28,8 +28,14 @@ pub fn calculateProjectedPointValue(a: f32, b: f32, c: f32) f32 {
 
 pub fn calculateReProjectedPointValue(a: f32, b: f32, c: f32) f32 {
 	// First find a clamped point on the plane of the ocahedron
-	const calculatedValue = (a*2 - b - c + 1)/3;
+	const calculatedValue = (a*(sign(b)+sign(c)) - b - c + 1)/(1+(sign(b)+sign(c)));
 	return @max(calculatedValue, 0);
+}
+
+fn sign(x: f32) i32 {
+    return if (x > 0) 1
+        else if (x < 0) -1
+        else 0;
 }
 
 pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), relPos: Vec3i, _seed: u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
@@ -56,11 +62,11 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 				
 				var distanceSquare = 0;
 
-				if ((PointX == 0) or (PointY == 0) or (PointZ == 0)) {
+				if ((pointX == 0) or (pointY == 0) or (pointZ == 0)) {
 					// if the clamped point is on one of the axial planes and not the octahedron clamp to nearest line
-					const rePointX = calculateReProjectedPointValue(x ,y ,z);
-					const rePointY = calculateReProjectedPointValue(y ,x ,z);
-					const rePointZ = calculateReProjectedPointValue(z ,x ,y)
+					const rePointX = calculateReProjectedPointValue(pointX ,pointY ,pointZ);
+					const rePointY = calculateReProjectedPointValue(pointY ,pointX ,pointZ);
+					const rePointZ = calculateReProjectedPointValue(pointZ ,pointX ,pointY);
 					distanceSquare = @sqrt(rePointX + rePointY + rePointZ);
 				} else {
 					distanceSquare = @sqrt(pointX*pointX + pointY*pointY + pointZ*pointZ);
