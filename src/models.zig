@@ -3,6 +3,7 @@ const std = @import("std");
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const graphics = @import("graphics.zig");
+const c = graphics.c;
 const main = @import("main");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
@@ -899,3 +900,85 @@ pub fn uploadModels() void {
 	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
 	quadSSBO.bind(4);
 }
+
+pub const EntityModel = struct {
+	vao: c_uint,
+	vbo: c_uint,
+	ebo: c_uint,
+	size: u32,
+
+	const EntityVertex = struct {
+		pos: [3]f32,
+		normal: [3]f32,
+		uv: [2]f32,
+	};
+
+	pub fn initFromObj(allocator: main.heap.NeverFailingAllocator, path: []const u8) EntityModel {
+		const modelFile = main.files.cwd().read(allocator, path) catch |err| blk: {
+			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
+			break :blk &.{};
+		};
+		defer allocator.free(modelFile);
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(allocator, modelFile);
+		defer allocator.free(quadInfos);
+
+		const vertices = allocator.alloc(EntityVertex, quadInfos.len*4);
+		defer allocator.free(vertices);
+		const indices: []u32 = allocator.alloc(u32, quadInfos.len*6);
+		defer allocator.free(indices);
+
+		var cur: u32 = 0;
+		for (quadInfos) |quad| {
+			inline for (0..4) |i| {
+				const v = cur + @as(u32, @intCast(i));
+				vertices[v].normal = quad.normal;
+				vertices[v].pos = quad.corners[i];
+				vertices[v].uv = quad.cornerUV[i];
+			}
+			cur += 4;
+		}
+
+		const lut = [_]u32{0, 2, 1, 1, 2, 3};
+		for (0..indices.len) |i| {
+			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
+		}
+
+		var vao: c_uint = 0;
+		c.glGenVertexArrays(1, &vao);
+		c.glBindVertexArray(vao);
+
+		var vbo: c_uint = 0;
+		c.glGenBuffers(1, &vbo);
+		var ebo: c_uint = 0;
+		c.glGenBuffers(1, &ebo);
+
+		const vertSize = @sizeOf(EntityVertex);
+
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len*vertSize), @ptrCast(vertices), c.GL_STATIC_DRAW);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
+
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).pos);
+		c.glEnableVertexAttribArray(0);
+		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).normal);
+		c.glEnableVertexAttribArray(1);
+		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).uv);
+		c.glEnableVertexAttribArray(2);
+
+		c.glBindVertexArray(0);
+
+		return .{
+			.vao = vao,
+			.vbo = vbo,
+			.ebo = ebo,
+			.size = @intCast(indices.len),
+		};
+	}
+
+	pub fn deinit(self: EntityModel) void {
+		c.glDeleteVertexArrays(1, &self.vao);
+		c.glDeleteBuffers(1, &self.vbo);
+		c.glDeleteBuffers(1, &self.ebo);
+	}
+};
