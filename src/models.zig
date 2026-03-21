@@ -8,6 +8,7 @@ const main = @import("main");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
+const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
@@ -911,44 +912,29 @@ pub const EntityModel = struct {
 	ebo: c_uint,
 	size: u32,
 
+	nodeReverse: std.StringHashMap(u16),
+	nodes: []Node,
+
+	const Node = struct {
+		pos: Vec3f,
+		rot: Vec4f,
+		scale: Vec3f,
+		mat: Mat4f = undefined,
+		
+		idx: u16,
+		parent: u16 = undefined,
+		childs: []u16,
+
+		fn deinit(self: *Node) void {
+			main.globalArena.free(self.childs);
+		}
+	};
+
 	const EntityVertex = struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
 	};
-
-	pub fn initFromObj(allocator: main.heap.NeverFailingAllocator, path: []const u8) EntityModel {
-		const modelFile = main.files.cwd().read(allocator, path) catch |err| blk: {
-			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-			break :blk &.{};
-		};
-		defer allocator.free(modelFile);
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(allocator, modelFile);
-		defer allocator.free(quadInfos);
-
-		const vertices = allocator.alloc(EntityVertex, quadInfos.len*4);
-		defer allocator.free(vertices);
-		const indices: []u32 = allocator.alloc(u32, quadInfos.len*6);
-		defer allocator.free(indices);
-
-		var cur: u32 = 0;
-		for (quadInfos) |quad| {
-			inline for (0..4) |i| {
-				const v = cur + @as(u32, @intCast(i));
-				vertices[v].normal = quad.normal;
-				vertices[v].pos = quad.corners[i];
-				vertices[v].uv = quad.cornerUV[i];
-			}
-			cur += 4;
-		}
-
-		const lut = [_]u32{0, 2, 1, 1, 2, 3};
-		for (0..indices.len) |i| {
-			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
-		}
-
-		return uploadMeshAndGetModel(vertices.items, indices.items);
-	}
 
 	pub fn loadGltf(path: []const u8) !EntityModel {
 		// TODO: consider overriding cgltf_memory_options functions
@@ -980,6 +966,8 @@ pub const EntityModel = struct {
 			return getGltfError(result);
 		}
 
+		var nodeReverse: std.StringHashMap(u16) = .init(main.globalArena);
+
 		var vertices = main.List(EntityVertex).init(main.stackAllocator);
 		defer vertices.deinit();
 		var indices = main.List(u32).init(main.stackAllocator);
@@ -994,7 +982,7 @@ pub const EntityModel = struct {
 				for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
 					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
 						// we could possibly support different primitive types by storing them in the model
-						std.log.err("Unsupported primitive type: {d}", .{primitive.type});
+						std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
 						continue;
 					}
 
