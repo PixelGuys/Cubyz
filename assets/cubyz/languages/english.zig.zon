@@ -1,0 +1,45 @@
+.{
+	.isExtension = false,
+	.language = "English",
+	.assets = .{
+		.items = .{
+			.@"cubyz:apple" = "Apple",
+		},
+		.tags = .{
+			.metal = "metal",
+			.precious = "precious",
+			.fluidPlaceable = "can be placed on fluids",
+			.material = "material",
+		},
+		.tools = .{
+			.@"cubyz:shover" = "Shover",
+			.@"cubyz:axe" = "Axe",
+			.@"cubyz:pickaxe" = "Pickaxe",
+			.@"cubyz:sickle" = "Sickle",
+			.@"cubyz:chisel" = "Chisel",
+		},
+		.world_presets = .{},
+	},
+	.ui = .{
+		.labels = .{
+			.@"cubyz:main/singleplayer" = "Singleplayer",
+			.@"cubyz:main/multiplayer" = "Multiplayer",
+			.@"cubyz:main/settings" = "Settings",
+			.@"cubyz:main/exit" = "Touch Grass",
+		},
+		.modifiers = .{},
+		.restrictions = .{
+			.@"cubyz:always" = "always",
+			.@"cubyz:and" = "and",
+			.@"cubyz:encased" = "encased in {0} {1} items",
+			.@"cubyz:not" = "not",
+			.@"cubyz:or" = "or",
+		},
+		.stats = .{
+			.@"cubyz:swingSpeed" = "{0} swings/s",
+			.@"cubyz:damage" = "Damage: {0}",
+			.@"cubyz:durability" = "Durability: {0}/{1}",
+			.@"cubyz:maxDurability" = "Durability: {0}",
+		},
+	},
+}
