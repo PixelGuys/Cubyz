@@ -1067,7 +1067,7 @@ pub const EntityModel = struct {
 			node.scale[2],
 			node.scale[1],
 		}));
-		
+
 		if (node.parent == null) {
 			return currentMat;
 		}
