@@ -989,7 +989,7 @@ pub const EntityModel = struct {
 							else => continue,
 						}
 					}
-					
+
 					for (0..positionAttr.count) |v| {
 						var p: [3]f32 = undefined;
 						_ = positionAttr.float(v, @ptrCast(&p), 3);
@@ -1058,7 +1058,6 @@ pub const EntityModel = struct {
 			else => unreachable,
 		};
 	}
-
 
 	fn uploadMeshAndGetModel(vertices: []EntityVertex, indices: []u32) EntityModel {
 		var vao: c_uint = 0;
