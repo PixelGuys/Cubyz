@@ -125,13 +125,9 @@ pub const ServerSide = struct { // MARK: ServerSide
 			std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
 			if (self.users.items.len == 0) {
 				if (self.inv.callbacks.onLastCloseCallback) |cb| {
-					cb(self.inv.source);
+					cb(self.inv.source, user);
 				}
 				if (self.managed == .internallyManaged) {
-					if (self.inv.type.shouldDepositToUserOnClose()) {
-						const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-						sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, self.inv, user.player.pos)}, null);
-					}
 					inventoryCreationMutex.lock();
 					defer inventoryCreationMutex.unlock();
 					self.deinit();
@@ -230,6 +226,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 
 	pub fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
 		sync.threadContext.assertCorrectContext(.server);
+		var callbacks: Callbacks = .{};
 		switch (source) {
 			.blockInventory, .playerInventory, .hand => {
 				switch (source) {
@@ -251,12 +248,19 @@ pub const ServerSide = struct { // MARK: ServerSide
 				}
 				return error.Invalid;
 			},
+			.workbench => |id| {
+				if (id != user.id) {
+					std.log.err("Player {s} tried to access the inventory of another player.", .{user.name});
+					return error.Invalid;
+				}
+				callbacks.onLastCloseCallback = &workbenchCloseCallback;
+			},
 			.other => {},
 			.alreadyFreed => unreachable,
 		}
 
 		inventoryCreationMutex.lock();
-		const inventory = ServerInventory.init(len, typ, source, .internallyManaged, .{});
+		const inventory = ServerInventory.init(len, typ, source, .internallyManaged, callbacks);
 		inventoryCreationMutex.unlock();
 
 		inventories.items()[@intFromEnum(inventory.inv.id)] = inventory;
@@ -266,6 +270,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 			.blockInventory => unreachable, // Should be loaded by the block entity
 			.playerInventory, .hand => unreachable, // Should be loaded on player creation
 			.other => {},
+			.workbench => {},
 			.alreadyFreed => unreachable,
 		}
 	}
@@ -341,6 +346,17 @@ pub const ServerSide = struct { // MARK: ServerSide
 		}
 		if (itemStack.amount == 0) itemStack.item = .null;
 	}
+
+	fn workbenchCloseCallback(source: Source, user: *main.server.User) void {
+		switch (source) {
+			.workbench => |id| {
+				const workbenchInventory = getInventoryFromSource(source) orelse @panic("Could not find workbench Inventory");
+				const playerInventory = getInventoryFromSource(.{.playerInventory = id}) orelse @panic("Could not find player inventory");
+				sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, user.player.pos)}, null);
+			},
+			else => unreachable,
+		}
+	}
 };
 
 pub fn getInventory(id: InventoryId, side: sync.Side, user: ?*main.server.User) ?Inventory {
@@ -354,7 +370,7 @@ pub fn getInventory(id: InventoryId, side: sync.Side, user: ?*main.server.User) 
 pub const Callbacks = struct {
 	onUpdateCallback: ?*const fn (Source) void = null,
 	onFirstOpenCallback: ?*const fn (Source) void = null,
-	onLastCloseCallback: ?*const fn (Source) void = null,
+	onLastCloseCallback: ?*const fn (Source, *main.server.User) void = null,
 };
 
 pub const SourceType = enum(u8) {
@@ -362,6 +378,7 @@ pub const SourceType = enum(u8) {
 	playerInventory = 1,
 	hand = 3,
 	blockInventory = 5,
+	workbench = 6,
 	other = 0xff, // TODO: List every type separately here.
 };
 pub const Source = union(SourceType) {
@@ -369,6 +386,7 @@ pub const Source = union(SourceType) {
 	playerInventory: u32,
 	hand: u32,
 	blockInventory: Vec3i,
+	workbench: u32,
 	other: void,
 };
 
@@ -515,10 +533,6 @@ pub const TypeEnum = enum(u8) {
 pub const Type = union(TypeEnum) {
 	normal: void,
 	workbench: ToolTypeIndex,
-
-	pub fn shouldDepositToUserOnClose(self: Type) bool {
-		return self == .workbench;
-	}
 };
 
 type: Type,

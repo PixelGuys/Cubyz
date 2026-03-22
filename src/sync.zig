@@ -798,7 +798,7 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(Inventory.TypeEnum, self.inv.type);
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch (self.source) {
-				.playerInventory, .hand => |val| {
+				.playerInventory, .hand, .workbench => |val| {
 					writer.writeInt(u32, val);
 				},
 				.blockInventory => |val| {
@@ -825,6 +825,7 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
+				.workbench => .{.workbench = try reader.readInt(u32)},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
