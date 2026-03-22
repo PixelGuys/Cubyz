@@ -930,7 +930,7 @@ pub const EntityModel = struct {
 
 		for (quadInfos, 0..quadInfos.len) |quad, i| {
 			inline for (0..4) |j| {
-				const v = (i*4) + @as(u32, @intCast(j));
+				const v = i*4 + j;
 				vertices[v].normal = quad.normal;
 				vertices[v].pos = quad.corners[j];
 				vertices[v].uv = quad.cornerUV[j];
