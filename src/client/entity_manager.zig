@@ -47,7 +47,7 @@ pub fn init() void {
 
 	missingModelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/missing.png");
 
-	model = main.models.EntityModel.loadGltf("assets/cubyz/entities/models/snale.glb") catch |err| blk: {
+	model = main.models.EntityModel.initFromGltf("assets/cubyz/entities/models/snale.glb") catch |err| blk: {
 		std.log.err("Gltf loading error {s}", .{@errorName(err)});
 		break :blk .initEmpty();
 	};

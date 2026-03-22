@@ -917,8 +917,8 @@ pub const EntityModel = struct {
 		normal: [3]f32,
 		uv: [2]f32,
 	};
-	
-	pub fn loadGltf(path: []const u8) !EntityModel {
+
+	pub fn initFromGltf(path: []const u8) !EntityModel {
 		// TODO: consider overriding cgltf_memory_options functions
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
@@ -1017,6 +1017,10 @@ pub const EntityModel = struct {
 	pub fn initEmpty() EntityModel {
 		return uploadMeshAndGetModel(&[0]EntityVertex{}, &[0]u32{});
 	}
+	
+	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
+		self.texture = main.graphics.Texture.initFromFile(path);
+	}
 
 	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
 		var currentMat = Mat4f.translation(Vec3f{
@@ -1058,9 +1062,6 @@ pub const EntityModel = struct {
 		};
 	}
 
-	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
-		self.texture = main.graphics.Texture.initFromFile(path);
-	}
 
 	fn uploadMeshAndGetModel(vertices: []EntityVertex, indices: []u32) EntityModel {
 		var vao: c_uint = 0;
