@@ -20,19 +20,19 @@ pub fn init(zon: ZonElement) ?*@This() {
 	return result;
 }
 
-pub fn calculateProjectedPointValue(a: u31, b: u31, c: u31) f32 {
+pub fn calculateProjectedPointValue(a: f32, b: f32, c: f32, radius: f32) f32 {
 	// First find a clamped point on the plane of the ocahedron
-	const calculatedValue: f32 = (@as(f32, @floatCast(a))*2 - @as(f32, @floatCast(b)) - @as(f32, @floatCast(c)) + 1)/3;
+	const calculatedValue: f32 = (a*2 - b - c + radius)/3;
 	return @max(calculatedValue, 0);
 }
 
-pub fn calculateReProjectedPointValue(a: f32, b: f32, c: f32) f32 {
+pub fn calculateReProjectedPointValue(a: f32, b: f32, c: f32 , radius: f32) f32 {
 	// First find a clamped point on the plane of the ocahedron
-	const calculatedValue = (a*(sign(b)+sign(c)) - b - c + 1)/(1+(sign(b)+sign(c)));
+	const calculatedValue: f32 = sign(a)*(a*(sign(b)+sign(c)) - b - c + radius)/(1+(sign(b)+sign(c)));
 	return @max(calculatedValue, 0);
 }
 
-fn sign(x: f32) i32 {
+fn sign(x: f32) f32 {
     return if (x > 0) 1
         else if (x < 0) -1
         else 0;
@@ -56,28 +56,40 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 		while (y < maxInt[1]) : (y += voxelSize) {
 			var z = minInt[2] & ~(voxelSize - 1);
 			while (z < maxInt[2]) : (z += voxelSize) {
-				const pointX = calculateProjectedPointValue(x ,y ,z);
-				const pointY = calculateProjectedPointValue(y ,x ,z);
-				const pointZ = calculateProjectedPointValue(z ,x ,y);
+				const InputX: f32 = (@floatFromInt(x - relPos[0]));
+				const InputY: f32 = (@floatFromInt(y - relPos[1]));
+				const InputZ: f32 = (@floatFromInt(z - relPos[2]));
+				const AdjustedInputX: f32 = @abs(InputX);
+				const AdjustedInputY: f32 = @abs(InputY);
+				const AdjustedInputZ: f32 = @abs(InputZ);
+				const pointX: f32 = calculateProjectedPointValue(AdjustedInputX ,AdjustedInputY ,AdjustedInputZ, radius);
+				const pointY: f32 = calculateProjectedPointValue(AdjustedInputY ,AdjustedInputX ,AdjustedInputZ, radius);
+				const pointZ: f32 = calculateProjectedPointValue(AdjustedInputZ ,AdjustedInputX ,AdjustedInputY, radius);
 				
 				var distanceSquare: f32 = 0;
 
 				if ((pointX == 0) or (pointY == 0) or (pointZ == 0)) {
-					// if the clamped point is on one of the axial planes and not the octahedron clamp to nearest line
-					const rePointX: f32 = calculateReProjectedPointValue(pointX ,pointY ,pointZ);
-					const rePointY: f32 = calculateReProjectedPointValue(pointY ,pointX ,pointZ);
-					const rePointZ: f32 = calculateReProjectedPointValue(pointZ ,pointX ,pointY);
-					distanceSquare = rePointX + rePointY + rePointZ;
+					// projects to the nearest line if on one of the axial planes
+					const point2X: f32 = calculateProjectedPointValue(pointX ,pointY ,pointZ, radius);
+					const point2Y: f32 = calculateProjectedPointValue(pointY ,pointX ,pointZ, radius);
+					const point2Z: f32 = calculateProjectedPointValue(pointZ ,pointX ,pointY, radius);
+					if (((pointX == 0) and (pointY == 0)) or ((pointX == 0) or (pointZ == 0)) or ((pointY == 0) or (pointZ == 0))) {
+					// projects to the nearest point if on one of the axial lines
+						const point3X: f32 = calculateProjectedPointValue(pointX ,pointY ,pointZ, radius);
+						const point3Y: f32 = calculateProjectedPointValue(pointY ,pointX ,pointZ, radius);
+						const point3Z: f32 = calculateProjectedPointValue(pointZ ,pointX ,pointY, radius);
+						distanceSquare = (AdjustedInputX-point3X)*(AdjustedInputX-point3X) + (AdjustedInputY-point3Y)*(AdjustedInputY-point3Y) + (AdjustedInputZ-point3Z)*(AdjustedInputZ-point3Z);					
+					} else {
+						distanceSquare = (AdjustedInputX-point2X)*(AdjustedInputX-point2X) + (AdjustedInputY-point2Y)*(AdjustedInputY-point2Y) + (AdjustedInputZ-point2Z)*(AdjustedInputZ-point2Z);
+					}
 				} else {
-					distanceSquare = pointX*pointX + pointY*pointY + pointZ*pointZ;
+					distanceSquare = (AdjustedInputX-pointX)*(AdjustedInputX-pointX) + (AdjustedInputY-pointY)*(AdjustedInputY-pointY) + (AdjustedInputZ-pointZ)*(AdjustedInputZ-pointZ);
 				}
 
-				if (distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
-
-				const sphereSdf = @sqrt(distanceSquare) - radius;
+				const octahedronSdf = @sqrt(distanceSquare) - radius;
 
 				const out = output.ptr(x >> voxelSizeShift, y >> voxelSizeShift, z >> voxelSizeShift);
-				out.* = sdf.smoothUnion(sphereSdf, out.*, interpolationSmoothness.get(x >> voxelSizeShift, y >> voxelSizeShift, z >> voxelSizeShift));
+				out.* = sdf.smoothUnion(octahedronSdf, out.*, interpolationSmoothness.get(x >> voxelSizeShift, y >> voxelSizeShift, z >> voxelSizeShift));
 			}
 		}
 	}
