@@ -14,6 +14,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const EntityModel = main.models.EntityModel;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
@@ -27,6 +28,10 @@ height: f64,
 
 pos: Vec3d = undefined,
 rot: Vec3f = undefined,
+
+model: *EntityModel = undefined,
+nodes: []EntityModel.Node = undefined,
+matrices: []Mat4f = undefined,
 
 id: u32,
 name: []const u8,
@@ -48,6 +53,11 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 	};
 	self._interpolationVel = @splat(0);
 	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
+
+	self.model = &main.client.entity_manager.model;
+	self.nodes = main.worldArena.alloc(EntityModel.Node, self.model.nodes.len);
+	@memcpy(self.nodes, self.model.nodes);
+	self.matrices = main.worldArena.alloc(Mat4f, self.nodes.len);
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {

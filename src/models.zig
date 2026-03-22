@@ -912,17 +912,16 @@ pub const EntityModel = struct {
 	ebo: c_uint,
 	size: u32,
 
-	nodeReverse: std.StringHashMap(u16),
-	nodes: []Node,
+	nodeReverse: std.StringHashMap(u16) = undefined,
+	nodes: []Node = undefined,
 
-	const Node = struct {
+	pub const Node = struct {
 		pos: Vec3f,
 		rot: Vec4f,
 		scale: Vec3f,
 		
-		idx: u16,
 		parent: u16 = undefined,
-		childs: []u16,
+		childs: []u16 = undefined,
 
 		fn deinit(self: *Node) void {
 			main.globalArena.free(self.childs);
@@ -933,6 +932,7 @@ pub const EntityModel = struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
+		nodeID: u32,
 	};
 
 	pub fn loadGltf(path: []const u8) !EntityModel {
@@ -965,7 +965,7 @@ pub const EntityModel = struct {
 			return getGltfError(result);
 		}
 
-		var nodeReverse: std.StringHashMap(u16) = .init(main.globalArena);
+		var nodeReverse: std.StringHashMap(u16) = .init(main.globalArena.allocator);
 		var nodes: main.List(Node) = .init(main.globalArena);
 
 		var vertices = main.List(EntityVertex).init(main.stackAllocator);
@@ -975,13 +975,16 @@ pub const EntityModel = struct {
 		var baseVertex: u32 = 0;
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
-			nodeReverse.put(node.name, nodes.items.len);
-			nodes.append(Node{
-				.pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
-				.rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
-				.scale = Vec3f{ node.scale[0], node.scale[2], node.scale[1] },
-			});
-
+			if (node.children_count != 0) {
+				nodeReverse.put(std.mem.span(node.name), @intCast(nodes.items.len)) catch unreachable;
+				nodes.append(Node{
+					.pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
+					.rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
+					.scale = Vec3f{ node.scale[0], node.scale[2], node.scale[1] },
+				});
+			}
+		}
+		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.mesh != null) {
 				const finalMat = Mat4f.rotationZ(std.math.pi).mul(getHierarchyMatrix(node));
 
@@ -992,6 +995,8 @@ pub const EntityModel = struct {
 						std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
 						continue;
 					}
+
+					const parentNodeID = nodeReverse.get(std.mem.span(node.parent.*.name)).?;
 
 					const indicesAccessor = primitive.indices.*;
 					const vertCount = primitive.attributes[0].data.*.count;
@@ -1029,6 +1034,8 @@ pub const EntityModel = struct {
 									_ = attribAccessor.float(v, @ptrCast(&uv), 2);
 
 									vertSlice[v].uv = .{uv[0], 1 - uv[1]};
+									// TODO: thing
+									vertSlice[v].nodeID = parentNodeID;
 								}
 							},
 							else => continue,
@@ -1038,7 +1045,10 @@ pub const EntityModel = struct {
 			}
 		}
 
-		return uploadMeshAndGetModel(vertices.items, indices.items);
+		var model = uploadMeshAndGetModel(vertices.items, indices.items);
+		model.nodeReverse = nodeReverse;
+		model.nodes = nodes.toOwnedSlice();
+		return model;
 	}
 
 	pub fn initEmpty() EntityModel {
@@ -1108,6 +1118,8 @@ pub const EntityModel = struct {
 		c.glEnableVertexAttribArray(1);
 		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
 		c.glEnableVertexAttribArray(2);
+		c.glVertexAttribPointer(3, 1, c.GL_UNSIGNED_INT, c.GL_FALSE, vertSize, @ptrFromInt(28));
+		c.glEnableVertexAttribArray(3);
 
 		c.glBindVertexArray(0);
 
