@@ -910,6 +910,7 @@ pub const EntityModel = struct {
 	vbo: c_uint,
 	ebo: c_uint,
 	size: u32,
+	texture: main.graphics.Texture = undefined,
 
 	const EntityVertex = struct {
 		pos: [3]f32,
@@ -931,15 +932,13 @@ pub const EntityModel = struct {
 		const indices: []u32 = allocator.alloc(u32, quadInfos.len*6);
 		defer allocator.free(indices);
 
-		var cur: u32 = 0;
-		for (quadInfos) |quad| {
-			inline for (0..4) |i| {
-				const v = cur + @as(u32, @intCast(i));
+		for (quadInfos, 0..quadInfos.len) |quad, i| {
+			inline for (0..4) |j| {
+				const v = (i*4) + @as(u32, @intCast(j));
 				vertices[v].normal = quad.normal;
-				vertices[v].pos = quad.corners[i];
-				vertices[v].uv = quad.cornerUV[i];
+				vertices[v].pos = quad.corners[j];
+				vertices[v].uv = quad.cornerUV[j];
 			}
-			cur += 4;
 		}
 
 		const lut = [_]u32{0, 2, 1, 1, 2, 3};
@@ -1090,6 +1089,10 @@ pub const EntityModel = struct {
 		};
 	}
 
+	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
+		self.texture = main.graphics.Texture.initFromFile(path);
+	}
+
 	fn uploadMeshAndGetModel(vertices: []EntityVertex, indices: []u32) EntityModel {
 		var vao: c_uint = 0;
 		c.glGenVertexArrays(1, &vao);
@@ -1107,11 +1110,11 @@ pub const EntityModel = struct {
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
 
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(0));
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).pos);
 		c.glEnableVertexAttribArray(0);
-		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(12));
+		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).normal);
 		c.glEnableVertexAttribArray(1);
-		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
+		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).uv);
 		c.glEnableVertexAttribArray(2);
 
 		c.glBindVertexArray(0);
@@ -1121,6 +1124,7 @@ pub const EntityModel = struct {
 			.vbo = vbo,
 			.ebo = ebo,
 			.size = @intCast(indices.len),
+			.texture = main.client.entity_manager.missingModelTexture,
 		};
 	}
 
