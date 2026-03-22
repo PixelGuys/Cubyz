@@ -125,7 +125,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 			std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
 			if (self.users.items.len == 0) {
 				if (self.inv.callbacks.onLastCloseCallback) |cb| {
-					cb(self.inv.source, user);
+					cb(self.inv.source);
 				}
 				if (self.managed == .internallyManaged) {
 					inventoryCreationMutex.lock();
@@ -249,15 +249,23 @@ pub const ServerSide = struct { // MARK: ServerSide
 				return error.Invalid;
 			},
 			.workbench => {
-				const workbenchCloseCallback = struct {
-					fn callback(callbackSource: Source, callbackUser: *main.server.User) void {
+				const workbench_close_callback = struct {
+					fn callback(callbackSource: Source) void {
 						std.debug.assert(callbackSource == .workbench);
 						const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
-						const playerInventory = ServerSide.getInventory(callbackUser, callbackUser.inventory.?) orelse @panic("Could not find player Inventory");
-						sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player.pos)}, null);
+						const playerInventory = ServerSide.getInventoryFromSource(.{.playerInventory = callbackSource.workbench.playerId}) orelse @panic("Could not find player Inventory");
+
+						const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+						for (userList) |callbackUser| {
+							if (callbackUser.id == callbackSource.workbench.playerId) {
+								sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player.pos)}, null);
+								break;
+							}
+						}
 					}
 				};
-				callbacks.onLastCloseCallback = &workbenchCloseCallback.callback;
+				callbacks.onLastCloseCallback = &workbench_close_callback.callback;
 			},
 			.other => {},
 			.alreadyFreed => unreachable,
@@ -363,7 +371,7 @@ pub fn getInventory(id: InventoryId, side: sync.Side, user: ?*main.server.User) 
 pub const Callbacks = struct {
 	onUpdateCallback: ?*const fn (Source) void = null,
 	onFirstOpenCallback: ?*const fn (Source) void = null,
-	onLastCloseCallback: ?*const fn (Source, *main.server.User) void = null,
+	onLastCloseCallback: ?*const fn (Source) void = null,
 };
 
 pub const SourceType = enum(u8) {
