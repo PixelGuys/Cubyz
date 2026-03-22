@@ -1,8 +1,10 @@
 .{
 	.properties = .{.mountain},
-	.radius = 320,
+	.radius = 400,
+	.minHeightLimit = 75,
 	.minHeight = 128,
 	.maxHeight = 128,
+	.smoothBeaches = true,
 
 	.interpolation = .linear,
 	.mountains = 150,
@@ -13,8 +15,8 @@
 
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:mountains",
-			.chance = 0.1,
+			.id = "cubyz:ashen/base",
+			.chance = 1,
 		},
 	},
 

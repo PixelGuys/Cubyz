@@ -1,0 +1,18 @@
+.{
+	.properties = .{},
+	.chance = 0.3,
+	.minRadius = 750,
+	.maxRadius = 1000,
+	.minHeightLimit = 7,
+	.minHeight = 22,
+	.maxHeight = 40,
+	.maxHeightLimit = 50,
+	.smoothBeaches = true,
+	.roughness = 1,
+	.hills = 5,
+	.mountains = 3,
+
+	.ground_structure = .{
+		"3 to 4 cubyz:ash",
+	},
+}
