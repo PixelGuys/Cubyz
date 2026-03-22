@@ -906,6 +906,7 @@ pub const EntityModel = struct {
 	vbo: c_uint,
 	ebo: c_uint,
 	size: u32,
+	texture: main.graphics.Texture = undefined,
 
 	const EntityVertex = struct {
 		pos: [3]f32,
@@ -973,7 +974,12 @@ pub const EntityModel = struct {
 			.vbo = vbo,
 			.ebo = ebo,
 			.size = @intCast(indices.len),
+			.texture = main.client.entity_manager.missingModelTexture,
 		};
+	}
+
+	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
+		self.texture = main.graphics.Texture.initFromFile(path);
 	}
 
 	pub fn deinit(self: EntityModel) void {

@@ -28,7 +28,7 @@ var uniforms: struct {
 	ambientLight: c_int,
 } = undefined;
 var model: main.models.EntityModel = undefined;
-var modelTexture: main.graphics.Texture = undefined;
+pub var missingModelTexture: main.graphics.Texture = undefined;
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
@@ -45,8 +45,18 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
+	missingModelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/missing.png");
+
 	model = .initFromObj(main.stackAllocator, "assets/cubyz/entities/models/snale.obj");
+	model.loadTextureFromFile("assets/cubyz/entities/textures/snale.png");
+
+	addEntity(ZonElement.parseFromString(main.globalArena, null,
+		\\ .{
+		\\    .id = 1,
+		\\    .name = "bobik",
+		\\
+		\\  }
+	));
 }
 
 pub fn deinit() void {
@@ -120,12 +130,13 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	pipeline.bind(null);
 	c.glBindVertexArray(model.vao);
 	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-	modelTexture.bindTo(0);
 	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 	c.glUniform1f(uniforms.contrast, 0.12);
 
 	for (entities.items()) |ent| {
 		if (ent.id == game.Player.id) continue; // don't render local player
+
+		model.texture.bindTo(0);
 
 		const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 		const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
