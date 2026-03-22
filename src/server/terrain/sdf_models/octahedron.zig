@@ -29,7 +29,7 @@ pub fn calculateProjectedPointValue(a: f32, b: f32, c: f32, radius: f32) f32 {
 pub fn calculateReProjectedPointValue(a: f32, b: f32, c: f32 , radius: f32) f32 {
 	// First find a clamped point on the plane of the ocahedron
 	const calculatedValue: f32 = sign(a)*(a*(sign(b)+sign(c)) - b - c + radius)/(1+(sign(b)+sign(c)));
-	return @max(calculatedValue, 0);
+	return @min(@max(calculatedValue, 0), radius);
 }
 
 fn sign(x: f32) f32 {
@@ -70,18 +70,10 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 
 				if ((pointX == 0) or (pointY == 0) or (pointZ == 0)) {
 					// projects to the nearest line if on one of the axial planes
-					const point2X: f32 = calculateProjectedPointValue(pointX ,pointY ,pointZ, radius);
-					const point2Y: f32 = calculateProjectedPointValue(pointY ,pointX ,pointZ, radius);
-					const point2Z: f32 = calculateProjectedPointValue(pointZ ,pointX ,pointY, radius);
-					if (((pointX == 0) and (pointY == 0)) or ((pointX == 0) or (pointZ == 0)) or ((pointY == 0) or (pointZ == 0))) {
-					// projects to the nearest point if on one of the axial lines
-						const point3X: f32 = calculateProjectedPointValue(point2X ,point2Y ,point2Z, radius);
-						const point3Y: f32 = calculateProjectedPointValue(point2Y ,point2X ,point2Z, radius);
-						const point3Z: f32 = calculateProjectedPointValue(point2Z ,point2X ,point2Y, radius);
-						distanceSquare = (AdjustedInputX-point3X)*(AdjustedInputX-point3X) + (AdjustedInputY-point3Y)*(AdjustedInputY-point3Y) + (AdjustedInputZ-point3Z)*(AdjustedInputZ-point3Z);					
-					} else {
-						distanceSquare = (AdjustedInputX-point2X)*(AdjustedInputX-point2X) + (AdjustedInputY-point2Y)*(AdjustedInputY-point2Y) + (AdjustedInputZ-point2Z)*(AdjustedInputZ-point2Z);
-					}
+					const point2X: f32 = calculateReProjectedPointValue(pointX ,pointY ,pointZ, radius);
+					const point2Y: f32 = calculateReProjectedPointValue(pointY ,pointX ,pointZ, radius);
+					const point2Z: f32 = calculateReProjectedPointValue(pointZ ,pointX ,pointY, radius);
+					distanceSquare = (AdjustedInputX-point2X)*(AdjustedInputX-point2X) + (AdjustedInputY-point2Y)*(AdjustedInputY-point2Y) + (AdjustedInputZ-point2Z)*(AdjustedInputZ-point2Z);
 				} else {
 					distanceSquare = (AdjustedInputX-pointX)*(AdjustedInputX-pointX) + (AdjustedInputY-pointY)*(AdjustedInputY-pointY) + (AdjustedInputZ-pointZ)*(AdjustedInputZ-pointZ);
 				}
