@@ -862,6 +862,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 		}
 		if (KeyBoard.key("jump").pressed) {
+			main.audio.playSound("cubyz:correct");
+
 			if (Player.isFlying.load(.monotonic)) {
 				if (KeyBoard.key("sprint").pressed) {
 					if (Player.isGhost.load(.monotonic)) {

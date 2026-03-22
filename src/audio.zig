@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const utils = main.utils;
+const ZonElement = @import("zon.zig").ZonElement;
 
 const c = @cImport({
 	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
@@ -17,7 +18,113 @@ fn handleError(miniaudioError: c.ma_result) !void {
 	}
 }
 
-const AudioData = struct {
+const SoundData = struct {  // MARK: SOUND
+	soundId: []const u8,
+	data: []f32 = &.{},
+
+	fn open_vorbis_file_by_id(id: []const u8) ?*c.stb_vorbis {
+		const colonIndex = std.mem.indexOfScalar(u8, id, ':') orelse {
+			std.log.err("Invalid sound id: {s}. Must be addon:file_name", .{id});
+			return null;
+		};
+		const addon = id[0..colonIndex];
+		const fileName = id[colonIndex + 1 ..];
+		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
+		defer main.stackAllocator.free(path1);
+		var err: c_int = 0;
+		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
+		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/sounds/audio/{s}.ogg", .{main.files.cubyzDirStr(), addon, fileName}, 0) catch unreachable;
+		defer main.stackAllocator.free(path2);
+		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
+		std.log.err("Couldn't find sound with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{id, path1, path2});
+		return null;
+	}
+
+	fn init(soundId: []const u8) *SoundData {
+		const self = main.globalAllocator.create(SoundData);
+		self.* = .{.soundId = main.globalAllocator.dupe(u8, soundId)};
+
+		const channels = 2;
+		if (open_vorbis_file_by_id(soundId)) |ogg_stream| {
+			defer c.stb_vorbis_close(ogg_stream);
+			const ogg_info: c.stb_vorbis_info = c.stb_vorbis_get_info(ogg_stream);
+			const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
+			if (sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
+				const tempData = main.stackAllocator.alloc(f32, samples*channels);
+				defer main.stackAllocator.free(tempData);
+				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
+				const newSamples: usize = @intFromFloat(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
+				stepWidth = @as(f32, @floatFromInt(samples))/@as(f32, @floatFromInt(newSamples));
+				self.data = main.globalAllocator.alloc(f32, newSamples*channels);
+				for (0..newSamples) |s| {
+					const samplePosition = @as(f32, @floatFromInt(s))*stepWidth;
+					const firstSample: usize = @intFromFloat(@floor(samplePosition));
+					const interpolation = samplePosition - @floor(samplePosition);
+					for (0..channels) |ch| {
+						if (firstSample >= samples - 1) {
+							self.data[s*channels + ch] = tempData[(samples - 1)*channels + ch];
+						} else {
+							self.data[s*channels + ch] = tempData[firstSample*channels + ch]*(1 - interpolation) + tempData[(firstSample + 1)*channels + ch]*interpolation;
+						}
+					}
+				}
+			} else {
+				self.data = main.globalAllocator.alloc(f32, samples*channels);
+				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, self.data.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+			}
+		} else {
+			self.data = main.globalAllocator.alloc(f32, channels);
+			@memset(self.data, 0);
+		}
+		return self;
+	}
+
+	fn deinit(self: *const SoundData) void {
+		main.globalAllocator.free(self.data);
+		main.globalAllocator.free(self.soundId);
+		main.globalAllocator.destroy(self);
+	}
+
+	pub fn hashCode(self: *const SoundData) u32 {
+		var result: u32 = 0;
+		for (self.soundId) |char| {
+			result = result + char;
+		}
+		return result;
+	}
+
+	pub fn equals(self: *const SoundData, _other: ?*const SoundData) bool {
+		if (_other) |other| {
+			return std.mem.eql(u8, self.soundId, other.soundId);
+		} else return false;
+	}
+};
+
+const Sound = struct {
+	soundIndex: u32,
+	pos: u32 = 0,
+};
+
+var soundIDReverse: std.StringHashMapUnmanaged(u32) = .{};
+var sounds: main.List(*SoundData) = undefined;
+var activeSounds: main.List(Sound) = undefined;
+
+pub fn registerSound(_: []const u8, id: []const u8, _: ZonElement) void {
+	const sound = SoundData.init(id);
+
+	soundIDReverse.put(main.worldArena.allocator, id, @intCast(sounds.items.len)) catch unreachable;
+	sounds.append(sound);
+
+	std.log.debug("Registered sound: {s}", .{id});
+}
+
+pub fn playSound(id: []const u8) void {
+	const idx = soundIDReverse.get(id) orelse return;
+	activeSounds.append(Sound{.soundIndex = idx});
+}
+
+const AudioData = struct { // MARK: MUSIC
 	musicId: []const u8,
 	data: []f32 = &.{},
 
@@ -28,7 +135,8 @@ const AudioData = struct {
 		};
 		const addon = id[0..colonIndex];
 		const fileName = id[colonIndex + 1 ..];
-		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
+		// FIXME: IF THERE IS SOME PROBLEM WITH THE FILE ITSELF IT JUST SAYS THAT IT COULD NOT FIND THE FILE RATHER THAN THE ACTUAL ISSUE
+		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/sounds/audio/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
@@ -193,6 +301,9 @@ pub fn init() error{miniaudioError}!void {
 	try handleError(c.ma_device_start(&device));
 
 	sampleRate = 44100;
+
+	sounds = .init(main.globalAllocator);
+	activeSounds = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -207,6 +318,18 @@ pub fn deinit() void {
 	preferredMusic.len = 0;
 	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
+
+	for (sounds.items) |s| {
+		s.deinit();
+	}
+	sounds.deinit();
+	activeSounds.deinit();
+}
+
+pub fn reset() void {
+	soundIDReverse.clearRetainingCapacity();
+	sounds.clearRetainingCapacity();
+	activeSounds.clearRetainingCapacity();
 }
 
 const currentMusic = struct {
@@ -303,6 +426,28 @@ fn addMusic(buffer: []f32) void {
 	}
 }
 
+fn addSound(buffer: []f32) void {
+	mutex.lock();
+	defer mutex.unlock();
+	
+	if (activeSounds.items.len == 0) return;
+
+	// Copy the sound to the buffer.
+
+	const soundBuffer = sounds.items[activeSounds.items[0].soundIndex].data;
+	var i: usize = 0;
+	while (i < buffer.len) : (i += 2) {
+		const amplitude: f32 = main.settings.musicVolume;
+		
+		buffer[i] += amplitude*soundBuffer[activeSounds.items[0].pos];
+		buffer[i + 1] += amplitude*soundBuffer[activeSounds.items[0].pos + 1];
+		activeSounds.items[0].pos += 2;
+		if (activeSounds.items[0].pos >= soundBuffer.len) {
+			activeSounds.items[0].pos = 0;
+		}
+	}
+}
+
 fn miniaudioCallback(
 	maDevice: ?*anyopaque,
 	output: ?*anyopaque,
@@ -315,4 +460,5 @@ fn miniaudioCallback(
 	const buffer = @as([*]f32, @ptrCast(@alignCast(output)))[0..valuesPerBuffer];
 	@memset(buffer, 0);
 	addMusic(buffer);
+	addSound(buffer);
 }

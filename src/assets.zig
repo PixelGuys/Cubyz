@@ -6,6 +6,7 @@ const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
 const Blueprint = blueprints_zig.Blueprint;
 const particles_zig = @import("particles.zig");
+const audio_zig = @import("audio.zig");
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const biomes_zig = main.server.terrain.biomes;
@@ -36,6 +37,7 @@ pub const Assets = struct {
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
 	worldPresets: ZonHashMap,
+	sounds: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -53,6 +55,7 @@ pub const Assets = struct {
 			.blueprints = .{},
 			.particles = .{},
 			.worldPresets = .{},
+			.sounds = .{}
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -70,6 +73,7 @@ pub const Assets = struct {
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
+		self.sounds.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -87,6 +91,7 @@ pub const Assets = struct {
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 			.worldPresets = .{}, // Not accessible inside the world
+			.sounds = self.sounds.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -106,12 +111,13 @@ pub const Assets = struct {
 			addon.readAllModels(allocator, &self.models);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
+			addon.readAllZon(allocator, "sounds", true, &self.sounds, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, and {} sounds",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.sounds.count()},
 		);
 	}
 
@@ -650,6 +656,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
+	iterator = worldAssets.sounds.iterator();
+	while (iterator.next()) |entry| {
+		audio_zig.registerSound(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	}
+
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
 	for (biomePalette.palette.items) |id| {
@@ -701,6 +712,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.server.terrain.structures.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
+	main.audio.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
 
