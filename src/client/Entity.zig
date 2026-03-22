@@ -30,8 +30,8 @@ pos: Vec3d = undefined,
 rot: Vec3f = undefined,
 
 model: *EntityModel = undefined,
-nodes: []EntityModel.Node = undefined,
-matrices: []Mat4f = undefined,
+nodes: [20]EntityModel.Node = undefined,
+matrices: [20]Mat4f = undefined,
 
 id: u32,
 name: []const u8,
@@ -43,6 +43,9 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 		.height = zon.get(f64, "height", 1),
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 	};
+	
+	self.rot = Vec3f{0, 0, 0};
+	self.pos = Vec3d{0, 0, 0};
 	self._interpolationPos = [_]f64{
 		self.pos[0],
 		self.pos[1],
@@ -54,10 +57,15 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 	self._interpolationVel = @splat(0);
 	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 
+
 	self.model = &main.client.entity_manager.model;
-	self.nodes = main.worldArena.alloc(EntityModel.Node, self.model.nodes.len);
-	@memcpy(self.nodes, self.model.nodes);
-	self.matrices = main.worldArena.alloc(Mat4f, self.nodes.len);
+	for (self.model.nodes, 0..) |n, i| {
+		self.nodes[i] = n;
+	}
+
+	for (0..self.matrices.len) |i| {
+		self.matrices[i] = Mat4f.identity();
+	}
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {

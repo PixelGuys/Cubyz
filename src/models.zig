@@ -914,7 +914,8 @@ pub const EntityModel = struct {
 	texture: main.graphics.Texture = undefined,
 
 	nodeReverse: std.StringHashMap(u16) = undefined,
-	nodes: []Node = undefined,
+	nodes: [20]Node = undefined,
+	nodeCount: u8 = undefined,
 
 	pub const Node = struct {
 		pos: Vec3f,
@@ -967,7 +968,8 @@ pub const EntityModel = struct {
 		}
 
 		var nodeReverse: std.StringHashMap(u16) = .init(main.globalArena.allocator);
-		var nodes: main.List(Node) = .init(main.globalArena);
+		var nodes: [20]Node = std.mem.zeroes([20]Node);
+		var nodeIdx: u8 = 0;
 
 		var vertices = main.List(EntityVertex).init(main.stackAllocator);
 		defer vertices.deinit();
@@ -977,12 +979,16 @@ pub const EntityModel = struct {
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count != 0) {
-				nodeReverse.put(std.mem.span(node.name), @intCast(nodes.items.len)) catch unreachable;
-				nodes.append(Node{
-					.pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
-					.rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
-					.scale = Vec3f{ node.scale[0], node.scale[2], node.scale[1] },
-				});
+				nodeReverse.put(std.mem.span(node.name), @intCast(nodeIdx)) catch unreachable;
+				nodes[nodeIdx] = Node{
+					.pos = Vec3f{ 0, 0, 0 },
+					.rot = Vec4f{ 0, 0, 0, 1 },
+					.scale = Vec3f{ 1, 1, 1 },
+					// .pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
+					// .rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
+					// .scale = Vec3f{ node.scale[0], node.scale[2], node.scale[1] },
+				};
+				nodeIdx += 1;
 			}
 		}
 		for (data.nodes, 0..data.nodes_count) |node, _| {
@@ -1036,6 +1042,8 @@ pub const EntityModel = struct {
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.float(v, @ptrCast(&uv), 2);
 						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
+						
+						vertSlice[v].nodeID = parentNodeID;
 					}
 				}
 			}
@@ -1043,7 +1051,7 @@ pub const EntityModel = struct {
 
 		var model = uploadMeshAndGetModel(vertices.items, indices.items);
 		model.nodeReverse = nodeReverse;
-		model.nodes = nodes.toOwnedSlice();
+		model.nodes = nodes;
 		return model;
 	}
 
@@ -1118,7 +1126,7 @@ pub const EntityModel = struct {
 		c.glEnableVertexAttribArray(1);
 		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).uv);
 		c.glEnableVertexAttribArray(2);
-		c.glVertexAttribPointer(3, 1, c.GL_UNSIGNED_INT, c.GL_FALSE, vertSize, @ptrFromInt(28));
+		c.glVertexAttribPointer(3, 1, c.GL_UNSIGNED_INT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).nodeID);
 		c.glEnableVertexAttribArray(3);
 
 		c.glBindVertexArray(0);
@@ -1132,10 +1140,12 @@ pub const EntityModel = struct {
 		};
 	}
 
-	pub fn deinit(self: EntityModel) void {
+	pub fn deinit(self: *EntityModel) void {
 		c.glDeleteVertexArrays(1, &self.vao);
 		c.glDeleteBuffers(1, &self.vbo);
 		c.glDeleteBuffers(1, &self.ebo);
 		self.texture.deinit();
+
+		self.nodeReverse.deinit();
 	}
 };
