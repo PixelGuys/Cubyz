@@ -976,36 +976,33 @@ pub const EntityModel = struct {
 						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
 					}
 
+					var positionAttr: gltf.cgltf_accessor = undefined;
+					var normalAttr: gltf.cgltf_accessor = undefined;
+					var uvAttr: gltf.cgltf_accessor = undefined;
 					for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
 						const attribAccessor = attrib.data.*;
 
 						switch (attrib.type) {
-							gltf.cgltf_attribute_type_position => {
-								for (0..attribAccessor.count) |v| {
-									var p: [3]f32 = undefined;
-									_ = attribAccessor.float(v, @ptrCast(&p), 3);
-									const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[2], p[1], 1});
-									vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
-								}
-							},
-							gltf.cgltf_attribute_type_normal => {
-								for (0..attribAccessor.count) |v| {
-									var n: [3]f32 = undefined;
-									_ = attribAccessor.float(v, @ptrCast(&n), 3);
-
-									vertSlice[v].normal = .{-n[0], n[2], n[1]};
-								}
-							},
-							gltf.cgltf_attribute_type_texcoord => {
-								for (0..attribAccessor.count) |v| {
-									var uv: [2]f32 = undefined;
-									_ = attribAccessor.float(v, @ptrCast(&uv), 2);
-
-									vertSlice[v].uv = .{uv[0], 1 - uv[1]};
-								}
-							},
+							gltf.cgltf_attribute_type_position => positionAttr = attribAccessor,
+							gltf.cgltf_attribute_type_normal => normalAttr = attribAccessor,
+							gltf.cgltf_attribute_type_texcoord => uvAttr = attribAccessor,
 							else => continue,
 						}
+					}
+					
+					for (0..positionAttr.count) |v| {
+						var p: [3]f32 = undefined;
+						_ = positionAttr.float(v, @ptrCast(&p), 3);
+						const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[2], p[1], 1});
+						vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
+
+						var normal: [3]f32 = undefined;
+						_ = normalAttr.float(v, @ptrCast(&normal), 3);
+						vertSlice[v].normal = .{-normal[0], normal[2], normal[1]};
+
+						var uv: [2]f32 = undefined;
+						_ = uvAttr.float(v, @ptrCast(&uv), 2);
+						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
 					}
 				}
 			}
@@ -1017,7 +1014,7 @@ pub const EntityModel = struct {
 	pub fn initEmpty() EntityModel {
 		return uploadMeshAndGetModel(&[0]EntityVertex{}, &[0]u32{});
 	}
-	
+
 	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
 		self.texture = main.graphics.Texture.initFromFile(path);
 	}
