@@ -797,7 +797,6 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: Open, writer: *BinaryWriter) void {
 			writer.writeEnum(InventoryId, self.inv.id);
 			writer.writeInt(usize, self.inv._items.len);
-			writer.writeEnum(Inventory.TypeEnum, self.inv.type);
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch (self.source) {
 				.playerInventory, .hand => |val| {
@@ -813,19 +812,12 @@ pub const Command = struct { // MARK: Command
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
-			switch (self.inv.type) {
-				.normal => {},
-				.workbench => {
-					writer.writeSlice(self.inv.type.workbench.id());
-				},
-			}
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !Open {
 			if (side != .server or user == null) return error.Invalid;
 			const id = try reader.readEnum(InventoryId);
 			const len = try reader.readInt(u64);
-			const typeEnum = try reader.readEnum(Inventory.TypeEnum);
 			const sourceType = try reader.readEnum(Inventory.SourceType);
 			const source: Inventory.Source = switch (sourceType) {
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
@@ -835,11 +827,7 @@ pub const Command = struct { // MARK: Command
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
-			const typ: Inventory.Type = switch (typeEnum) {
-				inline .normal => |tag| tag,
-				.workbench => .{.workbench = main.items.ToolTypeIndex.fromId(reader.remaining) orelse return error.Invalid},
-			};
-			try Inventory.ServerSide.createInventory(user.?, id, len, typ, source);
+			try Inventory.ServerSide.createInventory(user.?, id, len, source);
 			return .{
 				.inv = Inventory.ServerSide.getInventory(user.?, id) orelse return error.InventoryNotFound,
 				.source = source,
@@ -879,7 +867,6 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
-			std.debug.assert(self.source.inv.type == .normal);
 			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
 			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source)) return;
 
@@ -923,7 +910,6 @@ pub const Command = struct { // MARK: Command
 		amount: u16,
 
 		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
-			if (self.source.inv.type != .normal and self.dest.inv.type != .normal) return error.serverFailure;
 			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
 			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item;
@@ -969,7 +955,6 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
-			std.debug.assert(self.dest.inv.type == .normal);
 			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.toolIndex.slotInfos()[self.source.slot].disabled) return;
 
 			const itemSource = self.source.ref().item;
@@ -1115,8 +1100,6 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: FillAnyFromCreative, ctx: Context) error{serverFailure}!void {
-			for (self.destinations.inventories) |dest| if (dest.type != .normal) return;
-
 			_ = self.destinations.putItemsInto(ctx, self.amount, .{.create = self.item});
 		}
 
@@ -1177,9 +1160,6 @@ pub const Command = struct { // MARK: Command
 		}
 
 		pub fn run(self: DepositOrDrop, ctx: Context) error{serverFailure}!void {
-			for (self.destinations.inventories) |dest| {
-				std.debug.assert(dest.type == .normal);
-			}
 			for (self.source._items, 0..) |*sourceStack, sourceSlot| {
 				if (sourceStack.item == .null) continue;
 				const remainingAmount = self.destinations.putItemsInto(ctx, sourceStack.amount, .{.move = .{.inv = self.source, .slot = @intCast(sourceSlot)}});
@@ -1230,9 +1210,6 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: DepositToAny, ctx: Context) error{serverFailure}!void {
-			for (self.destinations.inventories) |dest| {
-				if (dest.type != .normal) return;
-			}
 			const sourceStack = self.source.ref();
 			if (sourceStack.item == .null) return;
 			if (self.amount > sourceStack.amount) return;
@@ -1276,9 +1253,6 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: CraftFrom, ctx: Context) error{serverFailure}!void {
-			for (self.destinations.inventories) |dest| if (dest.type != .normal) return;
-			for (self.sources.inventories) |source| if (source.type != .normal) return;
-
 			if (self.destinations.canHold(.{.item = .{.baseItem = self.recipe.resultItem}, .amount = self.recipe.resultAmount}) != .yes) return;
 
 			// Can we even craft it?
@@ -1344,8 +1318,6 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: CraftTool, ctx: Context) error{serverFailure}!void {
-			for (self.destinations.inventories) |dest| if (dest.type != .normal) return;
-
 			var availableItems: [25]?main.items.BaseItemIndex = undefined;
 			const slotInfos = self.craftingGrid.source.workbench.toolIndex.slotInfos();
 
@@ -1496,8 +1468,6 @@ pub const Command = struct { // MARK: Command
 		};
 
 		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
-			if (self.source.inv.type != .normal) return;
-
 			const stack = self.source.ref();
 
 			var shouldDropSourceBlockOnSuccess: bool = true;

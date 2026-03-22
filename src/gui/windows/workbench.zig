@@ -82,8 +82,8 @@ fn updateResult(_: main.items.Inventory.Source) void {
 }
 
 fn openInventory() void {
-	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .normal, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .toolIndex = toolTypes.items[currentToolType]}}, .{.onUpdateCallback = &updateResult});
-	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .normal, .workbenchResult, .other, .{});
+	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .toolIndex = toolTypes.items[currentToolType]}}, .{.onUpdateCallback = &updateResult});
+	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .workbenchResult, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
