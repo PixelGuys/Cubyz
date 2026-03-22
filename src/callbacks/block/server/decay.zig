@@ -19,7 +19,7 @@ pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	// replacement
 	if (zon.get(?[]const u8, "replacement", null)) |blockname| {
-		result.decayReplacement = main.blocks.parseBlock(blockname);
+		result.decayReplacement = main.blocks.parseBlock(blockname, .{});
 	} else result.decayReplacement = main.blocks.Block.air;
 	// custom drop
 	if (zon.getChildOrNull("drops")) |_| {
