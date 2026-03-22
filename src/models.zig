@@ -928,15 +928,13 @@ pub const EntityModel = struct {
 		const indices: []u32 = allocator.alloc(u32, quadInfos.len*6);
 		defer allocator.free(indices);
 
-		var cur: u32 = 0;
-		for (quadInfos) |quad| {
-			inline for (0..4) |i| {
-				const v = cur + @as(u32, @intCast(i));
+		for (quadInfos, 0..quadInfos.len) |quad, i| {
+			inline for (0..4) |j| {
+				const v = (i*4) + @as(u32, @intCast(j));
 				vertices[v].normal = quad.normal;
-				vertices[v].pos = quad.corners[i];
-				vertices[v].uv = quad.cornerUV[i];
+				vertices[v].pos = quad.corners[j];
+				vertices[v].uv = quad.cornerUV[j];
 			}
-			cur += 4;
 		}
 
 		const lut = [_]u32{0, 2, 1, 1, 2, 3};
