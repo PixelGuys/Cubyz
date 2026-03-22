@@ -55,6 +55,8 @@ fn toggleTool() void {
 }
 
 fn updateResult(_: main.items.Inventory.Source) void {
+	craftingResultInv.super._items[0].deinit();
+	craftingResultInv.super._items[0] = .{};
 	var availableItems: [25]?main.items.BaseItemIndex = undefined;
 	const slotInfos = toolTypes.items[currentToolType].slotInfos();
 
