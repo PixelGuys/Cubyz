@@ -49,14 +49,6 @@ pub fn init() void {
 
 	model = .initFromObj(main.stackAllocator, "assets/cubyz/entities/models/snale.obj");
 	model.loadTextureFromFile("assets/cubyz/entities/textures/snale.png");
-
-	addEntity(ZonElement.parseFromString(main.globalArena, null,
-		\\ .{
-		\\    .id = 1,
-		\\    .name = "bobik",
-		\\
-		\\  }
-	));
 }
 
 pub fn deinit() void {
