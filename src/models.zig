@@ -1098,5 +1098,6 @@ pub const EntityModel = struct {
 		c.glDeleteVertexArrays(1, &self.vao);
 		c.glDeleteBuffers(1, &self.vbo);
 		c.glDeleteBuffers(1, &self.ebo);
+		self.texture.deinit();
 	}
 };
