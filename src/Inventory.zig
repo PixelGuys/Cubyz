@@ -248,12 +248,20 @@ pub const ServerSide = struct { // MARK: ServerSide
 				}
 				return error.Invalid;
 			},
-			.workbench => |id| {
-				if (id != user.id) {
-					std.log.err("Player {s} tried to access the inventory of another player.", .{user.name});
-					return error.Invalid;
-				}
-				callbacks.onLastCloseCallback = &workbenchCloseCallback;
+			.workbench => {
+				const workbenchCloseCallback = struct {
+					fn callback(callbackSource: Source, callbackUser: *main.server.User) void {
+						switch (callbackSource) {
+							.workbench => {
+								const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
+								const playerInventory = ServerSide.getInventory(callbackUser, callbackUser.inventory.?) orelse @panic("Could not find player Inventory");
+								sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player.pos)}, null);
+							},
+							else => unreachable,
+						}
+					}
+				};
+				callbacks.onLastCloseCallback = &workbenchCloseCallback.callback;
 			},
 			.other => {},
 			.alreadyFreed => unreachable,
@@ -346,17 +354,6 @@ pub const ServerSide = struct { // MARK: ServerSide
 		}
 		if (itemStack.amount == 0) itemStack.item = .null;
 	}
-
-	fn workbenchCloseCallback(source: Source, user: *main.server.User) void {
-		switch (source) {
-			.workbench => |id| {
-				const workbenchInventory = getInventoryFromSource(source) orelse @panic("Could not find workbench Inventory");
-				const playerInventory = getInventoryFromSource(.{.playerInventory = id}) orelse @panic("Could not find player inventory");
-				sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, user.player.pos)}, null);
-			},
-			else => unreachable,
-		}
-	}
 };
 
 pub fn getInventory(id: InventoryId, side: sync.Side, user: ?*main.server.User) ?Inventory {
@@ -386,7 +383,7 @@ pub const Source = union(SourceType) {
 	playerInventory: u32,
 	hand: u32,
 	blockInventory: Vec3i,
-	workbench: u32,
+	workbench: void,
 	other: void,
 };
 

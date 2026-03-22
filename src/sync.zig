@@ -798,13 +798,13 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(Inventory.TypeEnum, self.inv.type);
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch (self.source) {
-				.playerInventory, .hand, .workbench => |val| {
+				.playerInventory, .hand => |val| {
 					writer.writeInt(u32, val);
 				},
 				.blockInventory => |val| {
 					writer.writeVec(Vec3i, val);
 				},
-				.other => {},
+				.workbench, .other => {},
 				.alreadyFreed => unreachable,
 			}
 			switch (self.inv.type) {
@@ -825,7 +825,7 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
-				.workbench => .{.workbench = try reader.readInt(u32)},
+				.workbench => .{.workbench = {}},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
