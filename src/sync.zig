@@ -1350,6 +1350,76 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
+	const CraftTool = struct { // MARK: CraftFrom
+		destinations: Inventory.Inventories,
+		craftingGrid: Inventory,
+		toolIndex: main.items.ToolTypeIndex,
+
+		pub fn init(destinations: []const Inventory.ClientInventory, craftingGrid: Inventory.ClientInventory, toolIndex: main.items.ToolTypeIndex) CraftTool {
+			return .{
+				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
+				.craftingGrid = craftingGrid.super,
+				.toolIndex = toolIndex,
+			};
+		}
+
+		fn finalize(self: CraftTool, _: Side, _: *BinaryReader) !void {
+			self.destinations.deinit(main.globalAllocator);
+		}
+
+		fn run(self: CraftTool, ctx: Context) error{serverFailure}!void {
+			for (self.destinations.inventories) |dest| if (dest.type != .normal) return;
+
+			var availableItems: [25]?main.items.BaseItemIndex = undefined;
+			const slotInfos = self.toolIndex.slotInfos();
+
+			for (0..25) |i| {
+				if (self._items[i].item == .baseItem) {
+					availableItems[i] = self._items[i].item.baseItem;
+				} else {
+					if (!slotInfos[i].optional and !slotInfos[i].disabled) {
+						return;
+					}
+					availableItems[i] = null;
+				}
+			}
+			var hash = std.hash.Crc32.init();
+			for (availableItems) |item| {
+				if (item != null) {
+					hash.update(item.?.id());
+				} else {
+					hash.update("none");
+				}
+			}
+			const tool = Item{.tool = main.items.Tool.initFromCraftingGrid(availableItems, hash.final(), self.toolIndex)};
+
+			if (self.destinations.canHold(.{.item = tool, .amount = 1}) != .yes) return;
+			ctx.cmd.removeToolCraftingIngredients(main.globalAllocator, self.craftingGrid, ctx.side);
+			self.destinations.putItemsInto(ctx, 1, .{.create = tool});
+		}
+
+		fn serialize(self: CraftTool, writer: *BinaryWriter) void {
+			self.destinations.toBytes(writer);
+			writer.writeEnum(InventoryId, self.craftingGrid.id);
+			writer.writeEnum(main.items.ToolTypeIndex, self.toolIndex);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !CraftTool {
+			const destinations = try Inventory.Inventories.fromBytes(main.globalAllocator, reader, side, user);
+			errdefer destinations.deinit(main.globalAllocator);
+
+			const craftingGrid = Inventory.getInventory(try reader.readEnum(InventoryId), side, user) orelse return error.InventoryNotFound;
+			if (craftingGrid.source != .workbench) return error.Invalid;
+
+			const toolIndex = try reader.readEnum(main.items.ToolTypeIndex);
+			return .{
+				.destinations = destinations,
+				.craftingGrid = craftingGrid,
+				.toolIndex = toolIndex,
+			};
+		}
+	};
+
 	const Clear = struct { // MARK: Clear
 		inv: Inventory,
 
