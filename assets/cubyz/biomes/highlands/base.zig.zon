@@ -67,7 +67,7 @@
 		},
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.04,
+			.chance = 0.03,
 			.block = "cubyz:slate/base",
 			.size = 3,
 			.size_variance = 3,
@@ -75,7 +75,7 @@
 		.{
 			.id = "cubyz:stalagmite",
 			.block = "cubyz:slate/base",
-			.chance = 0.005,
+			.chance = 0.003,
 			.size = 9,
 			.size_variation = 6,
 			.baseSlope = 5,
