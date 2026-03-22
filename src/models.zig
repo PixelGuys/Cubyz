@@ -905,31 +905,31 @@ pub const EntityModel = struct {
 	vao: c_uint,
 	vbo: c_uint,
 	ebo: c_uint,
-	size: u32,
+	indexCount: c_int,
 	texture: main.graphics.Texture = undefined,
 
-	const EntityVertex = struct {
+	const EntityVertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
 	};
 
-	pub fn initFromObj(allocator: main.heap.NeverFailingAllocator, path: []const u8) EntityModel {
-		const modelFile = main.files.cwd().read(allocator, path) catch |err| blk: {
+	pub fn initFromObj(path: []const u8) EntityModel {
+		const modelFile = main.files.cwd().read(main.stackAllocator, path) catch |err| blk: {
 			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
 			break :blk &.{};
 		};
-		defer allocator.free(modelFile);
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(allocator, modelFile);
-		defer allocator.free(quadInfos);
+		defer main.stackAllocator.free(modelFile);
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
+		defer main.stackAllocator.free(quadInfos);
 
-		const vertices = allocator.alloc(EntityVertex, quadInfos.len*4);
-		defer allocator.free(vertices);
-		const indices: []u32 = allocator.alloc(u32, quadInfos.len*6);
-		defer allocator.free(indices);
+		const vertices = main.stackAllocator.alloc(EntityVertex, quadInfos.len*4);
+		defer main.stackAllocator.free(vertices);
+		const indices: []u32 = main.stackAllocator.alloc(u32, quadInfos.len*6);
+		defer main.stackAllocator.free(indices);
 
 		for (quadInfos, 0..quadInfos.len) |quad, i| {
-			inline for (0..4) |j| {
+			for (0..4) |j| {
 				const v = i*4 + j;
 				vertices[v].normal = quad.normal;
 				vertices[v].pos = quad.corners[j];
@@ -966,11 +966,11 @@ pub const EntityModel = struct {
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
 
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).pos);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@intFromPtr(&@as(*allowzero EntityVertex, @ptrFromInt(0)).pos));
 		c.glEnableVertexAttribArray(0);
-		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).normal);
+		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@intFromPtr(&@as(*allowzero EntityVertex, @ptrFromInt(0)).normal));
 		c.glEnableVertexAttribArray(1);
-		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).uv);
+		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, &@intFromPtr(&@as(*allowzero EntityVertex, @ptrFromInt(0)).uv));
 		c.glEnableVertexAttribArray(2);
 
 		c.glBindVertexArray(0);
@@ -979,7 +979,7 @@ pub const EntityModel = struct {
 			.vao = vao,
 			.vbo = vbo,
 			.ebo = ebo,
-			.size = @intCast(indices.len),
+			.indexCount = @intCast(indices.len),
 			.texture = main.client.entity_manager.missingModelTexture,
 		};
 	}

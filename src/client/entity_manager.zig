@@ -47,7 +47,7 @@ pub fn init() void {
 
 	missingModelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/missing.png");
 
-	model = .initFromObj(main.stackAllocator, "assets/cubyz/entities/models/snale.obj");
+	model = .initFromObj("assets/cubyz/entities/models/snale.obj");
 	model.loadTextureFromFile("assets/cubyz/entities/textures/snale.png");
 }
 
@@ -151,7 +151,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 			.mul(Mat4f.rotationZ(-ent.rot[2])));
 		const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-		c.glDrawElements(c.GL_TRIANGLES, @intCast(model.size), c.GL_UNSIGNED_INT, null);
+		c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
 	}
 }
 
