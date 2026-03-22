@@ -8,7 +8,7 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
-pub const id = "cubyz:octehedron";
+pub const id = "cubyz:octahedron";
 
 minRadius: f32,
 maxRadius: f32,
@@ -20,9 +20,9 @@ pub fn init(zon: ZonElement) ?*@This() {
 	return result;
 }
 
-pub fn calculateProjectedPointValue(a: f32, b: f32, c: f32) f32 {
+pub fn calculateProjectedPointValue(a: u31, b: u31, c: u31) f32 {
 	// First find a clamped point on the plane of the ocahedron
-	const calculatedValue = (a*2 - b - c + 1)/3;
+	const calculatedValue: f32 = (@as(f32, @floatCast(a))*2 - @as(f32, @floatCast(b)) - @as(f32, @floatCast(c)) + 1)/3;
 	return @max(calculatedValue, 0);
 }
 
@@ -60,16 +60,16 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 				const pointY = calculateProjectedPointValue(y ,x ,z);
 				const pointZ = calculateProjectedPointValue(z ,x ,y);
 				
-				var distanceSquare = 0;
+				var distanceSquare: f32 = 0;
 
 				if ((pointX == 0) or (pointY == 0) or (pointZ == 0)) {
 					// if the clamped point is on one of the axial planes and not the octahedron clamp to nearest line
-					const rePointX = calculateReProjectedPointValue(pointX ,pointY ,pointZ);
-					const rePointY = calculateReProjectedPointValue(pointY ,pointX ,pointZ);
-					const rePointZ = calculateReProjectedPointValue(pointZ ,pointX ,pointY);
-					distanceSquare = @sqrt(rePointX + rePointY + rePointZ);
+					const rePointX: f32 = calculateReProjectedPointValue(pointX ,pointY ,pointZ);
+					const rePointY: f32 = calculateReProjectedPointValue(pointY ,pointX ,pointZ);
+					const rePointZ: f32 = calculateReProjectedPointValue(pointZ ,pointX ,pointY);
+					distanceSquare = rePointX + rePointY + rePointZ;
 				} else {
-					distanceSquare = @sqrt(pointX*pointX + pointY*pointY + pointZ*pointZ);
+					distanceSquare = pointX*pointX + pointY*pointY + pointZ*pointZ;
 				}
 
 				if (distanceSquare > (radius + perimeter)*(radius + perimeter)) continue;
