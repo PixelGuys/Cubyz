@@ -917,38 +917,7 @@ pub const EntityModel = struct {
 		normal: [3]f32,
 		uv: [2]f32,
 	};
-
-	pub fn initFromObj(allocator: main.heap.NeverFailingAllocator, path: []const u8) EntityModel {
-		const modelFile = main.files.cwd().read(allocator, path) catch |err| blk: {
-			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-			break :blk &.{};
-		};
-		defer allocator.free(modelFile);
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(allocator, modelFile);
-		defer allocator.free(quadInfos);
-
-		const vertices = allocator.alloc(EntityVertex, quadInfos.len*4);
-		defer allocator.free(vertices);
-		const indices: []u32 = allocator.alloc(u32, quadInfos.len*6);
-		defer allocator.free(indices);
-
-		for (quadInfos, 0..quadInfos.len) |quad, i| {
-			inline for (0..4) |j| {
-				const v = (i*4) + @as(u32, @intCast(j));
-				vertices[v].normal = quad.normal;
-				vertices[v].pos = quad.corners[j];
-				vertices[v].uv = quad.cornerUV[j];
-			}
-		}
-
-		const lut = [_]u32{0, 2, 1, 1, 2, 3};
-		for (0..indices.len) |i| {
-			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
-		}
-
-		return uploadMeshAndGetModel(vertices, indices);
-	}
-
+	
 	pub fn loadGltf(path: []const u8) !EntityModel {
 		// TODO: consider overriding cgltf_memory_options functions
 		var options: gltf.cgltf_options = .{};
