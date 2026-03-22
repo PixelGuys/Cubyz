@@ -1350,7 +1350,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const CraftTool = struct { // MARK: CraftFrom
+	const CraftTool = struct { // MARK: CraftTool
 		destinations: Inventory.Inventories,
 		craftingGrid: Inventory,
 		toolIndex: main.items.ToolTypeIndex,
