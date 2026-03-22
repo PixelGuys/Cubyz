@@ -392,7 +392,12 @@ pub const Source = union(SourceType) {
 };
 
 pub const ClientInventory = struct { // MARK: ClientInventory
-	const ClientType = union(enum) { serverShared: void, creative: void, crafting: *const main.items.Recipe, workbenchResult: void };
+	const ClientType = union(enum) {
+		serverShared: void,
+		creative: void,
+		crafting: *const main.items.Recipe,
+		workbenchResult: void,
+	};
 	super: Inventory,
 	type: ClientType,
 
