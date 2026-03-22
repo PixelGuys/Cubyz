@@ -956,7 +956,7 @@ pub const EntityModel = struct {
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.mesh != null) {
-				const finalMat = Mat4f.rotationZ(std.math.pi).mul(getHierarchyMatrix(node));
+				const finalMat = Mat4f.identity().mul(getHierarchyMatrix(node));
 
 				const primitives = node.mesh.*.primitives;
 				for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
