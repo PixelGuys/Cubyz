@@ -27,8 +27,8 @@ var uniforms: struct {
 	contrast: c_int,
 	ambientLight: c_int,
 } = undefined;
-pub var model: main.models.EntityModel = undefined;
-var modelTexture: main.graphics.Texture = undefined;
+var model: main.models.EntityModel = undefined;
+pub var missingModelTexture: main.graphics.Texture = undefined;
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
@@ -45,11 +45,13 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
-	model = main.models.EntityModel.loadGltf("assets/cubyz/entities/models/snale.glb") catch |err| blk: {
+	missingModelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/missing.png");
+
+	model = main.models.EntityModel.initFromGltf("assets/cubyz/entities/models/snale.glb") catch |err| blk: {
 		std.log.err("Gltf loading error {s}", .{@errorName(err)});
 		break :blk .initEmpty();
 	};
+	model.loadTextureFromFile("assets/cubyz/entities/textures/snale.png");
 
 	// TODO: remove before merge
 	addEntity(ZonElement.parseFromString(main.globalArena, null,
@@ -132,12 +134,13 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	pipeline.bind(null);
 	c.glBindVertexArray(model.vao);
 	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-	modelTexture.bindTo(0);
 	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 	c.glUniform1f(uniforms.contrast, 0.12);
 
 	for (entities.items()) |ent| {
 		if (ent.id == game.Player.id) continue; // don't render local player
+
+		model.texture.bindTo(0);
 
 		const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 		const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);

@@ -911,6 +911,7 @@ pub const EntityModel = struct {
 	vbo: c_uint,
 	ebo: c_uint,
 	size: u32,
+	texture: main.graphics.Texture = undefined,
 
 	nodeReverse: std.StringHashMap(u16) = undefined,
 	nodes: []Node = undefined,
@@ -935,7 +936,7 @@ pub const EntityModel = struct {
 		nodeID: u32,
 	};
 
-	pub fn loadGltf(path: []const u8) !EntityModel {
+	pub fn initFromGltf(path: []const u8) !EntityModel {
 		// TODO: consider overriding cgltf_memory_options functions
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
@@ -1008,38 +1009,33 @@ pub const EntityModel = struct {
 						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
 					}
 
+					var positionAttr: gltf.cgltf_accessor = undefined;
+					var normalAttr: gltf.cgltf_accessor = undefined;
+					var uvAttr: gltf.cgltf_accessor = undefined;
 					for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
 						const attribAccessor = attrib.data.*;
 
 						switch (attrib.type) {
-							gltf.cgltf_attribute_type_position => {
-								for (0..attribAccessor.count) |v| {
-									var p: [3]f32 = undefined;
-									_ = attribAccessor.float(v, @ptrCast(&p), 3);
-									const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[2], p[1], 1});
-									vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
-								}
-							},
-							gltf.cgltf_attribute_type_normal => {
-								for (0..attribAccessor.count) |v| {
-									var n: [3]f32 = undefined;
-									_ = attribAccessor.float(v, @ptrCast(&n), 3);
-
-									vertSlice[v].normal = .{-n[0], n[2], n[1]};
-								}
-							},
-							gltf.cgltf_attribute_type_texcoord => {
-								for (0..attribAccessor.count) |v| {
-									var uv: [2]f32 = undefined;
-									_ = attribAccessor.float(v, @ptrCast(&uv), 2);
-
-									vertSlice[v].uv = .{uv[0], 1 - uv[1]};
-									// TODO: thing
-									vertSlice[v].nodeID = parentNodeID;
-								}
-							},
+							gltf.cgltf_attribute_type_position => positionAttr = attribAccessor,
+							gltf.cgltf_attribute_type_normal => normalAttr = attribAccessor,
+							gltf.cgltf_attribute_type_texcoord => uvAttr = attribAccessor,
 							else => continue,
 						}
+					}
+
+					for (0..positionAttr.count) |v| {
+						var p: [3]f32 = undefined;
+						_ = positionAttr.float(v, @ptrCast(&p), 3);
+						const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[2], p[1], 1});
+						vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
+
+						var normal: [3]f32 = undefined;
+						_ = normalAttr.float(v, @ptrCast(&normal), 3);
+						vertSlice[v].normal = .{-normal[0], normal[2], normal[1]};
+
+						var uv: [2]f32 = undefined;
+						_ = uvAttr.float(v, @ptrCast(&uv), 2);
+						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
 					}
 				}
 			}
@@ -1053,6 +1049,10 @@ pub const EntityModel = struct {
 
 	pub fn initEmpty() EntityModel {
 		return uploadMeshAndGetModel(&[0]EntityVertex{}, &[0]u32{});
+	}
+
+	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
+		self.texture = main.graphics.Texture.initFromFile(path);
 	}
 
 	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
@@ -1112,11 +1112,11 @@ pub const EntityModel = struct {
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
 
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(0));
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).pos);
 		c.glEnableVertexAttribArray(0);
-		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(12));
+		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).normal);
 		c.glEnableVertexAttribArray(1);
-		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, @ptrFromInt(24));
+		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).uv);
 		c.glEnableVertexAttribArray(2);
 		c.glVertexAttribPointer(3, 1, c.GL_UNSIGNED_INT, c.GL_FALSE, vertSize, @ptrFromInt(28));
 		c.glEnableVertexAttribArray(3);
@@ -1128,6 +1128,7 @@ pub const EntityModel = struct {
 			.vbo = vbo,
 			.ebo = ebo,
 			.size = @intCast(indices.len),
+			.texture = main.client.entity_manager.missingModelTexture,
 		};
 	}
 
@@ -1135,5 +1136,6 @@ pub const EntityModel = struct {
 		c.glDeleteVertexArrays(1, &self.vao);
 		c.glDeleteBuffers(1, &self.vbo);
 		c.glDeleteBuffers(1, &self.ebo);
+		self.texture.deinit();
 	}
 };
