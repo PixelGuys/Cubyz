@@ -35,7 +35,8 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var inv: ClientInventory = undefined;
+var craftingGridInv: ClientInventory = undefined;
+var craftingResultInv: ClientInventory = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
@@ -53,8 +54,34 @@ fn toggleTool() void {
 	needsUpdate = true;
 }
 
+fn updateResult(_: main.items.Inventory.Source) void {
+	var availableItems: [25]?main.items.BaseItemIndex = undefined;
+	const slotInfos = toolTypes.items[currentToolType].slotInfos();
+
+	for (0..25) |i| {
+		if (craftingGridInv._items[i].item == .baseItem) {
+			availableItems[i] = craftingGridInv._items[i].item.baseItem;
+		} else {
+			if (!slotInfos[i].optional and !slotInfos[i].disabled) {
+				return;
+			}
+			availableItems[i] = null;
+		}
+	}
+	var hash = std.hash.Crc32.init();
+	for (availableItems) |item| {
+		if (item != null) {
+			hash.update(item.?.id());
+		} else {
+			hash.update("none");
+		}
+	}
+	craftingResultInv._items[0] = Item{.tool = main.items.Tool.initFromCraftingGrid(availableItems, hash.final(), toolTypes.items[currentToolType])};
+}
+
 fn openInventory() void {
-	inv = ClientInventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .serverShared, .{.workbench = .{.playerId = main.game.Player.id}}, .{});
+	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .normal, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .toolIndex = toolTypes[currentToolType]}}, .{});
+	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .normal, .workbenchResult, .other, .{.onUpdateCallback = &updateResult});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -64,7 +91,7 @@ fn openInventory() void {
 			for (0..5) |x| {
 				const index = x + y*5;
 				const slotInfo = toolTypes.items[currentToolType].slotInfos()[index];
-				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
+				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
 			}
@@ -79,7 +106,7 @@ fn openInventory() void {
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
 	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
-	craftingResultList.add(ItemSlot.init(.{8, 0}, inv, 25, .craftingResult, .takeOnly));
+	craftingResultList.add(ItemSlot.init(.{8, 0}, craftingResultInv, 0, .craftingResult, .takeOnly));
 	craftingResultList.finish(.{padding, padding}, .center);
 	verticalThing.add(craftingResultList);
 	verticalThing.size[1] += buttonHeight + 2*padding; // Centering the thing
@@ -92,7 +119,8 @@ fn openInventory() void {
 }
 
 fn closeInventory() void {
-	inv.deinit(main.globalAllocator);
+	craftingResultInv.deinit(main.globalAllocator);
+	craftingResultInv.deinit(main.globalAllocator);
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
@@ -108,7 +136,7 @@ pub fn update() void {
 }
 
 pub fn render() void {
-	const currentResult = inv.getItem(25);
+	const currentResult = craftingResultInv.getItem(0);
 	if (currentResult == .null) return;
 
 	const offsetX = 5*ItemSlot.sizeWithBorder + 20;

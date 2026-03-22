@@ -387,16 +387,12 @@ pub const Source = union(SourceType) {
 	playerInventory: u32,
 	hand: u32,
 	blockInventory: Vec3i,
-	workbench: struct { playerId: u32 },
+	workbench: struct { playerId: u32, toolIndex: ToolTypeIndex },
 	other: void,
 };
 
 pub const ClientInventory = struct { // MARK: ClientInventory
-	const ClientType = union(enum) {
-		serverShared: void,
-		creative: void,
-		crafting: *const main.items.Recipe,
-	};
+	const ClientType = union(enum) { serverShared: void, creative: void, crafting: *const main.items.Recipe, workbenchResult: void };
 	super: Inventory,
 	type: ClientType,
 

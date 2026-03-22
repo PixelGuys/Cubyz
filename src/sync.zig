@@ -806,6 +806,7 @@ pub const Command = struct { // MARK: Command
 				},
 				.workbench => |val| {
 					writer.writeInt(u32, val.playerId);
+					writer.writeEnum(main.items.ToolTypeIndex, val.toolIndex);
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -828,7 +829,7 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
-				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32)}},
+				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32), .toolIndex = try reader.readEnum(main.items.ToolTypeIndex)}},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
@@ -1353,13 +1354,11 @@ pub const Command = struct { // MARK: Command
 	const CraftTool = struct { // MARK: CraftTool
 		destinations: Inventory.Inventories,
 		craftingGrid: Inventory,
-		toolIndex: main.items.ToolTypeIndex,
 
-		pub fn init(destinations: []const Inventory.ClientInventory, craftingGrid: Inventory.ClientInventory, toolIndex: main.items.ToolTypeIndex) CraftTool {
+		pub fn init(destinations: []const Inventory.ClientInventory, craftingGrid: Inventory.ClientInventory) CraftTool {
 			return .{
 				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
 				.craftingGrid = craftingGrid.super,
-				.toolIndex = toolIndex,
 			};
 		}
 
@@ -1391,7 +1390,7 @@ pub const Command = struct { // MARK: Command
 					hash.update("none");
 				}
 			}
-			const tool = Item{.tool = main.items.Tool.initFromCraftingGrid(availableItems, hash.final(), self.toolIndex)};
+			const tool = Item{.tool = main.items.Tool.initFromCraftingGrid(availableItems, hash.final(), self.craftingGrid.source.workbench.toolIndex)};
 
 			if (self.destinations.canHold(.{.item = tool, .amount = 1}) != .yes) return;
 			ctx.cmd.removeToolCraftingIngredients(main.globalAllocator, self.craftingGrid, ctx.side);
@@ -1401,7 +1400,6 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: CraftTool, writer: *BinaryWriter) void {
 			self.destinations.toBytes(writer);
 			writer.writeEnum(InventoryId, self.craftingGrid.id);
-			writer.writeEnum(main.items.ToolTypeIndex, self.toolIndex);
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !CraftTool {
@@ -1410,12 +1408,9 @@ pub const Command = struct { // MARK: Command
 
 			const craftingGrid = Inventory.getInventory(try reader.readEnum(InventoryId), side, user) orelse return error.InventoryNotFound;
 			if (craftingGrid.source != .workbench) return error.Invalid;
-
-			const toolIndex = try reader.readEnum(main.items.ToolTypeIndex);
 			return .{
 				.destinations = destinations,
 				.craftingGrid = craftingGrid,
-				.toolIndex = toolIndex,
 			};
 		}
 	};
