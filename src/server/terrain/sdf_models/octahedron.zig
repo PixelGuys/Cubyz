@@ -75,9 +75,9 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 					const point2Z: f32 = calculateProjectedPointValue(pointZ ,pointX ,pointY, radius);
 					if (((pointX == 0) and (pointY == 0)) or ((pointX == 0) or (pointZ == 0)) or ((pointY == 0) or (pointZ == 0))) {
 					// projects to the nearest point if on one of the axial lines
-						const point3X: f32 = calculateProjectedPointValue(pointX ,pointY ,pointZ, radius);
-						const point3Y: f32 = calculateProjectedPointValue(pointY ,pointX ,pointZ, radius);
-						const point3Z: f32 = calculateProjectedPointValue(pointZ ,pointX ,pointY, radius);
+						const point3X: f32 = calculateProjectedPointValue(point2X ,point2Y ,point2Z, radius);
+						const point3Y: f32 = calculateProjectedPointValue(point2Y ,point2X ,point2Z, radius);
+						const point3Z: f32 = calculateProjectedPointValue(point2Z ,point2X ,point2Y, radius);
 						distanceSquare = (AdjustedInputX-point3X)*(AdjustedInputX-point3X) + (AdjustedInputY-point3Y)*(AdjustedInputY-point3Y) + (AdjustedInputZ-point3Z)*(AdjustedInputZ-point3Z);					
 					} else {
 						distanceSquare = (AdjustedInputX-point2X)*(AdjustedInputX-point2X) + (AdjustedInputY-point2Y)*(AdjustedInputY-point2Y) + (AdjustedInputZ-point2Z)*(AdjustedInputZ-point2Z);
