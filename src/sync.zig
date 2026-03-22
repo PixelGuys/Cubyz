@@ -741,7 +741,7 @@ pub const Command = struct { // MARK: Command
 	}
 
 	fn removeToolCraftingIngredients(self: *Command, allocator: NeverFailingAllocator, inv: Inventory, side: Side) void {
-		std.debug.assert(inv.type == .workbench);
+		std.debug.assert(inv.source == .workbench);
 		for (0..25) |i| {
 			if (inv._items[i].amount != 0) {
 				self.executeBaseOperation(allocator, .{.delete = .{
@@ -878,8 +878,9 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.source.inv.type == .normal);
-			if (self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.type == .workbench and self.dest.slot == 25) {
+			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
+			// TODO MOVE
+			if (false and self.dest.inv.type == .workbench and self.dest.slot == 25) {
 				if (self.source.ref().item == .null and self.dest.ref().item != .null) {
 					ctx.execute(.{.move = .{
 						.dest = self.source,
@@ -890,7 +891,7 @@ pub const Command = struct { // MARK: Command
 				}
 				return;
 			}
-			if (self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
+			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source)) return;
 
 			const itemDest = self.dest.ref().item;
 			const itemSource = self.source.ref().item;
@@ -906,7 +907,7 @@ pub const Command = struct { // MARK: Command
 					return;
 				}
 			}
-			if (self.source.inv.type == .workbench and !canPutIntoWorkbench(self.dest)) return;
+			if (self.source.inv.source == .workbench and !canPutIntoWorkbench(self.dest)) return;
 			ctx.execute(.{.swap = .{
 				.dest = self.dest,
 				.source = self.source,
@@ -933,8 +934,8 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
 			if (self.source.inv.type != .normal and self.dest.inv.type != .normal) return error.serverFailure;
-			if (self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
-			if (self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
+			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
+			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
 			const itemDest = self.dest.ref().item;
@@ -979,8 +980,9 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
-			if (self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
-			if (self.source.inv.type == .workbench and self.source.slot == 25) {
+			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.toolIndex.slotInfos()[self.source.slot].disabled) return;
+			// TODO MOVE
+			if (false and self.source.inv.type == .workbench and self.source.slot == 25) {
 				if (self.dest.ref().item == .null and self.source.ref().item != .null) {
 					ctx.execute(.{.move = .{
 						.dest = self.dest,
@@ -1033,8 +1035,9 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: Drop, ctx: Context) error{serverFailure}!void {
 			if (self.source.ref().item == .null) return;
-			if (self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
-			if (self.source.inv.type == .workbench and self.source.slot == 25) {
+			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.toolIndex.slotInfos()[self.source.slot].disabled) return;
+			// TODO MOVE
+			if (false and self.source.inv.type == .workbench and self.source.slot == 25) {
 				ctx.cmd.removeToolCraftingIngredients(ctx.allocator, self.source.inv, ctx.side);
 			}
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
@@ -1069,7 +1072,7 @@ pub const Command = struct { // MARK: Command
 		amount: u16 = 0,
 
 		fn run(self: FillFromCreative, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
+			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
 			if (ctx.side == .server and ctx.user != null and ctx.gamemode != .creative) return;
 			if (ctx.side == .client and ctx.gamemode != .creative) return;
 
@@ -1201,9 +1204,7 @@ pub const Command = struct { // MARK: Command
 			for (self.destinations.inventories) |dest| {
 				std.debug.assert(dest.type == .normal);
 			}
-			var sourceItems = self.source._items;
-			if (self.source.type == .workbench) sourceItems = self.source._items[0..25];
-			for (sourceItems, 0..) |*sourceStack, sourceSlot| {
+			for (self.source._items, 0..) |*sourceStack, sourceSlot| {
 				if (sourceStack.item == .null) continue;
 				const remainingAmount = self.destinations.putItemsInto(ctx, sourceStack.amount, .{.move = .{.inv = self.source, .slot = @intCast(sourceSlot)}});
 				if (remainingAmount == 0) continue;
@@ -1419,9 +1420,7 @@ pub const Command = struct { // MARK: Command
 		inv: Inventory,
 
 		pub fn run(self: Clear, ctx: Context) error{serverFailure}!void {
-			var items = self.inv._items;
-			if (self.inv.type == .workbench) items = self.inv._items[0..25];
-			for (items, 0..) |stack, slot| {
+			for (self.inv._items, 0..) |stack, slot| {
 				if (stack.item == .null) continue;
 
 				ctx.execute(.{.delete = .{
