@@ -128,10 +128,6 @@ pub const ServerSide = struct { // MARK: ServerSide
 					cb(self.inv.source);
 				}
 				if (self.managed == .internallyManaged) {
-					if (self.inv.type.shouldDepositToUserOnClose()) {
-						const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-						sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, self.inv, user.player.pos)}, null);
-					}
 					inventoryCreationMutex.lock();
 					defer inventoryCreationMutex.unlock();
 					self.deinit();
@@ -230,6 +226,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 
 	pub fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
 		sync.threadContext.assertCorrectContext(.server);
+		var callbacks: Callbacks = .{};
 		switch (source) {
 			.blockInventory, .playerInventory, .hand => {
 				switch (source) {
@@ -251,12 +248,31 @@ pub const ServerSide = struct { // MARK: ServerSide
 				}
 				return error.Invalid;
 			},
+			.workbench => {
+				const workbench_close_callback = struct {
+					fn callback(callbackSource: Source) void {
+						std.debug.assert(callbackSource == .workbench);
+						const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
+						const playerInventory = ServerSide.getInventoryFromSource(.{.playerInventory = callbackSource.workbench.playerId}) orelse @panic("Could not find player Inventory");
+
+						const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+						for (userList) |callbackUser| {
+							if (callbackUser.id == callbackSource.workbench.playerId) {
+								sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player.pos)}, null);
+								break;
+							}
+						}
+					}
+				};
+				callbacks.onLastCloseCallback = &workbench_close_callback.callback;
+			},
 			.other => {},
 			.alreadyFreed => unreachable,
 		}
 
 		inventoryCreationMutex.lock();
-		const inventory = ServerInventory.init(len, typ, source, .internallyManaged, .{});
+		const inventory = ServerInventory.init(len, typ, source, .internallyManaged, callbacks);
 		inventoryCreationMutex.unlock();
 
 		inventories.items()[@intFromEnum(inventory.inv.id)] = inventory;
@@ -266,6 +282,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 			.blockInventory => unreachable, // Should be loaded by the block entity
 			.playerInventory, .hand => unreachable, // Should be loaded on player creation
 			.other => {},
+			.workbench => {},
 			.alreadyFreed => unreachable,
 		}
 	}
@@ -362,6 +379,7 @@ pub const SourceType = enum(u8) {
 	playerInventory = 1,
 	hand = 3,
 	blockInventory = 5,
+	workbench = 6,
 	other = 0xff, // TODO: List every type separately here.
 };
 pub const Source = union(SourceType) {
@@ -369,6 +387,7 @@ pub const Source = union(SourceType) {
 	playerInventory: u32,
 	hand: u32,
 	blockInventory: Vec3i,
+	workbench: struct { playerId: u32 },
 	other: void,
 };
 
@@ -515,10 +534,6 @@ pub const TypeEnum = enum(u8) {
 pub const Type = union(TypeEnum) {
 	normal: void,
 	workbench: ToolTypeIndex,
-
-	pub fn shouldDepositToUserOnClose(self: Type) bool {
-		return self == .workbench;
-	}
 };
 
 type: Type,
