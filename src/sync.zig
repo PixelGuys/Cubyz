@@ -232,6 +232,7 @@ pub const Command = struct { // MARK: Command
 		depositOrDrop = 7,
 		depositToAny = 11,
 		craftFrom = 13,
+		craftTool = 15,
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
@@ -249,6 +250,7 @@ pub const Command = struct { // MARK: Command
 		depositOrDrop: DepositOrDrop,
 		depositToAny: DepositToAny,
 		craftFrom: CraftFrom,
+		craftTool: CraftTool,
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
@@ -879,18 +881,6 @@ pub const Command = struct { // MARK: Command
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.source.inv.type == .normal);
 			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
-			// TODO MOVE
-			if (false and self.dest.inv.type == .workbench and self.dest.slot == 25) {
-				if (self.source.ref().item == .null and self.dest.ref().item != .null) {
-					ctx.execute(.{.move = .{
-						.dest = self.source,
-						.source = self.dest,
-						.amount = 1,
-					}});
-					ctx.cmd.removeToolCraftingIngredients(ctx.allocator, self.dest.inv, ctx.side);
-				}
-				return;
-			}
 			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source)) return;
 
 			const itemDest = self.dest.ref().item;
@@ -981,18 +971,7 @@ pub const Command = struct { // MARK: Command
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(self.dest.inv.type == .normal);
 			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.toolIndex.slotInfos()[self.source.slot].disabled) return;
-			// TODO MOVE
-			if (false and self.source.inv.type == .workbench and self.source.slot == 25) {
-				if (self.dest.ref().item == .null and self.source.ref().item != .null) {
-					ctx.execute(.{.move = .{
-						.dest = self.dest,
-						.source = self.source,
-						.amount = 1,
-					}});
-					ctx.cmd.removeToolCraftingIngredients(ctx.allocator, self.source.inv, ctx.side);
-				}
-				return;
-			}
+
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
 			const desiredAmount = (1 + self.source.ref().amount)/2;
@@ -1036,10 +1015,7 @@ pub const Command = struct { // MARK: Command
 		fn run(self: Drop, ctx: Context) error{serverFailure}!void {
 			if (self.source.ref().item == .null) return;
 			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.toolIndex.slotInfos()[self.source.slot].disabled) return;
-			// TODO MOVE
-			if (false and self.source.inv.type == .workbench and self.source.slot == 25) {
-				ctx.cmd.removeToolCraftingIngredients(ctx.allocator, self.source.inv, ctx.side);
-			}
+
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if (ctx.side == .server) {
 				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -ctx.user.?.player.rot[0]), -ctx.user.?.player.rot[2]);
@@ -1371,11 +1347,11 @@ pub const Command = struct { // MARK: Command
 			for (self.destinations.inventories) |dest| if (dest.type != .normal) return;
 
 			var availableItems: [25]?main.items.BaseItemIndex = undefined;
-			const slotInfos = self.toolIndex.slotInfos();
+			const slotInfos = self.craftingGrid.source.workbench.toolIndex.slotInfos();
 
 			for (0..25) |i| {
-				if (self._items[i].item == .baseItem) {
-					availableItems[i] = self._items[i].item.baseItem;
+				if (self.craftingGrid._items[i].item == .baseItem) {
+					availableItems[i] = self.craftingGrid._items[i].item.baseItem;
 				} else {
 					if (!slotInfos[i].optional and !slotInfos[i].disabled) {
 						return;
@@ -1395,7 +1371,7 @@ pub const Command = struct { // MARK: Command
 
 			if (self.destinations.canHold(.{.item = tool, .amount = 1}) != .yes) return;
 			ctx.cmd.removeToolCraftingIngredients(main.globalAllocator, self.craftingGrid, ctx.side);
-			self.destinations.putItemsInto(ctx, 1, .{.create = tool});
+			_ = self.destinations.putItemsInto(ctx, 1, .{.create = tool});
 		}
 
 		fn serialize(self: CraftTool, writer: *BinaryWriter) void {

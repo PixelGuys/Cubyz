@@ -427,6 +427,13 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			carried.fillFromCreative(0, dest.getItem(destSlot));
 			return;
 		}
+		if (dest.type == .workbenchResult) {
+			dest.craftTool(&.{carried});
+			return;
+		}
+		if (carried.type == .workbenchResult) {
+			carried.craftTool(&.{dest});
+		}
 		std.debug.assert(dest.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
 	}
@@ -445,6 +452,9 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		if (carried.type == .creative) {
 			carried.fillFromCreative(0, source.getItem(sourceSlot));
 			return;
+		}
+		if (source.type == .workbenchResult) {
+			source.craftTool(&.{carried});
 		}
 		main.sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried.super, .slot = 0}, .source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
@@ -497,6 +507,13 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		std.debug.assert(craftingInv.type == .crafting);
 
 		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.type.crafting)});
+	}
+
+	pub fn craftTool(source: ClientInventory, destinations: []const ClientInventory) void {
+		std.debug.assert(source.type == .workbenchResult);
+		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
+
+		main.sync.ClientSide.executeCommand(.{.craftTool = .init(destinations, main.gui.windowlist.workbench.craftingGridInv)});
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {

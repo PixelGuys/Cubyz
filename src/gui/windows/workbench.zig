@@ -35,7 +35,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var craftingGridInv: ClientInventory = undefined;
+pub var craftingGridInv: ClientInventory = undefined;
 var craftingResultInv: ClientInventory = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
@@ -59,8 +59,8 @@ fn updateResult(_: main.items.Inventory.Source) void {
 	const slotInfos = toolTypes.items[currentToolType].slotInfos();
 
 	for (0..25) |i| {
-		if (craftingGridInv._items[i].item == .baseItem) {
-			availableItems[i] = craftingGridInv._items[i].item.baseItem;
+		if (craftingGridInv.super._items[i].item == .baseItem) {
+			availableItems[i] = craftingGridInv.super._items[i].item.baseItem;
 		} else {
 			if (!slotInfos[i].optional and !slotInfos[i].disabled) {
 				return;
@@ -76,12 +76,12 @@ fn updateResult(_: main.items.Inventory.Source) void {
 			hash.update("none");
 		}
 	}
-	craftingResultInv._items[0] = Item{.tool = main.items.Tool.initFromCraftingGrid(availableItems, hash.final(), toolTypes.items[currentToolType])};
+	craftingResultInv.super._items[0] = .{.item = Item{.tool = main.items.Tool.initFromCraftingGrid(availableItems, hash.final(), toolTypes.items[currentToolType])}, .amount = 1};
 }
 
 fn openInventory() void {
-	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .normal, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .toolIndex = toolTypes[currentToolType]}}, .{});
-	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .normal, .workbenchResult, .other, .{.onUpdateCallback = &updateResult});
+	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .normal, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .toolIndex = toolTypes.items[currentToolType]}}, .{.onUpdateCallback = &updateResult});
+	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .normal, .workbenchResult, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -119,7 +119,7 @@ fn openInventory() void {
 }
 
 fn closeInventory() void {
-	craftingResultInv.deinit(main.globalAllocator);
+	craftingGridInv.deinit(main.globalAllocator);
 	craftingResultInv.deinit(main.globalAllocator);
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
