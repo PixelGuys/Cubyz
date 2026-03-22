@@ -251,14 +251,10 @@ pub const ServerSide = struct { // MARK: ServerSide
 			.workbench => {
 				const workbenchCloseCallback = struct {
 					fn callback(callbackSource: Source, callbackUser: *main.server.User) void {
-						switch (callbackSource) {
-							.workbench => {
-								const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
-								const playerInventory = ServerSide.getInventory(callbackUser, callbackUser.inventory.?) orelse @panic("Could not find player Inventory");
-								sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player.pos)}, null);
-							},
-							else => unreachable,
-						}
+						std.debug.assert(callbackSource == .workbench);
+						const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
+						const playerInventory = ServerSide.getInventory(callbackUser, callbackUser.inventory.?) orelse @panic("Could not find player Inventory");
+						sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player.pos)}, null);
 					}
 				};
 				callbacks.onLastCloseCallback = &workbenchCloseCallback.callback;
@@ -383,7 +379,7 @@ pub const Source = union(SourceType) {
 	playerInventory: u32,
 	hand: u32,
 	blockInventory: Vec3i,
-	workbench: void,
+	workbench: struct { playerId: u32 },
 	other: void,
 };
 

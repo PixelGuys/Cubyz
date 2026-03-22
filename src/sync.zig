@@ -804,7 +804,10 @@ pub const Command = struct { // MARK: Command
 				.blockInventory => |val| {
 					writer.writeVec(Vec3i, val);
 				},
-				.workbench, .other => {},
+				.workbench => |val| {
+					writer.writeInt(u32, val.playerId);
+				},
+				.other => {},
 				.alreadyFreed => unreachable,
 			}
 			switch (self.inv.type) {
@@ -825,7 +828,7 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
-				.workbench => .{.workbench = {}},
+				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32)}},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
