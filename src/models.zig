@@ -944,6 +944,14 @@ pub const EntityModel = struct {
 			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 		}
 
+		return uploadMeshAndGetModel(vertices, indices);
+	}
+
+	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
+		self.texture = main.graphics.Texture.initFromFile(path);
+	}
+
+	fn uploadMeshAndGetModel(vertices: []EntityVertex, indices: []u32) EntityModel {
 		var vao: c_uint = 0;
 		c.glGenVertexArrays(1, &vao);
 		c.glBindVertexArray(vao);
@@ -976,10 +984,6 @@ pub const EntityModel = struct {
 			.size = @intCast(indices.len),
 			.texture = main.client.entity_manager.missingModelTexture,
 		};
-	}
-
-	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
-		self.texture = main.graphics.Texture.initFromFile(path);
 	}
 
 	pub fn deinit(self: EntityModel) void {
