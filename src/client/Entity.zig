@@ -38,7 +38,7 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 		.width = zon.get(f64, "width", 1),
 		.height = zon.get(f64, "height", 1),
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
-		.playerIndex = zon.get(usize, "playerIndex", 1),
+		.playerIndex = zon.get(usize, "playerIndex", std.math.maxInt(usize)),
 	};
 	self._interpolationPos = [_]f64{
 		self.pos[0],

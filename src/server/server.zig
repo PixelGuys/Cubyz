@@ -487,11 +487,7 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
-		if (main.settings.showIdWithName) {
-			try writer.print("{s}@{d}", .{user.name, user.playerIndex});
-		} else {
-			try writer.print("{s}", .{user.name});
-		}
+		try writer.print("{s}@{d}", .{user.name, user.playerIndex});
 	}
 };
 
