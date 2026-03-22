@@ -180,6 +180,16 @@ pub fn build(b: *std.Build) !void {
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
 	const version = b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
+	if (b.option([]const u8, "version", "used by the CI to check if the git tag and game version match")) |tagVersion| {
+		const tagVersionUpperbound: usize = std.mem.indexOfScalar(u8, tagVersion, '-') orelse tagVersion.len;
+		const versionUpperbound: usize = std.mem.indexOfScalar(u8, version, '-') orelse version.len;
+		const tagParsed = try std.SemanticVersion.parse(tagVersion[0..tagVersionUpperbound]);
+		const versionParsed = try std.SemanticVersion.parse(version[0..versionUpperbound]);
+		if (std.SemanticVersion.order(tagParsed, versionParsed) != .eq) {
+			std.log.err("Provided version {s} does not match version in build.zig: {s}", .{tagVersion, version});
+			return error.VersionMismatch;
+		}
+	}
 	options.addOption([]const u8, "version", version);
 	options.addOption(bool, "isTaggedRelease", isRelease);
 

@@ -6,7 +6,11 @@ const User = main.server.User;
 const command = @import("_command.zig");
 
 pub const description = "Teleport to location.";
-pub const usage = "/tp <biome>\n/tp <x> <y> <z>";
+pub const usage =
+	\\/tp <biome>
+	\\/tp <x> <y> <z>
+	\\/tp @<playerId>
+;
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (std.mem.containsAtLeast(u8, args, 1, ":")) {
@@ -66,7 +70,15 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 
 	var split = std.mem.splitScalar(u8, args, ' ');
-	const pos = command.parseCoordinates(&split, source) catch return;
+	const pos = blk: {
+		if (std.mem.startsWith(u8, args, "@")) {
+			const target = command.Target.init(&split, source) catch return;
+			defer target.deinit();
+			break :blk target.user.player.pos;
+		} else {
+			break :blk command.parseCoordinates(&split, source) catch return;
+		}
+	};
 	if (split.next()) |_| {
 		source.sendMessage("#ff0000Too many arguments for command /tp", .{});
 		return;

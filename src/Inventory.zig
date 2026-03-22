@@ -467,6 +467,10 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item, .amount = amount}});
 	}
 
+	pub fn fillAnyFromCreative(destinations: []const ClientInventory, item: Item, amount: u16) void {
+		main.sync.ClientSide.executeCommand(.{.fillAnyFromCreative = .init(destinations, item, amount)});
+	}
+
 	pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory) void {
 		std.debug.assert(source.type == .serverShared);
 		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);

@@ -228,6 +228,7 @@ pub const Command = struct { // MARK: Command
 		takeHalf = 4,
 		drop = 5,
 		fillFromCreative = 6,
+		fillAnyFromCreative = 14,
 		depositOrDrop = 7,
 		depositToAny = 11,
 		craftFrom = 13,
@@ -244,6 +245,7 @@ pub const Command = struct { // MARK: Command
 		takeHalf: TakeHalf,
 		drop: Drop,
 		fillFromCreative: FillFromCreative,
+		fillAnyFromCreative: FillAnyFromCreative,
 		depositOrDrop: DepositOrDrop,
 		depositToAny: DepositToAny,
 		craftFrom: CraftFrom,
@@ -1105,6 +1107,60 @@ pub const Command = struct { // MARK: Command
 			}
 			return .{
 				.dest = dest,
+				.item = item,
+				.amount = amount,
+			};
+		}
+	};
+
+	const FillAnyFromCreative = struct { // MARK: FillAnyFromCreative
+		destinations: Inventory.Inventories,
+		item: Item,
+		amount: u16,
+
+		pub fn init(destinations: []const Inventory.ClientInventory, item: Item, amount: u16) FillAnyFromCreative {
+			return .{
+				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
+				.item = item,
+				.amount = amount,
+			};
+		}
+
+		fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
+			self.destinations.deinit(main.globalAllocator);
+		}
+
+		fn run(self: FillAnyFromCreative, ctx: Context) error{serverFailure}!void {
+			for (self.destinations.inventories) |dest| if (dest.type != .normal) return;
+
+			_ = self.destinations.putItemsInto(ctx, self.amount, .{.create = self.item});
+		}
+
+		fn serialize(self: FillAnyFromCreative, writer: *BinaryWriter) void {
+			self.destinations.toBytes(writer);
+			writer.writeInt(u16, self.amount);
+			if (self.item != .null) {
+				const zon = ZonElement.initObject(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
+				self.item.insertIntoZon(main.stackAllocator, zon);
+				const string = zon.toStringEfficient(main.stackAllocator, &.{});
+				defer main.stackAllocator.free(string);
+				writer.writeSlice(string);
+			}
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !FillAnyFromCreative {
+			const destinations = try Inventory.Inventories.fromBytes(main.globalAllocator, reader, side, user);
+			errdefer destinations.deinit(main.globalAllocator);
+			const amount = try reader.readInt(u16);
+			var item: Item = .null;
+			if (reader.remaining.len != 0) {
+				const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
+				defer zon.deinit(main.stackAllocator);
+				item = try Item.init(zon);
+			}
+			return .{
+				.destinations = destinations,
 				.item = item,
 				.amount = amount,
 			};

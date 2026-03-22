@@ -735,7 +735,13 @@ pub const inventory = struct { // MARK: inventory
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
 				if (hovered.inventory.type == .crafting) return;
-				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) return;
+				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) {
+					if (hovered.inventory.type == .creative) {
+						const item = hovered.inventory.getItem(hovered.itemSlot);
+						ClientInventory.fillAnyFromCreative(&.{main.game.Player.inventory}, item, item.stackSize());
+					}
+					return;
+				}
 				if (!hovered.pressed) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
 			} else if (!hoveredAWindow) {
