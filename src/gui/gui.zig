@@ -744,7 +744,7 @@ pub const inventory = struct { // MARK: inventory
 				}
 				if (!hovered.pressed) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
-			} else if (!hoveredAWindow) {
+			} else if (!hoveredAWindow and selectedWindow == null) {
 				carried.dropStack(0);
 			}
 		} else {
@@ -757,7 +757,7 @@ pub const inventory = struct { // MARK: inventory
 				} else {
 					hovered.inventory.takeHalf(hovered.itemSlot, carried);
 				}
-			} else if (!hoveredAWindow) {
+			} else if (!hoveredAWindow and selectedWindow == null) {
 				carried.dropOne(0);
 			}
 		}
