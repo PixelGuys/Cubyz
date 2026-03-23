@@ -48,8 +48,9 @@ fn getMaError(err: c_int) anyerror {
 const SoundData = struct {  // MARK: SOUND
 	soundId: []const u8,
 	data: []f32 = &.{},
+	isMono: bool = false,
 
-	volume: f32 = 0,
+	volume: f32 = 1,
 
 	fn open_vorbis_file_by_id(id: []const u8) ?*c.stb_vorbis {
 		const colonIndex = std.mem.indexOfScalar(u8, id, ':') orelse {
@@ -82,6 +83,8 @@ const SoundData = struct {  // MARK: SOUND
 			if (sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
 				const tempData = main.stackAllocator.alloc(f32, samples*channels);
 				defer main.stackAllocator.free(tempData);
+				std.debug.print("\n AAAAAAAAAAAAAAAAAAA {any}", .{ogg_info.channels});
+				self.isMono = ogg_info.channels == 1; 
 				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
 				const newSamples: usize = @intFromFloat(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
@@ -481,9 +484,15 @@ fn addSound(buffer: []f32) void {
 		while (j < buffer.len) : (j += 2) {
 			const amplitude: f32 = main.settings.soundVolume;
 			
-			buffer[j] += soundBuffer[sound.pos]*amplitude*soundData.volume;
-			buffer[j + 1] += soundBuffer[sound.pos + 1]*amplitude*soundData.volume;
-			sound.pos += 2;
+			if (soundData.isMono) {
+				buffer[j] += soundBuffer[sound.pos]*amplitude*soundData.volume;
+				buffer[j + 1] += soundBuffer[sound.pos]*amplitude*soundData.volume;
+				sound.pos += 1;
+			} else {
+				buffer[j] += soundBuffer[sound.pos]*amplitude*soundData.volume;
+				buffer[j + 1] += soundBuffer[sound.pos + 1]*amplitude*soundData.volume;
+				sound.pos += 2;
+			}
 			if (sound.pos >= soundBuffer.len) {
 				soundCount -= 1;
 				activeSounds.items[i] = activeSounds.items[soundCount];
