@@ -1079,7 +1079,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingTime = damagePerSwing/damage*swingTime;
 					}
 					currentSwingProgress += @floatCast(deltaTime);
+					var swung = false;
 					while (currentSwingProgress > currentSwingTime) {
+						swung = true;
 						currentSwingProgress -= currentSwingTime;
 						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
 						if (currentBlockProgress > 0.9999) break;
@@ -1090,6 +1092,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					if (currentBlockProgress < 0.9999) {
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						if (currentBlockProgress != 0) {
+							if (swung) {
+								main.audio.playSound("cubyz:yes");
+							}
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						}
 						main.sync.ClientSide.mutex.unlock();
@@ -1112,6 +1117,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.sync.ClientSide.mutex.unlock();
 
 			if (newBlock != block) {
+				main.audio.playSound("cubyz:explosion");
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 			}
 		}

@@ -24,6 +24,7 @@ fn musicCallback(newValue: f32) void {
 
 fn soundCallback(newValue: f32) void {
 	settings.soundVolume = deziBelToLinear(newValue);
+	std.debug.print("\n{d}", .{settings.soundVolume});
 	settings.save();
 }
 

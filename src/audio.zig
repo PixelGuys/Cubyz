@@ -49,6 +49,8 @@ const SoundData = struct {  // MARK: SOUND
 	soundId: []const u8,
 	data: []f32 = &.{},
 
+	volume: f32 = 0,
+
 	fn open_vorbis_file_by_id(id: []const u8) ?*c.stb_vorbis {
 		const colonIndex = std.mem.indexOfScalar(u8, id, ':') orelse {
 			std.log.err("Invalid sound id: {s}. Must be addon:file_name", .{id});
@@ -132,6 +134,8 @@ const SoundData = struct {  // MARK: SOUND
 const Sound = struct {
 	soundIndex: u32,
 	pos: u32 = 0,
+
+	volume: f32 = 0,
 };
 
 var soundIDReverse: std.StringHashMapUnmanaged(u32) = .{};
@@ -142,8 +146,10 @@ pub fn getActiveSoundCount() u32 {
 	return @intCast(activeSounds.items.len);
 }
 
-pub fn registerSound(_: []const u8, id: []const u8, _: ZonElement) void {
+pub fn registerSound(_: []const u8, id: []const u8, zon: ZonElement) void {
 	const sound = SoundData.init(id);
+	sound.volume = zon.get(f32, "volume", 1.0);
+	// std.debug.print("\n AAAAAAAAA {d}", .{});
 
 	soundIDReverse.put(main.worldArena.allocator, id, @intCast(sounds.items.len)) catch unreachable;
 	sounds.append(sound);
@@ -464,25 +470,24 @@ fn addSound(buffer: []f32) void {
 	
 	if (activeSounds.items.len == 0) return;
 
-	// Copy the sound to the buffer.
-
 	var i: u32 = 0;
 	var soundCount = activeSounds.items.len;
-	while (i < soundCount) {
+	main: while (i < soundCount) {
 		var sound = activeSounds.items[i];
-		const soundBuffer = sounds.items[sound.soundIndex].data;
+		const soundData = sounds.items[sound.soundIndex];
+		const soundBuffer = soundData.data;
 
 		var j: usize = 0;
 		while (j < buffer.len) : (j += 2) {
 			const amplitude: f32 = main.settings.soundVolume;
 			
-			buffer[j] += amplitude*soundBuffer[sound.pos];
-			buffer[j + 1] += amplitude*soundBuffer[sound.pos + 1];
+			buffer[j] += soundBuffer[sound.pos]*amplitude*soundData.volume;
+			buffer[j + 1] += soundBuffer[sound.pos + 1]*amplitude*soundData.volume;
 			sound.pos += 2;
 			if (sound.pos >= soundBuffer.len) {
 				soundCount -= 1;
-				sound = activeSounds.items[soundCount];
-				break;
+				activeSounds.items[i] = activeSounds.items[soundCount];
+				continue :main;
 			}
 		}
 		activeSounds.items[i] = sound;
