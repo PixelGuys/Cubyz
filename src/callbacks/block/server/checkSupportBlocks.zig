@@ -42,7 +42,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	if (newBlock == params.block) return .ignored;
 
-	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock) == null) {
+	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock, false) == null) {
 		const dropAmount = params.block.mode().itemDropsOnChange(params.block, newBlock);
 		const drops = params.block.blockDrops();
 		for (0..dropAmount) |_| {
