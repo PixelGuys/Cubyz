@@ -778,6 +778,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			while (x < chunk.chunkSize) : (x += 1) {
 				var y: u8 = 0;
 				while (y < chunk.chunkSize) : (y += 1) {
+					if (self.chunk.getBlock(x, y, chunk.chunkSize - 1).absorption() != 0) continue;
 					const startHeight: i32 = lightStartMap.getHeight(self.pos.wx + x*self.pos.voxelSize, self.pos.wy + y*self.pos.voxelSize);
 					const relHeight = startHeight -% self.pos.wz;
 					if (relHeight < chunk.chunkSize*self.pos.voxelSize) {

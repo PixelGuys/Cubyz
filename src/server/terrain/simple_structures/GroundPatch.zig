@@ -85,7 +85,7 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				}
 				var pz = chunk.startIndex(startHeight - self.depth + 1);
 				if (mode == .water_surface) {
-					const surfaceHeight = caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py);
+					const surfaceHeight = caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py) & ~chunk.super.voxelSizeMask;
 					pz = @max(pz, surfaceHeight -% chunk.super.pos.wz);
 				}
 				if (@abs(startHeight -% baseHeight) > 5) continue;

@@ -596,6 +596,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	}
 
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
+		if (other.super.pos.wz > 9000 and self.super.pos.voxelSize > 4) return; // We don't want to generate LODs for the sky
 		const xOffset = if (other.super.pos.wx != self.super.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
 		const yOffset = if (other.super.pos.wy != self.super.pos.wy) chunkSize/2 else 0;
 		const zOffset = if (other.super.pos.wz != self.super.pos.wz) chunkSize/2 else 0;

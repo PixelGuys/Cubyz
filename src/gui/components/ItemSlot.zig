@@ -164,10 +164,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		}
 	}
 	if (self.mode != .immutable) {
-		if (self.pressed) {
-			draw.setColor(0x80808080);
-			draw.rect(self.pos, self.size);
-		} else if (self.hovered) {
+		if (self.hovered) {
 			self.hovered = false;
 			draw.setColor(0x300000ff);
 			draw.rect(self.pos, self.size);

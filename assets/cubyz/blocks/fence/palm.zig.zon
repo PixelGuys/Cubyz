@@ -1,12 +1,4 @@
 .{
-	.tags = .{.choppable, .wood},
-	.blockHealth = 5,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
-	.absorbedLight = 0x202830,
-	.rotation = "cubyz:fence",
-	.model = "cubyz:fence",
 	.texture = "cubyz:fence/palm",
 	.texture_top = "cubyz:fence/top/palm",
 	.texture_bottom = "cubyz:fence/top/palm",

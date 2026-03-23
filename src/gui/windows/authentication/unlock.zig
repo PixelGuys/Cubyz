@@ -67,6 +67,7 @@ pub fn onOpen() void {
 	const passwordRow = HorizontalList.init();
 	textComponent = TextInput.init(.{0, 0}, width - 80, 22, "", .{.onNewline = .init(apply)});
 	textComponent.obfuscated = true;
+	textComponent.select();
 	passwordRow.add(textComponent);
 	passwordRow.add(CheckBox.init(.{10, 0}, 70, "Show", false, &showTextCallback));
 	passwordRow.finish(.{0, 0}, .center);

@@ -119,6 +119,7 @@ pub fn onOpen() void {
 	const textRow = HorizontalList.init();
 	textComponent = TextInput.init(.{0, 0}, 400, 38, "", .{.onNewline = .init(none), .onUpdate = .init(updateText)});
 	textComponent.obfuscated = true;
+	textComponent.select();
 	textRow.add(textComponent);
 	textRow.add(CheckBox.init(.{10, 0}, 70, "Show", false, &showTextCallback));
 	textRow.finish(.{0, 0}, .center);

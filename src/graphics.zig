@@ -2214,15 +2214,15 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 		self.bind();
 
-		const maxLOD = if (mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
+		const maxLOD = if (mipmapping) 1 + std.math.log2_int(u31, @max(maxWidth, maxHeight)) else 1;
 		for (0..maxLOD) |i| {
-			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(1, maxWidth >> @intCast(i)), @max(1, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
 		const lodBuffer: [][]Color = arena.alloc([]Color, maxLOD);
 		for (lodBuffer, 0..) |*buffer, i| {
-			buffer.* = arena.alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
+			buffer.* = arena.alloc(Color, @max(1, maxWidth >> @intCast(i))*@max(1, maxHeight >> @intCast(i)));
 		}
 
 		for (images, 0..) |image, i| {
@@ -2236,31 +2236,30 @@ pub const TextureArray = struct { // MARK: TextureArray
 			}
 
 			// Calculate the mipmap levels:
-			for (0..lodBuffer.len) |_lod| {
+			for (1..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(_lod);
-				const curWidth = maxWidth >> lod;
-				const curHeight = maxHeight >> lod;
-				if (lod != 0) {
-					for (0..curWidth) |x| {
-						for (0..curHeight) |y| {
-							const index = x + y*curWidth;
-							const index2 = 2*x + 2*y*2*curWidth;
-							const colors = [4]Color{
-								lodBuffer[lod - 1][index2],
-								lodBuffer[lod - 1][index2 + 1],
-								lodBuffer[lod - 1][index2 + curWidth*2],
-								lodBuffer[lod - 1][index2 + curWidth*2 + 1],
-							};
-							lodBuffer[lod][index] = lodColorInterpolation(colors, alphaCorrectMipmapping);
-						}
+				const curWidth = @max(1, maxWidth >> lod);
+				const curHeight = @max(1, maxHeight >> lod);
+				const nextWidth = @max(1, maxWidth >> (lod - 1));
+				const nextHeight = @max(1, maxHeight >> (lod - 1));
+				for (0..curWidth) |x| {
+					for (0..curHeight) |y| {
+						const index = x + y*curWidth;
+						const colors = [4]Color{
+							lodBuffer[lod - 1][@min(2*x, nextWidth - 1) + @min(2*y, nextHeight - 1)*nextWidth],
+							lodBuffer[lod - 1][@min(2*x, nextWidth - 1) + @min(2*y + 1, nextHeight - 1)*nextWidth],
+							lodBuffer[lod - 1][@min(2*x + 1, nextWidth - 1) + @min(2*y, nextHeight - 1)*nextWidth],
+							lodBuffer[lod - 1][@min(2*x + 1, nextWidth - 1) + @min(2*y + 1, nextHeight - 1)*nextWidth],
+						};
+						lodBuffer[lod][index] = lodColorInterpolation(colors, alphaCorrectMipmapping);
 					}
 				}
 			}
 			// Give the correct color to alpha 0 pixels, to avoid dark pixels:
 			for (1..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
-				const curWidth = maxWidth >> lod;
-				const curHeight = maxHeight >> lod;
+				const curWidth = @max(1, maxWidth >> lod);
+				const curHeight = @max(1, maxHeight >> lod);
 				for (0..curWidth) |x| {
 					for (0..curHeight) |y| {
 						const index = x + y*curWidth;
@@ -2276,8 +2275,8 @@ pub const TextureArray = struct { // MARK: TextureArray
 			// Upload:
 			for (0..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
-				const curWidth = maxWidth >> lod;
-				const curHeight = maxHeight >> lod;
+				const curWidth = @max(1, maxWidth >> lod);
+				const curHeight = @max(1, maxHeight >> lod);
 				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 			}
 		}
