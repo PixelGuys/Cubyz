@@ -83,7 +83,6 @@ const SoundData = struct {  // MARK: SOUND
 			if (sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
 				const tempData = main.stackAllocator.alloc(f32, samples*channels);
 				defer main.stackAllocator.free(tempData);
-				std.debug.print("\n AAAAAAAAAAAAAAAAAAA {any}", .{ogg_info.channels});
 				self.isMono = ogg_info.channels == 1; 
 				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
