@@ -59,7 +59,7 @@ const SoundData = struct {  // MARK: SOUND
 		const addon = id[0..colonIndex];
 		const fileName = id[colonIndex + 1 ..];
 		
-		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "D:/Files/Dev/Zig/Cubyz/assets/{s}/sounds/audio/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
+		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/sounds/audio/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
