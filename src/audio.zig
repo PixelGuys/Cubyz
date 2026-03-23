@@ -462,7 +462,10 @@ fn addSound(buffer: []f32) void {
 
 	// Copy the sound to the buffer.
 
-	for (activeSounds.items, 0..) |*sound, i| {
+	var i: u32 = 0;
+	var soundCount = activeSounds.items.len;
+	while (i < soundCount) {
+		var sound = &activeSounds.items[i];
 		const soundBuffer = sounds.items[sound.soundIndex].data;
 
 		var j: usize = 0;
@@ -473,11 +476,14 @@ fn addSound(buffer: []f32) void {
 			buffer[j + 1] += amplitude*soundBuffer[sound.pos + 1];
 			sound.pos += 2;
 			if (sound.pos >= soundBuffer.len) {
-				_ = activeSounds.swapRemove(i);
+				soundCount -= 1;
+				activeSounds.items[i] = activeSounds.items[soundCount];
 			}
 		}
-
+		i += 1;
 	}
+
+	activeSounds.items.len = soundCount;
 }
 
 fn miniaudioCallback(
