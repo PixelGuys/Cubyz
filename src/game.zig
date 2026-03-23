@@ -862,8 +862,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 		}
 		if (KeyBoard.key("jump").pressed) {
-			main.audio.playSound("cubyz:correct");
-
 			if (Player.isFlying.load(.monotonic)) {
 				if (KeyBoard.key("sprint").pressed) {
 					if (Player.isGhost.load(.monotonic)) {
@@ -878,6 +876,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					movementDir[2] += 5.5;
 				}
 			} else if ((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
+				main.audio.playSound("cubyz:correct");
 				jumping = true;
 				Player.jumpCooldown = Player.jumpCooldownConstant;
 				if (!Player.onGround) {
