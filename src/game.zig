@@ -976,6 +976,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		if (breakTime.durationTo(time).nanoseconds >= 0 or !Player.isCreative()) {
 			breakTime.* = breakTime.addDuration(main.settings.updateRepeatSpeed);
 			Player.breakBlock(deltaTime);
+			main.audio.playSound("cubyz:yes");
 		}
 	}
 

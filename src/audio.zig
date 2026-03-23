@@ -469,7 +469,7 @@ fn addSound(buffer: []f32) void {
 	var i: u32 = 0;
 	var soundCount = activeSounds.items.len;
 	while (i < soundCount) {
-		var sound = &activeSounds.items[i];
+		var sound = activeSounds.items[i];
 		const soundBuffer = sounds.items[sound.soundIndex].data;
 
 		var j: usize = 0;
@@ -481,9 +481,11 @@ fn addSound(buffer: []f32) void {
 			sound.pos += 2;
 			if (sound.pos >= soundBuffer.len) {
 				soundCount -= 1;
-				activeSounds.items[i] = activeSounds.items[soundCount];
+				sound = activeSounds.items[soundCount];
+				break;
 			}
 		}
+		activeSounds.items[i] = sound;
 		i += 1;
 	}
 
