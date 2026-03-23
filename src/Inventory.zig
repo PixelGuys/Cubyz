@@ -456,6 +456,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 		if (source.type == .workbenchResult) {
 			source.craftTool(&.{carried});
+			return;
 		}
 		main.sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried.super, .slot = 0}, .source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
