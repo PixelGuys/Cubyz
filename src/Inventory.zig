@@ -433,6 +433,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 		if (carried.type == .workbenchResult) {
 			carried.craftTool(&.{dest});
+			return;
 		}
 		std.debug.assert(dest.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
