@@ -605,9 +605,11 @@ pub const CanHoldReturn = union(enum) {
 
 pub fn canHold(self: Inventory, sourceStack: ItemStack) CanHoldReturn {
 	if (sourceStack.amount == 0) return .yes;
+	if (self.source == .workbench and !sync.Command.canPutIntoWorkbench(sourceStack.item)) return .{.remainingAmount = sourceStack.amount};
 
 	var remainingAmount = sourceStack.amount;
-	for (self._items) |*destStack| {
+	for (self._items, 0..) |*destStack, destSlot| {
+		if (self.source == .workbench and self.source.workbench.toolIndex.slotInfos()[destSlot].disabled) continue;
 		if (std.meta.eql(destStack.item, sourceStack.item) or destStack.item == .null) {
 			const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 			remainingAmount -= amount;
@@ -761,9 +763,11 @@ pub const Inventories = struct { // MARK: Inventories
 		var selectedEmptyInv: ?Inventory = null;
 
 		outer: for (self.inventories) |dest| {
+			if (dest.source == .workbench and !sync.Command.canPutIntoWorkbench(item)) continue;
 			var emptySlot: ?u32 = null;
 			var hasItem = false;
 			for (dest._items, 0..) |*destStack, destSlot| {
+				if (dest.source == .workbench and dest.source.workbench.toolIndex.slotInfos()[destSlot].disabled) continue;
 				if (destStack.item == .null and emptySlot == null) {
 					emptySlot = @intCast(destSlot);
 					if (selectedEmptySlot == null) {

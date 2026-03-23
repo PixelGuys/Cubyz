@@ -754,10 +754,10 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	fn canPutIntoWorkbench(source: InventoryAndSlot) bool {
-		return switch (source.ref().item) {
+	pub fn canPutIntoWorkbench(item: Item) bool {
+		return switch (item) {
 			.null => true,
-			.baseItem => |item| item.material() != null,
+			.baseItem => |baseItem| baseItem.material() != null,
 			.tool => false,
 		};
 	}
@@ -868,7 +868,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
 			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source)) return;
+			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source.ref().item)) return;
 
 			const itemDest = self.dest.ref().item;
 			const itemSource = self.source.ref().item;
@@ -884,7 +884,8 @@ pub const Command = struct { // MARK: Command
 					return;
 				}
 			}
-			if (self.source.inv.source == .workbench and !canPutIntoWorkbench(self.dest)) return;
+			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.toolIndex.slotInfos()[self.source.slot].disabled) return;
+			if (self.source.inv.source == .workbench and !canPutIntoWorkbench(self.dest.ref().item)) return;
 			ctx.execute(.{.swap = .{
 				.dest = self.dest,
 				.source = self.source,
@@ -911,7 +912,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
 			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source)) return;
+			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source.ref().item)) return;
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
 			const itemDest = self.dest.ref().item;
@@ -955,7 +956,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
-			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.toolIndex.slotInfos()[self.source.slot].disabled) return;
+			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
 
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
@@ -999,7 +1000,6 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: Drop, ctx: Context) error{serverFailure}!void {
 			if (self.source.ref().item == .null) return;
-			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.toolIndex.slotInfos()[self.source.slot].disabled) return;
 
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if (ctx.side == .server) {
@@ -1033,7 +1033,7 @@ pub const Command = struct { // MARK: Command
 		amount: u16 = 0,
 
 		fn run(self: FillFromCreative, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
+			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.item))) return;
 			if (ctx.side == .server and ctx.user != null and ctx.gamemode != .creative) return;
 			if (ctx.side == .client and ctx.gamemode != .creative) return;
 
