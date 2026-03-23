@@ -1093,7 +1093,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						if (currentBlockProgress != 0) {
 							if (swung) {
-								main.audio.playSound("cubyz:yes");
+								main.audio.playSound("cubyz:block_hit");
 							}
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						}
@@ -1117,7 +1117,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.sync.ClientSide.mutex.unlock();
 
 			if (newBlock != block) {
-				main.audio.playSound("cubyz:explosion");
+				main.audio.playSound("cubyz:block_break");
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 			}
 		}
