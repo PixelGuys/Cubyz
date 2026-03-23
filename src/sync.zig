@@ -1318,30 +1318,11 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: CraftTool, ctx: Context) error{serverFailure}!void {
-			var availableItems: [25]?main.items.BaseItemIndex = undefined;
-			const slotInfos = self.craftingGrid.source.workbench.toolIndex.slotInfos();
-
-			for (0..25) |i| {
-				if (self.craftingGrid._items[i].item == .baseItem) {
-					availableItems[i] = self.craftingGrid._items[i].item.baseItem;
-				} else {
-					if (!slotInfos[i].optional and !slotInfos[i].disabled) {
-						return;
-					}
-					availableItems[i] = null;
-				}
+			const tool = Item{.tool = main.items.Tool.initFromInventory(self.craftingGrid) orelse return};
+			if (self.destinations.canHold(.{.item = tool, .amount = 1}) != .yes) {
+				tool.deinit();
+				return;
 			}
-			var hash = std.hash.Crc32.init();
-			for (availableItems) |item| {
-				if (item != null) {
-					hash.update(item.?.id());
-				} else {
-					hash.update("none");
-				}
-			}
-			const tool = Item{.tool = main.items.Tool.initFromCraftingGrid(availableItems, hash.final(), self.craftingGrid.source.workbench.toolIndex)};
-
-			if (self.destinations.canHold(.{.item = tool, .amount = 1}) != .yes) return;
 			ctx.cmd.removeToolCraftingIngredients(main.globalAllocator, self.craftingGrid, ctx.side);
 			_ = self.destinations.putItemsInto(ctx, 1, .{.create = tool});
 		}

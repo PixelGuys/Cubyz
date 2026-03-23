@@ -57,28 +57,7 @@ fn toggleTool() void {
 fn updateResult(_: main.items.Inventory.Source) void {
 	craftingResultInv.super._items[0].deinit();
 	craftingResultInv.super._items[0] = .{};
-	var availableItems: [25]?main.items.BaseItemIndex = undefined;
-	const slotInfos = toolTypes.items[currentToolType].slotInfos();
-
-	for (0..25) |i| {
-		if (craftingGridInv.super._items[i].item == .baseItem) {
-			availableItems[i] = craftingGridInv.super._items[i].item.baseItem;
-		} else {
-			if (!slotInfos[i].optional and !slotInfos[i].disabled) {
-				return;
-			}
-			availableItems[i] = null;
-		}
-	}
-	var hash = std.hash.Crc32.init();
-	for (availableItems) |item| {
-		if (item != null) {
-			hash.update(item.?.id());
-		} else {
-			hash.update("none");
-		}
-	}
-	craftingResultInv.super._items[0] = .{.item = Item{.tool = main.items.Tool.initFromCraftingGrid(availableItems, hash.final(), toolTypes.items[currentToolType])}, .amount = 1};
+	craftingResultInv.super._items[0] = .{.item = Item{.tool = main.items.Tool.initFromInventory(craftingGridInv.super) orelse return}, .amount = 1};
 }
 
 fn openInventory() void {
