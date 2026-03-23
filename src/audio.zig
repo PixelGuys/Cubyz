@@ -462,17 +462,21 @@ fn addSound(buffer: []f32) void {
 
 	// Copy the sound to the buffer.
 
-	const soundBuffer = sounds.items[activeSounds.items[0].soundIndex].data;
-	var i: usize = 0;
-	while (i < buffer.len) : (i += 2) {
-		const amplitude: f32 = main.settings.musicVolume;
-		
-		buffer[i] += amplitude*soundBuffer[activeSounds.items[0].pos];
-		buffer[i + 1] += amplitude*soundBuffer[activeSounds.items[0].pos + 1];
-		activeSounds.items[0].pos += 2;
-		if (activeSounds.items[0].pos >= soundBuffer.len) {
-			activeSounds.items[0].pos = 0;
+	for (activeSounds.items, 0..) |*sound, i| {
+		const soundBuffer = sounds.items[sound.soundIndex].data;
+
+		var j: usize = 0;
+		while (j < buffer.len) : (j += 2) {
+			const amplitude: f32 = main.settings.soundVolume;
+			
+			buffer[j] += amplitude*soundBuffer[sound.pos];
+			buffer[j + 1] += amplitude*soundBuffer[sound.pos + 1];
+			sound.pos += 2;
+			if (sound.pos >= soundBuffer.len) {
+				_ = activeSounds.swapRemove(i);
+			}
 		}
+
 	}
 }
 
