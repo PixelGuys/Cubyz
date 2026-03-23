@@ -138,6 +138,10 @@ var soundIDReverse: std.StringHashMapUnmanaged(u32) = .{};
 var sounds: main.List(*SoundData) = undefined;
 var activeSounds: main.List(Sound) = undefined;
 
+pub fn getActiveSoundCount() u32 {
+	return @intCast(activeSounds.items.len);
+}
+
 pub fn registerSound(_: []const u8, id: []const u8, _: ZonElement) void {
 	const sound = SoundData.init(id);
 
