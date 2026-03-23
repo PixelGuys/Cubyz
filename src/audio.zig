@@ -18,6 +18,33 @@ fn handleError(miniaudioError: c.ma_result) !void {
 	}
 }
 
+fn getMaError(err: c_int) anyerror {
+	return switch (err) {
+		0 => error.VORBIS__no_error,
+		1 => error.VORBIS_need_more_data,
+		2 => error.VORBIS_invalid_api_mixing,
+		3 => error.VORBIS_outofmem,
+		4 => error.VORBIS_feature_not_supported,
+		5 => error.VORBIS_too_many_channels,
+		6 => error.VORBIS_file_open_failure,
+		7 => error.VORBIS_seek_without_length,
+		10 => error.VORBIS_unexpected_eof,
+		11 => error.VORBIS_seek_invalid,
+		20 => error.VORBIS_invalid_setup,
+		21 => error.VORBIS_invalid_stream,
+		30 => error.VORBIS_missing_capture_pattern,
+		31 => error.VORBIS_invalid_stream_structure_version,
+		32 => error.VORBIS_continued_packet_flag_invalid,
+		33 => error.VORBIS_incorrect_stream_serial_number,
+		34 => error.VORBIS_invalid_first_page,
+		35 => error.VORBIS_bad_packet_type,
+		36 => error.VORBIS_cant_find_last_page,
+		37 => error.VORBIS_seek_failed,
+		38 => error.VORBIS_ogg_skeleton_not_supported,
+		else => unreachable,
+	};
+}
+
 const SoundData = struct {  // MARK: SOUND
 	soundId: []const u8,
 	data: []f32 = &.{},
@@ -29,14 +56,15 @@ const SoundData = struct {  // MARK: SOUND
 		};
 		const addon = id[0..colonIndex];
 		const fileName = id[colonIndex + 1 ..];
-		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
+		
+		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "D:/Files/Dev/Zig/Cubyz/assets/{s}/sounds/audio/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/sounds/audio/{s}.ogg", .{main.files.cubyzDirStr(), addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		std.log.err("Couldn't find sound with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{id, path1, path2});
+		std.log.err("Error: {s} Couldn't find sound with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{@errorName(getMaError(err)), id, path1, path2});
 		return null;
 	}
 
@@ -136,14 +164,14 @@ const AudioData = struct { // MARK: MUSIC
 		const addon = id[0..colonIndex];
 		const fileName = id[colonIndex + 1 ..];
 		// FIXME: IF THERE IS SOME PROBLEM WITH THE FILE ITSELF IT JUST SAYS THAT IT COULD NOT FIND THE FILE RATHER THAN THE ACTUAL ISSUE
-		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/sounds/audio/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
+		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/music/{s}.ogg", .{main.files.cubyzDirStr(), addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		std.log.err("Couldn't find music with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{id, path1, path2});
+		std.log.err("Error: {s} Couldn't find music with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{@errorName(getMaError(err)), id, path1, path2});
 		return null;
 	}
 
@@ -319,15 +347,15 @@ pub fn deinit() void {
 	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
 
-	for (sounds.items) |s| {
-		s.deinit();
-	}
 	sounds.deinit();
 	activeSounds.deinit();
 }
 
 pub fn reset() void {
 	soundIDReverse.clearRetainingCapacity();
+	for (sounds.items) |s| {
+		s.deinit();
+	}
 	sounds.clearRetainingCapacity();
 	activeSounds.clearRetainingCapacity();
 }
