@@ -24,17 +24,14 @@ const padding: f32 = 8;
 
 var textComponent: *TextInput = undefined;
 
-var incorrectPassword = false;
+var incorrectPasswordLabel: *Label = undefined;
 
 fn apply() void {
 	var failureText: main.List(u8) = .init(main.stackAllocator);
 	defer failureText.deinit();
 	const accountCode = main.settings.storedAccount.decryptFromPassword(textComponent.currentString.items, &failureText) catch |err| {
 		if (err == error.AuthenticationFailed) {
-			incorrectPassword = true;
-			onClose();
-			onOpen();
-			incorrectPassword = false;
+			incorrectPasswordLabel.updateText("#ff0000Incorrect password.");
 		} else {
 			std.log.err("Encountered error while decrypting password: {s}", .{@errorName(err)});
 		}
@@ -73,6 +70,8 @@ pub fn onOpen() void {
 	const width = 420;
 	list.add(Label.init(.{0, 0}, width, "Please enter your local password!", .left));
 	list.add(Label.init(.{0, 0}, width, "If you lost your password you can also log out and reenter your Account Code.", .left));
+	incorrectPasswordLabel = Label.init(.{0, 0}, width, "", .left);
+	list.add(incorrectPasswordLabel);
 	const passwordRow = HorizontalList.init();
 	textComponent = TextInput.init(.{0, 0}, width - 80, 22, "", .{.onNewline = .init(apply)});
 	textComponent.obfuscated = true;
@@ -81,7 +80,6 @@ pub fn onOpen() void {
 	passwordRow.add(CheckBox.init(.{10, 0}, 70, "Show", false, &showTextCallback));
 	passwordRow.finish(.{0, 0}, .center);
 	list.add(passwordRow);
-	if (incorrectPassword) list.add(Label.init(.{0, 0}, width, "#ff0000Incorrect password.", .left));
 	const buttonRow = HorizontalList.init();
 	buttonRow.add(Button.initText(.{0, 0}, 200, "Logout", .init(logout)));
 	buttonRow.add(Button.initText(.{padding, 0}, 200, "Unlock", .init(apply)));
