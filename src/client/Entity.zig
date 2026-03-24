@@ -89,10 +89,15 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
 
-	const nodeId = self.model.nodeReverse.get("Head").?;
+	// var iter = self.model.nodeReverse.keyIterator();
+	// while (iter.next()) |k| {
+	// std.debug.print("\n\"{s}\"", .{k});
+	// }
+
+	// const nodeId = self.model.nodeReverse.get("Head").?;
 	
-	self.nodes[nodeId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
-	self.matrices[nodeId] = getHierarchyMatrix(self.nodes, self.nodes[nodeId]);
+	self.nodes[6].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
+	self.matrices[6] = getHierarchyMatrix(self.nodes, self.nodes[6]);
 }
 
 fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
