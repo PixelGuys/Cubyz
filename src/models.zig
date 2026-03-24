@@ -979,19 +979,24 @@ pub const EntityModel = struct {
 		var baseVertex: u32 = 0;
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
-			if (node.children_count != 0) {
-				nodeReverse.put(std.mem.span(node.name), @intCast(nodeIdx)) catch unreachable;
-				std.debug.print("\n NOAME: \"{s}\" {any}\n", .{std.mem.span(node.name), std.mem.eql(u8, "Head", std.mem.span(node.name))});
-				nodes[nodeIdx] = Node{
-					// .pos = Vec3f{ 0, 0, 0 },
-					// .rot = Vec4f{ 0, 0, 0, 1 },
-					// .scale = Vec3f{ 1, 1, 1 },
-					.pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
-					.rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
-					.scale = Vec3f{ node.scale[0], node.scale[2], node.scale[1] },
-				};
-				nodeIdx += 1;
-			}
+			if (node.children_count == 0) continue;
+
+			nodeReverse.put(std.mem.span(node.name), @intCast(nodeIdx)) catch unreachable;
+			nodes[nodeIdx] = Node{
+				.pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
+				.rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
+				.scale = Vec3f{ node.scale[0], node.scale[2], node.scale[1] },
+			};
+			// std.debug.print("\n NAMEE: {d} \"{s}\"\n", .{nodeIdx, std.mem.span(node.name)});
+			nodeIdx += 1;
+		}
+		// std.debug.print("\n", .{});
+		for (data.nodes, 0..data.nodes_count) |node, _| {
+			if (node.children_count == 0 or node.parent == null) continue;
+
+			const curNode = nodeReverse.get(std.mem.span(node.name)).?;
+			nodes[curNode].parent = nodeReverse.get(std.mem.span(node.parent.*.name)).?;
+			// std.debug.print("\n HEEEEEEEY: {d} \"{s}\" \"{s}\"\n", .{nodes[nodeIdx].parent.?, std.mem.span(node.parent.*.name), std.mem.span(node.name)});
 		}
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.mesh == null) continue;

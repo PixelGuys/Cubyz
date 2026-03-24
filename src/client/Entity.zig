@@ -94,16 +94,14 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	// const nodeId = self.model.nodeReverse.get("Head").?;
 	
 	ueee += 0.05;
-	self.nodes[5].rot = vec.quatFromAxisAngle(Vec3f{0, 0, 1}, ueee);
-	self.matrices[5] = getHierarchyMatrix(self.nodes, self.nodes[5]);
+	self.nodes[6].rot = vec.quatFromAxisAngle(Vec3f{0, 0, 1}, ueee);
+	self.matrices[6] = getHierarchyMatrix(self.nodes, self.nodes[6]);
 
-	self.nodes[2].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee);
+	self.nodes[2].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, -ueee/5);
 	self.matrices[2] = getHierarchyMatrix(self.nodes, self.nodes[2]);
 
-	self.nodes[3].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee);
+	self.nodes[3].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, -ueee/3);
 	self.matrices[3] = getHierarchyMatrix(self.nodes, self.nodes[3]);
-	// for (0..self.model.nodeCount) |i| {
-	// }
 }
 
 fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
