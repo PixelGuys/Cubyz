@@ -44,8 +44,8 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 	};
 	
-	// self.rot = Vec3f{0, 0, 0};
-	// self.pos = Vec3d{0, 0, 0};
+	self.rot = Vec3f{0, 0, 0};
+	self.pos = Vec3d{0, 0, 0};
 	self._interpolationPos = [_]f64{
 		self.pos[0],
 		self.pos[1],
@@ -94,30 +94,30 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	// const nodeId = self.model.nodeReverse.get("Head").?;
 	
 	ueee += 0.05;
-	self.nodes[6].rot = vec.quatFromAxisAngle(Vec3f{0, 0, 1}, ueee);
-	self.matrices[6] = getHierarchyMatrix(self.nodes, self.nodes[6]);
+	// self.nodes[6].rot = vec.quatFromAxisAngle(Vec3f{0, 0, 1}, ueee);
+	// self.matrices[6] = getHierarchyMatrix(self.nodes, self.nodes[6]);
 
-	self.nodes[2].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, -ueee/5);
+	self.nodes[2].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/5);
 	self.matrices[2] = getHierarchyMatrix(self.nodes, self.nodes[2]);
 
-	self.nodes[3].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, -ueee/3);
+	self.nodes[3].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/3);
 	self.matrices[3] = getHierarchyMatrix(self.nodes, self.nodes[3]);
 }
 
 fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
 	var currentMat = Mat4f.translation(Vec3f{
-		-node.pos[0],
+		node.pos[0],
 		node.pos[1],
 		node.pos[2],
 	});
 	currentMat = currentMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-		-node.rot[0],
+		node.rot[0],
 		node.rot[1],
 		node.rot[2],
 		node.rot[3],
 	}));
 	currentMat = currentMat.mul(Mat4f.scale(Vec3f{
-		-node.scale[0],
+		node.scale[0],
 		node.scale[1],
 		node.scale[2],
 	}));

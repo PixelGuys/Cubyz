@@ -1038,6 +1038,13 @@ pub const EntityModel = struct {
 				for (0..indicesAccessor.count) |i| {
 					const idx = indicesAccessor.index(i);
 					indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+
+					const modi = @as(i32, @intCast(i)) - 2;
+					if (@mod(modi, 3) == 0) {
+						const temp = indicesSlice[i-1];
+						indicesSlice[i-1] = indicesSlice[i];
+						indicesSlice[i] = temp;
+					}
 				}
 
 				var positionAttr: gltf.cgltf_accessor = undefined;
