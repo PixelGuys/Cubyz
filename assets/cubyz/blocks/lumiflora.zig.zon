@@ -1,0 +1,24 @@
+.{
+	.tags = .{.cuttable},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x000000,
+	.emittedLight = 0x7b3843,
+	.collide = false,
+	.model = "cubyz:flower/height_8",
+	.rotation = "cubyz:planar",
+	.texture = "cubyz:lumiflora",
+	.texture_top = "cubyz:lumiflora_top",
+	.texture_bottom = "cubyz:lumiflora_top",
+	.item = .{
+		.texture = "hibiscus.png",
+	},
+	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
+}
