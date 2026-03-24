@@ -982,6 +982,11 @@ pub const EntityModel = struct {
 			if (node.children_count == 0) continue;
 
 			nodeReverse.put(std.mem.span(node.name), @intCast(nodeIdx)) catch unreachable;
+			if (nodeReverse.get(std.mem.span(node.name)) == null) {
+			} else {
+
+			}
+				
 			nodes[nodeIdx] = Node{
 				.pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
 				.rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
