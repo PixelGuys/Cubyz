@@ -2,6 +2,7 @@ pub const clear = @import("clear.zig");
 pub const gamemode = @import("gamemode.zig");
 pub const help = @import("help.zig");
 pub const invite = @import("invite.zig");
+pub const kick = @import("kick.zig");
 pub const kill = @import("kill.zig");
 pub const particles = @import("particles.zig");
 pub const spawn = @import("spawn.zig");

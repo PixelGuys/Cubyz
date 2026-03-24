@@ -26,7 +26,8 @@ pub fn init(zon: ZonElement) ?*@This() {
 	return result;
 }
 
-pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), relPos: Vec3i, _seed: u64, perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
+pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), relPos: Vec3i, _seed: u64, _perimeter: f32, voxelSize: u31, voxelSizeShift: u5) void {
+	const perimeter = _perimeter + @as(f32, @floatFromInt(voxelSize));
 	var seed = _seed;
 	const radius = self.minRadius + (self.maxRadius - self.minRadius)*main.random.nextFloat(&seed);
 

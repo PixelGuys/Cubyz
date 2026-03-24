@@ -65,7 +65,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if (map.pos.voxelSize > 4) return;
 	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, 0);
 	defer biomeMap.deinit();
-	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
+	const outerSize = map.pos.voxelSize*interpolatedPart;
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 
 	const width = CaveMapFragment.width*map.pos.voxelSize/outerSize + 1;
@@ -99,7 +99,7 @@ const Mode = enum(u8) {
 };
 
 fn generateMap(map: *CaveMapFragment, output: Array3D(f32), biomeNoiseStrength: Array3D(f32), worldSeed: u64, comptime mode: Mode) void {
-	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
+	const outerSize = map.pos.voxelSize*interpolatedPart;
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
 
@@ -107,7 +107,7 @@ fn generateMap(map: *CaveMapFragment, output: Array3D(f32), biomeNoiseStrength: 
 	defer noise.deinit(main.stackAllocator);
 
 	for (noise.mem, output.mem, biomeNoiseStrength.mem) |*val, sdfVal, noiseStrength| {
-		val.* = val.*/noiseScale*noiseStrength + sdfVal;
+		val.* = val.*/noiseScale*noiseStrength + sdfVal - @as(f32, @floatFromInt(map.pos.voxelSize - 1));
 	}
 
 	var x: u31 = 0;
