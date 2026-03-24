@@ -59,12 +59,12 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 
 
 	self.model = main.client.entity_manager.model;
-	for (self.model.nodes, 0..) |n, i| {
-		self.nodes[i] = n;
+	for (0..self.model.nodeCount) |i| {
+		self.nodes[i] = self.model.nodes[i];
 	}
 
-	for (0..self.matrices.len) |i| {
-		self.matrices[i] = Mat4f.identity().mul(getHierarchyMatrix(self.nodes, self.nodes[i]));
+	for (0..self.model.nodeCount) |i| {
+		self.matrices[i] = getHierarchyMatrix(self.nodes, self.nodes[i]);
 	}
 }
 
@@ -80,6 +80,8 @@ pub fn updatePosition(self: *@This(), pos: *const [6]f64, vel: *const [6]f64, ti
 	self.interpolatedValues.updatePosition(pos, vel, time);
 }
 
+var ueee: f32 = 0;
+
 pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.interpolatedValues.update(time, lastTime);
 	self.pos[0] = self.interpolatedValues.outPos[0];
@@ -88,24 +90,38 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[0] = @floatCast(self.interpolatedValues.outPos[3]);
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
+
+	// const nodeId = self.model.nodeReverse.get("Head").?;
+	
+	ueee += 0.05;
+	self.nodes[5].rot = vec.quatFromAxisAngle(Vec3f{0, 0, 1}, ueee);
+	self.matrices[5] = getHierarchyMatrix(self.nodes, self.nodes[5]);
+
+	self.nodes[2].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee);
+	self.matrices[2] = getHierarchyMatrix(self.nodes, self.nodes[2]);
+
+	self.nodes[3].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee);
+	self.matrices[3] = getHierarchyMatrix(self.nodes, self.nodes[3]);
+	// for (0..self.model.nodeCount) |i| {
+	// }
 }
 
 fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
 	var currentMat = Mat4f.translation(Vec3f{
-		node.pos[0],
-		node.pos[2],
+		-node.pos[0],
 		node.pos[1],
+		node.pos[2],
 	});
 	currentMat = currentMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-		node.rot[0],
-		node.rot[2],
+		-node.rot[0],
 		node.rot[1],
+		node.rot[2],
 		node.rot[3],
 	}));
 	currentMat = currentMat.mul(Mat4f.scale(Vec3f{
-		node.scale[0],
-		node.scale[2],
+		-node.scale[0],
 		node.scale[1],
+		node.scale[2],
 	}));
 
 	if (node.parent == null) {

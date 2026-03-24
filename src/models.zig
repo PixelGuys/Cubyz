@@ -981,6 +981,7 @@ pub const EntityModel = struct {
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count != 0) {
 				nodeReverse.put(std.mem.span(node.name), @intCast(nodeIdx)) catch unreachable;
+				std.debug.print("\n NOAME: \"{s}\" {any}\n", .{std.mem.span(node.name), std.mem.eql(u8, "Head", std.mem.span(node.name))});
 				nodes[nodeIdx] = Node{
 					// .pos = Vec3f{ 0, 0, 0 },
 					// .rot = Vec4f{ 0, 0, 0, 1 },
@@ -996,18 +997,18 @@ pub const EntityModel = struct {
 			if (node.mesh == null) continue;
 
 			var currentMat = Mat4f.translation(Vec3f{
-				node.translation[0],
+				-node.translation[0],
 				node.translation[2],
 				node.translation[1],
 			});
 			currentMat = currentMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-				node.rotation[0],
+				-node.rotation[0],
 				node.rotation[2],
 				node.rotation[1],
 				node.rotation[3],
 			}));
 			currentMat = currentMat.mul(Mat4f.scale(Vec3f{
-				node.scale[0],
+				-node.scale[0],
 				node.scale[2],
 				node.scale[1],
 			}));
@@ -1070,6 +1071,7 @@ pub const EntityModel = struct {
 		var model = uploadMeshAndGetModel(vertices.items, indices.items);
 		model.nodeReverse = nodeReverse;
 		model.nodes = nodes;
+		model.nodeCount = nodeIdx;
 		return model;
 	}
 
