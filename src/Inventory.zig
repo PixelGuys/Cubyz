@@ -423,16 +423,13 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn depositOrSwap(dest: ClientInventory, destSlot: u32, carried: ClientInventory) void {
+		std.debug.assert(carried.type == .serverShared);
 		if (dest.type == .creative) {
 			carried.fillFromCreative(0, dest.getItem(destSlot));
 			return;
 		}
 		if (dest.type == .workbenchResult) {
 			dest.craftTool(&.{carried});
-			return;
-		}
-		if (carried.type == .workbenchResult) {
-			carried.craftTool(&.{dest});
 			return;
 		}
 		std.debug.assert(dest.type == .serverShared);

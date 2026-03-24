@@ -956,7 +956,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled) return;
+			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.toolIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.source.ref().item))) return;
 
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
