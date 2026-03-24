@@ -924,11 +924,6 @@ pub const EntityModel = struct {
 
 		// TODO: add a matrix and a dirty flag
 		parent: ?u16 = null,
-		childs: []u16 = undefined,
-
-		fn deinit(self: *Node) void {
-			main.globalArena.free(self.childs);
-		}
 	};
 
 	const EntityVertex = extern struct {
