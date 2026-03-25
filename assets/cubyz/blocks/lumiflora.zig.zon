@@ -15,7 +15,7 @@
 	.texture_top = "cubyz:lumiflora_top",
 	.texture_bottom = "cubyz:lumiflora_top",
 	.item = .{
-		.texture = "hibiscus.png",
+		.texture = "lumiflora.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
