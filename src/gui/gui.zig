@@ -655,10 +655,7 @@ pub const inventory = struct { // MARK: inventory
 		if (itemSlot.mode == .immutable) return;
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
-		if (itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
-			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if (recipeItem == .null and item != .null) recipeItem = item.clone();
-			if (!std.meta.eql(item, recipeItem)) return;
+		if ((itemSlot.inventory.type == .crafting or itemSlot.inventory.type == .workbenchResult) and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const time = main.timestamp();
 			if (!isCrafting) {
 				isCrafting = true;
@@ -668,10 +665,22 @@ pub const inventory = struct { // MARK: inventory
 			while (time.durationTo(nextCraftingAction).nanoseconds <= 0) {
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
-				if (mainGuiButton.modsOnPress.shift) {
-					main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
-				} else {
-					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
+
+				if (itemSlot.inventory.type == .crafting) {
+					const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
+					if (recipeItem == .null and item != .null) recipeItem = item.clone();
+					if (!std.meta.eql(item, recipeItem)) return;
+					if (mainGuiButton.modsOnPress.shift) {
+						main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
+					} else {
+						main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
+					}
+				} else if (itemSlot.inventory.type == .workbenchResult) {
+					if (mainGuiButton.modsOnPress.shift) {
+						itemSlot.inventory.craftTool(&.{main.game.Player.inventory});
+					} else {
+						itemSlot.inventory.craftTool(&.{carried});
+					}
 				}
 			}
 			return;

@@ -428,10 +428,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			carried.fillFromCreative(0, dest.getItem(destSlot));
 			return;
 		}
-		if (dest.type == .workbenchResult) {
-			dest.craftTool(&.{carried});
-			return;
-		}
 		std.debug.assert(dest.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
 	}
@@ -451,10 +447,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			carried.fillFromCreative(0, source.getItem(sourceSlot));
 			return;
 		}
-		if (source.type == .workbenchResult) {
-			source.craftTool(&.{carried});
-			return;
-		}
+		std.debug.assert(carried.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried.super, .slot = 0}, .source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
