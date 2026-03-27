@@ -1680,10 +1680,7 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 	}
 };
 
-pub const Side = enum {
-	client,
-	server,
-};
+pub const Side = main.sync.Side; // TODO: Remove
 
 const endian: std.builtin.Endian = .big;
 

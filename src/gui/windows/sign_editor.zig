@@ -44,7 +44,9 @@ fn apply() void {
 		return;
 	}
 
-	main.block_entity.BlockEntityTypes.Sign.updateTextFromClient(pos, textComponent.currentString.items);
+	const block = main.renderer.mesh_storage.getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;
+	if (block.onTrigger().inner != &main.callbacks.BlockCallbackWithData.list.updateSignText.run) return;
+	main.sync.ClientSide.executeCommand(.{.triggerBlock = .init(block, pos, textComponent.currentString.items)});
 
 	gui.toggleGameMenu();
 }
