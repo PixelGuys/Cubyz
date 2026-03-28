@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/snail_den/base/den_0"},
+		.{.id = "cubyz:rare/snail_den/base/den_1"},
+		.{.id = "cubyz:rare/snail_den/base/den_2"},
+		.{.id = "cubyz:rare/snail_den/base/den_3"},
+	},
+	.children = .{
+		.grey = "cubyz:rare/snail_den/extensions/extension",
+	},
+}
