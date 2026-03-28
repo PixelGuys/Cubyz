@@ -10,7 +10,7 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.chance = 0.000005,
+			.chance = 0.0005,
 			.placeMode = .all,
 			.structure = "cubyz:rare/snail_den/structure",
 		},
