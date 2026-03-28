@@ -4,7 +4,8 @@
 		.{.id = "cubyz:rare/snail_den/extensions/1", .chance = 1},
 		.{.id = "cubyz:rare/snail_den/extensions/2", .chance = 1},
 		.{.id = "cubyz:rare/snail_den/extensions/den_exit", .chance = 1.5},
-		.{.id = "cubyz:rare/snail_den/extensions/turn", .chance = 1},
+		.{.id = "cubyz:rare/snail_den/extensions/turn", .chance = 0.7},
+		.{.id = "cubyz:rare/snail_den/extensions/down", .chance = 0.5},
 	},
 	.children = .{
 		.grey = "cubyz:rare/snail_den/extensions/extension",
