@@ -1,6 +1,7 @@
 .{
 	.properties = .{
 		.dry,
+		.oak,
 	},
 	.chance = 0,
 	.minRadius = 45,

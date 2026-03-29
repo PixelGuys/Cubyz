@@ -1,6 +1,8 @@
 .{
 	.chance = 0,
-	.properties = .{},
+	.properties = .{
+		.oak,
+	},
 	.radius = 32,
 	.minHeight = 22,
 	.maxHeight = 40,

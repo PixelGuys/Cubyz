@@ -1,6 +1,7 @@
 .{
 	.properties = .{
 		.cold,
+		.oak,
 	},
 	.chance = 0.5,
 	.minHeightLimit = 7,
