@@ -743,7 +743,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
-				if (hovered.inventory.type == .crafting) return;
+				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
 				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) {
 					if (hovered.inventory.type == .creative) {
 						const item = hovered.inventory.getItem(hovered.itemSlot);
