@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/mushroom_pole/spacer/optional", .chance = 0.05},
+		.{.id = null},
+	},
+	.children = .{
+		.red = "cubyz:rare/mushroom_pole/spacer",
+	},
+}

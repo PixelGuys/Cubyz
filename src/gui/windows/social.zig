@@ -24,6 +24,11 @@ fn toggleStreamerMode(value: bool) void {
 	main.settings.save();
 }
 
+fn toggleNamesWithId(value: bool) void {
+	main.settings.showIdWithName = value;
+	main.settings.save();
+}
+
 fn logout() void {
 	main.settings.storedAccount.deinit(main.globalAllocator);
 	main.settings.storedAccount = .empty;
@@ -43,6 +48,7 @@ fn copy() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	list.add(CheckBox.init(.{0, 0}, 316, "Streamer Mode (hides sensitive data)", main.settings.streamerMode, &toggleStreamerMode));
+	list.add(CheckBox.init(.{0, 0}, 316, "Display players id after their name", main.settings.showIdWithName, &toggleNamesWithId));
 	list.add(Button.initText(.{0, 0}, 150, "Copy public key", .init(copy)));
 	if (main.game.world == null) {
 		list.add(Button.initText(.{0, 0}, 150, "Change Name", gui.openWindowCallback("change_name")));
