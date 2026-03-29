@@ -579,18 +579,20 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 				newDelta[1] *= -1;
 			}
 			deltas[deltaBufferPosition] += newDelta;
-			var averagedDelta: Vec2f = Vec2f{0, 0};
-			for (deltas) |delta| {
-				averagedDelta += delta;
-			}
-			averagedDelta /= @splat(deltasLen);
-			main.game.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
-			deltaBufferPosition = (deltaBufferPosition + 1)%deltasLen;
-			deltas[deltaBufferPosition] = Vec2f{0, 0};
 		}
 		ignoreDataAfterRecentGrab = false;
 		currentPos = newPos;
 		lastUsedMouse = true;
+	}
+	fn applyCursorPositionChanges() void {
+		var averagedDelta: Vec2f = Vec2f{0, 0};
+		for (deltas) |delta| {
+			averagedDelta += delta;
+		}
+		averagedDelta /= @splat(deltasLen);
+		main.game.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
+		deltaBufferPosition = (deltaBufferPosition + 1)%deltasLen;
+		deltas[deltaBufferPosition] = Vec2f{0, 0};
 	}
 	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.c) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
@@ -809,6 +811,7 @@ pub fn handleEvents(deltaTime: f64) void {
 	scrollOffsetInteger = 0;
 	c.glfwPollEvents();
 	Gamepad.update(deltaTime);
+	GLFWCallbacks.applyCursorPositionChanges();
 }
 
 var oldX: c_int = 0;
