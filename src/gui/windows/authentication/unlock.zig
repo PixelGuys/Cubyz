@@ -33,7 +33,7 @@ fn apply() void {
 		if (err == error.AuthenticationFailed) {
 			incorrectPasswordLabel.updateText("#ff0000Incorrect password.");
 		} else {
-			std.log.err("Encountered error while decrypting password: {s}", .{@errorName(err)});
+			incorrectPasswordLabel.updateText("#ff0000Encrypted authentication data is corrupted: {s}. Please login with your Account Code again.", .{@errorName(err)});
 		}
 		return;
 	};
