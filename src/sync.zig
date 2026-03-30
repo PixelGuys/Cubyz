@@ -1306,11 +1306,8 @@ pub const Command = struct { // MARK: Command
 		destinations: Inventory.Inventories,
 		craftingGrid: Inventory,
 
-		pub fn init(destinations: []const Inventory.ClientInventory, craftingGrid: Inventory.ClientInventory) CraftTool {
-			return .{
-				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
-				.craftingGrid = craftingGrid.super,
-			};
+		pub fn init(destinations: []const Inventory.ClientInventory, craftingGrid: Inventory) CraftTool {
+			return .{.destinations = .initFromClientInventories(main.globalAllocator, destinations), .craftingGrid = craftingGrid};
 		}
 
 		fn finalize(self: CraftTool, _: Side, _: *BinaryReader) !void {
