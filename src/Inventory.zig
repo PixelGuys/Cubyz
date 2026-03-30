@@ -396,7 +396,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		serverShared: void,
 		creative: void,
 		crafting: *const main.items.Recipe,
-		workbenchResult: *ClientInventory,
+		workbenchResult: ClientInventory,
 	};
 	super: Inventory,
 	type: ClientType,
@@ -504,7 +504,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		std.debug.assert(source.type == .workbenchResult);
 		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
 
-		main.sync.ClientSide.executeCommand(.{.craftTool = .init(destinations, source.type.workbenchResult.*)});
+		main.sync.ClientSide.executeCommand(.{.craftTool = .init(destinations, source.type.workbenchResult)});
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
