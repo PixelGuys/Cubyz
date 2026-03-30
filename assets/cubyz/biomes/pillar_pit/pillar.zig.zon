@@ -1,0 +1,25 @@
+.{
+	.properties = .{.mountain},
+	.radius = 18,
+	.minHeight = 250,
+	.maxHeight = 412,
+	.mountains = 150,
+	.hills = 30,
+
+	.interpolation = .smooth,
+	.chance = 0,
+
+	.music = "cubyz:out_of_breath",
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:pillar_pit/pit",
+			.chance = 100,
+		},
+	},
+
+	.ground_structure = .{
+		"cubyz:grass",
+		"5 to 7 cubyz:soil",
+	},
+}
