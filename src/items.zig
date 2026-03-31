@@ -700,7 +700,7 @@ pub const Tool = struct { // MARK: Tool
 		return result;
 	}
 
-	pub fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: ToolTypeIndex) *Tool {
+	fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: ToolTypeIndex) *Tool {
 		const self = init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
@@ -710,6 +710,32 @@ pub const Tool = struct { // MARK: Tool
 		TextureGenerator.generate(self);
 		ToolPhysics.evaluateTool(self);
 		return self;
+	}
+
+	pub fn initFromInventory(inventory: Inventory) ?*Tool {
+		std.debug.assert(inventory.source == .workbench);
+		const slotInfos = inventory.source.workbench.toolIndex.slotInfos();
+		var availableItems: [25]?main.items.BaseItemIndex = undefined;
+
+		for (0..25) |i| {
+			if (inventory._items[i].item == .baseItem) {
+				availableItems[i] = inventory._items[i].item.baseItem;
+			} else {
+				if (!slotInfos[i].optional and !slotInfos[i].disabled) {
+					return null;
+				}
+				availableItems[i] = null;
+			}
+		}
+		var hash = std.hash.Crc32.init();
+		for (availableItems) |item| {
+			if (item != null) {
+				hash.update(item.?.id());
+			} else {
+				hash.update("none");
+			}
+		}
+		return initFromCraftingGrid(availableItems, hash.final(), inventory.source.workbench.toolIndex);
 	}
 
 	pub fn initFromZon(zon: ZonElement) *Tool {
