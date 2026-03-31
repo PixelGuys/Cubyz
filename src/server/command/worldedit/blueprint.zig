@@ -29,7 +29,7 @@ const BlueprintSubCommand = enum {
 
 	fn fromString(string: []const u8) BlueprintSubCommand {
 		return std.meta.stringToEnum(BlueprintSubCommand, string) orelse {
-			if(string.len == 0) return .empty;
+			if (string.len == 0) return .empty;
 			return .unknown;
 		};
 	}
@@ -40,16 +40,16 @@ pub fn execute(args: []const u8, source: *User) void {
 	defer argsList.deinit();
 
 	var splitIterator = std.mem.splitScalar(u8, args, ' ');
-	while(splitIterator.next()) |a| {
+	while (splitIterator.next()) |a| {
 		argsList.append(a);
 	}
 
-	if(argsList.items.len < 1) {
+	if (argsList.items.len < 1) {
 		source.sendMessage("#ff0000Not enough arguments for /blueprint, expected at least 1.", .{});
 		return;
 	}
 	const subcommand = BlueprintSubCommand.fromString(argsList.items[0]);
-	switch(subcommand) {
+	switch (subcommand) {
 		.save => blueprintSave(argsList.items, source),
 		.delete => blueprintDelete(argsList.items, source),
 		.load => blueprintLoad(argsList.items, source),
@@ -64,14 +64,14 @@ pub fn execute(args: []const u8, source: *User) void {
 }
 
 fn blueprintSave(args: []const []const u8, source: *User) void {
-	if(args.len < 2) {
+	if (args.len < 2) {
 		return source.sendMessage("#ff0000/blueprint save requires file-name argument.", .{});
 	}
-	if(args.len >= 3) {
+	if (args.len >= 3) {
 		return source.sendMessage("#ff0000Too many arguments for /blueprint save. Expected 1 argument, file-name.", .{});
 	}
 
-	if(source.worldEditData.clipboard) |clipboard| {
+	if (source.worldEditData.clipboard) |clipboard| {
 		const storedBlueprint = clipboard.store(main.stackAllocator);
 		defer main.stackAllocator.free(storedBlueprint);
 
@@ -109,7 +109,7 @@ fn openBlueprintsDir(source: *User) ?Dir {
 }
 
 fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {
-	if(!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
+	if (!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
 		return std.fmt.allocPrint(allocator.allocator, "{s}.blp", .{fileName}) catch unreachable;
 	} else {
 		return allocator.dupe(u8, fileName);
@@ -117,10 +117,10 @@ fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const 
 }
 
 fn blueprintDelete(args: []const []const u8, source: *User) void {
-	if(args.len < 2) {
+	if (args.len < 2) {
 		return source.sendMessage("#ff0000/blueprint delete requires file-name argument.", .{});
 	}
-	if(args.len >= 3) {
+	if (args.len >= 3) {
 		return source.sendMessage("#ff0000Too many arguments for /blueprint delete. Expected 1 argument, file-name.", .{});
 	}
 
@@ -145,21 +145,21 @@ fn blueprintList(source: *User) void {
 
 	var directoryIterator = blueprintsDir.iterate();
 
-	while(directoryIterator.next() catch |err| {
+	while (directoryIterator.next() catch |err| {
 		return sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
 	}) |entry| {
-		if(entry.kind != .file) break;
-		if(!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
+		if (entry.kind != .file) break;
+		if (!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
 
 		source.sendMessage("#ffffff- {s}", .{entry.name});
 	}
 }
 
 fn blueprintLoad(args: []const []const u8, source: *User) void {
-	if(args.len < 2) {
+	if (args.len < 2) {
 		return source.sendMessage("#ff0000/blueprint load requires file-name argument.", .{});
 	}
-	if(args.len >= 3) {
+	if (args.len >= 3) {
 		return source.sendMessage("#ff0000Too many arguments for /blueprint load. Expected 1 argument, file-name.", .{});
 	}
 
@@ -175,7 +175,7 @@ fn blueprintLoad(args: []const []const u8, source: *User) void {
 	};
 	defer main.stackAllocator.free(storedBlueprint);
 
-	if(source.worldEditData.clipboard) |oldClipboard| {
+	if (source.worldEditData.clipboard) |oldClipboard| {
 		oldClipboard.deinit(main.globalAllocator);
 	}
 	source.worldEditData.clipboard = Blueprint.load(main.globalAllocator, storedBlueprint) catch |err| {

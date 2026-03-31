@@ -17,4 +17,7 @@
 		.texture = "daffodil.png",
 	},
 	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 }

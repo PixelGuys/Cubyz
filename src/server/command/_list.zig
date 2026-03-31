@@ -2,11 +2,15 @@ pub const clear = @import("clear.zig");
 pub const gamemode = @import("gamemode.zig");
 pub const help = @import("help.zig");
 pub const invite = @import("invite.zig");
+pub const kick = @import("kick.zig");
 pub const kill = @import("kill.zig");
 pub const particles = @import("particles.zig");
+pub const spawn = @import("spawn.zig");
 pub const tickspeed = @import("tickspeed.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
+
+pub const perm = @import("permission/perm.zig");
 
 pub const undo = @import("worldedit/undo.zig");
 pub const redo = @import("worldedit/redo.zig");

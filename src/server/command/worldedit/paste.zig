@@ -19,8 +19,8 @@ pub const usage = "/paste [-v]";
 pub fn execute(args: []const u8, source: *User) void {
 	var flags = Blueprint.PasteFlags{};
 
-	if(args.len != 0) {
-		if(std.mem.eql(u8, args, "-v")) {
+	if (args.len != 0) {
+		if (std.mem.eql(u8, args, "-v")) {
 			flags.preserveVoid = true;
 		} else {
 			source.sendMessage("#ff0000Argument(s) '{s}' not recognized.", .{args});
@@ -28,7 +28,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		}
 	}
 
-	if(source.worldEditData.clipboard) |clipboard| {
+	if (source.worldEditData.clipboard) |clipboard| {
 		const pos: Vec3i = @intFromFloat(source.player.pos);
 		source.sendMessage("Pasting: {}", .{pos});
 
@@ -37,7 +37,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			pos[1] + @as(i32, @intCast(clipboard.blocks.depth)) - 1,
 			pos[2] + @as(i32, @intCast(clipboard.blocks.height)) - 1,
 		});
-		switch(undo) {
+		switch (undo) {
 			.success => |blueprint| {
 				source.worldEditData.undoHistory.push(.init(blueprint, pos, "paste"));
 				source.worldEditData.redoHistory.clear();

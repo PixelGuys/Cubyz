@@ -26,11 +26,11 @@ pub fn generateInitializedFractalTerrain(offset: i32, scale: u31, startingScale:
 	const max = startingScale + 1;
 	var seed: u64 = undefined;
 	var res: u31 = startingScale/2;
-	while(res != 0) : (res /= 2) {
+	while (res != 0) : (res /= 2) {
 		const randomnessScale = @as(f32, @floatFromInt(res))/@as(f32, @floatFromInt(scale))/2;
 		// No coordinate on the grid:
 		var x = res;
-		while(x + res < max) : (x += 2*res) {
+		while (x + res < max) : (x += 2*res) {
 			setSeed(x, offset, &seed, worldSeed, res);
 			bigMap[x] = (bigMap[x - res] + bigMap[x + res])/2 + main.random.nextFloatSigned(&seed)*randomnessScale;
 			bigMap[x] = @min(upperLimit, @max(lowerLimit, bigMap[x]));
@@ -40,7 +40,7 @@ pub fn generateInitializedFractalTerrain(offset: i32, scale: u31, startingScale:
 
 pub fn generateSparseFractalTerrain(wx: i32, scale: u31, worldSeed: u64, map: []f32) void {
 	var x0: u31 = 0;
-	while(x0 < map.len) : (x0 += scale) {
+	while (x0 < map.len) : (x0 += scale) {
 		generateFractalTerrain(wx +% x0, x0, @min(map.len - x0, scale), scale, worldSeed, map);
 	}
 }

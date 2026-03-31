@@ -26,7 +26,7 @@ pub fn generateFractalTerrain(wx: i32, wy: i32, x0: u31, y0: u31, width: u32, he
 	bigMap.ptr(scale, scale).* = main.random.nextFloat(&seed);
 	generateInitializedFractalTerrain(offsetX, offsetY, scale, scale, worldSeed, bigMap, maxResolution);
 	var px: u31 = 0;
-	while(px < width) : (px += 1) {
+	while (px < width) : (px += 1) {
 		@memcpy(map.getRow(x0 + px)[y0..][0..height], bigMap.getRow(@intCast((wx & mask) + px))[@intCast((wy & mask))..][0..height]);
 	}
 }
@@ -56,13 +56,13 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31,
 	const max = startingScale + 1;
 	var seed: u64 = undefined;
 	var res: u31 = startingScale/2;
-	while(res != 0) : (res /= 2) {
+	while (res != 0) : (res /= 2) {
 		const randomnessScale = @as(f32, @floatFromInt(res))/@as(f32, @floatFromInt(scale))/2;
 		// x coordinate on the grid:
 		var x: u31 = 0;
-		while(x < max) : (x += 2*res) {
+		while (x < max) : (x += 2*res) {
 			var y: u31 = res;
-			while(y + res < max) : (y += 2*res) {
+			while (y + res < max) : (y += 2*res) {
 				setSeed(x, y, offsetX, offsetY, &seed, worldSeed, res, maxResolution);
 				const w = main.random.nextFloat(&seed);
 				bigMap.ptr(x, y).* = bigMap.get(x, y - res)*(1 - w) + bigMap.get(x, y + res)*w + main.random.nextFloatSigned(&seed)*randomnessScale;
@@ -71,9 +71,9 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31,
 		}
 		// y coordinate on the grid:
 		x = res;
-		while(x + res < max) : (x += 2*res) {
+		while (x + res < max) : (x += 2*res) {
 			var y: u31 = 0;
-			while(y < max) : (y += 2*res) {
+			while (y < max) : (y += 2*res) {
 				setSeed(x, y, offsetX, offsetY, &seed, worldSeed, res, maxResolution);
 				const w = main.random.nextFloat(&seed);
 				bigMap.ptr(x, y).* = bigMap.get(x - res, y)*(1 - w) + bigMap.get(x + res, y)*w + main.random.nextFloatSigned(&seed)*randomnessScale;
@@ -82,9 +82,9 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31,
 		}
 		// No coordinate on the grid:
 		x = res;
-		while(x + res < max) : (x += 2*res) {
+		while (x + res < max) : (x += 2*res) {
 			var y: u31 = res;
-			while(y + res < max) : (y += 2*res) {
+			while (y + res < max) : (y += 2*res) {
 				setSeed(x, y, offsetX, offsetY, &seed, worldSeed, res, maxResolution);
 				const w1 = main.random.nextFloat(&seed);
 				const w2 = main.random.nextFloat(&seed);
@@ -101,9 +101,9 @@ pub fn generateSparseFractalTerrain(wx: i32, wy: i32, scale: u31, worldSeed: u64
 	const scaledWy = @divFloor(wy, maxResolution);
 	const scaledScale = scale/maxResolution;
 	var x0: u31 = 0;
-	while(x0 < map.width) : (x0 += scaledScale) {
+	while (x0 < map.width) : (x0 += scaledScale) {
 		var y0: u31 = 0;
-		while(y0 < map.height) : (y0 += scaledScale) {
+		while (y0 < map.height) : (y0 += scaledScale) {
 			generateFractalTerrain(scaledWx +% x0, scaledWy +% y0, x0, y0, @min(map.width - x0, scaledScale), @min(map.height - y0, scaledScale), scaledScale, worldSeed, map, maxResolution);
 		}
 	}

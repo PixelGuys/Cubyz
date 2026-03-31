@@ -17,4 +17,7 @@
 		.texture = "castilleja.png",
 	},
 	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 }

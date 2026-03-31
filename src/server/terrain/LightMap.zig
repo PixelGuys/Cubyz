@@ -51,8 +51,8 @@ fn cacheInit(pos: MapFragmentPosition) *LightMapFragment {
 	mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
 	const surfaceMap = terrain.SurfaceMap.getOrGenerateFragment(pos.wx, pos.wy, pos.voxelSize);
 	comptime std.debug.assert(LightMapFragment.mapSize == terrain.SurfaceMap.MapFragment.mapSize);
-	for(0..LightMapFragment.mapSize) |x| {
-		for(0..LightMapFragment.mapSize) |y| {
+	for (0..LightMapFragment.mapSize) |x| {
+		for (0..LightMapFragment.mapSize) |y| {
 			const baseHeight: i16 = std.math.lossyCast(i16, surfaceMap.heightMap[x][y]);
 			mapFragment.startHeight[x << LightMapFragment.mapShift | y] = @max(0, baseHeight +| 16); // Simple heuristic. TODO: Update this value once chunks get generated in the region.
 		}
