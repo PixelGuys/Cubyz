@@ -334,6 +334,16 @@ pub const Blueprint = struct {
 			}
 		}
 	}
+	pub fn apply(self: *Blueprint, comptime ApplyT: type, applayable: ApplyT) void {
+		for (0..self.blocks.width) |x| {
+			for (0..self.blocks.depth) |y| {
+				for (0..self.blocks.height) |z| {
+					const current = self.blocks.get(x, y, z);
+					self.blocks.set(x, y, z, applayable.apply(current));
+				}
+			}
+		}
+	}
 };
 
 pub const Pattern = struct {
