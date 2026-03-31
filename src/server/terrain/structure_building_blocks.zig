@@ -396,7 +396,7 @@ pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 	blueprintList.resize(main.worldArena, blueprints.count());
 	blueprintMap.ensureTotalCapacity(main.worldArena.allocator, blueprints.count()) catch unreachable;
 
-	originBlockNumericId = main.blocks.parseBlock(originBlockStringId, .{}).typ;
+	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
 	std.debug.assert(originBlockNumericId != 0);
 
 	var iterator = blueprints.iterator();

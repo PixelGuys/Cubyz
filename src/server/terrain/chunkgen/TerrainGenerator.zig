@@ -26,9 +26,9 @@ var water: main.blocks.Block = undefined;
 
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
-	air = main.blocks.parseBlock("cubyz:air", .{});
-	stone = main.blocks.parseBlock("cubyz:slate/base", .{});
-	water = main.blocks.parseBlock("cubyz:water", .{});
+	air = main.blocks.parseBlock("cubyz:air");
+	stone = main.blocks.parseBlock("cubyz:slate/base");
+	water = main.blocks.parseBlock("cubyz:water");
 }
 
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {

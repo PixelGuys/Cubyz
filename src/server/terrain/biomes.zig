@@ -30,7 +30,7 @@ const Stripe = struct { // MARK: Stripe
 			dir = main.vec.normalize(dir.?);
 		}
 
-		const block: main.blocks.Block = blocks.parseBlock(parameters.get([]const u8, "block", ""), .{});
+		const block: main.blocks.Block = blocks.parseBlock(parameters.get([]const u8, "block", ""));
 
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
@@ -267,7 +267,7 @@ pub const Biome = struct { // MARK: Biome
 			.isCave = zon.get(bool, "isCave", false),
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
-			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate/base"), .{}),
+			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate/base")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
 			.skyColor = blk: {
 				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
@@ -415,7 +415,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 				self.min = 1;
 				self.max = 1;
 			}
-			self.block = blocks.parseBlock(blockId, .{});
+			self.block = blocks.parseBlock(blockId);
 		}
 	};
 	structure: []BlockStack,

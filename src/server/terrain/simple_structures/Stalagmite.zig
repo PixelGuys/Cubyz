@@ -30,7 +30,7 @@ pub fn loadModel(parameters: ZonElement) ?*Stalagmite {
 	const self = main.worldArena.create(Stalagmite);
 	const baseSlope = parameters.get(f32, "baseSlope", 4.0);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite"), .{}),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite")),
 		.size = parameters.get(f32, "size", 12),
 		.sizeVariation = parameters.get(f32, "size_variation", 8),
 		.baseSlope = baseSlope,

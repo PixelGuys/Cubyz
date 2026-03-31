@@ -247,7 +247,7 @@ pub const Blueprint = struct {
 		var blueprintIdToGameIdMap = allocator.alloc(Block, palette.len);
 
 		for (palette, 0..) |blockName, blueprintBlockId| {
-			const block = main.blocks.parseBlock(blockName, .{.applyMigrations = true});
+			const block = main.blocks.parseBlockWithOptions(blockName, .{.applyMigrations = true});
 			blueprintIdToGameIdMap[blueprintBlockId] = block;
 		}
 		return blueprintIdToGameIdMap;
@@ -368,7 +368,7 @@ pub const Pattern = struct {
 			}
 
 			_ = main.blocks.getBlockById(blockId) catch return error.@"Block not found";
-			const block = main.blocks.parseBlock(blockId, .{});
+			const block = main.blocks.parseBlock(blockId);
 
 			totalWeight += weight;
 			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = weight});

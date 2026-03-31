@@ -10,7 +10,7 @@ pub fn init(zon: main.ZonElement) ?*@This() {
 		.block = main.blocks.parseBlock(zon.get(?[]const u8, "block", null) orelse {
 			std.log.err("Missing field \"block\" for replaceBlock event", .{});
 			return null;
-		}, .{}),
+		}),
 	};
 	return result;
 }

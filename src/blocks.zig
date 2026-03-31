@@ -258,7 +258,7 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
 		registerCallbacks(i, zonElements.get(_id[i]) orelse continue);
 	}
-	blueprint.registerVoidBlock(parseBlock("cubyz:void", .{}));
+	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 	meshes.finishTextureLoading();
 }
 
@@ -284,7 +284,7 @@ const ParseBlockConfig = struct {
 
 fn parseBlockData(fullBlockId: []const u8, data: []const u8, comptime config: ParseBlockConfig) ?u16 {
 	if (std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
-		const oreChild = parseBlock(data, config);
+		const oreChild = parseBlockWithOptions(data, config);
 		if (oreChild.data != 0) {
 			std.log.warn("Error while parsing ore block data of '{s}': Parent block data must be 0.", .{fullBlockId});
 		}
@@ -296,7 +296,11 @@ fn parseBlockData(fullBlockId: []const u8, data: []const u8, comptime config: Pa
 	};
 }
 
-pub fn parseBlock(data: []const u8, comptime config: ParseBlockConfig) Block {
+pub fn parseBlock(data: []const u8) Block {
+	return parseBlockWithOptions(data, .{});
+}
+
+pub fn parseBlockWithOptions(data: []const u8, comptime config: ParseBlockConfig) Block {
 	var id: []const u8 = data;
 	var blockData: ?u16 = null;
 	if (std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
