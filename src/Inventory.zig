@@ -68,6 +68,15 @@ pub const ClientSide = struct {
 		main.utils.assertLocked(&main.sync.ClientSide.mutex);
 		return serverToClientMap.get(serverId);
 	}
+
+	fn getInventoryByClientId(clientId: InventoryId) ?Inventory {
+		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		var it = serverToClientMap.valueIterator();
+		while (it.next()) |inv| {
+			if (inv.id == clientId) return inv.*;
+		}
+		return null;
+	}
 };
 
 pub const ServerSide = struct { // MARK: ServerSide
@@ -503,13 +512,13 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn craftTool(source: ClientInventory, destinations: []const ClientInventory) void {
 		std.debug.assert(source.type == .workbenchResult);
 		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
-		const workbenchResultInv = blk: {
+		const workbenchInv = blk: {
 			main.sync.ClientSide.mutex.lock();
 			defer main.sync.ClientSide.mutex.unlock();
-			break :blk getInventory(source.type.workbenchResult, .client, null);
+			break :blk ClientSide.getInventoryByClientId(source.type.workbenchResult);
 		} orelse return;
 
-		main.sync.ClientSide.executeCommand(.{.craftTool = .init(destinations, workbenchResultInv)});
+		main.sync.ClientSide.executeCommand(.{.craftTool = .init(destinations, workbenchInv)});
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
