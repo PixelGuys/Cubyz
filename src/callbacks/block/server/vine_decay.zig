@@ -1,0 +1,39 @@
+const std = @import("std");
+
+const main = @import("main");
+const Block = main.blocks.Block;
+const blocks = main.blocks;
+const ZonElement = main.ZonElement;
+const server = main.server;
+
+pub fn init(_: ZonElement) ?*@This() {
+	return main.worldArena.create(@This());
+}
+pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
+	const wx = params.chunk.super.pos.wx + params.blockPos.x;
+	const wy = params.chunk.super.pos.wy + params.blockPos.y;
+	const wz = params.chunk.super.pos.wz + params.blockPos.z;
+
+	if (params.block.mode() != main.rotation.getByID("cubyz:hanging")) {
+		std.log.err("Expected {s} to have cubyz:hanging as rotation", .{params.block.id()});
+	}
+
+	const world = server.world orelse return .ignored;
+	const thisBlock = world.getBlock(wx, wy, wz) orelse return .ignored;
+
+	if (params.block != thisBlock) return .ignored;
+
+	const blockAbove = world.getBlock(wx, wy, wz +% 1) orelse return .ignored;
+	if (blockAbove.typ == params.block.typ) return .ignored;
+	if (!blockAbove.viewThrough()) return .ignored;
+	if (!blockAbove.replacable()) return .ignored;
+
+	const blockAboveModel = blocks.meshes.model(blockAbove).model();
+	if (blockAboveModel.isNeighborOccluded[main.chunk.Neighbor.dirDown.toInt()]) return .ignored;
+
+	if (world.cmpxchgBlock(wx, wy, wz, thisBlock, blocks.Block.air) == null) {
+		return .handled;
+	}
+
+	return .ignored;
+}
