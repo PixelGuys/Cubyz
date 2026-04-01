@@ -189,6 +189,8 @@ pub const handShake = struct { // MARK: handShake
 
 					const keys = zon.getChild("keys");
 					try conn.user.?.identifyFromKeysAndName(name, keys);
+					conn.user.?.initPlayer();
+					if (!main.server.world.?.joinFilter.playerMayJoin(conn.user.?.mayJoin)) return error.Denied;
 
 					var writer: utils.BinaryWriter = .init(main.stackAllocator);
 					defer writer.deinit();
