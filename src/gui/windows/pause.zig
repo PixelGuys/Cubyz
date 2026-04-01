@@ -21,9 +21,7 @@ fn reorderHudCallbackFunction() void {
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	if (main.server.world != null) {
-		list.add(Button.initText(.{0, 0}, 128, "Invite Player", gui.openWindowCallback("invite")));
-	}
+	list.add(Button.initText(.{0, 0}, 128, "Manage Players", gui.openWindowCallback("manage_players")));
 	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
 	list.add(Button.initText(.{0, 0}, 128, "Reorder HUD", .init(reorderHudCallbackFunction)));
 	list.add(Button.initText(.{0, 0}, 128, "Exit World", .init(main.exitToMenu)));
