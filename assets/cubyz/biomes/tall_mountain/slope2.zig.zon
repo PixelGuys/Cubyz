@@ -5,6 +5,8 @@
 	.maxHeight = 384,
 
 	.interpolation = .linear,
+	.hills = 10,
+	.roughness = 5,
 
 	.chance = 0,
 
