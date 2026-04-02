@@ -33,7 +33,9 @@ fn apply() void {
 		if (err == error.AuthenticationFailed) {
 			incorrectPasswordLabel.updateText("#ff0000Incorrect password.");
 		} else {
-			incorrectPasswordLabel.updateText("#ff0000Encrypted authentication data is corrupted: {s}. Please login with your Account Code again.", .{@errorName(err)});
+			const formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Authentication data is corrupted: {s}", .{@errorName(err)}) catch unreachable;
+			defer main.stackAllocator.free(formattedError);
+			incorrectPasswordLabel.updateText(formattedError);
 		}
 		return;
 	};
