@@ -841,13 +841,10 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Close, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Close, side: Side, reader: *BinaryReader) !void {
+		fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
 			if (side != .client) return;
 			self.inv._deinit(self.allocator, .client);
-			if (reader.remaining.len != 0) {
-				const serverId = try reader.readEnum(InventoryId);
-				Inventory.ClientSide.unmapServerId(serverId, self.inv.id);
-			}
+			Inventory.ClientSide.unmapServerIdByClientId(self.inv.id);
 		}
 
 		fn serialize(self: Close, writer: *BinaryWriter) void {
