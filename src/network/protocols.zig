@@ -58,7 +58,9 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 	} else {
 		var reader = utils.BinaryReader.init(data);
 		protocolReceive(conn, &reader) catch |err| {
-			std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, data});
+			if (!std.mem.eql(u8,@errorName(err),"Denied")) {
+				std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, data});
+			}
 			return err;
 		};
 	}
