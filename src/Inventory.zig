@@ -64,6 +64,18 @@ pub const ClientSide = struct {
 		std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 	}
 
+	pub fn unmapServerIdByClientId(clientId: InventoryId) void {
+		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		const serverId = blk: {
+			var it = serverToClientMap.iterator();
+			while (it.next()) |entry| {
+				if (entry.value_ptr.id == clientId) break :blk entry.key_ptr.*;
+			}
+			return;
+		};
+		unmapServerId(serverId, clientId);
+	}
+
 	fn getInventory(serverId: InventoryId) ?Inventory {
 		main.utils.assertLocked(&main.sync.ClientSide.mutex);
 		return serverToClientMap.get(serverId);
