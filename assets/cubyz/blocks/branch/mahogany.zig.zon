@@ -14,7 +14,7 @@
 		.material = .{
 			.durability = 34,
 			.massDamage = 1.2,
-			.hardnessDamage = 1.0,
+			.hardnessDamage = 0.79,
 			.swingSpeed = 4.1,
 			.textureRoughness = 0.7,
 			.colors = .{
