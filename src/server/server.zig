@@ -28,7 +28,6 @@ pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
-pub const JoinFilter = @import("whitelist.zig").JoinFilter;
 
 pub const command = @import("command/_command.zig");
 
@@ -117,7 +116,7 @@ pub const User = struct { // MARK: User
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 	spawnPos: Vec3d = .{0, 0, 0},
 	worldEditData: WorldEditData = undefined,
-	mayJoin: JoinFilter.mayJoinState = undefined,
+	mayJoin: ServerWorld.mayJoinState = undefined,
 
 	playerIndex: usize = undefined,
 

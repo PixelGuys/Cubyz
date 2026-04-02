@@ -26,7 +26,6 @@ const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
 const Gamemode = main.game.Gamemode;
-const JoinFilter = main.server.JoinFilter;
 
 const BlockUpdateSystem = main.server.BlockUpdateSystem;
 const SimulationChunk = main.server.SimulationChunk;
@@ -450,7 +449,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	playerDatabase: std.StringHashMapUnmanaged(usize) = .{},
 	nextPlayerIndex: std.atomic.Value(usize) = .init(0),
-	joinFilter: *JoinFilter = undefined,
+	whitelisted: bool = undefined,
 
 	biomeChecksum: i64 = 0,
 
@@ -499,7 +498,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		errdefer main.assets.unloadAssets();
 
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
-		self.joinFilter = JoinFilter.init(main.worldArena, worldData);
+		self.whitelisted = worldData.get(bool, "whitelisted", false);
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
@@ -545,7 +544,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
-		self.joinFilter.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -639,7 +637,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
-		worldData.put("whitelisted", self.joinFilter.whitelisted);
+		worldData.put("whitelisted", self.whitelisted);
 
 		try files.cubyzDir().writeZon(path, worldData);
 	}
@@ -964,7 +962,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(Vec3d, "playerSpawnPos", @as(Vec3d, @floatFromInt(self.spawn)));
-		user.mayJoin = playerData.get(JoinFilter.mayJoinState, "mayJoin", .default);
+		user.mayJoin = playerData.get(mayJoinState, "mayJoin", .default);
 	}
 
 	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) main.items.Inventory.InventoryId {
@@ -1090,6 +1088,19 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer simulationChunk.decreaseRefCount();
 			simulationChunk.update(self.tickSpeed.load(.monotonic));
 		}
+	}
+
+	pub const mayJoinState = enum { default, whitelisted, blacklisted };
+
+	pub fn playerMayJoin(self: *ServerWorld, user: *main.server.User) bool {
+		if (user.isLocal) return true;
+
+		const mayJoin = user.mayJoin;
+		return switch (mayJoin) {
+			.default => !self.whitelisted,
+			.whitelisted => true,
+			.blacklisted => false,
+		};
 	}
 
 	pub fn update(self: *ServerWorld) void { // MARK: update()

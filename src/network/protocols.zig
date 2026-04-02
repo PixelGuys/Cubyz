@@ -58,7 +58,7 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 	} else {
 		var reader = utils.BinaryReader.init(data);
 		protocolReceive(conn, &reader) catch |err| {
-			if (!std.mem.eql(u8, @errorName(err), "Denied")) {
+			if (err != error.Denied) {
 				std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, data});
 			}
 			return err;
@@ -192,7 +192,7 @@ pub const handShake = struct { // MARK: handShake
 					const keys = zon.getChild("keys");
 					try conn.user.?.identifyFromKeysAndName(name, keys);
 					conn.user.?.initPlayer();
-					if (!main.server.world.?.joinFilter.playerMayJoin(conn.user.?)) return error.Denied;
+					if (!main.server.world.?.playerMayJoin(conn.user.?)) return error.Denied;
 
 					var writer: utils.BinaryWriter = .init(main.stackAllocator);
 					defer writer.deinit();
