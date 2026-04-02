@@ -24,7 +24,10 @@ pub const JoinFilter = struct {
 		self.*.whitelisted = worldData.get(bool, "whitelisted", false);
 	}
 
-	pub fn playerMayJoin(self: *JoinFilter, mayJoin: mayJoinState) bool {
+	pub fn playerMayJoin(self: *JoinFilter, user: *main.server.User) bool {
+		if (user.isLocal) return true;
+
+		const mayJoin = user.mayJoin;
 		return switch (mayJoin) {
 			.default => !self.*.whitelisted,
 			.whitelisted => true,
