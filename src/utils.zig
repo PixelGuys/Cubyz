@@ -833,7 +833,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				@panic("ThreadPool Creation Failed.");
 			};
 			var buf: [std.Thread.max_name_len]u8 = undefined;
-			thread.setName(std.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+			thread.setName(main.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		}
 		return self;
 	}

@@ -1,6 +1,22 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
+
+pub inline fn bufPrint(buf: []u8, comptime fmt: []const u8, args: anytype) std.fmt.BufPrintError![]u8 {
+	if (builtin.is_test) return std.fmt.bufPrint(buf, fmt, args);
+	var runtimeArgs: [args.len]FormatArg = undefined;
+	inline for (0..args.len) |i| {
+		runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
+	}
+	return bufPrintRuntime(buf, fmt, &runtimeArgs);
+}
+
+pub noinline fn bufPrintRuntime(buf: []u8, fmt: []const u8, args: []const FormatArg) std.fmt.BufPrintError![]u8 {
+	var writer: std.Io.Writer = .fixed(buf);
+	format(&writer, fmt, args) catch return error.NoSpaceLeft;
+	return writer.buffered();
+}
 
 pub const FormatArg = union(enum) {
 	int: i128,
