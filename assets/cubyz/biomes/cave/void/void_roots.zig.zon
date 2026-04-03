@@ -20,7 +20,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:bridges/bridges",
 			.placeMode = .degradable,
-			.chance = 0.00001,
+			.chance = 0.0001,
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
