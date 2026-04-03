@@ -68,6 +68,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 	heightMap: [mapSize][mapSize]i32 = undefined,
 	biomeMap: [mapSize][mapSize]*const Biome = undefined,
+	caveBiomeOffsetMap: [mapSize][mapSize]i16 = undefined,
 	minHeight: i32 = std.math.maxInt(i32),
 	maxHeight: i32 = 0,
 	pos: MapFragmentPosition,
@@ -78,6 +79,14 @@ pub const MapFragment = struct { // MARK: MapFragment
 		self.* = .{
 			.pos = MapFragmentPosition.init(wx, wy, voxelSize),
 		};
+		const caveBiomeOffsetMap = main.utils.Array2D(f32).init(main.stackAllocator, mapSize, mapSize);
+		defer caveBiomeOffsetMap.deinit(main.stackAllocator);
+		terrain.noise.FractalNoise.generateSparseFractalTerrain(wx, wy, 64, main.server.world.?.settings.seed ^ 0x764923684396, caveBiomeOffsetMap, voxelSize);
+		for (0..mapSize) |x| {
+			for (0..mapSize) |y| {
+				self.caveBiomeOffsetMap[x][y] = @intFromFloat(@floor(caveBiomeOffsetMap.get(x, y)));
+			}
+		}
 	}
 
 	fn privateDeinit(self: *MapFragment) void {
@@ -98,6 +107,12 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
 		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
 		return self.heightMap[@intCast(xIndex)][@intCast(yIndex)];
+	}
+
+	pub fn getCaveBiomeOffset(self: *MapFragment, wx: i32, wy: i32) i16 {
+		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
+		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
+		return self.caveBiomeOffsetMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
 
 	const StorageHeader = struct {
@@ -333,8 +348,8 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
 		var xNoise: [MapFragment.mapSize]f32 = undefined;
 		var yNoise: [MapFragment.mapSize]f32 = undefined;
-		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wx, 32, main.server.world.?.seed, &xNoise);
-		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wy, 32, main.server.world.?.seed ^ 0x785298638131, &yNoise);
+		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wx, 32, main.server.world.?.settings.seed, &xNoise);
+		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wy, 32, main.server.world.?.settings.seed ^ 0x785298638131, &yNoise);
 		var originalHeightMap: [MapFragment.mapSize][MapFragment.mapSize]i32 = undefined;
 		const oldNeighborInfo = mapFragment.load(main.server.world.?.biomePalette, &originalHeightMap) catch |err| {
 			std.log.err("Error loading map at position {}: {s}", .{pos, @errorName(err)});

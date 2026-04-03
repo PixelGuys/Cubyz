@@ -28,25 +28,28 @@ const resolutions = [_]u16{25, 50, 100};
 
 const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 
-fn fpsCapRound(newValue: f32) ?u32 {
-	if (newValue < 144.0) {
-		return @as(u32, @intFromFloat(newValue/5.0))*5;
-	} else if (newValue < 149.0) {
-		return 144;
-	} else {
-		return null;
+const fpsPresetsValue = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
+const fpsPresetsText = blk: {
+	var strings: [fpsPresetsValue.len + 1][]const u8 = undefined;
+	for (fpsPresetsValue, 0..) |value, i| {
+		strings[i] = std.fmt.comptimePrint("{d} Hz", .{value});
 	}
-}
+	strings[fpsPresetsValue.len] = "unlimited";
+	break :blk strings;
+};
 
-fn fpsCapFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	const cap = fpsCapRound(value);
-	if (cap == null)
-		return allocator.dupe(u8, "#ffffffFPS: Unlimited");
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffFPS Limit: {d:.0}", .{cap.?}) catch unreachable;
+fn fpsCapGetIndex(fpsOptional: ?u32) u16 {
+	const fps: u16 = @truncate(fpsOptional orelse return fpsPresetsValue.len);
+	return @intCast(std.sort.lowerBound(u16, &fpsPresetsValue, fps, struct {
+		fn order(a: u16, b: u16) std.math.Order {
+			return std.math.order(a, b);
+		}
+	}.order));
 }
-
-fn fpsCapCallback(newValue: f32) void {
-	settings.fpsCap = fpsCapRound(newValue);
+fn fpsCapCallback(index: u16) void {
+	if (index < fpsPresetsValue.len) {
+		settings.fpsCap = fpsPresetsValue[index];
+	} else settings.fpsCap = null;
 	settings.save();
 }
 
@@ -133,7 +136,7 @@ fn vulkanTestingWindowCallback(newValue: bool) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 154), &fpsCapCallback, &fpsCapFormatter));
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffFPS Limit:\n", "{s}", &fpsPresetsText, fpsCapGetIndex(settings.fpsCap), &fpsCapCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLOD1 Distance: ", "{} chunks", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
 	if (main.game.world == null) {
 		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffHighest LOD: ", "{s}", &lodValues, @min(settings.highestLod, settings.highestSupportedLod), &highestLodCallback));

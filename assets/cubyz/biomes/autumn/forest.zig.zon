@@ -120,7 +120,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:red_leaf_pile:0",
+			.blocks = .{"cubyz:red_leaf_pile:0"},
 			.chance = 0.01,
 			.width = 10,
 			.variation = 6,
@@ -129,7 +129,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:red_leaf_pile:1",
+			.blocks = .{"cubyz:red_leaf_pile:1"},
 			.chance = 0.015,
 			.width = 10,
 			.variation = 6,
@@ -138,7 +138,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:red_leaf_pile:2",
+			.blocks = .{"cubyz:red_leaf_pile:2"},
 			.chance = 0.02,
 			.width = 8,
 			.variation = 6,
@@ -147,7 +147,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:red_leaf_pile:3",
+			.blocks = .{"cubyz:red_leaf_pile:3"},
 			.chance = 0.015,
 			.width = 6,
 			.variation = 6,
@@ -156,7 +156,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:yellow_leaf_pile:0",
+			.blocks = .{"cubyz:yellow_leaf_pile:0"},
 			.chance = 0.01,
 			.width = 10,
 			.variation = 6,
@@ -165,7 +165,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:yellow_leaf_pile:1",
+			.blocks = .{"cubyz:yellow_leaf_pile:1"},
 			.chance = 0.015,
 			.width = 10,
 			.variation = 6,
@@ -174,7 +174,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:yellow_leaf_pile:2",
+			.blocks = .{"cubyz:yellow_leaf_pile:2"},
 			.chance = 0.02,
 			.width = 8,
 			.variation = 6,
@@ -183,7 +183,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:yellow_leaf_pile:3",
+			.blocks = .{"cubyz:yellow_leaf_pile:3"},
 			.chance = 0.015,
 			.width = 6,
 			.variation = 6,

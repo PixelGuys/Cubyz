@@ -49,10 +49,10 @@ pub fn updateSelected(self: *MutexComponent) void {
 	self.child.updateSelected();
 }
 
-pub fn updateHovered(self: *MutexComponent, mousePosition: Vec2f) void {
+pub fn updateHovered(self: *MutexComponent, mousePosition: Vec2f) main.callbacks.Result {
 	self.mutex.lock();
 	defer self.mutex.unlock();
-	self.child.updateHovered(mousePosition);
+	return self.child.updateHovered(mousePosition);
 }
 
 pub fn render(self: *MutexComponent, mousePosition: Vec2f) void {
@@ -63,10 +63,10 @@ pub fn render(self: *MutexComponent, mousePosition: Vec2f) void {
 	self.size = self.child.size();
 }
 
-pub fn mainButtonPressed(self: *MutexComponent, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *MutexComponent, mousePosition: Vec2f) main.callbacks.Result {
 	self.mutex.lock();
 	defer self.mutex.unlock();
-	self.child.mainButtonPressed(mousePosition);
+	return self.child.mainButtonPressed(mousePosition);
 }
 
 pub fn mainButtonReleased(self: *MutexComponent, mousePosition: Vec2f) void {

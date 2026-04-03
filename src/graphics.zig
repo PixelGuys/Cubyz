@@ -1137,7 +1137,8 @@ const TextRendering = struct { // MARK: TextRendering
 	};
 	var pipeline: Pipeline = undefined;
 	var uniforms: struct {
-		texture_rect: c_int,
+		textureBounds: c_int,
+		textureRect: c_int,
 		scene: c_int,
 		offset: c_int,
 		ratio: c_int,
@@ -1269,18 +1270,15 @@ const TextRendering = struct { // MARK: TextRendering
 		x = @floor(x);
 		y = @ceil(y);
 		c.glUniform1i(uniforms.fontEffects, fontEffects);
+		c.glUniform4f(uniforms.textureBounds, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
 		if (fontEffects & 0x1000000 != 0) { // bold
-			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
-			c.glUniform4f(uniforms.texture_rect, @floatFromInt(glyph.textureX), -1, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1] + 1));
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-			// Just draw another thing on top in x direction. The y-direction is handled in the shader.
-			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x + 0.5, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x - 1, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
+			c.glUniform4f(uniforms.textureRect, @floatFromInt(glyph.textureX - 1), -1, @floatFromInt(glyph.size[0] + 2), @floatFromInt(glyph.size[1] + 2));
 		} else {
 			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y);
-			c.glUniform4f(uniforms.texture_rect, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+			c.glUniform4f(uniforms.textureRect, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
 		}
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
 	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) void {
@@ -2216,15 +2214,15 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 		self.bind();
 
-		const maxLOD = if (mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
+		const maxLOD = if (mipmapping) 1 + std.math.log2_int(u31, @max(maxWidth, maxHeight)) else 1;
 		for (0..maxLOD) |i| {
-			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(1, maxWidth >> @intCast(i)), @max(1, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
 		const lodBuffer: [][]Color = arena.alloc([]Color, maxLOD);
 		for (lodBuffer, 0..) |*buffer, i| {
-			buffer.* = arena.alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
+			buffer.* = arena.alloc(Color, @max(1, maxWidth >> @intCast(i))*@max(1, maxHeight >> @intCast(i)));
 		}
 
 		for (images, 0..) |image, i| {
@@ -2238,31 +2236,30 @@ pub const TextureArray = struct { // MARK: TextureArray
 			}
 
 			// Calculate the mipmap levels:
-			for (0..lodBuffer.len) |_lod| {
+			for (1..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(_lod);
-				const curWidth = maxWidth >> lod;
-				const curHeight = maxHeight >> lod;
-				if (lod != 0) {
-					for (0..curWidth) |x| {
-						for (0..curHeight) |y| {
-							const index = x + y*curWidth;
-							const index2 = 2*x + 2*y*2*curWidth;
-							const colors = [4]Color{
-								lodBuffer[lod - 1][index2],
-								lodBuffer[lod - 1][index2 + 1],
-								lodBuffer[lod - 1][index2 + curWidth*2],
-								lodBuffer[lod - 1][index2 + curWidth*2 + 1],
-							};
-							lodBuffer[lod][index] = lodColorInterpolation(colors, alphaCorrectMipmapping);
-						}
+				const curWidth = @max(1, maxWidth >> lod);
+				const curHeight = @max(1, maxHeight >> lod);
+				const nextWidth = @max(1, maxWidth >> (lod - 1));
+				const nextHeight = @max(1, maxHeight >> (lod - 1));
+				for (0..curWidth) |x| {
+					for (0..curHeight) |y| {
+						const index = x + y*curWidth;
+						const colors = [4]Color{
+							lodBuffer[lod - 1][@min(2*x, nextWidth - 1) + @min(2*y, nextHeight - 1)*nextWidth],
+							lodBuffer[lod - 1][@min(2*x, nextWidth - 1) + @min(2*y + 1, nextHeight - 1)*nextWidth],
+							lodBuffer[lod - 1][@min(2*x + 1, nextWidth - 1) + @min(2*y, nextHeight - 1)*nextWidth],
+							lodBuffer[lod - 1][@min(2*x + 1, nextWidth - 1) + @min(2*y + 1, nextHeight - 1)*nextWidth],
+						};
+						lodBuffer[lod][index] = lodColorInterpolation(colors, alphaCorrectMipmapping);
 					}
 				}
 			}
 			// Give the correct color to alpha 0 pixels, to avoid dark pixels:
 			for (1..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
-				const curWidth = maxWidth >> lod;
-				const curHeight = maxHeight >> lod;
+				const curWidth = @max(1, maxWidth >> lod);
+				const curHeight = @max(1, maxHeight >> lod);
 				for (0..curWidth) |x| {
 					for (0..curHeight) |y| {
 						const index = x + y*curWidth;
@@ -2278,8 +2275,8 @@ pub const TextureArray = struct { // MARK: TextureArray
 			// Upload:
 			for (0..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
-				const curWidth = maxWidth >> lod;
-				const curHeight = maxHeight >> lod;
+				const curWidth = @max(1, maxWidth >> lod);
+				const curHeight = @max(1, maxHeight >> lod);
 				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 			}
 		}

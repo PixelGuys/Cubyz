@@ -112,13 +112,15 @@ pub fn toComponent(self: *ItemSlot) GuiComponent {
 	return .{.itemSlot = self};
 }
 
-pub fn updateHovered(self: *ItemSlot, _: Vec2f) void {
+pub fn updateHovered(self: *ItemSlot, _: Vec2f) main.callbacks.Result {
 	self.hovered = true;
 	gui.hoveredItemSlot = self;
+	return .handled;
 }
 
-pub fn mainButtonPressed(self: *ItemSlot, _: Vec2f) void {
+pub fn mainButtonPressed(self: *ItemSlot, _: Vec2f) main.callbacks.Result {
 	self.pressed = true;
+	return .handled;
 }
 
 pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
@@ -162,10 +164,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		}
 	}
 	if (self.mode != .immutable) {
-		if (self.pressed) {
-			draw.setColor(0x80808080);
-			draw.rect(self.pos, self.size);
-		} else if (self.hovered) {
+		if (self.hovered) {
 			self.hovered = false;
 			draw.setColor(0x300000ff);
 			draw.rect(self.pos, self.size);

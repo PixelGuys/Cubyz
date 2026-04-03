@@ -33,7 +33,7 @@ pub var controllerSensitivity: f32 = 1;
 
 pub var invertMouseY: bool = false;
 
-pub var renderDistance: u16 = 7;
+pub var renderDistance: u16 = 12;
 
 pub var highestLod: u3 = highestSupportedLod;
 
@@ -45,11 +45,13 @@ pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
 
+pub var showIdWithName: bool = false;
+
 pub var streamerMode: bool = false;
 
 pub var lastUsedIPAddress: []const u8 = "";
 
-pub var storedAccount: main.network.authentication.PasswordEncodedSeedPhrase = .empty;
+pub var storedAccount: main.network.authentication.PasswordEncodedAccountCode = .empty;
 
 pub var guiScale: ?f32 = null;
 

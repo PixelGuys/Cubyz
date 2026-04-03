@@ -46,15 +46,15 @@ pub const Compression = struct { // MARK: Compression
 				};
 				var len: [4]u8 = undefined;
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), endian);
-				_ = try comp.writer.write(&len);
-				_ = try comp.writer.write(relPath);
+				_ = try comp.writer.writeAll(&len);
+				_ = try comp.writer.writeAll(relPath);
 
 				const fileData = try sourceDir.read(main.stackAllocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
-				_ = try comp.writer.write(&len);
-				_ = try comp.writer.write(fileData);
+				_ = try comp.writer.writeAll(&len);
+				_ = try comp.writer.writeAll(fileData);
 			}
 		}
 		try comp.writer.flush();

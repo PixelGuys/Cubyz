@@ -3,16 +3,21 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
+const command = @import("_command.zig");
+
 pub const description = "Teleport to location.";
-pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
+pub const usage =
+	\\/tp <biome>
+	\\/tp <x> <y> <z>
+	\\/tp @<playerId>
+;
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (std.mem.containsAtLeast(u8, args, 1, ":")) {
-		const biome = main.server.terrain.biomes.getById(args);
-		if (!std.mem.eql(u8, biome.id, args)) {
+		const biome = main.server.terrain.biomes.getByIdOptional(args) orelse {
 			source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{args});
 			return;
-		}
+		};
 		if (biome.isCave) {
 			source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 			return;
@@ -63,35 +68,20 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 		return;
 	}
-	var x: ?f64 = null;
-	var y: ?f64 = null;
-	var z: ?f64 = null;
+
 	var split = std.mem.splitScalar(u8, args, ' ');
-	while (split.next()) |arg| {
-		const num: f64 = std.fmt.parseFloat(f64, arg) catch {
-			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
-			return;
-		};
-		if (x == null) {
-			x = num;
-		} else if (y == null) {
-			y = num;
-		} else if (z == null) {
-			z = num;
+	const pos = blk: {
+		if (std.mem.startsWith(u8, args, "@")) {
+			const target = command.Target.init(&split, source) catch return;
+			defer target.deinit();
+			break :blk target.user.player.pos;
 		} else {
-			source.sendMessage("#ff0000Too many arguments for command /tp", .{});
-			return;
+			break :blk command.parseCoordinates(&split, source) catch return;
 		}
-	}
-	if (x == null or y == null) {
-		source.sendMessage("#ff0000Too few arguments for command /tp", .{});
+	};
+	if (split.next()) |_| {
+		source.sendMessage("#ff0000Too many arguments for command /tp", .{});
 		return;
 	}
-	if (z == null) {
-		z = source.player.pos[2];
-	}
-	x = std.math.clamp(x.?, -1e9, 1e9); // TODO: Remove after #310 is implemented
-	y = std.math.clamp(y.?, -1e9, 1e9);
-	z = std.math.clamp(z.?, -1e9, 1e9);
-	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{x.?, y.?, z.?});
+	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, pos);
 }

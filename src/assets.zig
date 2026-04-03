@@ -29,6 +29,7 @@ pub const Assets = struct {
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
+	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
 	models: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
@@ -45,6 +46,7 @@ pub const Assets = struct {
 			.tools = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
+			.structureTables = .{},
 			.recipes = .{},
 			.models = .{},
 			.structureBuildingBlocks = .{},
@@ -61,6 +63,7 @@ pub const Assets = struct {
 		self.tools.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
+		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.models.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
@@ -77,6 +80,7 @@ pub const Assets = struct {
 			.tools = self.tools.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
+			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.models = self.models.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
@@ -94,6 +98,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
+			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
@@ -105,8 +110,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -124,11 +129,21 @@ pub const Assets = struct {
 			defer dir.close();
 
 			var iterator = dir.iterate();
-			while (iterator.next() catch |err| blk: {
+			outer: while (iterator.next() catch |err| blk: {
 				std.log.err("Got error while iterating over asset path {s}: {s}", .{path, @errorName(err)});
 				break :blk null;
 			}) |addon| {
 				if (addon.kind != .directory) continue;
+
+				for (addon.name) |char| {
+					switch (char) {
+						'_', 'a'...'z', '0'...'9' => continue,
+						else => {
+							std.log.err("Invalid addon name for addon {s}: Addon name must only contain lowercase letters 'a' - 'z', numbers '0' - '9' and underscores '_'.", .{addon.name});
+							continue :outer;
+						},
+					}
+				}
 
 				const directory = dir.openDir(addon.name) catch |err| {
 					std.log.err("Got error while reading addon {s} from {s}: {s}", .{addon.name, path, @errorName(err)});
@@ -217,7 +232,7 @@ pub const Assets = struct {
 				if (std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
 				if (std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, assetType, entry.path) catch continue;
 
 				const zon = assetsDirectory.readToZon(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{assetType, entry.path, @errorName(err)});
@@ -258,7 +273,7 @@ pub const Assets = struct {
 				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 				if (std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, "blueprint", entry.path) catch continue;
 
 				const data = assetsDirectory.read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -287,7 +302,7 @@ pub const Assets = struct {
 				if (entry.kind != .file) continue;
 				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, "model", entry.path) catch continue;
 
 				const string = assetsDirectory.read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -302,10 +317,20 @@ pub const Assets = struct {
 fn createAssetStringID(
 	externalAllocator: NeverFailingAllocator,
 	addonName: []const u8,
+	assetType: []const u8,
 	relativeFilePath: []const u8,
-) []u8 {
+) error{InvalidId}![]u8 {
 	const baseNameEndIndex = if (std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
 	const pathNoExtension: []const u8 = relativeFilePath[0..baseNameEndIndex];
+
+	const fileNameStart: usize = if (std.mem.findScalarLast(u8, pathNoExtension, '/')) |i| i + 1 else 0;
+	if (pathNoExtension[fileNameStart] == '_') {
+		std.log.err(
+			"Invalid {s} asset id for addon '{s}' and subpath '{s}': File name must not start with an underscore '_', this is reserved for special files.",
+			.{assetType, addonName, relativeFilePath},
+		);
+		return error.InvalidId;
+	}
 
 	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + pathNoExtension.len);
 
@@ -318,6 +343,19 @@ fn createAssetStringID(
 			assetId[addonName.len + 1 + i] = '/';
 		} else {
 			assetId[addonName.len + 1 + i] = pathNoExtension[i];
+		}
+	}
+
+	for (assetId[addonName.len + 1 ..]) |char| {
+		switch (char) {
+			'_', 'a'...'z', '0'...'9', '/' => continue,
+			else => {
+				std.log.err(
+					"Invalid {s} asset name for addon '{s}' and subpath '{s}': Asset name must only contain lowercase letters 'a' - 'z', numbers '0' - '9', underscores '_' and path separators '/'.",
+					.{assetType, addonName, relativeFilePath},
+				);
+				return error.InvalidId;
+			},
 		}
 	}
 
@@ -605,6 +643,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
+	try main.server.terrain.structures.registerStructureTables(&worldAssets.structureTables);
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
@@ -659,6 +698,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	migrations_zig.reset();
 	biomes_zig.reset();
 	migrations_zig.reset();
+	main.server.terrain.structures.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();

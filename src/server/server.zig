@@ -18,6 +18,7 @@ const Blueprint = main.blueprint.Blueprint;
 const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
+const sync = main.sync;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
@@ -26,6 +27,7 @@ pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
+pub const permission = @import("permission.zig");
 
 pub const command = @import("command/_command.zig");
 
@@ -139,15 +141,19 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
+	permissions: permission.Permissions = undefined,
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.jobQueue = .init(main.globalAllocator);
+		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
+		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -168,6 +174,8 @@ pub const User = struct { // MARK: User
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
 		}
+
+		self.permissions.deinit();
 
 		self.worldEditData.deinit();
 
@@ -470,6 +478,17 @@ pub const User = struct { // MARK: User
 	pub fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.protocols.chat.send(self.conn, msg);
 	}
+
+	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
+		return switch (user.permissions.hasPermission(permissionPath)) {
+			.yes => true,
+			.no, .neutral => false,
+		};
+	}
+
+	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.print("{s}@{d}", .{user.name, user.playerIndex});
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
@@ -501,6 +520,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	main.entity.server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
 
@@ -521,6 +541,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
+		user.permissions.addPermission(.white, "/");
 	}
 }
 
@@ -544,6 +565,7 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
+	main.entity.server.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -582,6 +604,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 
 fn update() void { // MARK: update()
 	world.?.update();
+	main.entity.server.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
@@ -711,7 +734,7 @@ pub fn connectInternal(user: *User) void {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Check if a user with that account is already present
-	if (!world.?.testingMode) {
+	if (!world.?.settings.testingMode) {
 		for (userList) |other| {
 			if (other.playerIndex == user.playerIndex) {
 				user.conn.disconnect();
@@ -726,6 +749,7 @@ pub fn connectInternal(user: *User) void {
 		const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", user.id);
 		entityZon.put("name", user.name);
+		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -740,6 +764,7 @@ pub fn connectInternal(user: *User) void {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
 			entityZon.put("name", other.name);
+			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -758,7 +783,7 @@ pub fn connectInternal(user: *User) void {
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
-	main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
+	sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
 }
 
 fn sendRawMessage(msg: []const u8) void {
@@ -777,4 +802,16 @@ pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
+}
+
+pub fn getUserByIndexAndIncreaseRefCount(index: usize) ?*User {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for (userList) |user| {
+		if (user.playerIndex == index) {
+			user.increaseRefCount();
+			return user;
+		}
+	}
+	return null;
 }

@@ -417,11 +417,14 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				if (tool.materialGrid[x][y]) |item| {
 					if (item.material()) |material| {
 						// Calculate the lighting based on the nearest free space:
-						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
-						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-						var light = 2 - @as(i32, @intFromFloat(@round((lightTL*2 + lightTR)/6)));
-						light = @max(@min(light, 4), 0);
-						img.setRGB(x, 15 - y, material.colorPalette[@intCast(light)]);
+						const lightTL = heightMap[x + 1][y + 1] - heightMap[x][y];
+						const lightTR = heightMap[x][y + 1] - heightMap[x + 1][y];
+						var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
+						light += 4; // illuminate everything by an amount
+						light /= 8; // near-normalize the light value
+						light = @max(@min(light, 1), 0);
+						const colorIndex: usize = @intFromFloat(@round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1))));
+						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
 					} else {
 						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
@@ -695,7 +698,7 @@ pub const Tool = struct { // MARK: Tool
 		return result;
 	}
 
-	pub fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: ToolTypeIndex) *Tool {
+	fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: ToolTypeIndex) *Tool {
 		const self = init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
@@ -705,6 +708,32 @@ pub const Tool = struct { // MARK: Tool
 		TextureGenerator.generate(self);
 		ToolPhysics.evaluateTool(self);
 		return self;
+	}
+
+	pub fn initFromInventory(inventory: Inventory) ?*Tool {
+		std.debug.assert(inventory.source == .workbench);
+		const slotInfos = inventory.source.workbench.toolIndex.slotInfos();
+		var availableItems: [25]?main.items.BaseItemIndex = undefined;
+
+		for (0..25) |i| {
+			if (inventory._items[i].item == .baseItem) {
+				availableItems[i] = inventory._items[i].item.baseItem;
+			} else {
+				if (!slotInfos[i].optional and !slotInfos[i].disabled) {
+					return null;
+				}
+				availableItems[i] = null;
+			}
+		}
+		var hash = std.hash.Crc32.init();
+		for (availableItems) |item| {
+			if (item != null) {
+				hash.update(item.?.id());
+			} else {
+				hash.update("none");
+			}
+		}
+		return initFromCraftingGrid(availableItems, hash.final(), inventory.source.workbench.toolIndex);
 	}
 
 	pub fn initFromZon(zon: ZonElement) *Tool {
