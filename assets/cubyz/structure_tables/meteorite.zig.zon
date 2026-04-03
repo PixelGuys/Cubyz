@@ -1,7 +1,7 @@
 .{
 	.id = "cubyz:meteorite",
 	.tags = .{},
-	.chance = 0.00001,
+	.chance = 0.00002,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",

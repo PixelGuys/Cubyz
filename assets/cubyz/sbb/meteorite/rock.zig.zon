@@ -2,5 +2,6 @@
 	.blueprints = .{
 		.{.id = "cubyz:meteorite/rock/0"},
 		.{.id = "cubyz:meteorite/rock/1"},
+		.{.id = "cubyz:meteorite/rock/2"},
 	},
 }
