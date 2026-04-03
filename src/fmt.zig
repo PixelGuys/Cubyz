@@ -72,7 +72,7 @@ pub const Placeholder = struct { // Copied from std.fmt.Placeholder and adjusted
 		const specifierArg = parser.until(':');
 		if (parser.char()) |b| {
 			if (b != ':') {
-				std.log.err("expected : or }, found '{c}'", .{b});
+				std.log.err("expected : or }}, found '{c}'", .{b});
 				return error.UnexpectedCharacter;
 			}
 		}
@@ -117,7 +117,7 @@ pub const Placeholder = struct { // Copied from std.fmt.Placeholder and adjusted
 		// Skip the dot, if present
 		if (parser.char()) |b| {
 			if (b != '.') {
-				std.log.err("expected . or }, found '{c}'", .{b});
+				std.log.err("expected . or }}, found '{c}'", .{b});
 				return error.UnexpectedCharacter;
 			}
 		}
@@ -156,7 +156,7 @@ pub noinline fn format(writer: *std.Io.Writer, formatString: []const u8, args: [
 				i += 2;
 				continue;
 			}
-			std.log.err("Could not find opening { of format string: '{s}'", .{formatString});
+			std.log.err("Could not find opening {{ of format string: '{s}'", .{formatString});
 		}
 		if (formatString[i] == '{') {
 			if (i + 1 < formatString.len and formatString[i + 1] == '{') {
@@ -165,7 +165,7 @@ pub noinline fn format(writer: *std.Io.Writer, formatString: []const u8, args: [
 				continue;
 			}
 			const end = std.mem.findScalar(u8, formatString[i..], '}') orelse {
-				std.log.err("Could not find closing } of format string: '{s}'", .{formatString});
+				std.log.err("Could not find closing }} of format string: '{s}'", .{formatString});
 				return;
 			};
 			const placeholderRaw = formatString[i + 1 .. (i + end)];
@@ -200,7 +200,7 @@ fn formatValue(writer: *std.Io.Writer, formatSpecifier: []const u8, options: std
 					return;
 				}
 			}
-			std.log.err("Format specifier '{s}' not supported for type float.", .{});
+			std.log.err("Format specifier '{s}' not supported for type float.", .{formatSpecifier});
 		},
 		inline .int, .uint => |number| {
 			const allowedSpecifiers: []const []const u8 = &.{"", "d", "b", "o", "x", "X", "any"};
@@ -210,7 +210,7 @@ fn formatValue(writer: *std.Io.Writer, formatSpecifier: []const u8, options: std
 					return;
 				}
 			}
-			std.log.err("Format specifier '{s}' not supported for type int.", .{});
+			std.log.err("Format specifier '{s}' not supported for type int.", .{formatSpecifier});
 		},
 		inline .string, .nullTerminatedString => |string| {
 			const allowedSpecifiers: []const []const u8 = &.{"x", "X", "s", "b64", "any"};
@@ -220,7 +220,7 @@ fn formatValue(writer: *std.Io.Writer, formatSpecifier: []const u8, options: std
 					return;
 				}
 			}
-			std.log.err("Format specifier '{s}' not supported for type string.", .{});
+			std.log.err("Format specifier '{s}' not supported for type string.", .{formatSpecifier});
 		},
 		.formatFunction => |fun| {
 			if (std.mem.eql(u8, formatSpecifier, "f")) {
@@ -244,7 +244,7 @@ fn formatValue(writer: *std.Io.Writer, formatSpecifier: []const u8, options: std
 					return;
 				}
 			}
-			std.log.err("Format specifier '{s}' not supported for type error.", .{});
+			std.log.err("Format specifier '{s}' not supported for type error.", .{formatSpecifier});
 		},
 	}
 }
