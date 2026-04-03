@@ -107,7 +107,9 @@ pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 		const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
 		graphics.draw.setColor(alpha << 24);
 
-		var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
+		const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
+		defer main.stackAllocator.free(renderedName);
+		var buf = graphics.TextBuffer.init(main.stackAllocator, renderedName, .{.color = 0xffffff}, false, .center);
 		defer buf.deinit();
 		const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
 		const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));

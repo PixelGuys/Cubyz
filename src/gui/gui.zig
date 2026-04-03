@@ -609,7 +609,7 @@ pub const inventory = struct { // MARK: inventory
 	var isCrafting: bool = false;
 
 	pub fn init() void {
-		carried = ClientInventory.init(main.globalAllocator, 1, .normal, .serverShared, .{.hand = main.game.Player.id}, .{});
+		carried = ClientInventory.init(main.globalAllocator, 1, .serverShared, .{.hand = main.game.Player.id}, .{});
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
@@ -655,10 +655,7 @@ pub const inventory = struct { // MARK: inventory
 		if (itemSlot.mode == .immutable) return;
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
-		if (itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
-			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if (recipeItem == .null and item != .null) recipeItem = item.clone();
-			if (!std.meta.eql(item, recipeItem)) return;
+		if ((itemSlot.inventory.type == .crafting or itemSlot.inventory.type == .workbenchResult) and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const time = main.timestamp();
 			if (!isCrafting) {
 				isCrafting = true;
@@ -668,10 +665,22 @@ pub const inventory = struct { // MARK: inventory
 			while (time.durationTo(nextCraftingAction).nanoseconds <= 0) {
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
-				if (mainGuiButton.modsOnPress.shift) {
-					main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
-				} else {
-					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
+
+				if (itemSlot.inventory.type == .crafting) {
+					const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
+					if (recipeItem == .null and item != .null) recipeItem = item.clone();
+					if (!std.meta.eql(item, recipeItem)) return;
+					if (mainGuiButton.modsOnPress.shift) {
+						main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
+					} else {
+						main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
+					}
+				} else if (itemSlot.inventory.type == .workbenchResult) {
+					if (mainGuiButton.modsOnPress.shift) {
+						itemSlot.inventory.craftTool(&.{main.game.Player.inventory});
+					} else {
+						itemSlot.inventory.craftTool(&.{carried});
+					}
 				}
 			}
 			return;
@@ -734,24 +743,30 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
-				if (hovered.inventory.type == .crafting) return;
-				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) return;
+				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
+				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) {
+					if (hovered.inventory.type == .creative) {
+						const item = hovered.inventory.getItem(hovered.itemSlot);
+						ClientInventory.fillAnyFromCreative(&.{main.game.Player.inventory}, item, item.stackSize());
+					}
+					return;
+				}
 				if (!hovered.pressed) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
-			} else if (!hoveredAWindow) {
+			} else if (!hoveredAWindow and selectedWindow == null) {
 				carried.dropStack(0);
 			}
 		} else {
 			if (rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
-				if (hovered.inventory.type == .crafting) return;
+				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
 				if (hovered.inventory.type == .creative) {
 					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
 				} else {
 					hovered.inventory.takeHalf(hovered.itemSlot, carried);
 				}
-			} else if (!hoveredAWindow) {
+			} else if (!hoveredAWindow and selectedWindow == null) {
 				carried.dropOne(0);
 			}
 		}

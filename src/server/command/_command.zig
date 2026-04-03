@@ -76,17 +76,17 @@ pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *Use
 	};
 }
 
-fn parsePlayerIdAndIncreaseRefCount(playerId: []const u8, source: *User) !*User {
-	if (!std.ascii.startsWithIgnoreCase(playerId, "@")) {
-		source.sendMessage("#ff0000Player id specifiers always start with @, found \"{s}\"", .{playerId});
+fn parsePlayerIndexAndIncreaseRefCount(playerIndex: []const u8, source: *User) !*User {
+	if (!std.ascii.startsWithIgnoreCase(playerIndex, "@")) {
+		source.sendMessage("#ff0000Player index specifiers always start with @, found \"{s}\"", .{playerIndex});
 		return error.InvalidArg;
 	}
-	const id = std.fmt.parseInt(u32, playerId[1..], 10) catch {
-		source.sendMessage("#ff0000Player ids must be integers, found \"{s}\"", .{playerId[1..]});
+	const index = std.fmt.parseInt(usize, playerIndex[1..], 10) catch {
+		source.sendMessage("#ff0000Player index must be an integer, found \"{s}\"", .{playerIndex[1..]});
 		return error.InvalidArg;
 	};
-	return main.server.getUserByIdAndIncreaseRefCount(id) orelse {
-		source.sendMessage("#ff0000Player with id {d} not found", .{id});
+	return main.server.getUserByIndexAndIncreaseRefCount(index) orelse {
+		source.sendMessage("#ff0000Player with index {d} not found or not online", .{index});
 		return error.InvalidArg;
 	};
 }
@@ -98,12 +98,12 @@ pub const Target = struct {
 	pub fn init(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !Target {
 		var increasedRefCount = false;
 		const user: *User = blk: {
-			const userId = split.peek() orelse {
+			const userIndex = split.peek() orelse {
 				source.sendMessage("#ff0000Too few arguments for command", .{});
 				return error.TooFewArguments;
 			};
-			if (userId[0] == '@') {
-				const user = parsePlayerIdAndIncreaseRefCount(userId, source) catch return error.InvalidArgs;
+			if (userIndex[0] == '@') {
+				const user = parsePlayerIndexAndIncreaseRefCount(userIndex, source) catch return error.InvalidArgs;
 				increasedRefCount = true;
 				_ = split.next();
 				break :blk user;
