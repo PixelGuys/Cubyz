@@ -382,14 +382,9 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.max = @splat(-std.math.floatMax(f32));
 
 		self.lock.lockRead();
+		defer self.lock.unlockRead();
+		if (self.completeList.getEverything().len == 0) return;
 		for (self.completeList.getEverything()) |*face| {
-			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex);
-			const result = lightMap.getOrPut(light) catch unreachable;
-			if (!result.found_existing) {
-				result.value_ptr.* = @intCast(lightList.items.len/4);
-				lightList.appendSlice(&light);
-			}
-			face.position.lightIndex = result.value_ptr.*;
 			const basePos: Vec3f = .{
 				@floatFromInt(face.position.x),
 				@floatFromInt(face.position.y),
@@ -400,32 +395,75 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				self.max = @max(self.max, basePos + cornerPos);
 			}
 		}
-		self.lock.unlockRead();
+
+		var lightCache: [64][64][64]u64 = undefined;
+		const min = @as(Vec3i, @intFromFloat(@floor(self.min))) + @as(Vec3i, @splat(-2));
+		const max = @as(Vec3i, @intFromFloat(@ceil(self.max))) + @as(Vec3i, @splat(2));
+		var chunkX = std.mem.alignBackward(i32, min[0], main.chunk.chunkSize);
+		while (chunkX < std.mem.alignForward(i32, max[0], main.chunk.chunkSize)) : (chunkX += main.chunk.chunkSize) {
+			var chunkY = std.mem.alignBackward(i32, min[1], main.chunk.chunkSize);
+			while (chunkY < std.mem.alignForward(i32, max[1], main.chunk.chunkSize)) : (chunkY += main.chunk.chunkSize) {
+				var chunkZ = std.mem.alignBackward(i32, min[2], main.chunk.chunkSize);
+				while (chunkZ < std.mem.alignForward(i32, max[2], main.chunk.chunkSize)) : (chunkZ += main.chunk.chunkSize) {
+					var mesh = parent;
+					if (chunkX != 0 or chunkY != 0 or chunkZ != 0) {
+						mesh = mesh_storage.getMesh(.{.wx = parent.pos.wx +% chunkX*parent.pos.voxelSize, .wy = parent.pos.wy +% chunkY*parent.pos.voxelSize, .wz = parent.pos.wz +% chunkZ*parent.pos.voxelSize, .voxelSize = parent.pos.voxelSize}) orelse continue;
+					}
+					const localMin = @max(Vec3i{chunkX, chunkY, chunkZ}, min);
+					const localMax = @min(Vec3i{chunkX, chunkY, chunkZ} + @as(Vec3i, @splat(main.chunk.chunkSize)), max);
+					var x: i32 = localMin[0];
+					while (x < localMax[0]) : (x += 1) {
+						var y: i32 = localMin[1];
+						while (y < localMax[1]) : (y += 1) {
+							var z: i32 = localMin[2];
+							while (z < localMax[2]) : (z += 1) {
+								const blockPos: chunk.BlockPos = .fromCoords(@intCast(x & chunk.chunkMask), @intCast(y & chunk.chunkMask), @intCast(z & chunk.chunkMask));
+								lightCache[@intCast(x + 16)][@intCast(y + 16)][@intCast(z + 16)] = getValues2(mesh, blockPos);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (parent.pos.voxelSize == 1) {
+			for (self.completeList.getEverything()) |*face| {
+				const light = getLight(&lightCache, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex, true);
+				const result = lightMap.getOrPut(light) catch unreachable;
+				if (!result.found_existing) {
+					result.value_ptr.* = @intCast(lightList.items.len/4);
+					lightList.appendSlice(&light);
+				}
+				face.position.lightIndex = result.value_ptr.*;
+			}
+		} else {
+			for (self.completeList.getEverything()) |*face| {
+				const light = getLight(&lightCache, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex, false);
+				const result = lightMap.getOrPut(light) catch unreachable;
+				if (!result.found_existing) {
+					result.value_ptr.* = @intCast(lightList.items.len/4);
+					lightList.appendSlice(&light);
+				}
+				face.position.lightIndex = result.value_ptr.*;
+			}
+		}
 	}
 
 	const LightVector = @Vector(8, u16);
 
-	fn getValues(mesh: *ChunkMesh, pos: chunk.BlockPos) LightVector {
-		const blockLight = mesh.lightingData[0].getValue(pos);
-		const sunLight = mesh.lightingData[1].getValue(pos);
-		std.debug.assert(builtin.cpu.arch.endian() == .little);
-		const totalLight = @as(u64, sunLight.raw()) | (@as(u64, blockLight.raw()) << 32);
+	fn getLightAt(cache: *const [64][64][64]u64, x: i32, y: i32, z: i32) LightVector {
+		const totalLight = cache[@intCast(x + 16)][@intCast(y + 16)][@intCast(z + 16)];
 		return @as(@Vector(8, u8), @bitCast(totalLight));
 	}
 
-	fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) LightVector {
-		const pos: chunk.BlockPos = .fromCoords(@intCast(x & chunk.chunkMask), @intCast(y & chunk.chunkMask), @intCast(z & chunk.chunkMask));
-		if (x == pos.x and y == pos.y and z == pos.z) {
-			return getValues(parent, pos);
-		}
-		const wx = parent.pos.wx +% x*parent.pos.voxelSize;
-		const wy = parent.pos.wy +% y*parent.pos.voxelSize;
-		const wz = parent.pos.wz +% z*parent.pos.voxelSize;
-		const neighborMesh = mesh_storage.getMesh(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return @splat(0);
-		return getValues(neighborMesh, pos);
+	fn getValues2(mesh: *ChunkMesh, pos: chunk.BlockPos) u64 {
+		const blockLight = mesh.lightingData[0].getValue(pos);
+		const sunLight = mesh.lightingData[1].getValue(pos);
+		std.debug.assert(builtin.cpu.arch.endian() == .little);
+		return @as(u64, sunLight.raw()) | (@as(u64, blockLight.raw()) << 32);
 	}
 
-	fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) LightVector {
+	fn getCornerLight(cache: *const [64][64][64]u64, pos: Vec3i, normal: Vec3f) LightVector {
 		const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
 		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
 		const interp = lightPos - @floor(lightPos);
@@ -441,7 +479,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 					if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
 					if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
 					const integerWeight: u16 = @intFromFloat(weight*256);
-					const lightVal: LightVector = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
+					const lightVal: LightVector = getLightAt(cache, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
 					val += lightVal*@as(LightVector, @splat(integerWeight));
 				}
 			}
@@ -449,10 +487,10 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return val/@as(LightVector, @splat(256));
 	}
 
-	fn getLightSampleAligned(parent: *ChunkMesh, pos: Vec3i, direction: chunk.Neighbor) LightVector {
-		var lightVal: LightVector = getLightAt(parent, pos[0], pos[1], pos[2]);
-		if (parent.pos.voxelSize == 1) {
-			const nextVal = getLightAt(parent, pos[0] +% direction.relX(), pos[1] +% direction.relY(), pos[2] +% direction.relZ());
+	fn getLightSampleAligned(cache: *const [64][64][64]u64, pos: Vec3i, direction: chunk.Neighbor, comptime hasFancyLighting: bool) LightVector {
+		var lightVal: LightVector = getLightAt(cache, pos[0], pos[1], pos[2]);
+		if (hasFancyLighting) {
+			const nextVal = getLightAt(cache, pos[0] +% direction.relX(), pos[1] +% direction.relY(), pos[2] +% direction.relZ());
 			const diff: LightVector = @min(@as(LightVector, @splat(8)), lightVal -| nextVal);
 			lightVal = lightVal -| diff*@as(LightVector, @splat(5))/@as(LightVector, @splat(2));
 		}
@@ -472,18 +510,18 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return result;
 	}
 
-	pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
+	pub fn getLight(cache: *const [64][64][64]u64, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex, comptime hasFancyLighting: bool) [4]u32 {
 		const quadInfo = quadIndex.quadInfo();
 		const extraQuadInfo = quadIndex.extraQuadInfo();
 		const normal = quadInfo.normal;
 		if (!blocks.meshes.textureOcclusionData[textureIndex].load(.monotonic)) { // No ambient occlusion (→ no smooth lighting)
-			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
+			const fullValues = getLightAt(cache, blockPos[0], blockPos[1], blockPos[2]);
 			return packLightValues(@splat(fullValues));
 		}
 		if (extraQuadInfo.alignedNormalDirection) |dir| { // Fast path using precomputed samples
 			var lightValues: [4]LightVector = @splat(@splat(0));
 			for (extraQuadInfo.lightSampleListForAxisAlignedModels) |sample| {
-				const lightVal = getLightSampleAligned(parent, blockPos +% sample.offset, dir);
+				const lightVal = getLightSampleAligned(cache, blockPos +% sample.offset, dir, comptime hasFancyLighting);
 				for (0..4) |i| {
 					lightValues[i] += @as(LightVector, @splat(sample.weights[i]))*lightVal;
 				}
@@ -498,7 +536,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			for (0..4) |i| {
 				const vertexPos: Vec3f = quadInfo.corners[i];
 				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
-				rawVals[i] = getCornerLight(parent, fullPos, normal);
+				rawVals[i] = getCornerLight(cache, fullPos, normal);
 			}
 			return packLightValues(rawVals);
 		}
@@ -517,7 +555,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 					while (dy <= 1) : (dy += 1) {
 						var dz: u31 = 0;
 						while (dz <= 1) : (dz += 1) {
-							cornerVals[dx][dy][dz] = getCornerLight(parent, containingBlockPos +% Vec3i{dx, dy, dz}, normal);
+							cornerVals[dx][dy][dz] = getCornerLight(cache, containingBlockPos +% Vec3i{dx, dy, dz}, normal);
 						}
 					}
 				}
