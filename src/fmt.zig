@@ -143,7 +143,7 @@ pub const Placeholder = struct { // Copied from std.fmt.Placeholder and adjusted
 
 pub noinline fn format(writer: *std.Io.Writer, formatString: []const u8, args: []const FormatArg) std.Io.Writer.Error!void {
 	var i: usize = 0;
-	var arg: usize = 0;
+	var argState: std.fmt.ArgState = .{.args_len = args.len};
 	while (i < formatString.len) {
 		if (formatString[i] != '{' and formatString[i] != '}') {
 			try writer.writeByte(formatString[i]);
@@ -180,13 +180,15 @@ pub noinline fn format(writer: *std.Io.Writer, formatString: []const u8, args: [
 				.precision = placeholder.precision,
 				.width = placeholder.width,
 			};
-			if (arg >= args.len) {
-				std.log.err("Not enough arguments for format string: '{s}'", .{formatString});
+			const arg = argState.nextArg(placeholder.argPos) orelse {
+				std.log.err("Not enough arguments for format string: '{s}', attempted to use argument {}, only has {} arguments", .{formatString, placeholder.argPos, args.len});
 				return;
-			}
+			};
 			try formatValue(writer, placeholder.specifierArg, options, args[arg], formatString);
-			arg += 1;
 		}
+	}
+	if (argState.hasUnusedArgs()) {
+		std.log.err("Format string '{s}' doesn't use all arguments.", .{formatString});
 	}
 }
 
