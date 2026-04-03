@@ -95,7 +95,7 @@ pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	const fontScreenSize = fontBaseSize*screenUnits;
 
 	for (entities.items()) |ent| {
-		if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
+		if (ent.id == game.Player.id or (ent.name.len == 0 and !settings.showIdWithName)) continue; // don't render local player
 		const pos3d = ent.getRenderPosition() - playerPos;
 		const pos4f = Vec4f{
 			@floatCast(pos3d[0]),
