@@ -513,7 +513,7 @@ pub const BlockEntityTypes = struct {
 			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
 
 			pipeline.bind(null);
-			c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+			main.renderer.chunk_meshing.vao.bind();
 
 			c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
 			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
