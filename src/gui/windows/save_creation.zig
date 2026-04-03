@@ -106,12 +106,12 @@ pub fn onOpen() void {
 
 	var num: usize = 1;
 	while (true) {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
+		const path = main.fmt.allocPrint(main.stackAllocator, "saves/Save{}", .{num});
 		defer main.stackAllocator.free(path);
 		if (!main.files.cubyzDir().hasDir(path)) break;
 		num += 1;
 	}
-	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
+	const name = main.fmt.allocPrint(main.stackAllocator, "Save{}", .{num});
 	defer main.stackAllocator.free(name);
 	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.onNewline = .init(createWorld)});
 	list.add(nameInput);

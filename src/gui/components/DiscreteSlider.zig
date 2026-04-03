@@ -44,7 +44,7 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 	const values = main.globalAllocator.alloc([]const u8, valueList.len);
 	var maxLen: usize = 0;
 	for (valueList, 0..) |value, i| {
-		values[i] = std.fmt.allocPrint(main.globalAllocator.allocator, fmt, .{value}) catch unreachable;
+		values[i] = main.fmt.allocPrint(main.globalAllocator, fmt, .{value});
 		maxLen = @max(maxLen, values[i].len);
 	}
 

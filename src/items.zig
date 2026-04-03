@@ -1203,13 +1203,13 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	const tool = split.rest();
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, tool, layerPostfix}) catch unreachable;
+	const path = main.fmt.allocPrint(main.stackAllocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, tool, layerPostfix});
 	defer main.stackAllocator.free(path);
 	const image = main.graphics.Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
 		if (err != error.FileNotFound) {
 			std.log.err("Error while reading tool image '{s}': {s}", .{path, @errorName(err)});
 		}
-		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, tool, layerPostfix}) catch unreachable;
+		const replacementPath = main.fmt.allocPrint(main.stackAllocator, "assets/{s}/tools/{s}{s}.png", .{mod, tool, layerPostfix});
 		defer main.stackAllocator.free(replacementPath);
 		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
 			if (layerPostfix.len == 0 or err2 != error.FileNotFound)

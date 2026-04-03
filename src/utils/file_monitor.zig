@@ -98,7 +98,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 			return;
 		}) |entry| {
 			if (entry.kind == .directory) {
-				const subPath = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/{s}", .{path, entry.name}, 0) catch unreachable;
+				const subPath = main.fmt.allocPrintSentinel(main.stackAllocator, "{s}/{s}", .{path, entry.name}, 0);
 				defer main.stackAllocator.free(subPath);
 				addWatchDescriptor(info, subPath);
 				addWatchDescriptorsRecursive(info, subPath);

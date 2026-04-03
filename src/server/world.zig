@@ -79,13 +79,13 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 	defer main.stackAllocator.free(resultName);
 	var i: usize = 0;
 	while (true) {
-		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
+		const resultPath = main.fmt.allocPrint(main.stackAllocator, "saves/{s}", .{resultName});
 		defer main.stackAllocator.free(resultPath);
 
 		if (!main.files.cubyzDir().hasDir(resultPath)) break;
 
 		main.stackAllocator.free(resultName);
-		resultName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_{}", .{escapedName, i}) catch unreachable;
+		resultName = main.fmt.allocPrint(main.stackAllocator, "{s}_{}", .{escapedName, i});
 		i += 1;
 	}
 	return allocator.dupe(u8, resultName);
@@ -94,7 +94,7 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: ZonElement) !void {
 	const worldPath = findValidFolderName(main.stackAllocator, worldName);
 	defer main.stackAllocator.free(worldPath);
-	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
+	const saveFolder = main.fmt.allocPrint(main.stackAllocator, "saves/{s}", .{worldPath});
 	defer main.stackAllocator.free(saveFolder);
 	try main.files.cubyzDir().makePath(saveFolder);
 
@@ -105,7 +105,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: Zo
 	worldInfo.put("settings", worldSettings.toZon(main.stackAllocator));
 
 	{
-		const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{worldPath}) catch unreachable;
+		const worldInfoPath = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/world.zig.zon", .{worldPath});
 		defer main.stackAllocator.free(worldInfoPath);
 
 		worldInfo.put("name", worldName);
@@ -115,7 +115,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: Zo
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
 	}
 	{ // Make assets subfolder
-		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldPath}) catch unreachable;
+		const assetsPath = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/assets", .{worldPath});
 		defer main.stackAllocator.free(assetsPath);
 		try main.files.cubyzDir().makePath(assetsPath);
 	}
@@ -479,7 +479,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
 
-		var dir = try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path}));
+		var dir = try files.cubyzDir().openDir(main.fmt.allocPrint(arena, "saves/{s}", .{path}));
 		defer dir.close();
 
 		self.blockPalette = try loadPalette(arena, path, "palette", "cubyz:air");
@@ -500,7 +500,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try main.assets.loadWorldAssets(main.fmt.allocPrint(arena, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
 		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
@@ -514,7 +514,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn loadPalette(allocator: NeverFailingAllocator, worldName: []const u8, paletteName: []const u8, firstEntry: ?[]const u8) !*Palette {
-		const path = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/{s}.zig.zon", .{worldName, paletteName});
+		const path = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/{s}.zig.zon", .{worldName, paletteName});
 		defer main.stackAllocator.allocator.free(path);
 		const paletteZon = files.cubyzDir().readToZon(allocator, path) catch .null;
 		const palette = try main.assets.Palette.init(main.globalAllocator, paletteZon, firstEntry);
@@ -600,7 +600,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 
 			for (fileNames.items, 0..) |oldName, i| {
-				const newName = std.fmt.allocPrint(arena.allocator, "{}.zon", .{i}) catch unreachable;
+				const newName = main.fmt.allocPrint(arena, "{}.zon", .{i});
 				try playerDir.dir.rename(oldName, newName);
 			}
 
@@ -623,7 +623,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{self.path}) catch unreachable;
+		const path = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/world.zig.zon", .{self.path});
 		defer main.stackAllocator.free(path);
 		const worldData = try files.cubyzDir().readToZon(main.stackAllocator, path);
 		defer worldData.deinit(main.stackAllocator);
@@ -672,7 +672,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						std.log.err("Couldn't read player file {s}. Skipping.", .{file.name});
 						continue;
 					};
-					const fullEntry = std.fmt.allocPrint(main.worldArena.allocator, "name:{s}", .{name}) catch unreachable;
+					const fullEntry = main.fmt.allocPrint(main.worldArena, "name:{s}", .{name});
 					self.playerDatabase.put(main.worldArena.allocator, fullEntry, index) catch unreachable;
 				}
 			}
@@ -751,7 +751,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	fn regenerateLOD(self: *ServerWorld, newBiomeCheckSum: i64) !void {
 		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
-		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
+		const mapsPath = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/maps", .{self.path});
 		defer main.stackAllocator.free(mapsPath);
 		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath);
 		if (hasSurfaceMaps) {
@@ -760,7 +760,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Delete old LODs:
 		for (1..main.settings.highestSupportedLod + 1) |i| {
 			const lod = @as(u32, 1) << @intCast(i);
-			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/{}", .{self.path, lod}) catch unreachable;
+			const path = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/chunks/{}", .{self.path, lod});
 			defer main.stackAllocator.free(path);
 			main.files.cubyzDir().deleteTree(path) catch |err| {
 				if (err != error.FileNotFound) {
@@ -771,7 +771,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Find all the stored chunks:
 		var chunkPositions = main.List(ChunkPosition).init(main.stackAllocator);
 		defer chunkPositions.deinit();
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
+		const path = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/chunks/1", .{self.path});
 		defer main.stackAllocator.free(path);
 		blk: {
 			var dirX = main.files.cubyzDir().openIterableDir(path) catch |err| {
@@ -894,7 +894,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.settings.seed));
 		if (newBiomeCheckSum != self.biomeChecksum) {
 			if (self.settings.testingMode) {
-				const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
+				const dir = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/maps", .{self.path});
 				defer main.stackAllocator.free(dir);
 				main.files.cubyzDir().deleteTree("maps") catch |err| {
 					std.log.err("Error while trying to remove maps folder of testingMode world: {s}", .{@errorName(err)});
@@ -907,7 +907,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		try self.saveWorldConfig();
 		loadItemDrops: {
-			const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
+			const itemsPath = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/itemdrops.bin", .{self.path});
 			defer main.stackAllocator.free(itemsPath);
 			const itemDropData: []const u8 = files.cubyzDir().read(main.stackAllocator, itemsPath) catch |err| {
 				if (err != error.FileNotFound) {
@@ -925,7 +925,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn loadPlayer(self: *ServerWorld, user: *User) void {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
+		const path = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex});
 		defer main.stackAllocator.free(path);
 
 		const playerData = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
@@ -937,7 +937,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		} else {
 			removeOld: {
-				const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get(?[]const u8, "name", null) orelse break :removeOld}) catch unreachable;
+				const nameEntry = main.fmt.allocPrint(main.stackAllocator, "name:{s}", .{playerData.get(?[]const u8, "name", null) orelse break :removeOld});
 				defer main.stackAllocator.free(nameEntry);
 				std.debug.assert(self.playerDatabase.remove(nameEntry));
 			}
@@ -991,7 +991,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
+		const path = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex});
 		defer main.stackAllocator.free(path);
 
 		var playerZon: ZonElement = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
@@ -1022,7 +1022,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		playerZon.put("playerSpawnPos", user.spawnPos);
 
-		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.path}) catch unreachable;
+		const playerPath = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/players", .{self.path});
 		defer main.stackAllocator.free(playerPath);
 
 		try files.cubyzDir().makePath(playerPath);
@@ -1048,7 +1048,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();
 		self.itemDropManager.storeToBytes(&itemDropData);
-		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
+		const itemsPath = main.fmt.allocPrint(main.stackAllocator, "saves/{s}/itemdrops.bin", .{self.path});
 		defer main.stackAllocator.free(itemsPath);
 		try files.cubyzDir().write(itemsPath, itemDropData.data.items);
 	}

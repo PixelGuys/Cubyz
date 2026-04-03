@@ -2245,7 +2245,7 @@ test "SparseSet/reusing" {
 }
 
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
-	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	const message = main.fmt.allocPrint(main.stackAllocator, fmt, args);
 	@panic(message);
 }
 

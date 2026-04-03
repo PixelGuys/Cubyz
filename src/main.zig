@@ -154,7 +154,7 @@ fn initLogging() void {
 
 	const _timestamp = (std.Io.Clock.Timestamp.now(io, .real) catch unreachable).raw;
 
-	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
+	const _path_str = fmt.allocPrint(stackAllocator, "logs/ts_{}.log", .{_timestamp.nanoseconds});
 	defer stackAllocator.free(_path_str);
 
 	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {

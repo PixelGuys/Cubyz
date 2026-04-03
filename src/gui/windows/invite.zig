@@ -30,7 +30,7 @@ const width: f32 = 420;
 
 fn discoverIpAddress() void {
 	main.server.connectionManager.makeOnline();
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{main.server.connectionManager.externalAddress}) catch unreachable;
+	ipAddress = main.fmt.allocPrint(main.globalAllocator, "{f}", .{main.server.connectionManager.externalAddress});
 	gotIpAddress.store(true, .release);
 }
 

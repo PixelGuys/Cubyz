@@ -628,7 +628,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
-		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
+		return main.fmt.allocPrint(_allocator, "{s}{s}", .{path, ending});
 	}
 
 	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
@@ -681,7 +681,7 @@ pub const meshes = struct { // MARK: meshes
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
 		const mod = splitter.first();
 		const id = splitter.rest();
-		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		var path = main.fmt.allocPrint(main.stackAllocator, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
 		defer main.stackAllocator.free(path);
 		// Test if it's already in the list:
 		for (textureIDs.items, 0..) |other, j| {
@@ -695,7 +695,7 @@ pub const meshes = struct { // MARK: meshes
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
 			main.stackAllocator.free(path);
-			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
+			path = main.fmt.allocPrint(main.stackAllocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 			break :blk main.files.cwd().openFile(path) catch |err2| {
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
@@ -736,13 +736,13 @@ pub const meshes = struct { // MARK: meshes
 	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) void {
 		var i: usize = 0;
 		while (true) : (i += 1) {
-			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/breaking/{}.png", .{i}) catch unreachable;
+			const path1 = main.fmt.allocPrint(main.stackAllocator, "assets/cubyz/blocks/textures/breaking/{}.png", .{i});
 			defer main.stackAllocator.free(path1);
-			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
+			const path2 = main.fmt.allocPrint(main.stackAllocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i});
 			defer main.stackAllocator.free(path2);
 			if (!main.files.cwd().hasFile(path1) and !main.files.cwd().hasFile(path2)) break;
 
-			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
+			const id = main.fmt.allocPrint(main.stackAllocator, "cubyz:breaking/{}", .{i});
 			defer main.stackAllocator.free(id);
 			blockBreakingTextures.append(main.worldArena, findTexture(id, assetFolder) catch break);
 		}

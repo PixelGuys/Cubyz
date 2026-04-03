@@ -210,12 +210,12 @@ pub const User = struct { // MARK: User
 		{
 			const keyBase64 = keys.get(?[]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), null) orelse return error.PublicKeyNotPresent;
 			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
-			self.newKeyString = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64}) catch unreachable;
+			self.newKeyString = main.fmt.allocPrint(main.globalAllocator, "{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64});
 		}
 		var foundKey: bool = false;
 		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
 			const keyBase64 = keys.get(?[]const u8, keyTypeName, null) orelse continue;
-			const keyWithType = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{s}", .{keyTypeName, keyBase64}) catch unreachable;
+			const keyWithType = main.fmt.allocPrint(main.stackAllocator, "{s}:{s}", .{keyTypeName, keyBase64});
 			defer main.stackAllocator.free(keyWithType);
 			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
 			foundKey = true;
@@ -225,7 +225,7 @@ pub const User = struct { // MARK: User
 			break;
 		}
 		if (!foundKey) {
-			const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
+			const nameEntry = main.fmt.allocPrint(main.stackAllocator, "name:{s}", .{name});
 			defer main.stackAllocator.free(nameEntry);
 			self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
 		}
@@ -471,7 +471,7 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
-		const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+		const msg = main.fmt.allocPrint(main.stackAllocator, fmt, args);
 		defer main.stackAllocator.free(msg);
 		self.sendRawMessage(msg);
 	}
@@ -533,7 +533,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Can't generate world.");
 	};
 	if (singlePlayerPort) |port| blk: {
-		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
+		const ipString = main.fmt.allocPrint(main.stackAllocator, "127.0.0.1:{}", .{port});
 		defer main.stackAllocator.free(ipString);
 		const user = User.initAndIncreaseRefCount(connectionManager, ipString) catch |err| {
 			std.log.err("Cannot create singleplayer user {s}", .{@errorName(err)});
@@ -799,7 +799,7 @@ fn sendRawMessage(msg: []const u8) void {
 
 var chatMutex: std.Thread.Mutex = .{};
 pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
-	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	const msg = main.fmt.allocPrint(main.stackAllocator, fmt, args);
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
 }

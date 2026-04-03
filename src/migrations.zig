@@ -64,7 +64,7 @@ fn register(
 			continue;
 		}
 
-		const oldAssetId = std.fmt.allocPrint(main.worldArena.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
+		const oldAssetId = main.fmt.allocPrint(main.worldArena, "{s}:{s}", .{addonName, oldZon});
 		const result = collection.getOrPut(main.worldArena.allocator, oldAssetId) catch unreachable;
 
 		if (result.found_existing) {
@@ -74,7 +74,7 @@ fn register(
 
 			main.worldArena.free(oldAssetId);
 		} else {
-			const newAssetId = std.fmt.allocPrint(main.worldArena.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
+			const newAssetId = main.fmt.allocPrint(main.worldArena, "{s}:{s}", .{addonName, newZon});
 
 			result.key_ptr.* = oldAssetId;
 			result.value_ptr.* = newAssetId;
