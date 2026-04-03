@@ -4,8 +4,6 @@
 		.{.id = "cubyz:bridges/part/s1", .chance = 0.15},
 	},
 	.children = .{
-		.black = "cubyz:bridges/slate",
 		.dark_grey = "cubyz:bridges/cobble",
-		.grey = "cubyz:bridges/oak",
 	},
 }
