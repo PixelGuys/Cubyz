@@ -181,7 +181,7 @@ pub noinline fn format(writer: *std.Io.Writer, formatString: []const u8, args: [
 				.width = placeholder.width,
 			};
 			const arg = argState.nextArg(placeholder.argPos) orelse {
-				std.log.err("Not enough arguments for format string: '{s}', attempted to use argument {}, only has {} arguments", .{formatString, placeholder.argPos, args.len});
+				std.log.err("Not enough arguments for format string: '{s}', only has {} arguments", .{formatString, args.len});
 				return;
 			};
 			try formatValue(writer, placeholder.specifierArg, options, args[arg], formatString);
@@ -232,8 +232,14 @@ fn formatValue(writer: *std.Io.Writer, formatSpecifier: []const u8, options: std
 			std.log.err("Format specifier '{s}' not supported. Please specify '{{f}}'. To use '{{any}}', please wrap the argument in an anonymous tuple. Format string: {s}", .{formatSpecifier, formatString});
 		},
 		.anyFormatFunction => |fun| {
-			if (std.mem.eql(u8, formatSpecifier, "any") or std.mem.eql(u8, formatSpecifier, "")) {
+			if (std.mem.eql(u8, formatSpecifier, "any") or std.mem.eql(u8, formatSpecifier, "") or std.mem.eql(u8, formatSpecifier, "?")) {
 				try fun.function(fun.val, writer);
+				return;
+			}
+			if (std.mem.eql(u8, formatSpecifier, "*")) {
+				try fun.function(fun.val, writer);
+				try writer.writeByte('@');
+				try writer.printValue("x", .{}, @intFromPtr(fun.val), std.options.fmt_max_depth);
 				return;
 			}
 			std.log.err("Format specifier '{s}' not supported. Please specify '{{any}}' or '{{}}'. Format string: {s}", .{formatSpecifier, formatString});
