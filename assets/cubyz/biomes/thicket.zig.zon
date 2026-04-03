@@ -2,6 +2,7 @@
 	.chance = 0,
 	.properties = .{
 		.wet,
+		.oak,
 	},
 	.radius = 32,
 	.minHeight = 22,

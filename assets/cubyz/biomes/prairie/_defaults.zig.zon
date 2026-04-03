@@ -1,5 +1,8 @@
 .{
-	.properties = .{.dry},
+	.properties = .{
+		.dry,
+		.oak,
+	},
 	.minHeightLimit = 7,
 	.maxHeightLimit = 60,
 	.smoothBeaches = true,

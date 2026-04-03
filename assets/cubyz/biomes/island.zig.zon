@@ -2,6 +2,7 @@
 	.chance = 0,
 	.properties = .{
 		.ocean,
+		.oak,
 	},
 	.minHeight = 4,
 	.maxHeight = 4,
