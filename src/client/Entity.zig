@@ -30,6 +30,7 @@ rot: Vec3f = undefined,
 
 id: u32,
 name: []const u8,
+playerIndex: usize, // TODO extract into own component #2760
 
 pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) void {
 	self.* = @This(){
@@ -37,6 +38,7 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 		.width = zon.get(f64, "width", 1),
 		.height = zon.get(f64, "height", 1),
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
+		.playerIndex = zon.get(usize, "playerIndex", std.math.maxInt(usize)),
 	};
 	self._interpolationPos = [_]f64{
 		self.pos[0],
@@ -70,4 +72,12 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[0] = @floatCast(self.interpolatedValues.outPos[3]);
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
+}
+
+pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+	if (main.settings.showIdWithName) {
+		try writer.print("{s}@{d}", .{self.name, self.playerIndex});
+	} else {
+		try writer.print("{s}", .{self.name});
+	}
 }

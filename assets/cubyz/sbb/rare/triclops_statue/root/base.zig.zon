@@ -1,0 +1,8 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/triclops_statue/root/0"},
+	},
+	.children = .{
+		.red = "cubyz:rare/triclops_statue/root/extension1",
+	},
+}
