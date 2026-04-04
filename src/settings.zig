@@ -45,7 +45,7 @@ pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
 
-pub var showIdWithName: bool = false;
+pub var showPlayerIndexWithName: bool = false;
 
 pub var streamerMode: bool = false;
 
