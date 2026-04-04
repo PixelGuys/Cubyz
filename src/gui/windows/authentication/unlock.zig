@@ -33,7 +33,7 @@ fn apply() void {
 		if (err == error.AuthenticationFailed) {
 			incorrectPasswordLabel.updateText("#ff0000Incorrect password.");
 		} else {
-			const formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Authentication data is corrupted: {s}", .{@errorName(err)}) catch unreachable;
+			const formattedError = main.fmt.allocPrint(main.stackAllocator, "#ff0000Authentication data is corrupted: {s}", .{@errorName(err)});
 			defer main.stackAllocator.free(formattedError);
 			incorrectPasswordLabel.updateText(formattedError);
 		}

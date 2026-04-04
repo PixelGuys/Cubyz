@@ -216,7 +216,7 @@ pub const Gamepad = struct {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
-			const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{x}", .{self.*.curTimestamp}) catch unreachable;
+			const timeStampStr = main.fmt.allocPrint(main.stackAllocator, "{x}", .{self.*.curTimestamp});
 			defer main.stackAllocator.free(timeStampStr);
 			files.cwd().write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});

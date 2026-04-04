@@ -110,7 +110,7 @@ fn openBlueprintsDir(source: *User) ?Dir {
 
 fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {
 	if (!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
-		return std.fmt.allocPrint(allocator.allocator, "{s}.blp", .{fileName}) catch unreachable;
+		return main.fmt.allocPrint(allocator, "{s}.blp", .{fileName});
 	} else {
 		return allocator.dupe(u8, fileName);
 	}

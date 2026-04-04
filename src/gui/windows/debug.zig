@@ -30,12 +30,12 @@ pub var window = GuiWindow{
 pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
-	const fpsCapText = if (main.settings.fpsCap) |fpsCap| std.fmt.allocPrint(main.stackAllocator.allocator, " (limit: {d:.0} Hz)", .{fpsCap}) catch unreachable else "";
+	const fpsCapText = if (main.settings.fpsCap) |fpsCap| main.fmt.allocPrint(main.stackAllocator, " (limit: {d:.0} Hz)", .{fpsCap}) else "";
 	defer main.stackAllocator.allocator.free(fpsCapText);
-	const fpsLimit = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{s}", .{
+	const fpsLimit = main.fmt.allocPrint(main.stackAllocator, "{s}{s}", .{
 		fpsCapText,
 		if (main.settings.vsync) " (vsync)" else "",
-	}) catch unreachable;
+	});
 	defer main.stackAllocator.allocator.free(fpsLimit);
 	draw.print("fps: {d:.0} Hz{s}", .{1.0/main.lastDeltaTime.load(.monotonic), fpsLimit}, 0, y, 8, .left);
 	y += 8;

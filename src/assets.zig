@@ -378,8 +378,8 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	var replacementTexturePath: []const u8 = &.{};
 	defer main.stackAllocator.free(replacementTexturePath);
 	if (zon.get(?[]const u8, "texture", null)) |texture| {
-		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
-		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
+		texturePath = main.fmt.allocPrint(main.stackAllocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
+		replacementTexturePath = main.fmt.allocPrint(main.stackAllocator, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
 	_ = items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
@@ -677,7 +677,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		break :blk null;
 	}) |addon| {
 		if (addon.kind == .directory) {
-			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
+			const path = main.fmt.allocPrintSentinel(main.stackAllocator, "assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if (!main.files.cwd().hasDir(path)) continue;
@@ -716,7 +716,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		break :blk null;
 	}) |addon| {
 		if (addon.kind == .directory) {
-			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
+			const path = main.fmt.allocPrintSentinel(main.stackAllocator, "assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if (!main.files.cwd().hasDir(path)) continue;

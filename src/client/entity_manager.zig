@@ -114,7 +114,7 @@ pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 		const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
 		graphics.draw.setColor(alpha << 24);
 
-		const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
+		const renderedName = main.fmt.allocPrint(main.stackAllocator, "{f}", .{ent});
 		defer main.stackAllocator.free(renderedName);
 		var buf = graphics.TextBuffer.init(main.stackAllocator, renderedName, .{.color = 0xffffff}, false, .center);
 		defer buf.deinit();

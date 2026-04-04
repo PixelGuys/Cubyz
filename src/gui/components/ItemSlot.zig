@@ -77,7 +77,7 @@ pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: Text
 		.inventory = inventory,
 		.itemSlot = itemSlot,
 		.pos = pos,
-		.text = TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞", .{}, false, .right),
+		.text = TextBuffer.init(main.globalAllocator, main.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞", .{}, false, .right),
 		.lastItemAmount = amount,
 		.texture = texture.value(),
 		.mode = mode,
@@ -100,7 +100,7 @@ fn refreshText(self: *ItemSlot) void {
 	var buf: [16]u8 = undefined;
 	self.text = TextBuffer.init(
 		main.globalAllocator,
-		std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞",
+		main.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞",
 		.{.color = if (amount == 0) 0xff0000 else 0xffffff},
 		false,
 		.right,

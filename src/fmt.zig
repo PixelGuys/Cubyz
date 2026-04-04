@@ -1,6 +1,54 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
+
+pub inline fn bufPrint(buf: []u8, comptime fmt: []const u8, args: anytype) std.fmt.BufPrintError![]u8 {
+	if (builtin.is_test) return std.fmt.bufPrint(buf, fmt, args);
+	var runtimeArgs: [args.len]FormatArg = undefined;
+	inline for (0..args.len) |i| {
+		runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
+	}
+	return bufPrintRuntime(buf, fmt, &runtimeArgs);
+}
+
+pub noinline fn bufPrintRuntime(buf: []u8, fmt: []const u8, args: []const FormatArg) std.fmt.BufPrintError![]u8 {
+	var writer: std.Io.Writer = .fixed(buf);
+	format(&writer, fmt, args) catch return error.NoSpaceLeft;
+	return writer.buffered();
+}
+
+pub inline fn allocPrint(gpa: main.heap.NeverFailingAllocator, comptime fmt: []const u8, args: anytype) []u8 {
+	if (builtin.is_test) return std.fmt.allocPrint(gpa.allocator, fmt, args) catch unreachable;
+	var runtimeArgs: [args.len]FormatArg = undefined;
+	inline for (0..args.len) |i| {
+		runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
+	}
+	return allocPrintRuntime(gpa, fmt, &runtimeArgs);
+}
+
+pub noinline fn allocPrintRuntime(gpa: main.heap.NeverFailingAllocator, fmt: []const u8, args: []const FormatArg) []u8 {
+	var writer = std.Io.Writer.Allocating.initCapacity(gpa.allocator, fmt.len) catch unreachable;
+	defer writer.deinit();
+	format(&writer.writer, fmt, args) catch unreachable;
+	return writer.toOwnedSlice() catch unreachable;
+}
+
+pub inline fn allocPrintSentinel(gpa: main.heap.NeverFailingAllocator, comptime fmt: []const u8, args: anytype, comptime sentinel: u8) [:sentinel]u8 {
+	if (builtin.is_test) return std.fmt.allocPrintSentinel(gpa.allocator, fmt, args, sentinel) catch unreachable;
+	var runtimeArgs: [args.len]FormatArg = undefined;
+	inline for (0..args.len) |i| {
+		runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
+	}
+	return allocPrintSentinelRuntime(gpa, fmt, &runtimeArgs, sentinel);
+}
+
+pub noinline fn allocPrintSentinelRuntime(gpa: main.heap.NeverFailingAllocator, fmt: []const u8, args: []const FormatArg, comptime sentinel: u8) [:sentinel]u8 {
+	var writer = std.Io.Writer.Allocating.initCapacity(gpa.allocator, fmt.len) catch unreachable;
+	defer writer.deinit();
+	format(&writer.writer, fmt, args) catch unreachable;
+	return writer.toOwnedSliceSentinel(sentinel) catch unreachable;
+}
 
 pub const FormatArg = union(enum) {
 	int: i128,
@@ -38,7 +86,7 @@ pub const FormatArg = union(enum) {
 				if (@hasDecl(T, "format")) {
 					const typeErasedFormat = struct {
 						fn typeErasedFormat(ptr: *const anyopaque, writer: *std.Io.Writer) std.Io.Writer.Error!void {
-							return T.format(@as(*const T, @ptrCast(@alignCast(ptr))).*, writer);
+							return @as(*const T, @ptrCast(@alignCast(ptr))).*.format(writer);
 						}
 					}.typeErasedFormat;
 					return .{.formatFunction = .{.val = val, .function = typeErasedFormat}};

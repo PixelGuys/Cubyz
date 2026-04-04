@@ -26,7 +26,7 @@ fn delayCallback(newValue: f32) void {
 }
 
 fn delayFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Delay: {d:.0} ms", .{value/1.0e6}) catch unreachable;
+	return main.fmt.allocPrint(allocator, "#ffffffPlace/Break Delay: {d:.0} ms", .{value/1.0e6});
 }
 
 fn speedCallback(newValue: f32) void {
@@ -35,7 +35,7 @@ fn speedCallback(newValue: f32) void {
 }
 
 fn speedFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Speed: {d:.0} ms", .{value/1.0e6}) catch unreachable;
+	return main.fmt.allocPrint(allocator, "#ffffffPlace/Break Speed: {d:.0} ms", .{value/1.0e6});
 }
 
 pub fn onOpen() void {

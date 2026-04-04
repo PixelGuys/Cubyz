@@ -25,10 +25,10 @@ const Textures = struct {
 
 	pub fn init(basePath: []const u8) Textures {
 		var self: Textures = undefined;
-		const buttonPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.png", .{basePath}) catch unreachable;
+		const buttonPath = main.fmt.allocPrint(main.stackAllocator, "{s}.png", .{basePath});
 		defer main.stackAllocator.free(buttonPath);
 		self.texture = Texture.initFromFile(buttonPath);
-		const outlinePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_outline.png", .{basePath}) catch unreachable;
+		const outlinePath = main.fmt.allocPrint(main.stackAllocator, "{s}_outline.png", .{basePath});
 		defer main.stackAllocator.free(outlinePath);
 		self.outlineTexture = Texture.initFromFile(outlinePath);
 		self.outlineTextureSize = @floatFromInt(self.outlineTexture.size());

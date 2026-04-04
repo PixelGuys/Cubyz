@@ -25,7 +25,7 @@ pub fn deinit() void {
 
 fn setNotificationText(comptime formatText: []const u8, args: anytype) void {
 	main.globalAllocator.free(text);
-	text = std.fmt.allocPrint(main.globalAllocator.allocator, formatText, args) catch unreachable;
+	text = main.fmt.allocPrint(main.globalAllocator, formatText, args);
 }
 
 pub fn raiseNotification(comptime formatText: []const u8, args: anytype) void {

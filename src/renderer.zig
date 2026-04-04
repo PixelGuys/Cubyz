@@ -551,7 +551,7 @@ pub const MenuBackGround = struct {
 			defer main.stackAllocator.free(defaultImageData);
 			try dir.write("default_background.png", defaultImageData);
 
-			return std.fmt.allocPrint(allocator.allocator, "{s}/backgrounds/default_background.png", .{main.files.cubyzDirStr()}) catch unreachable;
+			return main.fmt.allocPrint(allocator, "{s}/backgrounds/default_background.png", .{main.files.cubyzDirStr()});
 		}
 
 		// Otherwise load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
@@ -574,7 +574,7 @@ pub const MenuBackGround = struct {
 			return error.NoBackgroundImagesFound;
 		}
 		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));
-		return std.fmt.allocPrint(allocator.allocator, "{s}/backgrounds/{s}", .{main.files.cubyzDirStr(), fileList.items[theChosenOne]}) catch unreachable;
+		return main.fmt.allocPrint(allocator, "{s}/backgrounds/{s}", .{main.files.cubyzDirStr(), fileList.items[theChosenOne]});
 	}
 
 	pub fn deinit() void {
@@ -658,7 +658,7 @@ pub const MenuBackGround = struct {
 		}
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/backgrounds/{s}_{}.png", .{main.files.cubyzDirStr(), game.world.?.name, game.world.?.gameTime.load(.monotonic)}) catch unreachable;
+		const fileName = main.fmt.allocPrint(main.stackAllocator, "{s}/backgrounds/{s}_{}.png", .{main.files.cubyzDirStr(), game.world.?.name, game.world.?.gameTime.load(.monotonic)});
 		defer main.stackAllocator.free(fileName);
 		image.exportToFile(fileName) catch |err| {
 			std.log.err("Cannot write file {s} due to {s}", .{fileName, @errorName(err)});

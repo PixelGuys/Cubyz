@@ -41,7 +41,7 @@ pub fn onOpen() void {
 				row.add(Label.init(.{0, 0}, 200, connection.user.?.name, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithPtr(kick, connection)));
 			} else {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.remoteAddress}) catch unreachable;
+				const ip = main.fmt.allocPrint(main.stackAllocator, "{f}", .{connection.remoteAddress});
 				defer main.stackAllocator.free(ip);
 				row.add(Label.init(.{0, 0}, 200, ip, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Cancel", .initWithPtr(kick, connection)));
