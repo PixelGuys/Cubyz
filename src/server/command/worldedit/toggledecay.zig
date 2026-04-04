@@ -28,7 +28,7 @@ const Args = struct {
 		var argsSplit = std.mem.splitScalar(u8, args, ' ');
 
 		const targetString = argsSplit.next() orelse {
-			source.sendMessage("#ff0000Missing required <selection|clipboard> argument.", .{});
+			source.sendMessage("#ff0000Missing required <selection/clipboard> argument.", .{});
 			return error.ParsingFailed;
 		};
 		const target = std.meta.stringToEnum(Target, targetString) orelse {
