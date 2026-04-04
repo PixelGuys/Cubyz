@@ -35,7 +35,7 @@ pub fn initComponent() void {
 		@field(components, decl.name).client.init();
 		const id = @field(components, decl.name).entityComponentID;
 
-		if (tmpReceiveList.items.len < id) {
+		if (tmpReceiveList.items.len <= id) {
 			tmpReceiveList.appendNTimes(main.worldArena, null, id + 1 - tmpReceiveList.items.len);
 		}
 		if (tmpReceiveList.items[id] == null) {
