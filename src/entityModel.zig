@@ -128,6 +128,7 @@ pub const EntityModel = struct {
 			.indexCount = @intCast(indices.items.len),
 		};
 	}
+
 	pub fn initEmpty() EntityModel {
 		const texture = graphics.Texture.init();
 		texture.generate(graphics.Image.defaultImage);
