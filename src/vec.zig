@@ -122,43 +122,43 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 }
 
 fn sincos32(v: f32) [2]f32 {
-    var y = v - (std.math.pi*2) * @round(v * 1.0 / (std.math.pi*2));
+	var y = v - (std.math.pi*2)*@round(v*1.0/(std.math.pi*2));
 
-    const sign = blk: {
-        if (y > 0.5 * std.math.pi) {
-            y = std.math.pi - y;
-            break :blk @as(f32, -1.0);
-        } else if (y < -std.math.pi * 0.5) {
-            y = -std.math.pi - y;
-            break :blk @as(f32, -1.0);
-        } else {
-            break :blk @as(f32, 1.0);
-        }
-    };
-    const y2 = y * y;
+	const sign = blk: {
+		if (y > 0.5*std.math.pi) {
+			y = std.math.pi - y;
+			break :blk @as(f32, -1.0);
+		} else if (y < -std.math.pi*0.5) {
+			y = -std.math.pi - y;
+			break :blk @as(f32, -1.0);
+		} else {
+			break :blk @as(f32, 1.0);
+		}
+	};
+	const y2 = y*y;
 
-    // 11-degree minimax approximation
-    var sinv = @mulAdd(f32, @as(f32, -2.3889859e-08), y2, 2.7525562e-06);
-    sinv =  @mulAdd(f32, sinv, y2, -0.00019840874);
-    sinv =  @mulAdd(f32, sinv, y2, 0.0083333310);
-    sinv =  @mulAdd(f32, sinv, y2, -0.16666667);
-    sinv = y *  @mulAdd(f32, sinv, y2, 1.0);
+	// 11-degree minimax approximation
+	var sinv = @mulAdd(f32, @as(f32, -2.3889859e-08), y2, 2.7525562e-06);
+	sinv = @mulAdd(f32, sinv, y2, -0.00019840874);
+	sinv = @mulAdd(f32, sinv, y2, 0.0083333310);
+	sinv = @mulAdd(f32, sinv, y2, -0.16666667);
+	sinv = y*@mulAdd(f32, sinv, y2, 1.0);
 
-    // 10-degree minimax approximation
-    var cosv = @mulAdd(f32, @as(f32, -2.6051615e-07), y2, 2.4760495e-05);
-    cosv = @mulAdd(f32, cosv, y2, -0.0013888378);
-    cosv = @mulAdd(f32, cosv, y2, 0.041666638);
-    cosv = @mulAdd(f32, cosv, y2, -0.5);
-    cosv = sign * @mulAdd(f32, cosv, y2, 1.0);
+	// 10-degree minimax approximation
+	var cosv = @mulAdd(f32, @as(f32, -2.6051615e-07), y2, 2.4760495e-05);
+	cosv = @mulAdd(f32, cosv, y2, -0.0013888378);
+	cosv = @mulAdd(f32, cosv, y2, 0.041666638);
+	cosv = @mulAdd(f32, cosv, y2, -0.5);
+	cosv = sign*@mulAdd(f32, cosv, y2, 1.0);
 
-    return .{ sinv, cosv };
+	return .{sinv, cosv};
 }
 
 pub fn quatFromAxisAngle(axis: Vec3f, angle: f32) Vec4f {
-    const normal = normalize(axis);
-    const n = Vec4f{normal[0], normal[1], normal[2], 1.0};
-    const sc = sincos32(0.5 * angle);
-    return n * Vec4f{sc[0], sc[0], sc[0], sc[1]};
+	const normal = normalize(axis);
+	const n = Vec4f{normal[0], normal[1], normal[2], 1.0};
+	const sc = sincos32(0.5*angle);
+	return n*Vec4f{sc[0], sc[0], sc[0], sc[1]};
 }
 
 pub const Mat4f = struct { // MARK: Mat4f

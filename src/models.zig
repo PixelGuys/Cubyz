@@ -918,7 +918,7 @@ pub const EntityModel = struct {
 	pub const Node = struct {
 		pos: Vec3f,
 		rot: Vec4f,
-		scale: Vec3f, 
+		scale: Vec3f,
 
 		// TODO: add a matrix and a dirty flag
 		parent: ?u16 = null,
@@ -1000,15 +1000,12 @@ pub const EntityModel = struct {
 			if (node.children_count == 0) continue;
 
 			nodeReverse.put(std.mem.span(node.name), @intCast(nodeIdx)) catch unreachable;
-			if (nodeReverse.get(std.mem.span(node.name)) == null) {
-			} else {
+			if (nodeReverse.get(std.mem.span(node.name)) == null) {} else {}
 
-			}
-				
 			nodes[nodeIdx] = Node{
-				.pos = Vec3f{ node.translation[0], node.translation[2], node.translation[1] },
-				.rot = Vec4f{ node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3] },
-				.scale = Vec3f{ node.scale[0], node.scale[2], node.scale[1] },
+				.pos = Vec3f{node.translation[0], node.translation[2], node.translation[1]},
+				.rot = Vec4f{node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3]},
+				.scale = Vec3f{node.scale[0], node.scale[2], node.scale[1]},
 			};
 			// std.debug.print("\n NAMEE: {d} \"{s}\"\n", .{nodeIdx, std.mem.span(node.name)});
 			nodeIdx += 1;
@@ -1064,8 +1061,8 @@ pub const EntityModel = struct {
 
 					const modi = @as(i32, @intCast(i)) - 2;
 					if (@mod(modi, 3) == 0) {
-						const temp = indicesSlice[i-1];
-						indicesSlice[i-1] = indicesSlice[i];
+						const temp = indicesSlice[i - 1];
+						indicesSlice[i - 1] = indicesSlice[i];
 						indicesSlice[i] = temp;
 					}
 				}
@@ -1097,12 +1094,12 @@ pub const EntityModel = struct {
 					var uv: [2]f32 = undefined;
 					_ = uvAttr.float(v, @ptrCast(&uv), 2);
 					vertSlice[v].uv = .{uv[0], 1 - uv[1]};
-					
+
 					vertSlice[v].nodeID = @intCast(parentNodeID);
 				}
 			}
 		}
-		
+
 		return .{
 			.vao = .init(EntityVertex, vertices.items, indices.items),
 			.texture = texture,
@@ -1113,7 +1110,7 @@ pub const EntityModel = struct {
 			.nodeCount = nodeIdx,
 		};
 	}
-	
+
 	pub fn initEmpty() EntityModel {
 		const texture = graphics.Texture.init();
 		texture.generate(graphics.Image.defaultImage);
@@ -1122,8 +1119,8 @@ pub const EntityModel = struct {
 			.texture = texture,
 			.indexCount = 0,
 
-			.nodeReverse = .{},
-			.nodes = .{},
+			.nodeReverse = undefined,
+			.nodes = std.mem.zeroes([20]Node),
 			.nodeCount = 0,
 		};
 	}
@@ -1173,7 +1170,7 @@ pub const EntityModel = struct {
 		self.texture.bindTo(0);
 	}
 
-	pub fn deinit(self: EntityModel) void {
+	pub fn deinit(self: *EntityModel) void {
 		self.vao.deinit();
 		self.texture.deinit();
 

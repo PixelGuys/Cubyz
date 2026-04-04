@@ -45,7 +45,7 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 		.playerIndex = zon.get(usize, "playerIndex", std.math.maxInt(usize)),
 	};
-	
+
 	self.rot = Vec3f{0, 0, 0};
 	self.pos = Vec3d{0, 0, 0};
 	self._interpolationPos = [_]f64{
@@ -58,7 +58,6 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 	};
 	self._interpolationVel = @splat(0);
 	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
-
 
 	self.model = main.client.entity_manager.model;
 	for (0..self.model.nodeCount) |i| {
@@ -97,7 +96,7 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	// }
 
 	// const nodeId = self.model.nodeReverse.get("Head").?;
-	
+
 	self.nodes[6].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
 	self.matrices[6] = getHierarchyMatrix(self.nodes, self.nodes[6]);
 }
