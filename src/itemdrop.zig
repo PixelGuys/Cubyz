@@ -733,7 +733,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	fn drawItem(vertices: u31, modelMatrix: Mat4f) void {
 		c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		main.renderer.chunk_meshing.vao.bind();
 		c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
 	}
 
