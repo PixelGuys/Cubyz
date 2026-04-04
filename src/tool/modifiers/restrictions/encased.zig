@@ -31,5 +31,5 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 }
 
 pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
-	outString.print("encased in {} .{s}", .{self.amount, self.tag.getName()});
+	main.lang.formatToList(outString, .restriction, "cubyz:encased", &.{.fromInt(self.amount), .fromTag(self.tag)});
 }
