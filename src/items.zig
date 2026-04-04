@@ -170,8 +170,8 @@ const Modifier = struct {
 			}
 		};
 
-		pub fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
-			return .{
+		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
+			return comptime .{
 				.changeToolParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeToolParameters")) &ModifierStruct.changeToolParameters else &VTable.Defaults.changeToolParameters),
 				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
@@ -1185,8 +1185,9 @@ pub fn globalInit() void {
 	recipeList = .init(main.worldArena);
 	itemListSize = 0;
 	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
-		const ModifierStruct = @field(modifierList, decl.name);
-		modifiers.put(main.globalArena.allocator, decl.name, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
+		const ModifierStruct: type = @field(modifierList, decl.name);
+		const vtable = Modifier.VTable.initFromModifierStruct(ModifierStruct);
+		modifiers.put(main.globalArena.allocator, decl.name, &vtable) catch unreachable;
 	}
 	inline for (@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
 		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
