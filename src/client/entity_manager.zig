@@ -129,7 +129,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	defer mutex.unlock();
 	update();
 	pipeline.bind(null);
-	c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+	main.renderer.chunk_meshing.vao.bind();
 	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	modelTexture.bindTo(0);
 	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
