@@ -75,7 +75,7 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 }
 
 pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
-	if (main.settings.showIdWithName) {
+	if (main.settings.showPlayerIndexWithName) {
 		try writer.print("{s}@{d}", .{self.name, self.playerIndex});
 	} else {
 		try writer.print("{s}", .{self.name});
