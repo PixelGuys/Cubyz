@@ -121,7 +121,7 @@ pub const server = struct {
 };
 
 pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: Side) void {
-	if (main.utils.fromBase64(main.stackAllocator, base64Data) catch null) |data| {
+	const data = main.utils.fromBase64(main.stackAllocator, base64Data) catch return;
 		defer main.stackAllocator.free(data);
 
 		var reader = main.utils.BinaryReader.init(data);
