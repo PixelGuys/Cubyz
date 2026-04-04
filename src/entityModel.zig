@@ -41,18 +41,9 @@ pub const EntityModel = struct {
 	};
 
 	pub fn initFromGltf(modelPath: []const u8, texturePath: []const u8) !EntityModel {
-		// TODO: consider overriding cgltf_memory_options functions
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
 
-		// const file = main.files.cwd().read(main.stackAllocator, path) catch |err| blk: {
-		//     std.log.err("Error while reading entity model: {s}", .{@errorName(err)});
-		//     break :blk &.{};
-		// };
-		// defer main.stackAllocator.free(file);
-
-		// var result = gltf.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
-		// TODO: make this parse from memory (important to parse null terminated array) (probably unnessecary)
 		var result = gltf.cgltf_parse_file(&options, @ptrCast(modelPath.ptr), @ptrCast(&data));
 		defer gltf.cgltf_free(@ptrCast(data));
 
@@ -85,7 +76,6 @@ pub const EntityModel = struct {
 				const primitives = node.mesh.*.primitives;
 				for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
 					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
-						// we could possibly support different primitive types by storing them in the model
 						std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
 						continue;
 					}
