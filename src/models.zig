@@ -906,19 +906,35 @@ pub fn uploadModels() void {
 }
 
 pub const EntityModel = struct {
-	vao: c_uint,
-	vbo: c_uint,
-	ebo: c_uint,
-	size: u32,
-	texture: main.graphics.Texture = undefined,
+	vao: graphics.VertexArray = undefined,
+	indexCount: c_int,
+	texture: main.graphics.Texture,
 
-	const EntityVertex = struct {
+	const EntityVertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
+
+		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
+			.{
+				.location = 0,
+				.format = c.VK_FORMAT_R32G32B32_SFLOAT,
+				.offset = @offsetOf(@This(), "pos"),
+			},
+			.{
+				.location = 1,
+				.format = c.VK_FORMAT_R32G32B32_SFLOAT,
+				.offset = @offsetOf(@This(), "normal"),
+			},
+			.{
+				.location = 2,
+				.format = c.VK_FORMAT_R32G32_SFLOAT,
+				.offset = @offsetOf(@This(), "uv"),
+			},
+		};
 	};
 
-	pub fn initFromGltf(path: []const u8) !EntityModel {
+	pub fn initFromGltf(modelPath: []const u8, texturePath: []const u8) !EntityModel {
 		// TODO: consider overriding cgltf_memory_options functions
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
@@ -931,7 +947,7 @@ pub const EntityModel = struct {
 
 		// var result = gltf.cgltf_parse(&options, @ptrCast(&file), @intCast(file.len), @ptrCast(&data));
 		// TODO: make this parse from memory (important to parse null terminated array) (probably unnessecary)
-		var result = gltf.cgltf_parse_file(&options, @ptrCast(path.ptr), @ptrCast(&data));
+		var result = gltf.cgltf_parse_file(&options, @ptrCast(modelPath.ptr), @ptrCast(&data));
 		defer gltf.cgltf_free(@ptrCast(data));
 
 		if (result != gltf.cgltf_result_success) {
@@ -947,6 +963,8 @@ pub const EntityModel = struct {
 		if (result != gltf.cgltf_result_success) {
 			return getGltfError(result);
 		}
+
+		const texture = main.graphics.Texture.initFromFile(texturePath);
 
 		var vertices = main.List(EntityVertex).init(main.stackAllocator);
 		defer vertices.deinit();
@@ -1008,15 +1026,20 @@ pub const EntityModel = struct {
 			}
 		}
 
-		return uploadMeshAndGetModel(vertices.items, indices.items);
+		return .{
+			.vao = .init(EntityVertex, vertices.items, indices.items),
+			.texture = texture,
+			.indexCount = @intCast(indices.items.len),
+		};
 	}
-
 	pub fn initEmpty() EntityModel {
-		return uploadMeshAndGetModel(&[0]EntityVertex{}, &[0]u32{});
-	}
-
-	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
-		self.texture = main.graphics.Texture.initFromFile(path);
+		const texture = graphics.Texture.init();
+		texture.generate(graphics.Image.defaultImage);
+		return .{
+			.vao = .init(EntityVertex, &.{}, &.{}),
+			.texture = texture,
+			.indexCount = 0,
+		};
 	}
 
 	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
@@ -1059,45 +1082,13 @@ pub const EntityModel = struct {
 		};
 	}
 
-	fn uploadMeshAndGetModel(vertices: []EntityVertex, indices: []u32) EntityModel {
-		var vao: c_uint = 0;
-		c.glGenVertexArrays(1, &vao);
-		c.glBindVertexArray(vao);
-
-		var vbo: c_uint = 0;
-		c.glGenBuffers(1, &vbo);
-		var ebo: c_uint = 0;
-		c.glGenBuffers(1, &ebo);
-
-		const vertSize = @sizeOf(EntityVertex);
-
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len*vertSize), @ptrCast(vertices), c.GL_STATIC_DRAW);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
-
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).pos);
-		c.glEnableVertexAttribArray(0);
-		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).normal);
-		c.glEnableVertexAttribArray(1);
-		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, &@as(*allowzero EntityVertex, @ptrFromInt(0)).uv);
-		c.glEnableVertexAttribArray(2);
-
-		c.glBindVertexArray(0);
-
-		return .{
-			.vao = vao,
-			.vbo = vbo,
-			.ebo = ebo,
-			.size = @intCast(indices.len),
-			.texture = main.client.entity_manager.missingModelTexture,
-		};
+	pub fn bind(self: EntityModel) void {
+		self.vao.bind();
+		self.texture.bindTo(0);
 	}
 
 	pub fn deinit(self: EntityModel) void {
-		c.glDeleteVertexArrays(1, &self.vao);
-		c.glDeleteBuffers(1, &self.vbo);
-		c.glDeleteBuffers(1, &self.ebo);
+		self.vao.deinit();
 		self.texture.deinit();
 	}
 };
