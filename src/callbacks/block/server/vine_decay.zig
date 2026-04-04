@@ -16,6 +16,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	if (params.block.mode() != main.rotation.getByID("cubyz:hanging")) {
 		std.log.err("Expected {s} to have cubyz:hanging as rotation", .{params.block.id()});
+		return .ignored;
 	}
 
 	const world = server.world orelse return .ignored;
