@@ -43,7 +43,7 @@ pub fn deinit() void {
 }
 
 pub fn render() void {
-	if(main.game.Player.isCreative())
+	if (main.game.Player.isCreative())
 		return;
 
 	draw.setColor(0xffffffff);
@@ -55,15 +55,15 @@ pub fn render() void {
 
 	var x: f32 = 0;
 	var y: f32 = 0;
-	for(0..totalHearts) |i| {
-		if(x >= window.contentSize[0]) {
+	for (0..totalHearts) |i| {
+		if (x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
 
-		if(i < wholeHearts) {
+		if (i < wholeHearts) {
 			heartTexture.bindTo(0);
-		} else if(i < wholeHearts + halfHeart) {
+		} else if (i < wholeHearts + halfHeart) {
 			halfHeartTexture.bindTo(0);
 		} else {
 			deadHeartTexture.bindTo(0);
@@ -74,7 +74,7 @@ pub fn render() void {
 	}
 
 	y += 20;
-	if(y != window.contentSize[1]) {
+	if (y != window.contentSize[1]) {
 		window.contentSize[1] = y;
 		gui.updateWindowPositions();
 	}

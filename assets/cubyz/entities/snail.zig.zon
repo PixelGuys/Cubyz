@@ -1,0 +1,5 @@
+.{
+	.model = "cubyz:entity/snail",
+	.texture = "snail.png",
+	.height = 1,
+}

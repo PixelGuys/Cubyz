@@ -36,11 +36,11 @@ pub fn reset() void {
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	comptime var rotationTable: [4][16]u8 = undefined;
-	comptime for(0..16) |i| {
+	comptime for (0..16) |i| {
 		rotationTable[0][i] = @intCast(i);
 	};
-	comptime for(1..4) |a| {
-		for(0..16) |i| {
+	comptime for (1..4) |a| {
+		for (0..16) |i| {
 			const old: FenceData = @bitCast(@as(u4, @intCast(rotationTable[a - 1][i])));
 			const new: FenceData = .{
 				.isConnectedNegY = old.isConnectedNegX,
@@ -51,32 +51,32 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 			rotationTable[a][i] = @as(u4, @bitCast(new));
 		}
 	};
-	if(data >= 16) return 0;
+	if (data >= 16) return 0;
 	const runtimeTable = rotationTable;
 	return runtimeTable[@intFromEnum(angle)][data];
 }
 
 fn fenceTransform(quad: *main.models.QuadInfo, data: FenceData) void {
-	for(&quad.corners, &quad.cornerUV) |*corner, *cornerUV| {
-		if(!data.isConnectedNegX and corner[0] == 0) {
+	for (&quad.corners, &quad.cornerUV) |*corner, *cornerUV| {
+		if (!data.isConnectedNegX and corner[0] == 0) {
 			corner[0] = 0.5;
 			cornerUV[0] = 0.5;
 		}
-		if(!data.isConnectedPosX and corner[0] == 1) {
+		if (!data.isConnectedPosX and corner[0] == 1) {
 			corner[0] = 0.5;
 			cornerUV[0] = 0.5;
 		}
-		if(!data.isConnectedNegY and corner[1] == 0) {
+		if (!data.isConnectedNegY and corner[1] == 0) {
 			corner[1] = 0.5;
-			if(@abs(quad.normal[2]) > 0.7) {
+			if (@abs(quad.normal[2]) > 0.7) {
 				cornerUV[1] = 0.5;
 			} else {
 				cornerUV[0] = 0.5;
 			}
 		}
-		if(!data.isConnectedPosY and corner[1] == 1) {
+		if (!data.isConnectedPosY and corner[1] == 1) {
 			corner[1] = 0.5;
-			if(@abs(quad.normal[2]) > 0.7) {
+			if (@abs(quad.normal[2]) > 0.7) {
 				cornerUV[1] = 0.5;
 			} else {
 				cornerUV[0] = 0.5;
@@ -87,12 +87,12 @@ fn fenceTransform(quad: *main.models.QuadInfo, data: FenceData) void {
 
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	const modelId = zon.as([]const u8, "cubyz:cube");
-	if(fenceModels.get(modelId)) |modelIndex| return modelIndex;
+	if (fenceModels.get(modelId)) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex(modelId).model();
 	// Rotate the model:
 	const modelIndex: ModelIndex = baseModel.transformModel(fenceTransform, .{@as(FenceData, @bitCast(@as(u4, 0)))});
-	for(1..16) |fenceData| {
+	for (1..16) |fenceData| {
 		_ = baseModel.transformModel(fenceTransform, .{@as(FenceData, @bitCast(@as(u4, @intCast(fenceData))))});
 	}
 	fenceModels.put(modelId, modelIndex) catch unreachable;
@@ -109,7 +109,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	const neighborModel = blocks.meshes.model(neighborBlock).model();
 	const targetVal = !neighborBlock.replacable() and !neighborBlock.transparent() and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.reverse().toInt()]);
 	var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
-	switch(neighbor) {
+	switch (neighbor) {
 		.dirNegX => {
 			currentData.isConnectedNegX = targetVal;
 		},
@@ -125,7 +125,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 		else => {},
 	}
 	const result: u16 = @as(u4, @bitCast(currentData));
-	if(result == block.data) return false;
+	if (result == block.data) return false;
 	block.data = result;
 	return true;
 }

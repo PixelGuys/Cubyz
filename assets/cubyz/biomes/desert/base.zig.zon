@@ -32,7 +32,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:tussock",
+			.blocks = .{"cubyz:tussock"},
 			.chance = 0.03,
 			.width = 4,
 			.variation = 4,

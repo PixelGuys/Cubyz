@@ -21,7 +21,7 @@ var textComponent: *TextInput = undefined;
 const padding: f32 = 8;
 
 fn apply() void {
-	if(textComponent.currentString.items.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items) > 50) {
+	if (textComponent.currentString.items.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items) > 50) {
 		std.log.err("Name is too long with {}/{} characters. Limits are 50/500", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items), textComponent.currentString.items.len});
 		return;
 	}
@@ -31,7 +31,7 @@ fn apply() void {
 	settings.save();
 
 	gui.closeWindowFromRef(&window);
-	if(oldName.len == 0) {
+	if (oldName.len == 0) {
 		gui.openWindow("main");
 	}
 }
@@ -39,7 +39,7 @@ fn apply() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 420;
-	if(settings.playerName.len == 0) {
+	if (settings.playerName.len == 0) {
 		list.add(Label.init(.{0, 0}, width, "Please enter your name!", .center));
 		window.closeable = false;
 	} else {
@@ -50,7 +50,7 @@ pub fn onOpen() void {
 	list.add(Label.init(.{0, 0}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\_\\___underlined__\\_\\_ \\~\\~~~strike-through~~\\~\\~", .center));
 	list.add(Label.init(.{0, 0}, width, "Even colors are possible, using the hexadecimal color code:", .center));
 	list.add(Label.init(.{0, 0}, width, "\\##ff0000ff#ffffff00#ffffff00#ff0000red#ffffff \\##ff0000ff#00770077#ffffff00#ff7700orange#ffffff \\##ffffff00#00ff00ff#ffffff00#00ff00green#ffffff \\##ffffff00#ffffff00#0000ffff#0000ffblue", .center));
-	textComponent = TextInput.init(.{0, 0}, width, 32, if(settings.playerName.len == 0) "quanturmdoelvloper" else settings.playerName, .{.onNewline = .init(apply)});
+	textComponent = TextInput.init(.{0, 0}, width, 32, if (settings.playerName.len == 0) "quanturmdoelvloper" else settings.playerName, .{.onNewline = .init(apply)});
 	list.add(textComponent);
 	list.add(Button.initText(.{0, 0}, 100, "Apply", .init(apply)));
 	list.finish(.center);
@@ -60,7 +60,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
