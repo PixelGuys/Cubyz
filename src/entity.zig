@@ -23,14 +23,18 @@ const EntityComponentVTable = struct {
 	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
 	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
 };
-var receiveList: [256]?EntityComponentVTable = @splat(null);
+var receiveList: main.ListUnmanaged(?EntityComponentVTable) = .{};
 
 pub fn initComponent() void {
 	inline for (@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).client.init();
 		const id = @field(components, decl.name).entityComponentID;
-		if (receiveList[id] == null) {
-			receiveList[id] = .{
+
+		if (receiveList.items.len < id) {
+			receiveList.appendNTimes(main.globalAllocator, null, id + 1 - receiveList.items.len);
+		}
+		if (receiveList.items[id] == null) {
+			receiveList.items[id] = .{
 				.server = @field(components, decl.name).server.loadFromData,
 				.client = @field(components, decl.name).client.load,
 			};
@@ -40,7 +44,7 @@ pub fn initComponent() void {
 	}
 }
 pub fn deinitComponent() void {
-	receiveList = @splat(null);
+	receiveList.deinit(main.globalAllocator);
 }
 
 pub const client = struct {
@@ -131,8 +135,10 @@ pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: 
 		const componentVersion: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentVersion correctly.");
 		const componentData = reader.readSliceWithSize() catch @panic("Couldn't read ComponentData");
 
+		if (componentID >= receiveList.items.len)
+			continue;
 		var componentReader = main.utils.BinaryReader.init(componentData);
-		if (receiveList[componentID]) |vtable| {
+		if (receiveList.items[componentID]) |vtable| {
 			switch (side) {
 				.serverSide => vtable.server(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (server side)"),
 				.clientSide => vtable.client(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (client side)"),
