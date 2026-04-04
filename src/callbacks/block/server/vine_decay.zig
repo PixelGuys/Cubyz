@@ -26,7 +26,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	const blockAbove = world.getBlock(wx, wy, wz +% 1) orelse return .ignored;
 	if (blockAbove.typ == params.block.typ) return .ignored;
-	if (!blockAbove.replacable()) return .ignored;
+	if (blockAbove.replacable()) return .ignored;
 
 	const blockAboveModel = blocks.meshes.model(blockAbove).model();
 	if (blockAboveModel.neighborFacingQuads[main.chunk.Neighbor.dirDown.toInt()].len != 0) return .ignored;
