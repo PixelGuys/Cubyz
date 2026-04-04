@@ -42,6 +42,43 @@ pub fn deinitComponent() void {
 	receiveList = @splat(null);
 }
 
+pub const EntityComponentLoadError = error{
+	DecodingBase64,
+	UnreadableID,
+	UnreadableVersion,
+	UnreadableComponentData,
+};
+// Analogous to Protocols.
+const EntityComponentVTable = struct {
+	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+};
+var receiveList: []?EntityComponentVTable = undefined;
+
+pub fn initComponent() void {
+	var tmpReceiveList: main.ListUnmanaged(?EntityComponentVTable) = .{};
+	inline for (@typeInfo(components).@"struct".decls) |decl| {
+		@field(components, decl.name).client.init();
+		const id = @field(components, decl.name).entityComponentID;
+
+		if (tmpReceiveList.items.len < id) {
+			tmpReceiveList.appendNTimes(main.worldArena, null, id + 1 - tmpReceiveList.items.len);
+		}
+		if (tmpReceiveList.items[id] == null) {
+			tmpReceiveList.items[id] = .{
+				.server = @field(components, decl.name).server.loadFromData,
+				.client = @field(components, decl.name).client.load,
+			};
+		} else {
+			std.log.err("entity components: Duplicate list id {}.", .{id});
+		}
+	}
+	receiveList = tmpReceiveList.items;
+}
+pub fn deinitComponent() void {
+	receiveList = undefined;
+}
+
 pub const client = struct {
 	pub fn init() void {
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
@@ -94,26 +131,25 @@ pub const server = struct {
 		}
 	}
 	pub fn componentsToBase64(allocator: main.heap.NeverFailingAllocator, entityID: u32, audience: main.entity.AudienceInfo) main.utils.Base64 {
-		var writer = main.utils.BinaryWriter.init(allocator);
+		var writer = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
 			if (@field(main.entity.components, decl.name).server.get(entityID)) |component| {
-				var writerComponent = main.utils.BinaryWriter.init(allocator);
+				var writerComponent = main.utils.BinaryWriter.init(main.stackAllocator);
 				defer writerComponent.deinit();
 
-				if (component.save(&writerComponent, audience)) {
+				if (component.save(&writerComponent, audience) == .save) {
 					writer.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentID);
 					writer.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentVersion);
 					writer.writeSliceWithSize(writerComponent.data.items);
 				}
 			}
 		}
-		const base64 = main.utils.Base64.toBase64(allocator, writer.data.items);
-		return base64;
+		return main.utils.Base64.toBase64(allocator, writer.data.items);
 	}
 
-	pub fn componentsRemoveAll(id: u32) void {
+	pub fn removeAllComponents(id: u32) void {
 		const list = main.entity.components;
 		inline for (@typeInfo(list).@"struct".decls) |decl| {
 			@field(list, decl.name).server.unload(id);
@@ -121,27 +157,36 @@ pub const server = struct {
 	}
 };
 
-pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: Side) void {
-	if (main.utils.fromBase64(main.stackAllocator, base64Data) catch null) |data| {
-		defer main.stackAllocator.free(data);
+pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: main.sync.Side) EntityComponentLoadError!void {
+	const data = main.utils.fromBase64(main.stackAllocator, base64Data) catch return EntityComponentLoadError.DecodingBase64;
+	defer main.stackAllocator.free(data);
 
-		var reader = main.utils.BinaryReader.init(data);
-		while (reader.remaining.len != 0) {
-			const componentID: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentID correctly.");
-			const componentVersion: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentVersion correctly.");
-			const componentData = reader.readSliceWithSize() catch @panic("Couldn't read ComponentData");
+	var reader = main.utils.BinaryReader.init(data);
+	var lastError: EntityComponentLoadError!void = {};
+	while (reader.remaining.len != 0) {
+		const componentID: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableID;
+		const componentVersion: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableVersion;
+		const componentData = reader.readSliceWithSize() catch return EntityComponentLoadError.UnreadableComponentData;
 
-			var componentReader = main.utils.BinaryReader.init(componentData);
-			if (receiveList[componentID]) |vtable| {
-				switch (side) {
-					.ServerSide => vtable.server(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (server side)"),
-					.ClientSide => vtable.client(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (client side)"),
-				}
-			} else {
-				std.log.err("unknown Component ID {} ", .{componentID});
+		if (componentID >= receiveList.len)
+			continue;
+		var componentReader = main.utils.BinaryReader.init(componentData);
+		if (receiveList[componentID]) |vtable| {
+			switch (side) {
+				.server => vtable.server(id, &componentReader, componentVersion) catch |err| {
+					lastError = err;
+					continue;
+				},
+				.client => vtable.client(id, &componentReader, componentVersion) catch |err| {
+					lastError = err;
+					continue;
+				},
 			}
+		} else {
+			std.log.err("unknown Component ID {} ", .{componentID});
 		}
 	}
+	return lastError;
 }
 
 // Depending on who the audience is, we want to serialize different informations.
@@ -150,4 +195,9 @@ pub const AudienceInfo = enum {
 	playerHimself,
 	playerNearby,
 	playerFaraway,
+};
+
+pub const ComponentSaveBehaviour = enum {
+	save,
+	discard,
 };

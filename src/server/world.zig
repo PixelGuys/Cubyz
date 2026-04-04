@@ -211,7 +211,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch (self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos),
+				.user => |user| return self.pos.getPriority(user.player().pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
@@ -275,7 +275,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if (self.source) |user| {
-				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(user.player().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -930,7 +930,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn loadPlayer(self: *ServerWorld, user: *User) void {
+	pub fn loadPlayer(self: *ServerWorld, user: *User) !void {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
@@ -949,15 +949,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
-		const player = &user.player;
+		const player = user.player();
+		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
 		if (playerData == .null) {
 			player.loadFrom(user.id, playerData, .ServerSide);
 			player.pos = @floatFromInt(self.spawn);
 
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
-			player.loadFrom(user.id, playerData.getChild("entity"), .ServerSide);
-
 			user.permissions.fromZon(playerData);
 
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
@@ -966,6 +965,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(Vec3d, "playerSpawnPos", @as(Vec3d, @floatFromInt(self.spawn)));
+		return loadingError;
 	}
 
 	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) main.items.Inventory.InventoryId {
@@ -984,7 +984,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			readerInput = "";
 		};
 		var reader: main.utils.BinaryReader = .init(readerInput);
-		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader, .{});
+		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, source, &reader, .{});
 	}
 
 	fn savePlayerInventory(allocator: NeverFailingAllocator, inv: main.items.Inventory) []const u8 {
@@ -1012,7 +1012,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("name", user.name);
 		playerZon.put("publicKey", user.newKeyString);
 
-		playerZon.put("entity", user.player.save(main.stackAllocator, .disk));
+		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 

@@ -95,7 +95,9 @@ pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	const fontScreenSize = fontBaseSize*screenUnits;
 
 	for (entities.items()) |ent| {
-		if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
+		if (ent.id == game.Player.id) continue; // don't render local player
+		if (ent.name.len == 0 and !settings.showPlayerIndexWithName) continue;
+
 		const pos3d = ent.getRenderPosition() - playerPos;
 		const pos4f = Vec4f{
 			@floatCast(pos3d[0]),
@@ -129,7 +131,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	defer mutex.unlock();
 	update();
 	pipeline.bind(null);
-	c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+	main.renderer.chunk_meshing.vao.bind();
 	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	modelTexture.bindTo(0);
 	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));

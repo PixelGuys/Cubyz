@@ -454,8 +454,8 @@ pub const Player = struct { // MARK: Player
 	};
 	pub const jumpHeight = 1.25;
 
-	fn loadFrom(zon: ZonElement) void {
-		super.loadFrom(id, zon, .ClientSide);
+	fn loadFrom(zon: ZonElement) !void {
+		try super.loadFrom(id, zon, .client);
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -669,7 +669,8 @@ pub const World = struct { // MARK: World
 		self.manager.deinit();
 		main.server.stop();
 
-		Player.super.deinit(.ClientSide);
+		Player.super.deinit(.client);
+
 		if (main.server.thread) |serverThread| {
 			serverThread.join();
 			main.server.thread = null;
@@ -698,8 +699,8 @@ pub const World = struct { // MARK: World
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.entityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .normal, .serverShared, .{.playerInventory = Player.id}, .{});
-		Player.loadFrom(zon.getChild("player"));
+		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
+		try Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
