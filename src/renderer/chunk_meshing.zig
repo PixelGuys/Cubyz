@@ -63,8 +63,7 @@ pub var occlusionTestUniforms: struct {
 	playerPositionInteger: c_int,
 	playerPositionFraction: c_int,
 } = undefined;
-pub var vao: c_uint = undefined;
-var vbo: c_uint = undefined;
+pub var vao: graphics.VertexArray = undefined;
 pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
 pub var lightBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(u32) = undefined;
 pub var chunkBuffer: graphics.LargeBuffer(ChunkData) = undefined;
@@ -127,12 +126,7 @@ pub fn init() void {
 		rawData[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 	}
 
-	c.glGenVertexArrays(1, &vao);
-	c.glBindVertexArray(vao);
-	c.glGenBuffers(1, &vbo);
-	c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, vbo);
-	c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, rawData.len*@sizeOf(u32), &rawData, c.GL_STATIC_DRAW);
-	c.glBindVertexArray(0);
+	vao = .init(graphics.VertexArray.EmptyVertex, &.{}, &rawData);
 
 	for (0..settings.highestSupportedLod + 1) |i| {
 		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3);
@@ -149,8 +143,7 @@ pub fn deinit() void {
 	transparentPipeline.deinit();
 	occlusionTestPipeline.deinit();
 	commandPipeline.deinit();
-	c.glDeleteVertexArrays(1, &vao);
-	c.glDeleteBuffers(1, &vbo);
+	vao.deinit();
 	for (0..settings.highestSupportedLod + 1) |i| {
 		faceBuffers[i].deinit();
 		lightBuffers[i].deinit();
@@ -205,7 +198,7 @@ pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d
 
 	bindCommonUniforms(&uniforms, projMatrix, ambient, playerPos);
 
-	c.glBindVertexArray(vao);
+	vao.bind();
 }
 
 pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
@@ -218,7 +211,7 @@ pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playe
 
 	bindCommonUniforms(&transparentUniforms, projMatrix, ambient, playerPos);
 
-	c.glBindVertexArray(vao);
+	vao.bind();
 }
 
 fn bindBuffers(lod: usize) void {
@@ -269,7 +262,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniformMatrix4fv(occlusionTestUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
-	c.glBindVertexArray(vao);
+	vao.bind();
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 
