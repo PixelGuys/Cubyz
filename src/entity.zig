@@ -27,18 +27,19 @@ const EntityComponentVTable = struct {
 	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
 	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
 };
-var receiveList: main.ListUnmanaged(?EntityComponentVTable) = .{};
+var receiveList: []?EntityComponentVTable = &.{};
 
 pub fn initComponent() void {
+	var tmpReceiveList: main.ListUnmanaged(?EntityComponentVTable) = .{};
 	inline for (@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).client.init();
 		const id = @field(components, decl.name).entityComponentID;
 
-		if (receiveList.items.len < id) {
-			receiveList.appendNTimes(main.globalAllocator, null, id + 1 - receiveList.items.len);
+		if (tmpReceiveList.items.len < id) {
+			tmpReceiveList.appendNTimes(main.worldArena, null, id + 1 - tmpReceiveList.items.len);
 		}
-		if (receiveList.items[id] == null) {
-			receiveList.items[id] = .{
+		if (tmpReceiveList.items[id] == null) {
+			tmpReceiveList.items[id] = .{
 				.server = @field(components, decl.name).server.loadFromData,
 				.client = @field(components, decl.name).client.load,
 			};
@@ -46,9 +47,10 @@ pub fn initComponent() void {
 			std.log.err("entity components: Duplicate list id {}.", .{id});
 		}
 	}
+	receiveList = tmpReceiveList.items;
 }
 pub fn deinitComponent() void {
-	receiveList.deinit(main.globalAllocator);
+	receiveList = &.{};
 }
 
 pub const client = struct {
@@ -139,10 +141,10 @@ pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: 
 		const componentVersion: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableVersion;
 		const componentData = reader.readSliceWithSize() catch return EntityComponentLoadError.UnreadableComponentData;
 
-		if (componentID >= receiveList.items.len)
+		if (componentID >= receiveList.len)
 			continue;
 		var componentReader = main.utils.BinaryReader.init(componentData);
-		if (receiveList.items[componentID]) |vtable| {
+		if (receiveList[componentID]) |vtable| {
 			switch (side) {
 				.serverSide => return vtable.server(id, &componentReader, componentVersion),
 				.clientSide => return vtable.client(id, &componentReader, componentVersion),
