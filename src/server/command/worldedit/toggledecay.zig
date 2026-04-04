@@ -88,7 +88,7 @@ pub fn execute(argsString: []const u8, source: *User) void {
 		},
 	};
 
-	blueprint.apply(ToggleDecay, .{.decayState = (args.decayState == .on)});
+	blueprint.apply(args.decayState, toggledecay);
 
 	switch (args.target) {
 		.selection => {
@@ -108,18 +108,14 @@ pub fn execute(argsString: []const u8, source: *User) void {
 	}
 }
 
-const ToggleDecay = struct {
-	decayState: bool,
-
-	pub fn apply(self: ToggleDecay, current: Block) Block {
-		if (current.mode() == main.rotation.getByID("cubyz:branch")) {
-			var branchData = main.rotation.list.@"cubyz:branch".BranchData.init(current.data);
-			branchData.placedByHuman = !self.decayState;
-			return .{.typ = current.typ, .data = @as(u7, @bitCast(branchData))};
-		}
-		if (current.mode() == main.rotation.getByID("cubyz:decayable")) {
-			return .{.typ = current.typ, .data = @intFromBool(!self.decayState)};
-		}
-		return current;
+pub fn toggledecay(decayState: State, current: Block) Block {
+	if (current.mode() == main.rotation.getByID("cubyz:branch")) {
+		var branchData = main.rotation.list.@"cubyz:branch".BranchData.init(current.data);
+		branchData.placedByHuman = decayState == .off;
+		return .{.typ = current.typ, .data = @as(u7, @bitCast(branchData))};
 	}
-};
+	if (current.mode() == main.rotation.getByID("cubyz:decayable")) {
+		return .{.typ = current.typ, .data = @intFromBool(decayState == .off)};
+	}
+	return current;
+}
