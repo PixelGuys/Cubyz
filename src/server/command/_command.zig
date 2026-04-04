@@ -70,7 +70,7 @@ pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *Use
 			output[i] = try parseAxis(split.next() orelse {
 				source.sendMessage("#ff0000Too few arguments for position", .{});
 				return error.TooFewArguments;
-			}, source.player.pos[i], source);
+			}, source.player().pos[i], source);
 		}
 		break :blk output;
 	};

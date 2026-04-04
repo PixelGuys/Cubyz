@@ -902,9 +902,7 @@ pub fn uploadModels() void {
 }
 
 pub const EntityModel = struct {
-	vao: c_uint,
-	vbo: c_uint,
-	ebo: c_uint,
+	vao: graphics.VertexArray = undefined,
 	indexCount: c_int,
 	texture: main.graphics.Texture,
 
@@ -912,6 +910,24 @@ pub const EntityModel = struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
+
+		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
+			.{
+				.location = 0,
+				.format = c.VK_FORMAT_R32G32B32_SFLOAT,
+				.offset = @offsetOf(@This(), "pos"),
+			},
+			.{
+				.location = 1,
+				.format = c.VK_FORMAT_R32G32B32_SFLOAT,
+				.offset = @offsetOf(@This(), "normal"),
+			},
+			.{
+				.location = 2,
+				.format = c.VK_FORMAT_R32G32_SFLOAT,
+				.offset = @offsetOf(@This(), "uv"),
+			},
+		};
 	};
 
 	pub fn initFromObj(modelPath: []const u8, texturePath: []const u8) EntityModel {
@@ -944,49 +960,15 @@ pub const EntityModel = struct {
 			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 		}
 
-		var model = uploadMeshAndGetModel(vertices, indices);
-		model.texture = texture;
-		return model;
-	}
-
-	fn uploadMeshAndGetModel(vertices: []EntityVertex, indices: []u32) EntityModel {
-		var vao: c_uint = 0;
-		c.glGenVertexArrays(1, &vao);
-		c.glBindVertexArray(vao);
-
-		var vbo: c_uint = 0;
-		c.glGenBuffers(1, &vbo);
-		var ebo: c_uint = 0;
-		c.glGenBuffers(1, &ebo);
-
-		const vertSize = @sizeOf(EntityVertex);
-
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len*vertSize), @ptrCast(vertices), c.GL_STATIC_DRAW);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), @ptrCast(indices), c.GL_STATIC_DRAW);
-
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@intFromPtr(&@as(*allowzero EntityVertex, @ptrFromInt(0)).pos));
-		c.glEnableVertexAttribArray(0);
-		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, vertSize, &@intFromPtr(&@as(*allowzero EntityVertex, @ptrFromInt(0)).normal));
-		c.glEnableVertexAttribArray(1);
-		c.glVertexAttribPointer(2, 2, c.GL_FLOAT, c.GL_FALSE, vertSize, &@intFromPtr(&@as(*allowzero EntityVertex, @ptrFromInt(0)).uv));
-		c.glEnableVertexAttribArray(2);
-
-		c.glBindVertexArray(0);
-
 		return .{
-			.vao = vao,
-			.vbo = vbo,
-			.ebo = ebo,
+			.vao = .init(EntityVertex, vertices, indices),
+			.texture = texture,
 			.indexCount = @intCast(indices.len),
 		};
 	}
 
 	pub fn deinit(self: EntityModel) void {
-		c.glDeleteVertexArrays(1, &self.vao);
-		c.glDeleteBuffers(1, &self.vbo);
-		c.glDeleteBuffers(1, &self.ebo);
+		self.vao.deinit();
 		self.texture.deinit();
 	}
 };
