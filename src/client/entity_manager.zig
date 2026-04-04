@@ -29,7 +29,7 @@ var uniforms: struct {
 	nodeMatrices: c_int,
 } = undefined;
 
-pub var model: main.models.EntityModel = undefined;
+pub var model: main.entityModel.EntityModel = undefined;
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
@@ -46,7 +46,7 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	model = main.models.EntityModel.initFromGltf("assets/cubyz/entities/models/snale.glb", "assets/cubyz/entities/textures/snale.png") catch |err| blk: {
+	model = main.entityModel.EntityModel.initFromGltf("assets/cubyz/entities/models/snale.glb", "assets/cubyz/entities/textures/snale.png") catch |err| blk: {
 		std.log.err("Gltf loading error {s}", .{@errorName(err)});
 		break :blk .initEmpty();
 	};
