@@ -5,6 +5,7 @@
 		.{.id = "cubyz:tree/oak/young/base/2"},
 		.{.id = "cubyz:tree/oak/young/base/3"},
 		.{.id = "cubyz:tree/oak/young/base/4"},
+		.{.id = "cubyz:tree/oak/young/base/5"},
 	},
 	.children = .{
 		.brown = "cubyz:tree/oak/young/exposed_root",

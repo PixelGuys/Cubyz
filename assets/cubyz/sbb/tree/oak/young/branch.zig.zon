@@ -6,7 +6,7 @@
 		.{.id = "cubyz:tree/oak/young/branch/3", .chance = 0.3},
 		.{.id = "cubyz:tree/oak/young/branch/4", .chance = 0.3},
 		.{.id = "cubyz:tree/oak/young/branch/5", .chance = 0.3},
-		.{.id = "cubyz:deco/bolete_side", .chance = 0.2},
+		.{.id = "cubyz:deco/bolete_side", .chance = 0.3},
 		.{.id = null},
 	},
 }
