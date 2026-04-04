@@ -94,12 +94,12 @@ pub const server = struct {
 		}
 	}
 	pub fn componentsToBase64(allocator: main.heap.NeverFailingAllocator, entityID: u32, audience: main.entity.AudienceInfo) main.utils.Base64 {
-		var writer = main.utils.BinaryWriter.init(allocator);
+		var writer = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
 			if (@field(main.entity.components, decl.name).server.get(entityID)) |component| {
-				var writerComponent = main.utils.BinaryWriter.init(allocator);
+				var writerComponent = main.utils.BinaryWriter.init(main.stackAllocator);
 				defer writerComponent.deinit();
 
 				if (component.save(&writerComponent, audience) == .save) {
@@ -113,7 +113,7 @@ pub const server = struct {
 		return base64;
 	}
 
-	pub fn componentsRemoveAll(id: u32) void {
+	pub fn removeAllComponents(id: u32) void {
 		const list = main.entity.components;
 		inline for (@typeInfo(list).@"struct".decls) |decl| {
 			@field(list, decl.name).server.unload(id);
