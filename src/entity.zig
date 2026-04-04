@@ -15,7 +15,7 @@ pub const EntityNetworkData = struct {
 	vel: Vec3d,
 	rot: Vec3f,
 };
-pub const Side = enum { ClientSide, ServerSide };
+pub const Side = enum { clientSide, serverSide };
 
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
@@ -134,8 +134,8 @@ pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: 
 			var componentReader = main.utils.BinaryReader.init(componentData);
 			if (receiveList[componentID]) |vtable| {
 				switch (side) {
-					.ServerSide => vtable.server(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (server side)"),
-					.ClientSide => vtable.client(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (client side)"),
+					.serverSide => vtable.server(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (server side)"),
+					.clientSide => vtable.client(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (client side)"),
 				}
 			} else {
 				std.log.err("unknown Component ID {} ", .{componentID});

@@ -951,12 +951,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		const player = &user.player;
 		if (playerData == .null) {
-			player.loadFrom(user.id, playerData, .ServerSide);
+			player.loadFrom(user.id, playerData, .serverSide);
 			player.pos = @floatFromInt(self.spawn);
 
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
-			player.loadFrom(user.id, playerData.getChild("entity"), .ServerSide);
+			player.loadFrom(user.id, playerData.getChild("entity"), .serverSide);
 
 			user.permissions.fromZon(playerData);
 

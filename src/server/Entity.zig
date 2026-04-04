@@ -65,7 +65,7 @@ pub fn deinit(self: *@This(), comptime side: main.entity.Side) void {
 		main.globalAllocator.free(name);
 		self.name = null;
 	}
-	if (side == .ServerSide) {
+	if (side == .serverSide) {
 		main.entity.server.componentsRemoveAll(self.id);
 	}
 }
