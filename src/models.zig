@@ -948,7 +948,7 @@ pub const EntityModel = struct {
 			},
 			.{
 				.location = 3,
-				.format = c.VK_FORMAT_R32G32_SFLOAT,
+				.format = c.VK_FORMAT_R32_UINT,
 				.offset = @offsetOf(@This(), "nodeID"),
 			},
 		};
