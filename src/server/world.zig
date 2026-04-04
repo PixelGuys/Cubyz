@@ -952,7 +952,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const player = user.player();
 		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
 		if (playerData == .null) {
-			player.loadFrom(user.id, playerData, .ServerSide);
 			player.pos = @floatFromInt(self.spawn);
 
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
