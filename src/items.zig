@@ -162,6 +162,25 @@ const Modifier = struct {
 		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
+
+		const Defaults = struct {
+			pub fn changeToolParameters(_: *Tool, _: Data) void {}
+			pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
+				return damage;
+			}
+		};
+
+		pub fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
+			var self: VTable = undefined;
+			self.changeToolParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeToolParameters")) &ModifierStruct.changeToolParameters else &VTable.Defaults.changeToolParameters);
+			self.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage);
+			self.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers);
+			self.printTooltip = @ptrCast(&ModifierStruct.printTooltip);
+			self.loadData = @ptrCast(&ModifierStruct.loadData);
+			self.priority = ModifierStruct.priority;
+
+			return self;
+		}
 	};
 
 	pub fn combineModifiers(a: Modifier, b: Modifier) ?Modifier {
@@ -1168,14 +1187,8 @@ pub fn globalInit() void {
 	itemListSize = 0;
 	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
 		const ModifierStruct = @field(modifierList, decl.name);
-		modifiers.put(main.globalArena.allocator, decl.name, &.{
-			.changeToolParameters = @ptrCast(&ModifierStruct.changeToolParameters),
-			.changeBlockDamage = @ptrCast(&ModifierStruct.changeBlockDamage),
-			.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
-			.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
-			.loadData = @ptrCast(&ModifierStruct.loadData),
-			.priority = ModifierStruct.priority,
-		}) catch unreachable;
+		const vtable: Modifier.VTable = .initFromModifierStruct(ModifierStruct);
+		modifiers.put(main.globalArena.allocator, decl.name, &vtable) catch unreachable;
 	}
 	inline for (@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
 		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
