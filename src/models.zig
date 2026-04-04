@@ -967,6 +967,11 @@ pub const EntityModel = struct {
 		};
 	}
 
+	pub fn bind(self: EntityModel) void {
+		self.vao.bind();
+		self.texture.bindTo(0);
+	}
+
 	pub fn deinit(self: EntityModel) void {
 		self.vao.deinit();
 		self.texture.deinit();
