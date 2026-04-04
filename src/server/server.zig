@@ -183,7 +183,7 @@ pub const User = struct { // MARK: User
 
 		self.worldEditData.deinit();
 
-		self.player.deinit(.server);
+		self.player().deinit(.server);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -755,7 +755,7 @@ pub fn connectInternal(user: *User) void {
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 
-		const entityZon = user.player.save(main.stackAllocator, .playerNearby);
+		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
 		entityZon.put("name", user.name);
 		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
@@ -769,7 +769,7 @@ pub fn connectInternal(user: *User) void {
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
-			const entityZon = other.player.save(main.stackAllocator, .playerNearby);
+			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
 			entityZon.put("name", other.name);
 			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);
