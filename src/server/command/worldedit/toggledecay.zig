@@ -10,7 +10,7 @@ const Pattern = main.blueprint.Pattern;
 
 pub const description = "Enable/disable decay on decayable blocks.";
 pub const usage =
-	\\/decay <selection/clipboard> <on/off>
+	\\/toggledecay <selection/clipboard> <on/off>
 ;
 
 const Target = enum { selection, clipboard };
