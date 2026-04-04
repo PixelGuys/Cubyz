@@ -109,8 +109,7 @@ pub const server = struct {
 				}
 			}
 		}
-		const base64 = main.utils.Base64.toBase64(allocator, writer.data.items);
-		return base64;
+		return main.utils.Base64.toBase64(allocator, writer.data.items);
 	}
 
 	pub fn removeAllComponents(id: u32) void {
