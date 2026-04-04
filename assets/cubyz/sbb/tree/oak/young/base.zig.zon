@@ -8,5 +8,6 @@
 	},
 	.children = .{
 		.brown = "cubyz:tree/oak/young/exposed_root",
+		.green = "cubyz:tree/oak/young/branch",
 	},
 }

@@ -1,7 +1,7 @@
 .{
 	.blueprints = .{
 		.{.id = "cubyz:tree/oak/young/exposed_root/0", .chance = 0.4},
-		.{.id = "cubyz:tree/oak/young/exposed_root/0", .chance = 0.4},
+		.{.id = "cubyz:tree/oak/young/exposed_root/1", .chance = 0.4},
 		.{.id = null},
 	},
 }
