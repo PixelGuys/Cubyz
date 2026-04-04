@@ -173,11 +173,11 @@ pub const Rotation = union(RotationMode) {
 		@"270" = 3,
 	};
 
-	pub fn apply(self: Rotation, rotation: FixedRotation) FixedRotation {
-		return switch (self) {
+	pub fn apply(self: Rotation, rotation: FixedRotation) Rotation {
+		return .{.fixed = switch (self) {
 			.fixed => |fixed| @enumFromInt(@intFromEnum(rotation) +% @intFromEnum(fixed)),
 			.random, .inherit => rotation,
-		};
+		}};
 	}
 	pub fn getInitialRotation(self: Rotation, seed: *u64) Rotation {
 		return switch (self) {

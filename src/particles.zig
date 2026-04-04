@@ -338,7 +338,7 @@ pub const ParticleSystem = struct {
 		c.glActiveTexture(c.GL_TEXTURE1);
 		ParticleManager.emissionTextureArray.bind();
 
-		c.glBindVertexArray(chunk_meshing.vao);
+		chunk_meshing.vao.bind();
 
 		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
 		const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;
