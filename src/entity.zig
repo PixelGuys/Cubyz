@@ -15,32 +15,6 @@ pub const EntityNetworkData = struct {
 	vel: Vec3d,
 	rot: Vec3f,
 };
-pub const Side = enum { ClientSide, ServerSide };
-
-// Analogous to Protocols.
-const EntityComponentVTable = struct {
-	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) anyerror!void,
-	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) anyerror!void,
-};
-var receiveList: [256]?EntityComponentVTable = @splat(null);
-
-pub fn initComponent() void {
-	inline for (@typeInfo(components).@"struct".decls) |decl| {
-		@field(components, decl.name).client.init();
-		const id = @field(components, decl.name).entityComponentID;
-		if (receiveList[id] == null) {
-			receiveList[id] = .{
-				.server = @field(components, decl.name).server.loadFromData,
-				.client = @field(components, decl.name).client.load,
-			};
-		} else {
-			std.log.err("entity components: Duplicate list id {}.", .{id});
-		}
-	}
-}
-pub fn deinitComponent() void {
-	receiveList = @splat(null);
-}
 
 pub const EntityComponentLoadError = error{
 	DecodingBase64,
