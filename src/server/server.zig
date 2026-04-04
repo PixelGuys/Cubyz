@@ -116,6 +116,7 @@ pub const User = struct { // MARK: User
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 	spawnPos: Vec3d = .{0, 0, 0},
 	worldEditData: WorldEditData = undefined,
+	mayJoin: ServerWorld.mayJoinState = undefined,
 
 	playerIndex: usize = undefined,
 
@@ -728,7 +729,6 @@ pub fn connect(user: *User) void {
 }
 
 pub fn connectInternal(user: *User) void {
-	user.initPlayer();
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);

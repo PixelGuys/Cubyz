@@ -1600,11 +1600,13 @@ pub const Connection = struct { // MARK: Connection
 
 	pub fn receive(self: *Connection, data: []const u8) void {
 		self.tryReceive(data) catch |err| {
-			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
-			if (@errorReturnTrace()) |trace| {
-				std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
+			if (err != error.Denied) {
+				std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
+				if (@errorReturnTrace()) |trace| {
+					std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
+				}
+				std.log.debug("Packet data: {any}", .{data});
 			}
-			std.log.debug("Packet data: {any}", .{data});
 			self.disconnect();
 		};
 	}
