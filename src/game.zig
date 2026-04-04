@@ -455,7 +455,7 @@ pub const Player = struct { // MARK: Player
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) !void {
-		try super.loadFrom(id, zon, .clientSide);
+		try super.loadFrom(id, zon, .client);
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -669,7 +669,7 @@ pub const World = struct { // MARK: World
 		self.manager.deinit();
 		main.server.stop();
 
-		Player.super.deinit(.clientSide);
+		Player.super.deinit(.client);
 
 		if (main.server.thread) |serverThread| {
 			serverThread.join();

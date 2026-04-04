@@ -15,9 +15,9 @@ pub const EntityNetworkData = struct {
 	vel: Vec3d,
 	rot: Vec3f,
 };
-pub const Side = enum { clientSide, serverSide };
 
 pub const EntityComponentLoadError = error{
+	DecodingBase64,
 	UnreadableID,
 	UnreadableVersion,
 	UnreadableComponentData,
@@ -131,11 +131,12 @@ pub const server = struct {
 	}
 };
 
-pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: Side) EntityComponentLoadError!void {
-	const data = main.utils.fromBase64(main.stackAllocator, base64Data) catch return;
+pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: main.sync.Side) EntityComponentLoadError!void {
+	const data = main.utils.fromBase64(main.stackAllocator, base64Data) catch return EntityComponentLoadError.DecodingBase64;
 	defer main.stackAllocator.free(data);
 
 	var reader = main.utils.BinaryReader.init(data);
+	var lastError: EntityComponentLoadError!void = {};
 	while (reader.remaining.len != 0) {
 		const componentID: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableID;
 		const componentVersion: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableVersion;
@@ -146,13 +147,20 @@ pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: 
 		var componentReader = main.utils.BinaryReader.init(componentData);
 		if (receiveList[componentID]) |vtable| {
 			switch (side) {
-				.serverSide => return vtable.server(id, &componentReader, componentVersion),
-				.clientSide => return vtable.client(id, &componentReader, componentVersion),
+				.server => vtable.server(id, &componentReader, componentVersion) catch |err| {
+					lastError = err;
+					continue;
+				},
+				.client => vtable.client(id, &componentReader, componentVersion) catch |err| {
+					lastError = err;
+					continue;
+				},
 			}
 		} else {
 			std.log.err("unknown Component ID {} ", .{componentID});
 		}
 	}
+	return lastError;
 }
 
 // Depending on who the audience is, we want to serialize different informations.

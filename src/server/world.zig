@@ -950,7 +950,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
 		const player = &user.player;
-		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .serverSide);
+		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 

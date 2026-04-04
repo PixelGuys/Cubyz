@@ -179,7 +179,7 @@ pub const User = struct { // MARK: User
 
 		self.worldEditData.deinit();
 
-		self.player.deinit(.serverSide);
+		self.player.deinit(.server);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -246,7 +246,7 @@ pub const User = struct { // MARK: User
 		freeId += 1;
 
 		world.?.loadPlayer(self) catch {
-			std.log.err("Error while loading player data {s} ", .{self.name});
+			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.loadUnloadChunks();
