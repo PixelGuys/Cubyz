@@ -1000,7 +1000,7 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		writer.writeInt(u32, entityID);
 		writer.writeEnum(ActionType, ActionType.reset);
 		writer.writeSliceWithSize(componentID);
-		
+
 		conn.send(.secure, id, writer.data.items);
 	}
 	pub fn set(conn: *Connection, entityID: u32, componentID: []const u8, version: u32, componentData: []const u8) void {
