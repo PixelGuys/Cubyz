@@ -975,10 +975,10 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		const componentID = try reader.readSliceWithSize();
 
 		if (actionType == .set) {
+			const version = reader.readVarInt(u32) catch std.math.maxInt(u32);
 			const list = main.entity.components;
 			inline for (@typeInfo(list).@"struct".decls) |decl| {
 				if (std.mem.eql(u8, decl.name, componentID)) {
-					const version = reader.readVarInt(u32) catch std.math.maxInt(u32);
 					@field(list, decl.name).client.load(entityID, reader, version) catch unreachable;
 					break;
 				}
@@ -1010,6 +1010,7 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		writer.writeInt(u32, entityID);
 		writer.writeEnum(ActionType, ActionType.set);
 		writer.writeSliceWithSize(componentID);
+		
 		writer.writeVarInt(u32, version);
 		writer.writeSlice(componentData);
 
