@@ -102,7 +102,7 @@ pub const server = struct {
 				var writerComponent = main.utils.BinaryWriter.init(allocator);
 				defer writerComponent.deinit();
 
-				if (component.save(&writerComponent, audience)) {
+				if (component.save(&writerComponent, audience) == .save) {
 					writer.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentID);
 					writer.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentVersion);
 					writer.writeSliceWithSize(writerComponent.data.items);
@@ -150,4 +150,9 @@ pub const AudienceInfo = enum {
 	playerHimself,
 	playerNearby,
 	playerFaraway,
+};
+
+pub const ComponentSaveBehaviour = enum {
+	save,
+	discard,
 };
