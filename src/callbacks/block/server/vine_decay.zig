@@ -29,7 +29,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	if (!blockAbove.replacable()) return .ignored;
 
 	const blockAboveModel = blocks.meshes.model(blockAbove).model();
-	if (blockAboveModel.isNeighborOccluded[main.chunk.Neighbor.dirDown.toInt()]) return .ignored;
+	if (blockAboveModel.neighborFacingQuads[main.chunk.Neighbor.dirDown.toInt()].len != 0) return .ignored;
 
 	if (world.cmpxchgBlock(wx, wy, wz, thisBlock, blocks.Block.air) == null) {
 		return .handled;
