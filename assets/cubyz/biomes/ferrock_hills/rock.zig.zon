@@ -10,7 +10,6 @@
 	.roughness = 40,
 	.chance = 0,
 	.hills = 80,
-	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
 	.stoneBlock = "cubyz:ferrock/base",
 	.structures = .{
@@ -20,6 +19,18 @@
 			.block = "cubyz:clay",
 			.size = 5,
 			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cactus/saguaro",
+			.placeMode = .degradable,
+			.chance = 0.004,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cactus/young",
+			.placeMode = .degradable,
+			.chance = 0.002,
 		},
 	},
 	.parentBiomes = .{
