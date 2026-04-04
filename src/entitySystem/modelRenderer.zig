@@ -32,7 +32,7 @@ const random = main.random;
 const entityComponent = main.entityComponent;
 
 // ############################# Client only stuff ################################
-pub const Client = struct {
+pub const client = struct {
 	var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 
 	var uniforms: struct {
@@ -60,8 +60,8 @@ pub const Client = struct {
 	pub fn clear() void {}
 
 	pub fn renderInfo(projMatrix: Mat4f, _: Vec3f, playerPos: Vec3d) void {
-		main.clientEntity.ClientEntityManager.mutex.lock();
-		defer main.clientEntity.ClientEntityManager.mutex.unlock();
+		main.entity.ClientEntityManager.mutex.lock();
+		defer main.entity.ClientEntityManager.mutex.unlock();
 
 		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
 		const fontBaseSize = 128.0;
@@ -70,7 +70,7 @@ pub const Client = struct {
 
 		var it = entityComponent.model.Client.renderComponents.iterator();
 		while (it.next()) |component| {
-			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
+			const ent = main.entity.ClientEntityManager.getEntity(component.value_ptr.entity);
 			const entModel = component.value_ptr.entityModel.get();
 
 			if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
@@ -100,8 +100,8 @@ pub const Client = struct {
 		}
 	}
 	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-		main.clientEntity.ClientEntityManager.mutex.lock();
-		defer main.clientEntity.ClientEntityManager.mutex.unlock();
+		main.entity.ClientEntityManager.mutex.lock();
+		defer main.entity.ClientEntityManager.mutex.unlock();
 		pipeline.bind(null);
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
@@ -110,7 +110,7 @@ pub const Client = struct {
 
 		var it = entityComponent.model.Client.renderComponents.iterator();
 		while (it.next()) |component| {
-			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
+			const ent = main.entity.ClientEntityManager.getEntity(component.value_ptr.entity);
 			const entModel = component.value_ptr.entityModel.get();
 
 			if (ent.id == game.Player.id) continue; // don't render local player
@@ -145,7 +145,10 @@ pub const Client = struct {
 	}
 };
 // ############################# Server only stuff ################################
-pub const Server = struct {
+pub const server = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
+
+	pub fn update() void {}
+
 };

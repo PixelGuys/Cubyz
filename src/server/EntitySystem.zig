@@ -26,11 +26,11 @@ pub var entities: main.utils.VirtualList(server.Entity, 1 << 24) = undefined;
 
 pub fn init() void {
 	entities = .init();
-	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
-		@field(main.entityComponent, decl.name).Server.init();
+	inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+		@field(main.entity.components, decl.name).server.init();
 	}
-	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
-		@field(main.entitySystem, decl.name).Server.init();
+	inline for (@typeInfo(main.entity.systems).@"struct".decls) |decl| {
+		@field(main.entity.systems, decl.name).server.init();
 	}
 }
 pub fn getAll() []server.Entity {
@@ -39,15 +39,15 @@ pub fn getAll() []server.Entity {
 
 pub fn deinit() void {
 	for (entities.items()) |*value| {
-		value.deinit(.ServerSide);
+		value.deinit(.server);
 	}
 	entities.deinit();
 
-	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
-		@field(main.entityComponent, decl.name).Server.deinit();
+	inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+		@field(main.entity.components, decl.name).server.deinit();
 	}
-	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
-		@field(main.entitySystem, decl.name).Server.deinit();
+	inline for (@typeInfo(main.entity.systems).@"struct".decls) |decl| {
+		@field(main.entity.systems, decl.name).server.deinit();
 	}
 }
 
@@ -63,12 +63,12 @@ pub fn add() u32 {
 pub fn remove(entityID: u32) void {
 	for (entities.items()) |*value| {
 		if (value.id == entityID) {
-			value.deinit(.ServerSide);
+			value.deinit(.server);
 			value.inUse = false;
 
-			const list = main.entityComponent;
+			const list = main.entity.components;
 			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				@field(list, decl.name).Server.unregister(entityID);
+				@field(list, decl.name).server.unload(entityID);
 			}
 			return;
 		}
@@ -87,7 +87,7 @@ pub fn getEntitiesBasicInfo() main.ZonElement {
 	for (entities.items(), 0..) |entity, i| {
 		if (!entity.inUse)
 			continue;
-		const entityZon = entity.save(main.stackAllocator);
+		const entityZon = entity.save(main.stackAllocator, .playerNearby);
 		// const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", i);
 		// entityZon.put("name", entity.name);
@@ -99,7 +99,7 @@ pub fn getEntitiesBasicInfo() main.ZonElement {
 }
 pub fn getEntityBasicInfo(id: u32, array: *main.List(main.ZonElement)) void {
 	const entity = entities.items()[id];
-	const entityZon = entity.save(main.stackAllocator);
+	const entityZon = entity.save(main.stackAllocator,.playerNearby);
 	// const entityZon = main.ZonElement.initObject(main.stackAllocator);
 	entityZon.put("id", id);
 	// entityZon.put("name", entity.name);

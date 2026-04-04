@@ -30,7 +30,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		const summoned = main.server.EntitySystem.getEntity(id);
 		source.player().clone(summoned);
 
-		main.entityComponent.model.Server.registerByIndex(id, entityModel, null);
+		main.entity.components.@"cubyz:model".server.loadByIndex(id, entityModel, null);
 
 		if (valueName) |name| {
 			if (summoned.name) |old| {

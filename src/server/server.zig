@@ -252,7 +252,7 @@ pub const User = struct { // MARK: User
 
 		if (world.?.playerEntityModels.items.len != 0) {
 			const defaultModel = world.?.playerEntityModels.items[main.random.nextInt(u32, &main.seed)%world.?.playerEntityModels.items.len];
-			main.entityComponent.model.Server.registerByID(self.id, defaultModel, null);
+			main.entity.components.@"cubyz:model".server.loadByID(self.id, defaultModel, null);
 		}
 
 		world.?.loadPlayer(self) catch {
@@ -637,7 +637,7 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (EntitySystem.getAll(), 0..) |ent, id| {
