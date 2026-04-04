@@ -34,7 +34,7 @@ pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
-	pub fn load(id: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityLoadError!void {
+	pub fn load(id: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = id;
 		_ = reader;
 		_ = version;
@@ -63,7 +63,7 @@ pub const server = struct {
 		_ = id;
 		return null;
 	}
-	pub fn loadFromData(id: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityLoadError!void {
+	pub fn loadFromData(id: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = id;
 		_ = reader;
 		_ = version;

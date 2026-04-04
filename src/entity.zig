@@ -17,11 +17,11 @@ pub const EntityNetworkData = struct {
 };
 pub const Side = enum { clientSide, serverSide };
 
-pub const EntityLoadError = error{};
+pub const EntityComponentLoadError = error{};
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
-	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityLoadError!void,
-	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityLoadError!void,
+	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
 };
 var receiveList: [256]?EntityComponentVTable = @splat(null);
 
