@@ -27,7 +27,7 @@ const EntityComponentVTable = struct {
 	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
 	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
 };
-var receiveList: []?EntityComponentVTable = &.{};
+var receiveList: []?EntityComponentVTable = undefined;
 
 pub fn initComponent() void {
 	var tmpReceiveList: main.ListUnmanaged(?EntityComponentVTable) = .{};
@@ -50,7 +50,7 @@ pub fn initComponent() void {
 	receiveList = tmpReceiveList.items;
 }
 pub fn deinitComponent() void {
-	receiveList = &.{};
+	receiveList = undefined;
 }
 
 pub const client = struct {
