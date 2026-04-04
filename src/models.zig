@@ -906,7 +906,7 @@ pub const EntityModel = struct {
 	vbo: c_uint,
 	ebo: c_uint,
 	indexCount: c_int,
-	texture: main.graphics.Texture = undefined,
+	texture: main.graphics.Texture,
 
 	const EntityVertex = extern struct {
 		pos: [3]f32,
@@ -914,8 +914,8 @@ pub const EntityModel = struct {
 		uv: [2]f32,
 	};
 
-	pub fn initFromObj(path: []const u8) EntityModel {
-		const modelFile = main.files.cwd().read(main.stackAllocator, path) catch |err| blk: {
+	pub fn initFromObj(modelPath: []const u8, texturePath: []const u8) EntityModel {
+		const modelFile = main.files.cwd().read(main.stackAllocator, modelPath) catch |err| blk: {
 			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
 			break :blk &.{};
 		};
@@ -927,6 +927,8 @@ pub const EntityModel = struct {
 		defer main.stackAllocator.free(vertices);
 		const indices: []u32 = main.stackAllocator.alloc(u32, quadInfos.len*6);
 		defer main.stackAllocator.free(indices);
+
+		const texture = main.graphics.Texture.initFromFile(texturePath);
 
 		for (quadInfos, 0..quadInfos.len) |quad, i| {
 			for (0..4) |j| {
@@ -942,11 +944,9 @@ pub const EntityModel = struct {
 			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 		}
 
-		return uploadMeshAndGetModel(vertices, indices);
-	}
-
-	pub fn loadTextureFromFile(self: *EntityModel, path: []const u8) void {
-		self.texture = main.graphics.Texture.initFromFile(path);
+		var model = uploadMeshAndGetModel(vertices, indices);
+		model.texture = texture;
+		return model;
 	}
 
 	fn uploadMeshAndGetModel(vertices: []EntityVertex, indices: []u32) EntityModel {
@@ -980,7 +980,6 @@ pub const EntityModel = struct {
 			.vbo = vbo,
 			.ebo = ebo,
 			.indexCount = @intCast(indices.len),
-			.texture = main.client.entity_manager.missingModelTexture,
 		};
 	}
 

@@ -28,7 +28,6 @@ var uniforms: struct {
 	ambientLight: c_int,
 } = undefined;
 var model: main.models.EntityModel = undefined;
-pub var missingModelTexture: main.graphics.Texture = undefined;
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
@@ -45,10 +44,14 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	missingModelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/missing.png");
-
-	model = .initFromObj("assets/cubyz/entities/models/snale.obj");
-	model.loadTextureFromFile("assets/cubyz/entities/textures/snale.png");
+	model = .initFromObj("assets/cubyz/entities/models/snale.obj", "assets/cubyz/entities/textures/snale.png");
+	addEntity(ZonElement.parseFromString(main.globalArena, null,
+		\\ .{
+		\\    .id = 1,
+		\\    .name = "bobik",
+		\\
+		\\  }
+	));
 }
 
 pub fn deinit() void {
