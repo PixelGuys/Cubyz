@@ -2,6 +2,7 @@ const std = @import("std");
 
 const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
+const entityModel_zig = @import("entityModel.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
 const Blueprint = blueprints_zig.Blueprint;
@@ -38,6 +39,8 @@ pub const Assets = struct {
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
 	worldPresets: ZonHashMap,
+	entityModel: ZonHashMap,
+	entityModelMigrations: AddonNameToZonMap,
 
 	fn init() Assets {
 		return .{
@@ -57,6 +60,8 @@ pub const Assets = struct {
 			.blueprints = .{},
 			.particles = .{},
 			.worldPresets = .{},
+			.entityModel = .{},
+			.entityModelMigrations = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -76,6 +81,8 @@ pub const Assets = struct {
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
+		self.entityModel.deinit(allocator.allocator);
+		self.entityModelMigrations.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -95,6 +102,8 @@ pub const Assets = struct {
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 			.worldPresets = .{}, // Not accessible inside the world
+			.entityModel = self.entityModel.clone(allocator.allocator) catch unreachable,
+			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -114,6 +123,7 @@ pub const Assets = struct {
 			addon.readAllModels(allocator, &self.models);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
+			addon.readAllZon(allocator, "entities", true, &self.entityModel, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -402,6 +412,11 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 	_ = blocks_zig.register(assetFolder, id, zon);
 	blocks_zig.meshes.register(assetFolder, id, zon);
 }
+fn registerEntityModel(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	if (zon == .null) std.log.err("Missing EntityModel: {s}. Replacing it with default block.", .{id});
+
+	_ = entityModel_zig.register(assetFolder, id, zon);
+}
 
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks_zig.getTypeById(stringId);
@@ -523,8 +538,9 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
+pub var rawModelData: std.StringHashMap([]main.models.QuadInfo) = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -547,13 +563,35 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
 	migrations_zig.apply(.biome, biomePalette);
 
+	migrations_zig.registerAll(.entityModel, &worldAssets.entityModelMigrations);
+	migrations_zig.apply(.entityModel, entityModelPalette);
+
 	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
 	migrations_zig.apply(.entityComponent, entityComponentPalette);
 
 	// models:
 	var modelIterator = worldAssets.models.iterator();
+	rawModelData = std.StringHashMap([]main.models.QuadInfo).init(main.worldArena.allocator);
 	while (modelIterator.next()) |entry| {
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
+		registerModelRaw(entry.key_ptr.*, entry.value_ptr.*);
+	}
+
+	// EntityModels:
+	// First blocks from the palette to enforce ID values.
+	for (entityModelPalette.palette.items) |stringId| {
+		try registerEntityModel(assetFolder, stringId, worldAssets.entityModel.get(stringId) orelse .null);
+	}
+	// Then all the blocks that were missing in palette but are present in the game.
+	var entModelIterator = worldAssets.entityModel.iterator();
+	while (entModelIterator.next()) |entry| {
+		const stringId = entry.key_ptr.*;
+		const zon = entry.value_ptr.*;
+
+		if (entityModel_zig.hasRegistered(stringId)) continue;
+
+		try registerEntityModel(assetFolder, stringId, zon);
+		entityModelPalette.add(stringId);
 	}
 
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
@@ -723,7 +761,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	worldAssets.log(.world);
 }
-
+pub fn registerModelRaw(id: []const u8, data: []const u8) void {
+	rawModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
+}
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
@@ -731,6 +771,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.entity.deinitComponent();
 	sbb.reset();
 	blocks_zig.reset();
+	entityModel_zig.reset();
 	items_zig.reset();
 	migrations_zig.reset();
 	biomes_zig.reset();

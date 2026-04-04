@@ -32,28 +32,44 @@ id: u32,
 name: []const u8,
 playerIndex: usize, // TODO extract into own component #2760
 
-pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) void {
+pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !void {
 	self.* = @This(){
-		.id = zon.get(u32, "id", std.math.maxInt(u32)),
-		.width = zon.get(f64, "width", 1),
-		.height = zon.get(f64, "height", 1),
-		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
-		.playerIndex = zon.get(usize, "playerIndex", std.math.maxInt(usize)),
-	};
-	self._interpolationPos = [_]f64{
-		self.pos[0],
-		self.pos[1],
-		self.pos[2],
-		@floatCast(self.rot[0]),
-		@floatCast(self.rot[1]),
-		@floatCast(self.rot[2]),
-	};
-	self._interpolationVel = @splat(0);
-	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
+			.id = zon.get(u32, "id", std.math.maxInt(u32)),
+			.width = zon.get(f64, "width", 1),
+			.pos = zon.get(Vec3d, "pos", .{0, 0, 0}),
+			.rot = zon.get(Vec3f, "rot", .{0, 0, 0}),
+			.playerIndex = zon.get(usize, "playerIndex", std.math.maxInt(usize)),
+			// .vel = zon.get(Vec3f,"vel",.{0,0,0}),
+			.height = zon.get(f64, "height", 1),
+			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
+		};
+
+		self._interpolationPos = [_]f64{
+			self.pos[0],
+			self.pos[1],
+			self.pos[2],
+			@floatCast(self.rot[0]),
+			@floatCast(self.rot[1]),
+			@floatCast(self.rot[2]),
+		};
+		self._interpolationVel = @splat(0);
+		self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
+
+		// components
+		if (zon.getChildOrNull("components")) |components| {
+			try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, .client);
+		}
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
-	allocator.free(self.name);
+	if (self.id < 1000) {
+			std.debug.print("yo", .{});
+		}
+		const list = main.entity.components;
+		inline for (@typeInfo(list).@"struct".decls) |decl| {
+			@field(list, decl.name).client.unload(self.id);
+		}
+		allocator.free(self.name);
 }
 
 pub fn getRenderPosition(self: *const @This()) Vec3d {

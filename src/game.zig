@@ -619,6 +619,7 @@ pub const World = struct { // MARK: World
 	itemPalette: *assets.Palette = undefined,
 	toolPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
+	entityModelPalette: *assets.Palette = undefined,
 	entityComponentPalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
@@ -655,6 +656,7 @@ pub const World = struct { // MARK: World
 		main.gui.deinit();
 		main.gui.init();
 		Player.inventory.deinit(main.globalAllocator);
+		Player.super.deinit(.client);
 		main.items.clearRecipeCachedInventories();
 		main.sync.ClientSide.reset();
 
@@ -665,6 +667,7 @@ pub const World = struct { // MARK: World
 		self.itemPalette.deinit();
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
+		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
@@ -692,12 +695,15 @@ pub const World = struct { // MARK: World
 		errdefer self.itemPalette.deinit();
 		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
 		errdefer self.toolPalette.deinit();
+		self.entityModelPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityModelPalette"), "cubyz:missing");
+		errdefer self.entityModelPalette.deinit();
 		self.entityComponentPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityComponentPalette"), null);
 		errdefer self.entityComponentPalette.deinit();
 
+
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.entityComponentPalette);
+		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
 		try Player.loadFrom(zon.getChild("player"));
