@@ -1,0 +1,41 @@
+.{
+	.minHeightLimit = 40,
+	.minHeight = 50,
+	.maxHeight = 80,
+	.maxHeightLimit = 100,
+	.smoothBeaches = true,
+	.roughness = 2,
+	.hills = 15,
+	.chance = 0.25,
+	.validPlayerSpawn = true,
+	.stoneBlock = "cubyz:clay",
+	.minSubBiomeCount = 5,
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.003,
+			.block = "cubyz:ferrock/base",
+			.size = 7,
+			.size_variance = 3,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cactus/saguaro",
+			.placeMode = .degradable,
+			.chance = 0.016,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cactus/young",
+			.placeMode = .degradable,
+			.chance = 0.006,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:dry_grass_vegetation",
+			.chance = 0.04,
+			.height = 1,
+			.height_variation = 0,
+		},
+	},
+}

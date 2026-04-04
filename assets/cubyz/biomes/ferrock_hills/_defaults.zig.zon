@@ -1,0 +1,9 @@
+.{
+	.properties = .{
+		.hot,
+		.dry,
+	},
+	.fogColor = 0xc77334,
+	.fogDensity = 7.0,
+	.music = "cubyz:sunrise",
+}
