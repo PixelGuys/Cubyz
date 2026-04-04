@@ -37,7 +37,7 @@ const Args = struct {
 		};
 
 		const stateString = argsSplit.next() orelse {
-			source.sendMessage("#ff0000Missing required <on|off> argument.", .{});
+			source.sendMessage("#ff0000Missing required <on/off> argument.", .{});
 			return error.ParsingFailed;
 		};
 		const state = std.meta.stringToEnum(State, stateString) orelse {
