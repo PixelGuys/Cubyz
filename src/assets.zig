@@ -36,7 +36,7 @@ pub const Assets = struct {
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
 	worldPresets: ZonHashMap,
-	entityModel: ZonHashMap,
+	entityModels: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -54,7 +54,7 @@ pub const Assets = struct {
 			.blueprints = .{},
 			.particles = .{},
 			.worldPresets = .{},
-			.entityModel = .{},
+			.entityModels = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -72,7 +72,7 @@ pub const Assets = struct {
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
-		self.entityModel.deinit(allocator.allocator);
+		self.entityModels.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -90,7 +90,7 @@ pub const Assets = struct {
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 			.worldPresets = .{}, // Not accessible inside the world
-			.entityModel = self.entityModel.clone(allocator.allocator) catch unreachable,
+			.entityModels = self.entityModels.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -110,7 +110,7 @@ pub const Assets = struct {
 			addon.readAllModels(allocator, &self.models);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels", true, &self.entityModel, null);
+			addon.readAllZon(allocator, "entityModels", true, &self.entityModels, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
