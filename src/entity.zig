@@ -17,10 +17,11 @@ pub const EntityNetworkData = struct {
 };
 pub const Side = enum { clientSide, serverSide };
 
+pub const EntityLoadError = error{};
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
-	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) anyerror!void,
-	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) anyerror!void,
+	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityLoadError!void,
+	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityLoadError!void,
 };
 var receiveList: [256]?EntityComponentVTable = @splat(null);
 
@@ -122,23 +123,22 @@ pub const server = struct {
 
 pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: Side) void {
 	const data = main.utils.fromBase64(main.stackAllocator, base64Data) catch return;
-		defer main.stackAllocator.free(data);
+	defer main.stackAllocator.free(data);
 
-		var reader = main.utils.BinaryReader.init(data);
-		while (reader.remaining.len != 0) {
-			const componentID: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentID correctly.");
-			const componentVersion: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentVersion correctly.");
-			const componentData = reader.readSliceWithSize() catch @panic("Couldn't read ComponentData");
+	var reader = main.utils.BinaryReader.init(data);
+	while (reader.remaining.len != 0) {
+		const componentID: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentID correctly.");
+		const componentVersion: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentVersion correctly.");
+		const componentData = reader.readSliceWithSize() catch @panic("Couldn't read ComponentData");
 
-			var componentReader = main.utils.BinaryReader.init(componentData);
-			if (receiveList[componentID]) |vtable| {
-				switch (side) {
-					.serverSide => vtable.server(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (server side)"),
-					.clientSide => vtable.client(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (client side)"),
-				}
-			} else {
-				std.log.err("unknown Component ID {} ", .{componentID});
+		var componentReader = main.utils.BinaryReader.init(componentData);
+		if (receiveList[componentID]) |vtable| {
+			switch (side) {
+				.serverSide => vtable.server(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (server side)"),
+				.clientSide => vtable.client(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (client side)"),
 			}
+		} else {
+			std.log.err("unknown Component ID {} ", .{componentID});
 		}
 	}
 }
