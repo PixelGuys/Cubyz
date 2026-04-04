@@ -33,7 +33,7 @@ pub var controllerSensitivity: f32 = 1;
 
 pub var invertMouseY: bool = false;
 
-pub var renderDistance: u16 = 7;
+pub var renderDistance: u16 = 12;
 
 pub var highestLod: u3 = highestSupportedLod;
 
@@ -44,6 +44,8 @@ pub var bloom: bool = true;
 pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
+
+pub var showIdWithName: bool = false;
 
 pub var streamerMode: bool = false;
 

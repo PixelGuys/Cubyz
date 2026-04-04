@@ -34,11 +34,8 @@ pub const camera = struct { // MARK: camera
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
 		// Mouse movement along the y-axis rotates the image along the x-axis.
 		rotation[0] += mouseY;
-		if (rotation[0] > std.math.pi/2.0) {
-			rotation[0] = std.math.pi/2.0;
-		} else if (rotation[0] < -std.math.pi/2.0) {
-			rotation[0] = -std.math.pi/2.0;
-		}
+		const bound = std.math.pi/2.0 - 0.001;
+		rotation[0] = std.math.clamp(rotation[0], -bound, bound);
 		// Mouse movement along the x-axis rotates the image along the z-axis.
 		rotation[2] += mouseX;
 	}
@@ -661,7 +658,7 @@ pub const World = struct { // MARK: World
 		main.sync.ClientSide.reset();
 
 		main.threadPool.clear();
-		main.entity.ClientEntityManager.clear();
+		main.entity.client.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
@@ -695,7 +692,7 @@ pub const World = struct { // MARK: World
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .normal, .serverShared, .{.playerInventory = Player.id}, .{});
+		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
 		Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
