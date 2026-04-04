@@ -99,6 +99,7 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
+	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -153,6 +154,7 @@ pub const User = struct { // MARK: User
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.jobQueue = .init(main.globalAllocator);
+		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -182,6 +184,8 @@ pub const User = struct { // MARK: User
 		self.permissions.deinit();
 
 		self.worldEditData.deinit();
+
+		self.player().deinit(.server);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -251,7 +255,9 @@ pub const User = struct { // MARK: User
 			main.entityComponent.model.Server.registerByID(self.id, defaultModel, null);
 		}
 
-		world.?.loadPlayer(self);
+		world.?.loadPlayer(self) catch {
+			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
+		};
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
@@ -493,6 +499,10 @@ pub const User = struct { // MARK: User
 			.no, .neutral => false,
 		};
 	}
+
+	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.print("{s}@{d}", .{user.name, user.playerIndex});
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
@@ -525,6 +535,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	}; // TODO Configure the second argument in the server settings.
 
 	EntitySystem.init();
+	main.entity.server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
 
@@ -570,6 +581,7 @@ fn deinit() void {
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
 	EntitySystem.deinit();
+	main.entity.server.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -608,6 +620,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 
 fn update() void { // MARK: update()
 	world.?.update();
+	main.entity.server.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
@@ -752,11 +765,10 @@ pub fn connectInternal(user: *User) void {
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		// const entityZon = main.ZonElement.initObject(main.stackAllocator);
-		const entityZon = user.player().save(main.stackAllocator);
-		entityZon.put("id", user.id);
 
-		// entityZon.put("type", entityType.id);
+		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
+		entityZon.put("name", user.name);
+		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -767,6 +779,12 @@ pub fn connectInternal(user: *User) void {
 	{ // Let this client know about the others:
 		const zonArray = EntitySystem.getEntitiesBasicInfo();
 		defer zonArray.deinit(main.stackAllocator);
+		for (userList) |other| {
+			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
+			entityZon.put("name", other.name);
+			entityZon.put("playerIndex", other.playerIndex);
+			zonArray.array.append(entityZon);
+		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		if (user.connected.load(.monotonic)) main.network.protocols.entity.send(user.conn, data);
@@ -803,4 +821,16 @@ pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
+}
+
+pub fn getUserByIndexAndIncreaseRefCount(index: usize) ?*User {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for (userList) |user| {
+		if (user.playerIndex == index) {
+			user.increaseRefCount();
+			return user;
+		}
+	}
+	return null;
 }

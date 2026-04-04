@@ -30,6 +30,9 @@ pub const Assets = struct {
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
+	entityComponents: ZonHashMap,
+	entityComponentMigrations: AddonNameToZonMap,
+	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
 	models: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
@@ -48,6 +51,9 @@ pub const Assets = struct {
 			.tools = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
+			.entityComponents = .{},
+			.entityComponentMigrations = .{},
+			.structureTables = .{},
 			.recipes = .{},
 			.models = .{},
 			.structureBuildingBlocks = .{},
@@ -66,6 +72,9 @@ pub const Assets = struct {
 		self.tools.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
+		self.entityComponents.deinit(allocator.allocator);
+		self.entityComponentMigrations.deinit(allocator.allocator);
+		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.models.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
@@ -84,6 +93,9 @@ pub const Assets = struct {
 			.tools = self.tools.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
+			.entityComponents = self.entityComponents.clone(allocator.allocator) catch unreachable,
+			.entityComponentMigrations = self.entityComponentMigrations.clone(allocator.allocator) catch unreachable,
+			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.models = self.models.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
@@ -103,6 +115,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
+			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
@@ -115,8 +128,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -527,7 +540,7 @@ pub const Palette = struct { // MARK: Palette
 var loadedAssets: bool = false;
 pub var rawModelData: std.StringHashMap([]main.models.QuadInfo) = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -552,6 +565,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	migrations_zig.registerAll(.entityModel, &worldAssets.entityModelMigrations);
 	migrations_zig.apply(.entityModel, entityModelPalette);
+	
+	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
+	migrations_zig.apply(.entityComponent, entityComponentPalette);
 
 	// models:
 	var modelIterator = worldAssets.models.iterator();
@@ -676,6 +692,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
+	try main.server.terrain.structures.registerStructureTables(&worldAssets.structureTables);
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
@@ -696,6 +713,31 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		nextBiomeNumericId += 1;
 	}
 	biomes_zig.finishLoading();
+
+	// EntityComponents
+	{
+		var map: std.StringHashMap(u32) = .init(main.stackAllocator.allocator);
+		defer map.deinit();
+		var index: u32 = 0;
+
+		// the already exisiting ones:
+		for (entityComponentPalette.palette.items) |value| {
+			map.put(value, index) catch unreachable;
+			index += 1;
+		}
+
+		// now give each component it's id:
+		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+			const name = decl.name;
+			if (map.get(name)) |id| {
+				@field(main.entity.components, decl.name).entityComponentID = id;
+			} else {
+				entityComponentPalette.add(name);
+				index += 1;
+			}
+		}
+		main.entity.initComponent();
+	}
 
 	// Register paths for asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
@@ -726,6 +768,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
 
+	main.entity.deinitComponent();
 	sbb.reset();
 	blocks_zig.reset();
 	entityModel_zig.reset();
@@ -733,6 +776,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	migrations_zig.reset();
 	biomes_zig.reset();
 	migrations_zig.reset();
+	main.server.terrain.structures.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();

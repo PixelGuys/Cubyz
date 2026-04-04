@@ -236,13 +236,14 @@ pub const handShake = struct { // MARK: handShake
 	pub fn sendServerPlayerData(conn: *Connection) void {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
-		zonObject.put("player", conn.user.?.player().save(main.stackAllocator));
+		zonObject.put("player", conn.user.?.player().save(main.stackAllocator, .playerHimself));
 		zonObject.put("player_id", conn.user.?.id);
 		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
 		zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
 		zonObject.put("entityModelPalette", main.server.world.?.entityModelPalette.storeToZon(main.stackAllocator));
+		zonObject.put("entityComponentPalette", main.server.world.?.entityComponentPalette.storeToZon(main.stackAllocator));
 
 		const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
 		defer main.stackAllocator.free(outData);
@@ -428,7 +429,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 					},
 				}
 			}
-			main.clientEntity.ClientEntityManager.serverUpdate(time, entityData.items);
+			main.client.entity_manager.serverUpdate(time, entityData.items);
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
@@ -512,10 +513,10 @@ pub const entity = struct { // MARK: entity
 			const elem = zonArray.array.items[i];
 			switch (elem) {
 				.int => {
-					main.clientEntity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+					main.client.entity_manager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					main.clientEntity.ClientEntityManager.addEntity(elem);
+					main.client.entity_manager.addEntity(elem);
 				},
 				.null => {
 					i += 1;

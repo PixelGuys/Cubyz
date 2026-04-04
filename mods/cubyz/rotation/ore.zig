@@ -72,3 +72,7 @@ pub fn onBlockBreaking(_: main.items.Item, _: Vec3f, _: Vec3f, currentData: *Blo
 	currentData.typ = currentData.data;
 	currentData.data = 0;
 }
+
+pub fn formatBlockData(block: Block, _list: *main.List(u8)) void {
+	_list.appendSlice((Block{.typ = block.data, .data = 0}).id());
+}
