@@ -17,7 +17,11 @@ pub const EntityNetworkData = struct {
 };
 pub const Side = enum { clientSide, serverSide };
 
-pub const EntityComponentLoadError = error{};
+pub const EntityComponentLoadError = error{
+	UnreadableID,
+	UnreadableVersion,
+	UnreadableComponentData,
+};
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
 	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
@@ -125,23 +129,23 @@ pub const server = struct {
 	}
 };
 
-pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: Side) void {
+pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: Side) EntityComponentLoadError!void {
 	const data = main.utils.fromBase64(main.stackAllocator, base64Data) catch return;
 	defer main.stackAllocator.free(data);
 
 	var reader = main.utils.BinaryReader.init(data);
 	while (reader.remaining.len != 0) {
-		const componentID: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentID correctly.");
-		const componentVersion: u32 = reader.readVarInt(u32) catch @panic("Couldn't read componentVersion correctly.");
-		const componentData = reader.readSliceWithSize() catch @panic("Couldn't read ComponentData");
+		const componentID: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableID;
+		const componentVersion: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableVersion;
+		const componentData = reader.readSliceWithSize() catch return EntityComponentLoadError.UnreadableComponentData;
 
 		if (componentID >= receiveList.items.len)
 			continue;
 		var componentReader = main.utils.BinaryReader.init(componentData);
 		if (receiveList.items[componentID]) |vtable| {
 			switch (side) {
-				.serverSide => vtable.server(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (server side)"),
-				.clientSide => vtable.client(id, &componentReader, componentVersion) catch @panic("Couldn't parse componentData (client side)"),
+				.serverSide => return vtable.server(id, &componentReader, componentVersion),
+				.clientSide => return vtable.client(id, &componentReader, componentVersion),
 			}
 		} else {
 			std.log.err("unknown Component ID {} ", .{componentID});

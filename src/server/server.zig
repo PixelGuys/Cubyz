@@ -245,7 +245,9 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		world.?.loadPlayer(self);
+		world.?.loadPlayer(self) catch {
+			std.log.err("Error while loading player data {s} ", .{self.name});
+		};
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.loadUnloadChunks();
 	}

@@ -454,8 +454,8 @@ pub const Player = struct { // MARK: Player
 	};
 	pub const jumpHeight = 1.25;
 
-	fn loadFrom(zon: ZonElement) void {
-		super.loadFrom(id, zon, .clientSide);
+	fn loadFrom(zon: ZonElement) !void {
+		try super.loadFrom(id, zon, .clientSide);
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -700,7 +700,7 @@ pub const World = struct { // MARK: World
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.entityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .normal, .serverShared, .{.playerInventory = Player.id}, .{});
-		Player.loadFrom(zon.getChild("player"));
+		try Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}

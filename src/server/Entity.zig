@@ -18,7 +18,7 @@ maxEnergy: f32 = 8,
 name: ?[]const u8 = null,
 id: u32 = 0,
 
-pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.entity.Side) void {
+pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.entity.Side) !void {
 	self.id = id;
 	self.pos = zon.get(Vec3d, "position", .{0, 0, 0});
 	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
@@ -26,7 +26,7 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.en
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
 	if (zon.getChildOrNull("components")) |components| {
-		main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, side);
+		try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, side);
 	}
 
 	if (zon.getChildOrNull("name")) |name| {

@@ -930,7 +930,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn loadPlayer(self: *ServerWorld, user: *User) void {
+	pub fn loadPlayer(self: *ServerWorld, user: *User) !void {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
@@ -950,14 +950,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
 		const player = &user.player;
+		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .serverSide);
 		if (playerData == .null) {
-			player.loadFrom(user.id, playerData, .serverSide);
 			player.pos = @floatFromInt(self.spawn);
 
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
-			player.loadFrom(user.id, playerData.getChild("entity"), .serverSide);
-
 			user.permissions.fromZon(playerData);
 
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
@@ -966,6 +964,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(Vec3d, "playerSpawnPos", @as(Vec3d, @floatFromInt(self.spawn)));
+		return loadingError;
 	}
 
 	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) main.items.Inventory.InventoryId {
