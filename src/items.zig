@@ -171,15 +171,14 @@ const Modifier = struct {
 		};
 
 		pub fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
-			var self: VTable = undefined;
-			self.changeToolParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeToolParameters")) &ModifierStruct.changeToolParameters else &VTable.Defaults.changeToolParameters);
-			self.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage);
-			self.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers);
-			self.printTooltip = @ptrCast(&ModifierStruct.printTooltip);
-			self.loadData = @ptrCast(&ModifierStruct.loadData);
-			self.priority = ModifierStruct.priority;
-
-			return self;
+			return .{
+				.changeToolParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeToolParameters")) &ModifierStruct.changeToolParameters else &VTable.Defaults.changeToolParameters),
+				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
+				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
+				.loadData = @ptrCast(&ModifierStruct.loadData),
+				.priority = ModifierStruct.priority,
+			};
 		}
 	};
 
@@ -1187,8 +1186,7 @@ pub fn globalInit() void {
 	itemListSize = 0;
 	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
 		const ModifierStruct = @field(modifierList, decl.name);
-		const vtable: Modifier.VTable = .initFromModifierStruct(ModifierStruct);
-		modifiers.put(main.globalArena.allocator, decl.name, &vtable) catch unreachable;
+		modifiers.put(main.globalArena.allocator, decl.name, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
 	}
 	inline for (@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
 		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);

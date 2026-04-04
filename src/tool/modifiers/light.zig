@@ -19,10 +19,6 @@ pub fn changeToolParameters(tool: *Tool, data: Data) void {
 	tool.swingSpeed *= 1 + data.strength;
 }
 
-pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
-	return damage;
-}
-
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
 	outString.print("#9fffde**Light**#808080 *Increases swing speed by **{d:.0}%", .{data.strength*100});
 }
