@@ -429,6 +429,7 @@ pub const Player = struct { // MARK: Player
 	pub var inventory: ClientInventory = undefined;
 	pub var selectedSlot: u32 = 0;
 	pub const defaultBlockDamage: f32 = 1;
+	pub var inputSpeed: f64 = 0;
 
 	pub var selectionPosition1: ?Vec3i = null;
 	pub var selectionPosition2: ?Vec3i = null;
@@ -837,6 +838,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
 	var movementDir: Vec3d = .{0, 0, 0};
 
+	Player.inputSpeed = 0;
+
 	if (main.Window.grabbed) {
 		const walkingSpeed: f64 = if (Player.crouching) 2.5 else 4.5;
 		var movementSpeed: f64 = walkingSpeed*@min(1, vec.length(Vec2f{
@@ -933,6 +936,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
 		}*@as(Vec2f, @splat(std.math.pi*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
+
+		Player.inputSpeed = movementSpeed*speedMultiplier;
 	}
 
 	Player.crouching = main.Window.grabbed and KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
