@@ -6,7 +6,6 @@ const vec = main.vec;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const Side = enum { ClientSide, ServerSide };
 
 pos: Vec3d = .{0, 0, 0},
 vel: Vec3d = .{0, 0, 0},
