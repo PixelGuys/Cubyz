@@ -9,7 +9,7 @@ pub const description = "Teleport to location.";
 pub const usage =
 	\\/tp <biome>
 	\\/tp <x> <y> <z>
-	\\/tp @<playerId>
+	\\/tp @<playerIndex>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
