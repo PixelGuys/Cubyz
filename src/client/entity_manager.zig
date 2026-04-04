@@ -28,8 +28,8 @@ var uniforms: struct {
 	ambientLight: c_int,
 	nodeMatrices: c_int,
 } = undefined;
+
 pub var model: main.models.EntityModel = undefined;
-pub var missingModelTexture: main.graphics.Texture = undefined;
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
@@ -46,14 +46,11 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	missingModelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/missing.png");
-
-	model = main.models.EntityModel.initFromGltf("assets/cubyz/entities/models/snale.glb") catch |err| blk: {
+	model = main.models.EntityModel.initFromGltf("assets/cubyz/entities/models/snale.glb", "assets/cubyz/entities/textures/snale.png") catch |err| blk: {
 		std.log.err("Gltf loading error {s}", .{@errorName(err)});
 		break :blk .initEmpty();
 	};
-	model.loadTextureFromFile("assets/cubyz/entities/textures/snale.png");
-
+	
 	// TODO: remove before merge
 	addEntity(ZonElement.parseFromString(main.globalArena, null,
 		\\ .{
@@ -101,7 +98,9 @@ pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	const fontScreenSize = fontBaseSize*screenUnits;
 
 	for (entities.items()) |ent| {
-		if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
+		if (ent.id == game.Player.id) continue; // don't render local player
+		if (ent.name.len == 0 and !settings.showPlayerIndexWithName) continue;
+
 		const pos3d = ent.getRenderPosition() - playerPos;
 		const pos4f = Vec4f{
 			@floatCast(pos3d[0]),
@@ -120,7 +119,9 @@ pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 		const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
 		graphics.draw.setColor(alpha << 24);
 
-		var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
+		const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
+		defer main.stackAllocator.free(renderedName);
+		var buf = graphics.TextBuffer.init(main.stackAllocator, renderedName, .{.color = 0xffffff}, false, .center);
 		defer buf.deinit();
 		const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
 		const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
@@ -133,7 +134,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	defer mutex.unlock();
 	update();
 	pipeline.bind(null);
-	c.glBindVertexArray(model.vao);
+
 	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 	c.glUniform1f(uniforms.contrast, 0.12);
@@ -141,8 +142,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	for (entities.items()) |ent| {
 		if (ent.id == game.Player.id) continue; // don't render local player
 
-		model.texture.bindTo(0);
-
+		model.bind();
 		const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 		const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 		const light = (@as(u32, lightVals[0] >> 3) << 25 |
@@ -165,7 +165,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 		const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 		c.glUniformMatrix4fv(uniforms.nodeMatrices, 20, c.GL_TRUE, @ptrCast(&ent.matrices));
-		c.glDrawElements(c.GL_TRIANGLES, @intCast(model.size), c.GL_UNSIGNED_INT, null);
+		c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
 	}
 }
 

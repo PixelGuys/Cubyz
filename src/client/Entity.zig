@@ -35,6 +35,7 @@ matrices: [20]Mat4f = undefined,
 
 id: u32,
 name: []const u8,
+playerIndex: usize, // TODO extract into own component #2760
 
 pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) void {
 	self.* = @This(){
@@ -42,6 +43,7 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 		.width = zon.get(f64, "width", 1),
 		.height = zon.get(f64, "height", 1),
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
+		.playerIndex = zon.get(usize, "playerIndex", std.math.maxInt(usize)),
 	};
 	
 	self.rot = Vec3f{0, 0, 0};
@@ -123,4 +125,12 @@ fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f
 	}
 
 	return getHierarchyMatrix(nodes, nodes[node.parent.?]).mul(currentMat);
+}
+
+pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+	if (main.settings.showPlayerIndexWithName) {
+		try writer.print("{s}@{d}", .{self.name, self.playerIndex});
+	} else {
+		try writer.print("{s}", .{self.name});
+	}
 }

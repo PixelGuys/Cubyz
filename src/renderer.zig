@@ -119,7 +119,7 @@ fn initReflectionCubeMap() void {
 		c.glUniform3fv(fakeReflectionUniforms.upVector, 1, @ptrCast(&graphics.CubeMapTexture.faceUp(face)));
 		c.glUniform3fv(fakeReflectionUniforms.rightVector, 1, @ptrCast(&graphics.CubeMapTexture.faceRight(face)));
 		reflectionCubeMap.bindToFramebuffer(framebuffer, @intCast(face));
-		c.glBindVertexArray(graphics.draw.rectVAO);
+		graphics.draw.rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 }
@@ -318,7 +318,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
-	c.glBindVertexArray(graphics.draw.rectVAO);
+	graphics.draw.rectVao.bind();
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
@@ -415,7 +415,7 @@ const Bloom = struct { // MARK: Bloom
 		c.glUniform1f(colorExtractUniforms.zNear, zNear);
 		c.glUniform1f(colorExtractUniforms.zFar, zFar);
 		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
-		c.glBindVertexArray(graphics.draw.rectVAO);
+		graphics.draw.rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -423,7 +423,7 @@ const Bloom = struct { // MARK: Bloom
 		firstPassPipeline.bind(null);
 		buffer1.bindTexture(c.GL_TEXTURE3);
 		buffer2.bind();
-		c.glBindVertexArray(graphics.draw.rectVAO);
+		graphics.draw.rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -431,7 +431,7 @@ const Bloom = struct { // MARK: Bloom
 		secondPassPipeline.bind(null);
 		buffer2.bindTexture(c.GL_TEXTURE3);
 		buffer1.bind();
-		c.glBindVertexArray(graphics.draw.rectVAO);
+		graphics.draw.rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -473,8 +473,7 @@ pub const MenuBackGround = struct {
 		projectionMatrix: c_int,
 	} = undefined;
 
-	var vao: c_uint = undefined;
-	var vbos: [2]c_uint = undefined;
+	var vao: graphics.VertexArray = undefined;
 	var texture: graphics.Texture = undefined;
 
 	var angle: f32 = 0;
@@ -489,21 +488,38 @@ pub const MenuBackGround = struct {
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
 		);
+		const MenuBackgroundVertex = struct {
+			pos: [3]f32,
+			uv: [2]f32,
+
+			pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
+				.{
+					.location = 0,
+					.format = c.VK_FORMAT_R32G32B32_SFLOAT,
+					.offset = @offsetOf(@This(), "pos"),
+				},
+				.{
+					.location = 1,
+					.format = c.VK_FORMAT_R32G32_SFLOAT,
+					.offset = @offsetOf(@This(), "uv"),
+				},
+			};
+		};
 		// 4 sides of a simple cube with some panorama texture on it.
-		const rawData = [_]f32{
-			-1, 1,  -1, 1,    1,
-			-1, 1,  1,  1,    0,
-			-1, -1, -1, 0.75, 1,
-			-1, -1, 1,  0.75, 0,
-			1,  -1, -1, 0.5,  1,
-			1,  -1, 1,  0.5,  0,
-			1,  1,  -1, 0.25, 1,
-			1,  1,  1,  0.25, 0,
-			-1, 1,  -1, 0,    1,
-			-1, 1,  1,  0,    0,
+		const rawData = [_]MenuBackgroundVertex{
+			.{.pos = .{-1, 1, -1}, .uv = .{1, 1}},
+			.{.pos = .{-1, 1, 1}, .uv = .{1, 0}},
+			.{.pos = .{-1, -1, -1}, .uv = .{0.75, 1}},
+			.{.pos = .{-1, -1, 1}, .uv = .{0.75, 0}},
+			.{.pos = .{1, -1, -1}, .uv = .{0.5, 1}},
+			.{.pos = .{1, -1, 1}, .uv = .{0.5, 0}},
+			.{.pos = .{1, 1, -1}, .uv = .{0.25, 1}},
+			.{.pos = .{1, 1, 1}, .uv = .{0.25, 0}},
+			.{.pos = .{-1, 1, -1}, .uv = .{0, 1}},
+			.{.pos = .{-1, 1, 1}, .uv = .{0, 0}},
 		};
 
-		const indices = [_]c_int{
+		const indices = [_]u32{
 			0, 1, 2,
 			2, 3, 1,
 			2, 3, 4,
@@ -514,17 +530,7 @@ pub const MenuBackGround = struct {
 			8, 9, 7,
 		};
 
-		c.glGenVertexArrays(1, &vao);
-		c.glBindVertexArray(vao);
-		c.glGenBuffers(2, &vbos);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbos[0]);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), null);
-		c.glVertexAttribPointer(1, 2, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @ptrFromInt(3*@sizeOf(f32)));
-		c.glEnableVertexAttribArray(0);
-		c.glEnableVertexAttribArray(1);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, vbos[1]);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
+		vao = .init(MenuBackgroundVertex, &rawData, &indices);
 
 		const backgroundPath = chooseBackgroundImagePath(main.stackAllocator) catch |err| {
 			std.log.err("Couldn't open background path: {s}", .{@errorName(err)});
@@ -573,8 +579,7 @@ pub const MenuBackGround = struct {
 
 	pub fn deinit() void {
 		pipeline.deinit();
-		c.glDeleteVertexArrays(1, &vao);
-		c.glDeleteBuffers(2, &vbos);
+		vao.deinit();
 	}
 
 	pub fn hasImage() bool {
@@ -594,7 +599,7 @@ pub const MenuBackGround = struct {
 
 		texture.bindTo(0);
 
-		c.glBindVertexArray(vao);
+		vao.bind();
 		c.glDrawElements(c.GL_TRIANGLES, 24, c.GL_UNSIGNED_INT, null);
 	}
 
@@ -669,7 +674,7 @@ pub const Skybox = struct {
 		starOpacity: c_int,
 	} = undefined;
 
-	var starVao: c_uint = undefined;
+	var starVao: graphics.VertexArray = undefined;
 
 	var starSsbo: graphics.SSBO = undefined;
 
@@ -781,15 +786,13 @@ pub const Skybox = struct {
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
 
-		c.glGenVertexArrays(1, &starVao);
-		c.glBindVertexArray(starVao);
-		c.glEnableVertexAttribArray(0);
+		starVao = .init(graphics.VertexArray.EmptyVertex, &.{}, null);
 	}
 
 	pub fn deinit() void {
 		starPipeline.deinit();
 		starSsbo.deinit();
-		c.glDeleteVertexArrays(1, &starVao);
+		starVao.deinit();
 	}
 
 	pub fn render() void {
@@ -817,7 +820,7 @@ pub const Skybox = struct {
 			c.glUniform1f(starUniforms.starOpacity, starOpacity);
 			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
-			c.glBindVertexArray(starVao);
+			starVao.bind();
 			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
 
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
@@ -1150,7 +1153,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
 		c.glUniform1f(uniforms.lineSize, 1.0/128.0);
 
-		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		main.renderer.chunk_meshing.vao.bind();
 		c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
 	}
 
