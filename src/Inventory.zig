@@ -280,7 +280,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 						for (userList) |callbackUser| {
 							if (callbackUser.id == callbackSource.workbench.playerId) {
-								sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player.pos)}, null);
+								sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);
 								break;
 							}
 						}

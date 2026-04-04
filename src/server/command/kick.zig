@@ -5,7 +5,7 @@ const User = main.server.User;
 const command = main.server.command;
 
 pub const description = "Kicks a player";
-pub const usage = "/kick @<playerId>";
+pub const usage = "/kick @<playerIndex>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	if (args.len == 0) {
