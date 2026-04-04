@@ -41,13 +41,13 @@ pub const EntityModel = struct {
 			const mod = split.first();
 			self.texturePath = &.{};
 			if (zon.get(?[]const u8, "texture", null)) |texture| {
-				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entity/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entities/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
 				std.fs.cwd().access(self.texturePath, .{}) catch {
-					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entity/textures/{s}", .{mod, texture}) catch &.{};
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entities/textures/{s}", .{mod, texture}) catch &.{};
 				};
 			}
 		}
-		self.modelID = main.worldArena.dupe(u8, zon.getChild("model").as([]const u8, "cubyz:entity/missing"));
+		self.modelID = main.worldArena.dupe(u8, zon.getChild("model").as([]const u8, "cubyz:entities/missing"));
 		return self;
 	}
 	fn deinit(self: *const EntityModel) void {

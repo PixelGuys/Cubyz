@@ -123,7 +123,7 @@ pub const Assets = struct {
 			addon.readAllModels(allocator, &self.models);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entity", true, &self.entityModel, &self.entityModelMigrations);
+			addon.readAllZon(allocator, "entities", true, &self.entityModel, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -565,7 +565,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	migrations_zig.registerAll(.entityModel, &worldAssets.entityModelMigrations);
 	migrations_zig.apply(.entityModel, entityModelPalette);
-	
+
 	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
 	migrations_zig.apply(.entityComponent, entityComponentPalette);
 
