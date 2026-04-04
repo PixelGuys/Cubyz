@@ -983,7 +983,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			readerInput = "";
 		};
 		var reader: main.utils.BinaryReader = .init(readerInput);
-		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader, .{});
+		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, source, &reader, .{});
 	}
 
 	fn savePlayerInventory(allocator: NeverFailingAllocator, inv: main.items.Inventory) []const u8 {
