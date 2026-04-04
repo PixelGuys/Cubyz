@@ -394,7 +394,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 		if (conn.manager.world) |world| {
 			const time = try reader.readInt(i16);
 			const playerPos = try reader.readVec(Vec3d);
-			var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
+			var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 			defer entityData.deinit();
 			var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
 			defer itemData.deinit();
@@ -432,7 +432,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
-	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.clientEntity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
+	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.entity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
