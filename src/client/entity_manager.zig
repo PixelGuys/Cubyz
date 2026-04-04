@@ -27,9 +27,7 @@ var uniforms: struct {
 	contrast: c_int,
 	ambientLight: c_int,
 } = undefined;
-var modelBuffer: main.graphics.SSBO = undefined;
-var modelSize: c_int = 0;
-var modelTexture: main.graphics.Texture = undefined;
+var model: main.entityModel.EntityModel = undefined;
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
@@ -46,17 +44,10 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entities/textures/snale.png");
-	const modelFile = main.files.cwd().read(main.stackAllocator, "assets/cubyz/entities/models/snale.obj") catch |err| blk: {
-		std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-		break :blk &.{};
+	model = main.entityModel.EntityModel.initFromGltf("assets/cubyz/entities/models/snale.glb", "assets/cubyz/entities/textures/snale.png") catch |err| blk: {
+		std.log.err("Gltf loading error {s}", .{@errorName(err)});
+		break :blk .initEmpty();
 	};
-	defer main.stackAllocator.free(modelFile);
-	const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
-	defer main.stackAllocator.free(quadInfos);
-	modelBuffer = .initStatic(main.models.QuadInfo, quadInfos);
-	modelBuffer.bind(11);
-	modelSize = @intCast(quadInfos.len);
 }
 
 pub fn deinit() void {
@@ -65,6 +56,7 @@ pub fn deinit() void {
 	}
 	entities.deinit();
 	pipeline.deinit();
+	model.deinit();
 }
 
 pub fn clear() void {
@@ -131,15 +123,15 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	defer mutex.unlock();
 	update();
 	pipeline.bind(null);
-	main.renderer.chunk_meshing.vao.bind();
+
 	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-	modelTexture.bindTo(0);
 	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 	c.glUniform1f(uniforms.contrast, 0.12);
 
 	for (entities.items()) |ent| {
 		if (ent.id == game.Player.id) continue; // don't render local player
 
+		model.bind();
 		const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 		const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 		const light = (@as(u32, lightVals[0] >> 3) << 25 |
@@ -161,7 +153,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 			.mul(Mat4f.rotationZ(-ent.rot[2])));
 		const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-		c.glDrawElements(c.GL_TRIANGLES, 6*modelSize, c.GL_UNSIGNED_INT, null);
+		c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
 	}
 }
 
