@@ -48,15 +48,6 @@ pub fn init() void {
 		std.log.err("Gltf loading error {s}", .{@errorName(err)});
 		break :blk .initEmpty();
 	};
-
-	// TODO: remove before merge
-	addEntity(ZonElement.parseFromString(main.globalArena, null,
-		\\ .{
-		\\    .id = 1,
-		\\    .name = "bobik",
-		\\
-		\\  }
-	));
 }
 
 pub fn deinit() void {
