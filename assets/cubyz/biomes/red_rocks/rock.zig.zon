@@ -1,0 +1,31 @@
+.{
+	.keepOriginalTerrain = 0.99,
+	.minRadius = 16,
+	.maxRadius = 40,
+	.minHeightLimit = 30,
+	.minHeight = 1800,
+	.maxHeight = 2000,
+	.maxHeightLimit = 120,
+	.smoothBeaches = true,
+	.roughness = 40,
+	.chance = 0,
+	.hills = 80,
+	.music = "cubyz:sunrise",
+	.validPlayerSpawn = true,
+	.stoneBlock = "cubyz:ferrock/base",
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.0005,
+			.block = "cubyz:clay",
+			.size = 5,
+			.size_variance = 1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:red_rocks/base",
+			.chance = 30,
+		},
+	},
+}
