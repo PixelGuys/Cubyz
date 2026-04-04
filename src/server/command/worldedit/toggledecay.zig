@@ -28,16 +28,16 @@ const Args = struct {
 		var argsSplit = std.mem.splitScalar(u8, args, ' ');
 
 		const targetString = argsSplit.next() orelse {
-			source.sendMessage("#ff0000Missing required <world|clipboard> argument.", .{});
+			source.sendMessage("#ff0000Missing required <selection|clipboard> argument.", .{});
 			return error.ParsingFailed;
 		};
 		const target = std.meta.stringToEnum(Target, targetString) orelse {
-			source.sendMessage("#ff0000'{s}' as a target specifier was not recognized, use 'world' or 'clipboard'", .{targetString});
+			source.sendMessage("#ff0000'{s}' as a target specifier was not recognized, use 'selection' or 'clipboard'", .{targetString});
 			return error.ParsingFailed;
 		};
 
 		const stateString = argsSplit.next() orelse {
-			source.sendMessage("#ff0000Missing required <world|clipboard> argument.", .{});
+			source.sendMessage("#ff0000Missing required <on|off> argument.", .{});
 			return error.ParsingFailed;
 		};
 		const state = std.meta.stringToEnum(State, stateString) orelse {
@@ -46,7 +46,7 @@ const Args = struct {
 		};
 
 		if (argsSplit.next() != null) {
-			source.sendMessage("#ff0000Too many arguments for command /copy. Expected two.", .{});
+			source.sendMessage("#ff0000Too many arguments for command /toggledecay. Expected two.", .{});
 			return error.ParsingFailed;
 		}
 
