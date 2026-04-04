@@ -29,26 +29,23 @@ fn hasSubBlock(stairData: u8, x: u1, y: u1, z: u1) bool {
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	@setEvalBranchQuota(65_536);
 
-	comptime var rotationTable: [4][256]u8 = undefined;
+	comptime var rotationTable: [4][256]u8 = @splat(@splat(0));
 	comptime for (0..4) |a| {
-		for (0..256) |old| {
-			var new: u8 = 0b11_11_11_11;
+		const sin: f32 = @sin((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
+		const cos: f32 = @cos((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
 
-			for (0..2) |i| for (0..2) |j| for (0..2) |k| {
-				const sin: f32 = @sin((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
-				const cos: f32 = @cos((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
-
+		for (0..2) |i| {
+			for (0..2) |j| {
 				const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
 				const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
-
 				const rX = @intFromBool(x*cos - y*sin > 0);
 				const rY = @intFromBool(x*sin + y*cos > 0);
-
-				if (hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
-					new &= ~subBlockMask(rX, rY, @intCast(k));
+				const oldShift = std.math.log2_int(u8, subBlockMask(@intCast(i), @intCast(j), 0));
+				const newShift = std.math.log2_int(u8, subBlockMask(rX, rY, 0));
+				for (0..256) |old| {
+					rotationTable[a][old] |= ((old >> oldShift) & 0b11) << newShift;
 				}
-			};
-			rotationTable[a][old] = new;
+			}
 		}
 	};
 	if (data >= 256) return 0;

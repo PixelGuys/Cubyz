@@ -278,9 +278,13 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
-fn parseBlockData(fullBlockId: []const u8, data: []const u8) ?u16 {
+const ParseBlockConfig = struct {
+	applyMigrations: bool = false,
+};
+
+fn parseBlockData(fullBlockId: []const u8, data: []const u8, comptime config: ParseBlockConfig) ?u16 {
 	if (std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
-		const oreChild = parseBlock(data);
+		const oreChild = parseBlockWithOptions(data, config);
 		if (oreChild.data != 0) {
 			std.log.warn("Error while parsing ore block data of '{s}': Parent block data must be 0.", .{fullBlockId});
 		}
@@ -293,11 +297,18 @@ fn parseBlockData(fullBlockId: []const u8, data: []const u8) ?u16 {
 }
 
 pub fn parseBlock(data: []const u8) Block {
+	return parseBlockWithOptions(data, .{});
+}
+
+pub fn parseBlockWithOptions(data: []const u8, comptime config: ParseBlockConfig) Block {
 	var id: []const u8 = data;
 	var blockData: ?u16 = null;
 	if (std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
-		blockData = parseBlockData(data, data[pos + 1 ..]);
+		blockData = parseBlockData(data, data[pos + 1 ..], config);
+	}
+	if (config.applyMigrations) {
+		id = main.migrations.applySingle(.block, id);
 	}
 	if (reverseIndices.get(id)) |resultType| {
 		var result: Block = .{.typ = resultType, .data = 0};
@@ -313,14 +324,6 @@ pub fn getBlockById(idAndData: []const u8) !u16 {
 	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
 	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
 	const id = idAndData[0..blockIdEndIndex];
-	return reverseIndices.get(id) orelse return error.NotFound;
-}
-
-pub fn getBlockByIdWithMigrations(idAndData: []const u8) !u16 {
-	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
-	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
-	var id = idAndData[0..blockIdEndIndex];
-	id = main.migrations.applySingle(.block, id);
 	return reverseIndices.get(id) orelse return error.NotFound;
 }
 
@@ -359,6 +362,13 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn id(self: Block) []u8 {
 		return _id[self.typ];
+	}
+
+	pub inline fn idAndData(self: Block, list: *main.List(u8)) void {
+		list.appendSlice(self.id());
+		if (self.data == 0) return;
+		list.append(':');
+		self.mode().formatBlockData(self, list);
 	}
 
 	pub inline fn blockHealth(self: Block) f32 {

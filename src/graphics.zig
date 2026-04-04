@@ -134,6 +134,18 @@ pub const draw = struct { // MARK: draw
 		clip = previousClip;
 	}
 
+	const SimpleVertex2D = struct {
+		pos: [2]f32,
+
+		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
+			.{
+				.location = 0,
+				.format = c.VK_FORMAT_R32G32_SFLOAT,
+				.offset = @offsetOf(@This(), "pos"),
+			},
+		};
+	};
+
 	// ----------------------------------------------------------------------------
 	// MARK: fillRect()
 	var rectUniforms: struct {
@@ -143,8 +155,7 @@ pub const draw = struct { // MARK: draw
 		rectColor: c_int,
 	} = undefined;
 	var rectPipeline: Pipeline = undefined;
-	pub var rectVAO: c_uint = undefined;
-	var rectVBO: c_uint = undefined;
+	pub var rectVao: VertexArray = undefined;
 
 	fn initRect() void {
 		rectPipeline = Pipeline.init(
@@ -156,26 +167,19 @@ pub const draw = struct { // MARK: draw
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
 		);
-		const rawData = [_]f32{
-			0, 0,
-			0, 1,
-			1, 0,
-			1, 1,
+		const rawData = [_]SimpleVertex2D{
+			.{.pos = .{0, 0}},
+			.{.pos = .{0, 1}},
+			.{.pos = .{1, 0}},
+			.{.pos = .{1, 1}},
 		};
 
-		c.glGenVertexArrays(1, &rectVAO);
-		c.glBindVertexArray(rectVAO);
-		c.glGenBuffers(1, &rectVBO);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, rectVBO);
-		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 2, c.GL_FLOAT, c.GL_FALSE, 2*@sizeOf(f32), null);
-		c.glEnableVertexAttribArray(0);
+		rectVao = .init(SimpleVertex2D, &rawData, null);
 	}
 
 	fn deinitRect() void {
 		rectPipeline.deinit();
-		c.glDeleteVertexArrays(1, &rectVAO);
-		c.glDeleteBuffers(1, &rectVBO);
+		rectVao.deinit();
 	}
 
 	pub fn rect(_pos: Vec2f, _dim: Vec2f) void {
@@ -194,7 +198,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(rectUniforms.rectColor, @bitCast(color));
 
-		c.glBindVertexArray(rectVAO);
+		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -208,8 +212,7 @@ pub const draw = struct { // MARK: draw
 		lineWidth: c_int,
 	} = undefined;
 	var rectBorderPipeline: Pipeline = undefined;
-	var rectBorderVAO: c_uint = undefined;
-	var rectBorderVBO: c_uint = undefined;
+	var rectBorderVao: VertexArray = undefined;
 
 	fn initRectBorder() void {
 		rectBorderPipeline = Pipeline.init(
@@ -221,32 +224,36 @@ pub const draw = struct { // MARK: draw
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
 		);
-		const rawData = [_]f32{
-			0, 0, 0,  0,
-			0, 0, 1,  1,
-			0, 1, 0,  0,
-			0, 1, 1,  -1,
-			1, 1, 0,  0,
-			1, 1, -1, -1,
-			1, 0, 0,  0,
-			1, 0, -1, 1,
-			0, 0, 0,  0,
-			0, 0, 1,  1,
+		const RectBorderVertex = struct {
+			pos: [4]f32,
+
+			pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
+				.{
+					.location = 0,
+					.format = c.VK_FORMAT_R32G32B32A32_SFLOAT,
+					.offset = @offsetOf(@This(), "pos"),
+				},
+			};
+		};
+		const rawData = [_]RectBorderVertex{
+			.{.pos = .{0, 0, 0, 0}},
+			.{.pos = .{0, 0, 1, 1}},
+			.{.pos = .{0, 1, 0, 0}},
+			.{.pos = .{0, 1, 1, -1}},
+			.{.pos = .{1, 1, 0, 0}},
+			.{.pos = .{1, 1, -1, -1}},
+			.{.pos = .{1, 0, 0, 0}},
+			.{.pos = .{1, 0, -1, 1}},
+			.{.pos = .{0, 0, 0, 0}},
+			.{.pos = .{0, 0, 1, 1}},
 		};
 
-		c.glGenVertexArrays(1, &rectBorderVAO);
-		c.glBindVertexArray(rectBorderVAO);
-		c.glGenBuffers(1, &rectBorderVBO);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, rectBorderVBO);
-		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 4, c.GL_FLOAT, c.GL_FALSE, 4*@sizeOf(f32), null);
-		c.glEnableVertexAttribArray(0);
+		rectBorderVao = .init(RectBorderVertex, &rawData, null);
 	}
 
 	fn deinitRectBorder() void {
 		rectBorderPipeline.deinit();
-		c.glDeleteVertexArrays(1, &rectBorderVAO);
-		c.glDeleteBuffers(1, &rectBorderVBO);
+		rectBorderVao.deinit();
 	}
 
 	pub fn rectBorder(_pos: Vec2f, _dim: Vec2f, _width: f32) void {
@@ -268,7 +275,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform1i(rectBorderUniforms.rectColor, @bitCast(color));
 		c.glUniform1f(rectBorderUniforms.lineWidth, width);
 
-		c.glBindVertexArray(rectBorderVAO);
+		rectBorderVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 10);
 	}
 
@@ -281,8 +288,7 @@ pub const draw = struct { // MARK: draw
 		lineColor: c_int,
 	} = undefined;
 	var linePipeline: Pipeline = undefined;
-	var lineVAO: c_uint = undefined;
-	var lineVBO: c_uint = undefined;
+	var lineVao: VertexArray = undefined;
 
 	fn initLine() void {
 		linePipeline = Pipeline.init(
@@ -294,24 +300,17 @@ pub const draw = struct { // MARK: draw
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
 		);
-		const rawData = [_]f32{
-			0, 0,
-			1, 1,
+		const rawData = [_]SimpleVertex2D{
+			.{.pos = .{0, 0}},
+			.{.pos = .{1, 1}},
 		};
 
-		c.glGenVertexArrays(1, &lineVAO);
-		c.glBindVertexArray(lineVAO);
-		c.glGenBuffers(1, &lineVBO);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, lineVBO);
-		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 2, c.GL_FLOAT, c.GL_FALSE, 2*@sizeOf(f32), null);
-		c.glEnableVertexAttribArray(0);
+		lineVao = .init(SimpleVertex2D, &rawData, null);
 	}
 
 	fn deinitLine() void {
 		linePipeline.deinit();
-		c.glDeleteVertexArrays(1, &lineVAO);
-		c.glDeleteBuffers(1, &lineVBO);
+		lineVao.deinit();
 	}
 
 	pub fn line(_pos1: Vec2f, _pos2: Vec2f) void {
@@ -331,36 +330,8 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
 		c.glUniform1i(lineUniforms.lineColor, @bitCast(color));
 
-		c.glBindVertexArray(lineVAO);
+		lineVao.bind();
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
-	}
-
-	// ----------------------------------------------------------------------------
-	// MARK: drawRect()
-	// Draw rect can use the same shader as drawline, because it essentially draws lines.
-	var drawRectVAO: c_uint = undefined;
-	var drawRectVBO: c_uint = undefined;
-
-	fn initDrawRect() void {
-		const rawData = [_]f32{
-			0, 0,
-			0, 1,
-			1, 1,
-			1, 0,
-		};
-
-		c.glGenVertexArrays(1, &drawRectVAO);
-		c.glBindVertexArray(drawRectVAO);
-		c.glGenBuffers(1, &drawRectVBO);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, drawRectVBO);
-		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 2, c.GL_FLOAT, c.GL_FALSE, 2*@sizeOf(f32), null);
-		c.glEnableVertexAttribArray(0);
-	}
-
-	fn deinitDrawRect() void {
-		c.glDeleteVertexArrays(1, &drawRectVAO);
-		c.glDeleteBuffers(1, &drawRectVBO);
 	}
 
 	pub fn rectOutline(_pos: Vec2f, _dim: Vec2f) void {
@@ -379,7 +350,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
 		c.glUniform1i(lineUniforms.lineColor, @bitCast(color));
 
-		c.glBindVertexArray(lineVAO);
+		lineVao.bind();
 		c.glDrawArrays(c.GL_LINE_LOOP, 0, 5);
 	}
 
@@ -392,8 +363,7 @@ pub const draw = struct { // MARK: draw
 		circleColor: c_int,
 	} = undefined;
 	var circlePipeline: Pipeline = undefined;
-	var circleVAO: c_uint = undefined;
-	var circleVBO: c_uint = undefined;
+	var circleVao: VertexArray = undefined;
 
 	fn initCircle() void {
 		circlePipeline = Pipeline.init(
@@ -405,26 +375,19 @@ pub const draw = struct { // MARK: draw
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
 		);
-		const rawData = [_]f32{
-			-1, -1,
-			-1, 1,
-			1,  -1,
-			1,  1,
+		const rawData = [_]SimpleVertex2D{
+			.{.pos = .{-1, -1}},
+			.{.pos = .{-1, 1}},
+			.{.pos = .{1, -1}},
+			.{.pos = .{1, 1}},
 		};
 
-		c.glGenVertexArrays(1, &circleVAO);
-		c.glBindVertexArray(circleVAO);
-		c.glGenBuffers(1, &circleVBO);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, circleVBO);
-		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 2, c.GL_FLOAT, c.GL_FALSE, 2*@sizeOf(f32), null);
-		c.glEnableVertexAttribArray(0);
+		circleVao = .init(SimpleVertex2D, &rawData, null);
 	}
 
 	fn deinitCircle() void {
 		circlePipeline.deinit();
-		c.glDeleteVertexArrays(1, &circleVAO);
-		c.glDeleteBuffers(1, &circleVBO);
+		circleVao.deinit();
 	}
 
 	pub fn circle(_center: Vec2f, _radius: f32) void {
@@ -442,7 +405,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
 		c.glUniform1i(circleUniforms.circleColor, @bitCast(color));
 
-		c.glBindVertexArray(circleVAO);
+		circleVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -501,7 +464,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
 		c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
 
-		c.glBindVertexArray(rectVAO);
+		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -523,7 +486,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(uniforms.uvOffset, 0, 0);
 		c.glUniform2f(uniforms.uvDim, 1, 1);
 
-		c.glBindVertexArray(rectVAO);
+		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -547,7 +510,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform1i(uniforms.color, @bitCast(color));
 		c.glUniform1f(uniforms.scale, scale);
 
-		c.glBindVertexArray(rectVAO);
+		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -1016,7 +979,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
-		c.glBindVertexArray(draw.rectVAO);
+		draw.rectVao.bind();
 		const lineWraps: []f32 = main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
 		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
@@ -1084,7 +1047,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
-		c.glBindVertexArray(draw.rectVAO);
+		draw.rectVao.bind();
 		const lineWraps: []f32 = main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
 		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
@@ -1291,7 +1254,6 @@ const TextRendering = struct { // MARK: TextRendering
 
 pub fn init() void { // MARK: init()
 	draw.initCircle();
-	draw.initDrawRect();
 	draw.initImage();
 	draw.initLine();
 	draw.initRect();
@@ -1305,7 +1267,6 @@ pub fn init() void { // MARK: init()
 
 pub fn deinit() void {
 	draw.deinitCircle();
-	draw.deinitDrawRect();
 	draw.deinitImage();
 	draw.deinitLine();
 	draw.deinitRect();
@@ -1819,6 +1780,69 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 
 	pub fn bind(self: ComputePipeline) void {
 		self.shader.bind();
+	}
+};
+
+pub const VertexArray = struct { // MARK: VertexArray
+	vao: c_uint,
+	vbo: c_uint,
+	ibo: ?c_uint,
+
+	pub const EmptyVertex = struct {
+		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{};
+	};
+
+	pub fn init(T: type, data: []const T, indices_: ?[]const u32) VertexArray {
+		var result: VertexArray = undefined;
+		c.glGenVertexArrays(1, &result.vao);
+		c.glBindVertexArray(result.vao);
+		c.glGenBuffers(1, &result.vbo);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, result.vbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
+		if (indices_) |indices| {
+			result.ibo = 0;
+			c.glGenBuffers(1, &result.ibo.?);
+			c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, result.ibo.?);
+			c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
+		} else {
+			result.ibo = null;
+		}
+
+		const attributeDescriptions: []const c.VkVertexInputAttributeDescription = T.attributeDescriptions;
+		inline for (attributeDescriptions) |desc| {
+			std.debug.assert(desc.binding == 0);
+			c.glEnableVertexAttribArray(desc.location);
+			const glType = comptime switch (desc.format) {
+				c.VK_FORMAT_R32_SFLOAT => c.GL_FLOAT,
+				c.VK_FORMAT_R32G32_SFLOAT => c.GL_FLOAT,
+				c.VK_FORMAT_R32G32B32_SFLOAT => c.GL_FLOAT,
+				c.VK_FORMAT_R32G32B32A32_SFLOAT => c.GL_FLOAT,
+				else => @compileError("Unrecognized format"),
+			};
+			const size = comptime switch (desc.format) {
+				c.VK_FORMAT_R32_SFLOAT => 1,
+				c.VK_FORMAT_R32G32_SFLOAT => 2,
+				c.VK_FORMAT_R32G32B32_SFLOAT => 3,
+				c.VK_FORMAT_R32G32B32A32_SFLOAT => 4,
+				else => @compileError("Unrecognized format"),
+			};
+			c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset));
+		}
+
+		c.glBindVertexArray(0);
+		return result;
+	}
+
+	pub fn deinit(self: VertexArray) void {
+		c.glDeleteVertexArrays(1, &self.vao);
+		c.glDeleteBuffers(1, &self.vbo);
+		if (self.ibo != null) {
+			c.glDeleteBuffers(1, &self.ibo.?);
+		}
+	}
+
+	pub fn bind(self: VertexArray) void {
+		c.glBindVertexArray(self.vao);
 	}
 };
 
@@ -2704,7 +2728,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);
 	frameBuffer.bindTexture(c.GL_TEXTURE3);
 
-	c.glBindVertexArray(draw.rectVAO);
+	draw.rectVao.bind();
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);

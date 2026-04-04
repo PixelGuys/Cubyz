@@ -116,6 +116,8 @@ pub fn render() void {
 		y += 8;
 		draw.print("Particle count: {}/{}", .{main.particles.ParticleSystem.getParticleCount(), main.particles.ParticleSystem.maxCapacity}, 0, y, 8, .left);
 		y += 8;
+		draw.print("items: {} entities: {}", .{main.game.world.?.itemDrops.super.size, main.client.entity_manager.entities.len}, 0, y, 8, .left);
+		y += 8;
 		draw.print("Active sound count: {}", .{main.audio.getActiveSoundCount()}, 0, y, 8, .left);
 		y += 8;
 	}

@@ -162,6 +162,7 @@ const Socket = struct {
 		var nameBuf: [255]u8 = undefined;
 		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
 		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
+		if (name.len == 0) return error.UnknownHostName;
 		std.Io.net.HostName.lookup(.{.bytes = name}, main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
 		while (true) {
 			const entry = resultQueue.getOneUncancelable(main.io);
@@ -369,10 +370,10 @@ const stun = struct { // MARK: stun
 					continue;
 				};
 				if (oldAddress) |other| {
-					std.log.info("{f}", .{result});
 					if (other.ip == result.ip and other.port == result.port) {
 						return result;
 					} else {
+						std.log.warn("Detected symmetric NAT. UDP-holepunching may not work reliably", .{});
 						result.isSymmetricNAT = true;
 						return result;
 					}

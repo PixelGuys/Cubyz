@@ -98,7 +98,7 @@ fn initContent() void {
 
 		std.mem.sort(Item, items.items, {}, lessThan);
 		const slotCount = items.items.len + (slotsPerRow - items.items.len%slotsPerRow);
-		inventory = ClientInventory.init(main.globalAllocator, slotCount, .normal, .creative, .other, .{});
+		inventory = ClientInventory.init(main.globalAllocator, slotCount, .creative, .other, .{});
 		for (0..items.items.len) |i| {
 			inventory.super._items[i] = .{.item = items.items[i], .amount = 1};
 		}

@@ -43,8 +43,6 @@ pub fn generateStump(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chu
 pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, seed: *u64) void {
 	var d: ?u32 = null;
 
-	const sh = caveMap.getHeightData(x, y);
-
 	for (0..4) |_| {
 		const dir: u32 = main.random.nextIntBounded(u32, seed, 4);
 
@@ -64,7 +62,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 		var works = true;
 		for (0..length) |j| {
 			const v: i32 = @intCast(j);
-			if (caveMap.getHeightData(x + dx*(v + 2), y + dy*(v + 2)) != sh) {
+			if (caveMap.isSolid(x + dx*(v + 2), y + dy*(v + 2), z) or !caveMap.isSolid(x + dx*(v + 2), y + dy*(v + 2), z -% 1)) {
 				works = false;
 				break;
 			}

@@ -14,7 +14,7 @@ const ServerChunk = main.chunk.ServerChunk;
 const Degrees = main.rotation.Degrees;
 const Tag = main.Tag;
 
-const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
+const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
 const BlockIdSizeType = u32;
 const BlockStorageType = u32;
 
@@ -24,7 +24,7 @@ const BinaryReader = main.utils.BinaryReader;
 const AliasTable = main.utils.AliasTable;
 const ListUnmanaged = main.ListUnmanaged;
 
-pub const blueprintVersion = 0;
+pub const blueprintVersion = 1;
 var voidType: ?u16 = null;
 
 pub const BlueprintCompression = enum(u16) {
@@ -180,7 +180,7 @@ pub const Blueprint = struct {
 		}
 		const compression = try compressedReader.readEnum(BlueprintCompression);
 		const blockPaletteSizeBytes = try compressedReader.readInt(u32);
-		const paletteBlockCount = try compressedReader.readInt(u16);
+		const paletteBlockCount: u32 = if (version == 0) try compressedReader.readInt(u16) else try compressedReader.readInt(u32);
 		const width = try compressedReader.readInt(u16);
 		const depth = try compressedReader.readInt(u16);
 		const height = try compressedReader.readInt(u16);
@@ -200,10 +200,14 @@ pub const Blueprint = struct {
 		for (self.blocks.mem) |*block| {
 			const blueprintBlockRaw = try decompressedReader.readInt(BlockStorageType);
 
-			const blueprintBlock = Block.fromInt(blueprintBlockRaw);
-			const gameBlockId = blueprintIdToGameIdMap[blueprintBlock.typ];
+			if (version == 0) {
+				const blueprintBlock = Block.fromInt(blueprintBlockRaw);
+				const gameBlockId = blueprintIdToGameIdMap[blueprintBlock.typ];
 
-			block.* = .{.typ = gameBlockId, .data = blueprintBlock.data};
+				block.* = .{.typ = gameBlockId.typ, .data = blueprintBlock.data};
+			} else {
+				block.* = blueprintIdToGameIdMap[blueprintBlockRaw];
+			}
 		}
 		return self;
 	}
@@ -218,7 +222,7 @@ pub const Blueprint = struct {
 		const blockPaletteSizeBytes = storeBlockPalette(gameIdToBlueprintId, &uncompressedWriter);
 
 		for (self.blocks.mem) |block| {
-			const blueprintBlock: BlockStorageType = Block.toInt(.{.typ = gameIdToBlueprintId.get(block.typ).?, .data = block.data});
+			const blueprintBlock: BlockStorageType = gameIdToBlueprintId.get(block).?;
 			uncompressedWriter.writeInt(BlockStorageType, blueprintBlock);
 		}
 
@@ -230,7 +234,7 @@ pub const Blueprint = struct {
 		outputWriter.writeInt(u16, blueprintVersion);
 		outputWriter.writeEnum(BlueprintCompression, compressed.mode);
 		outputWriter.writeInt(u32, @intCast(blockPaletteSizeBytes));
-		outputWriter.writeInt(u16, @intCast(gameIdToBlueprintId.count()));
+		outputWriter.writeInt(u32, @intCast(gameIdToBlueprintId.count()));
 		outputWriter.writeInt(u16, @intCast(self.blocks.width));
 		outputWriter.writeInt(u16, @intCast(self.blocks.depth));
 		outputWriter.writeInt(u16, @intCast(self.blocks.height));
@@ -239,15 +243,12 @@ pub const Blueprint = struct {
 
 		return outputWriter.data.toOwnedSlice();
 	}
-	fn makeBlueprintIdToGameIdMap(allocator: NeverFailingAllocator, palette: [][]const u8) []u16 {
-		var blueprintIdToGameIdMap = allocator.alloc(u16, palette.len);
+	fn makeBlueprintIdToGameIdMap(allocator: NeverFailingAllocator, palette: [][]const u8) []Block {
+		var blueprintIdToGameIdMap = allocator.alloc(Block, palette.len);
 
 		for (palette, 0..) |blockName, blueprintBlockId| {
-			const gameBlockId = main.blocks.getBlockByIdWithMigrations(blockName) catch |err| blk: {
-				std.log.err("Couldn't find block with name {s}: {s}. Replacing it with air", .{blockName, @errorName(err)});
-				break :blk 0;
-			};
-			blueprintIdToGameIdMap[blueprintBlockId] = gameBlockId;
+			const block = main.blocks.parseBlockWithOptions(blockName, .{.applyMigrations = true});
+			blueprintIdToGameIdMap[blueprintBlockId] = block;
 		}
 		return blueprintIdToGameIdMap;
 	}
@@ -255,7 +256,7 @@ pub const Blueprint = struct {
 		var gameIdToBlueprintId: GameIdToBlueprintIdMapType = .init(allocator.allocator);
 
 		for (self.blocks.mem) |block| {
-			const result = gameIdToBlueprintId.getOrPut(block.typ) catch unreachable;
+			const result = gameIdToBlueprintId.getOrPut(block) catch unreachable;
 			if (!result.found_existing) {
 				result.value_ptr.* = @intCast(gameIdToBlueprintId.count() - 1);
 			}
@@ -274,20 +275,23 @@ pub const Blueprint = struct {
 		return palette;
 	}
 	fn storeBlockPalette(map: GameIdToBlueprintIdMapType, writer: *BinaryWriter) usize {
-		var blockPalette = main.stackAllocator.alloc([]const u8, map.count());
+		var blockPalette = main.stackAllocator.alloc(Block, map.count());
 		defer main.stackAllocator.free(blockPalette);
 
 		var iterator = map.iterator();
 		while (iterator.next()) |entry| {
-			const block = Block{.typ = entry.key_ptr.*, .data = 0};
-			const blockId = block.id();
-			blockPalette[entry.value_ptr.*] = blockId;
+			blockPalette[entry.value_ptr.*] = entry.key_ptr.*;
 		}
 
 		std.log.info("Blueprint block palette:", .{});
 
+		var idAndDataList: main.List(u8) = .init(main.stackAllocator);
+		defer idAndDataList.deinit();
+
 		for (0..blockPalette.len) |index| {
-			const blockName = blockPalette[index];
+			idAndDataList.clearRetainingCapacity();
+			blockPalette[index].idAndData(&idAndDataList);
+			const blockName = idAndDataList.items;
 			std.log.info("palette[{d}]: {s}", .{index, blockName});
 
 			writer.writeInt(BlockIdSizeType, @intCast(blockName.len));
@@ -328,6 +332,12 @@ pub const Blueprint = struct {
 					self.blocks.set(x, y, z, newBlocks.blocks.sample(&main.seed).block);
 				}
 			}
+		}
+	}
+
+	pub fn apply(self: *Blueprint, context: anytype, applyFunction: fn (context: @TypeOf(context), block: Block) Block) void {
+		for (self.blocks.mem) |*block| {
+			block.* = applyFunction(context, block.*);
 		}
 	}
 };
