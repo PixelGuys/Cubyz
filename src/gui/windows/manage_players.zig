@@ -21,14 +21,40 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
+var entityCount: u32 = 0;
 
-fn kick(conn: *main.network.Connection) void {
+fn kickPerConn(conn: *main.network.Connection) void {
 	conn.disconnect();
+}
+
+fn kickPerIndex(playerIndex: usize) void {
+	const command = std.fmt.allocPrint(main.globalAllocator.allocator, "kick @{d}", .{playerIndex}) catch unreachable;
+	main.sync.ClientSide.executeCommand(.{.chatCommand = .{.message = command}});
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	{
+	if (main.server.world == null) blk: {
+		entityCount = main.client.entity_manager.entities.len;
+		if (entityCount == 0) {
+			list.add(Label.init(.{0, 0}, 200, "No players to manage", .left));
+			break :blk;
+		}
+
+		const old = main.settings.showIdWithName;
+		main.settings.showIdWithName = true;
+		defer main.settings.showIdWithName = old;
+		for (main.client.entity_manager.entities.items()) |ent| {
+			if (ent.name.len == 0) continue;
+			const row = HorizontalList.init();
+
+			const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
+			defer main.stackAllocator.free(string);
+			row.add(Label.init(.{0, 0}, 200, string, .left));
+			row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithInt(kickPerIndex, ent.playerIndex)));
+			list.add(row);
+		}
+	} else {
 		main.server.connectionManager.mutex.lock();
 		defer main.server.connectionManager.mutex.unlock();
 		std.debug.assert(userList.len == 0);
@@ -38,16 +64,19 @@ pub fn onOpen() void {
 			userList[i].increaseRefCount();
 			const row = HorizontalList.init();
 			if (connection.user.?.name.len != 0) {
-				row.add(Label.init(.{0, 0}, 200, connection.user.?.name, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithPtr(kick, connection)));
+				const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.user.?}) catch unreachable;
+				defer main.stackAllocator.free(string);
+				row.add(Label.init(.{0, 0}, 200, string, .left));
+				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithPtr(kickPerConn, connection)));
 			} else {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.remoteAddress}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				row.add(Label.init(.{0, 0}, 200, ip, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Cancel", .initWithPtr(kick, connection)));
+				row.add(Button.initText(.{0, 0}, 100, "Cancel", .initWithPtr(kickPerConn, connection)));
 			}
 			list.add(row);
 		}
+		list.add(Button.initText(.{0, 0}, 128, "Invite Player", gui.openWindowCallback("invite")));
 	}
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -56,22 +85,31 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	for (userList) |user| {
-		user.decreaseRefCount();
+	if (main.server.world != null) {
+		for (userList) |user| {
+			user.decreaseRefCount();
+		}
+		main.globalAllocator.free(userList);
+		userList = &.{};
 	}
-	main.globalAllocator.free(userList);
-	userList = &.{};
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
 
 pub fn update() void {
-	main.server.connectionManager.mutex.lock();
-	const serverListLen = main.server.connectionManager.connections.items.len;
-	main.server.connectionManager.mutex.unlock();
-	if (userList.len != serverListLen) {
-		onClose();
-		onOpen();
+	if (main.server.world == null) {
+		if (main.client.entity_manager.entities.len != entityCount) {
+			onClose();
+			onOpen();
+		}
+	} else {
+		main.server.connectionManager.mutex.lock();
+		const serverListLen = main.server.connectionManager.connections.items.len;
+		main.server.connectionManager.mutex.unlock();
+		if (userList.len != serverListLen) {
+			onClose();
+			onOpen();
+		}
 	}
 }
