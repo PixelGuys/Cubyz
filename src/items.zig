@@ -1186,8 +1186,7 @@ pub fn globalInit() void {
 	itemListSize = 0;
 	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
 		const ModifierStruct: type = @field(modifierList, decl.name);
-		const vtable = Modifier.VTable.initFromModifierStruct(ModifierStruct);
-		modifiers.put(main.globalArena.allocator, decl.name, &vtable) catch unreachable;
+		modifiers.put(main.globalArena.allocator, decl.name, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
 	}
 	inline for (@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
 		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
