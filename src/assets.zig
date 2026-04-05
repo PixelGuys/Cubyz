@@ -573,7 +573,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		var modelIterator = worldAssets.entityModels.iterator();
 		rawModelData = .init(main.worldArena.allocator);
 		while (modelIterator.next()) |entry| {
-			std.debug.print("{s}\n", .{entry.key_ptr.*});
+			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
 			registerModelRaw(entry.key_ptr.*, entry.value_ptr.*);
 		}
 	}
