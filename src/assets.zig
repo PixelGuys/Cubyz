@@ -744,7 +744,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	worldAssets.log(.world);
 }
-pub fn registerModelRaw(id: []const u8, data: []const u8) void {
+pub fn registerEntityModelRaw(id: []const u8, data: []const u8) void {
 	rawModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
 }
 pub fn unloadAssets() void { // MARK: unloadAssets()
