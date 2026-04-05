@@ -46,7 +46,7 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	model = main.entityModel.EntityModel.initFromGltf("assets/cubyz/entities/models/snale.glb", "assets/cubyz/entities/textures/snale.png") catch |err| blk: {
+	model = main.entityModel.EntityModel.initFromGltf("assets/cubyz/entityModels/models/snale.glb", "assets/cubyz/entityModels/textures/snale.png") catch |err| blk: {
 		std.log.err("Gltf loading error {s}", .{@errorName(err)});
 		break :blk .initEmpty();
 	};

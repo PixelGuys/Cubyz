@@ -174,17 +174,6 @@ pub const Mat4f = struct { // MARK: Mat4f
 		};
 	}
 
-	pub fn fromArr(arr: [16]f32) Mat4f { // zig fmt: off
-		return Mat4f{
-			.rows = [4]Vec4f{
-				Vec4f{arr[0],  arr[1],  arr[2],  arr[3]},
-				Vec4f{arr[4],  arr[5],  arr[6],  arr[7]},
-				Vec4f{arr[8],  arr[9],  arr[10], arr[11]},
-				Vec4f{arr[12], arr[13], arr[14], arr[15]},
-			},
-		};
-	} // zig fmt: on
-
 	pub fn translation(pos: Vec3f) Mat4f {
 		return Mat4f{
 			.rows = [4]Vec4f{
