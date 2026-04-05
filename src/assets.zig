@@ -29,6 +29,8 @@ pub const Assets = struct {
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
+	entityComponents: ZonHashMap,
+	entityComponentMigrations: AddonNameToZonMap,
 	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
 	blockModels: BytesHashMap,
@@ -48,6 +50,8 @@ pub const Assets = struct {
 			.tools = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
+			.entityComponents = .{},
+			.entityComponentMigrations = .{},
 			.structureTables = .{},
 			.recipes = .{},
 			.blockModels = .{},
@@ -67,6 +71,8 @@ pub const Assets = struct {
 		self.tools.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
+		self.entityComponents.deinit(allocator.allocator);
+		self.entityComponentMigrations.deinit(allocator.allocator);
 		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.blockModels.deinit(allocator.allocator);
@@ -86,6 +92,8 @@ pub const Assets = struct {
 			.tools = self.tools.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
+			.entityComponents = self.entityComponents.clone(allocator.allocator) catch unreachable,
+			.entityComponentMigrations = self.entityComponentMigrations.clone(allocator.allocator) catch unreachable,
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
@@ -526,7 +534,7 @@ pub const Palette = struct { // MARK: Palette
 var loadedAssets: bool = false;
 pub var rawModelData: std.StringHashMap([]main.models.QuadInfo) = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -549,7 +557,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
 	migrations_zig.apply(.biome, biomePalette);
 
-	// models (block optimized):
+	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
+	migrations_zig.apply(.entityComponent, entityComponentPalette);
+  
+  // models (block optimized):
 	{
 		var modelIterator = worldAssets.blockModels.iterator();
 		while (modelIterator.next()) |entry| {
@@ -565,7 +576,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			std.debug.print("{s}\n", .{entry.key_ptr.*});
 			registerModelRaw(entry.key_ptr.*, entry.value_ptr.*);
 		}
-	}
 
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 
@@ -687,6 +697,31 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 	biomes_zig.finishLoading();
 
+	// EntityComponents
+	{
+		var map: std.StringHashMap(u32) = .init(main.stackAllocator.allocator);
+		defer map.deinit();
+		var index: u32 = 0;
+
+		// the already exisiting ones:
+		for (entityComponentPalette.palette.items) |value| {
+			map.put(value, index) catch unreachable;
+			index += 1;
+		}
+
+		// now give each component it's id:
+		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+			const name = decl.name;
+			if (map.get(name)) |id| {
+				@field(main.entity.components, decl.name).entityComponentID = id;
+			} else {
+				entityComponentPalette.add(name);
+				index += 1;
+			}
+		}
+		main.entity.initComponent();
+	}
+
 	// Register paths for asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
 		std.log.err("Can't open asset path {s}: {s}", .{"assets", @errorName(err)});
@@ -716,6 +751,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
 
+	main.entity.deinitComponent();
 	sbb.reset();
 	blocks_zig.reset();
 	items_zig.reset();
