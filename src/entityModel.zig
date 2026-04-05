@@ -160,17 +160,17 @@ pub const EntityModel = struct {
 		return getHierarchyMatrix(node.parent.*).mul(currentMat);
 	}
 
-	fn getGltfError(result: c_uint) anyerror {
+	fn getGltfError(result: gltf.cgltf_result) anyerror {
 		return switch (result) {
-			1 => error.DataTooShort,
-			2 => error.UnknownFormat,
-			3 => error.InvalidJson,
-			4 => error.InvalidGltf,
-			5 => error.InvalidOptions,
-			6 => error.FileNotFound,
-			7 => error.IoError,
-			8 => error.OutOfMemory,
-			9 => error.LegacyGltf,
+			gltf.cgltf_result_data_too_short => error.DataTooShort,
+			gltf.cgltf_result_unknown_format => error.UnknownFormat,
+			gltf.cgltf_result_invalid_json => error.InvalidJson,
+			gltf.cgltf_result_invalid_gltf => error.InvalidGltf,
+			gltf.cgltf_result_invalid_options => error.InvalidOptions,
+			gltf.cgltf_result_file_not_found => error.FileNotFound,
+			gltf.cgltf_result_io_error => error.IoError,
+			gltf.cgltf_result_out_of_memory => error.OutOfMemory,
+			gltf.cgltf_result_legacy_gltf => error.LegacyGltf,
 			else => unreachable,
 		};
 	}
