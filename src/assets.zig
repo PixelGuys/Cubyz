@@ -571,7 +571,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// models (Entities):
 	{
 		var modelIterator = worldAssets.entityModels.iterator();
-		rawModelData = std.StringHashMap([]main.models.QuadInfo).init(main.worldArena.allocator);
+		rawModelData = .init(main.worldArena.allocator);
 		while (modelIterator.next()) |entry| {
 			std.debug.print("{s}\n", .{entry.key_ptr.*});
 			registerModelRaw(entry.key_ptr.*, entry.value_ptr.*);
