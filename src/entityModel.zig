@@ -35,7 +35,7 @@ pub const EntityModel = struct {
 
 	pub fn initFromObj(modelPath: []const u8, texturePath: []const u8) EntityModel {
 		const modelFile = main.files.cwd().read(main.stackAllocator, modelPath) catch |err| blk: {
-			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
+			std.log.err("Error while reading player model from path {s}: {s}", .{modelPath, @errorName(err)});
 			break :blk &.{};
 		};
 		defer main.stackAllocator.free(modelFile);
