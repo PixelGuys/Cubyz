@@ -43,8 +43,8 @@ pub fn init() void {
 		.{.depthTest = true},
 		.{.attachments = &.{.alphaBlending}},
 	);
-
-	model = .initFromObj("assets/cubyz/entityModels/models/snale.obj", "assets/cubyz/entityModels/textures/snale.png");
+	// TODO: This is Temporary, will be replace by future ECS parts.
+	model = .init("assets", "cubyz:snale", main.assets.entityModelDescriptions().get("cubyz:snale").?);
 }
 
 pub fn deinit() void {
