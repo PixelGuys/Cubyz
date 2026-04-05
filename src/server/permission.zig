@@ -127,12 +127,12 @@ pub const PermissionGroup = struct { // MARK: PermissionGroup
 		return self;
 	}
 
-	pub fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement) *PermissionGroup {
+	pub fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement, id: u32) *PermissionGroup {
 		sync.threadContext.assertCorrectContext(.server);
 		const self = allocator.create(PermissionGroup);
 		self.* = .{
 			.permissions = .init(allocator),
-			.id = zon.get(u32, "id", 0),
+			.id = id,
 		};
 		self.permissions.fromZon(zon);
 		return self;
@@ -154,17 +154,10 @@ var groups: std.StringHashMapUnmanaged(*PermissionGroup) = .{};
 var groupsArena: NeverFailingArenaAllocator = undefined;
 var currentId: u32 = 0; // Needed to identify groups even after deletion, so that players who join a server after deletion of a group don't automatically join another group witht the same name.
 
-pub fn init(allocator: NeverFailingAllocator, _zon: ?ZonElement) void {
+pub fn init(allocator: NeverFailingAllocator, _currentId: u32) void {
 	sync.threadContext.assertCorrectContext(.server);
 	groupsArena = .init(allocator);
-	const zon = _zon orelse return;
-	currentId = zon.get(u32, "currentId", 0);
-
-	if (zon.getChild("groups") != .object) return;
-	var it = zon.getChild("groups").object.iterator();
-	while (it.next()) |entry| {
-		groups.put(groupsArena.allocator().allocator, groupsArena.allocator().dupe(u8, entry.key_ptr.*), .fromZon(groupsArena.allocator(), entry.value_ptr.*)) catch unreachable;
-	}
+	currentId = _currentId;
 }
 
 pub fn deinit() void {
@@ -173,21 +166,34 @@ pub fn deinit() void {
 	groups = .{};
 }
 
-pub fn groupsToZon(allocator: NeverFailingAllocator) ZonElement {
-	sync.threadContext.assertCorrectContext(.server);
-	var zon: ZonElement = .initObject(allocator);
-	zon.put("currentId", currentId);
+pub fn addGroupFromZon(id: u32, zon: ZonElement) void {
+	const name = zon.get(?[]const u8, "name", null) orelse {
+		std.log.err("Group with id {d} has invalid content skipping", .{id});
+		return;
+	};
+	groups.put(groupsArena.allocator().allocator, groupsArena.allocator().dupe(u8, name), .fromZon(groupsArena.allocator(), zon, id)) catch unreachable;
+}
 
-	var groupsZon: ZonElement = .initObject(allocator);
+pub fn saveGroups(allocator: NeverFailingAllocator, groupsPath: []const u8) !void {
+	sync.threadContext.assertCorrectContext(.server);
+
+	const metadatPath = std.fmt.allocPrint(allocator.allocator, "{s}/metadata.zon", .{groupsPath}) catch unreachable;
+	defer allocator.free(metadatPath);
+	var metadatZon: ZonElement = .initObject(main.stackAllocator);
+	defer metadatZon.deinit(main.stackAllocator);
+	metadatZon.put("currentId", currentId);
+	try main.files.cubyzDir().writeZon(metadatPath, metadatZon);
+
 	var it = groups.iterator();
 	while (it.next()) |group| {
+		const path = std.fmt.allocPrint(allocator.allocator, "{s}/{d}.zon", .{groupsPath, group.value_ptr.*.id}) catch unreachable;
+		defer allocator.free(path);
 		var groupZon: ZonElement = .initObject(allocator);
-		groupZon.put("id", group.value_ptr.*.id);
+		defer groupZon.deinit(allocator);
+		groupZon.put("name", group.key_ptr.*);
 		group.value_ptr.*.permissions.toZon(allocator, &groupZon);
-		groupsZon.put(group.key_ptr.*, groupZon);
+		try main.files.cubyzDir().writeZon(path, groupZon);
 	}
-	zon.put("groups", groupsZon);
-	return zon;
 }
 
 pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
