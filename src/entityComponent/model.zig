@@ -87,6 +87,7 @@ pub const server = struct {
 			component.deinit();
 		}
 		renderComponents.deinit();
+		renderComponents = undefined;
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;

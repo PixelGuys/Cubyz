@@ -26,12 +26,6 @@ pub var entities: main.utils.VirtualList(server.Entity, 1 << 24) = undefined;
 
 pub fn init() void {
 	entities = .init();
-	inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
-		@field(main.entity.components, decl.name).server.init();
-	}
-	inline for (@typeInfo(main.entity.systems).@"struct".decls) |decl| {
-		@field(main.entity.systems, decl.name).server.init();
-	}
 }
 pub fn getAll() []server.Entity {
 	return entities.items();
@@ -42,13 +36,6 @@ pub fn deinit() void {
 		value.deinit(.server);
 	}
 	entities.deinit();
-
-	inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
-		@field(main.entity.components, decl.name).server.deinit();
-	}
-	inline for (@typeInfo(main.entity.systems).@"struct".decls) |decl| {
-		@field(main.entity.systems, decl.name).server.deinit();
-	}
 }
 
 pub fn add() u32 {
