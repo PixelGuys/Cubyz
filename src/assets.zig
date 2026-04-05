@@ -788,3 +788,8 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 pub fn worldPresets() *const Assets.ZonHashMap {
 	return &common.worldPresets;
 }
+
+// TODO: Tempoary, will be removed in future ECS parts.
+pub fn entityModelDescriptions() *const Assets.ZonHashMap {
+	return &common.entityModelDescriptions;
+}
