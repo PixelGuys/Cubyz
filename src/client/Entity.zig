@@ -92,23 +92,30 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
 
-	// var iter = self.model.nodeReverse.keyIterator();
-	// while (iter.next()) |k| {
-	// std.debug.print("\n\"{s}\"", .{k});
-	// }
+	const headId = self.model.nodeReverse.get("Head").?;
+	const rightArmId = self.model.nodeReverse.get("RightArm").?;
+	const rightItemId = self.model.nodeReverse.get("RightItem").?;
 
-	// const nodeId = self.model.nodeReverse.get("Head").?;
+	if (self.model.nodeReverse.get("Eyestalks")) |eyestalksId|{
+		const stalkRot = self.rot[0]*0.25;
+		const headRot = self.rot[0]*0.75;
+		self.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
+		self.matrices[eyestalksId] = getHierarchyMatrix(self.nodes, self.nodes[eyestalksId]);
 
-	self.nodes[6].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
-	self.matrices[6] = getHierarchyMatrix(self.nodes, self.nodes[6]);
+		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
+		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
+	} else {
+		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
+		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
+	}
 
 	ueee += 0.05;
 
-	self.nodes[2].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/5);
-	self.matrices[2] = getHierarchyMatrix(self.nodes, self.nodes[2]);
+	self.nodes[rightItemId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/5);
+	self.matrices[rightItemId] = getHierarchyMatrix(self.nodes, self.nodes[rightItemId]);
 
-	self.nodes[3].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/3);
-	self.matrices[3] = getHierarchyMatrix(self.nodes, self.nodes[3]);
+	self.nodes[rightArmId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/3);
+	self.matrices[rightArmId] = getHierarchyMatrix(self.nodes, self.nodes[rightArmId]);
 }
 
 fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {

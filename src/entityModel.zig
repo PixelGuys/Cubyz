@@ -93,7 +93,11 @@ pub const EntityModel = struct {
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count == 0) continue;
 
-			nodeReverse.put(std.mem.span(node.name), @intCast(nodeIdx)) catch unreachable;
+			const nameC = std.mem.span(node.name);
+			std.debug.print("\n{s}", .{nameC});
+			const name = main.globalArena.alloc(u8, nameC.len);
+			@memcpy(name, nameC);
+			nodeReverse.put(name, @intCast(nodeIdx)) catch unreachable;
 			if (nodeReverse.get(std.mem.span(node.name)) == null) {} else {}
 
 			nodes[nodeIdx] = Node{
