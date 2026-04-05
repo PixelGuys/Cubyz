@@ -63,7 +63,8 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 	for (0..self.model.nodeCount) |i| {
 		self.nodes[i] = self.model.nodes[i];
 	}
-
+	
+	
 	for (0..self.model.nodeCount) |i| {
 		self.matrices[i] = getHierarchyMatrix(self.nodes, self.nodes[i]);
 	}
@@ -111,28 +112,15 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 }
 
 fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
-	var currentMat = Mat4f.translation(Vec3f{
-		node.pos[0],
-		node.pos[1],
-		node.pos[2],
-	});
-	currentMat = currentMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-		node.rot[0],
-		node.rot[1],
-		node.rot[2],
-		node.rot[3],
-	}));
-	currentMat = currentMat.mul(Mat4f.scale(Vec3f{
-		node.scale[0],
-		node.scale[1],
-		node.scale[2],
-	}));
+	var mat = Mat4f.translation(node.pos);
+	mat = mat.mul(Mat4f.rotationQuat(node.rot));
+	mat = mat.mul(Mat4f.scale(node.scale));
 
 	if (node.parent == null) {
-		return currentMat;
+		return mat;
 	}
 
-	return getHierarchyMatrix(nodes, nodes[node.parent.?]).mul(currentMat);
+	return getHierarchyMatrix(nodes, nodes[node.parent.?]).mul(mat);
 }
 
 pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {

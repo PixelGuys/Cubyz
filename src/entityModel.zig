@@ -97,42 +97,25 @@ pub const EntityModel = struct {
 			if (nodeReverse.get(std.mem.span(node.name)) == null) {} else {}
 
 			nodes[nodeIdx] = Node{
-				.pos = Vec3f{node.translation[0], node.translation[2], node.translation[1]},
-				.rot = Vec4f{node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3]},
+				.pos = Vec3f{-node.translation[0], node.translation[2], node.translation[1]},
+				.rot = Vec4f{-node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3]},
 				.scale = Vec3f{node.scale[0], node.scale[2], node.scale[1]},
 			};
-			// std.debug.print("\n NAMEE: {d} \"{s}\"\n", .{nodeIdx, std.mem.span(node.name)});
 			nodeIdx += 1;
 		}
-		// std.debug.print("\n", .{});
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count == 0 or node.parent == null) continue;
 
 			const curNode = nodeReverse.get(std.mem.span(node.name)).?;
 			nodes[curNode].parent = nodeReverse.get(std.mem.span(node.parent.*.name)).?;
-			// std.debug.print("\n HEEEEEEEY: {d} \"{s}\" \"{s}\"\n", .{nodes[nodeIdx].parent.?, std.mem.span(node.parent.*.name), std.mem.span(node.name)});
 		}
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.mesh == null) continue;
 
-			var currentMat = Mat4f.translation(Vec3f{
-				-node.translation[0],
-				node.translation[2],
-				node.translation[1],
-			});
-			currentMat = currentMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-				-node.rotation[0],
-				node.rotation[2],
-				node.rotation[1],
-				node.rotation[3],
-			}));
-			currentMat = currentMat.mul(Mat4f.scale(Vec3f{
-				-node.scale[0],
-				node.scale[2],
-				node.scale[1],
-			}));
+			var currentMat = Mat4f.translation(node.translation);
+			currentMat = currentMat.mul(Mat4f.rotationQuat(node.rotation));
+			currentMat = currentMat.mul(Mat4f.scale(node.scale));
 			currentMat = Mat4f.identity().mul(currentMat);
-			// const finalMat = Mat4f.identity().mul(getHierarchyMatrix(node));
 
 			const primitives = node.mesh.*.primitives;
 			for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
@@ -152,12 +135,12 @@ pub const EntityModel = struct {
 					const idx = indicesAccessor.index(i);
 					indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
 
-					const modi = @as(i32, @intCast(i)) - 2;
-					if (@mod(modi, 3) == 0) {
-						const temp = indicesSlice[i - 1];
-						indicesSlice[i - 1] = indicesSlice[i];
-						indicesSlice[i] = temp;
-					}
+					// const modi = @as(i32, @intCast(i)) - 2;
+					// if (@mod(modi, 3) == 0) {
+					// const temp = indicesSlice[i - 1];
+					// indicesSlice[i - 1] = indicesSlice[i];
+					// indicesSlice[i] = temp;
+					// }
 				}
 
 				var positionAttr: gltf.cgltf_accessor = undefined;
@@ -177,8 +160,8 @@ pub const EntityModel = struct {
 				for (0..positionAttr.count) |v| {
 					var p: [3]f32 = undefined;
 					_ = positionAttr.float(v, @ptrCast(&p), 3);
-					const pos: vec.Vec4f = currentMat.mulVec(.{p[0], p[2], p[1], 1});
-					vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
+					const pos: vec.Vec4f = currentMat.mulVec(.{p[0], p[1], p[2], 1});
+					vertSlice[v].pos = .{-pos[0], pos[2], pos[1]};
 
 					var normal: [3]f32 = undefined;
 					_ = normalAttr.float(v, @ptrCast(&normal), 3);
@@ -216,31 +199,6 @@ pub const EntityModel = struct {
 			.nodes = std.mem.zeroes([20]Node),
 			.nodeCount = 0,
 		};
-	}
-
-	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
-		var currentMat = Mat4f.translation(Vec3f{
-			node.translation[0],
-			node.translation[2],
-			node.translation[1],
-		});
-		currentMat = currentMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-			node.rotation[0],
-			node.rotation[2],
-			node.rotation[1],
-			node.rotation[3],
-		}));
-		currentMat = currentMat.mul(Mat4f.scale(Vec3f{
-			node.scale[0],
-			node.scale[2],
-			node.scale[1],
-		}));
-
-		if (node.parent == null) {
-			return currentMat;
-		}
-
-		return getHierarchyMatrix(node.parent.*).mul(currentMat);
 	}
 
 	fn getGltfError(result: gltf.cgltf_result) anyerror {
