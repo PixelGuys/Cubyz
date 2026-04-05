@@ -364,7 +364,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				if (move < 0) {
 					pos.*[i] = box.max[i] + radius;
 				} else {
-					pos.*[i] = box.max[i] - radius;
+					pos.*[i] = box.min[i] - radius;
 				}
 				vel.*[i] = 0;
 			} else {
@@ -439,8 +439,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				continue;
 			}
 			const hitbox = main.game.Player.outerBoundingBox;
-			const min = user.player.pos + hitbox.min;
-			const max = user.player.pos + hitbox.max;
+			const min = user.player().pos + hitbox.min;
+			const max = user.player().pos + hitbox.max;
 			const itemPos = self.list.items(.pos)[i];
 			const dist = @max(min - itemPos, itemPos - max);
 			if (@reduce(.Max, dist) < radius + pickupRange) {
@@ -733,7 +733,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	fn drawItem(vertices: u31, modelMatrix: Mat4f) void {
 		c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		main.renderer.chunk_meshing.vao.bind();
 		c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
 	}
 

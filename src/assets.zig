@@ -29,12 +29,17 @@ pub const Assets = struct {
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
+	entityComponents: ZonHashMap,
+	entityComponentMigrations: AddonNameToZonMap,
+	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
-	models: BytesHashMap,
+	blockModels: BytesHashMap,
+	entityModels: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
 	worldPresets: ZonHashMap,
+	entityModelDescriptions: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -45,12 +50,17 @@ pub const Assets = struct {
 			.tools = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
+			.entityComponents = .{},
+			.entityComponentMigrations = .{},
+			.structureTables = .{},
 			.recipes = .{},
-			.models = .{},
+			.blockModels = .{},
+			.entityModels = .{},
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
 			.particles = .{},
 			.worldPresets = .{},
+			.entityModelDescriptions = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -61,12 +71,17 @@ pub const Assets = struct {
 		self.tools.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
+		self.entityComponents.deinit(allocator.allocator);
+		self.entityComponentMigrations.deinit(allocator.allocator);
+		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
-		self.models.deinit(allocator.allocator);
+		self.blockModels.deinit(allocator.allocator);
+		self.entityModels.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
+		self.entityModelDescriptions.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -77,12 +92,17 @@ pub const Assets = struct {
 			.tools = self.tools.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
+			.entityComponents = self.entityComponents.clone(allocator.allocator) catch unreachable,
+			.entityComponentMigrations = self.entityComponentMigrations.clone(allocator.allocator) catch unreachable,
+			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
-			.models = self.models.clone(allocator.allocator) catch unreachable,
+			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
+			.entityModels = self.entityModels.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 			.worldPresets = .{}, // Not accessible inside the world
+			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -94,19 +114,22 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
+			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
-			addon.readAllModels(allocator, &self.models);
+			addon.readAllModels(allocator, "models", &self.blockModels);
+			addon.readAllModels(allocator, "entityModels/models", &self.entityModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
+			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -124,11 +147,21 @@ pub const Assets = struct {
 			defer dir.close();
 
 			var iterator = dir.iterate();
-			while (iterator.next() catch |err| blk: {
+			outer: while (iterator.next() catch |err| blk: {
 				std.log.err("Got error while iterating over asset path {s}: {s}", .{path, @errorName(err)});
 				break :blk null;
 			}) |addon| {
 				if (addon.kind != .directory) continue;
+
+				for (addon.name) |char| {
+					switch (char) {
+						'_', 'a'...'z', '0'...'9' => continue,
+						else => {
+							std.log.err("Invalid addon name for addon {s}: Addon name must only contain lowercase letters 'a' - 'z', numbers '0' - '9' and underscores '_'.", .{addon.name});
+							continue :outer;
+						},
+					}
+				}
 
 				const directory = dir.openDir(addon.name) catch |err| {
 					std.log.err("Got error while reading addon {s} from {s}: {s}", .{addon.name, path, @errorName(err)});
@@ -217,7 +250,7 @@ pub const Assets = struct {
 				if (std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
 				if (std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, assetType, entry.path) catch continue;
 
 				const zon = assetsDirectory.readToZon(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{assetType, entry.path, @errorName(err)});
@@ -258,7 +291,7 @@ pub const Assets = struct {
 				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 				if (std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, "blueprint", entry.path) catch continue;
 
 				const data = assetsDirectory.read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -268,8 +301,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
-			const subPath = "models";
+		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
@@ -287,7 +319,7 @@ pub const Assets = struct {
 				if (entry.kind != .file) continue;
 				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = createAssetStringID(allocator, addon.name, "model", entry.path) catch continue;
 
 				const string = assetsDirectory.read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -302,10 +334,20 @@ pub const Assets = struct {
 fn createAssetStringID(
 	externalAllocator: NeverFailingAllocator,
 	addonName: []const u8,
+	assetType: []const u8,
 	relativeFilePath: []const u8,
-) []u8 {
+) error{InvalidId}![]u8 {
 	const baseNameEndIndex = if (std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
 	const pathNoExtension: []const u8 = relativeFilePath[0..baseNameEndIndex];
+
+	const fileNameStart: usize = if (std.mem.findScalarLast(u8, pathNoExtension, '/')) |i| i + 1 else 0;
+	if (pathNoExtension[fileNameStart] == '_') {
+		std.log.err(
+			"Invalid {s} asset id for addon '{s}' and subpath '{s}': File name must not start with an underscore '_', this is reserved for special files.",
+			.{assetType, addonName, relativeFilePath},
+		);
+		return error.InvalidId;
+	}
 
 	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + pathNoExtension.len);
 
@@ -318,6 +360,19 @@ fn createAssetStringID(
 			assetId[addonName.len + 1 + i] = '/';
 		} else {
 			assetId[addonName.len + 1 + i] = pathNoExtension[i];
+		}
+	}
+
+	for (assetId[addonName.len + 1 ..]) |char| {
+		switch (char) {
+			'_', 'a'...'z', '0'...'9', '/' => continue,
+			else => {
+				std.log.err(
+					"Invalid {s} asset name for addon '{s}' and subpath '{s}': Asset name must only contain lowercase letters 'a' - 'z', numbers '0' - '9', underscores '_' and path separators '/'.",
+					.{assetType, addonName, relativeFilePath},
+				);
+				return error.InvalidId;
+			},
 		}
 	}
 
@@ -477,8 +532,9 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
+pub var rawEntityModelData: std.StringHashMap([]const main.models.QuadInfo) = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -501,12 +557,26 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
 	migrations_zig.apply(.biome, biomePalette);
 
-	// models:
-	var modelIterator = worldAssets.models.iterator();
-	while (modelIterator.next()) |entry| {
-		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
+	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
+	migrations_zig.apply(.entityComponent, entityComponentPalette);
+
+	// models (block optimized):
+	{
+		var modelIterator = worldAssets.blockModels.iterator();
+		while (modelIterator.next()) |entry| {
+			_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
+		}
 	}
 
+	// models (Entities):
+	{
+		var modelIterator = worldAssets.entityModels.iterator();
+		rawEntityModelData = .init(main.worldArena.allocator);
+		while (modelIterator.next()) |entry| {
+			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
+			registerEntityModelRaw(entry.key_ptr.*, entry.value_ptr.*);
+		}
+	}
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
@@ -605,6 +675,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
+	try main.server.terrain.structures.registerStructureTables(&worldAssets.structureTables);
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
@@ -625,6 +696,31 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		nextBiomeNumericId += 1;
 	}
 	biomes_zig.finishLoading();
+
+	// EntityComponents
+	{
+		var map: std.StringHashMap(u32) = .init(main.stackAllocator.allocator);
+		defer map.deinit();
+		var index: u32 = 0;
+
+		// the already exisiting ones:
+		for (entityComponentPalette.palette.items) |value| {
+			map.put(value, index) catch unreachable;
+			index += 1;
+		}
+
+		// now give each component it's id:
+		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+			const name = decl.name;
+			if (map.get(name)) |id| {
+				@field(main.entity.components, decl.name).entityComponentID = id;
+			} else {
+				entityComponentPalette.add(name);
+				index += 1;
+			}
+		}
+		main.entity.initComponent();
+	}
 
 	// Register paths for asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
@@ -648,17 +744,21 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	worldAssets.log(.world);
 }
-
+pub fn registerEntityModelRaw(id: []const u8, data: []const u8) void {
+	rawEntityModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
+}
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
 
+	main.entity.deinitComponent();
 	sbb.reset();
 	blocks_zig.reset();
 	items_zig.reset();
 	migrations_zig.reset();
 	biomes_zig.reset();
 	migrations_zig.reset();
+	main.server.terrain.structures.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();

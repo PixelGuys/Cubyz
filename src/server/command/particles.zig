@@ -4,6 +4,8 @@ const main = @import("main");
 const particles = main.particles;
 const User = main.server.User;
 
+const command = @import("_command.zig");
+
 pub const description = "Spawns particles.";
 pub const usage =
 	\\/particles <id> <x> <y> <z>
@@ -43,9 +45,8 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	var split = std.mem.splitScalar(u8, std.mem.trimRight(u8, args[0..zonIndex], " "), ' ');
 	const particleId = split.next() orelse return error.TooFewArguments;
 
-	const x = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[0], source);
-	const y = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[1], source);
-	const z = try parsePosition(split.next() orelse return error.TooFewArguments, source.player.pos[2], source);
+	const pos = try command.parseCoordinates(&split, source);
+
 	const collides = try parseBool(split.next() orelse "true");
 	const particleCount = try parseNumber(split.next() orelse "1", source);
 
@@ -54,22 +55,8 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for (users) |user| {
-		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, .{x, y, z}, collides, particleCount, zonStr);
+		main.network.protocols.genericUpdate.sendParticles(user.conn, particleId, pos, collides, particleCount, zonStr);
 	}
-}
-
-fn parsePosition(arg: []const u8, playerPos: f64, source: *User) anyerror!f64 {
-	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
-	const numberSlice = if (hasTilde) arg[1..] else arg;
-	const num: f64 = std.fmt.parseFloat(f64, numberSlice) catch ret: {
-		if (arg.len > 1 or arg.len == 0) {
-			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
-			return error.InvalidNumber;
-		}
-		break :ret 0;
-	};
-
-	return if (hasTilde) playerPos + num else num;
 }
 
 fn parseBool(arg: []const u8) anyerror!bool {
