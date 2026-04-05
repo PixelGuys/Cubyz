@@ -580,13 +580,6 @@ fn deinit() void {
 	main.items.Inventory.ServerSide.deinit();
 	main.entity.server.deinit();
 
-	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
-		@field(main.entityComponent, decl.name).Server.deinit();
-	}
-	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
-		@field(main.entitySystem, decl.name).Server.deinit();
-	}
-
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
 }

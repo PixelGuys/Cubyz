@@ -1773,6 +1773,7 @@ pub const BinaryReader = struct {
 		return try self.readSlice(try self.readVarInt(usize));
 	}
 };
+
 pub const BinaryWriter = struct {
 	data: main.List(u8),
 
