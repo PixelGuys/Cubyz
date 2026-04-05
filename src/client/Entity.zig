@@ -39,7 +39,7 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 		.pos = zon.get(Vec3d, "position", .{0, 0, 0}),
 		.rot = zon.get(Vec3f, "rotation", .{0, 0, 0}),
 		.playerIndex = zon.get(usize, "playerIndex", std.math.maxInt(usize)),
-		//.vel = zon.get(Vec3f,"velocity",.{0,0,0}),
+		// .vel = zon.get(Vec3f,"velocity",.{0,0,0}),
 		.height = zon.get(f64, "height", 1),
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 	};
