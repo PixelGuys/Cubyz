@@ -1,2 +1,1 @@
-pub const model = @import("model.zig");
-pub const template = @import("template.zig");
+pub const @"cubyz:model" = @import("model.zig");
