@@ -13,6 +13,7 @@ pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const client = @import("client.zig");
 pub const entity = @import("entity.zig");
+pub const entityModel = @import("entityModel.zig");
 pub const files = @import("files.zig");
 pub const fmt = @import("fmt.zig");
 pub const game = @import("game.zig");

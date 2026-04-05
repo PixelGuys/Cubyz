@@ -34,11 +34,13 @@ pub const Assets = struct {
 	entityComponentMigrations: AddonNameToZonMap,
 	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
-	models: BytesHashMap,
+	blockModels: BytesHashMap,
+	entityModels: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
 	worldPresets: ZonHashMap,
+	entityModelDescriptions: ZonHashMap,
 	sounds: ZonHashMap,
 
 	fn init() Assets {
@@ -54,11 +56,13 @@ pub const Assets = struct {
 			.entityComponentMigrations = .{},
 			.structureTables = .{},
 			.recipes = .{},
-			.models = .{},
+			.blockModels = .{},
+			.entityModels = .{},
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
 			.particles = .{},
 			.worldPresets = .{},
+			.entityModelDescriptions = .{},
 			.sounds = .{}
 		};
 	}
@@ -74,11 +78,13 @@ pub const Assets = struct {
 		self.entityComponentMigrations.deinit(allocator.allocator);
 		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
-		self.models.deinit(allocator.allocator);
+		self.blockModels.deinit(allocator.allocator);
+		self.entityModels.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
+		self.entityModelDescriptions.deinit(allocator.allocator);
 		self.sounds.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
@@ -94,11 +100,13 @@ pub const Assets = struct {
 			.entityComponentMigrations = self.entityComponentMigrations.clone(allocator.allocator) catch unreachable,
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
-			.models = self.models.clone(allocator.allocator) catch unreachable,
+			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
+			.entityModels = self.entityModels.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 			.worldPresets = .{}, // Not accessible inside the world
+			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
 			.sounds = self.sounds.clone(allocator.allocator) catch unreachable,
 		};
 	}
@@ -116,9 +124,11 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
-			addon.readAllModels(allocator, &self.models);
+			addon.readAllModels(allocator, "models", &self.blockModels);
+			addon.readAllModels(allocator, "entityModels/models", &self.entityModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
+			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, null);
 			addon.readAllZon(allocator, "sounds", true, &self.sounds, null);
 		}
 	}
@@ -297,8 +307,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
-			const subPath = "models";
+		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
@@ -529,6 +538,7 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
+pub var rawEntityModelData: std.StringHashMap([]const main.models.QuadInfo) = undefined;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
@@ -556,12 +566,23 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
 	migrations_zig.apply(.entityComponent, entityComponentPalette);
 
-	// models:
-	var modelIterator = worldAssets.models.iterator();
-	while (modelIterator.next()) |entry| {
-		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
+	// models (block optimized):
+	{
+		var modelIterator = worldAssets.blockModels.iterator();
+		while (modelIterator.next()) |entry| {
+			_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
+		}
 	}
 
+	// models (Entities):
+	{
+		var modelIterator = worldAssets.entityModels.iterator();
+		rawEntityModelData = .init(main.worldArena.allocator);
+		while (modelIterator.next()) |entry| {
+			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
+			registerEntityModelRaw(entry.key_ptr.*, entry.value_ptr.*);
+		}
+	}
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
@@ -734,7 +755,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	worldAssets.log(.world);
 }
-
+pub fn registerEntityModelRaw(id: []const u8, data: []const u8) void {
+	rawEntityModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
+}
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
