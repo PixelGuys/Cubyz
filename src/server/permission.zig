@@ -302,7 +302,7 @@ test "RemoveNonExistentPermission" {
 }
 
 test "invalidGroupPermission" {
-	init(main.heap.testingAllocator, null);
+	init(main.heap.testingAllocator, 0);
 	defer deinit();
 
 	try createGroup("test");
@@ -310,14 +310,14 @@ test "invalidGroupPermission" {
 }
 
 test "invalidGroupPermissionEmptyGroups" {
-	init(main.heap.testingAllocator, null);
+	init(main.heap.testingAllocator, 0);
 	defer deinit();
 
 	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
 }
 
 test "invalidGroupCreation" {
-	init(main.heap.testingAllocator, null);
+	init(main.heap.testingAllocator, 0);
 	defer deinit();
 
 	try createGroup("test");
