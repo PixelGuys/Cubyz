@@ -183,6 +183,8 @@ pub const User = struct { // MARK: User
 
 		self.worldEditData.deinit();
 
+		self.player().deinit(.server);
+
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		self.jobQueue.deinit();
@@ -247,7 +249,9 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		world.?.loadPlayer(self);
+		world.?.loadPlayer(self) catch {
+			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
+		};
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
@@ -552,7 +556,12 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
-		user.deinit();
+		if (user.refCount.load(.monotonic) == 1) {
+			user.decreaseRefCount();
+		} else {
+			std.log.err("Leaked user {f}", .{user});
+			user.deinit();
+		}
 	}
 	userDeinitList.deinit();
 	userConnectList.deinit();
@@ -750,8 +759,8 @@ pub fn connectInternal(user: *User) void {
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		const entityZon = main.ZonElement.initObject(main.stackAllocator);
-		entityZon.put("id", user.id);
+
+		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
 		entityZon.put("name", user.name);
 		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
@@ -765,8 +774,7 @@ pub fn connectInternal(user: *User) void {
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
-			entityZon.put("id", other.id);
+			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
 			entityZon.put("name", other.name);
 			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);

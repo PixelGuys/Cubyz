@@ -44,7 +44,7 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	model = .initFromObj("assets/cubyz/entities/models/snale.obj", "assets/cubyz/entities/textures/snale.png");
+	model = .initFromObj("assets/cubyz/entityModels/models/snale.obj", "assets/cubyz/entityModels/textures/snale.png");
 }
 
 pub fn deinit() void {
