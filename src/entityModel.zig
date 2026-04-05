@@ -45,21 +45,17 @@ pub const EntityModel = struct {
 		var data: *gltf.cgltf_data = undefined;
 
 		var result = gltf.cgltf_parse_file(&options, @ptrCast(modelPath.ptr), @ptrCast(&data));
+		if (result == gltf.cgltf_result_file_not_found or result == gltf.cgltf_result_io_error) {
+			return getGltfError(result);
+		}
+
 		defer gltf.cgltf_free(@ptrCast(data));
 
-		if (result != gltf.cgltf_result_success) {
-			return getGltfError(result);
-		}
-
 		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
-		if (result != gltf.cgltf_result_success) {
-			return getGltfError(result);
-		}
+		if (result != gltf.cgltf_result_success) return getGltfError(result);
 
 		result = gltf.cgltf_validate(@ptrCast(data));
-		if (result != gltf.cgltf_result_success) {
-			return getGltfError(result);
-		}
+		if (result != gltf.cgltf_result_success) return getGltfError(result);
 
 		const texture = main.graphics.Texture.initFromFile(texturePath);
 
