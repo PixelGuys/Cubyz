@@ -86,7 +86,7 @@ pub fn getEntitiesBasicInfo() main.ZonElement {
 }
 pub fn getEntityBasicInfo(id: u32, array: *main.List(main.ZonElement)) void {
 	const entity = entities.items()[id];
-	const entityZon = entity.save(main.stackAllocator,.playerNearby);
+	const entityZon = entity.save(main.stackAllocator, .playerNearby);
 	// const entityZon = main.ZonElement.initObject(main.stackAllocator);
 	entityZon.put("id", id);
 	// entityZon.put("name", entity.name);

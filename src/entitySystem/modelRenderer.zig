@@ -150,5 +150,4 @@ pub const server = struct {
 	pub fn deinit() void {}
 
 	pub fn update() void {}
-
 };

@@ -84,7 +84,7 @@ pub fn addEntity(zon: ZonElement) void {
 		unreachable;
 	}
 	idToIndex.put(entity.id, index) catch unreachable;
-	}
+}
 
 pub fn removeEntity(id: u32) void {
 	mutex.lock();

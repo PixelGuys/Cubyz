@@ -39,7 +39,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		if (main.entity.components.@"cubyz:model".server.get(source.id)) |rc| {
 			var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
 			defer binaryWriter.deinit();
-			if(rc.save(&binaryWriter,.playerNearby) == .save){
+			if (rc.save(&binaryWriter, .playerNearby) == .save) {
 				for (main.server.connectionManager.connections.items) |conn| {
 					main.network.protocols.EntityComponentUpdate.set(conn, source.id, "model", main.entity.components.@"cubyz:model".entityComponentVersion, binaryWriter.data.items);
 				}

@@ -700,7 +700,6 @@ pub const World = struct { // MARK: World
 		self.entityComponentPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityComponentPalette"), null);
 		errdefer self.entityComponentPalette.deinit();
 
-
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
