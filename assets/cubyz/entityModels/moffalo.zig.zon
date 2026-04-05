@@ -1,5 +1,5 @@
 .{
-	.model = "cubyz:entity/moffalo",
+	.model = "cubyz:moffalo",
 	.texture = "moffalo.png",
 	.height = 1.8,
 }
