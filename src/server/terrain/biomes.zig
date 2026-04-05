@@ -382,7 +382,7 @@ pub const Biome = struct { // MARK: Biome
 		return hashGeneric(self.*);
 	}
 
-	fn hasTag(self: Biome, tag: Tag) bool {
+	pub fn hasTag(self: Biome, tag: Tag) bool {
 		return std.mem.containsAtLeastScalar(Tag, self.tags, 1, tag);
 	}
 };

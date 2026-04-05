@@ -137,7 +137,7 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 			const currentChances = main.stackAllocator.alloc(f32, items.len);
 			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
-			for (items, 0..) |*item, i| {
+			for (items, 0..) |item, i| {
 				totalChance += item.chance;
 				currentChances[i] = item.chance;
 			}
