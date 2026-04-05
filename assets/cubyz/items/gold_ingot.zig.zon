@@ -13,7 +13,7 @@
 		.modifiers = .{
 			.{
 				.id = "fragile",
-				.strength = 0.2,
+				.strength = 0.15,
 				.restriction = .{
 					.id = .not,
 					.child = .{
