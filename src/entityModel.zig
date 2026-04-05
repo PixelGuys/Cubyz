@@ -17,10 +17,10 @@ const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
-const Model = main.Model.Model;
+const RawModel = main.RawEntityModel;
 
 pub const EntityModel = struct {
-	model: Model,
+	rawModel: ?RawModel,
 	defaultTexture: ?main.graphics.Texture,
 
 	height: f32,
@@ -33,7 +33,7 @@ pub const EntityModel = struct {
 		self.id = main.globalAllocator.dupe(u8, id);
 		self.height = zon.getChild("height").as(f32, 1);
 		self.defaultTexture = null;
-		self.model = .init();
+		self.rawModel = null;
 
 		// get TexturePath
 		{
@@ -52,18 +52,18 @@ pub const EntityModel = struct {
 	}
 	fn generateGraphics(self: *EntityModel) void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
-		self.model.generateGraphics(self.modelID);
+		self.rawModel = main.assets.rawEntityModels.get(self.modelID) orelse unreachable;
+		self.rawModel.?.generateGraphics();
 	}
 	pub fn bind(self: *EntityModel) void {
-		if (!self.model.isGenerated) {
+		if (self.rawModel == null) {
 			self.generateGraphics();
 		}
-		self.model.bind();
+		self.rawModel.?.bind();
 		self.defaultTexture.?.bindTo(0);
 	}
 
 	pub fn deinit(self: *EntityModel) void {
-		self.model.deinit();
 		if (self.defaultTexture) |defaultTexture| {
 			defaultTexture.deinit();
 		}

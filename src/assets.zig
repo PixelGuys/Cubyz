@@ -532,7 +532,7 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
-pub var rawEntityModelData: std.StringHashMap([]const main.models.QuadInfo) = undefined;
+pub var rawEntityModels: std.StringHashMap(main.RawEntityModel) = undefined;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
@@ -571,7 +571,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// models (Entities):
 	{
 		var modelIterator = worldAssets.entityModels.iterator();
-		rawEntityModelData = .init(main.worldArena.allocator);
+		rawEntityModels = .init(main.worldArena.allocator);
 		while (modelIterator.next()) |entry| {
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
 			registerEntityModelRaw(entry.key_ptr.*, entry.value_ptr.*);
@@ -745,7 +745,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	worldAssets.log(.world);
 }
 pub fn registerEntityModelRaw(id: []const u8, data: []const u8) void {
-	rawEntityModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
+	rawEntityModels.put(id, main.RawEntityModel.init(data)) catch unreachable;
 }
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
@@ -763,6 +763,12 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
+
+	var modelIterator = rawEntityModels.valueIterator();
+	while (modelIterator.next()) |rawEntityModel| {
+		rawEntityModel.deinit();
+	}
+	rawEntityModels.deinit();
 
 	// Remove paths from asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
