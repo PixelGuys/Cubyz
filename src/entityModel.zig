@@ -17,48 +17,23 @@ const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
+const Model = main.Model.Model;
 
 pub const EntityModel = struct {
-	vao: ?graphics.VertexArray = undefined,
-	indexCount: c_int,
+	model: Model,
 	defaultTexture: ?main.graphics.Texture,
-	height: f32,
 
+	height: f32,
 	texturePath: []const u8,
 	modelID: []const u8,
 	id: []const u8,
-
-	const EntityVertex = extern struct {
-		pos: [3]f32,
-		normal: [3]f32,
-		uv: [2]f32,
-
-		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
-			.{
-				.location = 0,
-				.format = c.VK_FORMAT_R32G32B32_SFLOAT,
-				.offset = @offsetOf(@This(), "pos"),
-			},
-			.{
-				.location = 1,
-				.format = c.VK_FORMAT_R32G32B32_SFLOAT,
-				.offset = @offsetOf(@This(), "normal"),
-			},
-			.{
-				.location = 2,
-				.format = c.VK_FORMAT_R32G32_SFLOAT,
-				.offset = @offsetOf(@This(), "uv"),
-			},
-		};
-	};
 
 	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
 		self.id = main.globalAllocator.dupe(u8, id);
 		self.height = zon.getChild("height").as(f32, 1);
 		self.defaultTexture = null;
-		self.vao = null;
-		self.indexCount = 0;
+		self.model = .init();
 
 		// get TexturePath
 		{
@@ -77,45 +52,18 @@ pub const EntityModel = struct {
 	}
 	fn generateGraphics(self: *EntityModel) void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
-
-		const quadInfos = main.assets.rawEntityModelData.get(self.modelID) orelse unreachable;
-		const vertices = main.stackAllocator.alloc(EntityVertex, quadInfos.len*4);
-		defer main.stackAllocator.free(vertices);
-		const indices: []u32 = main.stackAllocator.alloc(u32, quadInfos.len*6);
-		defer main.stackAllocator.free(indices);
-
-		const texture = main.graphics.Texture.initFromFile(self.texturePath);
-
-		for (quadInfos, 0..quadInfos.len) |quad, i| {
-			for (0..4) |j| {
-				const v = i*4 + j;
-				vertices[v].normal = quad.normal;
-				vertices[v].pos = quad.corners[j];
-				vertices[v].uv = quad.cornerUV[j];
-			}
-		}
-
-		const lut = [_]u32{0, 2, 1, 1, 2, 3};
-		for (0..indices.len) |i| {
-			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
-		}
-
-		self.vao = .init(EntityVertex, vertices, indices);
-		self.defaultTexture = texture;
-		self.indexCount = @intCast(indices.len);
+		self.model.generateGraphics(self.modelID);
 	}
 	pub fn bind(self: *EntityModel) void {
-		if (self.vao == null) {
+		if (!self.model.isGenerated) {
 			self.generateGraphics();
 		}
-		self.vao.?.bind();
+		self.model.bind();
 		self.defaultTexture.?.bindTo(0);
 	}
 
 	pub fn deinit(self: *EntityModel) void {
-		if (self.vao) |vao| {
-			vao.deinit();
-		}
+		self.model.deinit();
 		if (self.defaultTexture) |defaultTexture| {
 			defaultTexture.deinit();
 		}

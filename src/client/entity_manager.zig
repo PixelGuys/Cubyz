@@ -150,7 +150,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 			.mul(Mat4f.rotationZ(-ent.rot[2])));
 		const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-		c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
+		c.glDrawElements(c.GL_TRIANGLES, model.model.indexCount, c.GL_UNSIGNED_INT, null);
 	}
 }
 
