@@ -48,6 +48,7 @@ const Vertex = extern struct {
 	};
 };
 
+// No OpenGL/Vulkan allowed yet, cause this could run on server.
 pub fn init(data: []const u8) @This() {
 	return .{
 		.isGenerated = false,
@@ -56,6 +57,8 @@ pub fn init(data: []const u8) @This() {
 		.quadInfos = main.models.Model.loadRawModelDataFromObj(main.worldArena, data),
 	};
 }
+
+// Now free to generate all OpenGL/Vulkan stuff.
 pub fn generateGraphics(self: *@This()) void {
 	if (self.isGenerated)
 		return;
