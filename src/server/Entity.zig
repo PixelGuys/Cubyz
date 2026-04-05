@@ -40,7 +40,7 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.sy
 }
 pub fn clone(self: *@This(), copy: *@This()) void {
 	const originalID = copy.id;
-	if(copy.name)|name|{
+	if (copy.name) |name| {
 		main.globalAllocator.free(name);
 	}
 	copy.* = self.*;
