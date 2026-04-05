@@ -532,7 +532,7 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
-pub var rawModelData: std.StringHashMap([]main.models.QuadInfo) = undefined;
+pub var rawModelData: std.StringHashMap([]const main.models.QuadInfo) = undefined;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
