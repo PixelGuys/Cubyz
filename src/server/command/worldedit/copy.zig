@@ -6,6 +6,8 @@ const User = main.server.User;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 
+const command = @import("../_command.zig");
+
 pub const description = "Copy selection to clipboard.";
 pub const usage = "/copy";
 
@@ -14,12 +16,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /copy. Expected no arguments.", .{});
 		return;
 	}
-	const pos1 = source.worldEditData.selectionPosition1 orelse {
-		return source.sendMessage("#ff0000Position 1 isn't set", .{});
-	};
-	const pos2 = source.worldEditData.selectionPosition2 orelse {
-		return source.sendMessage("#ff0000Position 2 isn't set", .{});
-	};
+	const pos1, const pos2 = command.getSelectionBounds(source) catch return;
 
 	source.sendMessage("Copying: {} {}", .{pos1, pos2});
 
