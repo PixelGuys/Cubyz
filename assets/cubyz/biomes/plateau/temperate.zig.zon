@@ -55,15 +55,15 @@
 		},
 		.{
 			.id = "cubyz:hills/shattered/temperate",
-			.chance = 4,
+			.chance = 5.5,
 		},
 		.{
 			.id = "cubyz:hills/shattered/large/temperate",
-			.chance = 4,
+			.chance = 5.5,
 		},
 		.{
 			.id = "cubyz:hills/shattered/hummocky/temperate",
-			.chance = 4,
+			.chance = 5.5,
 		},
 	},
 }
