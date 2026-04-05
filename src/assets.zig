@@ -571,10 +571,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// models (Entities):
 	{
 		var modelIterator = worldAssets.entityModels.iterator();
-		rawModelData = .init(main.worldArena.allocator);
+		rawEntityModelData = .init(main.worldArena.allocator);
 		while (modelIterator.next()) |entry| {
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
-			registerModelRaw(entry.key_ptr.*, entry.value_ptr.*);
+			registerEntityModelRaw(entry.key_ptr.*, entry.value_ptr.*);
 		}
 	}
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
@@ -745,7 +745,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	worldAssets.log(.world);
 }
 pub fn registerEntityModelRaw(id: []const u8, data: []const u8) void {
-	rawModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
+	rawEntityModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
 }
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
