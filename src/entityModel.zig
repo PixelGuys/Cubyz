@@ -1,22 +1,37 @@
 const std = @import("std");
 
 const main = @import("main");
+const chunk = main.chunk;
+const game = main.game;
 const graphics = main.graphics;
 const c = graphics.c;
-const vec = @import("vec.zig");
-const Vec3f = vec.Vec3f;
+const ZonElement = main.ZonElement;
+const renderer = main.renderer;
+const settings = main.settings;
+const utils = main.utils;
+const vec = main.vec;
 const Mat4f = vec.Mat4f;
+const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
+const Vec4f = vec.Vec4f;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const BinaryReader = main.utils.BinaryReader;
 
 const gltf = @cImport({
 	@cInclude("cgltf.h");
 });
 
 pub const EntityModel = struct {
-	vao: graphics.VertexArray = undefined,
-	indexCount: c_int,
-	texture: main.graphics.Texture,
+	height: f32,
+	texturePath: []const u8,
+	id: []const u8,
 
-	const EntityVertex = extern struct {
+	vao: ?graphics.VertexArray = null,
+	indexCount: c_int,
+	defaultTexture: ?main.graphics.Texture,
+
+	const Vertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
@@ -40,26 +55,59 @@ pub const EntityModel = struct {
 		};
 	};
 
-	pub fn initFromGltf(modelPath: []const u8, texturePath: []const u8) !EntityModel {
+	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
+		var self: EntityModel = undefined;
+		self.id = main.globalAllocator.dupe(u8, id);
+		self.height = zon.getChild("height").as(f32, 1);
+		self.defaultTexture = null;
+		self.vao = null;
+		self.indexCount = 0;
+
+		// get TexturePath
+		{
+			var split = std.mem.splitScalar(u8, id, ':');
+			const mod = split.first();
+			self.texturePath = &.{};
+			if (zon.get(?[]const u8, "texture", null)) |texture| {
+				self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
+				std.fs.cwd().access(self.texturePath, .{}) catch {
+					main.globalAllocator.free(self.texturePath);
+					self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
+				};
+			}
+		}
+		return self;
+	}
+
+	fn generateGraphics(self: *EntityModel) void {
+		const file = main.assets.entityModelFiles().get(self.id) orelse main.assets.entityModelFiles().get("cubyz:missing") orelse unreachable;
+
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
 
-		var result = gltf.cgltf_parse_file(&options, @ptrCast(modelPath.ptr), @ptrCast(&data));
+		var result = gltf.cgltf_parse(&options, @ptrCast(file.ptr), @intCast(file.len), @ptrCast(&data));
 		if (result == gltf.cgltf_result_file_not_found or result == gltf.cgltf_result_io_error) {
-			return getGltfError(result);
+			std.log.err("GLTF Parse error: {s}", .{@errorName(getGltfError(result))});
+			return;
 		}
 
 		defer gltf.cgltf_free(@ptrCast(data));
 
 		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
-		if (result != gltf.cgltf_result_success) return getGltfError(result);
+		if (result != gltf.cgltf_result_success) {
+			std.log.err("GLTF Load buffers error: {s}", .{@errorName(getGltfError(result))});
+			return;
+		}
 
 		result = gltf.cgltf_validate(@ptrCast(data));
-		if (result != gltf.cgltf_result_success) return getGltfError(result);
+		if (result != gltf.cgltf_result_success) {
+			std.log.err("GLTF Validation error: {s}", .{@errorName(getGltfError(result))});
+			return;
+		}
 
-		const texture = main.graphics.Texture.initFromFile(texturePath);
+		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
-		var vertices = main.List(EntityVertex).init(main.stackAllocator);
+		var vertices = main.List(Vertex).init(main.stackAllocator);
 		defer vertices.deinit();
 		var indices = main.List(u32).init(main.stackAllocator);
 		defer indices.deinit();
@@ -80,7 +128,7 @@ pub const EntityModel = struct {
 					const vertCount = primitive.attributes[0].data.*.count;
 					var indicesSlice = indices.addMany(indicesAccessor.count);
 					baseVertex = @intCast(vertices.items.len);
-					const vertSlice: []EntityVertex = vertices.addMany(vertCount);
+					const vertSlice: []Vertex = vertices.addMany(vertCount);
 					for (0..indicesAccessor.count) |i| {
 						const idx = indicesAccessor.index(i);
 						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
@@ -118,21 +166,8 @@ pub const EntityModel = struct {
 			}
 		}
 
-		return .{
-			.vao = .init(EntityVertex, vertices.items, indices.items),
-			.texture = texture,
-			.indexCount = @intCast(indices.items.len),
-		};
-	}
-
-	pub fn initEmpty() EntityModel {
-		const texture = graphics.Texture.init();
-		texture.generate(graphics.Image.defaultImage);
-		return .{
-			.vao = .init(EntityVertex, &.{}, &.{}),
-			.texture = texture,
-			.indexCount = 0,
-		};
+		self.vao = .init(Vertex, vertices.items, indices.items);
+		self.indexCount = @intCast(indices.items.len);
 	}
 
 	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
@@ -175,13 +210,71 @@ pub const EntityModel = struct {
 		};
 	}
 
-	pub fn bind(self: EntityModel) void {
-		self.vao.bind();
-		self.texture.bindTo(0);
+	pub fn bind(self: *EntityModel) void {
+		if (self.vao == null) {
+			self.generateGraphics();
+		}
+		self.vao.?.bind();
+		self.defaultTexture.?.bindTo(0);
 	}
 
-	pub fn deinit(self: EntityModel) void {
-		self.vao.deinit();
-		self.texture.deinit();
+	pub fn deinit(self: *EntityModel) void {
+		main.globalAllocator.free(self.id);
+		main.globalAllocator.free(self.texturePath);
+		if (self.defaultTexture) |defaultTexture| {
+			defaultTexture.deinit();
+		}
+		if (self.vao) |vao| {
+			vao.deinit();
+		}
 	}
 };
+
+pub const EntityModelIndex = struct {
+	index: u32,
+	pub fn get(self: EntityModelIndex) *EntityModel {
+		if (entityModels.items.len > self.index)
+			return &entityModels.items[self.index];
+		// should always exist because of firstEntry in entityModelPalette
+		std.debug.assert(entityModels.items.len > 0);
+		return &entityModels.items[0];
+	}
+};
+
+pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
+pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
+
+pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) usize {
+	const index = entityModels.items.len;
+	const entityModel = entityModels.addOne(main.worldArena);
+	entityModel.* = EntityModel.init(assetFolder, id, zon);
+	reverseIndices.put(main.worldArena.allocator, id, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
+	return index;
+}
+pub fn reset() void {
+	for (entityModels.items) |*model| {
+		model.deinit();
+	}
+	entityModels = .{};
+	reverseIndices = .{};
+}
+
+pub fn hasRegistered(id: []const u8) bool {
+	return reverseIndices.contains(id);
+}
+
+pub fn getTypeById(id: []const u8) EntityModelIndex {
+	if (reverseIndices.get(id)) |result| {
+		return result;
+	} else {
+		std.log.err("Couldn't find entityModel {s}. Replacing it with cubyz:missing ...", .{id});
+		return EntityModelIndex{.index = 0};
+	}
+}
+
+pub fn getTypeByIdOrNull(id: []const u8) ?EntityModelIndex {
+	if (reverseIndices.get(id)) |result| {
+		return result;
+	}
+	return null;
+}

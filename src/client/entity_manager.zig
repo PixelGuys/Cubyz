@@ -44,10 +44,16 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 
-	model = main.entityModel.EntityModel.initFromGltf("assets/cubyz/entityModels/models/snale.glb", "assets/cubyz/entityModels/textures/snale.png") catch |err| blk: {
-		std.log.err("Gltf loading error {s}", .{@errorName(err)});
-		break :blk .initEmpty();
-	};
+	// TODO: This is Temporary, will be replace by future ECS parts.
+	model = .init("assets", "cubyz:snale", main.assets.entityModelDescriptions().get("cubyz:snale").?);
+
+	addEntity(ZonElement.parseFromString(main.globalArena, null,
+		\\ .{
+		\\    .id = 1,
+		\\    .name = "bobik",
+		\\
+		\\  }
+	));
 }
 
 pub fn deinit() void {
