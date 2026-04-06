@@ -167,7 +167,7 @@ pub const EntityModel = struct {
 						_ = positionAttr.float(v, @ptrCast(&p), 3);
 						const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[1], p[2], 1});
 						std.debug.print("\n{s}", .{@tagName(self.coordinateSystem)});
-						vertSlice[v].pos = convertCoordinateSystem(.{pos[0], pos[1], pos[2]}, self.coordinateSystem);//.{-pos[0], pos[2], pos[1]};
+						vertSlice[v].pos = convertCoordinateSystem(.{pos[0], pos[1], pos[2]}, self.coordinateSystem); //.{-pos[0], pos[2], pos[1]};
 
 						var normal: [3]f32 = undefined;
 						_ = normalAttr.float(v, @ptrCast(&normal), 3);
@@ -193,7 +193,6 @@ pub const EntityModel = struct {
 			.left_handed_y_up => Vec3f{-v[0], v[2], v[1]},
 		};
 	}
-
 
 	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
 		var currentMat = Mat4f.translation(node.translation);
