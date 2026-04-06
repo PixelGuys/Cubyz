@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const terrain = main.server.terrain;
 const Vec3i = main.vec.Vec3i;
-const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
+const GenerationMode = terrain.structures.SimpleStructureModel.GenerationMode;
 const CaveMapView = terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const sbb = terrain.structure_building_blocks;
@@ -37,7 +37,7 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 	};
 	const rotationParam = parameters.getChild("rotation");
 	const rotation = sbb.Rotation.fromZon(rotationParam) catch |err| blk: {
-		switch(err) {
+		switch (err) {
 			error.UnknownString => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}': Specified unknown rotation '{s}'", .{structureId, rotationParam.as([]const u8, "")}),
 			error.UnknownType => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}': Unsupported type of rotation field '{s}'", .{structureId, @tagName(rotationParam)}),
 		}
@@ -64,26 +64,26 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection orelse origin.direction()), @errorName(err)});
 		return;
 	});
-	const rotated = &blueprints[@intFromEnum(blueprintRotation)];
+	const rotated = &blueprints[@intFromEnum(blueprintRotation.fixed)];
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - (placementDirection orelse origin.direction()).relPos();
 
 	rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
 
-	for(rotated.childBlocks) |childBlock| {
+	for (rotated.childBlocks) |childBlock| {
 		const child = structure.getChildStructure(childBlock) orelse continue;
-		const childRotation = rotation.getChildRotation(seed, child.rotation, childBlock.direction());
+		const childRotation = blueprintRotation.getChildRotation(seed, child.rotation, childBlock.direction());
 		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed);
 	}
 }
 
 fn alignDirections(input: Neighbor, desired: Neighbor) !sbb.Rotation.FixedRotation {
 	comptime var alignTable: [6][6]error{NotPossibleToAlign}!sbb.Rotation.FixedRotation = undefined;
-	comptime for(Neighbor.iterable) |in| {
-		for(Neighbor.iterable) |out| blk: {
+	comptime for (Neighbor.iterable) |in| {
+		for (Neighbor.iterable) |out| blk: {
 			var current = in;
-			for(0..4) |i| {
-				if(current == out) {
+			for (0..4) |i| {
+				if (current == out) {
 					alignTable[in.toInt()][out.toInt()] = @enumFromInt(i);
 					break :blk;
 				}

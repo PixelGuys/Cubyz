@@ -1,0 +1,5 @@
+.{
+	.tags = .{.sky_island_layer},
+	.layerHeight = 10000,
+	.depthHint = 10000,
+}

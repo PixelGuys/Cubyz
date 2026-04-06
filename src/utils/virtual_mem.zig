@@ -6,7 +6,7 @@ const page_size_max = std.heap.page_size_max;
 const pageSize = std.heap.pageSize;
 
 fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
-	if(builtin.os.tag == .windows) {
+	if (builtin.os.tag == .windows) {
 		return @ptrCast(@alignCast(std.os.windows.VirtualAlloc(null, len, std.os.windows.MEM_RESERVE, std.os.windows.PAGE_READWRITE) catch |err| {
 			std.log.err("Got error while reserving virtual memory of size {}: {s}", .{len, @errorName(err)});
 			@panic("Out of Memory");
@@ -20,7 +20,7 @@ fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
 }
 
 fn commitMemory(start: [*]align(page_size_min) u8, len: usize) void {
-	if(builtin.os.tag == .windows) {
+	if (builtin.os.tag == .windows) {
 		_ = std.os.windows.VirtualAlloc(start, len, std.os.windows.MEM_COMMIT, std.os.windows.PAGE_READWRITE) catch |err| {
 			std.log.err("Got error while committing virtual memory of size {}: {s}.", .{len, @errorName(err)});
 			@panic("Out of Memory");
@@ -34,7 +34,7 @@ fn commitMemory(start: [*]align(page_size_min) u8, len: usize) void {
 }
 
 fn releaseMemory(start: [*]align(page_size_min) u8, len: usize) void {
-	if(builtin.os.tag == .windows) {
+	if (builtin.os.tag == .windows) {
 		std.os.windows.VirtualFree(start, 0, std.os.windows.MEM_RELEASE);
 	} else {
 		std.posix.munmap(start[0..len]);
@@ -74,7 +74,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 		}
 
 		pub fn ensureCapacity(self: *@This(), newCapacity: usize) void {
-			if(newCapacity > self.committedCapacity) {
+			if (newCapacity > self.committedCapacity) {
 				const alignedCapacity = std.mem.alignForward(usize, self.committedCapacity*@sizeOf(T), pageSize());
 				const newAlignedCapacity = std.mem.alignForward(usize, newCapacity*@sizeOf(T), pageSize());
 
@@ -84,7 +84,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 		}
 
 		fn ensureFreeCapacity(self: *@This(), freeCapacity: usize) void {
-			if(freeCapacity + self.len <= self.committedCapacity) return;
+			if (freeCapacity + self.len <= self.committedCapacity) return;
 			self.ensureCapacity(freeCapacity + self.len);
 		}
 
@@ -146,7 +146,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 
 		pub fn insertAssumeCapacity(self: *@This(), i: usize, elem: T) void {
 			std.debug.assert(i <= self.len);
-			if(i == self.len) return self.appendAssumeCapacity(elem);
+			if (i == self.len) return self.appendAssumeCapacity(elem);
 			_ = self.addOneAssumeCapacity();
 			std.mem.copyBackwards(T, self.items()[i + 1 ..], self.items()[0 .. self.len - 1][i..]);
 			self.mem[i] = elem;
@@ -154,7 +154,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 
 		pub fn insert(self: *@This(), i: usize, elem: T) void {
 			std.debug.assert(i <= self.len);
-			if(i == self.len) return self.append(elem);
+			if (i == self.len) return self.append(elem);
 			_ = self.addOne();
 			std.mem.copyBackwards(T, self.items()[i + 1 ..], self.items()[0 .. self.len - 1][i..]);
 			self.mem[i] = elem;
@@ -162,7 +162,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 
 		pub fn insertSliceAssumeCapacity(self: *@This(), i: usize, elems: []const T) void {
 			std.debug.assert(i <= self.len);
-			if(i == self.len) return self.appendSliceAssumeCapacity(elems);
+			if (i == self.len) return self.appendSliceAssumeCapacity(elems);
 			_ = self.addManyAssumeCapacity(elems.len);
 			std.mem.copyBackwards(T, self.items()[i + elems.len ..], self.items()[0 .. self.len - elems.len][i..]);
 			@memcpy(self.items()[i..][0..elems.len], elems);
@@ -170,7 +170,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 
 		pub fn insertSlice(self: *@This(), i: usize, elems: []const T) void {
 			std.debug.assert(i <= self.len);
-			if(i == self.len) return self.appendSlice(elems);
+			if (i == self.len) return self.appendSlice(elems);
 			_ = self.addMany(elems.len);
 			std.mem.copyBackwards(T, self.items()[i + elems.len ..], self.items()[0 .. self.len - elems.len][i..]);
 			@memcpy(self.items()[i..][0..elems.len], elems);
@@ -186,13 +186,13 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 		pub fn orderedRemove(self: *@This(), i: usize) T {
 			const newlen = self.len - 1;
 			const old = self.items()[i];
-			for(self.items()[i..newlen], i + 1..) |*b, j| b.* = self.items()[j];
+			for (self.items()[i..newlen], i + 1..) |*b, j| b.* = self.items()[j];
 			self.len = newlen;
 			return old;
 		}
 
 		pub fn popOrNull(self: *@This()) ?T {
-			if(self.len == 0) return null;
+			if (self.len == 0) return null;
 			const val = self.items()[self.len - 1];
 			self.len -= 1;
 			return val;
@@ -206,9 +206,9 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 			const after_range = start + len;
 			const range = self.items()[start..after_range];
 
-			if(range.len == new_items.len)
+			if (range.len == new_items.len)
 				@memcpy(range[0..new_items.len], new_items)
-			else if(range.len < new_items.len) {
+			else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -218,7 +218,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 				@memcpy(range[0..new_items.len], new_items);
 				const after_subrange = start + new_items.len;
 
-				for(self.items()[after_range..], 0..) |item, i| {
+				for (self.items()[after_range..], 0..) |item, i| {
 					self.items()[after_subrange..][i] = item;
 				}
 
@@ -226,7 +226,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 			}
 		}
 
-		pub const Writer = if(T != u8)
+		pub const Writer = if (T != u8)
 			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
 				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
 		else

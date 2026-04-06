@@ -10,7 +10,7 @@ pub const description = "Copy selection to clipboard.";
 pub const usage = "/copy";
 
 pub fn execute(args: []const u8, source: *User) void {
-	if(args.len != 0) {
+	if (args.len != 0) {
 		source.sendMessage("#ff0000Too many arguments for command /copy. Expected no arguments.", .{});
 		return;
 	}
@@ -24,9 +24,9 @@ pub fn execute(args: []const u8, source: *User) void {
 	source.sendMessage("Copying: {} {}", .{pos1, pos2});
 
 	const result = Blueprint.capture(main.globalAllocator, pos1, pos2);
-	switch(result) {
+	switch (result) {
 		.success => {
-			if(source.worldEditData.clipboard != null) {
+			if (source.worldEditData.clipboard != null) {
 				source.worldEditData.clipboard.?.deinit(main.globalAllocator);
 			}
 			source.worldEditData.clipboard = result.success;

@@ -27,32 +27,31 @@ const UpdateEvent = union(enum) {
 
 pub const ErrorSet = BinaryReader.AllErrors || error{Invalid};
 
-pub const BlockEntityType = struct {
+pub const BlockEntityType = struct { // MARK: BlockEntityType
 	id: []const u8,
 	vtable: VTable,
 
 	const VTable = struct {
-		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void,
-		onUnloadClient: *const fn(dataIndex: BlockEntityIndex) void,
-		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void,
-		onUnloadServer: *const fn(dataIndex: BlockEntityIndex) void,
-		onStoreServerToDisk: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
-		onStoreServerToClient: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
-		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) main.callbacks.Result,
-		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
-		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
-		getServerToClientData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
-		getClientToServerData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
+		onLoadClient: *const fn (pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void,
+		onUnloadClient: *const fn (dataIndex: BlockEntityIndex) void,
+		onLoadServer: *const fn (pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void,
+		onUnloadServer: *const fn (dataIndex: BlockEntityIndex) void,
+		onStoreServerToDisk: *const fn (dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
+		onStoreServerToClient: *const fn (dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
+		updateClientData: *const fn (pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
+		updateServerData: *const fn (pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
+		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
+		getClientToServerData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
-	pub fn init(comptime BlockEntityTypeT: type) BlockEntityType {
+	pub fn init(comptime BlockEntityTypeT: type, comptime id: []const u8) BlockEntityType {
 		BlockEntityTypeT.init();
 		var class = BlockEntityType{
-			.id = BlockEntityTypeT.id,
+			.id = id,
 			.vtable = undefined,
 		};
 
-		inline for(@typeInfo(BlockEntityType.VTable).@"struct".fields) |field| {
-			if(!@hasDecl(BlockEntityTypeT, field.name)) {
+		inline for (@typeInfo(BlockEntityType.VTable).@"struct".fields) |field| {
+			if (!@hasDecl(BlockEntityTypeT, field.name)) {
 				@compileError("BlockEntityType missing field '" ++ field.name ++ "'");
 			}
 			@field(class.vtable, field.name) = &@field(BlockEntityTypeT, field.name);
@@ -77,9 +76,6 @@ pub const BlockEntityType = struct {
 	pub inline fn onStoreServerToClient(self: *const BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(dataIndex, writer);
 	}
-	pub inline fn onInteract(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
-		return self.vtable.onInteract(pos, chunk);
-	}
 	pub inline fn updateClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateClientData(pos, chunk, event);
 	}
@@ -94,7 +90,7 @@ pub const BlockEntityType = struct {
 	}
 };
 
-fn BlockEntityDataStorage(T: type) type {
+fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 	return struct {
 		pub const DataT = T;
 		var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
@@ -177,7 +173,7 @@ fn BlockEntityDataStorage(T: type) type {
 		};
 		pub fn getOrPut(pos: Vec3i, chunk: *Chunk) GetOrPutResult {
 			main.utils.assertLocked(&mutex);
-			if(get(pos, chunk)) |result| return .{.valuePtr = result, .foundExisting = true};
+			if (get(pos, chunk)) |result| return .{.valuePtr = result, .foundExisting = true};
 
 			const dataIndex = createEntry(pos, chunk);
 			return .{.valuePtr = storage.add(main.globalAllocator, dataIndex), .foundExisting = false};
@@ -185,14 +181,13 @@ fn BlockEntityDataStorage(T: type) type {
 	};
 }
 
-pub const BlockEntityTypes = struct {
-	pub const Chest = struct {
-		const inventorySize = 20;
+pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
+	pub const @"cubyz:chest" = struct { // MARK: cubyz:chest
+		pub const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
 		});
 
-		pub const id = "chest";
 		pub fn init() void {
 			StorageServer.init();
 		}
@@ -225,7 +220,7 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			std.debug.assert(!data.foundExisting);
-			data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, reader, inventoryCallbacks);
+			data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, reader, inventoryCallbacks);
 		}
 
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
@@ -241,39 +236,28 @@ pub const BlockEntityTypes = struct {
 
 			const inv = main.items.Inventory.ServerSide.getInventoryFromId(data.invId);
 			var isEmpty: bool = true;
-			for(inv._items) |item| {
-				if(item.amount != 0) isEmpty = false;
+			for (inv._items) |item| {
+				if (item.amount != 0) isEmpty = false;
 			}
-			if(isEmpty) return;
+			if (isEmpty) return;
 			inv.toBytes(writer);
 		}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
-		pub fn onInteract(pos: Vec3i, _: *Chunk) main.callbacks.Result {
-			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
-
-			const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, inventorySize, .normal, .serverShared, .{.blockInventory = pos}, .{});
-
-			main.gui.windowlist.chest.setInventory(inventory);
-			main.gui.openWindow("chest");
-			main.Window.setMouseGrabbed(false);
-
-			return .handled;
-		}
 
 		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-			switch(event) {
+			switch (event) {
 				.remove => {
-					const chest = StorageServer.remove(pos, chunk) orelse return;
-					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chest.invId, pos);
+					const chestComponent = StorageServer.remove(pos, chunk) orelse return;
+					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
 				},
 				.update => |_| {
 					StorageServer.mutex.lock();
 					defer StorageServer.mutex.unlock();
 					const data = StorageServer.getOrPut(pos, chunk);
-					if(data.foundExisting) return;
+					if (data.foundExisting) return;
 					var reader = BinaryReader.init(&.{});
-					data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .normal, .{.blockInventory = pos}, &reader, inventoryCallbacks);
+					data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, &reader, inventoryCallbacks);
 				},
 			}
 		}
@@ -283,11 +267,11 @@ pub const BlockEntityTypes = struct {
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
-	pub const Sign = struct {
+	pub const @"cubyz:sign" = struct { // MARK: cubyz:sign
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
-		const StorageClient = BlockEntityDataStorage(struct {
+		pub const StorageClient = BlockEntityDataStorage(struct {
 			text: []const u8,
 			renderedTexture: ?main.graphics.Texture = null,
 			blockPos: Vec3i,
@@ -295,7 +279,7 @@ pub const BlockEntityTypes = struct {
 
 			fn deinit(self: @This()) void {
 				main.globalAllocator.free(self.text);
-				if(self.renderedTexture) |texture| {
+				if (self.renderedTexture) |texture| {
 					textureDeinitLock.lock();
 					defer textureDeinitLock.unlock();
 					textureDeinitList.append(texture);
@@ -322,12 +306,11 @@ pub const BlockEntityTypes = struct {
 		const textureHeight = 72;
 		const textureMargin = 4;
 
-		pub const id = "sign";
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
 			textureDeinitList = .init(main.globalAllocator);
-			if(!main.settings.launchConfig.headlessServer) {
+			if (!main.settings.launchConfig.headlessServer) {
 				pipeline = graphics.Pipeline.init(
 					"assets/cubyz/shaders/block_entity/sign.vert",
 					"assets/cubyz/shaders/block_entity/sign.frag",
@@ -340,7 +323,7 @@ pub const BlockEntityTypes = struct {
 			}
 		}
 		pub fn deinit() void {
-			while(textureDeinitList.popOrNull()) |texture| {
+			while (textureDeinitList.popOrNull()) |texture| {
 				texture.deinit();
 			}
 			textureDeinitList.deinit();
@@ -365,20 +348,12 @@ pub const BlockEntityTypes = struct {
 			const entry = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 			main.globalAllocator.free(entry.text);
 		}
-		pub fn onInteract(pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
-			StorageClient.mutex.lock();
-			defer StorageClient.mutex.unlock();
-			const data = StorageClient.get(pos, chunk);
-			main.gui.windowlist.sign_editor.openFromSignData(pos, if(data) |_data| _data.text else "");
-
-			return .handled;
-		}
 
 		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 			return updateClientData(pos, chunk, .{.update = reader});
 		}
 		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-			if(event == .remove or event.update.remaining.len == 0) {
+			if (event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageClient.remove(pos, chunk) orelse return;
 				entry.deinit();
 				return;
@@ -388,7 +363,7 @@ pub const BlockEntityTypes = struct {
 			defer StorageClient.mutex.unlock();
 
 			const data = StorageClient.getOrPut(pos, chunk);
-			if(data.foundExisting) {
+			if (data.foundExisting) {
 				data.valuePtr.deinit();
 			}
 			data.valuePtr.* = .{
@@ -403,7 +378,7 @@ pub const BlockEntityTypes = struct {
 			return updateServerData(pos, chunk, .{.update = reader});
 		}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
-			if(event == .remove or event.update.remaining.len == 0) {
+			if (event == .remove or event.update.remaining.len == 0) {
 				const entry = StorageServer.remove(pos, chunk) orelse return;
 				main.globalAllocator.free(entry.text);
 				return;
@@ -414,13 +389,13 @@ pub const BlockEntityTypes = struct {
 
 			const newText = event.update.remaining;
 
-			if(!std.unicode.utf8ValidateSlice(newText)) {
+			if (!std.unicode.utf8ValidateSlice(newText)) {
 				std.log.err("Received sign text with invalid UTF-8 characters.", .{});
 				return error.Invalid;
 			}
 
 			const data = StorageServer.getOrPut(pos, chunk);
-			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
+			if (data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
 			data.valuePtr.text = main.globalAllocator.dupe(u8, event.update.remaining);
 		}
 
@@ -456,13 +431,13 @@ pub const BlockEntityTypes = struct {
 				const localPos = mesh.chunk.getLocalBlockPos(pos);
 				const block = mesh.chunk.data.getValue(localPos.toIndex());
 				const blockEntity = block.blockEntity() orelse return;
-				if(!std.mem.eql(u8, blockEntity.id, id)) return;
+				if (!std.mem.eql(u8, blockEntity.id, "cubyz:sign")) return;
 
 				StorageClient.mutex.lock();
 				defer StorageClient.mutex.unlock();
 
 				const data = StorageClient.getOrPut(pos, mesh.chunk);
-				if(data.foundExisting) {
+				if (data.foundExisting) {
 					data.valuePtr.deinit();
 				}
 				data.valuePtr.* = .{
@@ -483,8 +458,8 @@ pub const BlockEntityTypes = struct {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 
-			for(StorageClient.storage.dense.items) |*signData| {
-				if(signData.renderedTexture != null) continue;
+			for (StorageClient.storage.dense.items) |*signData| {
+				if (signData.renderedTexture != null) continue;
 
 				var oldViewport: [4]c_int = undefined;
 				c.glGetIntegerv(c.GL_VIEWPORT, &oldViewport);
@@ -513,7 +488,7 @@ pub const BlockEntityTypes = struct {
 			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
 
 			pipeline.bind(null);
-			c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+			main.renderer.chunk_meshing.vao.bind();
 
 			c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
 			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
@@ -521,8 +496,8 @@ pub const BlockEntityTypes = struct {
 			c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 			c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 
-			outer: for(StorageClient.storage.dense.items) |signData| {
-				if(main.blocks.meshes.model(signData.block).model().internalQuads.len == 0) continue;
+			outer: for (StorageClient.storage.dense.items) |signData| {
+				if (main.blocks.meshes.model(signData.block).model().internalQuads.len == 0) continue;
 				const quad = main.blocks.meshes.model(signData.block).model().internalQuads[0];
 
 				signData.renderedTexture.?.bindTo(0);
@@ -543,21 +518,21 @@ pub const BlockEntityTypes = struct {
 var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
 
 pub fn init() void {
-	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name));
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name), declaration.name);
 		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
 		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
 	}
 }
 
 pub fn reset() void {
-	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		@field(BlockEntityTypes, declaration.name).reset();
 	}
 }
 
 pub fn deinit() void {
-	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		@field(BlockEntityTypes, declaration.name).deinit();
 	}
 	blockyEntityTypes.deinit(main.globalAllocator.allocator);
@@ -565,13 +540,13 @@ pub fn deinit() void {
 
 pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 	const id = _id orelse return null;
-	if(blockyEntityTypes.getPtr(id)) |cls| return cls;
+	if (blockyEntityTypes.getPtr(id)) |cls| return cls;
 	std.log.err("BlockEntityType with id '{s}' not found", .{id});
 	return null;
 }
 
 pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		@field(BlockEntityTypes, declaration.name).renderAll(projectionMatrix, ambientLight, playerPos);
 	}
 }
