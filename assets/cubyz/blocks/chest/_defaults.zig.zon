@@ -6,7 +6,7 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:planar",
-	.blockEntity = .chest,
+	.blockEntity = "cubyz:chest",
 	.onInteract = .{
 		.type = .openChest,
 	},
