@@ -1,5 +1,5 @@
 .{
-	.chance = 1,
+	.chance = 0.2,
 	.caves = -0.03,
 	.soilCreep = 2,
 	.ground_structure = .{
@@ -54,6 +54,18 @@
 			.variation = 5,
 			.depth = 2,
 			.smoothness = 1,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:cylinder",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 6,
+			.maxRadius = 10,
+			.minHeight = 80,
+			.maxHeight = 200,
+			.mode = .additive,
 		},
 	},
 }

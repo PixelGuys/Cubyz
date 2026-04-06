@@ -47,4 +47,16 @@
 			.smoothness = 1,
 		},
 	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:cylinder",
+			.minAmount = 5,
+			.maxAmount = 10,
+			.minRadius = 6,
+			.maxRadius = 8,
+			.minHeight = 80,
+			.maxHeight = 200,
+			.mode = .additive,
+		},
+	},
 }
