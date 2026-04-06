@@ -14,5 +14,8 @@
 		.floor = "cubyz:sign/floor",
 	},
 	.blockEntity = .sign,
+	.onInteract = .{
+		.type = .editSign,
+	},
 	.lodReplacement = "cubyz:air",
 }
