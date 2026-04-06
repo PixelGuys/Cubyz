@@ -1365,7 +1365,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const UpdateBlock = struct { // MARK: UpdateBlock
+	pub const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
 		dropLocation: BlockDropLocation,
@@ -1495,6 +1495,9 @@ pub const Command = struct { // MARK: Command
 					}});
 				},
 			}
+
+			stack.item.onBlockUpdate(self, ctx, &shouldDropSourceBlockOnSuccess);
+
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
 				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 				for (0..dropAmount) |_| {
