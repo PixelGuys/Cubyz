@@ -25,7 +25,6 @@ pub const EntityModel = struct {
 
 	height: f32,
 	texturePath: []const u8,
-	modelID: []const u8,
 	id: []const u8,
 
 	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
@@ -43,16 +42,16 @@ pub const EntityModel = struct {
 			if (zon.get(?[]const u8, "texture", null)) |texture| {
 				self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
 				std.fs.cwd().access(self.texturePath, .{}) catch {
+					main.globalAllocator.free(self.texturePath);
 					self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
 				};
 			}
 		}
-		self.modelID = main.globalAllocator.dupe(u8, zon.getChild("model").as([]const u8, "cubyz:missing"));
 		return self;
 	}
 	fn generateGraphics(self: *EntityModel) void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
-		self.rawModel = main.assets.rawEntityModels.get(self.modelID) orelse unreachable;
+		self.rawModel = .init(main.assets.entityModels().get(self.id) orelse main.assets.entityModels().get("cubyz:missing") orelse unreachable);
 		self.rawModel.?.generateGraphics();
 	}
 	pub fn bind(self: *EntityModel) void {
@@ -68,9 +67,7 @@ pub const EntityModel = struct {
 			defaultTexture.deinit();
 		}
 		main.globalAllocator.free(self.id);
-		if (self.texturePath.len > 0)
-			main.globalAllocator.free(self.texturePath);
-		main.globalAllocator.free(self.modelID);
+		main.globalAllocator.free(self.texturePath);
 	}
 };
 
@@ -96,6 +93,9 @@ pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) usize 
 	return index;
 }
 pub fn reset() void {
+	for (entityModels.items) |*model| {
+		model.deinit();
+	}
 	entityModels = .{};
 	reverseIndices = .{};
 }

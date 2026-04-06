@@ -123,7 +123,7 @@ pub const Assets = struct {
 			addon.readAllModels(allocator, "entityModels/models", &self.entityModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, null);
+			addon.readAllZon(allocator, "entityModels/descriptor", true, &self.entityModelDescriptions, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -532,7 +532,6 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
-pub var rawEntityModels: std.StringHashMap(main.RawEntityModel) = undefined;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
@@ -569,12 +568,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// models (Entities):
-	{
-		var modelIterator = worldAssets.entityModels.iterator();
-		rawEntityModels = .init(main.worldArena.allocator);
-		while (modelIterator.next()) |entry| {
+	{			
+		var modelIterator = worldAssets.entityModelDescriptions.iterator();
+		while (modelIterator.next())|entry| {
+			const id = entry.key_ptr.*;
+			const zon = entry.value_ptr.*;
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
-			registerEntityModelRaw(entry.key_ptr.*, entry.value_ptr.*);
+			_ = main.entityModel.register(assetFolder, id, zon);
 		}
 	}
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
@@ -744,9 +744,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	worldAssets.log(.world);
 }
-pub fn registerEntityModelRaw(id: []const u8, data: []const u8) void {
-	rawEntityModels.put(id, main.RawEntityModel.init(data)) catch unreachable;
-}
+
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
@@ -763,12 +761,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
-
-	var modelIterator = rawEntityModels.valueIterator();
-	while (modelIterator.next()) |rawEntityModel| {
-		rawEntityModel.deinit();
-	}
-	rawEntityModels.deinit();
+	main.entityModel.reset();
 
 	// Remove paths from asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
@@ -798,4 +791,7 @@ pub fn worldPresets() *const Assets.ZonHashMap {
 // TODO: Tempoary, will be removed in future ECS parts.
 pub fn entityModelDescriptions() *const Assets.ZonHashMap {
 	return &common.entityModelDescriptions;
+}
+pub fn entityModels() *const Assets.BytesHashMap {
+	return &common.entityModels;
 }
