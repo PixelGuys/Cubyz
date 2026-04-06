@@ -23,7 +23,6 @@ pub const items = @import("items.zig");
 pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
-pub const RawEntityModel = @import("client/RawEntityModel.zig");
 pub const network = @import("network.zig");
 pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");

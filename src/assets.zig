@@ -568,9 +568,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// models (Entities):
-	{			
+	{
 		var modelIterator = worldAssets.entityModelDescriptions.iterator();
-		while (modelIterator.next())|entry| {
+		while (modelIterator.next()) |entry| {
 			const id = entry.key_ptr.*;
 			const zon = entry.value_ptr.*;
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
@@ -787,11 +787,11 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 pub fn worldPresets() *const Assets.ZonHashMap {
 	return &common.worldPresets;
 }
+pub fn entityModelFiles() *const Assets.BytesHashMap {
+	return &common.entityModels;
+}
 
 // TODO: Tempoary, will be removed in future ECS parts.
 pub fn entityModelDescriptions() *const Assets.ZonHashMap {
 	return &common.entityModelDescriptions;
-}
-pub fn entityModels() *const Assets.BytesHashMap {
-	return &common.entityModels;
 }
