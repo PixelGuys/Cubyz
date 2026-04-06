@@ -119,8 +119,8 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
-			addon.readAllModels(allocator, "models", &self.blockModels);
-			addon.readAllModels(allocator, "entityModels/models", &self.entityModels);
+			addon.readAllModels(allocator, "models", ".obj", &self.blockModels);
+			addon.readAllModels(allocator, "entityModels/models", ".obj", &self.entityModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entityModels/descriptions", true, &self.entityModelDescriptions, null);
@@ -301,7 +301,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
+		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, fileEnding: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
@@ -317,7 +317,7 @@ pub const Assets = struct {
 				break :blk null;
 			}) |entry| {
 				if (entry.kind != .file) continue;
-				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
+				if (!std.ascii.endsWithIgnoreCase(entry.basename, fileEnding)) continue;
 
 				const id = createAssetStringID(allocator, addon.name, "model", entry.path) catch continue;
 
