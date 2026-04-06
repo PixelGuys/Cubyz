@@ -29,6 +29,7 @@ pub const Assets = struct {
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
+	caveLayers: ZonHashMap,
 	entityComponents: ZonHashMap,
 	entityComponentMigrations: AddonNameToZonMap,
 	structureTables: ZonHashMap,
@@ -50,6 +51,7 @@ pub const Assets = struct {
 			.tools = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
+			.caveLayers = .{},
 			.entityComponents = .{},
 			.entityComponentMigrations = .{},
 			.structureTables = .{},
@@ -71,6 +73,7 @@ pub const Assets = struct {
 		self.tools.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
+		self.caveLayers.deinit(allocator.allocator);
 		self.entityComponents.deinit(allocator.allocator);
 		self.entityComponentMigrations.deinit(allocator.allocator);
 		self.structureTables.deinit(allocator.allocator);
@@ -92,6 +95,7 @@ pub const Assets = struct {
 			.tools = self.tools.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
+			.caveLayers = self.caveLayers.clone(allocator.allocator) catch unreachable,
 			.entityComponents = self.entityComponents.clone(allocator.allocator) catch unreachable,
 			.entityComponentMigrations = self.entityComponentMigrations.clone(allocator.allocator) catch unreachable,
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
@@ -116,6 +120,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
 			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
+			addon.readAllZon(allocator, "cave_layers", true, &self.caveLayers, null);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
@@ -128,8 +133,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -697,6 +702,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 	biomes_zig.finishLoading();
 
+	// Cave layers:
+	try main.server.terrain.cave_layers.registerCaveLayers(&worldAssets.caveLayers);
+
 	// EntityComponents
 	{
 		var map: std.StringHashMap(u32) = .init(main.stackAllocator.allocator);
@@ -757,6 +765,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	items_zig.reset();
 	migrations_zig.reset();
 	biomes_zig.reset();
+	main.server.terrain.cave_layers.reset();
 	migrations_zig.reset();
 	main.server.terrain.structures.reset();
 	main.models.reset();
