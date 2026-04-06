@@ -17,4 +17,7 @@
 		.texture = "monstera/leaf.png",
 	},
 	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 }
