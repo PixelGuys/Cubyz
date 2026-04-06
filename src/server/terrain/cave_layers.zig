@@ -31,6 +31,16 @@ pub const CaveLayer = struct {
 
 		const tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 		defer main.stackAllocator.free(tags);
+		if (tags.len == 0) {
+			std.log.err("Cave layer with id {s} is missing tags. Skipping", .{id});
+			return null;
+		}
+		for (tags) |tag| {
+			if (!std.mem.endsWith(u8, tag.getName(), "_layer")) {
+				std.log.err("Cave layer tags must end with '_layer'. Tag {s} defined in cave layer with id {s} does not. Skipping", .{tag.getName(), id});
+				return null;
+			}
+		}
 		var biomes: main.List(*const Biome) = .init(main.stackAllocator);
 		defer biomes.deinit();
 		outer: for (terrain.biomes.getCaveBiomes()) |*biome| {

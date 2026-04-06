@@ -298,6 +298,13 @@ pub const Biome = struct { // MARK: Biome
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
+		if (self.isCave) {
+			for (self.tags) |tag| {
+				if (std.mem.endsWith(u8, tag.getName(), "_layer")) break;
+			} else {
+				std.log.err("Cave biome {s} is missing a '_layer' tag to assign it to a cave layer.", .{id});
+			}
+		}
 		if (minRadius > maxRadius) {
 			std.log.err("Biome {s} has invalid radius range ({d}, {d})", .{self.id, minRadius, maxRadius});
 		}
