@@ -4,10 +4,6 @@
 	.properties = .{},
 	.minRadius = 20,
 	.maxRadius = 32,
-	.minHeight = 22,
-	.maxHeight = 40,
-	.roughness = 1,
-	.hills = 5,
 	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
