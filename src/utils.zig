@@ -1680,11 +1680,6 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 	}
 };
 
-pub const Side = enum {
-	client,
-	server,
-};
-
 const endian: std.builtin.Endian = .big;
 
 pub const BinaryReader = struct {
