@@ -34,7 +34,6 @@ pub const Assets = struct {
 	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
 	blockModels: BytesHashMap,
-	entityModels: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
@@ -55,7 +54,6 @@ pub const Assets = struct {
 			.structureTables = .{},
 			.recipes = .{},
 			.blockModels = .{},
-			.entityModels = .{},
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
 			.particles = .{},
@@ -76,7 +74,6 @@ pub const Assets = struct {
 		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.blockModels.deinit(allocator.allocator);
-		self.entityModels.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
@@ -97,7 +94,6 @@ pub const Assets = struct {
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
-			.entityModels = self.entityModels.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
@@ -120,7 +116,6 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, "models", ".obj", &self.blockModels);
-			addon.readAllModels(allocator, "entityModels/models", ".obj", &self.entityModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entityModels/descriptions", true, &self.entityModelDescriptions, null);
@@ -784,11 +779,27 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	}
 }
 
+pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subPath: []const u8, id: []const u8, fileEnding: []const u8) ?[]const u8 {
+	var split = std.mem.splitScalar(u8, id, ':');
+	const mod = split.first();
+	const name = split.next() orelse return null;
+
+	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding}) catch &.{};
+	defer main.stackAllocator.free(path);
+	std.fs.cwd().access(path, .{}) catch {
+		main.stackAllocator.free(path);
+		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch &.{};
+	};
+
+	const string = std.fs.cwd().readFileAlloc(path, allocator.allocator, .unlimited) catch |err| {
+		std.log.err("Could not open {s}/{s}{s}: {s}", .{subPath, name, fileEnding, @errorName(err)});
+		return null;
+	};
+	return string;
+}
+
 pub fn worldPresets() *const Assets.ZonHashMap {
 	return &common.worldPresets;
-}
-pub fn entityModelFiles() *const Assets.BytesHashMap {
-	return &common.entityModels;
 }
 
 // TODO: Tempoary, will be removed in future ECS parts.

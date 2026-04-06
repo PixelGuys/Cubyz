@@ -26,6 +26,7 @@ pub const EntityModel = struct {
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
+	modelFile: []const u8,
 
 	const Vertex = extern struct {
 		pos: [3]f32,
@@ -58,12 +59,14 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
+		const fileEnding = ".obj";
+		self.modelFile = main.assets.readAsset(main.globalAllocator, assetFolder, "entityModels/models", self.id, fileEnding) orelse main.assets.readAsset(main.stackAllocator, assetFolder, "entityModels/models", "cubyz:missing", fileEnding) orelse unreachable;
 
 		// get TexturePath
 		{
+			self.texturePath = &.{};
 			var split = std.mem.splitScalar(u8, id, ':');
 			const mod = split.first();
-			self.texturePath = &.{};
 			if (zon.get(?[]const u8, "texture", null)) |texture| {
 				self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
 				std.fs.cwd().access(self.texturePath, .{}) catch {
@@ -76,9 +79,13 @@ pub const EntityModel = struct {
 	}
 	fn generateGraphics(self: *EntityModel) void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
-		const file = main.assets.entityModelFiles().get(self.id) orelse main.assets.entityModelFiles().get("cubyz:missing") orelse unreachable;
 
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, file);
+		defer {
+			// We don't need the modelFile in memory anymore, so why waste memory?
+			main.globalAllocator.free(self.modelFile);
+			self.modelFile = &.{};
+		}
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, self.modelFile);
 		defer main.stackAllocator.free(quadInfos);
 		const vertices = main.stackAllocator.alloc(Vertex, quadInfos.len*4);
 		defer main.stackAllocator.free(vertices);
@@ -113,6 +120,7 @@ pub const EntityModel = struct {
 	pub fn deinit(self: *EntityModel) void {
 		main.globalAllocator.free(self.id);
 		main.globalAllocator.free(self.texturePath);
+		main.globalAllocator.free(self.modelFile);
 		if (self.defaultTexture) |defaultTexture| {
 			defaultTexture.deinit();
 		}
