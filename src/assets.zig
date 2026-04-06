@@ -123,7 +123,7 @@ pub const Assets = struct {
 			addon.readAllModels(allocator, "entityModels/models", &self.entityModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels/descriptor", true, &self.entityModelDescriptions, null);
+			addon.readAllZon(allocator, "entityModels/descriptions", true, &self.entityModelDescriptions, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
