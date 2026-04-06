@@ -7,7 +7,7 @@
 	.maxHeight = 10,
 	.roughness = 3,
 	.hills = 3,
-	.stoneBlock = "cubyz:basalt",
+	.stoneBlock = "cubyz:basalt/base",
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
@@ -21,7 +21,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.05,
-			.block = "cubyz:iron_ore:cubyz:ferrock",
+			.block = "cubyz:iron_ore:cubyz:ferrock/base",
 			.size = 3,
 			.size_variance = 2,
 		},
@@ -46,7 +46,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:crimson_wasteland/base",
+			.id = "cubyz:rare/crimson_wasteland/base",
 			.chance = 24,
 		},
 	},
