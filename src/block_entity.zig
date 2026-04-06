@@ -38,7 +38,6 @@ pub const BlockEntityType = struct {
 		onUnloadServer: *const fn (dataIndex: BlockEntityIndex) void,
 		onStoreServerToDisk: *const fn (dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onStoreServerToClient: *const fn (dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
-		onInteract: *const fn (pos: Vec3i, chunk: *Chunk) main.callbacks.Result,
 		updateClientData: *const fn (pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
 		updateServerData: *const fn (pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void,
 		getServerToClientData: *const fn (pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
@@ -76,9 +75,6 @@ pub const BlockEntityType = struct {
 	}
 	pub inline fn onStoreServerToClient(self: *const BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(dataIndex, writer);
-	}
-	pub inline fn onInteract(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
-		return self.vtable.onInteract(pos, chunk);
 	}
 	pub inline fn updateClientData(self: *const BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 		return try self.vtable.updateClientData(pos, chunk, event);
@@ -187,7 +183,7 @@ fn BlockEntityDataStorage(T: type) type {
 
 pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
-		const inventorySize = 20;
+		pub const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
 		});
@@ -248,17 +244,6 @@ pub const BlockEntityTypes = struct {
 			inv.toBytes(writer);
 		}
 		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
-		pub fn onInteract(pos: Vec3i, _: *Chunk) main.callbacks.Result {
-			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
-
-			const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, inventorySize, .serverShared, .{.blockInventory = pos}, .{});
-
-			main.gui.windowlist.chest.setInventory(inventory);
-			main.gui.openWindow("chest");
-			main.Window.setMouseGrabbed(false);
-
-			return .handled;
-		}
 
 		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
@@ -287,7 +272,7 @@ pub const BlockEntityTypes = struct {
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
-		const StorageClient = BlockEntityDataStorage(struct {
+		pub const StorageClient = BlockEntityDataStorage(struct {
 			text: []const u8,
 			renderedTexture: ?main.graphics.Texture = null,
 			blockPos: Vec3i,
@@ -364,14 +349,6 @@ pub const BlockEntityTypes = struct {
 			defer StorageServer.mutex.unlock();
 			const entry = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 			main.globalAllocator.free(entry.text);
-		}
-		pub fn onInteract(pos: Vec3i, chunk: *Chunk) main.callbacks.Result {
-			StorageClient.mutex.lock();
-			defer StorageClient.mutex.unlock();
-			const data = StorageClient.get(pos, chunk);
-			main.gui.windowlist.sign_editor.openFromSignData(pos, if (data) |_data| _data.text else "");
-
-			return .handled;
 		}
 
 		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
