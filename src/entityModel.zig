@@ -19,7 +19,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const BinaryReader = main.utils.BinaryReader;
 
 pub const EntityModel = struct {
-	
 	height: f32,
 	texturePath: []const u8,
 	id: []const u8,
@@ -27,7 +26,6 @@ pub const EntityModel = struct {
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
-
 
 	const Vertex = extern struct {
 		pos: [3]f32,
@@ -52,7 +50,6 @@ pub const EntityModel = struct {
 			},
 		};
 	};
-
 
 	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
@@ -119,7 +116,7 @@ pub const EntityModel = struct {
 		if (self.defaultTexture) |defaultTexture| {
 			defaultTexture.deinit();
 		}
-		if(self.vao)|vao|{
+		if (self.vao) |vao| {
 			vao.deinit();
 		}
 	}
