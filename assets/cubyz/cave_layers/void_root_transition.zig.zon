@@ -1,0 +1,7 @@
+.{
+	.tags = .{.root_layer},
+	.layerHeight = 150,
+	.depthHint = -50000,
+
+	.caveDensity = 0,
+}
