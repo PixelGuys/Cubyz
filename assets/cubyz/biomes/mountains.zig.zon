@@ -22,7 +22,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/young",
 			.placeMode = .degradable,
-			.chance = 0.5,
+			.chance = 0.4,
 		},
 	},
 }
