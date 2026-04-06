@@ -1,4 +1,5 @@
 .{
 	.texture = "moffalo.png",
 	.height = 1.8,
+	.coordinateSystem = .right_handed_z_up,
 }

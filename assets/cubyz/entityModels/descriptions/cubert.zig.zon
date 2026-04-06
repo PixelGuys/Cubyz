@@ -1,4 +1,5 @@
 .{
 	.texture = "cubert.png",
 	.height = 2,
+	.coordinateSystem = .right_handed_z_up,
 }

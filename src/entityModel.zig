@@ -30,6 +30,14 @@ pub const EntityModel = struct {
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
+	coordinateSystem: CoordinateSystem,
+
+	pub const CoordinateSystem = enum {
+		right_handed_z_up,
+		right_handed_y_up,
+		left_handed_z_up,
+		left_handed_y_up,
+	};
 
 	const Vertex = extern struct {
 		pos: [3]f32,
@@ -62,6 +70,12 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
+
+		const coordSystemName = zon.get([]const u8, "coordinateSystem", @tagName(CoordinateSystem.right_handed_z_up));
+		self.coordinateSystem = std.meta.stringToEnum(CoordinateSystem, coordSystemName) orelse blk: {
+			std.log.err("Error: invalid coordinate system enum name - \"{s}\"", .{coordSystemName});
+			break :blk CoordinateSystem.right_handed_z_up;
+		};
 
 		// get TexturePath
 		{
@@ -151,12 +165,13 @@ pub const EntityModel = struct {
 					for (0..positionAttr.count) |v| {
 						var p: [3]f32 = undefined;
 						_ = positionAttr.float(v, @ptrCast(&p), 3);
-						const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[2], p[1], 1});
-						vertSlice[v].pos = .{-pos[0], pos[1], pos[2]};
+						const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[1], p[2], 1});
+						std.debug.print("\n{s}", .{@tagName(self.coordinateSystem)});
+						vertSlice[v].pos = convertCoordinateSystem(.{pos[0], pos[1], pos[2]}, self.coordinateSystem);//.{-pos[0], pos[2], pos[1]};
 
 						var normal: [3]f32 = undefined;
 						_ = normalAttr.float(v, @ptrCast(&normal), 3);
-						vertSlice[v].normal = .{-normal[0], normal[2], normal[1]};
+						vertSlice[v].normal = convertCoordinateSystem(.{normal[0], normal[1], normal[2]}, self.coordinateSystem); //.{-normal[0], normal[2], normal[1]};
 
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.float(v, @ptrCast(&uv), 2);
@@ -170,23 +185,20 @@ pub const EntityModel = struct {
 		self.indexCount = @intCast(indices.items.len);
 	}
 
+	fn convertCoordinateSystem(v: Vec3f, sys: CoordinateSystem) Vec3f {
+		return switch (sys) {
+			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
+			.right_handed_y_up => Vec3f{v[0], v[2], v[1]},
+			.left_handed_z_up => Vec3f{-v[0], v[1], v[2]},
+			.left_handed_y_up => Vec3f{-v[0], v[2], v[1]},
+		};
+	}
+
+
 	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
-		var currentMat = Mat4f.translation(Vec3f{
-			node.translation[0],
-			node.translation[2],
-			node.translation[1],
-		});
-		currentMat = currentMat.mul(Mat4f.rotationQuat(vec.Vec4f{
-			node.rotation[0],
-			node.rotation[2],
-			node.rotation[1],
-			node.rotation[3],
-		}));
-		currentMat = currentMat.mul(Mat4f.scale(Vec3f{
-			node.scale[0],
-			node.scale[2],
-			node.scale[1],
-		}));
+		var currentMat = Mat4f.translation(node.translation);
+		currentMat = currentMat.mul(Mat4f.rotationQuat(node.rotation));
+		currentMat = currentMat.mul(Mat4f.scale(node.scale));
 
 		if (node.parent == null) {
 			return currentMat;

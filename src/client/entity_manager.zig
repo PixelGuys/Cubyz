@@ -46,14 +46,6 @@ pub fn init() void {
 
 	// TODO: This is Temporary, will be replace by future ECS parts.
 	model = .init("assets", "cubyz:snale", main.assets.entityModelDescriptions().get("cubyz:snale").?);
-
-	addEntity(ZonElement.parseFromString(main.globalArena, null,
-		\\ .{
-		\\    .id = 1,
-		\\    .name = "bobik",
-		\\
-		\\  }
-	));
 }
 
 pub fn deinit() void {
