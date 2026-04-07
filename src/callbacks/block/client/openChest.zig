@@ -11,17 +11,13 @@ pub fn init(_: ZonElement) ?*anyopaque {
 }
 
 pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) main.callbacks.Result {
-	if (params.block.blockEntity() == null or !std.mem.eql(u8, params.block.blockEntity().?.id, "cubyz:chest")) {
-		std.log.err("Can only open chest if block entity of the block is a chest.", .{});
-		return .ignored;
-	}
-	main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, params.blockPos);
+	if (params.block.onTrigger().inner != &main.callbacks.BlockCallbackWithData.list.createChest.run) return .ignored;
+	main.sync.ClientSide.executeCommand(.{.triggerBlock = .init(params.block, params.blockPos, &.{})});
 
-	const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, main.block_entity.BlockEntityTypes.@"cubyz:chest".inventorySize, .serverShared, .{.blockInventory = params.blockPos}, .{});
+	const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, 20, .serverShared, .{.blockInventory = params.blockPos}, .{}); // TODO: Allow the server side to give us the inventory size
 
 	main.gui.windowlist.chest.setInventory(inventory);
 	main.gui.openWindow("chest");
 	main.Window.setMouseGrabbed(false);
-
 	return .handled;
 }
