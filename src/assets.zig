@@ -34,7 +34,6 @@ pub const Assets = struct {
 	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
 	blockModels: BytesHashMap,
-	entityModels: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
@@ -55,7 +54,6 @@ pub const Assets = struct {
 			.structureTables = .{},
 			.recipes = .{},
 			.blockModels = .{},
-			.entityModels = .{},
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
 			.particles = .{},
@@ -76,7 +74,6 @@ pub const Assets = struct {
 		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.blockModels.deinit(allocator.allocator);
-		self.entityModels.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
@@ -97,7 +94,6 @@ pub const Assets = struct {
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
-			.entityModels = self.entityModels.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
@@ -119,11 +115,10 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
-			addon.readAllModels(allocator, "models", &self.blockModels);
-			addon.readAllModels(allocator, "entityModels/models", &self.entityModels);
+			addon.readAllModels(allocator, "models", ".obj", &self.blockModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, null);
+			addon.readAllZon(allocator, "entityModels/descriptions", true, &self.entityModelDescriptions, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -301,7 +296,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
+		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, fileEnding: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
@@ -317,7 +312,7 @@ pub const Assets = struct {
 				break :blk null;
 			}) |entry| {
 				if (entry.kind != .file) continue;
-				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
+				if (!std.ascii.endsWithIgnoreCase(entry.basename, fileEnding)) continue;
 
 				const id = createAssetStringID(allocator, addon.name, "model", entry.path) catch continue;
 
@@ -532,7 +527,6 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
-pub var rawEntityModelData: std.StringHashMap([]const main.models.QuadInfo) = undefined;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
@@ -570,11 +564,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	// models (Entities):
 	{
-		var modelIterator = worldAssets.entityModels.iterator();
-		rawEntityModelData = .init(main.worldArena.allocator);
+		var modelIterator = worldAssets.entityModelDescriptions.iterator();
 		while (modelIterator.next()) |entry| {
+			const id = entry.key_ptr.*;
+			const zon = entry.value_ptr.*;
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
-			registerEntityModelRaw(entry.key_ptr.*, entry.value_ptr.*);
+			_ = main.entityModel.register(assetFolder, id, zon);
 		}
 	}
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
@@ -744,9 +739,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	worldAssets.log(.world);
 }
-pub fn registerEntityModelRaw(id: []const u8, data: []const u8) void {
-	rawEntityModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
-}
+
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
@@ -763,6 +756,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
+	main.entityModel.reset();
 
 	// Remove paths from asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
@@ -783,6 +777,25 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			main.utils.file_monitor.removePath(path);
 		}
 	}
+}
+
+pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subPath: []const u8, id: []const u8, fileEnding: []const u8) ?[]const u8 {
+	var split = std.mem.splitScalar(u8, id, ':');
+	const mod = split.first();
+	const name = split.next() orelse return null;
+
+	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding}) catch &.{};
+	defer main.stackAllocator.free(path);
+	std.fs.cwd().access(path, .{}) catch {
+		main.stackAllocator.free(path);
+		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch &.{};
+	};
+
+	const string = std.fs.cwd().readFileAlloc(path, allocator.allocator, .unlimited) catch |err| {
+		std.log.err("Could not open {s}/{s}{s}: {s}", .{subPath, name, fileEnding, @errorName(err)});
+		return null;
+	};
+	return string;
 }
 
 pub fn worldPresets() *const Assets.ZonHashMap {

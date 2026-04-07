@@ -19,16 +19,16 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const BinaryReader = main.utils.BinaryReader;
 
 pub const EntityModel = struct {
-	vao: ?graphics.VertexArray = undefined,
-	indexCount: c_int,
-	defaultTexture: ?main.graphics.Texture,
 	height: f32,
-
 	texturePath: []const u8,
-	modelID: []const u8,
 	id: []const u8,
 
-	const EntityVertex = extern struct {
+	vao: ?graphics.VertexArray = null,
+	indexCount: c_int,
+	defaultTexture: ?main.graphics.Texture,
+	modelFile: []const u8,
+
+	const Vertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
@@ -59,32 +59,38 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
+		const fileEnding = ".obj";
+		self.modelFile = main.assets.readAsset(main.globalAllocator, assetFolder, "entityModels/models", self.id, fileEnding) orelse main.assets.readAsset(main.stackAllocator, assetFolder, "entityModels/models", "cubyz:missing", fileEnding) orelse unreachable;
 
 		// get TexturePath
 		{
+			self.texturePath = &.{};
 			var split = std.mem.splitScalar(u8, id, ':');
 			const mod = split.first();
-			self.texturePath = &.{};
 			if (zon.get(?[]const u8, "texture", null)) |texture| {
 				self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
 				std.fs.cwd().access(self.texturePath, .{}) catch {
+					main.globalAllocator.free(self.texturePath);
 					self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
 				};
 			}
 		}
-		self.modelID = main.globalAllocator.dupe(u8, zon.getChild("model").as([]const u8, "cubyz:missing"));
 		return self;
 	}
 	fn generateGraphics(self: *EntityModel) void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
-		const quadInfos = main.assets.rawEntityModelData.get(self.modelID) orelse unreachable;
-		const vertices = main.stackAllocator.alloc(EntityVertex, quadInfos.len*4);
+		defer {
+			// We don't need the modelFile in memory anymore, so why waste memory?
+			main.globalAllocator.free(self.modelFile);
+			self.modelFile = &.{};
+		}
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, self.modelFile);
+		defer main.stackAllocator.free(quadInfos);
+		const vertices = main.stackAllocator.alloc(Vertex, quadInfos.len*4);
 		defer main.stackAllocator.free(vertices);
 		const indices: []u32 = main.stackAllocator.alloc(u32, quadInfos.len*6);
 		defer main.stackAllocator.free(indices);
-
-		const texture = main.graphics.Texture.initFromFile(self.texturePath);
 
 		for (quadInfos, 0..quadInfos.len) |quad, i| {
 			for (0..4) |j| {
@@ -100,8 +106,7 @@ pub const EntityModel = struct {
 			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 		}
 
-		self.vao = .init(EntityVertex, vertices, indices);
-		self.defaultTexture = texture;
+		self.vao = .init(Vertex, vertices, indices);
 		self.indexCount = @intCast(indices.len);
 	}
 	pub fn bind(self: *EntityModel) void {
@@ -113,16 +118,15 @@ pub const EntityModel = struct {
 	}
 
 	pub fn deinit(self: *EntityModel) void {
-		if (self.vao) |vao| {
-			vao.deinit();
-		}
+		main.globalAllocator.free(self.id);
+		main.globalAllocator.free(self.texturePath);
+		main.globalAllocator.free(self.modelFile);
 		if (self.defaultTexture) |defaultTexture| {
 			defaultTexture.deinit();
 		}
-		main.globalAllocator.free(self.id);
-		if (self.texturePath.len > 0)
-			main.globalAllocator.free(self.texturePath);
-		main.globalAllocator.free(self.modelID);
+		if (self.vao) |vao| {
+			vao.deinit();
+		}
 	}
 };
 
@@ -148,6 +152,9 @@ pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) usize 
 	return index;
 }
 pub fn reset() void {
+	for (entityModels.items) |*model| {
+		model.deinit();
+	}
 	entityModels = .{};
 	reverseIndices = .{};
 }
