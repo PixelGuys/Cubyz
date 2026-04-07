@@ -1,0 +1,5 @@
+.{
+	.tags = .{.root_layer},
+	.layerHeight = 10000,
+	.depthHint = -50000,
+}

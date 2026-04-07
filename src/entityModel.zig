@@ -1,119 +1,82 @@
 const std = @import("std");
 
 const main = @import("main");
-const chunk = main.chunk;
-const game = main.game;
 const graphics = main.graphics;
 const c = graphics.c;
-const ZonElement = main.ZonElement;
-const renderer = main.renderer;
-const settings = main.settings;
-const utils = main.utils;
-const vec = main.vec;
-const Mat4f = vec.Mat4f;
-const Vec3d = vec.Vec3d;
-const Vec3f = vec.Vec3f;
-const Vec4f = vec.Vec4f;
-const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-
-const BinaryReader = main.utils.BinaryReader;
 
 pub const EntityModel = struct {
-	buffer: ?main.graphics.SSBO,
-	size: c_int = 0,
-	defaultTexture: ?main.graphics.Texture,
-	height: f32,
+	vao: graphics.VertexArray = undefined,
+	indexCount: c_int,
+	texture: main.graphics.Texture,
 
-	texturePath: []const u8,
-	modelID: []const u8,
-	id: []const u8,
+	const EntityVertex = extern struct {
+		pos: [3]f32,
+		normal: [3]f32,
+		uv: [2]f32,
 
-	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
-		var self: EntityModel = undefined;
-		self.id = main.worldArena.dupe(u8, id);
-		self.height = zon.getChild("height").as(f32, 1);
-		self.defaultTexture = null;
-		self.buffer = null;
+		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
+			.{
+				.location = 0,
+				.format = c.VK_FORMAT_R32G32B32_SFLOAT,
+				.offset = @offsetOf(@This(), "pos"),
+			},
+			.{
+				.location = 1,
+				.format = c.VK_FORMAT_R32G32B32_SFLOAT,
+				.offset = @offsetOf(@This(), "normal"),
+			},
+			.{
+				.location = 2,
+				.format = c.VK_FORMAT_R32G32_SFLOAT,
+				.offset = @offsetOf(@This(), "uv"),
+			},
+		};
+	};
 
-		// get TexturePath
-		{
-			var split = std.mem.splitScalar(u8, id, ':');
-			const mod = split.first();
-			self.texturePath = &.{};
-			if (zon.get(?[]const u8, "texture", null)) |texture| {
-				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entities/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
-				std.fs.cwd().access(self.texturePath, .{}) catch {
-					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entities/textures/{s}", .{mod, texture}) catch &.{};
-				};
+	pub fn initFromObj(modelPath: []const u8, texturePath: []const u8) EntityModel {
+		const modelFile = main.files.cwd().read(main.stackAllocator, modelPath) catch |err| blk: {
+			std.log.err("Error while reading player model from path {s}: {s}", .{modelPath, @errorName(err)});
+			break :blk &.{};
+		};
+		defer main.stackAllocator.free(modelFile);
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
+		defer main.stackAllocator.free(quadInfos);
+
+		const vertices = main.stackAllocator.alloc(EntityVertex, quadInfos.len*4);
+		defer main.stackAllocator.free(vertices);
+		const indices: []u32 = main.stackAllocator.alloc(u32, quadInfos.len*6);
+		defer main.stackAllocator.free(indices);
+
+		const texture = main.graphics.Texture.initFromFile(texturePath);
+
+		for (quadInfos, 0..quadInfos.len) |quad, i| {
+			for (0..4) |j| {
+				const v = i*4 + j;
+				vertices[v].normal = quad.normal;
+				vertices[v].pos = quad.corners[j];
+				vertices[v].uv = quad.cornerUV[j];
 			}
 		}
-		self.modelID = main.worldArena.dupe(u8, zon.getChild("model").as([]const u8, "cubyz:entities/missing"));
-		return self;
-	}
-	fn deinit(self: *const EntityModel) void {
-		if (self.buffer) |buffer| {
-			buffer.deinit();
-		}
-		if (self.texture) |texture| {
-			texture.deinit();
-		}
-	}
-	fn generateGraphics(self: *EntityModel) void {
-		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
-		const quadInfos = main.assets.rawModelData.get(self.modelID) orelse unreachable;
-		self.buffer = .initStatic(main.models.QuadInfo, quadInfos);
-		self.size = @intCast(quadInfos.len);
-	}
-	pub fn bind(self: *EntityModel) void {
-		if (self.buffer == null) {
-			self.generateGraphics();
+		const lut = [_]u32{0, 2, 1, 1, 2, 3};
+		for (0..indices.len) |i| {
+			indices[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 		}
-		self.buffer.?.bind(11);
+
+		return .{
+			.vao = .init(EntityVertex, vertices, indices),
+			.texture = texture,
+			.indexCount = @intCast(indices.len),
+		};
+	}
+
+	pub fn bind(self: EntityModel) void {
+		self.vao.bind();
+		self.texture.bindTo(0);
+	}
+
+	pub fn deinit(self: EntityModel) void {
+		self.vao.deinit();
+		self.texture.deinit();
 	}
 };
-pub const EntityModelIndex = struct {
-	index: u32,
-	pub fn get(self: EntityModelIndex) *EntityModel {
-		if (entityModels.items.len > self.index)
-			return &entityModels.items[self.index];
-		// should always exist because of firstEntry in entityModelPalette
-		std.debug.assert(entityModels.items.len > 0);
-		return &entityModels.items[0];
-	}
-};
-
-pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
-pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
-
-pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) usize {
-	const index = entityModels.items.len;
-	const entityModel = entityModels.addOne(main.worldArena);
-	entityModel.* = EntityModel.init(assetFolder, id, zon);
-	reverseIndices.put(main.worldArena.allocator, id, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
-	return index;
-}
-pub fn reset() void {
-	entityModels = .{};
-	reverseIndices = .{};
-}
-
-pub fn hasRegistered(id: []const u8) bool {
-	return reverseIndices.contains(id);
-}
-
-pub fn getTypeById(id: []const u8) EntityModelIndex {
-	if (reverseIndices.get(id)) |result| {
-		return result;
-	} else {
-		std.log.err("Couldn't find entityModel {s}. Replacing it with cubyz:missing ...", .{id});
-		return EntityModelIndex{.index = 0};
-	}
-}
-
-pub fn getTypeByIdOrNull(id: []const u8) ?EntityModelIndex {
-	if (reverseIndices.get(id)) |result| {
-		return result;
-	}
-	return null;
-}

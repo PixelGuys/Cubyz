@@ -410,7 +410,7 @@ pub const Chunk = struct { // MARK: Chunk
 		self.data.deferredDeinit();
 	}
 
-	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
+	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.sync.Side) void {
 		self.blockPosToEntityDataMapMutex.lock();
 		defer self.blockPosToEntityDataMapMutex.unlock();
 		var iterator = self.blockPosToEntityDataMap.iterator();
