@@ -1,0 +1,20 @@
+.{
+	.chance = 0.3,
+	.caves = -0.03,
+	.soilCreep = 1,
+	.ground_structure = .{
+		"2 to 3 cubyz:lava",
+		"1 to 2 cubyz:magma"
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:pyrolite/base",
+			.chance = 0.1,
+			.width = 4,
+			.variation = 2,
+			.depth = 2,
+			.smoothness = 0.9,
+		},
+	},
+}

@@ -44,7 +44,7 @@
 			.width = 2,
 			.variation = 1,
 			.depth = 2,
-			.smoothness = 1,
+			.smoothness = 0.1,
 		},
 	},
 	.caveModels = .{

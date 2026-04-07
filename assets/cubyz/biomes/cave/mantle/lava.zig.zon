@@ -1,21 +1,18 @@
 .{
-	.chance = 0.2,
+	.chance = 0.5,
 	.caves = -0.03,
 	.soilCreep = 2,
-	.ground_structure = .{
-		"2 cubyz:magma",
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:cave/mantle/lava_pool",
 			.placeMode = .degradable,
-			.chance = 0.03,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:stalagmite",
 			.block = "cubyz:pyrolite/base",
-			.chance = 0.1,
+			.chance = 0.05,
 			.size = 12,
 			.size_variation = 6,
 			.baseSlope = 0,
@@ -24,7 +21,7 @@
 		.{
 			.id = "cubyz:stalagmite",
 			.block = "cubyz:pyrolite/base",
-			.chance = 0.2,
+			.chance = 0.15,
 			.size = 4,
 			.size_variation = 6,
 		},
@@ -39,21 +36,21 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:pyrolite/base",
-			.chance = 0.4,
+			.block = "cubyz:magma",
+			.chance = 0.2,
 			.width = 3,
 			.variation = 2,
 			.depth = 2,
-			.smoothness = 1,
+			.smoothness = 0.05,
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:pyrolite/base",
-			.chance = 0.08,
+			.block = "cubyz:magma",
+			.chance = 0.04,
 			.width = 6,
 			.variation = 5,
 			.depth = 2,
-			.smoothness = 1,
+			.smoothness = 0.05,
 		},
 	},
 	.caveModels = .{
