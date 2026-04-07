@@ -43,7 +43,6 @@ pub fn onOpen() void {
 		list.add(Label.init(.{0, 0}, width, "Please enter your name!", .center));
 		window.closeable = false;
 	} else {
-		list.add(Label.init(.{0, 0}, width, "#ff0000Warning: #ffffffYou lose access to your inventory data when changing the name!", .center));
 		window.closeable = true;
 	}
 	list.add(Label.init(.{0, 0}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
