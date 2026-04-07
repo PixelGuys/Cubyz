@@ -87,17 +87,17 @@ pub const server = struct {
 		}
 		renderComponents.deinit();
 	}
-	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32)  main.entity.EntityComponentLoadError!void {
+	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
 		const entityModel = reader.readInt(u32) catch return;
 		const customTexturePath = reader.readSliceWithSize() catch return;
 
 		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel}, if (customTexturePath.len == 0) null else customTexturePath);
 	}
-	pub fn loadByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8)  main.entity.EntityComponentLoadError!void {
+	pub fn loadByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
 		try loadByIndex(entity, main.entityModel.getTypeById(entityModelID), customTexturePath);
 	}
-	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8)  main.entity.EntityComponentLoadError!void {
+	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
 		if (renderComponents.get(entity)) |old| {
 			old.deinit();
 		}
@@ -105,7 +105,7 @@ pub const server = struct {
 			.entity = entity,
 			.customTexturePath = customTexturePath,
 			.entityModel = entityModel,
-		}) catch return  main.entity.EntityComponentLoadError.Memory;
+		}) catch return main.entity.EntityComponentLoadError.Memory;
 	}
 	pub fn unload(id: u32) void {
 		_ = renderComponents.remove(id);
