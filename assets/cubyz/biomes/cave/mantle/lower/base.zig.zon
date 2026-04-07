@@ -9,7 +9,7 @@
 	.stoneBlock = "cubyz:pyrolite/base",
 	.ground_structure = .{
 		"2 to 3 cubyz:lava",
-		"1 to 2 cubyz:magma"
+		"1 to 2 cubyz:magma",
 	},
 	.structures = .{
 		.{
