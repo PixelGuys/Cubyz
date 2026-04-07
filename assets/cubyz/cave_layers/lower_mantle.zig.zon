@@ -2,4 +2,6 @@
 	.tags = .{.lower_mantle_layer},
 	.layerHeight = 200,
 	.depthHint = -20000,
+
+	.caveDensity = 0,
 }

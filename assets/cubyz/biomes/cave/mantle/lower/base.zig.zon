@@ -21,6 +21,24 @@
 			.depth = 2,
 			.smoothness = 0.9,
 		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:pyrolite/base",
+			.chance = 0.05,
+			.size = 12,
+			.size_variation = 4,
+			.baseSlope = 0,
+			.topSlope = 8,
+			.generationMode = .ceiling,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:pyrolite/base",
+			.chance = 0.1,
+			.size = 4,
+			.size_variation = 6,
+			.generationMode = .ceiling,
+		},
 	},
 	.caveModels = .{
 		.{
