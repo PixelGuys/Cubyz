@@ -98,7 +98,7 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	player: Entity = .{},
+	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -143,12 +143,17 @@ pub const User = struct { // MARK: User
 
 	permissions: permission.Permissions = undefined,
 
+	pub fn player(self: *User) *Entity {
+		return &self.innerPlayer;
+	}
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.jobQueue = .init(main.globalAllocator);
+		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -177,6 +182,8 @@ pub const User = struct { // MARK: User
 		self.permissions.deinit();
 
 		self.worldEditData.deinit();
+
+		self.player().deinit(.server);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -242,8 +249,10 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		world.?.loadPlayer(self);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		world.?.loadPlayer(self) catch {
+			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
+		};
+		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
 
@@ -299,7 +308,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -463,7 +472,7 @@ pub const User = struct { // MARK: User
 		const position: [3]f64 = try reader.readVec(Vec3d);
 		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.player.rot = rotation;
+		self.player().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
@@ -483,6 +492,10 @@ pub const User = struct { // MARK: User
 			.yes => true,
 			.no, .neutral => false,
 		};
+	}
+
+	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.print("{s}@{d}", .{user.name, user.playerIndex});
 	}
 };
 
@@ -543,7 +556,12 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
-		user.deinit();
+		if (user.refCount.load(.monotonic) == 1) {
+			user.decreaseRefCount();
+		} else {
+			std.log.err("Leaked user {f}", .{user});
+			user.deinit();
+		}
 	}
 	userDeinitList.deinit();
 	userConnectList.deinit();
@@ -623,17 +641,17 @@ fn update() void { // MARK: update()
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = user.player.pos,
-			.vel = user.player.vel,
-			.rot = user.player.rot,
+			.pos = user.player().pos,
+			.vel = user.player().vel,
+			.rot = user.player().rot,
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, user.player().pos, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
-		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const pos = @as(Vec3i, @intFromFloat(user.player().pos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
@@ -741,9 +759,10 @@ pub fn connectInternal(user: *User) void {
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		const entityZon = main.ZonElement.initObject(main.stackAllocator);
-		entityZon.put("id", user.id);
+
+		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
 		entityZon.put("name", user.name);
+		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -755,9 +774,9 @@ pub fn connectInternal(user: *User) void {
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
-			entityZon.put("id", other.id);
+			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
 			entityZon.put("name", other.name);
+			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -795,4 +814,16 @@ pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
+}
+
+pub fn getUserByIndexAndIncreaseRefCount(index: usize) ?*User {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for (userList) |user| {
+		if (user.playerIndex == index) {
+			user.increaseRefCount();
+			return user;
+		}
+	}
+	return null;
 }

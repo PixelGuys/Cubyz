@@ -10,6 +10,8 @@ const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
+const Tag = main.Tag;
+const StructureTable = terrain.structures.StructureTable;
 pub const SimpleStructureModel = terrain.structures.SimpleStructureModel;
 
 const Stripe = struct { // MARK: Stripe
@@ -253,6 +255,7 @@ pub const Biome = struct { // MARK: Biome
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
 	isValidPlayerSpawn: bool,
 	chance: f32,
+	tags: []const Tag,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
@@ -293,7 +296,15 @@ pub const Biome = struct { // MARK: Biome
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if (zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
+			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
+		if (self.isCave) {
+			for (self.tags) |tag| {
+				if (std.mem.endsWith(u8, tag.getName(), "_layer")) break;
+			} else {
+				std.log.err("Cave biome {s} is missing a '_layer' tag to assign it to a cave layer.", .{id});
+			}
+		}
 		if (minRadius > maxRadius) {
 			std.log.err("Biome {s} has invalid radius range ({d}, {d})", .{self.id, minRadius, maxRadius});
 		}
@@ -334,10 +345,22 @@ pub const Biome = struct { // MARK: Biome
 		var vegetation: main.ListUnmanaged(SimpleStructureModel) = .{};
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
+		// Add structures from the biome's internal structure table
 		for (structures.toSlice()) |elem| {
 			const model = SimpleStructureModel.initModel(elem) orelse continue;
 			vegetation.append(main.stackAllocator, model);
 			totalChance += model.chance;
+		}
+		const structureTables = main.server.terrain.structures.getSlice();
+		nextTable: for (structureTables) |table| {
+			for (table.tags) |tableTag| {
+				if (!self.hasTag(tableTag)) continue :nextTable;
+			}
+
+			for (table.structures) |model| {
+				vegetation.append(main.stackAllocator, model);
+				totalChance += model.chance;
+			}
 		}
 		if (totalChance > 1) {
 			for (vegetation.items) |*model| {
@@ -364,6 +387,10 @@ pub const Biome = struct { // MARK: Biome
 
 	fn getCheckSum(self: *Biome) u64 {
 		return hashGeneric(self.*);
+	}
+
+	pub fn hasTag(self: Biome, tag: Tag) bool {
+		return std.mem.containsAtLeastScalar(Tag, self.tags, 1, tag);
 	}
 };
 

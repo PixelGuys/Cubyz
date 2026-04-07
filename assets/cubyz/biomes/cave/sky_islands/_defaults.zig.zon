@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.minHeight = 10000,
+	.tags = .{.sky_island_layer},
 	.fogColor = 0xbbebff,
 	.fogDensity = 5.0,
 	.fogLower = 1e10,

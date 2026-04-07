@@ -1,7 +1,7 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.maxHeight = -512,
-	.minHeight = -48250,
 	.chance = 0.01,
 
 	.crystals = 32,
