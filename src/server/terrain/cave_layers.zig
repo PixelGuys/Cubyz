@@ -13,6 +13,7 @@ pub const CaveLayer = struct {
 	maxHeight: i32,
 	layerHeight: i32,
 	depthHint: i32,
+	caveDensity: f32,
 
 	biomes: main.utils.AliasTable(*const Biome),
 	id: []const u8,
@@ -27,6 +28,7 @@ pub const CaveLayer = struct {
 			std.log.err("Cave layer with id {s} is missing layerHeight field. Skipping", .{id});
 			return null;
 		};
+		result.caveDensity = zon.get(f32, "caveDensity", 1.0/32.0);
 		result.id = main.worldArena.dupe(u8, id);
 
 		const tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));

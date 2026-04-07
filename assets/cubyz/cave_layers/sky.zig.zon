@@ -2,4 +2,6 @@
 	.tags = .{.sky_layer},
 	.layerHeight = 7000,
 	.depthHint = 0,
+
+	.caveDensity = 0.001,
 }
