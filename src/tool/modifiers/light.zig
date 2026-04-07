@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 
 pub const Data = packed struct(u128) { strength: f32, pad: u96 = undefined };
 
@@ -15,7 +15,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = std.math.hypot(data1.strength, data2.strength)};
 }
 
-pub fn changeToolParameters(tool: *Tool, data: Data) void {
+pub fn changeToolParameters(tool: *ProceduralItem, data: Data) void {
 	tool.swingSpeed *= 1 + data.strength;
 }
 

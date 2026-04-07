@@ -1312,7 +1312,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: CraftTool, ctx: Context) error{serverFailure}!void {
-			const tool = Item{.tool = main.items.Tool.initFromInventory(self.craftingGrid) orelse return};
+			const tool = Item{.tool = main.items.ProceduralItem.initFromInventory(self.craftingGrid) orelse return};
 			if (self.destinations.canHold(.{.item = tool, .amount = 1}) != .yes) {
 				tool.deinit();
 				return;

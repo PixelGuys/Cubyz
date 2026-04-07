@@ -123,12 +123,12 @@ pub const ModifierRestriction = struct {
 	data: *anyopaque,
 
 	pub const VTable = struct {
-		satisfied: *const fn (data: *anyopaque, tool: *const Tool, x: i32, y: i32) bool,
+		satisfied: *const fn (data: *anyopaque, tool: *const ProceduralItem, x: i32, y: i32) bool,
 		loadFromZon: *const fn (allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
 		printTooltip: *const fn (data: *anyopaque, outString: *main.List(u8)) void,
 	};
 
-	pub fn satisfied(self: ModifierRestriction, tool: *const Tool, x: i32, y: i32) bool {
+	pub fn satisfied(self: ModifierRestriction, tool: *const ProceduralItem, x: i32, y: i32) bool {
 		return self.vTable.satisfied(self.data, tool, x, y);
 	}
 
@@ -157,7 +157,7 @@ const Modifier = struct {
 	pub const VTable = struct {
 		const Data = packed struct(u128) { pad: u128 };
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
-		changeToolParameters: *const fn (tool: *Tool, data: Data) void,
+		changeToolParameters: *const fn (tool: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: main.blocks.Block, data: Data) f32,
 		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
@@ -173,7 +173,7 @@ const Modifier = struct {
 		};
 	}
 
-	pub fn changeToolParameters(self: Modifier, tool: *Tool) void {
+	pub fn changeToolParameters(self: Modifier, tool: *ProceduralItem) void {
 		self.vTable.changeToolParameters(tool, self.data);
 	}
 
@@ -389,7 +389,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return heightMap;
 	}
 
-	pub fn generate(tool: *Tool) void {
+	pub fn generate(tool: *ProceduralItem) void {
 		const img = tool.image;
 		for (0..16) |x| {
 			for (0..16) |y| {
@@ -439,7 +439,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 /// Determines the physical properties of a tool to calculate in-game parameters such as durability and speed.
 const ToolPhysics = struct { // MARK: ToolPhysics
 	/// Determines all the basic properties of the tool.
-	pub fn evaluateTool(tool: *Tool) void {
+	pub fn evaluateTool(tool: *ProceduralItem) void {
 		inline for (comptime std.meta.fieldNames(ToolProperty)) |name| {
 			@field(tool, name) = 0;
 		}
@@ -498,7 +498,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		}
 	}
 
-	fn checkConnectivity(tool: *Tool) bool {
+	fn checkConnectivity(tool: *ProceduralItem) bool {
 		var gridCellsReached: [16][16]bool = @splat(@splat(false));
 		var floodfillQueue = main.utils.CircularBufferQueue(Vec2i).init(main.stackAllocator, 16);
 		defer floodfillQueue.deinit();
@@ -621,7 +621,7 @@ const ToolProperty = enum {
 	}
 };
 
-pub const Tool = struct { // MARK: Tool
+pub const ProceduralItem = struct { // MARK: ProceduralItem
 	const craftingGridSize = 25;
 	const CraftingGridMask = std.meta.Int(.unsigned, craftingGridSize);
 
@@ -654,15 +654,15 @@ pub const Tool = struct { // MARK: Tool
 	/// Moment of inertia relative to the center of mass.
 	inertiaCenterOfMass: f32,
 
-	pub fn init() *Tool {
-		const self = main.globalAllocator.create(Tool);
+	pub fn init() *ProceduralItem {
+		const self = main.globalAllocator.create(ProceduralItem);
 		self.image = graphics.Image.init(main.globalAllocator, 16, 16);
 		self.texture = null;
 		self.tooltip = .init(main.globalAllocator);
 		return self;
 	}
 
-	pub fn deinit(self: *const Tool) void {
+	pub fn deinit(self: *const ProceduralItem) void {
 		// TODO: This is leaking textures!
 		// if(self.texture) |texture| {
 		// texture.deinit();
@@ -673,8 +673,8 @@ pub const Tool = struct { // MARK: Tool
 		main.globalAllocator.destroy(self);
 	}
 
-	pub fn clone(self: *const Tool) *Tool {
-		const result = main.globalAllocator.create(Tool);
+	pub fn clone(self: *const ProceduralItem) *ProceduralItem {
+		const result = main.globalAllocator.create(ProceduralItem);
 		result.* = .{
 			.craftingGrid = self.craftingGrid,
 			.materialGrid = self.materialGrid,
@@ -698,7 +698,7 @@ pub const Tool = struct { // MARK: Tool
 		return result;
 	}
 
-	fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: ToolTypeIndex) *Tool {
+	fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: ToolTypeIndex) *ProceduralItem {
 		const self = init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
@@ -710,7 +710,7 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
-	pub fn initFromInventory(inventory: Inventory) ?*Tool {
+	pub fn initFromInventory(inventory: Inventory) ?*ProceduralItem {
 		std.debug.assert(inventory.source == .workbench);
 		const slotInfos = inventory.source.workbench.toolIndex.slotInfos();
 		var availableItems: [25]?main.items.BaseItemIndex = undefined;
@@ -736,7 +736,7 @@ pub const Tool = struct { // MARK: Tool
 		return initFromCraftingGrid(availableItems, hash.final(), inventory.source.workbench.toolIndex);
 	}
 
-	pub fn initFromZon(zon: ZonElement) *Tool {
+	pub fn initFromZon(zon: ZonElement) *ProceduralItem {
 		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed", 0), ToolTypeIndex.fromId(zon.get([]const u8, "type", "cubyz:pickaxe")) orelse blk: {
 			std.log.err("Couldn't find tool with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
 			break :blk ToolTypeIndex.fromId("cubyz:pickaxe") orelse @panic("cubyz:pickaxe tool not found. Did you load the game with the correct assets?");
@@ -754,7 +754,7 @@ pub const Tool = struct { // MARK: Tool
 		return items;
 	}
 
-	pub fn save(self: *const Tool, allocator: NeverFailingAllocator) ZonElement {
+	pub fn save(self: *const ProceduralItem, allocator: NeverFailingAllocator) ZonElement {
 		const zonObject = ZonElement.initObject(allocator);
 		const zonArray = ZonElement.initArray(allocator);
 		for (self.craftingGrid) |nullableItem| {
@@ -771,7 +771,7 @@ pub const Tool = struct { // MARK: Tool
 		return zonObject;
 	}
 
-	pub fn fromBytes(reader: *BinaryReader) !*Tool {
+	pub fn fromBytes(reader: *BinaryReader) !*ProceduralItem {
 		const durability = try reader.readInt(u32);
 		const seed = try reader.readInt(u32);
 		const typ = try reader.readEnum(ToolTypeIndex);
@@ -790,7 +790,7 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
-	pub fn toBytes(self: Tool, writer: *BinaryWriter) void {
+	pub fn toBytes(self: ProceduralItem, writer: *BinaryWriter) void {
 		writer.writeInt(u32, self.durability);
 		writer.writeInt(u32, self.seed);
 		writer.writeEnum(ToolTypeIndex, self.type);
@@ -810,7 +810,7 @@ pub const Tool = struct { // MARK: Tool
 		}
 	}
 
-	pub fn hashCode(self: Tool) u32 {
+	pub fn hashCode(self: ProceduralItem) u32 {
 		var hash: u32 = 0;
 		for (self.craftingGrid) |nullItem| {
 			if (nullItem) |item| {
@@ -820,19 +820,19 @@ pub const Tool = struct { // MARK: Tool
 		return hash;
 	}
 
-	pub fn getItemAt(self: *const Tool, x: i32, y: i32) ?BaseItemIndex {
+	pub fn getItemAt(self: *const ProceduralItem, x: i32, y: i32) ?BaseItemIndex {
 		if (x < 0 or x >= 5) return null;
 		if (y < 0 or y >= 5) return null;
 		return self.craftingGrid[@intCast(x + y*5)];
 	}
 
-	fn getProperty(self: *Tool, prop: ToolProperty) *f32 {
+	fn getProperty(self: *ProceduralItem, prop: ToolProperty) *f32 {
 		switch (prop) {
 			inline else => |field| return &@field(self, @tagName(field)),
 		}
 	}
 
-	fn getTexture(self: *Tool) graphics.Texture {
+	fn getTexture(self: *ProceduralItem) graphics.Texture {
 		if (self.texture == null) {
 			self.texture = graphics.Texture.init();
 			self.texture.?.generate(self.image);
@@ -840,7 +840,7 @@ pub const Tool = struct { // MARK: Tool
 		return self.texture.?;
 	}
 
-	fn getTooltip(self: *Tool) []const u8 {
+	fn getTooltip(self: *ProceduralItem) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.print(
 			\\{s}
@@ -865,7 +865,7 @@ pub const Tool = struct { // MARK: Tool
 		return self.tooltip.items;
 	}
 
-	pub fn isEffectiveOn(self: *Tool, block: main.blocks.Block) bool {
+	pub fn isEffectiveOn(self: *ProceduralItem, block: main.blocks.Block) bool {
 		for (block.blockTags()) |blockTag| {
 			for (self.type.blockTags()) |toolTag| {
 				if (toolTag == blockTag) return true;
@@ -874,7 +874,7 @@ pub const Tool = struct { // MARK: Tool
 		return false;
 	}
 
-	pub fn getBlockDamage(self: *Tool, block: main.blocks.Block) f32 {
+	pub fn getBlockDamage(self: *ProceduralItem, block: main.blocks.Block) f32 {
 		var damage = self.damage;
 		for (self.modifiers) |modifier| {
 			damage = modifier.changeBlockDamage(damage, block);
@@ -885,7 +885,7 @@ pub const Tool = struct { // MARK: Tool
 		return main.game.Player.defaultBlockDamage;
 	}
 
-	pub fn onUseReturnBroken(self: *Tool) bool {
+	pub fn onUseReturnBroken(self: *ProceduralItem) bool {
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
@@ -899,7 +899,7 @@ const ItemType = enum(u7) {
 
 pub const Item = union(ItemType) { // MARK: Item
 	baseItem: BaseItemIndex,
-	tool: *Tool,
+	tool: *ProceduralItem,
 	null: void,
 
 	pub fn init(zon: ZonElement) !Item {
@@ -908,7 +908,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		} else {
 			const toolZon = zon.getChild("tool");
 			if (toolZon != .object) return error.ItemNotFound;
-			return Item{.tool = Tool.initFromZon(toolZon)};
+			return Item{.tool = ProceduralItem.initFromZon(toolZon)};
 		}
 	}
 
@@ -963,7 +963,7 @@ pub const Item = union(ItemType) { // MARK: Item
 				return .{.baseItem = try reader.readEnum(BaseItemIndex)};
 			},
 			.tool => {
-				return .{.tool = try Tool.fromBytes(reader)};
+				return .{.tool = try ProceduralItem.fromBytes(reader)};
 			},
 			.null => return error.UnexpectedItemType, // null should be handled at the call-site
 		}

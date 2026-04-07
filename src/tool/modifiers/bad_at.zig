@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 
 pub const Data = packed struct(u128) { strength: f32, tag: main.Tag, pad: u64 = undefined };
 
@@ -16,7 +16,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0)), .tag = data1.tag};
 }
 
-pub fn changeToolParameters(_: *Tool, _: Data) void {}
+pub fn changeToolParameters(_: *ProceduralItem, _: Data) void {}
 
 pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 {
 	for (block.blockTags()) |tag| {

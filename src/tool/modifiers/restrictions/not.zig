@@ -3,14 +3,14 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ModifierRestriction = main.items.ModifierRestriction;
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
 
 const Not = struct {
 	child: ModifierRestriction,
 };
 
-pub fn satisfied(self: *const Not, tool: *const Tool, x: i32, y: i32) bool {
+pub fn satisfied(self: *const Not, tool: *const ProceduralItem, x: i32, y: i32) bool {
 	return !self.child.satisfied(tool, x, y);
 }
 

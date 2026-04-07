@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ModifierRestriction = main.items.ModifierRestriction;
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
 
 const Encased = struct {
@@ -11,7 +11,7 @@ const Encased = struct {
 	amount: usize,
 };
 
-pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
+pub fn satisfied(self: *const Encased, tool: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
 	for ([_]i32{-1, 0, 1}) |dx| {
 		for ([_]i32{-1, 0, 1}) |dy| {

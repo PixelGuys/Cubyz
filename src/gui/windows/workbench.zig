@@ -57,7 +57,7 @@ fn toggleTool() void {
 fn updateResult(_: main.items.Inventory.Source) void {
 	craftingResultInv.super._items[0].deinit();
 	craftingResultInv.super._items[0] = .{};
-	craftingResultInv.super._items[0] = .{.item = Item{.tool = main.items.Tool.initFromInventory(craftingGridInv.super) orelse return}, .amount = 1};
+	craftingResultInv.super._items[0] = .{.item = Item{.tool = main.items.ProceduralItem.initFromInventory(craftingGridInv.super) orelse return}, .amount = 1};
 }
 
 fn openInventory() void {
