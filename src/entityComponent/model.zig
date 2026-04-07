@@ -68,7 +68,8 @@ pub const server = struct {
 				main.globalAllocator.free(path);
 			}
 		}
-		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter) main.entity.ComponentSaveBehaviour {
+		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
+			_ = audience;
 			writer.writeInt(u32, self.entityModel.index);
 			if (self.customTexturePath) |texutre| {
 				writer.writeSliceWithSize(texutre);
