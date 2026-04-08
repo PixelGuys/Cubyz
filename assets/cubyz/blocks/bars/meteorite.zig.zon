@@ -1,0 +1,8 @@
+.{
+	.blockResistance = 15,
+	.blockHealth = 30,
+	.texture = "cubyz:bars/meteorite",
+	.item = .{
+		.texture = "bars/meteorite.png",
+	},
+}
