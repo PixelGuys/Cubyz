@@ -16,6 +16,7 @@ pub const error_prompt = @import("error_prompt.zig");
 pub const gpu_performance_measuring = @import("gpu_performance_measuring.zig");
 pub const graphics = @import("graphics.zig");
 pub const healthbar = @import("healthbar.zig");
+pub const held_item = @import("held_item.zig");
 pub const hotbar = @import("hotbar.zig");
 pub const inventory = @import("inventory.zig");
 pub const inventory_crafting = @import("inventory_crafting.zig");
