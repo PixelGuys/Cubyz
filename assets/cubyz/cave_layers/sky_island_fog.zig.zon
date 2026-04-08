@@ -2,4 +2,6 @@
 	.tags = .{.sky_island_fog_layer},
 	.layerHeight = 3000,
 	.depthHint = 7000,
+
+	.caveDensity = 0,
 }
