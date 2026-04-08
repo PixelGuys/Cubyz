@@ -1,6 +1,8 @@
 .{
 	.chance = 0,
 	.keepOriginalTerrain = 1,
+	.minHeight = 22,
+	.maxHeight = 45,
 	.properties = .{},
 	.minRadius = 20,
 	.maxRadius = 32,
