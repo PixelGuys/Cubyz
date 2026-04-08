@@ -41,9 +41,6 @@ pub fn onOpen() void {
 			break :blk;
 		}
 
-		const old = main.settings.showIdWithName;
-		main.settings.showIdWithName = true;
-		defer main.settings.showIdWithName = old;
 		for (main.client.entity_manager.entities.items()) |ent| {
 			if (ent.name.len == 0 or ent.playerIndex == null) continue;
 			const row = HorizontalList.init();
