@@ -76,12 +76,13 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 
 pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
 	if (main.settings.showIdWithName and self.playerIndex != null) {
-		try self.printWithIndex(writer);
+		try self.formatWithPlayerIndex(writer);
 	} else {
 		try writer.print("{s}", .{self.name});
 	}
 }
 
-pub fn printWithIndex(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
-	try writer.print("{s}@{d}", .{self.name, self.playerIndex});
+pub fn formatWithPlayerIndex(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+	std.debug.assert(self.playerIndex != null);
+	try writer.print("{s}@{d}", .{self.name, self.playerIndex.?});
 }
