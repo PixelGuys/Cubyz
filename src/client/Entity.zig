@@ -32,7 +32,7 @@ rot: Vec3f = undefined,
 model: EntityModel = undefined,
 nodes: [20]EntityModel.Node = undefined,
 matrices: [20]Mat4f = undefined,
-
+ // hi 2
 id: u32,
 name: []const u8,
 playerIndex: usize, // TODO extract into own component #2760
