@@ -29,7 +29,7 @@ pub const EntityModel = struct {
 
 		// TODO: add a matrix and a dirty flag
 		parent: ?u16 = null,
-	};
+	}; // hi
 
 	const EntityVertex = extern struct {
 		pos: [3]f32,
