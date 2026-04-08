@@ -1,6 +1,7 @@
 .{
 	.properties = .{
 		.mountain,
+		.oak,
 	},
 	.radius = 400,
 	.minHeightLimit = 7,

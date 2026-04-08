@@ -1,5 +1,7 @@
 .{
-	.properties = .{},
+	.properties = .{
+		.oak,
+	},
 	.ground_structure = .{
 		"cubyz:grass",
 		"cubyz:soil",
