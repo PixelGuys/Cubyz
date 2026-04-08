@@ -766,8 +766,8 @@ pub var projectionMatrix: Mat4f = Mat4f.identity();
 var biomeFog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 
-var nextBlockPlaceTime: ?std.Io.Timestamp = null;
-var nextBlockBreakTime: ?std.Io.Timestamp = null;
+pub var nextBlockPlaceTime: ?std.Io.Timestamp = null;
+pub var nextBlockBreakTime: ?std.Io.Timestamp = null;
 
 pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
 	const time = main.timestamp();
