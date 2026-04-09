@@ -169,15 +169,14 @@ pub const AccountCode = struct {
 		defer std.crypto.secureZero(u8, result.items);
 
 		const trimmed = std.mem.trim(u8, text, &std.ascii.whitespace);
-		var unicodeIterator =
-			std.unicode.Utf8Iterator{.bytes = trimmed, .i = 0};
+		var unicodeIterator = std.unicode.Utf8View.initUnchecked(trimmed).iterator();
 
-		while (unicodeIterator.nextCodepoint()) |cp| {
-			if (cp > 0x7F) {
-				printInvalidCharError(failureText, cp);
+		while (unicodeIterator.nextCodepoint()) |codepoint| {
+			if (codepoint > 0x7F) {
+				printInvalidCharError(failureText, codepoint);
 				continue;
 			}
-			const char: u8 = @intCast(cp);
+			const char: u8 = @intCast(codepoint);
 			if (std.ascii.isAlphabetic(char)) {
 				result.appendAssumeCapacity(std.ascii.toLower(char));
 			} else if (std.ascii.isWhitespace(char)) {
@@ -185,7 +184,7 @@ pub const AccountCode = struct {
 					result.appendAssumeCapacity(' ');
 				}
 			} else {
-				printInvalidCharError(failureText, cp);
+				printInvalidCharError(failureText, codepoint);
 			}
 		}
 		if (result.items.len == 0) {
