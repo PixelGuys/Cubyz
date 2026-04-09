@@ -1,0 +1,33 @@
+.{
+	.tags = .{.choppable, .wood, .branch},
+	.onUpdate = .{
+		.type = .decay,
+	},
+	.blockHealth = 4,
+	.texture0 = "cubyz:branch/cirrus/dot",
+	.texture1 = "cubyz:branch/cirrus/half_line",
+	.texture2 = "cubyz:branch/cirrus/line",
+	.texture3 = "cubyz:branch/cirrus/bend",
+	.texture4 = "cubyz:branch/cirrus/intersection",
+	.texture5 = "cubyz:branch/cirrus/cross",
+	.item = .{
+		.material = .{
+			.durability = 28,
+			.massDamage = 1.1,
+			.hardnessDamage = 0.46,
+			.swingSpeed = 4.75,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff312a1e, 0xff3c3324, 0xff4a3c28, 0xff614e33, 0xff4a3c28,
+			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 0.45,
+				},
+			},
+		},
+		.texture = "branch/pine.png",
+	},
+	.decayProhibitor = true,
+}
