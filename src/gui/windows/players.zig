@@ -42,7 +42,7 @@ pub fn onOpen() void {
 		}
 
 		for (main.client.entity_manager.entities.items()) |ent| {
-			if (ent.name.len == 0 or ent.playerIndex == null) continue;
+			if (ent.playerIndex == null) continue;
 			const row = HorizontalList.init();
 
 			const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{std.fmt.alt(ent, .formatWithPlayerIndex)}) catch unreachable;
