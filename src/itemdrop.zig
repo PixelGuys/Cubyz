@@ -678,6 +678,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			"assets/cubyz/shaders/item_drop.frag",
 			"",
 			&itemUniforms,
+			graphics.VertexArray.EmptyVertex,
 			.{},
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},

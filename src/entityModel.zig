@@ -39,7 +39,7 @@ pub const EntityModel = struct {
 		left_handed_y_up,
 	};
 
-	const Vertex = extern struct {
+	pub const Vertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
