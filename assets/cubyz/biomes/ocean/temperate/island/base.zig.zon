@@ -1,6 +1,6 @@
 .{
-	.minHeight = 5,
-	.maxHeight = 5,
+	.minHeight = 4,
+	.maxHeight = 4,
 	.radius = 24,
 	.soilCreep = 2,
 	.ground_structure = .{
@@ -25,6 +25,7 @@
 		.{
 			.id = "cubyz:ocean/temperate/island/shelf",
 			.chance = 1,
+			.parentEdgeDistance = 32,
 		},
 	},
 }
