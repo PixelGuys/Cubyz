@@ -66,6 +66,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/deferred_render_pass.frag",
 		"",
 		&deferredUniforms,
+		graphics.draw.SimpleVertex2D,
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
@@ -75,6 +76,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/fake_reflection.frag",
 		"",
 		&fakeReflectionUniforms,
+		graphics.draw.SimpleVertex2D,
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
@@ -359,6 +361,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/first_pass.frag",
 			"",
 			null,
+			graphics.draw.SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -368,6 +371,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/second_pass.frag",
 			"",
 			null,
+			graphics.draw.SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -377,6 +381,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/color_extractor_downsample.frag",
 			"",
 			&colorExtractUniforms,
+			graphics.draw.SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -479,15 +484,6 @@ pub const MenuBackGround = struct {
 	var angle: f32 = 0;
 
 	fn init() void {
-		pipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/background/vertex.vert",
-			"assets/cubyz/shaders/background/fragment.frag",
-			"",
-			&uniforms,
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
-		);
 		const MenuBackgroundVertex = struct {
 			pos: [3]f32,
 			uv: [2]f32,
@@ -505,6 +501,16 @@ pub const MenuBackGround = struct {
 				},
 			};
 		};
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/background/vertex.vert",
+			"assets/cubyz/shaders/background/fragment.frag",
+			"",
+			&uniforms,
+			MenuBackgroundVertex,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]MenuBackgroundVertex{
 			.{.pos = .{-1, 1, -1}, .uv = .{1, 1}},
@@ -717,6 +723,7 @@ pub const Skybox = struct {
 			"assets/cubyz/shaders/skybox/star.frag",
 			"",
 			&starUniforms,
+			graphics.VertexArray.EmptyVertex,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.{
@@ -880,6 +887,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			"assets/cubyz/shaders/block_selection_fragment.frag",
 			"",
 			&uniforms,
+			graphics.VertexArray.EmptyVertex,
 			.{.cullMode = .none},
 			.{.depthTest = true, .depthWrite = true},
 			.{.attachments = &.{.alphaBlending}},
