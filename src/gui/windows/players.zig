@@ -59,9 +59,9 @@ pub fn onOpen() void {
 		for (main.server.connectionManager.connections.items, 0..) |connection, i| {
 			userList[i] = connection.user.?;
 			userList[i].increaseRefCount();
-			if (userList[i].id == main.game.Player.id) continue;
+			if (userList[i].id == main.game.Player.id and connection.isConnected()) continue;
 			const row = HorizontalList.init();
-			if (connection.user.?.name.len != 0) {
+			if (connection.isConnected()) {
 				const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.user.?}) catch unreachable;
 				defer main.stackAllocator.free(string);
 				row.add(Label.init(.{0, 0}, 200, string, .left));
@@ -73,6 +73,9 @@ pub fn onOpen() void {
 				row.add(Button.initText(.{0, 0}, 100, "Cancel", .initWithPtr(kickPerConn, connection)));
 			}
 			list.add(row);
+		}
+		if (userList.len == 1) {
+			list.add(Label.init(.{0, 0}, 200, "No other players", .left));
 		}
 	}
 	list.finish(.center);
