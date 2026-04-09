@@ -10,9 +10,9 @@ const Or = struct {
 	children: []ModifierRestriction,
 };
 
-pub fn satisfied(self: *const Or, tool: *const ProceduralItem, x: i32, y: i32) bool {
+pub fn satisfied(self: *const Or, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	for (self.children) |child| {
-		if (child.satisfied(tool, x, y)) return true;
+		if (child.satisfied(proceduralItem, x, y)) return true;
 	}
 	return false;
 }

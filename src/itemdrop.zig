@@ -861,7 +861,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
 			if (!isBlock) {
-				if (item == .tool) {
+				if (item == .proceduralItem) {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
 					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.25));
 				} else {

@@ -10,8 +10,8 @@ const Not = struct {
 	child: ModifierRestriction,
 };
 
-pub fn satisfied(self: *const Not, tool: *const ProceduralItem, x: i32, y: i32) bool {
-	return !self.child.satisfied(tool, x, y);
+pub fn satisfied(self: *const Not, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
+	return !self.child.satisfied(proceduralItem, x, y);
 }
 
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Not {

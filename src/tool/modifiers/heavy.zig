@@ -15,8 +15,8 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0))};
 }
 
-pub fn changeToolParameters(tool: *ProceduralItem, data: Data) void {
-	tool.swingSpeed *= 1 - data.strength;
+pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.swingSpeed *= 1 - data.strength;
 }
 
 pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {

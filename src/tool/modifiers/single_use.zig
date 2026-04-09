@@ -15,8 +15,8 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = @min(data1.strength, data2.strength)};
 }
 
-pub fn changeToolParameters(tool: *ProceduralItem, data: Data) void {
-	tool.maxDurability = data.strength;
+pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.maxDurability = data.strength;
 }
 
 pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {

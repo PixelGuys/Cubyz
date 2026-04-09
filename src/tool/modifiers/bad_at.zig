@@ -16,7 +16,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0)), .tag = data1.tag};
 }
 
-pub fn changeToolParameters(_: *ProceduralItem, _: Data) void {}
+pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
 
 pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 {
 	for (block.blockTags()) |tag| {

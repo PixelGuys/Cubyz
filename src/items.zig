@@ -907,12 +907,12 @@ pub const Item = union(ItemType) { // MARK: Item
 		if (BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
-			const proceduralItemZon = zon.getChild("proceduralItem");
+			var proceduralItemZon = zon.getChild("proceduralItem");
 			if (proceduralItemZon != .object) {
 				proceduralItemZon = zon.getChild("tool"); // migration of tools before generalizing from tool to procedural Item
 			}
 			if (proceduralItemZon != .object) return error.ItemNotFound;
-			return Item{.tool = ProceduralItem.initFromZon(proceduralItemZon)};
+			return Item{.proceduralItem = ProceduralItem.initFromZon(proceduralItemZon)};
 		}
 	}
 

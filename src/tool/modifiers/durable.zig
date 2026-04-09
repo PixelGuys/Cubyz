@@ -15,8 +15,8 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = std.math.hypot(data1.strength, data2.strength)};
 }
 
-pub fn changeToolParameters(tool: *Tool, data: Data) void {
-	tool.maxDurability *= 1 + data.strength;
+pub fn changeProceduralItemParameters(proceduralItem: *Tool, data: Data) void {
+	proceduralItem.maxDurability *= 1 + data.strength;
 }
 
 pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {

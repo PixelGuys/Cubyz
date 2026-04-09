@@ -401,8 +401,8 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	_ = items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
 
-fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	items_zig.registerTool(assetFolder, id, zon);
+fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
+	items_zig.registerProceduralItem(assetFolder, id, zon);
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -653,7 +653,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	for (toolPalette.palette.items) |id| {
-		registerTool(assetFolder, id, worldAssets.tools.get(id) orelse .null);
+		registerProceduralItem(assetFolder, id, worldAssets.tools.get(id) orelse .null);
 	}
 
 	// tools:
@@ -661,7 +661,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	while (iterator.next()) |entry| {
 		const id = entry.key_ptr.*;
 		if (items_zig.hasRegisteredTool(id)) continue;
-		registerTool(assetFolder, id, entry.value_ptr.*);
+		registerProceduralItem(assetFolder, id, entry.value_ptr.*);
 		toolPalette.add(id);
 	}
 
