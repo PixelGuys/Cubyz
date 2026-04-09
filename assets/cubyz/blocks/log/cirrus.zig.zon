@@ -1,8 +1,8 @@
 .{
-	.texture0 = "cubyz:log/baobab/dot",
+	.texture0 = "cubyz:log/cirrus/dot",
 	.texture1 = "cubyz:log/cirrus/line",
-	.texture2 = "cubyz:log/baobab/bend",
-	.texture3 = "cubyz:log/baobab/intersection",
-	.texture4 = "cubyz:log/baobab/cross",
+	.texture2 = "cubyz:log/cirrus/bend",
+	.texture3 = "cubyz:log/cirrus/intersection",
+	.texture4 = "cubyz:log/cirrus/cross",
 	.texture5 = "cubyz:log/cirrus/top",
 }
