@@ -351,11 +351,14 @@ const GenerationStructure = struct {
 		var fails: usize = 0;
 		while (i < biomeCount) : (i += 1) {
 			if (biomeCount - i < random.nextFloat(&seed)) break;
-			const subBiome = biome.biome.subBiomes.sample(&seed).*;
+			const subBiomeData = biome.biome.subBiomes.sample(&seed).*;
+			const subBiome = subBiomeData.biome;
 			const subRadius = subBiome.radius + subBiome.radiusVariation*random.nextFloatSigned(&seed);
 			var maxCenterOffset: f32 = biome.radius - subRadius;
 			if (radius == .unknown) {
 				maxCenterOffset += biome.radius/2;
+			} else {
+				maxCenterOffset -= subBiomeData.parentEdgeDistance;
 			}
 			if (maxCenterOffset < 0) {
 				maxCenterOffset = 0;
