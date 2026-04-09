@@ -1,7 +1,6 @@
 .{
 	.isCave = true,
-	.minHeight = 0,
-	.maxHeight = 7000,
+	.tags = .{.sky_layer},
 	.caveNoiseStrength = 10,
 	.music = "cubyz:GymnopedieNo1",
 

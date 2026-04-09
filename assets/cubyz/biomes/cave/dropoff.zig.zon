@@ -1,9 +1,8 @@
 .{
 	.isCave = true,
+	.tags = .{.dropoff_layer},
 	.caveNoiseStrength = 12,
 
-	.maxHeight = -48125,
-	.minHeight = -48500,
 	.stoneBlock = "cubyz:slate/base",
 	.fogDensity = 10,
 	.fogColor = 0x272334,

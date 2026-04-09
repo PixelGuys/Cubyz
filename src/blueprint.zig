@@ -334,6 +334,12 @@ pub const Blueprint = struct {
 			}
 		}
 	}
+
+	pub fn apply(self: *Blueprint, context: anytype, applyFunction: fn (context: @TypeOf(context), block: Block) Block) void {
+		for (self.blocks.mem) |*block| {
+			block.* = applyFunction(context, block.*);
+		}
+	}
 };
 
 pub const Pattern = struct {
