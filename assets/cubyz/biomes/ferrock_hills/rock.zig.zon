@@ -35,7 +35,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:red_rocks/base",
+			.id = "cubyz:ferrock_hills/base",
 			.chance = 30,
 		},
 	},
