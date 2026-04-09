@@ -37,7 +37,7 @@ pub fn onOpen() void {
 	blk: {
 		entityCount = main.client.entity_manager.entities.len;
 		if (entityCount == 0) {
-			list.add(Label.init(.{0, 0}, 200, "No players", .left));
+			list.add(Label.init(.{0, 0}, 200, "No other players", .left));
 			break :blk;
 		}
 
