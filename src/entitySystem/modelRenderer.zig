@@ -29,10 +29,10 @@ const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
 
-const entityComponent = main.entityComponent;
+const models = main.entity.components.@"cubyz:model";
 
 // ############################# Client only stuff ################################
-pub const Client = struct {
+pub const client = struct {
 	var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 
 	var uniforms: struct {
@@ -58,17 +58,17 @@ pub const Client = struct {
 		pipeline.deinit();
 	}
 	pub fn clear() void {}
-
-	pub fn renderInfo(projMatrix: Mat4f, _: Vec3f, playerPos: Vec3d) void {
-		main.clientEntity.ClientEntityManager.mutex.lock();
-		defer main.clientEntity.ClientEntityManager.mutex.unlock();
+	pub fn renderHud(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+		_ = ambientLight;
+		main.client.entity_manager.mutex.lock();
+		defer main.client.entity.entity_manager.mutex.unlock();
 
 		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
 		const fontBaseSize = 128.0;
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		var it = entityComponent.model.Client.renderComponents.iterator();
+		var it = models.client.renderComponents.iterator();
 		while (it.next()) |component| {
 			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
 			const entModel = component.value_ptr.entityModel.get();
@@ -100,15 +100,15 @@ pub const Client = struct {
 		}
 	}
 	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-		main.clientEntity.ClientEntityManager.mutex.lock();
-		defer main.clientEntity.ClientEntityManager.mutex.unlock();
+		main.client.entity_manager.mutex.lock();
+		defer main.client.entity_manager.mutex.unlock();
 		pipeline.bind(null);
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		var it = entityComponent.model.Client.renderComponents.iterator();
+		var it = models.client.renderComponents.iterator();
 		while (it.next()) |component| {
 			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
 			const entModel = component.value_ptr.entityModel.get();
@@ -145,7 +145,9 @@ pub const Client = struct {
 	}
 };
 // ############################# Server only stuff ################################
-pub const Server = struct {
+pub const server = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
+
+	pub fn update() void {}
 };
