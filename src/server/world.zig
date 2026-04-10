@@ -516,7 +516,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		errdefer self.chunkManager.deinit();
 
 		for (self.playerEntityModels.items) |entityModel| {
-			if (!main.entityModel.hasRegistered(entityModel)) {
+			if (main.entityModel.getById(entityModel) == null) {
 				std.log.err("EntityModel {s} is not available.", .{entityModel});
 				continue;
 			}

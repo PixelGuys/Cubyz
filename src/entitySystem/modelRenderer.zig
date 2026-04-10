@@ -61,7 +61,7 @@ pub const client = struct {
 	pub fn renderHud(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 		_ = ambientLight;
 		main.client.entity_manager.mutex.lock();
-		defer main.client.entity.entity_manager.mutex.unlock();
+		defer main.client.entity_manager.mutex.unlock();
 
 		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
 		const fontBaseSize = 128.0;
@@ -110,7 +110,7 @@ pub const client = struct {
 
 		var it = models.client.renderComponents.iterator();
 		while (it.next()) |component| {
-			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
+			const ent = main.client.entity_manager.getEntity(component.value_ptr.entity);
 			const entModel = component.value_ptr.entityModel.get();
 
 			if (ent.id == game.Player.id) continue; // don't render local player
@@ -140,7 +140,7 @@ pub const client = struct {
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glDrawElements(c.GL_TRIANGLES, 6*entModel.size, c.GL_UNSIGNED_INT, null);
+			c.glDrawElements(c.GL_TRIANGLES, 6*entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
 	}
 };

@@ -19,7 +19,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("#ff0000Too many arguments for command /avatar", .{});
 			return;
 		}
-		if (main.entityModel.getTypeByIdOrNull(entityModelID)) |entityModel| {
+		if (main.entityModel.getById(entityModelID)) |entityModel| {
 			if (main.entity.components.@"cubyz:model".server.get(source.id)) |rc| {
 				var newRc = rc;
 				newRc.customTexturePath = null;

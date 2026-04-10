@@ -25,12 +25,12 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /summon", .{});
 		return;
 	}
-	if (main.entityModel.getTypeByIdOrNull(valueEntityModel)) |entityModel| {
+	if (main.entityModel.getById(valueEntityModel)) |entityModel| {
 		const id = main.server.EntitySystem.add();
 		const summoned = main.server.EntitySystem.getEntity(id);
 		source.player().clone(summoned);
 
-		main.entity.components.@"cubyz:model".server.loadByIndex(id, entityModel, null);
+		main.entity.components.@"cubyz:model".server.loadByIndex(id, entityModel, null) catch unreachable;
 
 		if (valueName) |name| {
 			if (summoned.name) |old| {

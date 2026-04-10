@@ -252,7 +252,7 @@ pub const User = struct { // MARK: User
 
 		if (world.?.playerEntityModels.items.len != 0) {
 			const defaultModel = world.?.playerEntityModels.items[main.random.nextInt(u32, &main.seed)%world.?.playerEntityModels.items.len];
-			main.entity.components.@"cubyz:model".server.loadByID(self.id, defaultModel, null);
+			main.entity.components.@"cubyz:model".server.loadByID(self.id, defaultModel, null) catch unreachable;
 		}
 
 		world.?.loadPlayer(self) catch {
