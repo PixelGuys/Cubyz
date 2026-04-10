@@ -489,7 +489,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette = try loadPalette(arena, path, "item_palette", null);
 		errdefer self.itemPalette.deinit();
 
-		self.proceduralItemPalette = try loadPalette(arena, path, "procedural_item_palette", null);
+		self.proceduralItemPalette = try loadPalette(arena, path, "tool_palette", null);
 		errdefer self.proceduralItemPalette.deinit();
 
 		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
@@ -508,7 +508,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Store the block palette now that everything is loaded.
 		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
-		try dir.writeZon("procedural_item_palette.zig.zon", self.proceduralItemPalette.storeToZon(arena));
+		try dir.writeZon("tool_palette.zig.zon", self.proceduralItemPalette.storeToZon(arena));
 		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
 		try dir.writeZon("entity_component_palette.zig.zon", self.entityComponentPalette.storeToZon(arena));
 

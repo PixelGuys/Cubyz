@@ -20,8 +20,8 @@ const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 
-const modifierList = @import("proceduralItem/modifiers/_list.zig");
-const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
+const modifierList = @import("tool/modifiers/_list.zig");
+const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
 pub const recipes_zig = @import("items/recipes.zig");
 
@@ -1207,32 +1207,18 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	const proceduralItem = split.rest();
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/proceduralItems/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix}) catch unreachable;
+	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	const image = main.graphics.Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
 		if (err != error.FileNotFound) {
 			std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
 		}
-		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix}) catch unreachable;
+		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
 		defer main.stackAllocator.free(replacementPath);
 		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
-			if (err2 != error.FileNotFound) {
-				std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
-			}
-			const replacementPath2 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/proceduralItems/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
-			defer main.stackAllocator.free(replacementPath2);
-			break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath2) catch |err3| {
-				if (err3 != error.FileNotFound) {
-					std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
-				}
-				const replacementPath3 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
-				defer main.stackAllocator.free(replacementPath3);
-				break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath3) catch |err4| {
-					if (layerPostfix.len == 0 or err4 != error.FileNotFound)
-						std.log.err("Error while reading procedural item image. Tried '{s}', '{s}', '{s}' and '{s}': {s}", .{path, replacementPath, replacementPath2, replacementPath3, @errorName(err4)});
-					break :blk main.graphics.Image.emptyImage;
-				};
-			};
+			if (layerPostfix.len == 0 or err2 != error.FileNotFound)
+				std.log.err("Error while reading procedural item image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+			break :blk main.graphics.Image.emptyImage;
 		};
 	};
 	defer image.deinit(main.stackAllocator);

@@ -43,14 +43,14 @@ var itemSlots: [25]*ItemSlot = undefined;
 var proceduralItemTypes: main.ListUnmanaged(ProceduralItemTypeIndex) = undefined;
 var currentProceduralItemType: usize = 0;
 
-var proceduralItemButton: *Button = undefined;
+var toolButton: *Button = undefined;
 
 var needsUpdate: bool = false;
 
 fn toggleProceduralItem() void {
 	currentProceduralItemType += 1;
 	currentProceduralItemType %= proceduralItemTypes.items.len;
-	proceduralItemButton.child.label.updateText(proceduralItemTypes.items[currentProceduralItemType].id());
+	toolButton.child.label.updateText(proceduralItemTypes.items[currentProceduralItemType].id());
 	needsUpdate = true;
 }
 
@@ -82,8 +82,8 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
-	verticalThing.add(proceduralItemButton);
+	toolButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
+	verticalThing.add(toolButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
 	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
