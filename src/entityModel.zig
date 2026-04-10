@@ -66,7 +66,7 @@ pub const EntityModel = struct {
 			const mod = split.first();
 			if (zon.get(?[]const u8, "texture", null)) |texture| {
 				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
-				std.fs.cwd().access(self.texturePath, .{}) catch {
+				main.files.cubyzDir().dir.access(self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
 					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
 				};
