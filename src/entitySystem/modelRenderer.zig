@@ -140,7 +140,7 @@ pub const client = struct {
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glDrawElements(c.GL_TRIANGLES, 6*entModel.size, c.GL_UNSIGNED_INT, null);
+			c.glDrawElements(c.GL_TRIANGLES, 6*entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
 	}
 };
