@@ -491,9 +491,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
 
-		self.entityModelPalette = try loadPalette(arena, path, "entityModel_palette", "cubyz:missing");
+		self.entityModelPalette = try loadPalette(arena, path, "entity_model_palette", "cubyz:missing");
 		errdefer self.entityModelPalette.deinit();
-		
+
 		self.entityComponentPalette = try loadPalette(arena, path, "entity_component_palette", null);
 		errdefer self.entityComponentPalette.deinit();
 
@@ -509,7 +509,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
 		try dir.writeZon("tool_palette.zig.zon", self.toolPalette.storeToZon(arena));
 		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
-		try dir.writeZon("entityModel_palette.zig.zon", self.entityModelPalette.storeToZon(arena));
+		try dir.writeZon("entity_model_palette.zig.zon", self.entityModelPalette.storeToZon(arena));
 		try dir.writeZon("entity_component_palette.zig.zon", self.entityComponentPalette.storeToZon(arena));
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));

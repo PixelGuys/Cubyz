@@ -640,6 +640,7 @@ pub const World = struct { // MARK: World
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
+		main.entityModel.loadModelAndTexture();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 	}
@@ -667,6 +668,7 @@ pub const World = struct { // MARK: World
 		self.biomePalette.deinit();
 		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
+		self.entityModelPalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
 

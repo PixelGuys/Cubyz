@@ -20,37 +20,37 @@ const BinaryReader = main.utils.BinaryReader;
 
 var lastTime: i16 = 0;
 var timeDifference: utils.TimeDifference = utils.TimeDifference{};
-pub var entityArray: main.utils.VirtualList(main.client.Entity, 1 << 24) = undefined;
 pub var idToIndex: std.AutoHashMap(u32, u32) = undefined;
+pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
 pub fn init() void {
-	entityArray = .init();
 	idToIndex = .init(main.globalAllocator.allocator);
+	entities = .init();
 }
 
 pub fn deinit() void {
 	mutex.lock();
 	defer mutex.unlock();
-	for (entityArray.items()) |value| {
+	for (entities.items()) |value| {
 		value.deinit(main.globalAllocator);
 	}
-	entityArray.deinit();
+	entities.deinit();
 	idToIndex.deinit();
 }
 
 pub fn clear() void {
 	mutex.lock();
 	defer mutex.unlock();
-	for (entityArray.items()) |value| {
+	for (entities.items()) |value| {
 		value.deinit(main.globalAllocator);
 	}
-	entityArray.clearRetainingCapacity();
+	entities.clearRetainingCapacity();
 	idToIndex.clearRetainingCapacity();
 	timeDifference = utils.TimeDifference{};
 }
 pub fn getEntity(entityID: u32) *main.client.Entity {
 	main.utils.assertLocked(&mutex);
-	return &entityArray.items()[idToIndex.get(entityID) orelse unreachable];
+	return &entities.items()[idToIndex.get(entityID) orelse unreachable];
 }
 
 pub fn update() void {
@@ -62,7 +62,7 @@ pub fn update() void {
 	// std.debug.print("{}\n", .{entityArray.items()[0].pos});
 	// std.debug.print("{}\n", .{idToIndex.get(0) orelse 42});
 
-	for (entityArray.items()) |*ent| {
+	for (entities.items()) |*ent| {
 		ent.update(time, lastTime);
 	}
 	lastTime = time;
@@ -72,8 +72,8 @@ pub fn addEntity(zon: ZonElement) void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	const index = entityArray.len;
-	var entity = entityArray.addOne();
+	const index = entities.len;
+	var entity = entities.addOne();
 	main.client.Entity.init(entity, zon, main.globalAllocator) catch |err| {
 		std.log.err("Failed to init Entity: {}", .{err});
 		unreachable;
@@ -91,16 +91,16 @@ pub fn removeEntity(id: u32) void {
 	defer mutex.unlock();
 
 	const i = idToIndex.get(id) orelse return;
-	var ent = entityArray.items()[i];
+	var ent = entities.items()[i];
 	std.debug.assert(ent.id == id);
 
 	ent.deinit(main.globalAllocator);
 	_ = idToIndex.remove(id);
-	_ = entityArray.swapRemove(i);
-	if (i != entityArray.len) {
-		entityArray.items()[i].interpolatedValues.outPos = &entityArray.items()[i]._interpolationPos;
-		entityArray.items()[i].interpolatedValues.outVel = &entityArray.items()[i]._interpolationVel;
-		idToIndex.put(entityArray.items()[i].id, i) catch unreachable;
+	_ = entities.swapRemove(i);
+	if (i != entities.len) {
+		entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
+		entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
+		idToIndex.put(entities.items()[i].id, i) catch unreachable;
 	}
 }
 
@@ -126,7 +126,7 @@ pub fn serverUpdate(time: i16, entityData: []main.entity.EntityNetworkData) void
 			0,
 			0,
 		};
-		for (entityArray.items()) |*ent| {
+		for (entities.items()) |*ent| {
 			if (ent.id == data.id) {
 				ent.updatePosition(&pos, &vel, time);
 				break;

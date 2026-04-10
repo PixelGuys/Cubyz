@@ -71,8 +71,8 @@ pub const server = struct {
 		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = audience;
 			writer.writeInt(u32, self.entityModel.index);
-			if (self.customTexturePath) |texutre| {
-				writer.writeSliceWithSize(texutre);
+			if (self.customTexturePath) |texture| {
+				writer.writeSliceWithSize(texture);
 			} else writer.writeSliceWithSize("");
 			return .save;
 		}
@@ -87,19 +87,18 @@ pub const server = struct {
 			component.deinit();
 		}
 		renderComponents.deinit();
-		renderComponents = undefined;
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
 		const entityModel = reader.readInt(u32) catch return;
 		const customTexturePath = reader.readSliceWithSize() catch return;
 
-		loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel}, if (customTexturePath.len == 0) null else customTexturePath);
+		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel}, if (customTexturePath.len == 0) null else customTexturePath);
 	}
-	pub fn loadByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8) void {
-		loadByIndex(entity, main.entityModel.getTypeById(entityModelID), customTexturePath);
+	pub fn loadByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
+		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse .{.index = 0}, customTexturePath);
 	}
-	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8) void {
+	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
 		if (renderComponents.get(entity)) |old| {
 			old.deinit();
 		}
@@ -107,7 +106,7 @@ pub const server = struct {
 			.entity = entity,
 			.customTexturePath = customTexturePath,
 			.entityModel = entityModel,
-		}) catch unreachable;
+		}) catch return main.entity.EntityComponentLoadError.Memory;
 	}
 	pub fn unload(id: u32) void {
 		_ = renderComponents.remove(id);
