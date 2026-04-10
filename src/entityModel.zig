@@ -26,7 +26,6 @@ pub const EntityModel = struct {
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
-	modelFile: []const u8,
 
 	const Vertex = extern struct {
 		pos: [3]f32,
@@ -54,13 +53,11 @@ pub const EntityModel = struct {
 
 	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
-		self.id = main.globalAllocator.dupe(u8, id);
+		self.id = main.worldArena.dupe(u8, id);
 		self.height = zon.getChild("height").as(f32, 1);
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
-		const fileEnding = ".obj";
-		self.modelFile = main.assets.readAsset(main.globalAllocator, assetFolder, "entityModels/models", self.id, fileEnding) orelse main.assets.readAsset(main.stackAllocator, assetFolder, "entityModels/models", "cubyz:missing", fileEnding) orelse unreachable;
 
 		// get TexturePath
 		{
@@ -68,24 +65,25 @@ pub const EntityModel = struct {
 			var split = std.mem.splitScalar(u8, id, ':');
 			const mod = split.first();
 			if (zon.get(?[]const u8, "texture", null)) |texture| {
-				self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
 				std.fs.cwd().access(self.texturePath, .{}) catch {
-					main.globalAllocator.free(self.texturePath);
-					self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
+					main.worldArena.free(self.texturePath);
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
 				};
 			}
 		}
 		return self;
 	}
-	fn generateGraphics(self: *EntityModel) void {
+	fn loadModelAndTexture(self: *EntityModel) void {
+		self.deinitModelAndTexture();
+
+		const fileEnding = ".obj";
+		const file = main.assets.readAsset(main.globalAllocator, main.assets.folder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, main.assets.folder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
+		defer main.globalAllocator.free(file);
+
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
-		defer {
-			// We don't need the modelFile in memory anymore, so why waste memory?
-			main.globalAllocator.free(self.modelFile);
-			self.modelFile = &.{};
-		}
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, self.modelFile);
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, file);
 		defer main.stackAllocator.free(quadInfos);
 		const vertices = main.stackAllocator.alloc(Vertex, quadInfos.len*4);
 		defer main.stackAllocator.free(vertices);
@@ -109,24 +107,20 @@ pub const EntityModel = struct {
 		self.vao = .init(Vertex, vertices, indices);
 		self.indexCount = @intCast(indices.len);
 	}
-	pub fn bind(self: *EntityModel) void {
-		if (self.vao == null) {
-			self.generateGraphics();
-		}
-		self.vao.?.bind();
-		self.defaultTexture.?.bindTo(0);
-	}
-
-	pub fn deinit(self: *EntityModel) void {
-		main.globalAllocator.free(self.id);
-		main.globalAllocator.free(self.texturePath);
-		main.globalAllocator.free(self.modelFile);
+	pub fn deinitModelAndTexture(self: *EntityModel) void {
 		if (self.defaultTexture) |defaultTexture| {
 			defaultTexture.deinit();
 		}
 		if (self.vao) |vao| {
 			vao.deinit();
 		}
+	}
+	pub fn bind(self: *EntityModel) void {
+		self.vao.?.bind();
+		self.defaultTexture.?.bindTo(0);
+	}
+	pub fn deinit(self: *EntityModel) void {
+		self.deinitModelAndTexture();
 	}
 };
 
@@ -146,8 +140,7 @@ pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
 pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) usize {
 	const index = entityModels.items.len;
-	const entityModel = entityModels.addOne(main.worldArena);
-	entityModel.* = EntityModel.init(assetFolder, id, zon);
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, id, zon));
 	reverseIndices.put(main.worldArena.allocator, id, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
 	return index;
 }
@@ -159,22 +152,14 @@ pub fn reset() void {
 	reverseIndices = .{};
 }
 
-pub fn hasRegistered(id: []const u8) bool {
-	return reverseIndices.contains(id);
-}
-
-pub fn getTypeById(id: []const u8) EntityModelIndex {
-	if (reverseIndices.get(id)) |result| {
-		return result;
-	} else {
-		std.log.err("Couldn't find entityModel {s}. Replacing it with cubyz:missing ...", .{id});
-		return EntityModelIndex{.index = 0};
-	}
-}
-
-pub fn getTypeByIdOrNull(id: []const u8) ?EntityModelIndex {
+pub fn getById(id: []const u8) ?EntityModelIndex {
 	if (reverseIndices.get(id)) |result| {
 		return result;
 	}
 	return null;
+}
+pub fn loadModelAndTexture() void {
+	for (entityModels.items) |*value| {
+		value.loadModelAndTexture();
+	}
 }

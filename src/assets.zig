@@ -40,6 +40,7 @@ pub const Assets = struct {
 	particles: ZonHashMap,
 	worldPresets: ZonHashMap,
 	entityModelDescriptions: ZonHashMap,
+	entityModelMigrations: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -61,6 +62,7 @@ pub const Assets = struct {
 			.particles = .{},
 			.worldPresets = .{},
 			.entityModelDescriptions = .{},
+			.entityModelMigrations = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -82,6 +84,7 @@ pub const Assets = struct {
 		self.particles.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
 		self.entityModelDescriptions.deinit(allocator.allocator);
+		self.entityModelMigrations.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -103,6 +106,7 @@ pub const Assets = struct {
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 			.worldPresets = .{}, // Not accessible inside the world
 			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
+			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -123,7 +127,7 @@ pub const Assets = struct {
 			addon.readAllModels(allocator, "models", ".obj", &self.blockModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels/descriptions", true, &self.entityModelDescriptions, null);
+			addon.readAllZon(allocator, "entityModels/descriptions", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -532,10 +536,13 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
+pub var folder: []const u8 = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
+
+	folder = main.worldArena.dupe(u8, assetFolder);
 
 	main.Tag.initTags();
 
@@ -556,6 +563,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
 	migrations_zig.apply(.biome, biomePalette);
 
+	migrations_zig.registerAll(.entityModel, &worldAssets.entityModelMigrations);
+	migrations_zig.apply(.entityModel, entityModelPalette);
+
 	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
 	migrations_zig.apply(.entityComponent, entityComponentPalette);
 
@@ -567,16 +577,27 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 	}
 
-	// models (Entities):
+	// EntityModels:
 	{
-		var modelIterator = worldAssets.entityModelDescriptions.iterator();
-		while (modelIterator.next()) |entry| {
-			const id = entry.key_ptr.*;
+		// First blocks from the palette to enforce ID values.
+		for (entityModelPalette.palette.items) |stringId| {
+			std.log.debug("Registering entity model {s}", .{stringId});
+			_ = main.entityModel.register(assetFolder, stringId, worldAssets.entityModelDescriptions.get(stringId) orelse .null);
+		}
+		// Then all the blocks that were missing in palette but are present in the game.
+		var entModelIterator = worldAssets.entityModelDescriptions.iterator();
+		while (entModelIterator.next()) |entry| {
+			const stringId = entry.key_ptr.*;
 			const zon = entry.value_ptr.*;
+
+			if (main.entityModel.getById(stringId) != null) continue;
+
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
-			_ = main.entityModel.register(assetFolder, id, zon);
+			_ = main.entityModel.register(assetFolder, stringId, zon);
+			entityModelPalette.add(stringId);
 		}
 	}
+
 	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
@@ -788,30 +809,25 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	}
 }
 
-pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subPath: []const u8, id: []const u8, fileEnding: []const u8) ?[]const u8 {
+pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
-	const name = split.next() orelse return null;
+	const name = split.next() orelse unreachable;
 
-	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding}) catch &.{};
+	var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding});
 	defer main.stackAllocator.free(path);
 	std.fs.cwd().access(path, .{}) catch {
 		main.stackAllocator.free(path);
-		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch &.{};
+		path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
 	};
 
-	const string = std.fs.cwd().readFileAlloc(path, allocator.allocator, .unlimited) catch |err| {
+	const data = std.fs.cwd().readFileAlloc(path, allocator.allocator, .unlimited) catch |err| {
 		std.log.err("Could not open {s}/{s}{s}: {s}", .{subPath, name, fileEnding, @errorName(err)});
-		return null;
+		return err;
 	};
-	return string;
+	return data;
 }
 
 pub fn worldPresets() *const Assets.ZonHashMap {
 	return &common.worldPresets;
-}
-
-// TODO: Tempoary, will be removed in future ECS parts.
-pub fn entityModelDescriptions() *const Assets.ZonHashMap {
-	return &common.entityModelDescriptions;
 }
