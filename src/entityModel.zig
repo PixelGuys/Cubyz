@@ -31,6 +31,7 @@ pub const EntityModel = struct {
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
+	swapTriangleWinding: bool = false,
 
 	pub const CoordinateSystem = enum {
 		right_handed_z_up,
@@ -76,6 +77,7 @@ pub const EntityModel = struct {
 			std.log.err("Error: invalid coordinate system enum name - \"{s}\"", .{coordSystemName});
 			break :blk CoordinateSystem.right_handed_z_up;
 		};
+		self.swapTriangleWinding = zon.get(bool, "swapTriangleWinding", false);
 
 		// get TexturePath
 		{
@@ -92,15 +94,12 @@ pub const EntityModel = struct {
 		}
 		return self;
 	}
-	
-	fn loadModelAndTexture(self: *EntityModel) void {
+
+	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.deinitModelAndTexture();
 
-		const fileEnding = ".glb";
-		const file = main.assets.readAsset(main.globalAllocator, main.assets.folder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, main.assets.folder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
+		const file = try main.assets.readAsset(main.globalAllocator, main.assets.folder, "entityModels/models", self.id, ".glb");
 		defer main.globalAllocator.free(file);
-
-		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
@@ -108,7 +107,7 @@ pub const EntityModel = struct {
 		var result = gltf.cgltf_parse(&options, @ptrCast(file.ptr), @intCast(file.len), @ptrCast(&data));
 		if (result == gltf.cgltf_result_file_not_found or result == gltf.cgltf_result_io_error) {
 			std.log.err("GLTF Parse error: {s}", .{@errorName(getGltfError(result))});
-			return;
+			return getGltfError(result);
 		}
 
 		defer gltf.cgltf_free(@ptrCast(data));
@@ -116,13 +115,13 @@ pub const EntityModel = struct {
 		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
 		if (result != gltf.cgltf_result_success) {
 			std.log.err("GLTF Load buffers error: {s}", .{@errorName(getGltfError(result))});
-			return;
+			return getGltfError(result);
 		}
 
 		result = gltf.cgltf_validate(@ptrCast(data));
 		if (result != gltf.cgltf_result_success) {
 			std.log.err("GLTF Validation error: {s}", .{@errorName(getGltfError(result))});
-			return;
+			return getGltfError(result);
 		}
 
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
@@ -135,7 +134,7 @@ pub const EntityModel = struct {
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.mesh != null) {
-				const finalMat = Mat4f.identity().mul(getHierarchyMatrix(node));
+				const finalMat = getHierarchyMatrix(node, self.coordinateSystem);
 
 				const primitives = node.mesh.*.primitives;
 				for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
@@ -149,9 +148,24 @@ pub const EntityModel = struct {
 					var indicesSlice = indices.addMany(indicesAccessor.count);
 					baseVertex = @intCast(vertices.items.len);
 					const vertSlice: []Vertex = vertices.addMany(vertCount);
-					for (0..indicesAccessor.count) |i| {
-						const idx = indicesAccessor.index(i);
-						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+					
+					if (self.swapTriangleWinding) {
+						const count = indicesAccessor.count/3;
+						for (0..count) |i| {
+							var idx = indicesAccessor.index(i*3);
+							indicesSlice[i*3] = @as(u32, @intCast(idx)) + baseVertex;
+
+							idx = indicesAccessor.index(i*3 + 2);
+							indicesSlice[i*3 + 1] = @as(u32, @intCast(idx)) + baseVertex;
+
+							idx = indicesAccessor.index(i*3 + 1);
+							indicesSlice[i*3 + 2] = @as(u32, @intCast(idx)) + baseVertex;
+						}
+					} else {
+						for (0..indicesAccessor.count) |i| {
+							const idx = indicesAccessor.index(i);
+							indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+						}
 					}
 
 					var positionAttr: gltf.cgltf_accessor = undefined;
@@ -171,13 +185,13 @@ pub const EntityModel = struct {
 					for (0..positionAttr.count) |v| {
 						var p: [3]f32 = undefined;
 						_ = positionAttr.float(v, @ptrCast(&p), 3);
-						const pos: vec.Vec4f = finalMat.mulVec(.{p[0], p[1], p[2], 1});
-						std.debug.print("\n{s}", .{@tagName(self.coordinateSystem)});
-						vertSlice[v].pos = convertCoordinateSystem(.{pos[0], pos[1], pos[2]}, self.coordinateSystem); //.{-pos[0], pos[2], pos[1]};
+						const p2 = convertCoordinateSystemVec(.{p[0], p[1], p[2]}, self.coordinateSystem);
+						const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
+						vertSlice[v].pos = .{pos[0], pos[1], pos[2]};
 
 						var normal: [3]f32 = undefined;
 						_ = normalAttr.float(v, @ptrCast(&normal), 3);
-						vertSlice[v].normal = convertCoordinateSystem(.{normal[0], normal[1], normal[2]}, self.coordinateSystem); //.{-normal[0], normal[2], normal[1]};
+						vertSlice[v].normal = convertCoordinateSystemVec(.{normal[0], normal[1], normal[2]}, self.coordinateSystem);
 
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.float(v, @ptrCast(&uv), 2);
@@ -191,7 +205,7 @@ pub const EntityModel = struct {
 		self.indexCount = @intCast(indices.items.len);
 	}
 
-	fn convertCoordinateSystem(v: Vec3f, sys: CoordinateSystem) Vec3f {
+	fn convertCoordinateSystemVec(v: Vec3f, sys: CoordinateSystem) Vec3f {
 		return switch (sys) {
 			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
 			.right_handed_y_up => Vec3f{v[0], v[2], v[1]},
@@ -200,16 +214,32 @@ pub const EntityModel = struct {
 		};
 	}
 
-	fn getHierarchyMatrix(node: gltf.cgltf_node) Mat4f {
-		var currentMat = Mat4f.translation(node.translation);
-		currentMat = currentMat.mul(Mat4f.rotationQuat(node.rotation));
-		currentMat = currentMat.mul(Mat4f.scale(node.scale));
+	fn convertCoordinateSystemQuat(q: Vec4f, sys: CoordinateSystem) Vec4f {
+		return switch (sys) {
+			.right_handed_z_up => Vec4f{q[0], q[1], q[2], q[3]},
+			.right_handed_y_up => Vec4f{q[0], q[2], q[1], q[3]},
+			.left_handed_z_up => Vec4f{-q[0], q[1], q[2], q[3]},
+			.left_handed_y_up => Vec4f{-q[0], q[2], q[1], q[3]},
+		};
+	}
+
+	fn convertCoordinateSystemScale(s: Vec3f, sys: CoordinateSystem) Vec3f {
+		return switch (sys) {
+			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
+			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
+		};
+	}
+
+	fn getHierarchyMatrix(node: gltf.cgltf_node, sys: CoordinateSystem) Mat4f {
+		var currentMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, sys));
+		currentMat = currentMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, sys)));
+		currentMat = currentMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, sys)));
 
 		if (node.parent == null) {
 			return currentMat;
 		}
 
-		return getHierarchyMatrix(node.parent.*).mul(currentMat);
+		return getHierarchyMatrix(node.parent.*, sys).mul(currentMat);
 	}
 
 	fn getGltfError(result: gltf.cgltf_result) anyerror {
