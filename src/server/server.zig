@@ -25,6 +25,7 @@ pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const EntitySystem = @import("EntitySystem.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
@@ -144,7 +145,7 @@ pub const User = struct { // MARK: User
 	permissions: permission.Permissions = undefined,
 
 	pub fn player(self: *User) *Entity {
-		return &self.innerPlayer;
+		return EntitySystem.getEntity(self.id);
 	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
@@ -178,6 +179,7 @@ pub const User = struct { // MARK: User
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
 		}
+		EntitySystem.remove(self.id);
 
 		self.permissions.deinit();
 
@@ -244,10 +246,14 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User) void {
-		self.id = freeId;
-		freeId += 1;
+		self.id = EntitySystem.add();
+		self.player().name = main.globalAllocator.dupe(u8, self.name);
+
+		if (world.?.playerEntityModels.items.len != 0) {
+			const defaultModel = world.?.playerEntityModels.items[main.random.nextInt(u32, &main.seed)%world.?.playerEntityModels.items.len];
+			main.entity.components.@"cubyz:model".server.loadByID(self.id, defaultModel, null) catch unreachable;
+		}
 
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
@@ -528,6 +534,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	EntitySystem.init();
 	main.entity.server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
@@ -578,6 +585,7 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
+	EntitySystem.deinit();
 	main.entity.server.deinit();
 
 	command.deinit();
@@ -637,13 +645,14 @@ fn update() void { // MARK: update()
 	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
-	for (userList) |user| {
-		const id = user.id; // TODO
+	for (EntitySystem.getAll(), 0..) |ent, id| {
+		if (!ent.inUse)
+			continue;
 		entityData.append(.{
-			.id = id,
-			.pos = user.player().pos,
-			.vel = user.player().vel,
-			.rot = user.player().rot,
+			.id = @truncate(id),
+			.pos = ent.pos,
+			.vel = ent.vel,
+			.rot = ent.rot,
 		});
 	}
 	for (userList) |user| {
@@ -722,6 +731,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if (!foundUser) return;
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
+
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
@@ -742,6 +752,7 @@ pub fn connect(user: *User) void {
 
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
+
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -771,7 +782,7 @@ pub fn connectInternal(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = EntitySystem.getEntitiesBasicInfo();
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
 			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
@@ -787,6 +798,7 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
+	user.permissions.addPermission(.white, "/command/avatar");
 
 	userMutex.lock();
 	users.append(user);

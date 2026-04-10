@@ -6,6 +6,7 @@ const vec = main.vec;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Side = enum { ClientSide, ServerSide };
 
 pos: Vec3d = .{0, 0, 0},
 vel: Vec3d = .{0, 0, 0},
@@ -15,6 +16,7 @@ health: f32 = 8,
 maxHealth: f32 = 8,
 energy: f32 = 8,
 maxEnergy: f32 = 8,
+inUse: bool = false,
 name: ?[]const u8 = null,
 id: u32 = 0,
 
@@ -38,6 +40,9 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.sy
 }
 pub fn clone(self: *@This(), copy: *@This()) void {
 	const originalID = copy.id;
+	if (copy.name) |name| {
+		main.globalAllocator.free(name);
+	}
 	copy.* = self.*;
 	copy.name = if (self.name) |name| main.globalAllocator.dupe(u8, name) else null;
 	copy.id = originalID;
