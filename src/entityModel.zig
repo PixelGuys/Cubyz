@@ -22,8 +22,8 @@ pub const EntityModel = struct {
 	height: f32,
 	texturePath: []const u8,
 	id: []const u8,
-	invalid: bool,
 
+	isLoaded: bool,
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
@@ -59,7 +59,7 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
-		self.invalid = false;
+		self.isLoaded = false;
 
 		// get TexturePath
 		{
@@ -131,7 +131,7 @@ pub const EntityModelIndex = struct {
 	pub fn get(self: EntityModelIndex) *EntityModel {
 		if (entityModels.items.len > self.index) {
 			const rv = &entityModels.items[self.index];
-			if (!rv.invalid)
+			if (rv.isLoaded)
 				return rv;
 		}
 		// should always exist because of firstEntry in entityModelPalette
@@ -166,7 +166,9 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 pub fn loadModelAndTexture() void {
 	for (entityModels.items) |*value| {
 		value.loadModelAndTexture() catch {
-			value.invalid = true;
+			value.isLoaded = false;
+			continue;
 		};
+		value.isLoaded = true;
 	}
 }
