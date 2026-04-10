@@ -76,7 +76,7 @@ pub const EntityModel = struct {
 		}
 		return self;
 	}
-	
+
 	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.deinitModelAndTexture();
 
