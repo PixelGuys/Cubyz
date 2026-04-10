@@ -27,6 +27,7 @@ pub const EntityModel = struct {
 	texturePath: []const u8,
 	id: []const u8,
 
+	isLoaded: bool,
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
@@ -71,6 +72,7 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
+		self.isLoaded = false;
 
 		const coordSystemName = zon.get([]const u8, "coordinateSystem", @tagName(CoordinateSystem.right_handed_z_up));
 		self.coordinateSystem = std.meta.stringToEnum(CoordinateSystem, coordSystemName) orelse blk: {
@@ -148,7 +150,7 @@ pub const EntityModel = struct {
 					var indicesSlice = indices.addMany(indicesAccessor.count);
 					baseVertex = @intCast(vertices.items.len);
 					const vertSlice: []Vertex = vertices.addMany(vertCount);
-					
+
 					if (self.swapTriangleWinding) {
 						const count = indicesAccessor.count/3;
 						for (0..count) |i| {
@@ -279,8 +281,11 @@ pub const EntityModel = struct {
 pub const EntityModelIndex = struct {
 	index: u32,
 	pub fn get(self: EntityModelIndex) *EntityModel {
-		if (entityModels.items.len > self.index)
-			return &entityModels.items[self.index];
+		if (entityModels.items.len > self.index) {
+			const rv = &entityModels.items[self.index];
+			if (rv.isLoaded)
+				return rv;
+		}
 		// should always exist because of firstEntry in entityModelPalette
 		std.debug.assert(entityModels.items.len > 0);
 		return &entityModels.items[0];
@@ -312,6 +317,10 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 }
 pub fn loadModelAndTexture() void {
 	for (entityModels.items) |*value| {
-		value.loadModelAndTexture();
+		value.loadModelAndTexture() catch {
+			value.isLoaded = false;
+			continue;
+		};
+		value.isLoaded = true;
 	}
 }
