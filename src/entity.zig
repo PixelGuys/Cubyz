@@ -30,7 +30,7 @@ const EntityComponentVTable = struct {
 	serverUnload: *const fn (id: u32) void,
 	clientUnload: *const fn (id: u32) void,
 };
-pub var componentList: []?EntityComponentVTable = undefined;
+var componentList: []?EntityComponentVTable = undefined;
 
 pub fn initComponents() void {
 	var tmpComponentList: main.ListUnmanaged(?EntityComponentVTable) = .{};
