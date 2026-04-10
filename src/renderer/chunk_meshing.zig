@@ -43,6 +43,9 @@ const UniformStruct = struct {
 	lodDistance: c_int,
 	zNear: c_int,
 	zFar: c_int,
+	optionEnum: c_int,
+	optionExponent: c_int,
+	optionOffset: c_int,
 };
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
@@ -191,6 +194,9 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 
 	c.glUniform1f(locations.zNear, renderer.zNear);
 	c.glUniform1f(locations.zFar, renderer.zFar);
+	c.glUniform1f(locations.optionExponent, settings.funnyOptionExponent);
+	c.glUniform1i(locations.optionEnum, settings.funnyOption);
+	c.glUniform1f(locations.optionOffset, settings.funnyOptionOffset);
 
 	c.glUniform3i(locations.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	c.glUniform3f(locations.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
