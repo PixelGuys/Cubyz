@@ -868,8 +868,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 
 	pub fn isEffectiveOn(self: *ProceduralItem, block: main.blocks.Block) bool {
 		for (block.blockTags()) |blockTag| {
-			for (self.type.blockTags()) |toolTag| {
-				if (toolTag == blockTag) return true;
+			for (self.type.blockTags()) |ProceduralItemTag| {
+				if (ProceduralItemTag == blockTag) return true;
 			}
 		}
 		return false;
@@ -909,7 +909,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		} else {
 			var proceduralItemZon = zon.getChild("proceduralItem");
 			if (proceduralItemZon != .object) {
-				proceduralItemZon = zon.getChild("tool"); // migration of tools before generalizing from tool to procedural Item
+				proceduralItemZon = zon.getChild("tool"); // migration of tools from before renaming
 			}
 			if (proceduralItemZon != .object) return error.ItemNotFound;
 			return Item{.proceduralItem = ProceduralItem.initFromZon(proceduralItemZon)};
@@ -1153,7 +1153,7 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
-pub fn hasRegisteredTool(id: []const u8) bool {
+pub fn hasRegisteredProceduralItem(id: []const u8) bool {
 	return proceduralItemTypeIdToIndex.contains(id);
 }
 

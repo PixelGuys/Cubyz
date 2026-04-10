@@ -742,7 +742,7 @@ pub const Command = struct { // MARK: Command
 		self.baseOperations.append(allocator, op);
 	}
 
-	fn removeToolCraftingIngredients(self: *Command, allocator: NeverFailingAllocator, inv: Inventory, side: Side) void {
+	fn removeProceduralItemCraftingIngredients(self: *Command, allocator: NeverFailingAllocator, inv: Inventory, side: Side) void {
 		std.debug.assert(inv.source == .workbench);
 		for (0..25) |i| {
 			if (inv._items[i].amount != 0) {
@@ -1312,13 +1312,13 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: CraftProceduralItem, ctx: Context) error{serverFailure}!void {
-			const tool = Item{.proceduralItem = main.items.ProceduralItem.initFromInventory(self.craftingGrid) orelse return};
-			if (self.destinations.canHold(.{.item = tool, .amount = 1}) != .yes) {
-				tool.deinit();
+			const proceduralItem = Item{.proceduralItem = main.items.ProceduralItem.initFromInventory(self.craftingGrid) orelse return};
+			if (self.destinations.canHold(.{.item = proceduralItem, .amount = 1}) != .yes) {
+				proceduralItem.deinit();
 				return;
 			}
-			ctx.cmd.removeToolCraftingIngredients(main.globalAllocator, self.craftingGrid, ctx.side);
-			_ = self.destinations.putItemsInto(ctx, 1, .{.create = tool});
+			ctx.cmd.removeProceduralItemCraftingIngredients(main.globalAllocator, self.craftingGrid, ctx.side);
+			_ = self.destinations.putItemsInto(ctx, 1, .{.create = proceduralItem});
 		}
 
 		fn serialize(self: CraftProceduralItem, writer: *BinaryWriter) void {

@@ -40,7 +40,7 @@ var craftingResultInv: ClientInventory = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
-var toolTypes: main.ListUnmanaged(ProceduralItemTypeIndex) = undefined;
+var proceduralItemTypes: main.ListUnmanaged(ProceduralItemTypeIndex) = undefined;
 var currentProceduralItemType: usize = 0;
 
 var toolButton: *Button = undefined;
@@ -49,8 +49,8 @@ var needsUpdate: bool = false;
 
 fn toggleProceduralItem() void {
 	currentProceduralItemType += 1;
-	currentProceduralItemType %= toolTypes.items.len;
-	toolButton.child.label.updateText(toolTypes.items[currentProceduralItemType].id());
+	currentProceduralItemType %= proceduralItemTypes.items.len;
+	toolButton.child.label.updateText(proceduralItemTypes.items[currentProceduralItemType].id());
 	needsUpdate = true;
 }
 
@@ -61,7 +61,7 @@ fn updateResult(_: main.items.Inventory.Source) void {
 }
 
 fn openInventory() void {
-	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = toolTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult});
+	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult});
 	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .{.workbenchResult = craftingGridInv.super.id}, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
@@ -71,7 +71,7 @@ fn openInventory() void {
 			const row = HorizontalList.init();
 			for (0..5) |x| {
 				const index = x + y*5;
-				const slotInfo = toolTypes.items[currentProceduralItemType].slotInfos()[index];
+				const slotInfo = proceduralItemTypes.items[currentProceduralItemType].slotInfos()[index];
 				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
@@ -82,7 +82,7 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
+	toolButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
 	verticalThing.add(toolButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
@@ -132,16 +132,16 @@ pub fn render() void {
 pub fn onOpen() void {
 	currentProceduralItemType = 0;
 
-	toolTypes = .{};
+	proceduralItemTypes = .{};
 	var iterator = ProceduralItemTypeIndex.iterator();
-	while (iterator.next()) |toolType| {
-		toolTypes.append(main.globalAllocator, toolType);
+	while (iterator.next()) |proceduralItemType| {
+		proceduralItemTypes.append(main.globalAllocator, proceduralItemType);
 	}
 
 	openInventory();
 }
 
 pub fn onClose() void {
-	toolTypes.deinit(main.globalAllocator);
+	proceduralItemTypes.deinit(main.globalAllocator);
 	closeInventory();
 }

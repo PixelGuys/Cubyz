@@ -1065,13 +1065,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.sync.ClientSide.mutex.lock();
 			if (!game.Player.isCreative()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isTool = stack.item == .proceduralItem;
-				if (isTool) {
+				const isProceduralItem = stack.item == .proceduralItem;
+				if (isProceduralItem) {
 					damage = stack.item.proceduralItem.getBlockDamage(block);
 				}
 				damage -= block.blockResistance();
 				if (damage > 0) {
-					const swingTime = if (isTool and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.swingSpeed else 0.5;
+					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.swingSpeed else 0.5;
 					if (currentSwingTime > swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = 0;
