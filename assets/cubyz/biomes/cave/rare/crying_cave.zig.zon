@@ -1,5 +1,6 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.fogDensity = 8,
 	.fogColor = 0x3b5c8c,
 	.chance = 0.01,

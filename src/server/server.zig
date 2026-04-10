@@ -563,7 +563,12 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
-		user.deinit();
+		if (user.refCount.load(.monotonic) == 1) {
+			user.decreaseRefCount();
+		} else {
+			std.log.err("Leaked user {f}", .{user});
+			user.deinit();
+		}
 	}
 	userDeinitList.deinit();
 	userConnectList.deinit();
