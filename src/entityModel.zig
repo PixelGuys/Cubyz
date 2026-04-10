@@ -77,7 +77,7 @@ pub const EntityModel = struct {
 		}
 		return self;
 	}
-	fn generateGraphics(self: *EntityModel) void {
+	fn loadModelAndTexture(self: *EntityModel) void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
 		defer {
@@ -111,7 +111,7 @@ pub const EntityModel = struct {
 	}
 	pub fn bind(self: *EntityModel) void {
 		if (self.vao == null) {
-			self.generateGraphics();
+			self.loadModelAndTexture();
 		}
 		self.vao.?.bind();
 		self.defaultTexture.?.bindTo(0);
@@ -146,8 +146,7 @@ pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
 pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) usize {
 	const index = entityModels.items.len;
-	const entityModel = entityModels.addOne(main.worldArena);
-	entityModel.* = EntityModel.init(assetFolder, id, zon);
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, id, zon));
 	reverseIndices.put(main.worldArena.allocator, id, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
 	return index;
 }
@@ -159,20 +158,7 @@ pub fn reset() void {
 	reverseIndices = .{};
 }
 
-pub fn hasRegistered(id: []const u8) bool {
-	return reverseIndices.contains(id);
-}
-
-pub fn getTypeById(id: []const u8) EntityModelIndex {
-	if (reverseIndices.get(id)) |result| {
-		return result;
-	} else {
-		std.log.err("Couldn't find entityModel {s}. Replacing it with cubyz:missing ...", .{id});
-		return EntityModelIndex{.index = 0};
-	}
-}
-
-pub fn getTypeByIdOrNull(id: []const u8) ?EntityModelIndex {
+pub fn getById(id: []const u8) ?EntityModelIndex {
 	if (reverseIndices.get(id)) |result| {
 		return result;
 	}
