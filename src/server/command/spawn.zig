@@ -37,9 +37,8 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		}
 
-		var newSplit = std.mem.splitScalar(u8, args, ' ');
-		const pos = command.parseCoordinates(&newSplit, source) catch return;
-		if (newSplit.next()) |_| {
+		const pos = command.parseCoordinates(&split, source) catch return;
+		if (split.next()) |_| {
 			source.sendMessage("#ff0000Too many arguments for command /spawn", .{});
 			return;
 		}
