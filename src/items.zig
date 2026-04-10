@@ -20,8 +20,8 @@ const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 
-const modifierList = @import("tool/modifiers/_list.zig");
-const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
+const modifierList = @import("proceduralItem//modifiers/_list.zig");
+const modifierRestrictionList = @import("proceduralItem//modifiers/restrictions/_list.zig");
 
 pub const recipes_zig = @import("items/recipes.zig");
 
