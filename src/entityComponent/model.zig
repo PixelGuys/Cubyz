@@ -96,7 +96,7 @@ pub const server = struct {
 		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel}, if (customTexturePath.len == 0) null else customTexturePath);
 	}
 	pub fn loadByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
-		try loadByIndex(entity, main.entityModel.getById(entityModelID), customTexturePath);
+		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.getById("cubyz:missing") orelse @panic("cubyz:missing is also missing. This isnt supposed to happen"), customTexturePath);
 	}
 	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
 		if (renderComponents.get(entity)) |old| {
