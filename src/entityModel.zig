@@ -23,6 +23,7 @@ pub const EntityModel = struct {
 	texturePath: []const u8,
 	id: []const u8,
 
+	isLoaded: bool,
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
@@ -58,6 +59,7 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
+		self.isLoaded = false;
 
 		// get TexturePath
 		{
@@ -66,7 +68,7 @@ pub const EntityModel = struct {
 			const mod = split.first();
 			if (zon.get(?[]const u8, "texture", null)) |texture| {
 				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
-				std.fs.cwd().access(self.texturePath, .{}) catch {
+				main.files.cubyzDir().dir.access(self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
 					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
 				};
@@ -74,7 +76,8 @@ pub const EntityModel = struct {
 		}
 		return self;
 	}
-	fn loadModelAndTexture(self: *EntityModel) void {
+
+	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.deinitModelAndTexture();
 
 		const fileEnding = ".obj";
@@ -127,8 +130,11 @@ pub const EntityModel = struct {
 pub const EntityModelIndex = struct {
 	index: u32,
 	pub fn get(self: EntityModelIndex) *EntityModel {
-		if (entityModels.items.len > self.index)
-			return &entityModels.items[self.index];
+		if (entityModels.items.len > self.index) {
+			const rv = &entityModels.items[self.index];
+			if (rv.isLoaded)
+				return rv;
+		}
 		// should always exist because of firstEntry in entityModelPalette
 		std.debug.assert(entityModels.items.len > 0);
 		return &entityModels.items[0];
@@ -160,6 +166,10 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 }
 pub fn loadModelAndTexture() void {
 	for (entityModels.items) |*value| {
-		value.loadModelAndTexture();
+		value.loadModelAndTexture() catch {
+			value.isLoaded = false;
+			continue;
+		};
+		value.isLoaded = true;
 	}
 }

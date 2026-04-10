@@ -641,6 +641,7 @@ pub const World = struct { // MARK: World
 
 		main.blocks.meshes.generateTextureArray();
 		main.entityModel.loadModelAndTexture();
+		main.client.entity_manager.initAfterWorld();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 	}
@@ -693,7 +694,7 @@ pub const World = struct { // MARK: World
 		errdefer self.itemPalette.deinit();
 		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
 		errdefer self.toolPalette.deinit();
-		self.entityModelPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityModelPalette"), null);
+		self.entityModelPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityModelPalette"), "cubyz:missing");
 		errdefer self.entityModelPalette.deinit();
 		self.entityComponentPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityComponentPalette"), null);
 		errdefer self.entityComponentPalette.deinit();
