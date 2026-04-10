@@ -27,7 +27,7 @@ var uniforms: struct {
 	contrast: c_int,
 	ambientLight: c_int,
 } = undefined;
-var model: main.entityModel.EntityModel = undefined;
+
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
@@ -43,8 +43,6 @@ pub fn init() void {
 		.{.depthTest = true},
 		.{.attachments = &.{.alphaBlending}},
 	);
-
-	model = .initFromObj("assets/cubyz/entityModels/models/snale.obj", "assets/cubyz/entityModels/textures/snale.png");
 }
 
 pub fn deinit() void {
@@ -53,7 +51,6 @@ pub fn deinit() void {
 	}
 	entities.deinit();
 	pipeline.deinit();
-	model.deinit();
 }
 
 pub fn clear() void {
@@ -124,6 +121,9 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 	c.glUniform1f(uniforms.contrast, 0.12);
+
+	// TODO: this will be removed in future ECS parts
+	const model = main.entityModel.getById("cubyz:snale").?.get();
 
 	for (entities.items()) |ent| {
 		if (ent.id == game.Player.id) continue; // don't render local player

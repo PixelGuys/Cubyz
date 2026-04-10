@@ -21,6 +21,7 @@ pub const EntityComponentLoadError = error{
 	UnreadableID,
 	UnreadableVersion,
 	UnreadableComponentData,
+	Memory,
 };
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
