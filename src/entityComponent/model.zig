@@ -71,8 +71,8 @@ pub const server = struct {
 		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = audience;
 			writer.writeInt(u32, self.entityModel.index);
-			if (self.customTexturePath) |texutre| {
-				writer.writeSliceWithSize(texutre);
+			if (self.customTexturePath) |texture| {
+				writer.writeSliceWithSize(texture);
 			} else writer.writeSliceWithSize("");
 			return .save;
 		}
