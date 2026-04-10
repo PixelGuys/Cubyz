@@ -698,7 +698,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 				index += 1;
 			}
 		}
-		main.entity.initComponent();
+		main.entity.initComponents();
 	}
 
 	// Register paths for asset hot reloading:
@@ -728,7 +728,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
 
-	main.entity.deinitComponent();
+	main.entity.deinitComponents();
 	sbb.reset();
 	blocks_zig.reset();
 	items_zig.reset();

@@ -21,36 +21,76 @@ pub const EntityComponentLoadError = error{
 	UnreadableID,
 	UnreadableVersion,
 	UnreadableComponentData,
+	unknownComponentID,
 };
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
-	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	client: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	serverLoad: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	clientLoad: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	serverUnload: *const fn (id: u32) void,
+	clientUnload: *const fn (id: u32) void,
 };
-var receiveList: []?EntityComponentVTable = undefined;
+pub var componentList: []?EntityComponentVTable = undefined;
 
-pub fn initComponent() void {
-	var tmpReceiveList: main.ListUnmanaged(?EntityComponentVTable) = .{};
+pub fn initComponents() void {
+	var tmpComponentList: main.ListUnmanaged(?EntityComponentVTable) = .{};
 	inline for (@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).client.init();
 		const id = @field(components, decl.name).entityComponentID;
 
-		if (tmpReceiveList.items.len <= id) {
-			tmpReceiveList.appendNTimes(main.worldArena, null, id + 1 - tmpReceiveList.items.len);
+		if (tmpComponentList.items.len <= id) {
+			tmpComponentList.appendNTimes(main.worldArena, null, id + 1 - tmpComponentList.items.len);
 		}
-		if (tmpReceiveList.items[id] == null) {
-			tmpReceiveList.items[id] = .{
-				.server = @field(components, decl.name).server.loadFromData,
-				.client = @field(components, decl.name).client.load,
+		if (tmpComponentList.items[id] == null) {
+			tmpComponentList.items[id] = .{
+				.serverLoad = @field(components, decl.name).server.loadFromData,
+				.clientLoad = @field(components, decl.name).client.load,
+				.serverUnload = @field(components, decl.name).server.unload,
+				.clientUnload = @field(components, decl.name).client.unload,
 			};
 		} else {
 			std.log.err("entity components: Duplicate list id {}.", .{id});
 		}
 	}
-	receiveList = tmpReceiveList.items;
+	componentList = tmpComponentList.items;
 }
-pub fn deinitComponent() void {
-	receiveList = undefined;
+pub fn deinitComponents() void {
+	componentList = undefined;
+}
+pub fn load(comptime side: main.sync.Side, componentID: u32, entityID: u32, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
+	if (componentID >= componentList.len) {
+		std.log.err("unknown Component ID {} ", .{componentID});
+		return error.unknownComponentID;
+	}
+	var componentReader = main.utils.BinaryReader.init(componentData);
+	if (componentList[componentID]) |vtable| {
+		switch (side) {
+			.server => vtable.serverLoad(entityID, &componentReader, componentVersion) catch |err| {
+				return err;
+			},
+			.client => vtable.clientLoad(entityID, &componentReader, componentVersion) catch |err| {
+				return err;
+			},
+		}
+	} else {
+		std.log.err("unknown Component ID {} ", .{componentID});
+		return error.unknownComponentID;
+	}
+}
+pub fn unload(comptime side: main.sync.Side, componentID: u32, entityID: u32) EntityComponentLoadError!void {
+	if (componentID >= componentList.len) {
+		std.log.err("unknown Component ID {} ", .{componentID});
+		return error.unknownComponentID;
+	}
+	if (componentList[componentID]) |vtable| {
+		switch (side) {
+			.server => vtable.serverUnload(entityID),
+			.client => vtable.clientUnload(entityID),
+		}
+	} else {
+		std.log.err("unknown Component ID {} ", .{componentID});
+		return error.unknownComponentID;
+	}
 }
 
 pub const client = struct {
@@ -142,23 +182,7 @@ pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: 
 		const componentVersion: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableVersion;
 		const componentData = reader.readSliceWithSize() catch return EntityComponentLoadError.UnreadableComponentData;
 
-		if (componentID >= receiveList.len)
-			continue;
-		var componentReader = main.utils.BinaryReader.init(componentData);
-		if (receiveList[componentID]) |vtable| {
-			switch (side) {
-				.server => vtable.server(id, &componentReader, componentVersion) catch |err| {
-					lastError = err;
-					continue;
-				},
-				.client => vtable.client(id, &componentReader, componentVersion) catch |err| {
-					lastError = err;
-					continue;
-				},
-			}
-		} else {
-			std.log.err("unknown Component ID {} ", .{componentID});
-		}
+		lastError = load(side, componentID, id, componentData, componentVersion);
 	}
 	return lastError;
 }

@@ -961,56 +961,47 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	}
 };
 
-// format: entityID set   componentID binary
-// format: entityID reset componentID
+// format: entityID load   componentID binary
+// format: entityID unload componentID
 pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	pub const id: u8 = 15;
 	pub const asynchronous = false;
 
-	const ActionType = enum(u8) { set, reset };
+	const ActionType = enum(u8) {
+		unload = 0,
+		load = 1,
+	};
 
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const entityID = try reader.readInt(u32);
+		const componentID = try reader.readInt(u32);
 		const actionType: ActionType = try reader.readEnum(ActionType);
-		const componentID = try reader.readSliceWithSize();
 
-		if (actionType == .set) {
-			const version = reader.readVarInt(u32) catch std.math.maxInt(u32);
-			const list = main.entity.components;
-			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				if (std.mem.eql(u8, decl.name, componentID)) {
-					@field(list, decl.name).client.load(entityID, reader, version) catch unreachable;
-					break;
-				}
-			}
-		} else if (actionType == .reset) {
-			const list = main.entity.components;
-			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				if (std.mem.eql(u8, decl.name, componentID)) {
-					@field(list, decl.name).client.unload(entityID);
-					break;
-				}
-			}
+		if (actionType == .load) {
+			const componentVersion = try reader.readVarInt(u32);
+			try main.entity.load(.client, componentID, entityID, reader.remaining, componentVersion);
+		} else if (actionType == .unload) {
+			try main.entity.unload(.client, componentID, entityID);
 		}
 	}
-	pub fn reset(conn: *Connection, entityID: u32, componentID: []const u8) void {
+	pub fn unload(conn: *Connection, entityID: u32, componentID: u32) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		writer.writeInt(u32, entityID);
-		writer.writeEnum(ActionType, ActionType.reset);
-		writer.writeSliceWithSize(componentID);
+		writer.writeInt(u32, componentID);
+		writer.writeEnum(ActionType, ActionType.unload);
 
 		conn.send(.secure, id, writer.data.items);
 	}
-	pub fn set(conn: *Connection, entityID: u32, componentID: []const u8, version: u32, componentData: []const u8) void {
+	pub fn load(conn: *Connection, entityID: u32, componentID: u32, version: u32, componentData: []const u8) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		writer.writeInt(u32, entityID);
-		writer.writeEnum(ActionType, ActionType.set);
-		writer.writeSliceWithSize(componentID);
-		// specific to `set`
+		writer.writeInt(u32, componentID);
+		writer.writeEnum(ActionType, ActionType.load);
+		// specific to `load`
 		writer.writeVarInt(u32, version);
 		writer.writeSlice(componentData);
 
