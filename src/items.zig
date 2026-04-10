@@ -463,7 +463,6 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			sum *= property.resultScale;
 			proceduralItem.getProperty(property.destination orelse continue).* += sum;
 		}
-		// TODO Determine if we should do that for all ProceduralItem properties which are > 0 or we just say that maxDurability is also seperate
 		if (proceduralItem.damage < 1) proceduralItem.damage = 1/(2 - proceduralItem.damage);
 		if (proceduralItem.swingSpeed < 1) proceduralItem.swingSpeed = 1/(2 - proceduralItem.swingSpeed);
 		for (0..25) |i| {
