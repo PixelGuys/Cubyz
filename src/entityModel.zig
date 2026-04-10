@@ -26,7 +26,6 @@ pub const EntityModel = struct {
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
-	modelFile: []const u8,
 
 	const Vertex = extern struct {
 		pos: [3]f32,
@@ -59,8 +58,6 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
-		const fileEnding = ".obj";
-		self.modelFile = main.assets.readAsset(main.globalAllocator, assetFolder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, assetFolder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
 
 		// get TexturePath
 		{
@@ -78,14 +75,15 @@ pub const EntityModel = struct {
 		return self;
 	}
 	fn loadModelAndTexture(self: *EntityModel) void {
+		self.deinitModelAndTexture();
+
+		const fileEnding = ".obj";
+		const file = main.assets.readAsset(main.globalAllocator, main.assets.folder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, main.assets.folder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
+		defer main.globalAllocator.free(file);
+
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
-		defer {
-			// We don't need the modelFile in memory anymore, so why waste memory?
-			main.globalAllocator.free(self.modelFile);
-			self.modelFile = &.{};
-		}
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, self.modelFile);
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, file);
 		defer main.stackAllocator.free(quadInfos);
 		const vertices = main.stackAllocator.alloc(Vertex, quadInfos.len*4);
 		defer main.stackAllocator.free(vertices);
@@ -109,24 +107,22 @@ pub const EntityModel = struct {
 		self.vao = .init(Vertex, vertices, indices);
 		self.indexCount = @intCast(indices.len);
 	}
-	pub fn bind(self: *EntityModel) void {
-		if (self.vao == null) {
-			self.loadModelAndTexture();
-		}
-		self.vao.?.bind();
-		self.defaultTexture.?.bindTo(0);
-	}
-
-	pub fn deinit(self: *EntityModel) void {
-		main.globalAllocator.free(self.id);
-		main.globalAllocator.free(self.texturePath);
-		main.globalAllocator.free(self.modelFile);
+	pub fn deinitModelAndTexture(self: *EntityModel) void {
 		if (self.defaultTexture) |defaultTexture| {
 			defaultTexture.deinit();
 		}
 		if (self.vao) |vao| {
 			vao.deinit();
 		}
+	}
+	pub fn bind(self: *EntityModel) void {
+		self.vao.?.bind();
+		self.defaultTexture.?.bindTo(0);
+	}
+	pub fn deinit(self: *EntityModel) void {
+		main.globalAllocator.free(self.id);
+		main.globalAllocator.free(self.texturePath);
+		self.deinitModelAndTexture();
 	}
 };
 
@@ -163,4 +159,11 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 		return result;
 	}
 	return null;
+}
+pub fn loadModelAndTexture() void {
+	for (entityModels.items) |*value| {
+		value.loadModelAndTexture();
+	}
+	// TODO: this will be removed in future ECS parts
+	main.client.entity_manager.model.loadModelAndTexture();
 }
