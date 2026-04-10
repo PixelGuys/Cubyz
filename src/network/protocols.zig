@@ -236,12 +236,14 @@ pub const handShake = struct { // MARK: handShake
 	pub fn sendServerPlayerData(conn: *Connection) void {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
-		zonObject.put("player", conn.user.?.player().save(main.stackAllocator));
+		zonObject.put("player", conn.user.?.player().save(main.stackAllocator, .playerHimself));
 		zonObject.put("player_id", conn.user.?.id);
 		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
 		zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
+		zonObject.put("entityModelPalette", main.server.world.?.entityModelPalette.storeToZon(main.stackAllocator));
+		zonObject.put("entityComponentPalette", main.server.world.?.entityComponentPalette.storeToZon(main.stackAllocator));
 
 		const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
 		defer main.stackAllocator.free(outData);
@@ -393,7 +395,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 		if (conn.manager.world) |world| {
 			const time = try reader.readInt(i16);
 			const playerPos = try reader.readVec(Vec3d);
-			var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
+			var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 			defer entityData.deinit();
 			var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
 			defer itemData.deinit();
@@ -427,11 +429,11 @@ pub const entityPosition = struct { // MARK: entityPosition
 					},
 				}
 			}
-			main.clientEntity.ClientEntityManager.serverUpdate(time, entityData.items);
+			main.client.entity_manager.serverUpdate(time, entityData.items);
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
-	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.clientEntity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
+	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
@@ -511,10 +513,10 @@ pub const entity = struct { // MARK: entity
 			const elem = zonArray.array.items[i];
 			switch (elem) {
 				.int => {
-					main.clientEntity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+					main.client.entity_manager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					main.clientEntity.ClientEntityManager.addEntity(elem);
+					main.client.entity_manager.addEntity(elem);
 				},
 				.null => {
 					i += 1;
@@ -957,61 +959,5 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		const blockEntity = block.blockEntity() orelse return;
 
 		sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
-	}
-};
-
-// format: entityID set   componentID binary
-// format: entityID reset componentID
-pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
-	pub const id: u8 = 15;
-	pub const asynchronous = false;
-
-	const ActionType = enum(u8) { set, reset };
-
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const entityID = try reader.readInt(u32);
-		const actionType: ActionType = try reader.readEnum(ActionType);
-		const componentID = try reader.readSliceWithSize();
-
-		if (actionType == .set) {
-			const list = main.entityComponent;
-			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				if (std.mem.eql(u8, decl.name, componentID)) {
-					const version = reader.readVarInt(u32) catch std.math.maxInt(u32);
-					@field(list, decl.name).Client.register(entityID, reader, version);
-					break;
-				}
-			}
-		} else if (actionType == .reset) {
-			const list = main.entityComponent;
-			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				if (std.mem.eql(u8, decl.name, componentID)) {
-					@field(list, decl.name).Client.unregister(entityID);
-					break;
-				}
-			}
-		}
-	}
-	pub fn reset(conn: *Connection, entityID: u32, componentID: []const u8) void {
-		var writer = utils.BinaryWriter.init(main.stackAllocator);
-		defer writer.deinit();
-
-		writer.writeInt(u32, entityID);
-		writer.writeEnum(ActionType, ActionType.reset);
-		writer.writeSliceWithSize(componentID);
-
-		conn.send(.secure, id, writer.data.items);
-	}
-	pub fn set(conn: *Connection, entityID: u32, componentID: []const u8, version: u32, componentData: []const u8) void {
-		var writer = utils.BinaryWriter.init(main.stackAllocator);
-		defer writer.deinit();
-
-		writer.writeInt(u32, entityID);
-		writer.writeEnum(ActionType, ActionType.set);
-		writer.writeSliceWithSize(componentID);
-		writer.writeVarInt(u32, version);
-		writer.writeSlice(componentData);
-
-		conn.send(.secure, id, writer.data.items);
 	}
 };

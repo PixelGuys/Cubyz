@@ -18,9 +18,11 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
 
-pub const ENTITY_COMPONENT_VERSION = 0;
+pub var entityComponentID: u32 = undefined;
+pub const entityComponentVersion = 0;
+
 // ############################# Client only stuff ################################
-pub const Client = struct {
+pub const client = struct {
 	const RenderComponent = struct {
 		entity: u32, // entity
 		entityModel: main.entityModel.EntityModelIndex, // model
@@ -38,7 +40,7 @@ pub const Client = struct {
 		renderComponents.deinit();
 		renderComponents = .init(main.globalAllocator.allocator);
 	}
-	pub fn register(id: u32, reader: *utils.BinaryReader, version: u32) void {
+	pub fn load(id: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
 		const entityModel = reader.readInt(u32) catch return;
 		const customTexture: ?main.graphics.Texture = null;
@@ -49,14 +51,14 @@ pub const Client = struct {
 			.entityModel = main.entityModel.EntityModelIndex{.index = entityModel},
 		}) catch unreachable;
 	}
-	pub fn unregister(id: u32) void {
+	pub fn unload(id: u32) void {
 		_ = renderComponents.remove(id);
 	}
 };
 
 // ############################# Server only stuff ################################
 
-pub const Server = struct {
+pub const server = struct {
 	pub const RenderComponent = struct {
 		entity: u32, // entity
 		entityModel: main.entityModel.EntityModelIndex, // model
@@ -66,11 +68,13 @@ pub const Server = struct {
 				main.globalAllocator.free(path);
 			}
 		}
-		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter) void {
+		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
+			_ = audience;
 			writer.writeInt(u32, self.entityModel.index);
-			if (self.customTexturePath) |texutre| {
-				writer.writeSliceWithSize(texutre);
+			if (self.customTexturePath) |texture| {
+				writer.writeSliceWithSize(texture);
 			} else writer.writeSliceWithSize("");
+			return .save;
 		}
 	};
 	var renderComponents: std.AutoHashMap(u32, RenderComponent) = undefined;
@@ -84,17 +88,17 @@ pub const Server = struct {
 		}
 		renderComponents.deinit();
 	}
-	pub fn registerFromData(entity: u32, reader: *utils.BinaryReader, version: usize) void {
+	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
 		const entityModel = reader.readInt(u32) catch return;
 		const customTexturePath = reader.readSliceWithSize() catch return;
 
-		registerByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel}, if (customTexturePath.len == 0) null else customTexturePath);
+		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel}, if (customTexturePath.len == 0) null else customTexturePath);
 	}
-	pub fn registerByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8) void {
-		registerByIndex(entity, main.entityModel.getTypeById(entityModelID), customTexturePath);
+	pub fn loadByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
+		try loadByIndex(entity, main.entityModel.getTypeById(entityModelID), customTexturePath);
 	}
-	pub fn registerByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8) void {
+	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
 		if (renderComponents.get(entity)) |old| {
 			old.deinit();
 		}
@@ -102,9 +106,9 @@ pub const Server = struct {
 			.entity = entity,
 			.customTexturePath = customTexturePath,
 			.entityModel = entityModel,
-		}) catch unreachable;
+		}) catch return main.entity.EntityComponentLoadError.Memory;
 	}
-	pub fn unregister(id: u32) void {
+	pub fn unload(id: u32) void {
 		_ = renderComponents.remove(id);
 	}
 	pub fn put(id: u32, renderComponent: RenderComponent) void {

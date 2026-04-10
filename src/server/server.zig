@@ -98,7 +98,7 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	inner_player: Entity = .{},
+	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -144,7 +144,7 @@ pub const User = struct { // MARK: User
 	permissions: permission.Permissions = undefined,
 
 	pub fn player(self: *User) *Entity {
-		return &self.inner_player;
+		return &self.innerPlayer;
 	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
@@ -153,6 +153,7 @@ pub const User = struct { // MARK: User
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.jobQueue = .init(main.globalAllocator);
+		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -182,7 +183,7 @@ pub const User = struct { // MARK: User
 
 		self.worldEditData.deinit();
 
-		self.player().deinit(.ServerSide);
+		self.player().deinit(.server);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -248,7 +249,9 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		world.?.loadPlayer(self);
+		world.?.loadPlayer(self) catch {
+			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
+		};
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
@@ -490,6 +493,10 @@ pub const User = struct { // MARK: User
 			.no, .neutral => false,
 		};
 	}
+
+	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.print("{s}@{d}", .{user.name, user.playerIndex});
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
@@ -521,13 +528,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
-	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
-		@field(main.entityComponent, decl.name).Server.init();
-	}
-	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
-		@field(main.entitySystem, decl.name).Server.init();
-	}
-
+	main.entity.server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
 
@@ -555,7 +556,12 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
-		user.deinit();
+		if (user.refCount.load(.monotonic) == 1) {
+			user.decreaseRefCount();
+		} else {
+			std.log.err("Leaked user {f}", .{user});
+			user.deinit();
+		}
 	}
 	userDeinitList.deinit();
 	userConnectList.deinit();
@@ -572,13 +578,7 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
-
-	inline for (@typeInfo(main.entityComponent).@"struct".decls) |decl| {
-		@field(main.entityComponent, decl.name).Server.deinit();
-	}
-	inline for (@typeInfo(main.entitySystem).@"struct".decls) |decl| {
-		@field(main.entitySystem, decl.name).Server.deinit();
-	}
+	main.entity.server.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -617,6 +617,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 
 fn update() void { // MARK: update()
 	world.?.update();
+	main.entity.server.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
@@ -633,7 +634,7 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.clientEntity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (userList) |user| {
@@ -758,9 +759,10 @@ pub fn connectInternal(user: *User) void {
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		const entityZon = main.ZonElement.initObject(main.stackAllocator);
-		entityZon.put("id", user.id);
+
+		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
 		entityZon.put("name", user.name);
+		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -772,9 +774,9 @@ pub fn connectInternal(user: *User) void {
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
-			entityZon.put("id", other.id);
+			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
 			entityZon.put("name", other.name);
+			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -812,4 +814,16 @@ pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
+}
+
+pub fn getUserByIndexAndIncreaseRefCount(index: usize) ?*User {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for (userList) |user| {
+		if (user.playerIndex == index) {
+			user.increaseRefCount();
+			return user;
+		}
+	}
+	return null;
 }

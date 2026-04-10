@@ -137,7 +137,7 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 			const currentChances = main.stackAllocator.alloc(f32, items.len);
 			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
-			for (items, 0..) |*item, i| {
+			for (items, 0..) |item, i| {
 				totalChance += item.chance;
 				currentChances[i] = item.chance;
 			}
@@ -1680,11 +1680,6 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 	}
 };
 
-pub const Side = enum {
-	client,
-	server,
-};
-
 const endian: std.builtin.Endian = .big;
 
 pub const BinaryReader = struct {
@@ -1773,6 +1768,7 @@ pub const BinaryReader = struct {
 		return try self.readSlice(try self.readVarInt(usize));
 	}
 };
+
 pub const BinaryWriter = struct {
 	data: main.List(u8),
 
