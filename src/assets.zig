@@ -814,14 +814,17 @@ pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subP
 	const mod = split.first();
 	const name = split.next() orelse unreachable;
 
+	std.log.info("{s}\n", .{assetFolder});
+
+
 	var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding});
 	defer main.stackAllocator.free(path);
-	main.files.cubyzDir().dir.access(path, .{}) catch {
+	if(!main.files.cwd().hasFile(path)) {
 		main.stackAllocator.free(path);
 		path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
-	};
+	}
 
-	const data = main.files.cubyzDir().dir.readFileAlloc(path, allocator.allocator, .unlimited) catch |err| {
+	const data = main.files.cwd().read(allocator,path) catch |err| {
 		std.log.err("Could not open {s}/{s}{s}: {s}", .{subPath, name, fileEnding, @errorName(err)});
 		return err;
 	};
