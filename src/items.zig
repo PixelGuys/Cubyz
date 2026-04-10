@@ -705,7 +705,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.craftingGrid = craftingGrid;
 		self.type = typ;
 		// Produce the procedural Item and its textures:
-		// The material grid, which comes from texture generation, is needed on both server and client, to generate the procedura lItem properties.
+		// The material grid, which comes from texture generation, is needed on both server and client, to generate the procedural item properties.
 		TextureGenerator.generate(self);
 		ProceduralItemPhysics.evaluateProceduralItem(self);
 		return self;
@@ -907,10 +907,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		if (BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
-			var proceduralItemZon = zon.getChild("proceduralItem");
-			if (proceduralItemZon != .object) {
-				proceduralItemZon = zon.getChild("tool"); // migration of tools from before renaming
-			}
+			const proceduralItemZon = zon.getChild("tool");
 			if (proceduralItemZon != .object) return error.ItemNotFound;
 			return Item{.proceduralItem = ProceduralItem.initFromZon(proceduralItemZon)};
 		}
@@ -954,7 +951,7 @@ pub const Item = union(ItemType) { // MARK: Item
 				zonObject.put("item", _baseItem.id());
 			},
 			.proceduralItem => |_proceduralItem| {
-				zonObject.put("proceduralItem", _proceduralItem.save(allocator));
+				zonObject.put("tool", _proceduralItem.save(allocator));
 			},
 			.null => unreachable,
 		}
