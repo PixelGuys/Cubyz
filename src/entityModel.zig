@@ -60,7 +60,7 @@ pub const EntityModel = struct {
 		self.vao = null;
 		self.indexCount = 0;
 		const fileEnding = ".obj";
-		self.modelFile = main.assets.readAsset(main.globalAllocator, assetFolder, "entityModels/models", self.id, fileEnding) orelse main.assets.readAsset(main.stackAllocator, assetFolder, "entityModels/models", "cubyz:missing", fileEnding) orelse unreachable;
+		self.modelFile = main.assets.readAsset(main.globalAllocator, assetFolder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, assetFolder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
 
 		// get TexturePath
 		{

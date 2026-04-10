@@ -44,7 +44,11 @@ pub fn init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 	// TODO: This is Temporary, will be replace by future ECS parts.
-	model = .init("assets", "cubyz:snale", main.assets.entityModelDescriptions().get("cubyz:snale").?);
+	{
+		const zon: ZonElement = main.files.Dir.init(std.fs.cwd()).readToZon(main.stackAllocator, "assets/cubyz/entityModels/descriptions/snale.zig.zon") catch unreachable;
+		defer zon.deinit(main.stackAllocator);
+		model = .init("assets", "cubyz:snale", zon);
+	}
 }
 
 pub fn deinit() void {

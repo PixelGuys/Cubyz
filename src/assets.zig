@@ -779,30 +779,25 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	}
 }
 
-pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subPath: []const u8, id: []const u8, fileEnding: []const u8) ?[]const u8 {
+pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
-	const name = split.next() orelse return null;
+	const name = split.next() orelse unreachable;
 
-	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding}) catch &.{};
+	var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding});
 	defer main.stackAllocator.free(path);
 	std.fs.cwd().access(path, .{}) catch {
 		main.stackAllocator.free(path);
-		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch &.{};
+		path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
 	};
 
-	const string = std.fs.cwd().readFileAlloc(path, allocator.allocator, .unlimited) catch |err| {
+	const data = std.fs.cwd().readFileAlloc(path, allocator.allocator, .unlimited) catch |err| {
 		std.log.err("Could not open {s}/{s}{s}: {s}", .{subPath, name, fileEnding, @errorName(err)});
-		return null;
+		return err;
 	};
-	return string;
+	return data;
 }
 
 pub fn worldPresets() *const Assets.ZonHashMap {
 	return &common.worldPresets;
-}
-
-// TODO: Tempoary, will be removed in future ECS parts.
-pub fn entityModelDescriptions() *const Assets.ZonHashMap {
-	return &common.entityModelDescriptions;
 }
