@@ -22,6 +22,7 @@ pub const EntityModel = struct {
 	height: f32,
 	texturePath: []const u8,
 	id: []const u8,
+	invalid: bool,
 
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
@@ -58,6 +59,7 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
+		self.invalid = false;
 
 		// get TexturePath
 		{
@@ -74,7 +76,7 @@ pub const EntityModel = struct {
 		}
 		return self;
 	}
-	fn loadModelAndTexture(self: *EntityModel) void {
+	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.deinitModelAndTexture();
 
 		const fileEnding = ".obj";
@@ -127,8 +129,11 @@ pub const EntityModel = struct {
 pub const EntityModelIndex = struct {
 	index: u32,
 	pub fn get(self: EntityModelIndex) *EntityModel {
-		if (entityModels.items.len > self.index)
-			return &entityModels.items[self.index];
+		if (entityModels.items.len > self.index) {
+			const rv = &entityModels.items[self.index];
+			if (!rv.invalid)
+				return rv;
+		}
 		// should always exist because of firstEntry in entityModelPalette
 		std.debug.assert(entityModels.items.len > 0);
 		return &entityModels.items[0];
@@ -160,6 +165,8 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 }
 pub fn loadModelAndTexture() void {
 	for (entityModels.items) |*value| {
-		value.loadModelAndTexture();
+		value.loadModelAndTexture() catch {
+			value.invalid = true;
+		};
 	}
 }
