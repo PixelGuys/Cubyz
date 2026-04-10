@@ -323,7 +323,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) main.entity.systems.modelRenderer.client.renderInfo(game.projectionMatrix, @splat(0), playerPos);
+	if (!main.gui.hideGui) main.entity.systems.modelRenderer.client.renderHud(game.projectionMatrix, @splat(0), playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 

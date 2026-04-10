@@ -493,6 +493,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		self.entityModelPalette = try loadPalette(arena, path, "entityModel_palette", "cubyz:missing");
 		errdefer self.entityModelPalette.deinit();
+		
 		self.entityComponentPalette = try loadPalette(arena, path, "entity_component_palette", null);
 		errdefer self.entityComponentPalette.deinit();
 

@@ -59,7 +59,7 @@ pub const client = struct {
 	}
 	pub fn clear() void {}
 
-	pub fn renderInfo(projMatrix: Mat4f, _: Vec3f, playerPos: Vec3d) void {
+	pub fn renderHud(projMatrix: Mat4f, _: Vec3f, playerPos: Vec3d) void {
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 
