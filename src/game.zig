@@ -95,7 +95,7 @@ pub const collision = struct {
 		return .{.box = resultBox orelse return null, .dist = minDistance};
 	}
 
-	pub fn collides(comptime side: main.utils.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: Box) ?Box {
+	pub fn collides(comptime side: main.sync.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: Box) ?Box {
 		var boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -159,7 +159,7 @@ pub const collision = struct {
 		bounciness: f32,
 	};
 
-	pub fn calculateSurfaceProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
+	pub fn calculateSurfaceProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -235,7 +235,7 @@ pub const collision = struct {
 		return @reduce(.Mul, max - min);
 	}
 
-	pub fn calculateVolumeProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaults: VolumeProperties) VolumeProperties {
+	pub fn calculateVolumeProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaults: VolumeProperties) VolumeProperties {
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -298,7 +298,7 @@ pub const collision = struct {
 		};
 	}
 
-	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
+	pub fn collideOrStep(comptime side: main.sync.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
 		const index = @intFromEnum(dir);
 
 		// First argument is amount we end up moving in dir, second argument is how far up we step
@@ -345,7 +345,7 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, deltaTime: f64) void {
+	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.sync.Side, deltaTime: f64) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
@@ -527,14 +527,12 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
-		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
-			if (!mods.shift) {
-				if (main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
-			}
-			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
+		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| blk: {
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse break :blk;
+			const block = mesh.chunk.getBlock(blockPos[0] - mesh.pos.wx, blockPos[1] - mesh.pos.wy, blockPos[2] - mesh.pos.wz);
 			const onInteract = block.onInteract();
 			if (!mods.shift) {
-				if (onInteract.run(.{.blockPos = blockPos, .block = block}) == .handled) return;
+				if (onInteract.run(.{.blockPos = blockPos, .block = block, .chunk = mesh.chunk}) == .handled) return;
 			}
 		}
 
