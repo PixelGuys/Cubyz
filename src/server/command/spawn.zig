@@ -16,8 +16,8 @@ pub const usage =
 pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
 	if (split.peek().?.len > 0) {
-		const first = split.next().?;
-		if (std.mem.eql(u8, first, "world")) {
+		if (std.mem.eql(u8, split.peek().?, "world")) {
+			_ = split.next();
 			if (split.peek() == null or split.peek().?.len == 0) {
 				const world = main.server.world.?;
 				source.sendMessage("#ffff00World spawn: {}", .{world.spawn});
