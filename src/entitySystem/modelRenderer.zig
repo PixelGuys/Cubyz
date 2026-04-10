@@ -29,7 +29,7 @@ const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
 
-const models = main.entity.components.@"cubyz:model";
+const entityComponent = main.entity.components;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
@@ -58,19 +58,19 @@ pub const client = struct {
 		pipeline.deinit();
 	}
 	pub fn clear() void {}
-	pub fn renderHud(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-		_ = ambientLight;
+
+	pub fn renderHud(projMatrix: Mat4f, _: Vec3f, playerPos: Vec3d) void {
 		main.client.entity_manager.mutex.lock();
-		defer main.client.entity.entity_manager.mutex.unlock();
+		defer main.client.entity_manager.mutex.unlock();
 
 		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
 		const fontBaseSize = 128.0;
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		var it = models.client.renderComponents.iterator();
+		var it = entityComponent.@"cubyz:model".client.renderComponents.iterator();
 		while (it.next()) |component| {
-			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
+			const ent = main.client.entity_manager.entities.items()[component.value_ptr.entity];
 			const entModel = component.value_ptr.entityModel.get();
 
 			if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
@@ -103,14 +103,14 @@ pub const client = struct {
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 		pipeline.bind(null);
-		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		main.renderer.chunk_meshing.vao.bind();
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		var it = models.client.renderComponents.iterator();
+		var it = entityComponent.@"cubyz:model".client.renderComponents.iterator();
 		while (it.next()) |component| {
-			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
+			const ent = main.client.entity_manager.getEntity(component.value_ptr.entity);
 			const entModel = component.value_ptr.entityModel.get();
 
 			if (ent.id == game.Player.id) continue; // don't render local player
