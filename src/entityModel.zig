@@ -53,7 +53,7 @@ pub const EntityModel = struct {
 
 	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
-		self.id = main.globalAllocator.dupe(u8, id);
+		self.id = main.worldArena.dupe(u8, id);
 		self.height = zon.getChild("height").as(f32, 1);
 		self.defaultTexture = null;
 		self.vao = null;
@@ -65,10 +65,10 @@ pub const EntityModel = struct {
 			var split = std.mem.splitScalar(u8, id, ':');
 			const mod = split.first();
 			if (zon.get(?[]const u8, "texture", null)) |texture| {
-				self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
 				std.fs.cwd().access(self.texturePath, .{}) catch {
-					main.globalAllocator.free(self.texturePath);
-					self.texturePath = std.fmt.allocPrint(main.globalAllocator.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
+					main.worldArena.free(self.texturePath);
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
 				};
 			}
 		}
@@ -120,8 +120,6 @@ pub const EntityModel = struct {
 		self.defaultTexture.?.bindTo(0);
 	}
 	pub fn deinit(self: *EntityModel) void {
-		main.globalAllocator.free(self.id);
-		main.globalAllocator.free(self.texturePath);
 		self.deinitModelAndTexture();
 	}
 };
@@ -164,6 +162,4 @@ pub fn loadModelAndTexture() void {
 	for (entityModels.items) |*value| {
 		value.loadModelAndTexture();
 	}
-	// TODO: this will be removed in future ECS parts
-	main.client.entity_manager.model.loadModelAndTexture();
 }
