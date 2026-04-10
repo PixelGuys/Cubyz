@@ -9,18 +9,7 @@ const Vec2f = vec.Vec2f;
 
 const vulkan = @import("vulkan.zig");
 
-pub const c = @cImport({
-	@cInclude("glad/gl.h");
-
-	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
-	if (builtin.target.os.tag == .macos) {
-		@cInclude("vulkan/vulkan.h");
-		@cInclude("vulkan/vulkan_beta.h");
-	} else {
-		@cInclude("glad/vulkan.h");
-	}
-	@cInclude("GLFW/glfw3.h");
-});
+pub const c = main.graphics.c;
 
 var isFullscreen: bool = false;
 pub var lastUsedMouse: bool = true;

@@ -51,6 +51,10 @@ pub var lastUsedIPAddress: []const u8 = "";
 
 pub var storedAccount: main.network.authentication.PasswordEncodedAccountCode = .empty;
 
+pub var funnyOption: i32 = 0;
+pub var funnyOptionExponent: f32 = 0.75;
+pub var funnyOptionOffset: f32 = 256;
+
 pub var guiScale: ?f32 = null;
 
 pub var musicVolume: f32 = 1;
