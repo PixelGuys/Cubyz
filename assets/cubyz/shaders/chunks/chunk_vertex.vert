@@ -79,15 +79,16 @@ void main() {
 	uint lightIndex = chunks[chunkID].lightStart + 4*(encodedPositionAndLightIndex >> 16);
 	uint fullLight = lightData[lightIndex + vertexID];
 	vec3 sunLight = vec3(
-		fullLight >> 25 & 31u,
-		fullLight >> 20 & 31u,
-		fullLight >> 15 & 31u
+		fullLight >> 23 & 31u,
+		fullLight >> 18 & 31u,
+		fullLight >> 14 & 15u
 	);
 	vec3 blockLight = vec3(
-		fullLight >> 10 & 31u,
-		fullLight >> 5 & 31u,
-		fullLight >> 0 & 31u
+		fullLight >> 9 & 31u,
+		fullLight >> 4 & 31u,
+		fullLight >> 0 & 15u
 	);
+	float ambientOcclusion = 15 - float(fullLight >> 28 & 15u);
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
 
 	textureIndex = textureAndQuad & 65535;
@@ -115,7 +116,7 @@ void main() {
 	if (optionEnum == 2) {
 		interp = interp = clamp(0, 1 - pow(1.0/length(direction)*optionOffset, optionExponent), 1);
 	}
-	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31*(1 - interp) + interp*(1 - 0.06);
+	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31, 31, 15))/vec3(31, 31, 15)*((1 - interp)*(15 - ambientOcclusion)/15.0 + interp*(1 - 0.06));
 
 	vec4 mvPos = viewMatrix*vec4(position, 1);
 	gl_Position = projectionMatrix*mvPos;

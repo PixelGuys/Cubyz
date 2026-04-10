@@ -411,7 +411,16 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		const blockLight = mesh.lightingData[0].getValue(pos);
 		const sunLight = mesh.lightingData[1].getValue(pos);
 		std.debug.assert(builtin.cpu.arch.endian() == .little);
-		const totalLight = @as(u64, sunLight.raw()) | (@as(u64, blockLight.raw()) << 32);
+		var totalLight = @as(u64, sunLight.raw()) | (@as(u64, blockLight.raw()) << 32);
+		const absorption = mesh.chunk.data.getValue(pos.toIndex()).absorption();
+		const light = mesh.chunk.data.getValue(pos.toIndex()).light();
+		var occlusion: u8 = @intCast(@min(absorption >> 16 & 255, absorption >> 8 & 255, absorption & 255));
+		occlusion = @intCast(@min(occlusion, 255 - (light >> 16 & 255), 255 - (light >> 8 & 255), 255 - (light & 255)));
+		occlusion = 255 - occlusion;
+		occlusion = @max(@reduce(.Max, @as(@Vector(8, u8), @bitCast(totalLight))), occlusion);
+		totalLight &= ~@as(u64, 255 << 56);
+		totalLight &= ~@as(u64, 255 << 24);
+		totalLight |= @as(u64, occlusion) << 56;
 		return @as(@Vector(8, u8), @bitCast(totalLight));
 	}
 
@@ -433,6 +442,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		const interp = lightPos - @floor(lightPos);
 		var val: LightVector = @splat(0);
 		var dx: i32 = 0;
+		var totalWeight: u16 = 0;
 		while (dx <= 1) : (dx += 1) {
 			var dy: i32 = 0;
 			while (dy <= 1) : (dy += 1) {
@@ -445,16 +455,20 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 					const integerWeight: u16 = @intFromFloat(weight*256);
 					const lightVal: LightVector = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
 					val += lightVal*@as(LightVector, @splat(integerWeight));
+					totalWeight += integerWeight*lightVal[7];
 				}
 			}
 		}
-		return val/@as(LightVector, @splat(256));
+		val = @intCast(@as(@Vector(8, u32), val)*@as(@Vector(8, u32), @splat(255))/@as(LightVector, @splat(@max(1, totalWeight))));
+		val[7] = totalWeight/256;
+		return val;
 	}
 
 	fn getLightSampleAligned(parent: *ChunkMesh, pos: Vec3i, direction: chunk.Neighbor) LightVector {
 		var lightVal: LightVector = getLightAt(parent, pos[0], pos[1], pos[2]);
-		if (parent.pos.voxelSize == 1) {
-			const nextVal = getLightAt(parent, pos[0] +% direction.relX(), pos[1] +% direction.relY(), pos[2] +% direction.relZ());
+		if (parent.pos.voxelSize == 1121) {
+			var nextVal = getLightAt(parent, pos[0] +% direction.relX(), pos[1] +% direction.relY(), pos[2] +% direction.relZ());
+			nextVal[7] = 0;
 			const diff: LightVector = @min(@as(LightVector, @splat(8)), lightVal -| nextVal);
 			lightVal = lightVal -| diff*@as(LightVector, @splat(5))/@as(LightVector, @splat(2));
 		}
@@ -464,12 +478,13 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	fn packLightValues(rawVals: [4]LightVector) [4]u32 {
 		var result: [4]u32 = undefined;
 		for (0..4) |i| {
-			result[i] = (@as(u32, rawVals[i][0] >> 3) << 25 |
-				@as(u32, rawVals[i][1] >> 3) << 20 |
-				@as(u32, rawVals[i][2] >> 3) << 15 |
-				@as(u32, rawVals[i][4] >> 3) << 10 |
-				@as(u32, rawVals[i][5] >> 3) << 5 |
-				@as(u32, rawVals[i][6] >> 3) << 0);
+			result[i] = (@as(u32, rawVals[i][0] >> 3) << 23 |
+				@as(u32, rawVals[i][1] >> 3) << 18 |
+				@as(u32, rawVals[i][2] >> 4) << 14 |
+				@as(u32, rawVals[i][4] >> 3) << 9 |
+				@as(u32, rawVals[i][5] >> 3) << 4 |
+				@as(u32, rawVals[i][6] >> 4) << 0 |
+				@as(u32, rawVals[i][7] >> 4) << 28);
 		}
 		return result;
 	}
@@ -484,14 +499,17 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 		if (extraQuadInfo.alignedNormalDirection) |dir| { // Fast path using precomputed samples
 			var lightValues: [4]LightVector = @splat(@splat(0));
+			var totalWeight: [4]u16 = @splat(0);
 			for (extraQuadInfo.lightSampleListForAxisAlignedModels) |sample| {
 				const lightVal = getLightSampleAligned(parent, blockPos +% sample.offset, dir);
 				for (0..4) |i| {
 					lightValues[i] += @as(LightVector, @splat(sample.weights[i]))*lightVal;
+					totalWeight[i] += sample.weights[i]*lightVal[7];
 				}
 			}
 			for (0..4) |i| {
-				lightValues[i] /= @splat(256);
+				lightValues[i] = @intCast(@as(@Vector(8, u32), lightValues[i])*@as(@Vector(8, u32), @splat(255))/@as(@Vector(8, u32), @splat(@max(1, totalWeight[i]))));
+				lightValues[i][7] = totalWeight[i]/256;
 			}
 			return packLightValues(lightValues);
 		}
@@ -505,7 +523,8 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			return packLightValues(rawVals);
 		}
 		var rawVals: [4]LightVector = undefined;
-		for (0..4) |i| {
+		for (0..4) |i| { // TODO: DO the AO stuff
+			if (true) break;
 			const vertexPos: Vec3f = quadInfo.corners[i];
 			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
 			const containingBlockPos: Vec3i = @intFromFloat(@floor(lightPos));
