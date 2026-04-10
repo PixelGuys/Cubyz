@@ -161,7 +161,9 @@ pub fn addEntity(zon: ZonElement) void {
 	var ent = entities.addOne();
 	ent.init(zon, main.globalAllocator);
 }
-
+pub fn getEntity(id: u32) *main.client.Entity {
+	return &entities.items()[id];
+}
 pub fn removeEntity(id: u32) void {
 	mutex.lock();
 	defer mutex.unlock();
