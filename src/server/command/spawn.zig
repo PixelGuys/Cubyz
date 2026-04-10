@@ -29,11 +29,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				return;
 			}
 			const world = main.server.world.?;
-			world.spawn = .{
-				@intFromFloat(pos[0]),
-				@intFromFloat(pos[1]),
-				@intFromFloat(pos[2]),
-			};
+			world.spawn = @intFromFloat(pos)
 			return;
 		}
 
