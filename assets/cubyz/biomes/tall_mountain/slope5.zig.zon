@@ -1,5 +1,6 @@
 .{
 	.properties = .{.mountain},
+	.tags = .{.snowy},
 	.radius = 120,
 	.minHeight = 672,
 	.maxHeight = 672,
