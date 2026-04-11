@@ -580,21 +580,21 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// EntityModels:
 	{
 		// First blocks from the palette to enforce ID values.
-		for (entityModelPalette.palette.items) |stringId| {
-			std.log.debug("Registering entity model {s}", .{stringId});
-			_ = main.entityModel.register(assetFolder, stringId, worldAssets.entityModelDescriptions.get(stringId) orelse .null);
+		for (entityModelPalette.palette.items) |entityModelId| {
+			std.log.debug("Registering entity model {s}", .{entityModelId});
+			_ = main.entityModel.register(assetFolder, entityModelId, worldAssets.entityModelDescriptions.get(entityModelId) orelse .null);
 		}
 		// Then all the blocks that were missing in palette but are present in the game.
 		var entModelIterator = worldAssets.entityModelDescriptions.iterator();
 		while (entModelIterator.next()) |entry| {
-			const stringId = entry.key_ptr.*;
+			const entityModelId = entry.key_ptr.*;
 			const zon = entry.value_ptr.*;
 
-			if (main.entityModel.getById(stringId) != null) continue;
+			if (main.entityModel.getById(entityModelId) != null) continue;
 
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
-			_ = main.entityModel.register(assetFolder, stringId, zon);
-			entityModelPalette.add(stringId);
+			_ = main.entityModel.register(assetFolder, entityModelId, zon);
+			entityModelPalette.add(entityModelId);
 		}
 	}
 

@@ -21,7 +21,7 @@ const BinaryReader = main.utils.BinaryReader;
 pub const EntityModel = struct {
 	height: f32,
 	texturePath: []const u8,
-	id: []const u8,
+	modelId: ?[]const u8,
 
 	isLoaded: bool,
 	vao: ?graphics.VertexArray = null,
@@ -52,21 +52,25 @@ pub const EntityModel = struct {
 		};
 	};
 
-	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
+	pub fn init(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
-		self.id = main.worldArena.dupe(u8, id);
+		self.isLoaded = false;
+		if (zon.get(?[]const u8, "model", null)) |modelId| {
+			self.modelId = main.worldArena.dupe(u8, modelId);
+		} else {
+			self.modelId = null;
+		}
 		self.height = zon.getChild("height").as(f32, 1);
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
-		self.isLoaded = false;
 
 		// get TexturePath
 		{
 			self.texturePath = &.{};
-			var split = std.mem.splitScalar(u8, id, ':');
+			var split = std.mem.splitScalar(u8, entityModelId, ':');
 			const mod = split.first();
-			if (zon.get(?[]const u8, "texture", null)) |texture| {
+			if (zon.get(?[]const u8, "defaultTexture", null)) |texture| {
 				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
 				main.files.cubyzDir().dir.access(self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
@@ -79,9 +83,11 @@ pub const EntityModel = struct {
 
 	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
+		if (self.modelId == null)
+			return error.NoModelSpecified;
 
 		const fileEnding = ".obj";
-		const file = try main.assets.readAsset(main.stackAllocator, "entityModels/models", self.id, fileEnding);
+		const file = try main.assets.readAsset(main.stackAllocator, "entityModels/models", self.modelId.?, fileEnding);
 		defer main.stackAllocator.free(file);
 
 		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, file);
@@ -138,10 +144,10 @@ pub const EntityModelIndex = struct {
 pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
 pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
-pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) usize {
+pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) usize {
 	const index = entityModels.items.len;
-	entityModels.append(main.worldArena, EntityModel.init(assetFolder, id, zon));
-	reverseIndices.put(main.worldArena.allocator, id, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, entityModelId, zon));
+	reverseIndices.put(main.worldArena.allocator, entityModelId, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
 	return index;
 }
 pub fn reset() void {
