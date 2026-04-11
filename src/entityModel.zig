@@ -82,6 +82,15 @@ pub const EntityModel = struct {
 		return self;
 	}
 
+	pub fn deinit(self: *EntityModel) void {
+		if (self.defaultTexture) |defaultTexture| {
+			defaultTexture.deinit();
+		}
+		if (self.vao) |vao| {
+			vao.deinit();
+		}
+	}
+
 	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 		if (self.modelId == null)
@@ -115,17 +124,10 @@ pub const EntityModel = struct {
 		self.vao = .init(Vertex, vertices, indices);
 		self.indexCount = @intCast(indices.len);
 	}
+	
 	pub fn bind(self: *EntityModel) void {
 		self.vao.?.bind();
 		self.defaultTexture.?.bindTo(0);
-	}
-	pub fn deinit(self: *EntityModel) void {
-		if (self.defaultTexture) |defaultTexture| {
-			defaultTexture.deinit();
-		}
-		if (self.vao) |vao| {
-			vao.deinit();
-		}
 	}
 };
 
