@@ -73,7 +73,10 @@ fn update() void {
 
 // TODO: this will be removed in future ECS parts
 pub fn initAfterWorld() void {
-	model = main.entityModel.getById("cubyz:snale").?.get();
+	model = (main.entityModel.getById("cubyz:snale") orelse blk: {
+		std.log.err("EntityModel {s} wasn't found", .{"cubyz:snale"});
+		break :blk main.entityModel.default();
+	}).get();
 }
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
@@ -155,11 +158,11 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	}
 }
 
-pub fn addEntity(zon: ZonElement) void {
+pub fn addEntity(zon: ZonElement) !void {
 	mutex.lock();
 	defer mutex.unlock();
 	var ent = entities.addOne();
-	ent.init(zon, main.globalAllocator);
+	try ent.init(zon, main.globalAllocator);
 }
 pub fn getEntity(id: u32) *main.client.Entity {
 	return &entities.items()[id];

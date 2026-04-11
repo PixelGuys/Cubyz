@@ -677,9 +677,9 @@ pub const inventory = struct { // MARK: inventory
 					}
 				} else if (itemSlot.inventory.type == .workbenchResult) {
 					if (mainGuiButton.modsOnPress.shift) {
-						itemSlot.inventory.craftTool(&.{main.game.Player.inventory});
+						itemSlot.inventory.craftProceduralItem(&.{main.game.Player.inventory});
 					} else {
-						itemSlot.inventory.craftTool(&.{carried});
+						itemSlot.inventory.craftProceduralItem(&.{carried});
 					}
 				}
 			}
