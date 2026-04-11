@@ -515,6 +515,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
+		try self.loadPermissionGroups(dir);
 		return self;
 	}
 
@@ -548,6 +549,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.toolPalette.deinit();
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
+		permission.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -643,6 +645,40 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
 
 		try files.cubyzDir().writeZon(path, worldData);
+	}
+
+	pub fn loadPermissionGroups(_: *ServerWorld, dir: main.files.Dir) !void {
+		const metaDataZon: ZonElement = dir.readToZon(main.stackAllocator, "metadata.zon") catch .initObject(main.stackAllocator);
+		defer metaDataZon.deinit(main.stackAllocator);
+
+		permission.init(main.globalAllocator, metaDataZon.get(u32, "currentId", 0));
+
+		var groupDir = try dir.openIterableDir("groups");
+		defer groupDir.close();
+		var iterator = groupDir.iterate();
+		while (try iterator.next()) |file| {
+			if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
+				const zon = try groupDir.readToZon(main.stackAllocator, file.name);
+				defer zon.deinit(main.stackAllocator);
+				if (std.mem.eql(u8, file.name, "metadata.zon")) continue;
+				const fileNameBase = file.name[0 .. std.mem.findScalar(u8, file.name, '.') orelse unreachable];
+				if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
+					std.log.err("Group file {s} contains leading zeroes. Skipping.", .{file.name});
+					continue;
+				}
+				const id = std.fmt.parseInt(u32, fileNameBase, 10) catch |err| {
+					std.log.err("Couldn't parse group file {s}: {s} Skipping.", .{file.name, @errorName(err)});
+					continue;
+				};
+				permission.addGroupFromZon(id, zon);
+			}
+		}
+	}
+
+	pub fn savePermissionGroups(self: *ServerWorld) !void {
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups/", .{self.path}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		try permission.saveGroups(main.stackAllocator, path);
 	}
 
 	pub fn loadPlayerLoginInfo(self: *ServerWorld, dir: main.files.Dir) !void {
@@ -957,6 +993,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
 			user.permissions.fromZon(playerData);
+			user.groupListFromZon(playerData.getChild("permissionGroups"));
 
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
@@ -1013,6 +1050,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
+		playerZon.put("permissionGroups", user.groupListToZon(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
@@ -1050,6 +1088,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.saveWorldConfig();
 
 		try self.saveAllPlayers();
+		try self.savePermissionGroups();
 
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();
