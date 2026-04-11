@@ -169,6 +169,9 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 	if (reverseIndices.get(id)) |result| {
 		return result;
 	}
+	if (reverseIndices.get("cubyz:missing")) |result| {
+		return result;
+	}
 	return null;
 }
 pub fn loadModelsAndTexture() void {
