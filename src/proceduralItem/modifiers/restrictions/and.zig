@@ -3,16 +3,16 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ModifierRestriction = main.items.ModifierRestriction;
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
 
 const And = struct {
 	children: []ModifierRestriction,
 };
 
-pub fn satisfied(self: *const And, tool: *const Tool, x: i32, y: i32) bool {
+pub fn satisfied(self: *const And, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	for (self.children) |child| {
-		if (!child.satisfied(tool, x, y)) return false;
+		if (!child.satisfied(proceduralItem, x, y)) return false;
 	}
 	return true;
 }
