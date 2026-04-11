@@ -23,7 +23,6 @@ pub const EntityModel = struct {
 	texturePath: []const u8,
 	modelId: ?[]const u8,
 
-	isLoaded: bool,
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
@@ -52,9 +51,8 @@ pub const EntityModel = struct {
 		};
 	};
 
-	pub fn init(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModel {
+	pub fn init(assetFolder: []const u8, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
-		self.isLoaded = false;
 		if (zon.get(?[]const u8, "model", null)) |modelId| {
 			self.modelId = main.worldArena.dupe(u8, modelId);
 		} else {
@@ -68,17 +66,39 @@ pub const EntityModel = struct {
 		// get TexturePath
 		{
 			self.texturePath = &.{};
-			var split = std.mem.splitScalar(u8, entityModelId, ':');
-			const mod = split.first();
+			const fileEnding = ".png";
 			if (zon.get(?[]const u8, "defaultTexture", null)) |texture| {
-				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
+				var split = std.mem.splitScalar(u8, texture, ':');
+				const mod = split.first();
+				const textureName = split.next() orelse unreachable;
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding}) catch unreachable;
 				main.files.cubyzDir().dir.access(self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
-					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}{s}", .{mod, textureName, fileEnding}) catch unreachable;
 				};
 			}
 		}
 		return self;
+	}
+
+	pub fn deinit(self: *EntityModel) void {
+		if (self.defaultTexture) |defaultTexture| {
+			defaultTexture.deinit();
+		}
+		if (self.vao) |vao| {
+			vao.deinit();
+		}
+	}
+
+	fn cloneMetaData(self: *EntityModel) EntityModel {
+		return .{
+			.height = self.height,
+			.texturePath = main.worldArena.dupe(u8, self.texturePath),
+			.modelId = if (self.modelId) |modelId| main.worldArena.dupe(u8, modelId) else null,
+			.vao = null,
+			.indexCount = 0,
+			.defaultTexture = null,
+		};
 	}
 
 	fn loadModelAndTexture(self: *EntityModel) !void {
@@ -114,17 +134,10 @@ pub const EntityModel = struct {
 		self.vao = .init(Vertex, vertices, indices);
 		self.indexCount = @intCast(indices.len);
 	}
+
 	pub fn bind(self: *EntityModel) void {
 		self.vao.?.bind();
 		self.defaultTexture.?.bindTo(0);
-	}
-	pub fn deinit(self: *EntityModel) void {
-		if (self.defaultTexture) |defaultTexture| {
-			defaultTexture.deinit();
-		}
-		if (self.vao) |vao| {
-			vao.deinit();
-		}
 	}
 };
 
@@ -132,12 +145,7 @@ pub const EntityModelIndex = struct {
 	index: u32,
 	pub fn get(self: EntityModelIndex) *EntityModel {
 		std.debug.assert(entityModels.items.len > self.index);
-		const rv = &entityModels.items[self.index];
-		if (rv.isLoaded)
-			return rv;
-		// should always exist because of firstEntry in entityModelPalette
-		std.debug.assert(entityModels.items.len > 0);
-		return &entityModels.items[0];
+		return &entityModels.items[self.index];
 	}
 };
 
@@ -146,7 +154,7 @@ pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
 pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) usize {
 	const index = entityModels.items.len;
-	entityModels.append(main.worldArena, EntityModel.init(assetFolder, entityModelId, zon));
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, zon));
 	reverseIndices.put(main.worldArena.allocator, entityModelId, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
 	return index;
 }
@@ -164,12 +172,19 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 	}
 	return null;
 }
+pub fn default() EntityModelIndex {
+	if (reverseIndices.get("cubyz:missing")) |result| {
+		return result;
+	}
+	@panic("Not even cubyz:missing is available to fallback to!");
+}
 pub fn loadModelsAndTexture() void {
 	for (entityModels.items) |*value| {
 		value.loadModelAndTexture() catch {
-			value.isLoaded = false;
+			value.deinit();
+			value.* = default().get().cloneMetaData();
+			value.loadModelAndTexture() catch unreachable;
 			continue;
 		};
-		value.isLoaded = true;
 	}
 }
