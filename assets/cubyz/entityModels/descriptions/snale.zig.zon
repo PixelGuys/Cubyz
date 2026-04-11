@@ -1,5 +1,5 @@
 .{
-	.model = "cubyz:snale",
 	.texture = "snale.png",
 	.height = 2,
+	.coordinateSystem = .left_handed_y_up,
 }

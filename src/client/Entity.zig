@@ -14,6 +14,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const EntityModel = main.entityModel.EntityModel;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
@@ -28,6 +29,10 @@ height: f64,
 pos: Vec3d = undefined,
 rot: Vec3f = undefined,
 
+model: *EntityModel = undefined,
+nodes: [20]EntityModel.Node = undefined,
+matrices: [20]Mat4f = undefined,
+ // hi 2
 id: u32,
 name: []const u8,
 playerIndex: ?usize, // TODO extract into own component #2760
@@ -40,6 +45,9 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 		.playerIndex = zon.get(?usize, "playerIndex", null),
 	};
+
+	self.rot = Vec3f{0, 0, 0};
+	self.pos = Vec3d{0, 0, 0};
 	self._interpolationPos = [_]f64{
 		self.pos[0],
 		self.pos[1],
@@ -50,6 +58,15 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 	};
 	self._interpolationVel = @splat(0);
 	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
+
+	self.model = main.client.entity_manager.model;
+	for (0..self.model.nodeCount) |i| {
+		self.nodes[i] = self.model.nodes[i];
+	}
+	
+	for (0..self.model.nodeCount) |i| {
+		self.matrices[i] = getHierarchyMatrix(self.nodes, self.nodes[i]);
+	}
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
@@ -64,6 +81,7 @@ pub fn updatePosition(self: *@This(), pos: *const [6]f64, vel: *const [6]f64, ti
 	self.interpolatedValues.updatePosition(pos, vel, time);
 }
 
+var ueee: f32 = 0;
 pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.interpolatedValues.update(time, lastTime);
 	self.pos[0] = self.interpolatedValues.outPos[0];
@@ -72,6 +90,43 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[0] = @floatCast(self.interpolatedValues.outPos[3]);
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
+
+	const headId = self.model.nodeReverse.get("Head").?;
+	const rightArmId = self.model.nodeReverse.get("RightArm").?;
+	const rightItemId = self.model.nodeReverse.get("RightItem").?;
+
+	if (self.model.nodeReverse.get("Eyestalks")) |eyestalksId|{
+		const stalkRot = self.rot[0]*0.25;
+		const headRot = self.rot[0]*0.75;
+		self.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
+		self.matrices[eyestalksId] = getHierarchyMatrix(self.nodes, self.nodes[eyestalksId]);
+
+		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
+		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
+	} else {
+		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
+		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
+	}
+
+	ueee += 0.05;
+
+	self.nodes[rightItemId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/5);
+	self.matrices[rightItemId] = getHierarchyMatrix(self.nodes, self.nodes[rightItemId]);
+
+	self.nodes[rightArmId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/3);
+	self.matrices[rightArmId] = getHierarchyMatrix(self.nodes, self.nodes[rightArmId]);
+}
+
+fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
+	var mat = Mat4f.translation(node.pos);
+	mat = mat.mul(Mat4f.rotationQuat(node.rot));
+	mat = mat.mul(Mat4f.scale(node.scale));
+
+	if (node.parent == null) {
+		return mat;
+	}
+
+	return getHierarchyMatrix(nodes, nodes[node.parent.?]).mul(mat);
 }
 
 pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {

@@ -26,12 +26,13 @@ var uniforms: struct {
 	light: c_int,
 	contrast: c_int,
 	ambientLight: c_int,
+	nodeMatrices: c_int,
 } = undefined;
-var model: main.entityModel.EntityModel = undefined;
+
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
-
+pub var model: *main.entityModel.EntityModel = undefined;
 pub fn init() void {
 	entities = .init();
 	pipeline = graphics.Pipeline.init(
@@ -43,8 +44,6 @@ pub fn init() void {
 		.{.depthTest = true},
 		.{.attachments = &.{.alphaBlending}},
 	);
-
-	model = .initFromObj("assets/cubyz/entityModels/models/snale.obj", "assets/cubyz/entityModels/textures/snale.png");
 }
 
 pub fn deinit() void {
@@ -53,7 +52,6 @@ pub fn deinit() void {
 	}
 	entities.deinit();
 	pipeline.deinit();
-	model.deinit();
 }
 
 pub fn clear() void {
@@ -74,6 +72,19 @@ fn update() void {
 	lastTime = time;
 }
 
+// TODO: this will be removed in future ECS parts
+pub fn initAfterWorld() void {
+	model = main.entityModel.getById("cubyz:snale").?.get();
+
+	// TODO: remove before merge
+	addEntity(ZonElement.parseFromString(main.globalArena, null,
+		\\ .{
+		\\    .id = 1,
+		\\    .name = "bobik",
+		\\
+		\\  }
+	));
+}
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
 	defer mutex.unlock();
@@ -150,6 +161,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 			.mul(Mat4f.rotationZ(-ent.rot[2])));
 		const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
+		c.glUniformMatrix4fv(uniforms.nodeMatrices, 20, c.GL_TRUE, @ptrCast(&ent.matrices));
 		c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
 	}
 }
