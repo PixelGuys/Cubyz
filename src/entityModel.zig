@@ -117,7 +117,6 @@ pub const EntityModel = struct {
 			.indexCount = 0,
 			.defaultTexture = null,
 			.coordinateSystem = self.coordinateSystem,
-			.swapTriangleWinding = self.swapTriangleWinding,
 		};
 	}
 
@@ -175,23 +174,9 @@ pub const EntityModel = struct {
 					baseVertex = @intCast(vertices.items.len);
 					const vertSlice: []Vertex = vertices.addMany(vertCount);
 
-					if (self.swapTriangleWinding) {
-						const count = indicesAccessor.count/3;
-						for (0..count) |i| {
-							var idx = indicesAccessor.index(i*3);
-							indicesSlice[i*3] = @as(u32, @intCast(idx)) + baseVertex;
-
-							idx = indicesAccessor.index(i*3 + 2);
-							indicesSlice[i*3 + 1] = @as(u32, @intCast(idx)) + baseVertex;
-
-							idx = indicesAccessor.index(i*3 + 1);
-							indicesSlice[i*3 + 2] = @as(u32, @intCast(idx)) + baseVertex;
-						}
-					} else {
-						for (0..indicesAccessor.count) |i| {
-							const idx = indicesAccessor.index(i);
-							indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
-						}
+					for (0..indicesAccessor.count) |i| {
+						const idx = indicesAccessor.index(i);
+						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
 					}
 
 					var positionAttr: gltf.cgltf_accessor = undefined;
