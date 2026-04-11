@@ -170,16 +170,19 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 	if (reverseIndices.get(id)) |result| {
 		return result;
 	}
+	return null;
+}
+pub fn default()EntityModelIndex{
 	if (reverseIndices.get("cubyz:missing")) |result| {
 		return result;
 	}
-	return null;
+	@panic("Not even cubyz:missing is available to fallback to!");
 }
 pub fn loadModelsAndTexture() void {
 	for (entityModels.items) |*value| {
 		value.loadModelAndTexture() catch {
 			value.deinit();
-			value.* = getById("cubyz:missing").?.get().cloneMetaData();
+			value.* = default().get().cloneMetaData();
 			value.loadModelAndTexture() catch unreachable;
 			continue;
 		};
