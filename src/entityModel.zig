@@ -31,7 +31,6 @@ pub const EntityModel = struct {
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
-	swapTriangleWinding: bool = false,
 
 	pub const CoordinateSystem = enum {
 		right_handed_z_up,
@@ -81,7 +80,6 @@ pub const EntityModel = struct {
 			std.log.err("Error: invalid coordinate system enum name - \"{s}\"", .{coordSystemName});
 			break :blk CoordinateSystem.right_handed_z_up;
 		};
-		self.swapTriangleWinding = zon.get(bool, "swapTriangleWinding", false);
 
 		// get TexturePath
 		{
@@ -128,14 +126,14 @@ pub const EntityModel = struct {
 		if (self.modelId == null)
 			return error.NoModelSpecified;
 
-		const file = try main.assets.readAsset(main.globalAllocator, "entityModels/models", self.modelId.?, ".glb");
-		defer main.globalAllocator.free(file);
+		const file = try main.assets.readAsset(main.stackAllocator, "entityModels/models", self.modelId.?, ".glb");
+		defer main.stackAllocator.free(file);
 
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
 
 		var result = gltf.cgltf_parse(&options, @ptrCast(file.ptr), @intCast(file.len), @ptrCast(&data));
-		if (result == gltf.cgltf_result_file_not_found or result == gltf.cgltf_result_io_error) {
+		if (result != gltf.cgltf_result_success) {
 			std.log.err("GLTF Parse error: {s}", .{@errorName(getGltfError(result))});
 			return getGltfError(result);
 		}
@@ -213,13 +211,13 @@ pub const EntityModel = struct {
 					for (0..positionAttr.count) |v| {
 						var p: [3]f32 = undefined;
 						_ = positionAttr.float(v, @ptrCast(&p), 3);
-						const p2 = convertCoordinateSystemVec(.{p[0], p[1], p[2]}, self.coordinateSystem);
+						const p2 = convertCoordinateSystemVec(p, self.coordinateSystem);
 						const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
-						vertSlice[v].pos = .{pos[0], pos[1], pos[2]};
+						vertSlice[v].pos = vec.xyz(pos);
 
 						var normal: [3]f32 = undefined;
 						_ = normalAttr.float(v, @ptrCast(&normal), 3);
-						vertSlice[v].normal = convertCoordinateSystemVec(.{normal[0], normal[1], normal[2]}, self.coordinateSystem);
+						vertSlice[v].normal = convertCoordinateSystemVec(normal, self.coordinateSystem);
 
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.float(v, @ptrCast(&uv), 2);
@@ -236,7 +234,7 @@ pub const EntityModel = struct {
 	fn convertCoordinateSystemVec(v: Vec3f, sys: CoordinateSystem) Vec3f {
 		return switch (sys) {
 			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
-			.right_handed_y_up => Vec3f{v[0], v[2], v[1]},
+			.right_handed_y_up => Vec3f{v[0], v[2], -v[1]},
 			.left_handed_z_up => Vec3f{-v[0], v[1], v[2]},
 			.left_handed_y_up => Vec3f{-v[0], v[2], v[1]},
 		};
@@ -245,7 +243,7 @@ pub const EntityModel = struct {
 	fn convertCoordinateSystemQuat(q: Vec4f, sys: CoordinateSystem) Vec4f {
 		return switch (sys) {
 			.right_handed_z_up => Vec4f{q[0], q[1], q[2], q[3]},
-			.right_handed_y_up => Vec4f{q[0], q[2], q[1], q[3]},
+			.right_handed_y_up => Vec4f{q[0], q[2], -q[1], q[3]},
 			.left_handed_z_up => Vec4f{-q[0], q[1], q[2], q[3]},
 			.left_handed_y_up => Vec4f{-q[0], q[2], q[1], q[3]},
 		};
