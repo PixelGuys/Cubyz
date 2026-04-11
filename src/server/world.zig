@@ -424,7 +424,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	itemDropManager: ItemDropManager = undefined,
 	blockPalette: *main.assets.Palette = undefined,
 	itemPalette: *main.assets.Palette = undefined,
-	toolPalette: *main.assets.Palette = undefined,
+	proceduralItemPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
 	entityComponentPalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
@@ -489,8 +489,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette = try loadPalette(arena, path, "item_palette", null);
 		errdefer self.itemPalette.deinit();
 
-		self.toolPalette = try loadPalette(arena, path, "tool_palette", null);
-		errdefer self.toolPalette.deinit();
+		self.proceduralItemPalette = try loadPalette(arena, path, "tool_palette", null);
+		errdefer self.proceduralItemPalette.deinit();
 
 		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
@@ -504,11 +504,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.entityComponentPalette);
+		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityComponentPalette);
 		// Store the block palette now that everything is loaded.
 		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
-		try dir.writeZon("tool_palette.zig.zon", self.toolPalette.storeToZon(arena));
+		try dir.writeZon("tool_palette.zig.zon", self.proceduralItemPalette.storeToZon(arena));
 		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
 		try dir.writeZon("entity_component_palette.zig.zon", self.entityComponentPalette.storeToZon(arena));
 
@@ -545,7 +545,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
-		self.toolPalette.deinit();
+		self.proceduralItemPalette.deinit();
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
 		main.globalAllocator.free(self.path);
