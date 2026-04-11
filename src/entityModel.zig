@@ -158,7 +158,7 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 	}
 	return null;
 }
-pub fn loadModelAndTexture() void {
+pub fn loadModelsAndTexture() void {
 	for (entityModels.items) |*value| {
 		value.loadModelAndTexture() catch {
 			value.isLoaded = false;
