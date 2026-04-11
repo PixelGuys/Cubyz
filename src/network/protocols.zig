@@ -515,7 +515,7 @@ pub const entity = struct { // MARK: entity
 					main.client.entity_manager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					main.client.entity_manager.addEntity(elem);
+					try main.client.entity_manager.addEntity(elem);
 				},
 				.null => {
 					i += 1;

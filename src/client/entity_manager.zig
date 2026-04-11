@@ -154,11 +154,11 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	}
 }
 
-pub fn addEntity(zon: ZonElement) void {
+pub fn addEntity(zon: ZonElement) !void {
 	mutex.lock();
 	defer mutex.unlock();
 	var ent = entities.addOne();
-	ent.init(zon, main.globalAllocator);
+	try ent.init(zon, main.globalAllocator);
 }
 
 pub fn removeEntity(id: u32) void {
