@@ -61,7 +61,7 @@ pub fn onOpen() void {
 			userList[i].increaseRefCount();
 			if (userList[i].id == main.game.Player.id and connection.isConnected()) continue;
 			const row = HorizontalList.init();
-			if (@intFromEnum(connection.handShakeState.load(.monotonic)) >= @intFromEnum(main.network.Connection.HandShakeState.userData)) {
+			if (connection.handShakeState.load(.monotonic) == .complete) {
 				const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.user.?}) catch unreachable;
 				defer main.stackAllocator.free(string);
 				row.add(Label.init(.{0, 0}, 200, string, .left));
