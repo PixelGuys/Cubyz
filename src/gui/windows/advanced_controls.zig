@@ -38,10 +38,20 @@ fn speedFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []cons
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Speed: {d:.0} ms", .{value/1.0e6}) catch unreachable;
 }
 
+fn reachCallback(newValue: f32) void {
+	settings.creativeReach = @min(@max(1, @round(newValue/6)), 40)*6;
+	settings.save();
+}
+
+fn reachFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffCreative Reach: {d:.0} blocks", .{@round(value/6)*6}) catch unreachable;
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0e6, 1.0e9, @floatFromInt(settings.updateRepeatDelay.nanoseconds), &delayCallback, &delayFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0e6, 0.5e9, @floatFromInt(settings.updateRepeatSpeed.nanoseconds), &speedCallback, &speedFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 6.0, 240.0, settings.creativeReach, &reachCallback, &reachFormatter));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
