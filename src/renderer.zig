@@ -390,27 +390,27 @@ pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, l
 	var faceData: main.ListUnmanaged(chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = main.blocks.meshes.model(block).model();
-	if(block.hasBackFace()) {
+	if (block.hasBackFace()) {
 		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, .fromCoords(1, 1, 1), true);
-		for(main.chunk.Neighbor.iterable) |neighbor| {
+		for (main.chunk.Neighbor.iterable) |neighbor| {
 			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, .fromCoords(1, 1, 1), true);
 		}
 	}
 	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, .fromCoords(1, 1, 1), false);
-	for(main.chunk.Neighbor.iterable) |neighbor| {
+	for (main.chunk.Neighbor.iterable) |neighbor| {
 		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, main.chunk.BlockPos.fromCoords(1, 1, 1).neighbor(neighbor)[0], false);
 	}
-	for(faceData.items, 0..) |*face, i| {
+	for (faceData.items, 0..) |*face, i| {
 		face.position.lightIndex = @intCast(i);
 	}
 
 	const lightData = main.stackAllocator.alloc(u32, faceData.items.len*4);
 	defer main.stackAllocator.free(lightData);
 
-	switch(lighting) {
+	switch (lighting) {
 		.world => |lightPos| {
 			const mesh = mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(lightPos, 1)) orelse return;
-			for(faceData.items) |face| {
+			for (faceData.items) |face| {
 				const quad = face.blockAndQuad.quadIndex.quadInfo();
 				const light: [4]u32 = chunk_meshing.PrimitiveMesh.getLightWithTransform(mesh, modelMatrix, -Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, blocks.meshes.textureIndex(block, quad.textureSlot), face.blockAndQuad.quadIndex);
 				lightData[face.position.lightIndex*4 ..][0..4].* = light;
@@ -450,8 +450,8 @@ fn renderFaces(projMatrix: Mat4f, modelMatrix: Mat4f, faceData: []chunk_meshing.
 	}}, &chunkAllocation);
 	defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
 
-	const uniforms = if(transparent) blockTransparentUniforms else blockUniforms;
-	if(transparent) {
+	const uniforms = if (transparent) blockTransparentUniforms else blockUniforms;
+	if (transparent) {
 		blockTransparentPipeline.bind(null);
 
 		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));

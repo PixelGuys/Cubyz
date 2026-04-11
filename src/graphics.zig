@@ -2654,9 +2654,9 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	var x: f64 = -65.5 + 0.5;
 	var y: f64 = -65.5 + 0.5;
 	var z: f64 = -92.631 + 0.5;
-	if(i & 1 != 0) x = -x + 1;
-	if(i & 2 != 0) y = -y + 1;
-	if(i & 4 != 0) z = -z + 1;
+	if (i & 1 != 0) x = -x + 1;
+	if (i & 2 != 0) y = -y + 1;
+	if (i & 4 != 0) z = -z + 1;
 
 	main.renderer.renderBlock(projMatrix, Mat4f.identity(), block, .{.uniform = 0xffffffff}, .{1, 1, 1}, .{x, y, z}, .transparent, 0.25);
 
