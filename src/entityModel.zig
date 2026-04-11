@@ -52,7 +52,7 @@ pub const EntityModel = struct {
 		};
 	};
 
-	pub fn init(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModel {
+	pub fn init(assetFolder: []const u8, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
 		self.isLoaded = false;
 		if (zon.get(?[]const u8, "model", null)) |modelId| {
@@ -68,13 +68,14 @@ pub const EntityModel = struct {
 		// get TexturePath
 		{
 			self.texturePath = &.{};
-			var split = std.mem.splitScalar(u8, entityModelId, ':');
-			const mod = split.first();
 			if (zon.get(?[]const u8, "defaultTexture", null)) |texture| {
-				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
+				var split = std.mem.splitScalar(u8, texture, ':');
+				const mod = split.first();
+				const textureName = split.next() orelse unreachable;
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, textureName}) catch unreachable;
 				main.files.cubyzDir().dir.access(self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
-					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, textureName}) catch unreachable;
 				};
 			}
 		}
@@ -146,7 +147,7 @@ pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
 pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) usize {
 	const index = entityModels.items.len;
-	entityModels.append(main.worldArena, EntityModel.init(assetFolder, entityModelId, zon));
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, zon));
 	reverseIndices.put(main.worldArena.allocator, entityModelId, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
 	return index;
 }
