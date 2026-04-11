@@ -5,10 +5,12 @@ const User = main.server.User;
 
 const command = @import("_command.zig");
 
-pub const description = "Get or set the player spawn point";
+pub const description = "Get or set a players spawn point";
 pub const usage =
 	\\/spawn
 	\\/spawn <x> <y> <z>
+	\\/spawn @<playerIndex>
+	\\/spawn @<playerIndex> <x> <y> <z>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
