@@ -125,11 +125,10 @@ pub const EntityModel = struct {
 pub const EntityModelIndex = struct {
 	index: u32,
 	pub fn get(self: EntityModelIndex) *EntityModel {
-		if (entityModels.items.len > self.index) {
-			const rv = &entityModels.items[self.index];
-			if (rv.isLoaded)
-				return rv;
-		}
+		std.debug.assert(entityModels.items.len > self.index);
+		const rv = &entityModels.items[self.index];
+		if (rv.isLoaded)
+			return rv;
 		// should always exist because of firstEntry in entityModelPalette
 		std.debug.assert(entityModels.items.len > 0);
 		return &entityModels.items[0];
