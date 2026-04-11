@@ -1,5 +1,5 @@
 .{
-	.blockResistance = 15,
+	.blockResistance = 7,
 	.blockHealth = 30,
 	.texture = "cubyz:bars/meteorite",
 	.item = .{
