@@ -38,9 +38,7 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.sy
 }
 pub fn clone(self: *@This(), copy: *@This()) void {
 	const originalID = copy.id;
-	if (copy.name) |name| {
-		main.globalAllocator.free(name);
-	}
+	std.debug.assert(copy.name == null);
 	copy.* = self.*;
 	copy.name = if (self.name) |name| main.globalAllocator.dupe(u8, name) else null;
 	copy.id = originalID;
