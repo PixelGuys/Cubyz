@@ -516,7 +516,6 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 		}
 		tool.damage = @round(tool.damage*10)/10;
 		tool.swingSpeed = @round(tool.swingSpeed*10)/10;
-		tool.maxDurability = @round(tool.maxDurability);
 	}
 
 	fn checkConnectivity(proceduralItem: *ProceduralItem) bool {
