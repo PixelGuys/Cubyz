@@ -379,7 +379,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 }
 
-
 pub fn renderBlock(projMatrix: Mat4f, modelMatrix: Mat4f, block: blocks.Block, lighting: union(enum) {
 	world: Vec3i,
 	uniform: u32,
