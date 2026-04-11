@@ -37,10 +37,14 @@ pub const Tag = enum(u32) {
 		return result;
 	}
 
+	pub fn loadTagFromZon(zon: main.ZonElement) Tag {
+		return Tag.find(zon.as([]const u8, "incorrect"));
+	}
+
 	pub fn loadTagsFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []Tag {
 		const result = _allocator.alloc(Tag, zon.toSlice().len);
 		for (zon.toSlice(), 0..) |tagZon, i| {
-			result[i] = Tag.find(tagZon.as([]const u8, "incorrect"));
+			result[i] = loadTagFromZon(tagZon);
 		}
 		return result;
 	}

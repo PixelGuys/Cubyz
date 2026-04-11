@@ -1479,6 +1479,7 @@ pub const Command = struct { // MARK: Command
 			}
 
 			// Apply inventory changes:
+			const handItem = self.source.inv.getItem(self.source.slot); // State should be stored before procedural item breaks
 			switch (costOfChange) {
 				.no => unreachable,
 				.yes => {},
@@ -1499,6 +1500,18 @@ pub const Command = struct { // MARK: Command
 				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 				for (0..dropAmount) |_| {
 					for (self.oldBlock.blockDrops()) |drop| {
+						if (handItem == .proceduralItem) {
+							const proceduralItem = handItem.proceduralItem;
+							if (drop.forbiddenTag) |forbiddenTag| {
+								if (proceduralItem.hasBlockTag(forbiddenTag)) continue;
+							}
+							if (drop.requiredTag) |requiredTag| {
+								if (!proceduralItem.hasBlockTag(requiredTag)) continue;
+							}
+						} else {
+							if (drop.requiredTag != null) continue;
+						}
+
 						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 							self.dropLocation.drop(self.pos, self.newBlock, drop);
 						}
