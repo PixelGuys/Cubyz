@@ -1,0 +1,27 @@
+.{
+	.isCave = true,
+	.tags = .{.mantle_layer},
+	.fogDensity = 15,
+	.fogColor = 0x3d1a11,
+	.stoneBlock = "cubyz:pyrolite/base",
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 30,
+			.maxRadius = 60,
+		},
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 1,
+			.maxAmount = 1,
+			.minRadius = 60,
+			.maxRadius = 100,
+			.cutDirection = .{0, 0, 1},
+			.cutDirectionRandomness = 0.1,
+			.cutPercentage = 0.8,
+			.mode = .additive,
+		},
+	},
+}
