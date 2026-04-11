@@ -160,17 +160,18 @@ const Modifier = struct {
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: main.blocks.Block, data: Data) f32,
-		onBlockUpdate: *const fn (blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool, data: Data) void,
+		onBlockUpdate: *const fn (proceduralItem: *ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool, data: Data) void,
 		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
 
 		const Defaults = struct {
-			pub fn changeProceduralItemParameters(_: ProceduralItem, _: Data) void {}
+			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
 			pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 				return damage;
 			}
-			pub fn onBlockUpdate(blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool, data: Data) void {
+			pub fn onBlockUpdate(proceduralItem: *ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool, data: Data) void {
+				_ = proceduralItem;
 				_ = blockUpdate;
 				_ = ctx;
 				_ = shouldDropSourceBlockOnSuccess;
@@ -181,8 +182,8 @@ const Modifier = struct {
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
 			return comptime .{
-				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
-				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.changeProceduralItemParameters = if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) @ptrCast(&ModifierStruct.changeProceduralItemParameters) else &VTable.Defaults.changeProceduralItemParameters,
+				.changeBlockDamage = if (@hasDecl(ModifierStruct, "changeBlockDamage")) @ptrCast(&ModifierStruct.changeBlockDamage) else &VTable.Defaults.changeBlockDamage,
 				.onBlockUpdate = @ptrCast(if (@hasDecl(ModifierStruct, "onBlockUpdate")) &ModifierStruct.onBlockUpdate else &VTable.Defaults.onBlockUpdate),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
@@ -213,8 +214,8 @@ const Modifier = struct {
 		self.vTable.printTooltip(outString, self.data);
 	}
 
-	pub fn onBlockUpdate(self: Modifier, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
-		self.vTable.onBlockUpdate(blockUpdate, ctx, shouldDropSourceBlockOnSuccess, self.data);
+	pub fn onBlockUpdate(self: Modifier, proceduralItem: *ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
+		self.vTable.onBlockUpdate(proceduralItem, blockUpdate, ctx, shouldDropSourceBlockOnSuccess, self.data);
 	}
 };
 
@@ -933,9 +934,9 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.durability == 0;
 	}
 
-	pub fn onBlockUpdate(self: ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
+	pub fn onBlockUpdate(self: *ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
 		for (self.modifiers) |modifier| {
-			modifier.onBlockUpdate(blockUpdate, ctx, shouldDropSourceBlockOnSuccess);
+			modifier.onBlockUpdate(self, blockUpdate, ctx, shouldDropSourceBlockOnSuccess);
 		}
 	}
 };
