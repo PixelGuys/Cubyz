@@ -122,6 +122,12 @@ pub const client = struct {
 		}
 		main.client.entity_manager.clear();
 	}
+	pub fn removeAllComponents(id: u32) void {
+		const list = main.entity.components;
+		inline for (@typeInfo(list).@"struct".decls) |decl| {
+			@field(list, decl.name).client.unload(id);
+		}
+	}
 };
 pub const server = struct {
 	pub fn init() void {
