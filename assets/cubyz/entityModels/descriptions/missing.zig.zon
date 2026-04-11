@@ -1,0 +1,6 @@
+.{
+	.texture = "missing.png",
+	.height = 1,
+	.coordinateSystem = .right_handed_y_up,
+	.swapTriangleWinding = true,
+}

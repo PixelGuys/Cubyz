@@ -29,7 +29,7 @@ height: f64,
 pos: Vec3d = undefined,
 rot: Vec3f = undefined,
 
-model: EntityModel = undefined,
+model: *EntityModel = undefined,
 nodes: [20]EntityModel.Node = undefined,
 matrices: [20]Mat4f = undefined,
  // hi 2
@@ -63,7 +63,6 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 	for (0..self.model.nodeCount) |i| {
 		self.nodes[i] = self.model.nodes[i];
 	}
-	
 	
 	for (0..self.model.nodeCount) |i| {
 		self.matrices[i] = getHierarchyMatrix(self.nodes, self.nodes[i]);

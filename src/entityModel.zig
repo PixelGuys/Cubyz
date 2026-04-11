@@ -1,26 +1,42 @@
 const std = @import("std");
 
 const main = @import("main");
+const chunk = main.chunk;
+const game = main.game;
 const graphics = main.graphics;
 const c = graphics.c;
-const vec = @import("vec.zig");
+const ZonElement = main.ZonElement;
+const renderer = main.renderer;
+const settings = main.settings;
+const utils = main.utils;
+const vec = main.vec;
+const Mat4f = vec.Mat4f;
+const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
-const Mat4f = vec.Mat4f;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const BinaryReader = main.utils.BinaryReader;
 
 const gltf = @cImport({
 	@cInclude("cgltf.h");
 });
 
-
 pub const EntityModel = struct {
-	vao: graphics.VertexArray = undefined,
-	indexCount: c_int,
-	texture: main.graphics.Texture,
+	height: f32,
+	texturePath: []const u8,
+	id: []const u8,
 
 	nodeReverse: std.StringHashMap(u16) = undefined,
 	nodes: [20]Node = undefined,
 	nodeCount: u8 = undefined,
+
+	isLoaded: bool,
+	vao: ?graphics.VertexArray = null,
+	indexCount: c_int,
+	defaultTexture: ?main.graphics.Texture,
+	coordinateSystem: CoordinateSystem,
+	swapTriangleWinding: bool = false,
 
 	pub const Node = struct {
 		pos: Vec3f,
@@ -31,7 +47,14 @@ pub const EntityModel = struct {
 		parent: ?u16 = null,
 	};
 
-	const EntityVertex = extern struct {
+	pub const CoordinateSystem = enum {
+		right_handed_z_up,
+		right_handed_y_up,
+		left_handed_z_up,
+		left_handed_y_up,
+	};
+
+	const Vertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
@@ -61,40 +84,84 @@ pub const EntityModel = struct {
 		};
 	};
 
-	pub fn initFromGltf(modelPath: []const u8, texturePath: []const u8) !EntityModel {
+	pub fn init(assetFolder: []const u8, id: []const u8, zon: ZonElement) EntityModel {
+		var self: EntityModel = undefined;
+		self.id = main.worldArena.dupe(u8, id);
+		self.height = zon.getChild("height").as(f32, 1);
+		self.defaultTexture = null;
+		self.vao = null;
+		self.indexCount = 0;
+		self.isLoaded = false;
+
+		const coordSystemName = zon.get([]const u8, "coordinateSystem", @tagName(CoordinateSystem.right_handed_z_up));
+		self.coordinateSystem = std.meta.stringToEnum(CoordinateSystem, coordSystemName) orelse blk: {
+			std.log.err("Error: invalid coordinate system enum name - \"{s}\"", .{coordSystemName});
+			break :blk CoordinateSystem.right_handed_z_up;
+		};
+		self.swapTriangleWinding = zon.get(bool, "swapTriangleWinding", false);
+
+		// get TexturePath
+		{
+			self.texturePath = &.{};
+			var split = std.mem.splitScalar(u8, id, ':');
+			const mod = split.first();
+			if (zon.get(?[]const u8, "texture", null)) |texture| {
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, texture}) catch &.{};
+				main.files.cubyzDir().dir.access(self.texturePath, .{}) catch {
+					main.worldArena.free(self.texturePath);
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, texture}) catch &.{};
+				};
+			}
+		}
+		return self;
+	}
+
+	fn loadModelAndTexture(self: *EntityModel) !void {
+		self.deinitModelAndTexture();
+
+		const file = try main.assets.readAsset(main.globalAllocator, main.assets.folder, "entityModels/models", self.id, ".glb");
+		defer main.globalAllocator.free(file);
+
 		var options: gltf.cgltf_options = .{};
 		var data: *gltf.cgltf_data = undefined;
 
-		var result = gltf.cgltf_parse_file(&options, @ptrCast(modelPath.ptr), @ptrCast(&data));
+		var result = gltf.cgltf_parse(&options, @ptrCast(file.ptr), @intCast(file.len), @ptrCast(&data));
 		if (result == gltf.cgltf_result_file_not_found or result == gltf.cgltf_result_io_error) {
+			std.log.err("GLTF Parse error: {s}", .{@errorName(getGltfError(result))});
 			return getGltfError(result);
 		}
 
 		defer gltf.cgltf_free(@ptrCast(data));
 
 		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
-		if (result != gltf.cgltf_result_success) return getGltfError(result);
+		if (result != gltf.cgltf_result_success) {
+			std.log.err("GLTF Load buffers error: {s}", .{@errorName(getGltfError(result))});
+			return getGltfError(result);
+		}
 
 		result = gltf.cgltf_validate(@ptrCast(data));
-		if (result != gltf.cgltf_result_success) return getGltfError(result);
+		if (result != gltf.cgltf_result_success) {
+			std.log.err("GLTF Validation error: {s}", .{@errorName(getGltfError(result))});
+			return getGltfError(result);
+		}
 
 		var nodeReverse: std.StringHashMap(u16) = .init(main.globalArena.allocator);
 		var nodes: [20]Node = std.mem.zeroes([20]Node);
 		var nodeIdx: u8 = 0;
 
-		const texture = main.graphics.Texture.initFromFile(texturePath);
+		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
-		var vertices = main.List(EntityVertex).init(main.stackAllocator);
+		var vertices = main.List(Vertex).init(main.stackAllocator);
 		defer vertices.deinit();
 		var indices = main.List(u32).init(main.stackAllocator);
 		defer indices.deinit();
 		var baseVertex: u32 = 0;
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
-			if (node.children_count == 0) continue;
+			if (node.children_count == 0 and node.parent != null) continue;
 
 			const nameC = std.mem.span(node.name);
-			std.debug.print("\n{s}", .{nameC});
+			std.log.debug("UEEEEEEEEE: {s}", .{nameC});
 			const name = main.globalArena.alloc(u8, nameC.len);
 			@memcpy(name, nameC);
 			nodeReverse.put(name, @intCast(nodeIdx)) catch unreachable;
@@ -116,35 +183,46 @@ pub const EntityModel = struct {
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.mesh == null) continue;
 
-			var currentMat = Mat4f.translation(node.translation);
-			currentMat = currentMat.mul(Mat4f.rotationQuat(node.rotation));
-			currentMat = currentMat.mul(Mat4f.scale(node.scale));
-			currentMat = Mat4f.identity().mul(currentMat);
+			var finalMat = Mat4f.translation(node.translation);
+			finalMat = finalMat.mul(Mat4f.rotationQuat(node.rotation));
+			finalMat = finalMat.mul(Mat4f.scale(node.scale));
+			finalMat = Mat4f.identity().mul(finalMat);
 
 			const primitives = node.mesh.*.primitives;
+			std.log.debug("NAMEEEEEEE: {s}", .{node.name});
+			
+			const parentNodeID = if (node.parent) |p| nodeReverse.get(std.mem.span(p.*.name)).? else nodeReverse.get(std.mem.span(node.name)).?;
+
 			for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
 				if (primitive.type != gltf.cgltf_primitive_type_triangles) {
 					std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
 					continue;
 				}
 
-				const parentNodeID = nodeReverse.get(std.mem.span(node.parent.*.name)).?;
 
 				const indicesAccessor = primitive.indices.*;
 				const vertCount = primitive.attributes[0].data.*.count;
 				var indicesSlice = indices.addMany(indicesAccessor.count);
 				baseVertex = @intCast(vertices.items.len);
-				const vertSlice: []EntityVertex = vertices.addMany(vertCount);
-				for (0..indicesAccessor.count) |i| {
-					const idx = indicesAccessor.index(i);
-					indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+				const vertSlice: []Vertex = vertices.addMany(vertCount);
 
-					// const modi = @as(i32, @intCast(i)) - 2;
-					// if (@mod(modi, 3) == 0) {
-					// const temp = indicesSlice[i - 1];
-					// indicesSlice[i - 1] = indicesSlice[i];
-					// indicesSlice[i] = temp;
-					// }
+				if (self.swapTriangleWinding) {
+					const count = indicesAccessor.count/3;
+					for (0..count) |i| {
+						var idx = indicesAccessor.index(i*3);
+						indicesSlice[i*3] = @as(u32, @intCast(idx)) + baseVertex;
+
+						idx = indicesAccessor.index(i*3 + 2);
+						indicesSlice[i*3 + 1] = @as(u32, @intCast(idx)) + baseVertex;
+
+						idx = indicesAccessor.index(i*3 + 1);
+						indicesSlice[i*3 + 2] = @as(u32, @intCast(idx)) + baseVertex;
+					}
+				} else {
+					for (0..indicesAccessor.count) |i| {
+						const idx = indicesAccessor.index(i);
+						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+					}
 				}
 
 				var positionAttr: gltf.cgltf_accessor = undefined;
@@ -164,12 +242,13 @@ pub const EntityModel = struct {
 				for (0..positionAttr.count) |v| {
 					var p: [3]f32 = undefined;
 					_ = positionAttr.float(v, @ptrCast(&p), 3);
-					const pos: vec.Vec4f = currentMat.mulVec(.{p[0], p[1], p[2], 1});
-					vertSlice[v].pos = .{-pos[0], pos[2], pos[1]};
+					const p2 = convertCoordinateSystemVec(.{p[0], p[1], p[2]}, self.coordinateSystem);
+					const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
+					vertSlice[v].pos = .{pos[0], pos[1], pos[2]};
 
 					var normal: [3]f32 = undefined;
 					_ = normalAttr.float(v, @ptrCast(&normal), 3);
-					vertSlice[v].normal = .{-normal[0], normal[2], normal[1]};
+					vertSlice[v].normal = convertCoordinateSystemVec(.{normal[0], normal[1], normal[2]}, self.coordinateSystem);
 
 					var uv: [2]f32 = undefined;
 					_ = uvAttr.float(v, @ptrCast(&uv), 2);
@@ -180,29 +259,45 @@ pub const EntityModel = struct {
 			}
 		}
 
-		return .{
-			.vao = .init(EntityVertex, vertices.items, indices.items),
-			.texture = texture,
-			.indexCount = @intCast(indices.items.len),
+		self.vao = .init(Vertex, vertices.items, indices.items);
+		self.indexCount = @intCast(indices.items.len);
+	}
 
-			.nodeReverse = nodeReverse,
-			.nodes = nodes,
-			.nodeCount = nodeIdx,
+	fn convertCoordinateSystemVec(v: Vec3f, sys: CoordinateSystem) Vec3f {
+		return switch (sys) {
+			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
+			.right_handed_y_up => Vec3f{v[0], v[2], v[1]},
+			.left_handed_z_up => Vec3f{-v[0], v[1], v[2]},
+			.left_handed_y_up => Vec3f{-v[0], v[2], v[1]},
 		};
 	}
 
-	pub fn initEmpty() EntityModel {
-		const texture = graphics.Texture.init();
-		texture.generate(graphics.Image.defaultImage);
-		return .{
-			.vao = .init(EntityVertex, &.{}, &.{}),
-			.texture = texture,
-			.indexCount = 0,
-
-			.nodeReverse = undefined,
-			.nodes = std.mem.zeroes([20]Node),
-			.nodeCount = 0,
+	fn convertCoordinateSystemQuat(q: Vec4f, sys: CoordinateSystem) Vec4f {
+		return switch (sys) {
+			.right_handed_z_up => Vec4f{q[0], q[1], q[2], q[3]},
+			.right_handed_y_up => Vec4f{q[0], q[2], q[1], q[3]},
+			.left_handed_z_up => Vec4f{-q[0], q[1], q[2], q[3]},
+			.left_handed_y_up => Vec4f{-q[0], q[2], q[1], q[3]},
 		};
+	}
+
+	fn convertCoordinateSystemScale(s: Vec3f, sys: CoordinateSystem) Vec3f {
+		return switch (sys) {
+			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
+			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
+		};
+	}
+
+	fn getHierarchyMatrix(node: gltf.cgltf_node, sys: CoordinateSystem) Mat4f {
+		var currentMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, sys));
+		currentMat = currentMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, sys)));
+		currentMat = currentMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, sys)));
+
+		if (node.parent == null) {
+			return currentMat;
+		}
+
+		return getHierarchyMatrix(node.parent.*, sys).mul(currentMat);
 	}
 
 	fn getGltfError(result: gltf.cgltf_result) anyerror {
@@ -220,15 +315,68 @@ pub const EntityModel = struct {
 		};
 	}
 
-	pub fn bind(self: EntityModel) void {
-		self.vao.bind();
-		self.texture.bindTo(0);
+	pub fn deinitModelAndTexture(self: *EntityModel) void {
+		if (self.defaultTexture) |defaultTexture| {
+			defaultTexture.deinit();
+		}
+		if (self.vao) |vao| {
+			vao.deinit();
+		}
+	}
+
+	pub fn bind(self: *EntityModel) void {
+		self.vao.?.bind();
+		self.defaultTexture.?.bindTo(0);
 	}
 
 	pub fn deinit(self: *EntityModel) void {
-		self.vao.deinit();
-		self.texture.deinit();
-
-		self.nodeReverse.deinit();
+		self.deinitModelAndTexture();
 	}
 };
+
+pub const EntityModelIndex = struct {
+	index: u32,
+	pub fn get(self: EntityModelIndex) *EntityModel {
+		if (entityModels.items.len > self.index) {
+			const rv = &entityModels.items[self.index];
+			if (rv.isLoaded)
+				return rv;
+		}
+		// should always exist because of firstEntry in entityModelPalette
+		std.debug.assert(entityModels.items.len > 0);
+		return &entityModels.items[0];
+	}
+};
+
+pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
+pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
+
+pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) usize {
+	const index = entityModels.items.len;
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, id, zon));
+	reverseIndices.put(main.worldArena.allocator, id, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
+	return index;
+}
+pub fn reset() void {
+	for (entityModels.items) |*model| {
+		model.deinit();
+	}
+	entityModels = .{};
+	reverseIndices = .{};
+}
+
+pub fn getById(id: []const u8) ?EntityModelIndex {
+	if (reverseIndices.get(id)) |result| {
+		return result;
+	}
+	return null;
+}
+pub fn loadModelAndTexture() void {
+	for (entityModels.items) |*value| {
+		value.loadModelAndTexture() catch {
+			value.isLoaded = false;
+			continue;
+		};
+		value.isLoaded = true;
+	}
+}
