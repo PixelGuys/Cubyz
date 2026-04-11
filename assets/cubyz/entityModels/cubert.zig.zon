@@ -1,0 +1,5 @@
+.{
+	.model = "cubyz:cubert",
+	.texture = "cubert.png",
+	.height = 2,
+}

@@ -439,8 +439,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				continue;
 			}
 			const hitbox = main.game.Player.outerBoundingBox;
-			const min = user.player.pos + hitbox.min;
-			const max = user.player.pos + hitbox.max;
+			const min = user.player().pos + hitbox.min;
+			const max = user.player().pos + hitbox.max;
 			const itemPos = self.list.items(.pos)[i];
 			const dist = @max(min - itemPos, itemPos - max);
 			if (@reduce(.Max, dist) < radius + pickupRange) {
@@ -861,7 +861,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
 			if (!isBlock) {
-				if (item == .tool) {
+				if (item == .proceduralItem) {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
 					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.25));
 				} else {
