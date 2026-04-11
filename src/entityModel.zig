@@ -74,12 +74,7 @@ pub const EntityModel = struct {
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
-
-		const coordSystemName = zon.get([]const u8, "coordinateSystem", @tagName(CoordinateSystem.right_handed_z_up));
-		self.coordinateSystem = std.meta.stringToEnum(CoordinateSystem, coordSystemName) orelse blk: {
-			std.log.err("Error: invalid coordinate system enum name - \"{s}\"", .{coordSystemName});
-			break :blk CoordinateSystem.right_handed_z_up;
-		};
+		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
 
 		// get TexturePath
 		{
