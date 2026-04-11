@@ -933,7 +933,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.durability == 0;
 	}
 
-	pub fn onBlockUpdate(self: Tool, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
+	pub fn onBlockUpdate(self: ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
 		for (self.modifiers) |modifier| {
 			modifier.onBlockUpdate(blockUpdate, ctx, shouldDropSourceBlockOnSuccess);
 		}
