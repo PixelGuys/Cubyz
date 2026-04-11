@@ -170,12 +170,7 @@ const Modifier = struct {
 			pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 				return damage;
 			}
-			pub fn onBlockUpdate(proceduralItem: *ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool, data: Data) void {
-				_ = proceduralItem;
-				_ = blockUpdate;
-				_ = ctx;
-				_ = shouldDropSourceBlockOnSuccess;
-				_ = data;
+			pub fn onBlockUpdate(_: *ProceduralItem, _: main.sync.Command.UpdateBlock, _: main.sync.Command.Context, _: *bool, _: Data) void {
 				return;
 			}
 		};
