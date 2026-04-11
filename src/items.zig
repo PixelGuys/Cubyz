@@ -162,6 +162,24 @@ const Modifier = struct {
 		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
+
+		const Defaults = struct {
+			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
+			pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
+				return damage;
+			}
+		};
+
+		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
+			return comptime .{
+				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
+				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
+				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
+				.loadData = @ptrCast(&ModifierStruct.loadData),
+				.priority = ModifierStruct.priority,
+			};
+		}
 	};
 
 	pub fn combineModifiers(a: Modifier, b: Modifier) ?Modifier {
@@ -1167,15 +1185,8 @@ pub fn globalInit() void {
 	recipeList = .init(main.worldArena);
 	itemListSize = 0;
 	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
-		const ModifierStruct = @field(modifierList, decl.name);
-		modifiers.put(main.globalArena.allocator, decl.name, &.{
-			.changeProceduralItemParameters = @ptrCast(&ModifierStruct.changeProceduralItemParameters),
-			.changeBlockDamage = @ptrCast(&ModifierStruct.changeBlockDamage),
-			.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
-			.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
-			.loadData = @ptrCast(&ModifierStruct.loadData),
-			.priority = ModifierStruct.priority,
-		}) catch unreachable;
+		const ModifierStruct: type = @field(modifierList, decl.name);
+		modifiers.put(main.globalArena.allocator, decl.name, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
 	}
 	inline for (@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
 		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
