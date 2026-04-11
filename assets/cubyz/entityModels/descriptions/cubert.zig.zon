@@ -1,5 +1,0 @@
-.{
-	.model = "cubyz:cubert",
-	.defaultTexture = "cubyz:cubert",
-	.height = 2,
-}

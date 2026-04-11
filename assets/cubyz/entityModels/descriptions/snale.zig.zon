@@ -1,5 +1,0 @@
-.{
-	.model = "cubyz:snale",
-	.defaultTexture = "cubyz:snale",
-	.height = 2,
-}

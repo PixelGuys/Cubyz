@@ -1,5 +1,0 @@
-.{
-	.model = "cubyz:moffalo",
-	.defaultTexture = "cubyz:moffalo",
-	.height = 1.8,
-}

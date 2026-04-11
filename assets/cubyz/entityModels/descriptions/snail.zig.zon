@@ -1,5 +1,0 @@
-.{
-	.model = "cubyz:snail",
-	.defaultTexture = "cubyz:snail",
-	.height = 1,
-}
