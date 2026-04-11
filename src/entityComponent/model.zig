@@ -90,7 +90,6 @@ pub const server = struct {
 			.entity = entity,
 			.entityModel = entityModel,
 		};
-
 	}
 	pub fn unload(entity: u32) void {
 		renderComponents.remove(@enumFromInt(entity)) catch {
@@ -105,4 +104,3 @@ pub const server = struct {
 		return renderComponents.get(@enumFromInt(entity));
 	}
 };
-  
