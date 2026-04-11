@@ -496,6 +496,11 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			tool.maxDurability = 0;
 			tool.durability = 1;
 		}
+
+		// Rounding the Actual values to one decimal, dont think this is a good idea :!
+		tool.damage = @round(tool.damage * 10) / 10;
+		tool.swingSpeed = @round(tool.swingSpeed * 10) / 10;
+		tool.maxDurability = @round(tool.maxDurability);
 	}
 
 	fn checkConnectivity(tool: *Tool) bool {
@@ -844,8 +849,8 @@ pub const Tool = struct { // MARK: Tool
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.print(
 			\\{s}
-			\\{d:.2} swings/s
-			\\Damage: {d:.2}
+			\\{d:.1} swings/s
+			\\Damage: {d:.1}
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
