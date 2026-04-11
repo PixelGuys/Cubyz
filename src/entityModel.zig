@@ -172,7 +172,7 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 	}
 	return null;
 }
-pub fn default()EntityModelIndex{
+pub fn default() EntityModelIndex {
 	if (reverseIndices.get("cubyz:missing")) |result| {
 		return result;
 	}

@@ -73,7 +73,7 @@ fn update() void {
 
 // TODO: this will be removed in future ECS parts
 pub fn initAfterWorld() void {
-	model = (main.entityModel.getById("cubyz:snale") orelse blk:{
+	model = (main.entityModel.getById("cubyz:snale") orelse blk: {
 		std.log.err("EntityModel {s} wasn't found", .{"cubyz:snale"});
 		break :blk main.entityModel.default();
 	}).get();
