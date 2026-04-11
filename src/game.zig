@@ -640,7 +640,7 @@ pub const World = struct { // MARK: World
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
-		main.entityModel.loadModelAndTexture();
+		main.entityModel.loadModelsAndTexture();
 		main.client.entity_manager.initAfterWorld();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();

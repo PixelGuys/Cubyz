@@ -127,7 +127,7 @@ pub const Assets = struct {
 			addon.readAllModels(allocator, "models", ".obj", &self.blockModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels/descriptions", true, &self.entityModelDescriptions, &self.entityModelMigrations);
+			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -536,13 +536,13 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
-pub var folder: []const u8 = undefined;
+pub var worldAssetFolder: []const u8 = undefined;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
-	folder = main.worldArena.dupe(u8, assetFolder);
+	worldAssetFolder = main.worldArena.dupe(u8, assetFolder);
 
 	main.Tag.initTags();
 
@@ -580,21 +580,21 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// EntityModels:
 	{
 		// First blocks from the palette to enforce ID values.
-		for (entityModelPalette.palette.items) |stringId| {
-			std.log.debug("Registering entity model {s}", .{stringId});
-			_ = main.entityModel.register(assetFolder, stringId, worldAssets.entityModelDescriptions.get(stringId) orelse .null);
+		for (entityModelPalette.palette.items) |entityModelId| {
+			std.log.debug("Registering entity model {s}", .{entityModelId});
+			_ = main.entityModel.register(assetFolder, entityModelId, worldAssets.entityModelDescriptions.get(entityModelId) orelse .null);
 		}
 		// Then all the blocks that were missing in palette but are present in the game.
 		var entModelIterator = worldAssets.entityModelDescriptions.iterator();
 		while (entModelIterator.next()) |entry| {
-			const stringId = entry.key_ptr.*;
+			const entityModelId = entry.key_ptr.*;
 			const zon = entry.value_ptr.*;
 
-			if (main.entityModel.getById(stringId) != null) continue;
+			if (main.entityModel.getById(entityModelId) != null) continue;
 
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
-			_ = main.entityModel.register(assetFolder, stringId, zon);
-			entityModelPalette.add(stringId);
+			_ = main.entityModel.register(assetFolder, entityModelId, zon);
+			entityModelPalette.add(entityModelId);
 		}
 	}
 
@@ -809,16 +809,16 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	}
 }
 
-pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
+pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	const name = split.next() orelse unreachable;
 
-	var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding});
+	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	if (!main.files.cwd().hasFile(path)) {
 		main.stackAllocator.free(path);
-		path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
+		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch unreachable;
 	}
 
 	const data = main.files.cwd().read(allocator, path) catch |err| {
