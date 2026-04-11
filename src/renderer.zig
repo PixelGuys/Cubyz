@@ -991,13 +991,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 							if (rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
 								if (!canPlaceBlock(selectedPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, selectedPos, oldBlock, block);
 								return;
 							}
 						} else {
 							if (rotationMode.modifyBlock(&block, itemBlock)) {
 								if (!canPlaceBlock(selectedPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, selectedPos, oldBlock, block);
 								return;
 							}
 						}
@@ -1011,7 +1011,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if (block.typ == itemBlock) {
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
 								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
 								return;
 							}
 						} else {
@@ -1020,7 +1020,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							block.data = 0;
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
 								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
 								return;
 							}
 						}
@@ -1117,16 +1117,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.sync.ClientSide.mutex.unlock();
 
 			if (newBlock != block) {
-				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
+				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
 			}
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3i, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.sync.ClientSide.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source.super, .slot = slot},
-				.pos = .{x, y, z},
+				.pos = pos,
 				.dropLocation = .{
 					.dir = selectionFace,
 					.min = selectionMin,
@@ -1136,7 +1136,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.newBlock = newBlock,
 			},
 		});
-		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock, .blockEntityData = &.{}});
+		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {

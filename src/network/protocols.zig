@@ -477,9 +477,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		while (reader.remaining.len != 0) {
 			renderer.mesh_storage.updateBlock(.{
-				.x = try reader.readInt(i32),
-				.y = try reader.readInt(i32),
-				.z = try reader.readInt(i32),
+				.pos = try reader.readVec(Vec3i),
 				.newBlock = Block.fromInt(try reader.readInt(u32)),
 				.blockEntityData = try reader.readSlice(try reader.readInt(usize)),
 			});
@@ -490,9 +488,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 		defer writer.deinit();
 
 		for (updates) |update| {
-			writer.writeInt(i32, update.x);
-			writer.writeInt(i32, update.y);
-			writer.writeInt(i32, update.z);
+			writer.writeVec(Vec3i, update.pos);
 			writer.writeInt(u32, update.newBlock.toInt());
 			writer.writeInt(usize, update.blockEntityData.len);
 			writer.writeSlice(update.blockEntityData);
@@ -944,7 +940,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 
 		for (users) |user| {
-			blockUpdate.send(user.conn, &.{.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = writer.data.items}});
+			blockUpdate.send(user.conn, &.{.{.pos = pos, .newBlock = block, .blockEntityData = writer.data.items}});
 		}
 	}
 
