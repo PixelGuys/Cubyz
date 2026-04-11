@@ -1,5 +1,6 @@
 .{
-	.properties = .{
+	.properties = .{},
+	.tags = .{
 		.oak,
 	},
 	.minHeight = 22,

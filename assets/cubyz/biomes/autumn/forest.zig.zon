@@ -1,6 +1,8 @@
 .{
 	.properties = .{
 		.cold,
+	},
+	.tags = .{
 		.oak,
 	},
 	.chance = 0.5,
