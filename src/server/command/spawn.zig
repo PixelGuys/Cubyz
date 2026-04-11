@@ -5,9 +5,7 @@ const User = main.server.User;
 
 const command = @import("_command.zig");
 
-pub const description =
-	\\Get or set the player / world spawn point
-	\\Note: when setting the world spawn point, the change will only apply to new players. Players who where already once on the server retain their old spawn point
+pub const description = "Get or set the player / world spawn point"
 ;
 pub const usage =
 	\\/spawn
