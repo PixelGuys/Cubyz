@@ -23,7 +23,6 @@ pub const EntityModel = struct {
 	texturePath: []const u8,
 	modelId: ?[]const u8,
 
-	isLoaded: bool,
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
@@ -54,7 +53,6 @@ pub const EntityModel = struct {
 
 	pub fn init(assetFolder: []const u8, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
-		self.isLoaded = false;
 		if (zon.get(?[]const u8, "model", null)) |modelId| {
 			self.modelId = main.worldArena.dupe(u8, modelId);
 		} else {
@@ -91,6 +89,17 @@ pub const EntityModel = struct {
 		}
 	}
 
+	fn cloneMetaData(self: *EntityModel) EntityModel {
+		return .{
+			.height = self.height,
+			.texturePath = main.worldArena.dupe(u8, self.texturePath),
+			.modelId = if (self.modelId) |modelId| main.worldArena.dupe(u8, modelId) else null,
+			.vao = null,
+			.indexCount = 0,
+			.defaultTexture = null,
+		};
+	}
+
 	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 		if (self.modelId == null)
@@ -124,7 +133,7 @@ pub const EntityModel = struct {
 		self.vao = .init(Vertex, vertices, indices);
 		self.indexCount = @intCast(indices.len);
 	}
-	
+
 	pub fn bind(self: *EntityModel) void {
 		self.vao.?.bind();
 		self.defaultTexture.?.bindTo(0);
@@ -135,12 +144,7 @@ pub const EntityModelIndex = struct {
 	index: u32,
 	pub fn get(self: EntityModelIndex) *EntityModel {
 		std.debug.assert(entityModels.items.len > self.index);
-		const rv = &entityModels.items[self.index];
-		if (rv.isLoaded)
-			return rv;
-		// should always exist because of firstEntry in entityModelPalette
-		std.debug.assert(entityModels.items.len > 0);
-		return &entityModels.items[0];
+		return &entityModels.items[self.index];
 	}
 };
 
@@ -170,9 +174,10 @@ pub fn getById(id: []const u8) ?EntityModelIndex {
 pub fn loadModelsAndTexture() void {
 	for (entityModels.items) |*value| {
 		value.loadModelAndTexture() catch {
-			value.isLoaded = false;
+			value.deinit();
+			value.* = getById("cubyz:missing").?.get().cloneMetaData();
+			value.loadModelAndTexture() catch unreachable;
 			continue;
 		};
-		value.isLoaded = true;
 	}
 }
