@@ -1,5 +1,5 @@
 .{
 	.model = "cubyz:missing",
-	.texture = "missing.png",
+	.defaultTexture = "cubyz:missing",
 	.height = 1,
 }

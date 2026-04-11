@@ -242,6 +242,7 @@ pub const handShake = struct { // MARK: handShake
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("toolPalette", main.server.world.?.proceduralItemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
+		zonObject.put("entityModelPalette", main.server.world.?.entityModelPalette.storeToZon(main.stackAllocator));
 		zonObject.put("entityComponentPalette", main.server.world.?.entityComponentPalette.storeToZon(main.stackAllocator));
 
 		const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{@intFromEnum(Connection.HandShakeState.serverData)});
@@ -432,7 +433,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
-	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
+	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.entity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
@@ -515,7 +516,7 @@ pub const entity = struct { // MARK: entity
 					main.client.entity_manager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					main.client.entity_manager.addEntity(elem);
+					try main.client.entity_manager.addEntity(elem);
 				},
 				.null => {
 					i += 1;
@@ -958,5 +959,51 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		const blockEntity = block.blockEntity() orelse return;
 
 		sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
+	}
+};
+
+pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
+	pub const id: u8 = 15;
+	pub const asynchronous = false;
+
+	const ActionType = enum(u8) {
+		unload = 0,
+		load = 1,
+	};
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const entityId = try reader.readVarInt(u32);
+		const componentId = try reader.readVarInt(u32);
+		const actionType: ActionType = try reader.readEnum(ActionType);
+
+		if (actionType == .load) {
+			const componentVersion = try reader.readVarInt(u32);
+			try main.entity.loadComponent(.client, componentId, entityId, reader.remaining, componentVersion);
+		} else if (actionType == .unload) {
+			try main.entity.unloadComponent(.client, componentId, entityId);
+		}
+	}
+	pub fn unload(conn: *Connection, entityId: u32, componentId: u32) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeVarInt(u32, entityId);
+		writer.writeVarInt(u32, componentId);
+		writer.writeEnum(ActionType, ActionType.unload);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+	pub fn load(conn: *Connection, entityId: u32, componentId: u32, version: u32, componentData: []const u8) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeVarInt(u32, entityId);
+		writer.writeVarInt(u32, componentId);
+		writer.writeEnum(ActionType, ActionType.load);
+		// specific to `load`
+		writer.writeVarInt(u32, version);
+		writer.writeSlice(componentData);
+
+		conn.send(.secure, id, writer.data.items);
 	}
 };
