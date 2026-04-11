@@ -1,5 +1,8 @@
 .{
-	.properties = .{.wet},
+	.properties = .{
+		.wet,
+		.pine,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 50,

@@ -3,7 +3,9 @@
 	.keepOriginalTerrain = 1,
 	.minHeight = 22,
 	.maxHeight = 45,
-	.properties = .{},
+	.properties = .{
+		.pine,
+	},
 	.minRadius = 20,
 	.maxRadius = 32,
 	.music = "cubyz:sunrise",
