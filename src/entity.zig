@@ -21,7 +21,7 @@ pub const EntityComponentLoadError = error{
 	UnreadableID,
 	UnreadableVersion,
 	UnreadableComponentData,
-	unknownComponentID,
+	UnknownComponentID,
 };
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
@@ -57,39 +57,39 @@ pub fn initComponents() void {
 pub fn deinitComponents() void {
 	componentList = undefined;
 }
-pub fn load(comptime side: main.sync.Side, componentID: u32, entityID: u32, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
+pub fn load(comptime side: main.sync.Side, componentID: u32, entityId: u32, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
 	if (componentID >= componentList.len) {
 		std.log.err("unknown Component ID {} ", .{componentID});
-		return error.unknownComponentID;
+		return error.UnknownComponentID;
 	}
 	var componentReader = main.utils.BinaryReader.init(componentData);
 	if (componentList[componentID]) |vtable| {
 		switch (side) {
-			.server => vtable.serverLoad(entityID, &componentReader, componentVersion) catch |err| {
+			.server => vtable.serverLoad(entityId, &componentReader, componentVersion) catch |err| {
 				return err;
 			},
-			.client => vtable.clientLoad(entityID, &componentReader, componentVersion) catch |err| {
+			.client => vtable.clientLoad(entityId, &componentReader, componentVersion) catch |err| {
 				return err;
 			},
 		}
 	} else {
 		std.log.err("unknown Component ID {} ", .{componentID});
-		return error.unknownComponentID;
+		return error.UnknownComponentID;
 	}
 }
-pub fn unload(comptime side: main.sync.Side, componentID: u32, entityID: u32) EntityComponentLoadError!void {
+pub fn unload(comptime side: main.sync.Side, componentID: u32, entityId: u32) EntityComponentLoadError!void {
 	if (componentID >= componentList.len) {
 		std.log.err("unknown Component ID {} ", .{componentID});
-		return error.unknownComponentID;
+		return error.UnknownComponentID;
 	}
 	if (componentList[componentID]) |vtable| {
 		switch (side) {
-			.server => vtable.serverUnload(entityID),
-			.client => vtable.clientUnload(entityID),
+			.server => vtable.serverUnload(entityId),
+			.client => vtable.clientUnload(entityId),
 		}
 	} else {
 		std.log.err("unknown Component ID {} ", .{componentID});
-		return error.unknownComponentID;
+		return error.UnknownComponentID;
 	}
 }
 
@@ -144,12 +144,12 @@ pub const server = struct {
 			@field(systems, decl.name).server.update();
 		}
 	}
-	pub fn componentsToBase64(allocator: main.heap.NeverFailingAllocator, entityID: u32, audience: main.entity.AudienceInfo) main.utils.Base64 {
+	pub fn componentsToBase64(allocator: main.heap.NeverFailingAllocator, entityId: u32, audience: main.entity.AudienceInfo) main.utils.Base64 {
 		var writer = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
-			if (@field(main.entity.components, decl.name).server.get(entityID)) |component| {
+			if (@field(main.entity.components, decl.name).server.get(entityId)) |component| {
 				var writerComponent = main.utils.BinaryWriter.init(main.stackAllocator);
 				defer writerComponent.deinit();
 

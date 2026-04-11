@@ -961,8 +961,6 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	}
 };
 
-// format: entityID load   componentID binary
-// format: entityID unload componentID
 pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	pub const id: u8 = 15;
 	pub const asynchronous = false;
@@ -973,32 +971,32 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	};
 
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const entityID = try reader.readInt(u32);
+		const entityId = try reader.readInt(u32);
 		const componentID = try reader.readInt(u32);
 		const actionType: ActionType = try reader.readEnum(ActionType);
 
 		if (actionType == .load) {
 			const componentVersion = try reader.readVarInt(u32);
-			try main.entity.load(.client, componentID, entityID, reader.remaining, componentVersion);
+			try main.entity.load(.client, componentID, entityId, reader.remaining, componentVersion);
 		} else if (actionType == .unload) {
-			try main.entity.unload(.client, componentID, entityID);
+			try main.entity.unload(.client, componentID, entityId);
 		}
 	}
-	pub fn unload(conn: *Connection, entityID: u32, componentID: u32) void {
+	pub fn unload(conn: *Connection, entityId: u32, componentID: u32) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeInt(u32, entityID);
+		writer.writeInt(u32, entityId);
 		writer.writeInt(u32, componentID);
 		writer.writeEnum(ActionType, ActionType.unload);
 
 		conn.send(.secure, id, writer.data.items);
 	}
-	pub fn load(conn: *Connection, entityID: u32, componentID: u32, version: u32, componentData: []const u8) void {
+	pub fn load(conn: *Connection, entityId: u32, componentID: u32, version: u32, componentData: []const u8) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeInt(u32, entityID);
+		writer.writeInt(u32, entityId);
 		writer.writeInt(u32, componentID);
 		writer.writeEnum(ActionType, ActionType.load);
 		// specific to `load`
