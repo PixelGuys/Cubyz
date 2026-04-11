@@ -39,6 +39,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/entity_fragment.frag",
 		"",
 		&uniforms,
+		main.entityModel.EntityModel.EntityVertex,
 		.{},
 		.{.depthTest = true},
 		.{.attachments = &.{.alphaBlending}},

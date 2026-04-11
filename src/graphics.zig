@@ -31,10 +31,19 @@ const Window = main.Window;
 
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+pub const vulkan = @import("graphics/vulkan.zig");
+
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
+
 	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
-	@cInclude(if (builtin.target.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
+	if (builtin.target.os.tag == .macos) {
+		@cInclude("vulkan/vulkan.h");
+		@cInclude("vulkan/vulkan_beta.h");
+	} else {
+		@cInclude("glad/vulkan.h");
+	}
+	@cInclude("GLFW/glfw3.h");
 });
 
 pub const stb_image = @cImport({
@@ -134,7 +143,7 @@ pub const draw = struct { // MARK: draw
 		clip = previousClip;
 	}
 
-	const SimpleVertex2D = struct {
+	pub const SimpleVertex2D = struct {
 		pos: [2]f32,
 
 		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
@@ -163,6 +172,7 @@ pub const draw = struct { // MARK: draw
 			"assets/cubyz/shaders/graphics/Rect.frag",
 			"",
 			&rectUniforms,
+			SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -215,15 +225,6 @@ pub const draw = struct { // MARK: draw
 	var rectBorderVao: VertexArray = undefined;
 
 	fn initRectBorder() void {
-		rectBorderPipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/RectBorder.vert",
-			"assets/cubyz/shaders/graphics/RectBorder.frag",
-			"",
-			&rectBorderUniforms,
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}},
-		);
 		const RectBorderVertex = struct {
 			pos: [4]f32,
 
@@ -235,6 +236,16 @@ pub const draw = struct { // MARK: draw
 				},
 			};
 		};
+		rectBorderPipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/RectBorder.vert",
+			"assets/cubyz/shaders/graphics/RectBorder.frag",
+			"",
+			&rectBorderUniforms,
+			RectBorderVertex,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]RectBorderVertex{
 			.{.pos = .{0, 0, 0, 0}},
 			.{.pos = .{0, 0, 1, 1}},
@@ -296,6 +307,7 @@ pub const draw = struct { // MARK: draw
 			"assets/cubyz/shaders/graphics/Line.frag",
 			"",
 			&lineUniforms,
+			SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -371,6 +383,7 @@ pub const draw = struct { // MARK: draw
 			"assets/cubyz/shaders/graphics/Circle.frag",
 			"",
 			&circleUniforms,
+			SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -428,6 +441,7 @@ pub const draw = struct { // MARK: draw
 			"assets/cubyz/shaders/graphics/Image.frag",
 			"",
 			&imageUniforms,
+			SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -1135,6 +1149,7 @@ const TextRendering = struct { // MARK: TextRendering
 			"assets/cubyz/shaders/graphics/Text.frag",
 			"",
 			&uniforms,
+			draw.SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -1263,6 +1278,7 @@ pub fn init() void { // MARK: init()
 	};
 	block_texture.init();
 	if (glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
+	RenderPass.initRenderPasses() catch @panic("Failed to create render passes");
 }
 
 pub fn deinit() void {
@@ -1279,7 +1295,13 @@ pub fn deinit() void {
 const Shader = struct { // MARK: Shader
 	id: c_uint,
 
-	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: glslang.glslang_stage_t) ![]c_uint {
+	const ShaderStage = enum(glslang.glslang_stage_t) {
+		vert = glslang.GLSLANG_STAGE_VERTEX,
+		frag = glslang.GLSLANG_STAGE_FRAGMENT,
+		comp = glslang.GLSLANG_STAGE_COMPUTE,
+	};
+
+	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: ShaderStage) ![]c_uint {
 		const versionLineEnd = if (std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
 		const versionLine = source[0..versionLineEnd];
 		const sourceLines = source[versionLineEnd..];
@@ -1293,9 +1315,9 @@ const Shader = struct { // MARK: Shader
 
 		const input = glslang.glslang_input_t{
 			.language = glslang.GLSLANG_SOURCE_GLSL,
-			.stage = shaderStage,
-			.client = glslang.GLSLANG_CLIENT_OPENGL,
-			.client_version = glslang.GLSLANG_TARGET_OPENGL_450,
+			.stage = @intFromEnum(shaderStage),
+			.client = glslang.GLSLANG_CLIENT_VULKAN,
+			.client_version = glslang.GLSLANG_TARGET_VULKAN_1_0,
 			.target_language = glslang.GLSLANG_TARGET_SPV,
 			.target_language_version = glslang.GLSLANG_TARGET_SPV_1_0,
 			.code = sourceWithDefines.items.ptr,
@@ -1329,7 +1351,7 @@ const Shader = struct { // MARK: Shader
 			return error.FailedCompiling;
 		}
 
-		glslang.glslang_program_SPIRV_generate(program, shaderStage);
+		glslang.glslang_program_SPIRV_generate(program, @intFromEnum(shaderStage));
 		const result = allocator.alloc(c_uint, glslang.glslang_program_SPIRV_get_size(program));
 		glslang.glslang_program_SPIRV_get(program, result.ptr);
 		return result;
@@ -1341,10 +1363,6 @@ const Shader = struct { // MARK: Shader
 			return err;
 		};
 		defer main.stackAllocator.free(source);
-
-		// SPIR-V will be used for the Vulkan, now it's completely useless due to lack of support in Vulkan drivers
-		const glslangStage: glslang.glslang_stage_t = if (shaderStage == c.GL_VERTEX_SHADER) glslang.GLSLANG_STAGE_VERTEX else if (shaderStage == c.GL_FRAGMENT_SHADER) glslang.GLSLANG_STAGE_FRAGMENT else glslang.GLSLANG_STAGE_COMPUTE;
-		main.stackAllocator.free(try compileToSpirV(main.stackAllocator, source, filename, defines, glslangStage));
 
 		const shader = c.glCreateShader(shaderStage);
 		defer c.glDeleteShader(shader);
@@ -1418,6 +1436,27 @@ const Shader = struct { // MARK: Shader
 		return shader;
 	}
 
+	fn createShaderModule(path: []const u8, defines: []const u8, stage: ShaderStage) !c.VkShaderModule {
+		const source = main.files.cwd().read(main.stackAllocator, path) catch |err| {
+			std.log.err("Couldn't read shader file: {s}", .{path});
+			return err;
+		};
+		defer main.stackAllocator.free(source);
+
+		const spirv = try compileToSpirV(main.stackAllocator, source, path, defines, stage);
+		defer main.stackAllocator.free(spirv);
+
+		const createInfo = c.VkShaderModuleCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+			.codeSize = @intCast(spirv.len*@sizeOf(u32)),
+			.pCode = spirv.ptr,
+		};
+
+		var shaderModule: c.VkShaderModule = undefined;
+		try vulkan.checkResultErr(c.vkCreateShaderModule(vulkan.device, &createInfo, null, &shaderModule));
+		return shaderModule;
+	}
+
 	fn bind(self: *const Shader) void {
 		c.glUseProgram(self.id);
 	}
@@ -1433,6 +1472,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 	multisampleState: MultisampleState = .{}, // TODO: Not implemented
 	depthStencilState: DepthStencilState,
 	blendState: ColorBlendState,
+	pipelineLayout: c.VkPipelineLayout = undefined,
+	graphicsPipeline: c.VkPipeline = undefined,
 
 	const RasterizationState = struct {
 		depthClamp: bool = true,
@@ -1466,6 +1507,22 @@ pub const Pipeline = struct { // MARK: Pipeline
 			clamp: f32,
 			slopeFactor: f32,
 		};
+
+		pub fn toVulkan(self: RasterizationState) c.VkPipelineRasterizationStateCreateInfo {
+			return .{
+				.sType = c.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+				.depthClampEnable = @intFromBool(self.depthClamp),
+				.rasterizerDiscardEnable = @intFromBool(self.rasterizerDiscard),
+				.polygonMode = @intFromEnum(self.polygonMode),
+				.lineWidth = self.lineWidth,
+				.cullMode = @intFromEnum(self.cullMode),
+				.frontFace = @intFromEnum(self.frontFace),
+				.depthBiasEnable = @intFromBool(self.depthBias != null),
+				.depthBiasConstantFactor = if (self.depthBias) |d| d.constantFactor else undefined,
+				.depthBiasClamp = if (self.depthBias) |d| d.clamp else undefined,
+				.depthBiasSlopeFactor = if (self.depthBias) |d| d.slopeFactor else undefined,
+			};
+		}
 	};
 
 	const MultisampleState = struct {
@@ -1485,6 +1542,18 @@ pub const Pipeline = struct { // MARK: Pipeline
 			@"32" = c.VK_SAMPLE_COUNT_32_BIT,
 			@"64" = c.VK_SAMPLE_COUNT_64_BIT,
 		};
+
+		pub fn toVulkan(self: MultisampleState) c.VkPipelineMultisampleStateCreateInfo {
+			return .{
+				.sType = c.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+				.rasterizationSamples = @intFromEnum(self.rasterizationSamples),
+				.sampleShadingEnable = @intFromBool(self.sampleShading),
+				.minSampleShading = self.minSampleShading,
+				.pSampleMask = self.sampleMask,
+				.alphaToCoverageEnable = @intFromBool(self.alphaToCoverage),
+				.alphaToOneEnable = @intFromBool(self.alphaToOne),
+			};
+		}
 	};
 
 	const DepthStencilState = struct {
@@ -1528,6 +1597,18 @@ pub const Pipeline = struct { // MARK: Pipeline
 					incrementAndWrap = c.VK_STENCIL_OP_INCREMENT_AND_WRAP,
 					decrementAndWrap = c.VK_STENCIL_OP_DECREMENT_AND_WRAP,
 				};
+
+				fn toVulkan(self: StencilOpState) c.VkStencilOpState {
+					return .{
+						.failOp = @intFromEnum(self.failOp),
+						.passOp = @intFromEnum(self.passOp),
+						.depthFailOp = @intFromEnum(self.depthFailOp),
+						.compareOp = @intFromEnum(self.compareOp),
+						.compareMask = self.compareMask,
+						.writeMask = self.writeMask,
+						.reference = self.reference,
+					};
+				}
 			};
 		};
 
@@ -1535,6 +1616,21 @@ pub const Pipeline = struct { // MARK: Pipeline
 			min: f32,
 			max: f32,
 		};
+
+		pub fn toVulkan(self: DepthStencilState) c.VkPipelineDepthStencilStateCreateInfo {
+			return .{
+				.sType = c.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+				.depthTestEnable = @intFromBool(self.depthTest),
+				.depthWriteEnable = @intFromBool(self.depthWrite),
+				.depthCompareOp = @intFromEnum(self.depthCompare),
+				.depthBoundsTestEnable = @intFromBool(self.depthBoundsTest != null),
+				.stencilTestEnable = @intFromBool(self.stencilTest != null),
+				.front = if (self.stencilTest) |s| s.front.toVulkan() else undefined,
+				.back = if (self.stencilTest) |s| s.back.toVulkan() else undefined,
+				.minDepthBounds = if (self.depthBoundsTest) |d| d.min else undefined,
+				.maxDepthBounds = if (self.depthBoundsTest) |d| d.max else undefined,
+			};
+		}
 	};
 
 	const ColorBlendAttachmentState = struct {
@@ -1637,6 +1733,19 @@ pub const Pipeline = struct { // MARK: Pipeline
 			pub const all: ColorComponentFlags = .{.r = true, .g = true, .b = true, .a = true};
 			pub const none: ColorComponentFlags = .{.r = false, .g = false, .b = false, .a = false};
 		};
+
+		pub fn toVulkan(self: ColorBlendAttachmentState) c.VkPipelineColorBlendAttachmentState {
+			return .{
+				.blendEnable = @intFromBool(self.enabled),
+				.srcColorBlendFactor = @intFromEnum(self.srcColorBlendFactor),
+				.dstColorBlendFactor = @intFromEnum(self.dstColorBlendFactor),
+				.colorBlendOp = @intFromEnum(self.colorBlendOp),
+				.srcAlphaBlendFactor = @intFromEnum(self.srcAlphaBlendFactor),
+				.dstAlphaBlendFactor = @intFromEnum(self.dstAlphaBlendFactor),
+				.alphaBlendOp = @intFromEnum(self.alphaBlendOp),
+				.colorWriteMask = @as(u4, @bitCast(self.colorWriteMask)),
+			};
+		}
 	};
 
 	const ColorBlendState = struct {
@@ -1662,20 +1771,127 @@ pub const Pipeline = struct { // MARK: Pipeline
 			nand = c.VK_LOGIC_OP_NAND,
 			set = c.VK_LOGIC_OP_SET,
 		};
+
+		pub fn toVulkan(self: ColorBlendState, attachments: []const c.VkPipelineColorBlendAttachmentState) c.VkPipelineColorBlendStateCreateInfo {
+			return .{
+				.sType = c.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+				.logicOpEnable = @intFromBool(self.logicOp != null),
+				.logicOp = if (self.logicOp) |l| @intFromEnum(l) else undefined,
+				.attachmentCount = @intCast(attachments.len),
+				.pAttachments = attachments.ptr,
+				.blendConstants = self.blendConstants,
+			};
+		}
 	};
 
-	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) Pipeline {
+	fn initVulkan(self: *Pipeline, vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, VertexType: type) !void {
+		const vertModule = try Shader.createShaderModule(vertexPath, defines, .vert);
+		defer c.vkDestroyShaderModule(vulkan.device, vertModule, null);
+		const fragModule = try Shader.createShaderModule(fragmentPath, defines, .frag);
+		defer c.vkDestroyShaderModule(vulkan.device, fragModule, null);
+
+		const shaderStages = [_]c.VkPipelineShaderStageCreateInfo{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+				.stage = c.VK_SHADER_STAGE_VERTEX_BIT,
+				.module = vertModule,
+				.pName = "main",
+			},
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+				.stage = c.VK_SHADER_STAGE_FRAGMENT_BIT,
+				.module = fragModule,
+				.pName = "main",
+			},
+		};
+
+		const dynamicStates = [_]c.VkDynamicState{
+			c.VK_DYNAMIC_STATE_VIEWPORT,
+			c.VK_DYNAMIC_STATE_SCISSOR,
+		};
+		const dynamicState: c.VkPipelineDynamicStateCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+			.dynamicStateCount = @intCast(dynamicStates.len),
+			.pDynamicStates = &dynamicStates,
+		};
+		const bindingDescription: c.VkVertexInputBindingDescription = .{ // TODO: Do we need this as a configurable input? It is only needed for instanced rendering as far as I can tell.
+			.binding = 0,
+			.stride = @sizeOf(VertexType),
+			.inputRate = c.VK_VERTEX_INPUT_RATE_VERTEX,
+		};
+		const vertexInputInfo: c.VkPipelineVertexInputStateCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+			.vertexBindingDescriptionCount = 1,
+			.pVertexBindingDescriptions = &bindingDescription,
+			.vertexAttributeDescriptionCount = VertexType.attributeDescriptions.len,
+			.pVertexAttributeDescriptions = VertexType.attributeDescriptions.ptr,
+		};
+		const inputAssembly: c.VkPipelineInputAssemblyStateCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+			.topology = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, // TODO: Make this an input
+			.primitiveRestartEnable = c.VK_FALSE, // TODO: Make this an input
+		};
+		const viewport: c.VkViewport = .{}; // overwritten dynamically
+		const scissor: c.VkRect2D = .{}; // overwritten dynamically
+		const viewportState: c.VkPipelineViewportStateCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+			.viewportCount = 1,
+			.pViewports = &viewport,
+			.scissorCount = 1,
+			.pScissors = &scissor,
+		};
+		const rasterState = self.rasterState.toVulkan();
+		const multisampleState = self.multisampleState.toVulkan();
+		const depthStencilState = self.depthStencilState.toVulkan();
+		const attachments = main.stackAllocator.alloc(c.VkPipelineColorBlendAttachmentState, self.blendState.attachments.len);
+		defer main.stackAllocator.free(attachments);
+		for (attachments, self.blendState.attachments) |*dest, src| {
+			dest.* = src.toVulkan();
+		}
+		const blendState = self.blendState.toVulkan(attachments);
+
+		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		};
+		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
+
+		const pipelineInfo = c.VkGraphicsPipelineCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+			.stageCount = @intCast(shaderStages.len),
+			.pStages = &shaderStages,
+			.pVertexInputState = &vertexInputInfo,
+			.pInputAssemblyState = &inputAssembly,
+			.pViewportState = &viewportState,
+			.pRasterizationState = &rasterState,
+			.pMultisampleState = &multisampleState,
+			.pDepthStencilState = &depthStencilState,
+			.pColorBlendState = &blendState,
+			.pDynamicState = &dynamicState,
+			.layout = self.pipelineLayout,
+			.renderPass = RenderPass.renderToWindow.renderPass, // TODO: Allow configuring this
+			.subpass = 0,
+		};
+		try vulkan.checkResultErr(c.vkCreateGraphicsPipelines(vulkan.device, null, 1, &pipelineInfo, null, &self.graphicsPipeline));
+	}
+
+	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, VertexType: type, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) Pipeline {
 		std.debug.assert(depthStencilState.depthBoundsTest == null); // Only available in Vulkan 1.3
 		std.debug.assert(depthStencilState.stencilTest == null); // TODO: Not yet implemented
 		std.debug.assert(rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
 		std.debug.assert(blendState.logicOp == null); // TODO: Not yet implemented
-		return .{
+		var self: Pipeline = .{
 			.shader = .init(vertexPath, fragmentPath, defines, uniformStruct),
 			.rasterState = rasterState,
 			.multisampleState = .{}, // TODO: Not implemented
 			.depthStencilState = depthStencilState,
 			.blendState = blendState,
 		};
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			self.initVulkan(vertexPath, fragmentPath, defines, VertexType) catch |err| {
+				std.log.err("Vulkan pipeline creation for paths {s} {s} failed with error {s}", .{vertexPath, fragmentPath, @errorName(err)});
+			};
+		}
+		return self;
 	}
 
 	pub fn deinit(self: Pipeline) void {
@@ -1780,6 +1996,59 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 
 	pub fn bind(self: ComputePipeline) void {
 		self.shader.bind();
+	}
+};
+
+pub const RenderPass = struct { // MARK: RenderPass
+	renderPass: c.VkRenderPass,
+
+	pub var renderToWindow: RenderPass = undefined;
+
+	fn initRenderPasses() !void {
+		renderToWindow = try RenderPass.init();
+	}
+
+	fn init() !RenderPass {
+		const colorAttachment = c.VkAttachmentDescription{
+			.format = vulkan.SwapChain.imageFormat, // TODO: This needs to be configurable to be able to render to f16 framebuffer
+			.samples = c.VK_SAMPLE_COUNT_1_BIT,
+			.loadOp = c.VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = c.VK_ATTACHMENT_STORE_OP_STORE,
+			.stencilLoadOp = c.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+			.stencilStoreOp = c.VK_ATTACHMENT_STORE_OP_DONT_CARE,
+			.initialLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+			.finalLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		};
+		const colorAttachmentRef = c.VkAttachmentReference{
+			.attachment = 0,
+			.layout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		};
+		const subpass = c.VkSubpassDescription{
+			.pipelineBindPoint = c.VK_PIPELINE_BIND_POINT_GRAPHICS,
+			.colorAttachmentCount = 1,
+			.pColorAttachments = &colorAttachmentRef,
+		};
+		const dependency = c.VkSubpassDependency{
+			.srcSubpass = c.VK_SUBPASS_EXTERNAL,
+			.dstSubpass = 0,
+			.srcStageMask = c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			.srcAccessMask = 0,
+			.dstStageMask = c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+		};
+		const renderPassInfo = c.VkRenderPassCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+			.attachmentCount = 1,
+			.pAttachments = &colorAttachment,
+			.subpassCount = 1,
+			.pSubpasses = &subpass,
+			.dependencyCount = 1,
+			.pDependencies = &dependency,
+		};
+
+		var self: RenderPass = undefined;
+		try vulkan.checkResultErr(c.vkCreateRenderPass(vulkan.device, &renderPassInfo, null, &self.renderPass));
+		return self;
 	}
 };
 
@@ -2602,6 +2871,7 @@ const block_texture = struct { // MARK: block_texture
 			"assets/cubyz/shaders/item_texture_post.frag",
 			"",
 			&uniforms,
+			VertexArray.EmptyVertex,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},

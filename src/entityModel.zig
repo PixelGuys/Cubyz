@@ -9,7 +9,7 @@ pub const EntityModel = struct {
 	indexCount: c_int,
 	texture: main.graphics.Texture,
 
-	const EntityVertex = extern struct {
+	pub const EntityVertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
