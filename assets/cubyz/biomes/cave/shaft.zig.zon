@@ -1,0 +1,46 @@
+.{
+	.isCave = true,
+	.maxHeight = 0,
+	.minHeight = -48250,
+	.chance = 0.1,
+	.fogDensity = 2,
+	.music = "cubyz:heart-of-the-beast",
+
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:gravel",
+			.chance = 0.064,
+			.width = 5,
+			.variation = 5,
+			.depth = 3,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:slate/base",
+			.chance = 0.048,
+			.size = 3,
+			.size_variation = 6,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:cylinder",
+			.minAmount = 1,
+			.maxAmount = 1,
+			.minRadius = 6,
+			.maxRadius = 10,
+			.minHeight = 60,
+			.maxHeight = 150,
+			.maxBiomeCenterDistance = 0,
+		},
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 2,
+			.maxAmount = 5,
+			.minRadius = 4,
+			.maxRadius = 10,
+		},
+	},
+}
