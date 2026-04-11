@@ -1,5 +1,0 @@
-.{
-	.texture = "snail.png",
-	.height = 1,
-	.coordinateSystem = .right_handed_z_up,
-}

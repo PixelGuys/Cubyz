@@ -73,7 +73,10 @@ fn update() void {
 
 // TODO: this will be removed in future ECS parts
 pub fn initAfterWorld() void {
-	model = main.entityModel.getById("cubyz:snale").?.get();
+	model = (main.entityModel.getById("cubyz:missing") orelse blk: {
+		std.log.err("EntityModel {s} wasn't found", .{"cubyz:cubert"});
+		break :blk main.entityModel.default();
+	}).get();
 }
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
