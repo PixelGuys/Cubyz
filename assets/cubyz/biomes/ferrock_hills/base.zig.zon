@@ -19,6 +19,15 @@
 			.size_variance = 3,
 		},
 		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:dirt",
+			.chance = 0.024,
+			.width = 8,
+			.variation = 5,
+			.depth = 4,
+			.smoothness = 0.4,
+		},
+		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:cactus/saguaro",
 			.placeMode = .degradable,
