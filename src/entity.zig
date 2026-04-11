@@ -26,10 +26,10 @@ pub const EntityComponentLoadError = error{
 // Analogous to Protocols.
 pub const EntityComponentId = u32;
 const EntityComponentVTable = struct {
-	serverLoad: *const fn (componentId: EntityComponentId, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	clientLoad: *const fn (componentId: EntityComponentId, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	serverUnload: *const fn (componentId: EntityComponentId) void,
-	clientUnload: *const fn (componentId: EntityComponentId) void,
+	serverLoad: *const fn (entityId: EntityComponentId, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	clientLoad: *const fn (entityId: EntityComponentId, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	serverUnload: *const fn (entityId: EntityComponentId) void,
+	clientUnload: *const fn (entityId: EntityComponentId) void,
 };
 var componentList: []?EntityComponentVTable = undefined;
 
