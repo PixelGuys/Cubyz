@@ -25,10 +25,10 @@ pub const EntityComponentLoadError = error{
 };
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
-	serverLoad: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	clientLoad: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	serverUnload: *const fn (id: u32) void,
-	clientUnload: *const fn (id: u32) void,
+	serverLoad: *const fn (componentId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	clientLoad: *const fn (componentId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	serverUnload: *const fn (componentId: u32) void,
+	clientUnload: *const fn (componentId: u32) void,
 };
 var componentList: []?EntityComponentVTable = undefined;
 
@@ -36,20 +36,20 @@ pub fn initComponents() void {
 	var tmpComponentList: main.ListUnmanaged(?EntityComponentVTable) = .{};
 	inline for (@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).client.init();
-		const id = @field(components, decl.name).entityComponentID;
+		const componentId = @field(components, decl.name).entityComponentID;
 
-		if (tmpComponentList.items.len <= id) {
-			tmpComponentList.appendNTimes(main.worldArena, null, id + 1 - tmpComponentList.items.len);
+		if (tmpComponentList.items.len <= componentId) {
+			tmpComponentList.appendNTimes(main.worldArena, null, componentId + 1 - tmpComponentList.items.len);
 		}
-		if (tmpComponentList.items[id] == null) {
-			tmpComponentList.items[id] = .{
+		if (tmpComponentList.items[componentId] == null) {
+			tmpComponentList.items[componentId] = .{
 				.serverLoad = @field(components, decl.name).server.loadFromData,
 				.clientLoad = @field(components, decl.name).client.load,
 				.serverUnload = @field(components, decl.name).server.unload,
 				.clientUnload = @field(components, decl.name).client.unload,
 			};
 		} else {
-			std.log.err("entity components: Duplicate list id {}.", .{id});
+			std.log.err("entity components: Duplicate list id {}.", .{componentId});
 		}
 	}
 	componentList = tmpComponentList.items;
@@ -57,7 +57,7 @@ pub fn initComponents() void {
 pub fn deinitComponents() void {
 	componentList = undefined;
 }
-pub fn load(comptime side: main.sync.Side, componentId: u32, entityId: u32, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
+pub fn loadComponent(comptime side: main.sync.Side, componentId: u32, entityId: u32, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
 	if (componentId >= componentList.len) {
 		std.log.err("unknown Component Id {} ", .{componentId});
 		return error.UnknownComponentId;
@@ -77,7 +77,7 @@ pub fn load(comptime side: main.sync.Side, componentId: u32, entityId: u32, comp
 		return error.UnknownComponentId;
 	}
 }
-pub fn unload(comptime side: main.sync.Side, componentId: u32, entityId: u32) EntityComponentLoadError!void {
+pub fn unloadComponent(comptime side: main.sync.Side, componentId: u32, entityId: u32) EntityComponentLoadError!void {
 	if (componentId >= componentList.len) {
 		std.log.err("unknown Component Id {} ", .{componentId});
 		return error.UnknownComponentId;
@@ -182,7 +182,7 @@ pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: 
 		const componentVersion: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableVersion;
 		const componentData = reader.readSliceWithSize() catch return EntityComponentLoadError.UnreadableComponentData;
 
-		lastError = load(side, componentId, id, componentData, componentVersion);
+		lastError = loadComponent(side, componentId, id, componentData, componentVersion);
 	}
 	return lastError;
 }

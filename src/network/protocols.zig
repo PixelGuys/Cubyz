@@ -977,9 +977,9 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 
 		if (actionType == .load) {
 			const componentVersion = try reader.readVarInt(u32);
-			try main.entity.load(.client, componentId, entityId, reader.remaining, componentVersion);
+			try main.entity.loadComponent(.client, componentId, entityId, reader.remaining, componentVersion);
 		} else if (actionType == .unload) {
-			try main.entity.unload(.client, componentId, entityId);
+			try main.entity.unloadComponent(.client, componentId, entityId);
 		}
 	}
 	pub fn unload(conn: *Connection, entityId: u32, componentId: u32) void {
