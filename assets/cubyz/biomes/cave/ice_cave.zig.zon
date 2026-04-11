@@ -1,5 +1,5 @@
 .{
-	.tags = .{.snowy},
+	.tags = .{.cave_layer, .snowy},
 	.isCave = true,
 	.caveNoiseStrength = 10,
 	.maxHeight = -256,
