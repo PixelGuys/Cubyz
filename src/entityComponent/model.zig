@@ -106,7 +106,7 @@ pub const server = struct {
 			.entity = entity,
 			.customTexturePath = customTexturePath,
 			.entityModel = entityModel,
-		}) catch return main.entity.EntityComponentLoadError.Memory;
+		}) catch unreachable;
 	}
 	pub fn unload(id: u32) void {
 		_ = renderComponents.remove(id);
