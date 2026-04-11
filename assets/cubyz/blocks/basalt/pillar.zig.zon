@@ -3,5 +3,5 @@
 	.model = "cubyz:cube",
 	.texture = "cubyz:basalt/pillar",
 	.texture_top = "cubyz:basalt/pillar_top",
-	.texture_bottom = "cubyz:basalt/pillar_top",
+	.texture_bottom = "cubyz:basalt/pillar_bottom",
 }
