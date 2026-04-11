@@ -26,7 +26,7 @@ pub const Assets = struct {
 	blockMigrations: AddonNameToZonMap,
 	items: ZonHashMap,
 	itemMigrations: ZonHashMap,
-	tools: ZonHashMap,
+	proceduralItems: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
 	caveLayers: ZonHashMap,
@@ -48,7 +48,7 @@ pub const Assets = struct {
 			.blockMigrations = .{},
 			.items = .{},
 			.itemMigrations = .{},
-			.tools = .{},
+			.proceduralItems = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
 			.caveLayers = .{},
@@ -70,7 +70,7 @@ pub const Assets = struct {
 		self.blockMigrations.deinit(allocator.allocator);
 		self.items.deinit(allocator.allocator);
 		self.itemMigrations.deinit(allocator.allocator);
-		self.tools.deinit(allocator.allocator);
+		self.proceduralItems.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
 		self.caveLayers.deinit(allocator.allocator);
@@ -92,7 +92,7 @@ pub const Assets = struct {
 			.blockMigrations = self.blockMigrations.clone(allocator.allocator) catch unreachable,
 			.items = self.items.clone(allocator.allocator) catch unreachable,
 			.itemMigrations = self.itemMigrations.clone(allocator.allocator) catch unreachable,
-			.tools = self.tools.clone(allocator.allocator) catch unreachable,
+			.proceduralItems = self.proceduralItems.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
 			.caveLayers = self.caveLayers.clone(allocator.allocator) catch unreachable,
@@ -117,7 +117,7 @@ pub const Assets = struct {
 		for (addons.items) |addon| {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
-			addon.readAllZon(allocator, "tools", true, &self.tools, null);
+			addon.readAllZon(allocator, "tools", true, &self.proceduralItems, null);
 			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "cave_layers", true, &self.caveLayers, null);
@@ -132,8 +132,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -405,8 +405,8 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	_ = items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
 
-fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	items_zig.registerTool(assetFolder, id, zon);
+fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
+	items_zig.registerProceduralItem(assetFolder, id, zon);
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -538,7 +538,7 @@ pub const Palette = struct { // MARK: Palette
 var loadedAssets: bool = false;
 pub var worldAssetFolder: []const u8 = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, proceduralItemPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -673,17 +673,17 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try assignBlockItem(stringId);
 	}
 
-	for (toolPalette.palette.items) |id| {
-		registerTool(assetFolder, id, worldAssets.tools.get(id) orelse .null);
+	for (proceduralItemPalette.palette.items) |id| {
+		registerProceduralItem(assetFolder, id, worldAssets.proceduralItems.get(id) orelse .null);
 	}
 
-	// tools:
-	iterator = worldAssets.tools.iterator();
+	// procedural items:
+	iterator = worldAssets.proceduralItems.iterator();
 	while (iterator.next()) |entry| {
 		const id = entry.key_ptr.*;
-		if (items_zig.hasRegisteredTool(id)) continue;
-		registerTool(assetFolder, id, entry.value_ptr.*);
-		toolPalette.add(id);
+		if (items_zig.hasRegisteredProceduralItem(id)) continue;
+		registerProceduralItem(assetFolder, id, entry.value_ptr.*);
+		proceduralItemPalette.add(id);
 	}
 
 	// block drops:
