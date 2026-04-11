@@ -157,12 +157,12 @@ pub const EntityModel = struct {
 		defer indices.deinit();
 		var baseVertex: u32 = 0;
 
-		for (data.nodes, 0..data.nodes_count) |node, _| {
+		for (data.nodes[0..data.nodes_count]) |node| {
 			if (node.mesh != null) {
 				const finalMat = getHierarchyMatrix(node, self.coordinateSystem);
 
 				const primitives = node.mesh.*.primitives;
-				for (primitives, 0..node.mesh.*.primitives_count) |primitive, _| {
+				for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
 					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
 						std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
 						continue;
