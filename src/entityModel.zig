@@ -66,14 +66,15 @@ pub const EntityModel = struct {
 		// get TexturePath
 		{
 			self.texturePath = &.{};
+			const fileEnding = ".png";
 			if (zon.get(?[]const u8, "defaultTexture", null)) |texture| {
 				var split = std.mem.splitScalar(u8, texture, ':');
 				const mod = split.first();
 				const textureName = split.next() orelse unreachable;
-				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}", .{assetFolder, mod, textureName}) catch unreachable;
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding}) catch unreachable;
 				main.files.cubyzDir().dir.access(self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
-					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}", .{mod, textureName}) catch unreachable;
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}{s}", .{mod, textureName, fileEnding}) catch unreachable;
 				};
 			}
 		}
