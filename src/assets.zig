@@ -809,12 +809,12 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	}
 }
 
-pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
+pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	const name = split.next() orelse unreachable;
 
-	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding}) catch unreachable;
+	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	if (!main.files.cwd().hasFile(path)) {
 		main.stackAllocator.free(path);

@@ -81,7 +81,7 @@ pub const EntityModel = struct {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
 		const fileEnding = ".obj";
-		const file = main.assets.readAsset(main.stackAllocator, main.assets.worldAssetFolder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, main.assets.worldAssetFolder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
+		const file = main.assets.readAsset(main.stackAllocator, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
 		defer main.stackAllocator.free(file);
 
 		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, file);
