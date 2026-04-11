@@ -81,8 +81,8 @@ pub const EntityModel = struct {
 		self.deinitModelAndTexture();
 
 		const fileEnding = ".obj";
-		const file = main.assets.readAsset(main.globalAllocator, main.assets.worldAssetFolder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, main.assets.worldAssetFolder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
-		defer main.globalAllocator.free(file);
+		const file = main.assets.readAsset(main.stackAllocator, main.assets.worldAssetFolder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, main.assets.worldAssetFolder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
+		defer main.stackAllocator.free(file);
 
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 
