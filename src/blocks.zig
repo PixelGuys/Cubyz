@@ -33,6 +33,8 @@ pub const maxBlockCount: usize = 65536; // 16 bit limit
 pub const BlockDrop = struct {
 	items: []const items.ItemStack,
 	chance: f32,
+	forbiddenTag: ?Tag = null,
+	requiredTag: ?Tag = null,
 };
 
 /// Ores can be found underground in veins.
@@ -165,7 +167,6 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for (drops, 0..) |blockDrop, i| {
-		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
 		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
@@ -192,7 +193,13 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
-		blockDrops[i].items = main.worldArena.dupe(main.items.ItemStack, resultItems.items);
+
+		blockDrops[i] = BlockDrop{
+			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
+			.chance = blockDrop.get(f32, "chance", 1),
+			.forbiddenTag = if (blockDrop.getChildOrNull("forbiddenTag")) |tagZon| Tag.loadTagFromZon(tagZon) else null,
+			.requiredTag = if (blockDrop.getChildOrNull("requiredTag")) |tagZon| Tag.loadTagFromZon(tagZon) else null,
+		};
 	}
 	return blockDrops;
 }

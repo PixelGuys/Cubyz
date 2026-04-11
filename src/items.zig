@@ -883,11 +883,16 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.tooltip.items;
 	}
 
+	pub fn hasBlockTag(self: *ProceduralItem, tag: Tag) bool {
+		for (self.type.blockTags()) |proceduralItemTag| {
+			if (proceduralItemTag == tag) return true;
+		}
+		return false;
+	}
+
 	pub fn isEffectiveOn(self: *ProceduralItem, block: main.blocks.Block) bool {
 		for (block.blockTags()) |blockTag| {
-			for (self.type.blockTags()) |ProceduralItemTag| {
-				if (ProceduralItemTag == blockTag) return true;
-			}
+			if (hasBlockTag(self, blockTag)) return true;
 		}
 		return false;
 	}
