@@ -1,0 +1,14 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/mushroom_pole/spacer/6"},
+		.{.id = "cubyz:rare/mushroom_pole/spacer/7"},
+		.{.id = "cubyz:rare/mushroom_pole/spacer/8"},
+		.{.id = "cubyz:rare/mushroom_pole/spacer/9"},
+		.{.id = "cubyz:rare/mushroom_pole/spacer/10"},
+	},
+	.children = .{
+		.green = "cubyz:rare/mushroom_pole/pole",
+		.crimson = "cubyz:rare/mushroom_pole/spacer/optional",
+		.dark_grey = "cubyz:rare/mushroom_pole/root",
+	},
+}
