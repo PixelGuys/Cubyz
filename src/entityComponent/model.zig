@@ -26,7 +26,6 @@ pub const client = struct {
 	const RenderComponent = struct {
 		entity: u32, // entity
 		entityModel: main.entityModel.EntityModelIndex, // model
-		customTexture: ?main.graphics.Texture, // for custom textures. i.e Skins
 	};
 	pub var renderComponents: main.utils.SparseSet(RenderComponent, main.entity.Entity) = undefined;
 
@@ -43,13 +42,14 @@ pub const client = struct {
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
 		const entityModel = reader.readInt(u32) catch return;
-		const customTexture: ?main.graphics.Texture = null;
 
-		renderComponents.set(main.globalAllocator, @enumFromInt(entity), RenderComponent{
+		if (!renderComponents.contains(@enumFromInt(entity))) {
+			_ = renderComponents.add(main.globalAllocator, @enumFromInt(entity));
+		}
+		renderComponents.get(@enumFromInt(entity)).?.* = RenderComponent{
 			.entity = entity,
-			.customTexture = customTexture,
 			.entityModel = main.entityModel.EntityModelIndex{.index = entityModel},
-		});
+		};
 	}
 	pub fn unload(entity: u32) void {
 		renderComponents.remove(@enumFromInt(entity)) catch {
@@ -64,9 +64,6 @@ pub const server = struct {
 	pub const RenderComponent = struct {
 		entity: u32, // entity
 		entityModel: main.entityModel.EntityModelIndex, // model
-		fn deinit(self: RenderComponent) void {
-			_ = self;
-		}
 		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = audience;
 			writer.writeInt(u32, self.entityModel.index);
@@ -78,9 +75,6 @@ pub const server = struct {
 		renderComponents = .{};
 	}
 	pub fn deinit() void {
-		for (renderComponents.dense.items) |*component| {
-			component.deinit();
-		}
 		renderComponents.deinit(main.globalAllocator);
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
@@ -93,13 +87,13 @@ pub const server = struct {
 		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
 	}
 	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex) main.entity.EntityComponentLoadError!void {
-		if (renderComponents.get(@enumFromInt(entity))) |old| {
-			old.deinit();
+		if (!renderComponents.contains(@enumFromInt(entity))) {
+			_ = renderComponents.add(main.globalAllocator, @enumFromInt(entity));
 		}
-		renderComponents.set(main.globalAllocator, @enumFromInt(entity), RenderComponent{
+		renderComponents.get(@enumFromInt(entity)).?.* = RenderComponent{
 			.entity = entity,
 			.entityModel = entityModel,
-		});
+		};
 	}
 	pub fn unload(entity: u32) void {
 		renderComponents.remove(@enumFromInt(entity)) catch {
@@ -107,10 +101,10 @@ pub const server = struct {
 		};
 	}
 	pub fn put(entity: u32, renderComponent: RenderComponent) void {
-		if (renderComponents.get(@enumFromInt(entity))) |entry| {
-			entry.deinit();
+		if (!renderComponents.contains(@enumFromInt(entity))) {
+			_ = renderComponents.add(main.globalAllocator, @enumFromInt(entity));
 		}
-		renderComponents.set(main.globalAllocator, @enumFromInt(entity), renderComponent) catch unreachable;
+		renderComponents.get(@enumFromInt(entity)).?.* = renderComponent;
 	}
 	pub fn get(entity: u32) ?*RenderComponent {
 		return renderComponents.get(@enumFromInt(entity));
