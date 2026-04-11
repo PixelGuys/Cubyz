@@ -711,7 +711,7 @@ pub const Command = struct { // MARK: Command
 
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
-							.spawnPoint = info.target.?.spawnPos,
+							.spawnPoint = info.target.?.getSpawnPoint(),
 						}});
 					} else {
 						self.syncOperations.append(allocator, .{.health = .{

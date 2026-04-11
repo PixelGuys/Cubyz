@@ -40,6 +40,6 @@ pub fn execute(args: []const u8, source: *User) void {
 		}
 		source.spawnPos = pos;
 	} else {
-		source.sendMessage("#ffff00{}", .{source.spawnPos});
+		source.sendMessage("#ffff00{}", .{source.getSpawnPoint()});
 	}
 }
