@@ -68,10 +68,9 @@ pub const client = struct {
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		var it = entityComponent.@"cubyz:model".client.renderComponents.iterator();
-		while (it.next()) |component| {
-			const ent = main.client.entity_manager.entities.items()[component.value_ptr.entity];
-			const entModel = component.value_ptr.entityModel.get();
+		for (entityComponent.@"cubyz:model".client.renderComponents.dense.items) |*component| {
+			const ent = main.client.entity_manager.entities.items()[component.entity];
+			const entModel = component.entityModel.get();
 
 			if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
 			const pos3d = ent.getRenderPosition() - playerPos;
@@ -108,15 +107,14 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		var it = entityComponent.@"cubyz:model".client.renderComponents.iterator();
-		while (it.next()) |component| {
-			const ent = main.client.entity_manager.getEntity(component.value_ptr.entity);
-			const entModel = component.value_ptr.entityModel.get();
+		for (entityComponent.@"cubyz:model".client.renderComponents.dense.items) |component| {
+			const ent = main.client.entity_manager.getEntity(component.entity);
+			const entModel = component.entityModel.get();
 
 			if (ent.id == game.Player.id) continue; // don't render local player
 
 			entModel.bind();
-			const entTexture = component.value_ptr.customTexture orelse entModel.defaultTexture;
+			const entTexture = entModel.defaultTexture;
 
 			entTexture.?.bindTo(0);
 			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
