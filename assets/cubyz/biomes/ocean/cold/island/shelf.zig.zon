@@ -1,0 +1,16 @@
+.{
+	.minHeight = -10,
+	.maxHeight = -1,
+	.radius = 77,
+	.hills = 7,
+	.ground_structure = .{
+		"2 to 3 cubyz:gravel",
+	},
+	.maxSubBiomeCount = 1,
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/cold/base",
+			.chance = 1,
+		},
+	},
+}

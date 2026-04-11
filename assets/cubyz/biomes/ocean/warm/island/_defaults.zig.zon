@@ -1,0 +1,9 @@
+.{
+	.chance = 0,
+	.properties = .{
+		.ocean,
+		.hot,
+	},
+	.music = "cubyz:Sincerely",
+	.stoneBlock = "cubyz:sandstone/base",
+}

@@ -1,0 +1,55 @@
+.{
+	.minHeight = 4,
+	.maxHeight = 5,
+	.radius = 32,
+	.soilCreep = 1,
+	.hills = 4,
+	.ground_structure = .{
+		"cubyz:grass",
+		"1 to 2 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:leaves/oak",
+			.log = "cubyz:oak_log",
+			.top = "cubyz:oak_top",
+			.chance = 0.016,
+			.type = .round,
+			.height = 12,
+			.height_variation = 10,
+			.leafRadius = 5,
+			.leafRadius_variation = 6,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass_vegetation"},
+			.chance = 0.08,
+			.width = 3,
+			.variation = 2,
+			.density = 0.5,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{
+				"cubyz:hibiscus:0",
+				"cubyz:hibiscus:1",
+				"cubyz:hibiscus:2",
+				"cubyz:hibiscus:3",
+			},
+			.chance = 0.03,
+			.width = 3,
+			.variation = 2,
+			.density = 0.3,
+			.priority = 0.2,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/temperate/island/shelf",
+			.chance = 1,
+			.parentEdgeDistance = 45,
+		},
+	},
+}
