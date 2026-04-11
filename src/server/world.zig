@@ -1263,7 +1263,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
 		for (userList) |user| {
-			main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
+			main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx, wy, wz}, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		// onBreak event
 		if (oldBlock) |block| {
