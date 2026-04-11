@@ -31,7 +31,7 @@ var uniforms: struct {
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
-var model: *main.entityModel.EntityModel = undefined;
+
 pub fn init() void {
 	entities = .init();
 	pipeline = graphics.Pipeline.init(
@@ -73,10 +73,6 @@ fn update() void {
 
 // TODO: this will be removed in future ECS parts
 pub fn initAfterWorld() void {
-	model = (main.entityModel.getById("cubyz:snale") orelse blk: {
-		std.log.err("EntityModel {s} wasn't found", .{"cubyz:snale"});
-		break :blk main.entityModel.default();
-	}).get();
 }
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
@@ -132,6 +128,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	for (entities.items()) |ent| {
 		if (ent.id == game.Player.id) continue; // don't render local player
 
+		const model = main.entity.components.@"cubyz:model".client.renderComponents.get(@enumFromInt(ent.id)).?.entityModel.get();
 		model.bind();
 		const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 		const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);

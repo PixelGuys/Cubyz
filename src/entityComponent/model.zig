@@ -82,6 +82,7 @@ pub const server = struct {
 		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel});
 	}
 	pub fn loadByID(entity: u32, entityModelID: []const u8) main.entity.EntityComponentLoadError!void {
+		std.log.debug("entityType {s}", .{entityModelID});
 		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
 	}
 	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex) main.entity.EntityComponentLoadError!void {
@@ -90,7 +91,6 @@ pub const server = struct {
 			.entity = entity,
 			.entityModel = entityModel,
 		};
-
 	}
 	pub fn unload(entity: u32) void {
 		renderComponents.remove(@enumFromInt(entity)) catch {
