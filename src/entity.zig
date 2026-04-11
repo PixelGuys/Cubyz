@@ -24,11 +24,12 @@ pub const EntityComponentLoadError = error{
 	UnknownComponentId,
 };
 // Analogous to Protocols.
+pub const EntityComponentId = u32;
 const EntityComponentVTable = struct {
-	serverLoad: *const fn (componentId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	clientLoad: *const fn (componentId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	serverUnload: *const fn (componentId: u32) void,
-	clientUnload: *const fn (componentId: u32) void,
+	serverLoad: *const fn (componentId: EntityComponentId, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	clientLoad: *const fn (componentId: EntityComponentId, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	serverUnload: *const fn (componentId: EntityComponentId) void,
+	clientUnload: *const fn (componentId: EntityComponentId) void,
 };
 var componentList: []?EntityComponentVTable = undefined;
 
@@ -57,7 +58,7 @@ pub fn initComponents() void {
 pub fn deinitComponents() void {
 	componentList = undefined;
 }
-pub fn loadComponent(comptime side: main.sync.Side, componentId: u32, entityId: u32, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
+pub fn loadComponent(comptime side: main.sync.Side, componentId: EntityComponentId, entityId: u32, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
 	if (componentId >= componentList.len) {
 		std.log.err("unknown Component Id {} ", .{componentId});
 		return error.UnknownComponentId;
@@ -77,7 +78,7 @@ pub fn loadComponent(comptime side: main.sync.Side, componentId: u32, entityId: 
 		return error.UnknownComponentId;
 	}
 }
-pub fn unloadComponent(comptime side: main.sync.Side, componentId: u32, entityId: u32) EntityComponentLoadError!void {
+pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityComponentId, entityId: u32) EntityComponentLoadError!void {
 	if (componentId >= componentList.len) {
 		std.log.err("unknown Component Id {} ", .{componentId});
 		return error.UnknownComponentId;
@@ -163,26 +164,26 @@ pub const server = struct {
 		return main.utils.Base64.toBase64(allocator, writer.data.items);
 	}
 
-	pub fn removeAllComponents(id: u32) void {
+	pub fn removeAllComponents(entityId: u32) void {
 		const list = main.entity.components;
 		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			@field(list, decl.name).server.unload(id);
+			@field(list, decl.name).server.unload(entityId);
 		}
 	}
 };
 
-pub fn loadComponentsFromBase64(base64Data: []const u8, id: u32, comptime side: main.sync.Side) EntityComponentLoadError!void {
+pub fn loadComponentsFromBase64(base64Data: []const u8, entityId: u32, comptime side: main.sync.Side) EntityComponentLoadError!void {
 	const data = main.utils.fromBase64(main.stackAllocator, base64Data) catch return EntityComponentLoadError.DecodingBase64;
 	defer main.stackAllocator.free(data);
 
 	var reader = main.utils.BinaryReader.init(data);
 	var lastError: EntityComponentLoadError!void = {};
 	while (reader.remaining.len != 0) {
-		const componentId: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableId;
+		const componentId: EntityComponentId = reader.readVarInt(EntityComponentId) catch return EntityComponentLoadError.UnreadableId;
 		const componentVersion: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableVersion;
 		const componentData = reader.readSliceWithSize() catch return EntityComponentLoadError.UnreadableComponentData;
 
-		lastError = loadComponent(side, componentId, id, componentData, componentVersion);
+		lastError = loadComponent(side, componentId, entityId, componentData, componentVersion);
 	}
 	return lastError;
 }
