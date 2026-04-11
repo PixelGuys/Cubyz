@@ -1,5 +1,7 @@
 .{
-	.properties = .{},
+	.properties = .{
+		.birch,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 48,
