@@ -23,11 +23,11 @@ const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
 var entityCount: u32 = 0;
 
-fn kickPerConn(conn: *main.network.Connection) void {
+fn kickbyConnection(conn: *main.network.Connection) void {
 	conn.disconnect();
 }
 
-fn kickPerIndex(playerIndex: usize) void {
+fn kickByPlayerIndex(playerIndex: usize) void {
 	const command = std.fmt.allocPrint(main.globalAllocator.allocator, "kick @{d}", .{playerIndex}) catch unreachable;
 	main.sync.ClientSide.executeCommand(.{.chatCommand = .{.message = command}});
 }
@@ -48,7 +48,7 @@ pub fn onOpen() void {
 			const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{std.fmt.alt(ent, .formatWithPlayerIndex)}) catch unreachable;
 			defer main.stackAllocator.free(string);
 			row.add(Label.init(.{0, 0}, 200, string, .left));
-			row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithInt(kickPerIndex, ent.playerIndex.?)));
+			row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithInt(kickByPlayerIndex, ent.playerIndex.?)));
 			list.add(row);
 		}
 	} else {
@@ -61,16 +61,16 @@ pub fn onOpen() void {
 			userList[i].increaseRefCount();
 			if (userList[i].id == main.game.Player.id and connection.isConnected()) continue;
 			const row = HorizontalList.init();
-			if (connection.isConnected()) {
+			if (@intFromEnum(connection.handShakeState.load(.monotonic)) >= @intFromEnum(main.network.Connection.HandShakeState.userData)) {
 				const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.user.?}) catch unreachable;
 				defer main.stackAllocator.free(string);
 				row.add(Label.init(.{0, 0}, 200, string, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithPtr(kickPerConn, connection)));
+				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithPtr(kickbyConnection, connection)));
 			} else {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.remoteAddress}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				row.add(Label.init(.{0, 0}, 200, ip, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Cancel", .initWithPtr(kickPerConn, connection)));
+				row.add(Button.initText(.{0, 0}, 100, "Cancel", .initWithPtr(kickbyConnection, connection)));
 			}
 			list.add(row);
 		}
