@@ -481,8 +481,8 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			sum *= property.resultScale;
 			proceduralItem.getProperty(property.destination orelse continue).* += sum;
 		}
-		if (proceduralItem.damage < 1) proceduralItem.damage = 1/(2 - proceduralItem.damage);
-		if (proceduralItem.swingSpeed < 1) proceduralItem.swingSpeed = 1/(2 - proceduralItem.swingSpeed);
+		proceduralItem.damage = @round(proceduralItem.damage * 10) / 10;
+		proceduralItem.swingSpeed = @round(proceduralItem.swingSpeed * 10) / 10;
 		for (0..25) |i| {
 			const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for (material.modifiers) |newMod| {
@@ -514,8 +514,6 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			proceduralItem.maxDurability = 0;
 			proceduralItem.durability = 1;
 		}
-		tool.damage = @round(tool.damage*10)/10;
-		tool.swingSpeed = @round(tool.swingSpeed*10)/10;
 	}
 
 	fn checkConnectivity(proceduralItem: *ProceduralItem) bool {
