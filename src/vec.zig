@@ -189,7 +189,7 @@ pub const Mat4f = struct { // MARK: Mat4f
 	}
 
 	// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L634
-	pub inline fn andInt(v0: anytype, v1: anytype) @TypeOf(v0, v1) {
+	inline fn andInt(v0: anytype, v1: anytype) @TypeOf(v0, v1) {
 		const T = @TypeOf(v0, v1);
 		const Tu = @Vector(@typeInfo(T).vector.len, u32);
 		const v0u = @as(Tu, @bitCast(v0));
