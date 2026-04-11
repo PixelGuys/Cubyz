@@ -159,14 +159,24 @@ pub const PublicKey = union(KeyTypeEnum) {
 pub const AccountCode = struct {
 	text: []u8,
 
+	fn printInvalidCharError(failureText: *main.List(u8), codepoint: u21) void {
+		failureText.print("Account Code contains invalid character '{u}' (U+{X}), only ASCII letters and whitespaces are allowed.\n", .{codepoint, codepoint});
+	}
+
 	pub fn initFromUserInput(text: []const u8, failureText: *main.List(u8)) AccountCode {
 		var result: main.ListUnmanaged(u8) = .initCapacity(main.stackAllocator, text.len);
 		defer result.deinit(main.stackAllocator);
 		defer std.crypto.secureZero(u8, result.items);
 
 		const trimmed = std.mem.trim(u8, text, &std.ascii.whitespace);
+		var unicodeIterator = std.unicode.Utf8View.initUnchecked(trimmed).iterator();
 
-		for (trimmed) |char| {
+		while (unicodeIterator.nextCodepoint()) |codepoint| {
+			if (codepoint > 0x7F) {
+				printInvalidCharError(failureText, codepoint);
+				continue;
+			}
+			const char: u8 = @intCast(codepoint);
 			if (std.ascii.isAlphabetic(char)) {
 				result.appendAssumeCapacity(std.ascii.toLower(char));
 			} else if (std.ascii.isWhitespace(char)) {
@@ -174,7 +184,7 @@ pub const AccountCode = struct {
 					result.appendAssumeCapacity(' ');
 				}
 			} else {
-				failureText.print("Account Code contains invalid character '{c}', only ASCII letters and whitespaces are allowed.\n", .{char});
+				printInvalidCharError(failureText, codepoint);
 			}
 		}
 		if (result.items.len == 0) {
