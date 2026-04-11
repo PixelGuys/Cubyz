@@ -196,7 +196,7 @@ pub const Mat4f = struct { // MARK: Mat4f
 		const v1u = @as(Tu, @bitCast(v1));
 		return @as(T, @bitCast(v0u & v1u)); // andps
 	}
-	
+
 	// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L2726
 	pub fn rotationQuat(quat: Vec4f) Mat4f {
 		const f32x4_mask3: Vec4f = Vec4f{
