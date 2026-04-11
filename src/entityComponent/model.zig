@@ -28,31 +28,33 @@ pub const client = struct {
 		entityModel: main.entityModel.EntityModelIndex, // model
 		customTexture: ?main.graphics.Texture, // for custom textures. i.e Skins
 	};
-	pub var renderComponents: std.AutoHashMap(u32, RenderComponent) = undefined;
+	pub var renderComponents: main.utils.SparseSet(RenderComponent, main.entity.Entity) = undefined;
 
 	pub fn init() void {
-		renderComponents = .init(main.globalAllocator.allocator);
+		renderComponents = .{};
 	}
 	pub fn deinit() void {
-		renderComponents.deinit();
+		renderComponents.deinit(main.globalAllocator);
 	}
 	pub fn clear() void {
-		renderComponents.deinit();
-		renderComponents = .init(main.globalAllocator.allocator);
+		renderComponents.deinit(main.globalAllocator);
+		renderComponents = .{};
 	}
-	pub fn load(id: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
 		const entityModel = reader.readInt(u32) catch return;
 		const customTexture: ?main.graphics.Texture = null;
 
-		renderComponents.put(id, RenderComponent{
-			.entity = id,
+		renderComponents.set(main.globalAllocator, @enumFromInt(entity), RenderComponent{
+			.entity = entity,
 			.customTexture = customTexture,
 			.entityModel = main.entityModel.EntityModelIndex{.index = entityModel},
-		}) catch unreachable;
+		});
 	}
-	pub fn unload(id: u32) void {
-		_ = renderComponents.remove(id);
+	pub fn unload(entity: u32) void {
+		renderComponents.remove(@enumFromInt(entity)) catch {
+			std.log.err("entity {} couldn't be unloaded", .{entity});
+		};
 	}
 };
 
@@ -62,62 +64,55 @@ pub const server = struct {
 	pub const RenderComponent = struct {
 		entity: u32, // entity
 		entityModel: main.entityModel.EntityModelIndex, // model
-		customTexturePath: ?[]const u8, // customTexture
 		fn deinit(self: RenderComponent) void {
-			if (self.customTexturePath) |path| {
-				main.globalAllocator.free(path);
-			}
+			_ = self;
 		}
 		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = audience;
 			writer.writeInt(u32, self.entityModel.index);
-			if (self.customTexturePath) |texture| {
-				writer.writeSliceWithSize(texture);
-			} else writer.writeSliceWithSize("");
 			return .save;
 		}
 	};
-	var renderComponents: std.AutoHashMap(u32, RenderComponent) = undefined;
+	var renderComponents: main.utils.SparseSet(RenderComponent, main.entity.Entity) = undefined;
 	pub fn init() void {
-		renderComponents = .init(main.globalAllocator.allocator);
+		renderComponents = .{};
 	}
 	pub fn deinit() void {
-		var it = renderComponents.valueIterator();
-		while (it.next()) |component| {
+		for (renderComponents.dense.items) |*component| {
 			component.deinit();
 		}
-		renderComponents.deinit();
+		renderComponents.deinit(main.globalAllocator);
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
 		const entityModel = reader.readInt(u32) catch return;
-		const customTexturePath = reader.readSliceWithSize() catch return;
 
-		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel}, if (customTexturePath.len == 0) null else customTexturePath);
+		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel});
 	}
-	pub fn loadByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
-		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.getById("cubyz:missing") orelse @panic("cubyz:missing is also missing. This isnt supposed to happen"), customTexturePath);
+	pub fn loadByID(entity: u32, entityModelID: []const u8) main.entity.EntityComponentLoadError!void {
+		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
 	}
-	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
-		if (renderComponents.get(entity)) |old| {
+	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex) main.entity.EntityComponentLoadError!void {
+		if (renderComponents.get(@enumFromInt(entity))) |old| {
 			old.deinit();
 		}
-		renderComponents.put(entity, RenderComponent{
+		renderComponents.set(main.globalAllocator, @enumFromInt(entity), RenderComponent{
 			.entity = entity,
-			.customTexturePath = customTexturePath,
 			.entityModel = entityModel,
-		}) catch unreachable;
+		});
 	}
-	pub fn unload(id: u32) void {
-		_ = renderComponents.remove(id);
+	pub fn unload(entity: u32) void {
+		renderComponents.remove(@enumFromInt(entity)) catch {
+			std.log.err("entity {} couldn't be unloaded", .{entity});
+		};
 	}
-	pub fn put(id: u32, renderComponent: RenderComponent) void {
-		if (renderComponents.get(id)) |entry| {
+	pub fn put(entity: u32, renderComponent: RenderComponent) void {
+		if (renderComponents.get(@enumFromInt(entity))) |entry| {
 			entry.deinit();
 		}
-		renderComponents.put(id, renderComponent) catch unreachable;
+		renderComponents.set(main.globalAllocator, @enumFromInt(entity), renderComponent) catch unreachable;
 	}
-	pub fn get(id: u32) ?RenderComponent {
-		return renderComponents.get(id);
+	pub fn get(entity: u32) ?*RenderComponent {
+		return renderComponents.get(@enumFromInt(entity));
 	}
 };
