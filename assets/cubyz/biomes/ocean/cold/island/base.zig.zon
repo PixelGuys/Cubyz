@@ -1,18 +1,19 @@
 .{
-	.minHeight = 5,
+	.minHeight = 4,
 	.maxHeight = 5,
-	.radius = 24,
-	.soilCreep = 2,
+	.radius = 32,
+	.hills = 4,
+	.soilCreep = 1,
 	.ground_structure = .{
 		"cubyz:cold_grass",
-		"2 to 3 cubyz:permafrost",
+		"1 to 2 cubyz:permafrost",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
-			.chance = 0.015,
+			.chance = 0.02,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -23,11 +24,21 @@
 			.depth = 2,
 			.smoothness = 0.1,
 		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:cold_grass_vegetation"},
+			.chance = 0.06,
+			.width = 3,
+			.variation = 2,
+			.density = 0.5,
+			.priority = 0.2,
+		},
 	},
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:ocean/cold/island/shelf",
 			.chance = 1,
+			.parentEdgeDistance = 45,
 		},
 	},
 }

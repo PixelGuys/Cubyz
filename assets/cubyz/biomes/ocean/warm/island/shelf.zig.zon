@@ -1,8 +1,12 @@
 .{
 	.minHeight = -10,
-	.maxHeight = -10,
-	.radius = 48,
+	.maxHeight = -1,
+	.radius = 77,
+	.hills = 7,
 	.maxSubBiomeCount = 1,
+	.ground_structure = .{
+		"1 to 2 cubyz:sand",
+	},
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:ocean/warm/base",
