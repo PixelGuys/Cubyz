@@ -5,7 +5,7 @@ const BaseItem = main.items.BaseItem;
 const Block = main.blocks.Block;
 const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 const utils = main.utils;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
@@ -18,7 +18,7 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
 const BaseItemIndex = main.items.BaseItemIndex;
-const ToolTypeIndex = main.items.ToolTypeIndex;
+const ProceduralItemTypeIndex = main.items.ProceduralItemTypeIndex;
 
 pub const InventoryId = enum(u32) { _ };
 
@@ -64,9 +64,30 @@ pub const ClientSide = struct {
 		std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 	}
 
+	pub fn unmapServerIdByClientId(clientId: InventoryId) void {
+		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		const serverId = blk: {
+			var it = serverToClientMap.iterator();
+			while (it.next()) |entry| {
+				if (entry.value_ptr.id == clientId) break :blk entry.key_ptr.*;
+			}
+			return;
+		};
+		unmapServerId(serverId, clientId);
+	}
+
 	fn getInventory(serverId: InventoryId) ?Inventory {
 		main.utils.assertLocked(&main.sync.ClientSide.mutex);
 		return serverToClientMap.get(serverId);
+	}
+
+	fn getInventoryByClientId(clientId: InventoryId) ?Inventory {
+		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		var it = serverToClientMap.valueIterator();
+		while (it.next()) |inv| {
+			if (inv.id == clientId) return inv.*;
+		}
+		return null;
 	}
 };
 
@@ -79,10 +100,10 @@ pub const ServerSide = struct { // MARK: ServerSide
 
 		const Managed = enum { internallyManaged, externallyManaged };
 
-		fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed, callbacks: Callbacks) ServerInventory {
+		fn init(len: usize, source: Source, managed: Managed, callbacks: Callbacks) ServerInventory {
 			main.utils.assertLocked(&inventoryCreationMutex);
 			return .{
-				.inv = Inventory._init(main.globalAllocator, len, typ, source, .server, callbacks),
+				.inv = Inventory._init(main.globalAllocator, len, source, .server, callbacks),
 				.users = .{},
 				.source = source,
 				.managed = managed,
@@ -128,10 +149,6 @@ pub const ServerSide = struct { // MARK: ServerSide
 					cb(self.inv.source);
 				}
 				if (self.managed == .internallyManaged) {
-					if (self.inv.type.shouldDepositToUserOnClose()) {
-						const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
-						sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, self.inv, user.player.pos)}, null);
-					}
 					inventoryCreationMutex.lock();
 					defer inventoryCreationMutex.unlock();
 					self.deinit();
@@ -187,10 +204,10 @@ pub const ServerSide = struct { // MARK: ServerSide
 		freeIdList.append(id);
 	}
 
-	pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
+	pub fn createExternallyManagedInventory(len: usize, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
 		inventoryCreationMutex.lock();
 		defer inventoryCreationMutex.unlock();
-		const inventory = ServerInventory.init(len, typ, source, .externallyManaged, callbacks);
+		const inventory = ServerInventory.init(len, source, .externallyManaged, callbacks);
 		inventories.items()[@intFromEnum(inventory.inv.id)] = inventory;
 		inventory.inv.fromBytes(data);
 		return inventory.inv.id;
@@ -228,14 +245,15 @@ pub const ServerSide = struct { // MARK: ServerSide
 		inv.deinit();
 	}
 
-	pub fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, typ: Inventory.Type, source: Source) !void {
+	pub fn createInventory(user: *main.server.User, clientId: InventoryId, len: usize, source: Source) !void {
 		sync.threadContext.assertCorrectContext(.server);
+		var callbacks: Callbacks = .{};
 		switch (source) {
 			.blockInventory, .playerInventory, .hand => {
 				switch (source) {
 					.playerInventory, .hand => |id| {
 						if (id != user.id) {
-							std.log.err("Player {s} tried to access the inventory of another player.", .{user.name});
+							std.log.err("Player {f} tried to access the inventory of another player.", .{user});
 							return error.Invalid;
 						}
 					},
@@ -251,12 +269,31 @@ pub const ServerSide = struct { // MARK: ServerSide
 				}
 				return error.Invalid;
 			},
+			.workbench => {
+				const workbench_close_callback = struct {
+					fn callback(callbackSource: Source) void {
+						std.debug.assert(callbackSource == .workbench);
+						const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
+						const playerInventory = ServerSide.getInventoryFromSource(.{.playerInventory = callbackSource.workbench.playerId}) orelse @panic("Could not find player Inventory");
+
+						const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+						for (userList) |callbackUser| {
+							if (callbackUser.id == callbackSource.workbench.playerId) {
+								sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);
+								break;
+							}
+						}
+					}
+				};
+				callbacks.onLastCloseCallback = &workbench_close_callback.callback;
+			},
 			.other => {},
 			.alreadyFreed => unreachable,
 		}
 
 		inventoryCreationMutex.lock();
-		const inventory = ServerInventory.init(len, typ, source, .internallyManaged, .{});
+		const inventory = ServerInventory.init(len, source, .internallyManaged, callbacks);
 		inventoryCreationMutex.unlock();
 
 		inventories.items()[@intFromEnum(inventory.inv.id)] = inventory;
@@ -266,6 +303,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 			.blockInventory => unreachable, // Should be loaded by the block entity
 			.playerInventory, .hand => unreachable, // Should be loaded on player creation
 			.other => {},
+			.workbench => {},
 			.alreadyFreed => unreachable,
 		}
 	}
@@ -362,6 +400,7 @@ pub const SourceType = enum(u8) {
 	playerInventory = 1,
 	hand = 3,
 	blockInventory = 5,
+	workbench = 6,
 	other = 0xff, // TODO: List every type separately here.
 };
 pub const Source = union(SourceType) {
@@ -369,6 +408,7 @@ pub const Source = union(SourceType) {
 	playerInventory: u32,
 	hand: u32,
 	blockInventory: Vec3i,
+	workbench: struct { playerId: u32, proceduralItemIndex: ProceduralItemTypeIndex },
 	other: void,
 };
 
@@ -377,13 +417,14 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		serverShared: void,
 		creative: void,
 		crafting: *const main.items.Recipe,
+		workbenchResult: InventoryId,
 	};
 	super: Inventory,
 	type: ClientType,
 
-	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, clientType: ClientType, source: Source, callbacks: Callbacks) ClientInventory {
+	pub fn init(allocator: NeverFailingAllocator, _size: usize, clientType: ClientType, source: Source, callbacks: Callbacks) ClientInventory {
 		const self: ClientInventory = .{
-			.super = Inventory._init(allocator, _size, _type, source, .client, callbacks),
+			.super = Inventory._init(allocator, _size, source, .client, callbacks),
 			.type = clientType,
 		};
 		if (clientType == .serverShared) {
@@ -403,6 +444,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn depositOrSwap(dest: ClientInventory, destSlot: u32, carried: ClientInventory) void {
+		std.debug.assert(carried.type == .serverShared);
 		if (dest.type == .creative) {
 			carried.fillFromCreative(0, dest.getItem(destSlot));
 			return;
@@ -426,6 +468,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			carried.fillFromCreative(0, source.getItem(sourceSlot));
 			return;
 		}
+		std.debug.assert(carried.type == .serverShared);
 		main.sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried.super, .slot = 0}, .source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
@@ -445,7 +488,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn depositToAny(source: ClientInventory, sourceSlot: u32, destinations: []const ClientInventory, amount: u16) void {
 		std.debug.assert(source.type == .serverShared);
-		for (destinations) |inv| std.debug.assert(inv.super.type == .normal);
 		main.sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source.super, .slot = sourceSlot}, amount)});
 	}
 
@@ -479,6 +521,18 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.type.crafting)});
 	}
 
+	pub fn craftProceduralItem(source: ClientInventory, destinations: []const ClientInventory) void {
+		std.debug.assert(source.type == .workbenchResult);
+		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
+		const workbenchInv = blk: {
+			main.sync.ClientSide.mutex.lock();
+			defer main.sync.ClientSide.mutex.unlock();
+			break :blk ClientSide.getInventoryByClientId(source.type.workbenchResult);
+		} orelse return;
+
+		main.sync.ClientSide.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
+	}
+
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
 		main.renderer.MeshSelection.placeBlock(self, slot);
@@ -508,29 +562,13 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 const Inventory = @This(); // MARK: Inventory
 
-pub const TypeEnum = enum(u8) {
-	normal = 0,
-	workbench = 3,
-};
-pub const Type = union(TypeEnum) {
-	normal: void,
-	workbench: ToolTypeIndex,
-
-	pub fn shouldDepositToUserOnClose(self: Type) bool {
-		return self == .workbench;
-	}
-};
-
-type: Type,
 id: InventoryId,
 _items: []ItemStack,
 source: Source,
 callbacks: Callbacks,
 
-fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source, side: sync.Side, callbacks: Callbacks) Inventory {
-	if (_type == .workbench) std.debug.assert(_size == 26);
+fn _init(allocator: NeverFailingAllocator, _size: usize, source: Source, side: sync.Side, callbacks: Callbacks) Inventory {
 	const self = Inventory{
-		.type = _type,
 		._items = allocator.alloc(ItemStack, _size),
 		.id = switch (side) {
 			.client => ClientSide.nextId(),
@@ -557,34 +595,7 @@ pub fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: sync.Sid
 }
 
 pub fn update(self: Inventory) void {
-	defer if (self.callbacks.onUpdateCallback) |cb| cb(self.source);
-	if (self.type == .workbench) {
-		self._items[self._items.len - 1].deinit();
-		self._items[self._items.len - 1] = .{};
-		var availableItems: [25]?BaseItemIndex = undefined;
-		const slotInfos = self.type.workbench.slotInfos();
-
-		for (0..25) |i| {
-			if (self._items[i].item == .baseItem) {
-				availableItems[i] = self._items[i].item.baseItem;
-			} else {
-				if (!slotInfos[i].optional and !slotInfos[i].disabled) {
-					return;
-				}
-				availableItems[i] = null;
-			}
-		}
-		var hash = std.hash.Crc32.init();
-		for (availableItems) |item| {
-			if (item != null) {
-				hash.update(item.?.id());
-			} else {
-				hash.update("none");
-			}
-		}
-		self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final(), self.type.workbench)};
-		self._items[self._items.len - 1].amount = 1;
-	}
+	if (self.callbacks.onUpdateCallback) |cb| cb(self.source);
 }
 
 pub fn size(self: Inventory) usize {
@@ -610,9 +621,11 @@ pub const CanHoldReturn = union(enum) {
 
 pub fn canHold(self: Inventory, sourceStack: ItemStack) CanHoldReturn {
 	if (sourceStack.amount == 0) return .yes;
+	if (self.source == .workbench and !sync.Command.canPutIntoWorkbench(sourceStack.item)) return .{.remainingAmount = sourceStack.amount};
 
 	var remainingAmount = sourceStack.amount;
-	for (self._items) |*destStack| {
+	for (self._items, 0..) |*destStack, destSlot| {
+		if (self.source == .workbench and self.source.workbench.proceduralItemIndex.slotInfos()[destSlot].disabled) continue;
 		if (std.meta.eql(destStack.item, sourceStack.item) or destStack.item == .null) {
 			const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 			remainingAmount -= amount;
@@ -766,9 +779,11 @@ pub const Inventories = struct { // MARK: Inventories
 		var selectedEmptyInv: ?Inventory = null;
 
 		outer: for (self.inventories) |dest| {
+			if (dest.source == .workbench and !sync.Command.canPutIntoWorkbench(item)) continue;
 			var emptySlot: ?u32 = null;
 			var hasItem = false;
 			for (dest._items, 0..) |*destStack, destSlot| {
+				if (dest.source == .workbench and dest.source.workbench.proceduralItemIndex.slotInfos()[destSlot].disabled) continue;
 				if (destStack.item == .null and emptySlot == null) {
 					emptySlot = @intCast(destSlot);
 					if (selectedEmptySlot == null) {

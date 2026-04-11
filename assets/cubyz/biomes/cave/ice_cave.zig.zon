@@ -1,9 +1,9 @@
 .{
 	.tags = .{.cave_layer, .snowy},
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.caveNoiseStrength = 10,
 	.maxHeight = -256,
-	.minHeight = -48250,
 	.chance = 0.2,
 	.fogDensity = 20,
 	.fogColor = 0xbabfbf,

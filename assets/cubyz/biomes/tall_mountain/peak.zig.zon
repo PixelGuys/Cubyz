@@ -17,6 +17,7 @@
 		.{
 			.id = "cubyz:tall_mountain/slope6",
 			.chance = 1,
+			.parentEdgeDistance = 0,
 		},
 	},
 
