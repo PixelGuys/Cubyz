@@ -814,11 +814,11 @@ pub fn readAsset(allocator: NeverFailingAllocator, assetFolder: []const u8, subP
 	const mod = split.first();
 	const name = split.next() orelse unreachable;
 
-	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding}) orelse unreachable;
+	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{assetFolder, mod, subPath, name, fileEnding}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	if (!main.files.cwd().hasFile(path)) {
 		main.stackAllocator.free(path);
-		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) orelse unreachable;
+		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch unreachable;
 	}
 
 	const data = main.files.cwd().read(allocator, path) catch |err| {

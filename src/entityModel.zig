@@ -78,8 +78,6 @@ pub const EntityModel = struct {
 	}
 
 	fn loadModelAndTexture(self: *EntityModel) !void {
-		self.deinitModelAndTexture();
-
 		const fileEnding = ".obj";
 		const file = main.assets.readAsset(main.stackAllocator, main.assets.worldAssetFolder, "entityModels/models", self.id, fileEnding) catch main.assets.readAsset(main.stackAllocator, main.assets.worldAssetFolder, "entityModels/models", "cubyz:missing", fileEnding) catch unreachable;
 		defer main.stackAllocator.free(file);
@@ -110,20 +108,17 @@ pub const EntityModel = struct {
 		self.vao = .init(Vertex, vertices, indices);
 		self.indexCount = @intCast(indices.len);
 	}
-	pub fn deinitModelAndTexture(self: *EntityModel) void {
+	pub fn bind(self: *EntityModel) void {
+		self.vao.?.bind();
+		self.defaultTexture.?.bindTo(0);
+	}
+	pub fn deinit(self: *EntityModel) void {
 		if (self.defaultTexture) |defaultTexture| {
 			defaultTexture.deinit();
 		}
 		if (self.vao) |vao| {
 			vao.deinit();
 		}
-	}
-	pub fn bind(self: *EntityModel) void {
-		self.vao.?.bind();
-		self.defaultTexture.?.bindTo(0);
-	}
-	pub fn deinit(self: *EntityModel) void {
-		self.deinitModelAndTexture();
 	}
 };
 
