@@ -179,7 +179,7 @@ const Modifier = struct {
 			return comptime .{
 				.changeProceduralItemParameters = if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) @ptrCast(&ModifierStruct.changeProceduralItemParameters) else &VTable.Defaults.changeProceduralItemParameters,
 				.changeBlockDamage = if (@hasDecl(ModifierStruct, "changeBlockDamage")) @ptrCast(&ModifierStruct.changeBlockDamage) else &VTable.Defaults.changeBlockDamage,
-				.onBlockUpdate = @ptrCast(if (@hasDecl(ModifierStruct, "onBlockUpdate")) &ModifierStruct.onBlockUpdate else &VTable.Defaults.onBlockUpdate),
+				.onBlockUpdate = if (@hasDecl(ModifierStruct, "onBlockUpdate")) @ptrCast(&ModifierStruct.onBlockUpdate) else &VTable.Defaults.onBlockUpdate,
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 				.loadData = @ptrCast(&ModifierStruct.loadData),
