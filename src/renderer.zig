@@ -1031,8 +1031,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						return;
 					}
 				},
-				.tool => |tool| {
-					_ = tool; // TODO: Tools might change existing blocks.
+				.proceduralItem => |proceduralItem| {
+					_ = proceduralItem; // TODO: Tools might change existing blocks.
 				},
 				.null => {},
 			}
@@ -1065,13 +1065,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.sync.ClientSide.mutex.lock();
 			if (!game.Player.isCreative()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isTool = stack.item == .tool;
-				if (isTool) {
-					damage = stack.item.tool.getBlockDamage(block);
+				const isProceduralItem = stack.item == .proceduralItem;
+				if (isProceduralItem) {
+					damage = stack.item.proceduralItem.getBlockDamage(block);
 				}
 				damage -= block.blockResistance();
 				if (damage > 0) {
-					const swingTime = if (isTool and stack.item.tool.isEffectiveOn(block)) 1.0/stack.item.tool.swingSpeed else 0.5;
+					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.swingSpeed else 0.5;
 					if (currentSwingTime > swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = 0;
@@ -1108,6 +1108,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					main.sync.ClientSide.mutex.unlock();
 					return;
 				}
+			} else {
+				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 			}
 
 			var newBlock = block;

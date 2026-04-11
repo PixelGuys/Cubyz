@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 
 pub const Data = packed struct(u128) { strength: f32, tag: main.Tag, pad: u64 = undefined };
 

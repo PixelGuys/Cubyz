@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 
 pub const Data = packed struct(u128) { strength: f32, pad: u96 = undefined };
 
@@ -12,13 +12,13 @@ pub fn loadData(zon: main.ZonElement) Data {
 }
 
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {
-	return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0))};
+	return .{.strength = std.math.hypot(data1.strength, data2.strength)};
 }
 
-pub fn changeToolParameters(tool: *Tool, data: Data) void {
-	tool.swingSpeed *= 1 - data.strength;
+pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.damage *= 1 + data.strength;
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.print("#ffcc30**Heavy**#808080 *Decreases swing speed by **{d:.0}%", .{data.strength*100});
+	outString.print("#f84a00**Powerful**#808080 *Increases damage by **{d:.0}%", .{data.strength*100});
 }
