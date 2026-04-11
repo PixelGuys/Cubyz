@@ -536,13 +536,13 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
-pub var folder: []const u8 = undefined;
+pub var worldAssetFolder: []const u8 = undefined;
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
-	folder = main.worldArena.dupe(u8, assetFolder);
+	worldAssetFolder = main.worldArena.dupe(u8, assetFolder);
 
 	main.Tag.initTags();
 
