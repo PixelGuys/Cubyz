@@ -498,8 +498,8 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		}
 
 		// Rounding the Actual values to one decimal, dont think this is a good idea :!
-		tool.damage = @round(tool.damage * 10) / 10;
-		tool.swingSpeed = @round(tool.swingSpeed * 10) / 10;
+		tool.damage = @round(tool.damage*10)/10;
+		tool.swingSpeed = @round(tool.swingSpeed*10)/10;
 		tool.maxDurability = @round(tool.maxDurability);
 	}
 
