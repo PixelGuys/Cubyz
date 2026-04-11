@@ -972,32 +972,32 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const entityId = try reader.readInt(u32);
-		const componentID = try reader.readInt(u32);
+		const componentId = try reader.readInt(u32);
 		const actionType: ActionType = try reader.readEnum(ActionType);
 
 		if (actionType == .load) {
 			const componentVersion = try reader.readVarInt(u32);
-			try main.entity.load(.client, componentID, entityId, reader.remaining, componentVersion);
+			try main.entity.load(.client, componentId, entityId, reader.remaining, componentVersion);
 		} else if (actionType == .unload) {
-			try main.entity.unload(.client, componentID, entityId);
+			try main.entity.unload(.client, componentId, entityId);
 		}
 	}
-	pub fn unload(conn: *Connection, entityId: u32, componentID: u32) void {
+	pub fn unload(conn: *Connection, entityId: u32, componentId: u32) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		writer.writeInt(u32, entityId);
-		writer.writeInt(u32, componentID);
+		writer.writeInt(u32, componentId);
 		writer.writeEnum(ActionType, ActionType.unload);
 
 		conn.send(.secure, id, writer.data.items);
 	}
-	pub fn load(conn: *Connection, entityId: u32, componentID: u32, version: u32, componentData: []const u8) void {
+	pub fn load(conn: *Connection, entityId: u32, componentId: u32, version: u32, componentData: []const u8) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		writer.writeInt(u32, entityId);
-		writer.writeInt(u32, componentID);
+		writer.writeInt(u32, componentId);
 		writer.writeEnum(ActionType, ActionType.load);
 		// specific to `load`
 		writer.writeVarInt(u32, version);
