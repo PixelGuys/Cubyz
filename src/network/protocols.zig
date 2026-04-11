@@ -971,8 +971,8 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	};
 
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const entityId = try reader.readInt(u32);
-		const componentId = try reader.readInt(u32);
+		const entityId = try reader.readVarInt(u32);
+		const componentId = try reader.readVarInt(u32);
 		const actionType: ActionType = try reader.readEnum(ActionType);
 
 		if (actionType == .load) {
@@ -986,8 +986,8 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeInt(u32, entityId);
-		writer.writeInt(u32, componentId);
+		writer.writeVarInt(u32, entityId);
+		writer.writeVarInt(u32, componentId);
 		writer.writeEnum(ActionType, ActionType.unload);
 
 		conn.send(.secure, id, writer.data.items);
@@ -996,8 +996,8 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeInt(u32, entityId);
-		writer.writeInt(u32, componentId);
+		writer.writeVarInt(u32, entityId);
+		writer.writeVarInt(u32, componentId);
 		writer.writeEnum(ActionType, ActionType.load);
 		// specific to `load`
 		writer.writeVarInt(u32, version);
