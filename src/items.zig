@@ -514,6 +514,9 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			proceduralItem.maxDurability = 0;
 			proceduralItem.durability = 1;
 		}
+		tool.damage = @round(tool.damage*10)/10;
+		tool.swingSpeed = @round(tool.swingSpeed*10)/10;
+		tool.maxDurability = @round(tool.maxDurability);
 	}
 
 	fn checkConnectivity(proceduralItem: *ProceduralItem) bool {
@@ -862,8 +865,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.print(
 			\\{s}
-			\\{d:.2} swings/s
-			\\Damage: {d:.2}
+			\\{d:.1} swings/s
+			\\Damage: {d:.1}
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
