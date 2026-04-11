@@ -43,10 +43,8 @@ pub const client = struct {
 		_ = version;
 		const entityModel = reader.readInt(u32) catch return;
 
-		if (!renderComponents.contains(@enumFromInt(entity))) {
-			_ = renderComponents.add(main.globalAllocator, @enumFromInt(entity));
-		}
-		renderComponents.get(@enumFromInt(entity)).?.* = RenderComponent{
+		const ptr = renderComponents.get(@enumFromInt(entity)) orelse renderComponents.add(main.globalAllocator, @enumFromInt(entity));
+		ptr.* = RenderComponent{
 			.entity = entity,
 			.entityModel = main.entityModel.EntityModelIndex{.index = entityModel},
 		};
@@ -87,13 +85,12 @@ pub const server = struct {
 		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
 	}
 	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex) main.entity.EntityComponentLoadError!void {
-		if (!renderComponents.contains(@enumFromInt(entity))) {
-			_ = renderComponents.add(main.globalAllocator, @enumFromInt(entity));
-		}
-		renderComponents.get(@enumFromInt(entity)).?.* = RenderComponent{
+		const ptr = renderComponents.get(@enumFromInt(entity)) orelse renderComponents.add(main.globalAllocator, @enumFromInt(entity));
+		ptr.* = RenderComponent{
 			.entity = entity,
 			.entityModel = entityModel,
 		};
+
 	}
 	pub fn unload(entity: u32) void {
 		renderComponents.remove(@enumFromInt(entity)) catch {
@@ -101,12 +98,11 @@ pub const server = struct {
 		};
 	}
 	pub fn put(entity: u32, renderComponent: RenderComponent) void {
-		if (!renderComponents.contains(@enumFromInt(entity))) {
-			_ = renderComponents.add(main.globalAllocator, @enumFromInt(entity));
-		}
-		renderComponents.get(@enumFromInt(entity)).?.* = renderComponent;
+		const ptr = renderComponents.get(@enumFromInt(entity)) orelse renderComponents.add(main.globalAllocator, @enumFromInt(entity));
+		ptr.* = renderComponent;
 	}
 	pub fn get(entity: u32) ?*RenderComponent {
 		return renderComponents.get(@enumFromInt(entity));
 	}
 };
+  
