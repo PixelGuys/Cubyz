@@ -49,7 +49,7 @@ pub const client = struct {
 	}
 	pub fn unload(entity: u32) void {
 		playerComponents.remove(@enumFromInt(entity)) catch {
-			std.log.err("entity {} couldn't be unloaded", .{entity});
+			std.log.err(" entity {}'s playerComponent couldn't be unloaded (clientside)", .{entity});
 		};
 	}
 	pub fn get(entity: u32) ?*PlayerComponent {
@@ -89,7 +89,7 @@ pub const server = struct {
 	}
 	pub fn unload(entity: u32) void {
 		playerComponents.remove(@enumFromInt(entity)) catch {
-			std.log.err("entity {} couldn't be unloaded", .{entity});
+			std.log.err("entity {}'s playerComponent couldn't be unloaded (serverside)", .{entity});
 		};
 	}
 	pub fn put(entity: u32, renderComponent: PlayerComponent) void {
