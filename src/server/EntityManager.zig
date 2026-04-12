@@ -56,10 +56,14 @@ pub fn add() u32 {
 	ent.id = entityId;
 	return entityId;
 }
+
+fn memoryAddressChanged(entity: *server.Entity) void {
+	entity.memoryAddressChanged();
+}
 pub fn remove(entityId: u32) void {
 	if (entities.get(@enumFromInt(entityId))) |entity| {
 		entity.deinit(.server);
-		entities.remove(@enumFromInt(entityId)) catch {
+		_ = entities.fetchRemoveAndUpdateMemoryAddressSwapped(@enumFromInt(entityId), memoryAddressChanged) catch {
 			std.log.err("failed to remove entityId {}", .{entityId});
 		};
 		freedList.addOne(main.globalAllocator).* = entityId;

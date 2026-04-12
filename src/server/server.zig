@@ -101,7 +101,6 @@ pub const User = struct { // MARK: User
 	conn: *Connection = undefined,
 	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
-	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
 	lastSaveTime: std.Io.Timestamp = .fromNanoseconds(0),
 	name: []const u8 = "",
@@ -146,7 +145,7 @@ pub const User = struct { // MARK: User
 
 	pub fn player(self: *User) *Entity {
 		// A player should always have an entity.
-		std.debug.assert(EntityManager.getEntity(self.id)!=0); 
+		std.debug.assert(EntityManager.getEntity(self.id) != null);
 		return EntityManager.getEntity(self.id).?;
 	}
 
@@ -183,11 +182,11 @@ pub const User = struct { // MARK: User
 		}
 
 		self.permissions.deinit();
+
+		self.player().deinit(.server);
 		EntityManager.remove(self.id);
 
 		self.worldEditData.deinit();
-
-		self.player().deinit(.server);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -254,7 +253,7 @@ pub const User = struct { // MARK: User
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
-		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
+		self.player().memoryAddressChanged();
 		self.loadUnloadChunks();
 	}
 
@@ -448,7 +447,7 @@ pub const User = struct { // MARK: User
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
-		self.interpolation.update(time, self.lastTime);
+		self.player().interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
 		const saveTime = main.timestamp();
@@ -477,7 +476,7 @@ pub const User = struct { // MARK: User
 		self.player().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
-		self.interpolation.updatePosition(&position, &velocity, time);
+		self.player().interpolation.updatePosition(&position, &velocity, time);
 	}
 
 	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
