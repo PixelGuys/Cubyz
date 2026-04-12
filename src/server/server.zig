@@ -25,6 +25,7 @@ pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const EntityManager = @import("EntityManager.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
@@ -144,7 +145,7 @@ pub const User = struct { // MARK: User
 	permissions: permission.Permissions = undefined,
 
 	pub fn player(self: *User) *Entity {
-		return &self.innerPlayer;
+		return EntityManager.getEntity(self.id) orelse unreachable; // TODO change this. to give optional (in case player has no entity)
 	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
@@ -180,6 +181,7 @@ pub const User = struct { // MARK: User
 		}
 
 		self.permissions.deinit();
+		EntityManager.remove(self.id);
 
 		self.worldEditData.deinit();
 
@@ -244,10 +246,8 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User) void {
-		self.id = freeId;
-		freeId += 1;
+		self.id = EntityManager.add();
 
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
@@ -528,6 +528,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	EntityManager.init();
 	main.entity.server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
@@ -579,6 +580,7 @@ fn deinit() void {
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
 	main.entity.server.deinit();
+	EntityManager.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -637,13 +639,13 @@ fn update() void { // MARK: update()
 	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
-	for (userList) |user| {
-		const id = user.id; // TODO
+	for (EntityManager.getAll()) |*ent| {
+		const id = ent.id; // TODO (why is this todo here?)
 		entityData.append(.{
 			.id = id,
-			.pos = user.player().pos,
-			.vel = user.player().vel,
-			.rot = user.player().rot,
+			.pos = ent.pos,
+			.vel = ent.vel,
+			.rot = ent.rot,
 		});
 	}
 	for (userList) |user| {
@@ -771,14 +773,9 @@ pub fn connectInternal(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = EntityManager.getEntitiesBasicInfo(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		for (userList) |other| {
-			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
-			entityZon.put("name", other.name);
-			entityZon.put("playerIndex", other.playerIndex);
-			zonArray.array.append(entityZon);
-		}
+
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		if (user.connected.load(.monotonic)) main.network.protocols.entity.send(user.conn, data);

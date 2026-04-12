@@ -23,6 +23,10 @@ pub const EntityComponentLoadError = error{
 	UnreadableComponentData,
 	Memory,
 };
+pub const Entity = enum(u32) {
+	noValue = std.math.maxInt(u32),
+	_,
+};
 // Analogous to Protocols.
 const EntityComponentVTable = struct {
 	server: *const fn (id: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
