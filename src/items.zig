@@ -624,11 +624,11 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	pixelSourcesOverlay: [16][16]u8,
 };
 
-const ProceduralItemProperty = enum(u8) {
-	maxDurability = 0,
-	damage = 1,
+const ProceduralItemProperty = enum {
+	maxDurability,
+	damage,
 	/// swings per second
-	swingSpeed = 2,
+	swingSpeed,
 
 	fn fromString(string: []const u8) ?ProceduralItemProperty {
 		return std.meta.stringToEnum(ProceduralItemProperty, string) orelse {
