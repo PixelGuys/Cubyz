@@ -1,0 +1,6 @@
+.{
+	.model = "cubyz:golbo",
+	.defaultTexture = "cubyz:golbo",
+	.height = 2,
+	.coordinateSystem = .left_handed_y_up,
+}
