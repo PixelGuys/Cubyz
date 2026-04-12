@@ -625,8 +625,8 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 };
 
 const ProceduralItemProperty = enum {
-	maxDurability,
 	damage,
+	maxDurability,
 	/// swings per second
 	swingSpeed,
 
