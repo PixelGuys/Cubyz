@@ -610,16 +610,16 @@ const BobManager = struct {
 
 		const actualSpeed = vec.length(horizontalVel);
 
-		const newScale = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
+		const newAmplitude = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
 
-		if (newScale <= amplitudeThreshold) {
+		if (newAmplitude <= amplitudeThreshold) {
 			amplitude = transition(amplitude, 0, amplitudeHalfLifeStanding, dt);
 			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
 			phase = transition(phase, targetPhase, phaseResetHalfLifeStanding, dt);
 			return;
 		}
 
-		amplitude = transition(amplitude, newScale, amplitudeHalfLifeWalking, dt);
+		amplitude = transition(amplitude, newAmplitude, amplitudeHalfLifeWalking, dt);
 		phase += dt*bobFrequency*std.math.tau*phaseSpeedCurve();
 		while (phase >= std.math.tau) {
 			phase -= std.math.tau;
