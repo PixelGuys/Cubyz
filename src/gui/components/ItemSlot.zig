@@ -148,7 +148,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		}
 		if (item == .proceduralItem) {
 			const proceduralItem = item.proceduralItem;
-			const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.maxDurability;
+			const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.getProperty(.maxDurability);
 
 			if (durabilityPercentage < 1) {
 				const width = durabilityPercentage*(self.size[0] - 2*border);

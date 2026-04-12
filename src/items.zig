@@ -458,9 +458,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
-		inline for (comptime std.meta.fieldNames(ProceduralItemProperty)) |name| {
-			@field(proceduralItem, name) = 0;
-		}
+		proceduralItem.properties = @splat(0);
 		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
 		defer tempModifiers.deinit();
 		for (proceduralItem.type.properties()) |property| {
@@ -479,10 +477,10 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 				},
 			}
 			sum *= property.resultScale;
-			proceduralItem.getProperty(property.destination orelse continue).* += sum;
+			proceduralItem.getPropertyPtr(property.destination orelse continue).* += sum;
 		}
-		if (proceduralItem.damage < 1) proceduralItem.damage = 1/(2 - proceduralItem.damage);
-		if (proceduralItem.swingSpeed < 1) proceduralItem.swingSpeed = 1/(2 - proceduralItem.swingSpeed);
+		if (proceduralItem.getProperty(.damage) < 1) proceduralItem.getPropertyPtr(.damage).* = 1/(2 - proceduralItem.getProperty(.damage));
+		if (proceduralItem.getProperty(.swingSpeed) < 1) proceduralItem.getPropertyPtr(.swingSpeed).* = 1/(2 - proceduralItem.getProperty(.swingSpeed));
 		for (0..25) |i| {
 			const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for (material.modifiers) |newMod| {
@@ -506,12 +504,12 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			mod.changeProceduralItemParameters(proceduralItem);
 		}
 
-		proceduralItem.maxDurability = @round(proceduralItem.maxDurability);
-		if (proceduralItem.maxDurability < 1) proceduralItem.maxDurability = 1;
-		proceduralItem.durability = std.math.lossyCast(u32, proceduralItem.maxDurability);
+		proceduralItem.getPropertyPtr(.maxDurability).* = @round(proceduralItem.getProperty(.maxDurability));
+		if (proceduralItem.getProperty(.maxDurability) < 1) proceduralItem.getPropertyPtr(.maxDurability).* = 1;
+		proceduralItem.durability = std.math.lossyCast(u32, proceduralItem.getProperty(.maxDurability));
 
 		if (!checkConnectivity(proceduralItem)) {
-			proceduralItem.maxDurability = 0;
+			proceduralItem.getPropertyPtr(.maxDurability).* = 0;
 			proceduralItem.durability = 1;
 		}
 	}
@@ -697,10 +695,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			.texture = null,
 			.seed = self.seed,
 			.type = self.type,
-			.damage = self.damage,
+			.properties = self.properties,
 			.durability = self.durability,
-			.maxDurability = self.maxDurability,
-			.swingSpeed = self.swingSpeed,
 			.handlePosition = self.handlePosition,
 			.inertiaHandle = self.inertiaHandle,
 			.centerOfMass = self.centerOfMass,
@@ -753,7 +749,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
 			break :blk ProceduralItemTypeIndex.fromId("cubyz:pickaxe") orelse @panic("cubyz:pickaxe procedural item not found. Did you load the game with the correct assets?");
 		});
-		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.maxDurability));
+		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.getProperty(.maxDurability)));
 		return self;
 	}
 
@@ -838,7 +834,11 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.craftingGrid[@intCast(x + y*5)];
 	}
 
-	fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) *f32 {
+	pub fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) f32 {
+		return self.properties[@intFromEnum(prop)];
+	}
+
+	pub fn getPropertyPtr(self: *ProceduralItem, prop: ProceduralItemProperty) *f32 {
 		return &self.properties[@intFromEnum(prop)];
 	}
 
@@ -859,10 +859,10 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
-			self.swingSpeed,
-			self.damage,
+			self.getProperty(.swingSpeed),
+			self.getProperty(.damage),
 			self.durability,
-			std.math.lossyCast(u32, self.maxDurability),
+			std.math.lossyCast(u32, self.getProperty(.maxDurability)),
 		});
 		if (self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
@@ -885,7 +885,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn getBlockDamage(self: *ProceduralItem, block: main.blocks.Block) f32 {
-		var damage = self.getProperty(.damage).*;
+		var damage = self.getProperty(.damage);
 		for (self.modifiers) |modifier| {
 			damage = modifier.changeBlockDamage(damage, block);
 		}
