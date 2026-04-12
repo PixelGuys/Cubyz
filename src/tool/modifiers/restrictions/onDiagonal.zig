@@ -9,13 +9,13 @@ const ZonElement = main.ZonElement;
 const OnDiagonal = struct {
 	tag: main.Tag,
 	amount: usize,
-	range: usize,
+	range: ?usize,
 };
 
 pub fn satisfied(self: *const OnDiagonal, tool: *const Tool, x: i32, y: i32) bool {
 	var count: usize = 0;
 	const gridSize: usize = tool.craftingGrid.len;
-	const rangeChecked = @min(self.range, gridSize);
+	const rangeChecked = @min(self.range orelse gridSize, gridSize);
 	const lowBound = 0;
 	const highBound = rangeChecked*2 + 1;
 	for (lowBound..highBound) |dx| {
@@ -36,19 +36,17 @@ pub fn satisfied(self: *const OnDiagonal, tool: *const Tool, x: i32, y: i32) boo
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnDiagonal {
 	const result = allocator.create(OnDiagonal);
 	result.* = .{
-		.tag = main.Tag.find(zon.get(?[]const u8, "tag", null) orelse {
-			std.log.err("Modifier Error; Please provide a valid .tag", .{});
-			return "not specified";}),
+		.tag = main.Tag.find(zon.get([]const u8, "tag", "not specified")),
 		.amount = zon.get(usize, "amount", 8),
-		.range = zon.get(usize, "range", null),
+		.range = zon.get(?usize, "range", null),
 	};
 	return result;
 }
 
 pub fn printTooltip(self: *const OnDiagonal, outString: *main.List(u8)) void {
-	if (self.range == 0) {
+	if (self.range == null) {
 		outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on diagonal axis"});
 	} else {
-		outString.print("{} .{s} {s} {}", .{self.amount, self.tag.getName(), "in diagonal range", self.range});
+		outString.print("{} .{s} {s} {?}", .{self.amount, self.tag.getName(), "in diagonal range", self.range});
 	}
 }
