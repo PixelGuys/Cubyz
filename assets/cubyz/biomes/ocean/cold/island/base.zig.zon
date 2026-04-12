@@ -1,6 +1,6 @@
 .{
-	.minHeight = 4,
-	.maxHeight = 5,
+	.minHeight = 5,
+	.maxHeight = 6,
 	.radius = 32,
 	.hills = 4,
 	.soilCreep = 1,

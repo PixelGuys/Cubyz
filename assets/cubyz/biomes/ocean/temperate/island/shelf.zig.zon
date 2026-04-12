@@ -2,7 +2,7 @@
 	.minHeight = -10,
 	.maxHeight = -1,
 	.radius = 77,
-	.hills = 7,
+	.hills = 3,
 	.maxSubBiomeCount = 1,
 	.ground_structure = .{
 		"2 to 3 cubyz:sand",
