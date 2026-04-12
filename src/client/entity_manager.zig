@@ -77,6 +77,14 @@ pub fn initAfterWorld() void {
 		std.log.err("EntityModel {s} wasn't found", .{"cubyz:snale"});
 		break :blk main.entityModel.default();
 	}).get();
+	// TODO: remove before merge
+    addEntity(ZonElement.parseFromString(main.globalArena, null,
+        \\ .{
+        \\    .id = 1,
+        \\    .name = "bobik",
+        \\
+        \\  }
+    )) catch unreachable;
 }
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
@@ -216,7 +224,18 @@ const Intersection = struct {
 	entityId:u32
 };
 pub fn select(pos: Vec3d, dir: Vec3d, item: main.items.Item, maxDistance:f64) ?Intersection {
-	for (entities.items()) |ent| {
-
+	if(true)
+		return Intersection{
+			.distance = maxDistance/2,
+			.entityId = 0,
+		};
+	_ = dir;
+	_ = item;
+	for (main.entity.components.@"cubyz:model".client.renderComponents.dense.items) |*renderComponent| {
+		const entModel = renderComponent.entityModel.get();
+		_ = entModel;
+		// TODO: let entityModel decide the dimensions for the hitbox.
+		const difference = entities.items()[renderComponent.entity].getRenderPosition()-pos;
+		_ = difference;
 	}
 }

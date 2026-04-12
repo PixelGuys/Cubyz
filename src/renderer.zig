@@ -971,8 +971,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 		// TODO: Test entities
 		if(main.client.entity_manager.select(pos, dir, item,closestDistance)) |entityIntersection|{
-			if(selectedBlockPos == null or blockIntersectionDistance < entityIntersection.distance){
+			if(selectedBlockPos == null or blockIntersectionDistance > entityIntersection.distance){
 				std.log.debug("intersected: {}", .{entityIntersection.entityId});
+				selectedBlockPos = null;
 			}
 		} 
 	}
