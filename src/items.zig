@@ -657,8 +657,6 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 
 	durability: u32,
 
-	mass: f32,
-
 	///  Where the player holds the procedural Item.
 	handlePosition: Vec2f,
 	/// Moment of inertia relative to the handle.
@@ -703,7 +701,6 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			.durability = self.durability,
 			.maxDurability = self.maxDurability,
 			.swingSpeed = self.swingSpeed,
-			.mass = self.mass,
 			.handlePosition = self.handlePosition,
 			.inertiaHandle = self.inertiaHandle,
 			.centerOfMass = self.centerOfMass,
