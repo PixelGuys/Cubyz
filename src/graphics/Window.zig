@@ -647,6 +647,10 @@ pub fn setNextGamepadListener(listener: ?*const fn (?GamepadAxis, c_int) void) !
 	nextGamepadListener = listener;
 }
 
+pub fn hasNextInputListenter() bool {
+	return (nextKeypressListener != null or nextGamepadListener != null);
+}
+
 fn updateCursor() void {
 	if (grabbed) {
 		c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
