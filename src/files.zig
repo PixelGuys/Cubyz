@@ -9,11 +9,11 @@ pub fn openDirInWindow(path: []const u8) void {
 	const newPath = main.stackAllocator.dupe(u8, path);
 	defer main.stackAllocator.free(newPath);
 
-	if(builtin.os.tag == .windows) {
+	if (builtin.os.tag == .windows) {
 		std.mem.replaceScalar(u8, newPath, '/', '\\');
 	}
 
-	const command = switch(builtin.os.tag) {
+	const command = switch (builtin.os.tag) {
 		.windows => .{"explorer", newPath},
 		.macos => .{"open", newPath},
 		else => .{"xdg-open", newPath},
@@ -29,7 +29,7 @@ pub fn openDirInWindow(path: []const u8) void {
 		main.stackAllocator.free(result.stderr);
 		main.stackAllocator.free(result.stdout);
 	}
-	if(result.stderr.len != 0) {
+	if (result.stderr.len != 0) {
 		std.log.err("Got error while trying to open file explorer: {s}", .{result.stderr});
 	}
 }
@@ -54,16 +54,16 @@ pub fn cubyzDirStr() []const u8 {
 }
 
 fn flawedInit() !void {
-	if(main.settings.launchConfig.cubyzDir.len != 0) {
+	if (main.settings.launchConfig.cubyzDir.len != 0) {
 		cubyzDir_ = try std.fs.cwd().makeOpenPath(main.settings.launchConfig.cubyzDir, .{});
 		cubyzDirStr_ = main.globalAllocator.dupe(u8, main.settings.launchConfig.cubyzDir);
 		return;
 	}
-	const homePath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, if(builtin.os.tag == .windows) "USERPROFILE" else "HOME");
+	const homePath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, if (builtin.os.tag == .windows) "USERPROFILE" else "HOME");
 	defer main.stackAllocator.free(homePath);
 	var homeDir = try std.fs.openDirAbsolute(homePath, .{});
 	defer homeDir.close();
-	if(builtin.os.tag == .windows) {
+	if (builtin.os.tag == .windows) {
 		cubyzDir_ = try homeDir.makeOpenPath("Saved Games/Cubyz", .{});
 		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{homePath, "/Saved Games/Cubyz"}) catch unreachable;
 	} else {
@@ -79,10 +79,10 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
-	if(cubyzDir_ != null) {
+	if (cubyzDir_ != null) {
 		cubyzDir_.?.close();
 	}
-	if(cubyzDirStr_.ptr != ".".ptr) {
+	if (cubyzDirStr_.ptr != ".".ptr) {
 		main.globalAllocator.free(cubyzDirStr_);
 	}
 }
@@ -106,12 +106,17 @@ pub const Dir = struct {
 		const string = try self.read(main.stackAllocator, path);
 		defer main.stackAllocator.free(string);
 		const realPath: ?[]const u8 = self.dir.realpathAlloc(main.stackAllocator.allocator, path) catch null;
-		defer if(realPath) |p| main.stackAllocator.free(p);
+		defer if (realPath) |p| main.stackAllocator.free(p);
 		return ZonElement.parseFromString(allocator, realPath orelse path, string);
 	}
 
 	pub fn write(self: Dir, path: []const u8, data: []const u8) !void {
-		return self.dir.writeFile(.{.data = data, .sub_path = path});
+		const tempPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.tmp0", .{path}) catch unreachable;
+		defer main.stackAllocator.free(tempPath);
+
+		try self.dir.writeFile(.{.data = data, .sub_path = tempPath});
+
+		return self.dir.rename(tempPath, path);
 	}
 
 	pub fn writeZon(self: Dir, path: []const u8, zon: ZonElement) !void {

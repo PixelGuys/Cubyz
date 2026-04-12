@@ -5,6 +5,8 @@
 	.maxHeight = 480,
 
 	.interpolation = .linear,
+	.hills = 10,
+	.roughness = 5,
 
 	.chance = 0,
 
@@ -14,13 +16,16 @@
 		.{
 			.id = "cubyz:tall_mountain/slope2",
 			.chance = 1,
+			.parentEdgeDistance = 0,
 		},
 	},
 
 	.maxSubBiomeCount = 1,
 
+	.soilCreep = 1.0,
+
 	.ground_structure = .{
-		"0 to 1 cubyz:snow",
-		"cubyz:cobblestone",
+		"2 to 3 cubyz:snow",
+		"cubyz:slate/cobble",
 	},
 }

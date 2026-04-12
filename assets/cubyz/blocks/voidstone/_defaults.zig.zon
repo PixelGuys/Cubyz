@@ -1,0 +1,36 @@
+.{
+	.tags = .{.stone, .mineable, .voidStone},
+	.blockHealth = 60,
+	.blockResistance = 5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.material = .{
+			.durability = 200,
+			.massDamage = 3.0,
+			.hardnessDamage = 7.0,
+			.swingSpeed = 4.7,
+			.textureRoughness = 1.0,
+			.colors = .{
+				0xff030308, 0xff0D0C11, 0xff151420, 0xff1C1A2B, 0xff28253D,
+			},
+			.modifiers = .{
+				.{
+					.id = "durable",
+					.strength = 0.1,
+				},
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .voidStone,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

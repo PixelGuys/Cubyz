@@ -9,7 +9,7 @@
 	.roughness = 1,
 	.mountains = 50,
 	.hills = 20,
-	.stoneBlock = "cubyz:sandstone",
+	.stoneBlock = "cubyz:sandstone/base",
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -31,7 +31,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:tussock",
+			.blocks = .{"cubyz:tussock"},
 			.chance = 0.03,
 			.width = 4,
 			.variation = 4,

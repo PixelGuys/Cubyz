@@ -9,7 +9,7 @@
 	.stripes = .{
 		.{
 			.direction = .{1, 1, 6},
-			.block = "cubyz:limestone",
+			.block = "cubyz:limestone/base",
 			.distance = 10,
 			.offset = 6,
 			.width = 2,

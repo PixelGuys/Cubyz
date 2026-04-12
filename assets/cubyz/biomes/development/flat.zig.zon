@@ -1,0 +1,8 @@
+.{
+	.properties = .{},
+	.chance = 0,
+	.minHeight = 0,
+	.maxHeight = 0,
+
+	.validPlayerSpawn = true,
+}

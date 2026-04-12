@@ -37,7 +37,7 @@ const DirectionWithoutSign = enum(u1) {
 	x = 1,
 
 	fn fromBranchDirection(dir: DirectionWithSign) DirectionWithoutSign {
-		return switch(dir) {
+		return switch (dir) {
 			.negYDir => .y,
 			.posXDir => .x,
 			.posYDir => .y,
@@ -64,17 +64,17 @@ fn rotateQuad(pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 	};
 	var corners: [4]Vec2f = originalCorners;
 
-	switch(pattern) {
+	switch (pattern) {
 		.dot, .cross, .cut => {},
 		.line => |dir| {
 			var angle: f32 = @as(f32, @floatFromInt(@intFromEnum(dir)))*std.math.pi/2.0;
-			if(side.relZ() != 0) {
+			if (side.relZ() != 0) {
 				angle *= -1;
 			}
-			if(side.isPositive()) {
+			if (side.isPositive()) {
 				angle *= -1;
 			}
-			if(side.relY() != 0) {
+			if (side.relY() != 0) {
 				angle *= -1;
 			}
 			corners = .{
@@ -125,13 +125,13 @@ fn rotateQuad(pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 }
 
 fn getPattern(data: LogData, side: Neighbor) Pattern {
-	if(data.isConnected(side)) {
+	if (data.isConnected(side)) {
 		return .cut;
 	}
 
 	const pattern = branch.getPattern(data, side).?;
 
-	switch(pattern) {
+	switch (pattern) {
 		.dot => {
 			return .dot;
 		},
@@ -154,22 +154,22 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 }
 
 pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
-	if(modelIndex) |idx| return idx;
+	if (modelIndex) |idx| return idx;
 
-	for(0..64) |i| {
+	for (0..64) |i| {
 		var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 		defer quads.deinit();
 
 		const data = LogData.init(@intCast(i));
 
-		for(Neighbor.iterable) |neighbor| {
+		for (Neighbor.iterable) |neighbor| {
 			const pattern = getPattern(data, neighbor);
 
 			quads.append(rotateQuad(pattern, neighbor));
 		}
 
 		const index = main.models.Model.init(quads.items);
-		if(i == 0) {
+		if (i == 0) {
 			modelIndex = index;
 		}
 	}
@@ -196,7 +196,7 @@ pub fn generateData(
 ) bool {
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode();
 
-	if(blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
+	if (blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
 		const neighborModel = blocks.meshes.model(neighborBlock).model();
 
 		var currentData = LogData.init(currentBlock.data);
@@ -205,8 +205,8 @@ pub fn generateData(
 		const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 		currentData.setConnection(neighbor.?, targetVal);
 
-		for(Neighbor.iterable) |side| {
-			if(side == neighbor.?) {
+		for (Neighbor.iterable) |side| {
+			if (side == neighbor.?) {
 				continue;
 			}
 
@@ -214,7 +214,7 @@ pub fn generateData(
 			const sideBlock = main.renderer.mesh_storage.getBlockFromRenderThread(sidePos[0], sidePos[1], sidePos[2]) orelse continue;
 			const canConnectToSide = currentBlock.mode() == sideBlock.mode() and currentBlock.modeData() == sideBlock.modeData();
 
-			if(canConnectToSide) {
+			if (canConnectToSide) {
 				const sideData = LogData.init(sideBlock.data);
 				currentData.setConnection(side, sideData.isConnected(side.reverse()));
 			}
@@ -233,13 +233,13 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	// Handle joining with other logs. While placed, logs extend in a
 	// opposite direction than they were placed from, effectively connecting
 	// to the block they were placed at.
-	if(canConnectToNeighbor) {
+	if (canConnectToNeighbor) {
 		const neighborData = LogData.init(neighborBlock.data);
 		currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
 	}
 
 	const result: u16 = currentData.enabledConnections;
-	if(result == block.data) return false;
+	if (result == block.data) return false;
 
 	block.data = result;
 	return true;

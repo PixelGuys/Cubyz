@@ -19,6 +19,8 @@ pub const priority = 131072;
 
 pub const generatorSeed = 0x2026b65487da9226;
 
+pub const defaultState = .enabled;
+
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }

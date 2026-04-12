@@ -11,10 +11,11 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const terrain = @import("terrain.zig");
+const GeneratorState = terrain.GeneratorState;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 const StructureInternal = struct {
-	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void,
+	generateFn: *const fn (self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void,
 	data: *const anyopaque,
 
 	pub fn generate(self: StructureInternal, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
@@ -77,10 +78,10 @@ pub const StructureMapFragment = struct {
 	}
 
 	fn finishGeneration(self: *StructureMapFragment) void {
-		for(0..self.data.len) |i| {
+		for (0..self.data.len) |i| {
 			std.sort.insertion(Structure, self.tempData.lists[i].items, {}, Structure.lessThan);
 			self.data[i] = self.allocator.alloc(StructureInternal, self.tempData.lists[i].items.len);
-			for(0..self.tempData.lists[i].items.len) |j| {
+			for (0..self.tempData.lists[i].items.len) |j| {
 				self.data[i][j] = self.tempData.lists[i].items[j].internal;
 			}
 			self.tempData.lists[i].deinit(self.tempData.allocator);
@@ -98,21 +99,21 @@ pub const StructureMapFragment = struct {
 
 	pub fn generateStructuresInChunk(self: *const StructureMapFragment, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
 		const index = self.getIndex(chunk.super.pos.wx - self.pos.wx, chunk.super.pos.wy - self.pos.wy, chunk.super.pos.wz - self.pos.wz);
-		for(self.data[index]) |structure| {
+		for (self.data[index]) |structure| {
 			structure.generate(chunk, caveMap, biomeMap);
 		}
 	}
 
 	pub fn addStructure(self: *StructureMapFragment, structure: Structure, min: Vec3i, max: Vec3i) void {
 		var x = min[0] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize - 1);
-		while(x < max[0]) : (x += main.chunk.chunkSize << self.voxelShift) {
-			if(x < 0 or x >= size*self.pos.voxelSize) continue;
+		while (x < max[0]) : (x += main.chunk.chunkSize << self.voxelShift) {
+			if (x < 0 or x >= size*self.pos.voxelSize) continue;
 			var y = min[1] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize - 1);
-			while(y < max[1]) : (y += main.chunk.chunkSize << self.voxelShift) {
-				if(y < 0 or y >= size*self.pos.voxelSize) continue;
+			while (y < max[1]) : (y += main.chunk.chunkSize << self.voxelShift) {
+				if (y < 0 or y >= size*self.pos.voxelSize) continue;
 				var z = min[2] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize - 1);
-				while(z < max[2]) : (z += main.chunk.chunkSize << self.voxelShift) {
-					if(z < 0 or z >= size*self.pos.voxelSize) continue;
+				while (z < max[2]) : (z += main.chunk.chunkSize << self.voxelShift) {
+					if (z < 0 or z >= size*self.pos.voxelSize) continue;
 					self.tempData.lists[self.getIndex(x, y, z)].append(self.tempData.allocator, structure);
 				}
 			}
@@ -122,12 +123,13 @@ pub const StructureMapFragment = struct {
 
 /// A generator for the cave map.
 pub const StructureMapGenerator = struct {
-	init: *const fn(parameters: ZonElement) void,
-	generate: *const fn(map: *StructureMapFragment, seed: u64) void,
+	init: *const fn (parameters: ZonElement) void,
+	generate: *const fn (map: *StructureMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
+	defaultState: GeneratorState,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(StructureMapGenerator) = .{};
 
@@ -137,26 +139,28 @@ pub const StructureMapGenerator = struct {
 			.generate = &Generator.generate,
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,
+			.defaultState = Generator.defaultState,
 		};
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []StructureMapGenerator {
-		const list = allocator.alloc(StructureMapGenerator, generatorRegistry.size);
+		var list: main.ListUnmanaged(StructureMapGenerator) = .initCapacity(allocator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
-		var i: usize = 0;
-		while(iterator.next()) |generator| {
-			list[i] = generator.value_ptr.*;
-			list[i].init(settings.getChild(generator.key_ptr.*));
-			i += 1;
+		while (iterator.next()) |generatorEntry| {
+			const generator = generatorEntry.value_ptr.*;
+			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
+			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			generator.init(generatorSettings);
+			list.appendAssumeCapacity(generator);
 		}
 		const lessThan = struct {
 			fn lessThan(_: void, lhs: StructureMapGenerator, rhs: StructureMapGenerator) bool {
 				return lhs.priority < rhs.priority;
 			}
 		}.lessThan;
-		std.sort.insertion(StructureMapGenerator, list, {}, lessThan);
-		return list;
+		std.sort.insertion(StructureMapGenerator, list.items, {}, lessThan);
+		return list.toOwnedSlice(allocator);
 	}
 };
 
@@ -171,7 +175,7 @@ var memoryPool: main.heap.MemoryPool(StructureMapFragment) = undefined;
 fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 	const mapFragment = memoryPool.create();
 	mapFragment.init(main.stackAllocator, pos.wx, pos.wy, pos.wz, pos.voxelSize);
-	for(profile.structureMapGenerators) |generator| {
+	for (profile.structureMapGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
 	mapFragment.finishGeneration();
@@ -180,7 +184,7 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 
 pub fn globalInit() void {
 	const list = @import("structuremapgen/_list.zig");
-	inline for(@typeInfo(list).@"struct".decls) |decl| {
+	inline for (@typeInfo(list).@"struct".decls) |decl| {
 		StructureMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 	memoryPool = .init(main.globalAllocator);

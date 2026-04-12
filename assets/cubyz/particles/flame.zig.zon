@@ -1,0 +1,6 @@
+.{
+	.texture = "cubyz:flame",
+	.density = .{0.00065, 0.00085},
+	.rotationVelocity = .{20, 35},
+	.dragCoefficient = .{0.2, 0.3},
+}

@@ -5,7 +5,7 @@
 	.minHeight = -2000,
 	.maxHeight = -1000,
 	.keepOriginalTerrain = 0.99,
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:glacite/base",
 	.ground_structure = .{
 		"1 cubyz:snow",
 		"1 to 2 cubyz:permafrost",

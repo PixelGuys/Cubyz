@@ -6,7 +6,7 @@
 	.maxHeight = -1000,
 	.keepOriginalTerrain = 0.99,
 	.roughness = 1,
-	.stoneBlock = "cubyz:slate",
+	.stoneBlock = "cubyz:slate/base",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:grassland",
@@ -55,6 +55,14 @@
 		.{
 			.id = "cubyz:tundra/patchy",
 			.chance = 16,
+		},
+		.{
+			.id = "cubyz:hills/temperate",
+			.chance = 2,
+		},
+		.{
+			.id = "cubyz:hills/cold",
+			.chance = 2,
 		},
 	},
 }

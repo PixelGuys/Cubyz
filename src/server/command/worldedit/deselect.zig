@@ -7,7 +7,7 @@ pub const description = "Clears pos1 and pos2 of selection.";
 pub const usage = "/deselect";
 
 pub fn execute(args: []const u8, source: *User) void {
-	if(args.len != 0) {
+	if (args.len != 0) {
 		source.sendMessage("#ff0000Too many arguments for command /deselect. Expected no arguments.", .{});
 		return;
 	}

@@ -11,7 +11,7 @@ const c = @cImport({
 });
 
 fn handleError(miniaudioError: c.ma_result) !void {
-	if(miniaudioError != c.MA_SUCCESS) {
+	if (miniaudioError != c.MA_SUCCESS) {
 		std.log.err("miniaudio error: {s}", .{c.ma_result_description(miniaudioError)});
 		return error.miniaudioError;
 	}
@@ -31,10 +31,10 @@ const AudioData = struct {
 		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
-		if(c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
+		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/music/{s}.ogg", .{main.files.cubyzDirStr(), addon, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
-		if(c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
+		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
 		std.log.err("Couldn't find music with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{id, path1, path2});
 		return null;
 	}
@@ -44,11 +44,11 @@ const AudioData = struct {
 		self.* = .{.musicId = main.globalAllocator.dupe(u8, musicId)};
 
 		const channels = 2;
-		if(open_vorbis_file_by_id(musicId)) |ogg_stream| {
+		if (open_vorbis_file_by_id(musicId)) |ogg_stream| {
 			defer c.stb_vorbis_close(ogg_stream);
 			const ogg_info: c.stb_vorbis_info = c.stb_vorbis_get_info(ogg_stream);
 			const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
-			if(sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
+			if (sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
 				const tempData = main.stackAllocator.alloc(f32, samples*channels);
 				defer main.stackAllocator.free(tempData);
 				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
@@ -56,12 +56,12 @@ const AudioData = struct {
 				const newSamples: usize = @intFromFloat(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
 				stepWidth = @as(f32, @floatFromInt(samples))/@as(f32, @floatFromInt(newSamples));
 				self.data = main.globalAllocator.alloc(f32, newSamples*channels);
-				for(0..newSamples) |s| {
+				for (0..newSamples) |s| {
 					const samplePosition = @as(f32, @floatFromInt(s))*stepWidth;
 					const firstSample: usize = @intFromFloat(@floor(samplePosition));
 					const interpolation = samplePosition - @floor(samplePosition);
-					for(0..channels) |ch| {
-						if(firstSample >= samples - 1) {
+					for (0..channels) |ch| {
+						if (firstSample >= samples - 1) {
 							self.data[s*channels + ch] = tempData[(samples - 1)*channels + ch];
 						} else {
 							self.data[s*channels + ch] = tempData[firstSample*channels + ch]*(1 - interpolation) + tempData[(firstSample + 1)*channels + ch]*interpolation;
@@ -87,14 +87,14 @@ const AudioData = struct {
 
 	pub fn hashCode(self: *const AudioData) u32 {
 		var result: u32 = 0;
-		for(self.musicId) |char| {
+		for (self.musicId) |char| {
 			result = result + char;
 		}
 		return result;
 	}
 
 	pub fn equals(self: *const AudioData, _other: ?*const AudioData) bool {
-		if(_other) |other| {
+		if (_other) |other| {
 			return std.mem.eql(u8, self.musicId, other.musicId);
 		} else return false;
 	}
@@ -109,11 +109,11 @@ fn findMusic(musicId: []const u8) ?[]f32 {
 	{
 		taskMutex.lock();
 		defer taskMutex.unlock();
-		if(musicCache.find(AudioData{.musicId = musicId}, null)) |musicData| {
+		if (musicCache.find(AudioData{.musicId = musicId}, null)) |musicData| {
 			return musicData.data;
 		}
-		for(activeTasks.items) |taskFileName| {
-			if(std.mem.eql(u8, musicId, taskFileName)) {
+		for (activeTasks.items) |taskFileName| {
+			if (std.mem.eql(u8, musicId, taskFileName)) {
 				return null;
 			}
 		}
@@ -156,7 +156,7 @@ const MusicLoadTask = struct {
 		defer self.clean();
 		const data = AudioData.init(self.musicId);
 		const hasOld = musicCache.addToCache(data, data.hashCode());
-		if(hasOld) |old| {
+		if (hasOld) |old| {
 			old.deinit();
 		}
 	}
@@ -164,8 +164,8 @@ const MusicLoadTask = struct {
 	pub fn clean(self: *MusicLoadTask) void {
 		taskMutex.lock();
 		var index: usize = 0;
-		while(index < activeTasks.items.len) : (index += 1) {
-			if(activeTasks.items[index].ptr == self.musicId.ptr) break;
+		while (index < activeTasks.items.len) : (index += 1) {
+			if (activeTasks.items[index].ptr == self.musicId.ptr) break;
 		}
 		_ = activeTasks.swapRemove(index);
 		taskMutex.unlock();
@@ -251,7 +251,7 @@ var preferredMusic: []const u8 = "";
 pub fn setMusic(music: []const u8) void {
 	mutex.lock();
 	defer mutex.unlock();
-	if(std.mem.eql(u8, music, preferredMusic)) return;
+	if (std.mem.eql(u8, music, preferredMusic)) return;
 	main.globalAllocator.free(preferredMusic);
 	preferredMusic = main.globalAllocator.dupe(u8, music);
 }
@@ -259,33 +259,33 @@ pub fn setMusic(music: []const u8) void {
 fn addMusic(buffer: []f32) void {
 	mutex.lock();
 	defer mutex.unlock();
-	if(!std.mem.eql(u8, preferredMusic, activeMusicId)) {
-		if(activeMusicId.len == 0) {
-			if(findMusic(preferredMusic)) |musicBuffer| {
+	if (!std.mem.eql(u8, preferredMusic, activeMusicId)) {
+		if (activeMusicId.len == 0) {
+			if (findMusic(preferredMusic)) |musicBuffer| {
 				currentMusic.init(musicBuffer);
 				main.globalAllocator.free(activeMusicId);
 				activeMusicId = main.globalAllocator.dupe(u8, preferredMusic);
 			}
-		} else if(!currentMusic.animationDecaying) {
+		} else if (!currentMusic.animationDecaying) {
 			_ = findMusic(preferredMusic); // Start loading the next music into the cache ahead of time.
 			currentMusic.animationDecaying = true;
 			currentMusic.animationProgress = 0;
 			currentMusic.interpolationPolynomial = utils.unitIntervalSpline(f32, currentMusic.animationAmplitude, currentMusic.animationVelocity, 0, 0);
 		}
-	} else if(currentMusic.animationDecaying) { // We returned to the biome before the music faded away.
+	} else if (currentMusic.animationDecaying) { // We returned to the biome before the music faded away.
 		currentMusic.animationDecaying = false;
 		currentMusic.animationProgress = 0;
 		currentMusic.interpolationPolynomial = utils.unitIntervalSpline(f32, currentMusic.animationAmplitude, currentMusic.animationVelocity, 1, 0);
 	}
-	if(activeMusicId.len == 0) return;
+	if (activeMusicId.len == 0) return;
 
 	// Copy the music to the buffer.
 	var i: usize = 0;
-	while(i < buffer.len) : (i += 2) {
+	while (i < buffer.len) : (i += 2) {
 		currentMusic.animationProgress += 1.0/(animationLengthInSeconds*sampleRate);
 		var amplitude: f32 = main.settings.musicVolume;
-		if(currentMusic.animationProgress > 1) {
-			if(currentMusic.animationDecaying) {
+		if (currentMusic.animationProgress > 1) {
+			if (currentMusic.animationDecaying) {
 				main.globalAllocator.free(activeMusicId);
 				activeMusicId = &.{};
 				amplitude = 0;
@@ -297,7 +297,7 @@ fn addMusic(buffer: []f32) void {
 		buffer[i] += amplitude*currentMusic.buffer[currentMusic.pos];
 		buffer[i + 1] += amplitude*currentMusic.buffer[currentMusic.pos + 1];
 		currentMusic.pos += 2;
-		if(currentMusic.pos >= currentMusic.buffer.len) {
+		if (currentMusic.pos >= currentMusic.buffer.len) {
 			currentMusic.pos = 0;
 		}
 	}

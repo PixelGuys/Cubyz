@@ -17,7 +17,7 @@
 	.music = "cubyz:EasternThought",
 	.ground_structure = .{
 		"cubyz:dry_grass",
-		"7 to 8 cubyz:limestone",
+		"7 to 8 cubyz:limestone/base",
 	},
 	.structures = .{
 		.{
@@ -43,7 +43,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dry_grass_vegetation",
+			.blocks = .{"cubyz:dry_grass_vegetation"},
 			.chance = 0.5,
 			.width = 5,
 			.variation = 8,
@@ -52,7 +52,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:marigold",
+			.blocks = .{"cubyz:marigold"},
 			.chance = 0.03,
 			.width = 5,
 			.variation = 3,
@@ -60,7 +60,7 @@
 			.priority = 0.1,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone",
+	.stoneBlock = "cubyz:sandstone/base",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:savannah/base",

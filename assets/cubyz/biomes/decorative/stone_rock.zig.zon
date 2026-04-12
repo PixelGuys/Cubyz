@@ -8,7 +8,7 @@
 	.roughness = 1,
 	.mountains = 50,
 	.hills = 20,
-	.stoneBlock = "cubyz:slate",
+	.stoneBlock = "cubyz:slate/base",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:autumn/forest",
@@ -56,6 +56,14 @@
 		},
 		.{
 			.id = "cubyz:rare/tuften/fields",
+			.chance = 3,
+		},
+		.{
+			.id = "cubyz:hills/temperate",
+			.chance = 3,
+		},
+		.{
+			.id = "cubyz:hills/cold",
 			.chance = 3,
 		},
 	},
