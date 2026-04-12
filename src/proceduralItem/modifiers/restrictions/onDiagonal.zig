@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ModifierRestriction = main.items.ModifierRestriction;
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
 
 const OnDiagonal = struct {
@@ -12,22 +12,22 @@ const OnDiagonal = struct {
 	range: ?usize,
 };
 
-pub fn satisfied(self: *const OnDiagonal, tool: *const Tool, x: i32, y: i32) bool {
+pub fn satisfied(self: *const OnDiagonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
-	const gridSize: usize = tool.craftingGrid.len;
+	const gridSize: usize = proceduralItem.craftingGrid.len;
 	const rangeChecked = @min(self.range orelse gridSize, gridSize);
 	const lowBound = 0;
 	const highBound = rangeChecked*2 + 1;
 	for (lowBound..highBound) |dx| {
 		const checkedX = x + @as(i32, @intCast(dx - rangeChecked));
 		const checkedY = y + @as(i32, @intCast(dx - rangeChecked));
-		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
+		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	for (lowBound..highBound) |dx| {
 		const checkedX = x + @as(i32, @intCast(dx - rangeChecked));
 		const checkedY = y - @as(i32, (@intCast(dx - rangeChecked)));
 		if (dx != 0) {
-			if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
+			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
 	return count >= self.amount;
