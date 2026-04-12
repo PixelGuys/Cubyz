@@ -23,6 +23,8 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("proceduralItem/modifiers/_list.zig");
 const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
 
+const ItemUsedCallback = main.callbacks.ItemUsedCallback;
+
 pub const recipes_zig = @import("items/recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
@@ -260,6 +262,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
+	pub fn callbacks(self: BaseItemIndex) ItemCallbacks {
+		return itemList[@intFromEnum(self)].callbacks;
+	}
 };
 
 pub const BaseItem = struct { // MARK: BaseItem
@@ -269,6 +274,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	name: []const u8,
 	tags: []const Tag,
 	tooltip: []const u8,
+	callbacks: ItemCallbacks,
 
 	stackSize: u16,
 	material: ?Material,
@@ -319,6 +325,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			_ = tooltip.swapRemove(tooltip.items.len - 1);
 		}
 		self.tooltip = tooltip.toOwnedSlice();
+		self.callbacks = .registerCallbacks(zon);
 	}
 
 	fn hashCode(self: BaseItem) u32 {
@@ -613,6 +620,9 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn pixelSourcesOverlay(self: ProceduralItemTypeIndex) *const [16][16]u8 {
 		return &proceduralItemTypeList.items[@intFromEnum(self)].pixelSourcesOverlay;
 	}
+	pub fn callbacks(self: ProceduralItemTypeIndex) ItemCallbacks {
+		return proceduralItemTypeList.items[@intFromEnum(self)].callbacks;
+	}
 };
 
 pub const ProceduralItemType = struct { // MARK: ProceduralItemType
@@ -622,6 +632,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
+	callbacks: ItemCallbacks,
 };
 
 const ProceduralItemProperty = enum {
@@ -901,6 +912,23 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 };
 
+pub const ItemCallbacks = struct {
+	onLeftClick: ItemUsedCallback,
+
+	fn registerCallbacks(zon: ZonElement) ItemCallbacks {
+		return .{.onLeftClick = blk: {
+			if (std.mem.eql(u8, zon.get([]const u8, "texture", "no"), "cubyz:clay")) std.debug.print("{any}\n", .{zon});
+			break :blk ItemUsedCallback.init(zon.getChildOrNull("onLeftClick") orelse {
+				std.debug.print("NOOOO", .{});
+				break :blk .noop;
+			}) orelse {
+				std.log.err("Failed to load onLeftClick event for item", .{});
+				break :blk .noop;
+			};
+		}};
+	}
+};
+
 const ItemType = enum(u7) {
 	baseItem,
 	proceduralItem,
@@ -1036,6 +1064,14 @@ pub const Item = union(ItemType) { // MARK: Item
 		return switch (self) {
 			.null => unreachable,
 			inline else => |item| item.hashCode(),
+		};
+	}
+
+	pub fn onLeftClick(self: Item) ItemUsedCallback {
+		return switch (self) {
+			.baseItem => |item| item.callbacks().onLeftClick,
+			.proceduralItem => |item| item.type.callbacks().onLeftClick,
+			.null => unreachable,
 		};
 	}
 };
@@ -1287,6 +1323,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.properties = parameterMatrices.toOwnedSlice(),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
+		.callbacks = .registerCallbacks(zon),
 	});
 	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(proceduralItemTypeList.items.len - 1)) catch unreachable;
 

@@ -10,12 +10,24 @@ pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chu
 
 pub const BlockTouchCallback = Callback(struct { entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64 }, @import("block/touch/_list.zig"));
 
+pub const ItemUsedCallback = Callback(struct {
+	item: main.items.Item,
+	target: union(enum) {
+		block: struct { block: Block, blockPos: Vec3i },
+		entity: *main.server.Entity,
+		null: void,
+	},
+	mod: main.Window.Key.Modifiers,
+	deltaTime: f64,
+}, @import("item/used/_list.zig"));
+
 pub const Result = enum { handled, ignored };
 
 pub fn init() void {
 	ClientBlockCallback.globalInit();
 	ServerBlockCallback.globalInit();
 	BlockTouchCallback.globalInit();
+	ItemUsedCallback.globalInit();
 }
 
 fn Callback(_Params: type, list: type) type {
