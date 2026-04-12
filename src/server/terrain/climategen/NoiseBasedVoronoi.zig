@@ -369,6 +369,7 @@ const GenerationStructure = struct {
 				if (fails < @as(usize, @intFromFloat(biomeCount))) {
 					i -= 1;
 				}
+				continue;
 			};
 			extraBiomes.append(.{
 				.biome = subBiome,
