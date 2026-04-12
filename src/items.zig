@@ -626,10 +626,11 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	pixelSourcesOverlay: [16][16]u8,
 };
 
-const ProceduralItemProperty = enum {
-	damage,
-	maxDurability,
-	swingSpeed,
+const ProceduralItemProperty = enum(u8) {
+	maxDurability = 0,
+	damage = 1,
+	/// swings per second
+	swingSpeed = 2,
 
 	fn fromString(string: []const u8) ?ProceduralItemProperty {
 		return std.meta.stringToEnum(ProceduralItemProperty, string) orelse {
@@ -652,13 +653,9 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	seed: u32,
 	type: ProceduralItemTypeIndex,
 
-	damage: f32,
+	properties: [@typeInfo(ProceduralItemProperty).@"enum".fields.len]f32 = @splat(0),
 
 	durability: u32,
-	maxDurability: f32,
-
-	/// swings per second
-	swingSpeed: f32,
 
 	mass: f32,
 
@@ -845,9 +842,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) *f32 {
-		switch (prop) {
-			inline else => |field| return &@field(self, @tagName(field)),
-		}
+		return &self.properties[@intFromEnum(prop)];
 	}
 
 	fn getTexture(self: *ProceduralItem) graphics.Texture {
@@ -893,7 +888,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn getBlockDamage(self: *ProceduralItem, block: main.blocks.Block) f32 {
-		var damage = self.damage;
+		var damage = self.getProperty(.damage).*;
 		for (self.modifiers) |modifier| {
 			damage = modifier.changeBlockDamage(damage, block);
 		}
