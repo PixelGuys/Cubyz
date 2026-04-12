@@ -1,0 +1,32 @@
+.{
+	.tags = .{.mineable, .pyrolite},
+	.blockHealth = 40,
+	.blockResistance = 25,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.material = .{
+			.durability = 300,
+			.massDamage = 4.0,
+			.hardnessDamage = 6.0,
+			.swingSpeed = 5.0,
+			.textureRoughness = 1.0,
+			.colors = .{
+				0xff3a1c1c, 0xff492023, 0xff582a2b, 0xff612f2f, 0xff6c3633,
+			},
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .pyrolite,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}
