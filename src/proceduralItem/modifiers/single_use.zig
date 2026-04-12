@@ -19,10 +19,6 @@ pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Dat
 	proceduralItem.maxDurability = data.strength;
 }
 
-pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
-	return damage;
-}
-
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
 	outString.print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{data.strength});
 }

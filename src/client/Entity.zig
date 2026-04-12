@@ -32,7 +32,7 @@ id: u32,
 name: []const u8,
 playerIndex: ?usize, // TODO extract into own component #2760
 
-pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) void {
+pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !void {
 	self.* = @This(){
 		.id = zon.get(u32, "id", std.math.maxInt(u32)),
 		.width = zon.get(f64, "width", 1),
@@ -50,9 +50,14 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 	};
 	self._interpolationVel = @splat(0);
 	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
+
+	if (zon.getChildOrNull("components")) |components| {
+		try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, .client);
+	}
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+	main.entity.client.removeAllComponents(self.id);
 	allocator.free(self.name);
 }
 
