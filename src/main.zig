@@ -201,6 +201,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 // MARK: Callbacks
 fn escape(mods: Window.Key.Modifiers) void {
+	if (Window.hasNextInputListenter()) return;
 	if (gui.selectedTextInput != null) gui.setSelectedTextInput(null);
 	inventory(mods);
 }
