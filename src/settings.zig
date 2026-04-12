@@ -26,8 +26,6 @@ pub var fpsCap: ?u32 = null;
 
 pub var fov: f32 = 70;
 
-pub var vulkanTestingWindow: bool = false;
-
 pub var mouseSensitivity: f32 = 1;
 pub var controllerSensitivity: f32 = 1;
 
@@ -44,6 +42,8 @@ pub var bloom: bool = true;
 pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
+
+pub var showPlayerIndexWithName: bool = false;
 
 pub var streamerMode: bool = false;
 
@@ -214,6 +214,8 @@ pub const launchConfig = struct {
 	pub var headlessServer: bool = false;
 	pub var preferredAuthenticationAlgorithm: main.network.authentication.KeyTypeEnum = .ed25519;
 
+	pub var vulkanTestingMode: bool = false;
+
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
 			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
@@ -225,5 +227,6 @@ pub const launchConfig = struct {
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
 		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm", preferredAuthenticationAlgorithm);
+		vulkanTestingMode = zon.get(bool, "vulkanTestingMode", false);
 	}
 };
