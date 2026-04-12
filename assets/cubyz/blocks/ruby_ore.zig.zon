@@ -15,10 +15,6 @@
 			},
 			.modifiers = .{
 				.{
-					.id = "devouring",
-					.strength = 0.01,
-				},
-				.{
 					.id = "fragile",
 					.strength = 0.45,
 					.restriction = .{
