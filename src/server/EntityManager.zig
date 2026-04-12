@@ -45,7 +45,7 @@ pub fn add() u32 {
 	var ent: *server.Entity = undefined;
 	if (freedList.items.len > 0) {
 		entityId = freedList.items[0];
-		_ = freedList.swapRemove(entityId);
+		_ = freedList.swapRemove(0);
 		ent = entities.add(main.globalAllocator, @enumFromInt(entityId));
 	} else {
 		entityId = freeId;
