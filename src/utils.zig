@@ -752,6 +752,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 
 pub const ThreadPool = struct { // MARK: ThreadPool
 	pub const TaskType = enum(usize) {
+		blockUpdate,
 		chunkgen,
 		meshgenAndLighting,
 		misc,

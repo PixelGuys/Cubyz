@@ -632,6 +632,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	lightListNeedsUpload: bool = false,
 	lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 
+	blockUpdateQueue: main.utils.CircularBufferQueue(Vec3i) = undefined,
+
 	lastNeighborsSameLod: [6]?*const ChunkMesh = @splat(null),
 	lastNeighborsHigherLod: [6]?*const ChunkMesh = @splat(null),
 	isNeighborLod: [6]bool = @splat(false),
@@ -664,6 +666,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.transparentMesh = .{
 				.lod = @intCast(std.math.log2_int(u32, pos.voxelSize)),
 			},
+			.blockUpdateQueue = .init(main.globalAllocator, 8),
 			.chunk = ch,
 			.lightingData = .{
 				lighting.ChannelChunk.init(ch, false),
@@ -689,6 +692,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		main.globalAllocator.free(self.blockBreakingFacesSortingData);
 		main.globalAllocator.free(self.lightList);
 		lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].free(self.lightAllocation);
+		self.blockUpdateQueue.deinit();
 		mesh_storage.meshMemoryPool.destroy(self);
 	}
 
@@ -1153,32 +1157,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, blockUpdate: mesh_storage.BlockUpdate, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
-		const blockPos = chunk.BlockPos.fromWorldCoords(blockUpdate.pos[0], blockUpdate.pos[1], blockUpdate.pos[2]);
-		var newBlock = blockUpdate.newBlock;
+	fn updateBlockLightAndMesh(self: *ChunkMesh, blockUpdatePos: Vec3i, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
+		const blockPos = chunk.BlockPos.fromWorldCoords(blockUpdatePos[0], blockUpdatePos[1], blockUpdatePos[2]);
 		self.mutex.lock();
-		const oldBlock = self.chunk.data.getValue(blockPos.toIndex());
-
-		if (oldBlock == newBlock) {
-			if (newBlock.blockEntity()) |blockEntity| {
-				var reader = main.utils.BinaryReader.init(blockUpdate.blockEntityData);
-				blockEntity.updateClientData(blockUpdate.pos, self.chunk, .{.update = &reader}) catch |err| {
-					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockUpdate.blockEntityData, blockUpdate.pos, newBlock.id()});
-				};
-			}
-			self.mutex.unlock();
-			return;
-		}
+		var newBlock = self.chunk.data.getValue(blockPos.toIndex());
 		self.mutex.unlock();
 
-		if (oldBlock.blockEntity()) |blockEntity| {
-			blockEntity.updateClientData(blockUpdate.pos, self.chunk, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), blockUpdate.pos, oldBlock.id()});
-			};
-		}
-
-		var neighborBlocks: [6]Block = undefined;
-		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
+		var neighborBlocks: [6]Block = @splat(.{.typ = 0, .data = 0});
 
 		for (chunk.Neighbor.iterable) |neighbor| {
 			const neighborPos, const chunkLocation = blockPos.neighbor(neighbor);
@@ -1214,9 +1199,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlocks[neighbor.toInt()]);
 			}
 		}
-		self.mutex.lock();
-		self.chunk.data.setValue(blockPos.toIndex(), newBlock);
-		self.mutex.unlock();
 
 		self.updateBlockLight(blockPos, newBlock, lightRefreshList);
 
@@ -1256,6 +1238,103 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		list.append(mesh);
 	}
+
+	pub fn updateBlock(self: *ChunkMesh, blockUpdate: mesh_storage.BlockUpdate) void {
+		const blockPos = chunk.BlockPos.fromWorldCoords(blockUpdate.pos[0], blockUpdate.pos[1], blockUpdate.pos[2]);
+		var newBlock = blockUpdate.newBlock;
+		self.mutex.lock();
+		const oldBlock = self.chunk.data.getValue(blockPos.toIndex());
+
+		if (oldBlock == newBlock) {
+			if (newBlock.blockEntity()) |blockEntity| {
+				var reader = main.utils.BinaryReader.init(blockUpdate.blockEntityData);
+				blockEntity.updateClientData(blockUpdate.pos, self.chunk, .{.update = &reader}) catch |err| {
+					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockUpdate.blockEntityData, blockUpdate.pos, newBlock.id()});
+				};
+			}
+			self.mutex.unlock();
+			return;
+		}
+
+		if (oldBlock.blockEntity()) |blockEntity| {
+			blockEntity.updateClientData(blockUpdate.pos, self.chunk, .remove) catch |err| {
+				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), blockUpdate.pos, oldBlock.id()});
+			};
+		}
+
+		self.chunk.data.setValue(blockPos.toIndex(), newBlock);
+
+		self.blockUpdateQueue.pushBack(blockUpdate.pos);
+		if (self.blockUpdateQueue.len == 1) {
+			BlockUpdateTask.schedule(self.pos);
+		}
+		self.mutex.unlock();
+	}
+	const BlockUpdateTask = struct {
+		pos: chunk.ChunkPosition,
+
+		pub const vtable = main.utils.ThreadPool.VTable{
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+			.taskType = .blockUpdate,
+		};
+
+		pub fn schedule(pos: chunk.ChunkPosition) void {
+			const task = main.globalAllocator.create(BlockUpdateTask);
+			task.* = .{
+				.pos = pos,
+			};
+			main.threadPool.addTask(task, &vtable);
+		}
+
+		pub fn getPriority(self: *BlockUpdateTask) f32 {
+			return 1000000 + self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+		}
+
+		pub fn isStillNeeded(_: *BlockUpdateTask) bool {
+			return true;
+		}
+
+		pub fn run(self: *BlockUpdateTask) void {
+			defer main.globalAllocator.destroy(self);
+
+			var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
+			defer lightRefreshList.deinit();
+
+			var regenerateMeshList = main.List(*ChunkMesh).init(main.stackAllocator);
+			defer regenerateMeshList.deinit();
+
+			{
+				const mesh = mesh_storage.getMesh(self.pos) orelse return;
+
+				while (true) {
+					const blockUpdatePos = blk: {
+						mesh.mutex.lock();
+						defer mesh.mutex.unlock();
+						break :blk mesh.blockUpdateQueue.popFront() orelse break;
+					};
+
+					mesh.updateBlockLightAndMesh(blockUpdatePos, &lightRefreshList, &regenerateMeshList);
+				}
+			}
+
+			for (regenerateMeshList.items) |mesh| {
+				mesh.generateMesh(&lightRefreshList);
+			}
+			for (lightRefreshList.items) |pos| {
+				ChunkMesh.scheduleLightRefresh(pos);
+			}
+			for (regenerateMeshList.items) |mesh| {
+				mesh_storage.addToUpdateList(mesh);
+			}
+		}
+
+		pub fn clean(self: *BlockUpdateTask) void {
+			main.globalAllocator.destroy(self);
+		}
+	};
 
 	fn clearNeighborA(self: *ChunkMesh, neighbor: chunk.Neighbor, comptime isLod: bool) void {
 		self.opaqueMesh.clearNeighbor(neighbor, isLod);
