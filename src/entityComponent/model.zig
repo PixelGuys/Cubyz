@@ -26,17 +26,14 @@ pub const client = struct {
 	const Component = struct {
 		entityModel: main.entityModel.EntityModelIndex, // model
 	};
-	pub var renderComponents: main.utils.SparseSet(Component, main.entity.Entity) = .{};
+	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
 
-	pub fn init() void {
-		renderComponents = .{};
-	}
+	pub fn init() void {}
 	pub fn deinit() void {
-		renderComponents.deinit(main.globalAllocator);
+		components.deinit(main.globalAllocator);
 	}
 	pub fn clear() void {
-		renderComponents.deinit(main.globalAllocator);
-		renderComponents = .{};
+		components.clear();
 	}
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0)
@@ -44,13 +41,13 @@ pub const client = struct {
 
 		const entityModel = reader.readVarInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
 
-		const ptr = renderComponents.get(@enumFromInt(entity)) orelse renderComponents.add(main.globalAllocator, @enumFromInt(entity));
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = Component{
-			.entityModel = .{ .index =  }{.index = entityModel},
+			.entityModel = .{.index = entityModel},
 		};
 	}
 	pub fn unload(entity: u32) void {
-		renderComponents.remove(@enumFromInt(entity)) catch {};
+		components.remove(@enumFromInt(entity)) catch {};
 	}
 };
 
@@ -65,12 +62,12 @@ pub const server = struct {
 			return .save;
 		}
 	};
-	var renderComponents: main.utils.SparseSet(Component, main.entity.Entity) = undefined;
+	var components: main.utils.SparseSet(Component, main.entity.Entity) = undefined;
 	pub fn init() void {
-		renderComponents = .{};
+		components = .{};
 	}
 	pub fn deinit() void {
-		renderComponents.deinit(main.globalAllocator);
+		components.deinit(main.globalAllocator);
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0)
@@ -83,19 +80,19 @@ pub const server = struct {
 		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
 	}
 	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex) main.entity.EntityComponentLoadError!void {
-		const ptr = renderComponents.get(@enumFromInt(entity)) orelse renderComponents.add(main.globalAllocator, @enumFromInt(entity));
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = Component{
 			.entityModel = entityModel,
 		};
 	}
 	pub fn unload(entity: u32) void {
-		renderComponents.remove(@enumFromInt(entity)) catch {};
+		components.remove(@enumFromInt(entity)) catch {};
 	}
 	pub fn put(entity: u32, renderComponent: Component) void {
-		const ptr = renderComponents.get(@enumFromInt(entity)) orelse renderComponents.add(main.globalAllocator, @enumFromInt(entity));
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = renderComponent;
 	}
 	pub fn get(entity: u32) ?*Component {
-		return renderComponents.get(@enumFromInt(entity));
+		return components.get(@enumFromInt(entity));
 	}
 };
