@@ -909,6 +909,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
+		var blockIntersectionDistance: f64 = 6.0;
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 		const step: Vec3i = @intFromFloat(std.math.sign(dir));
 		const invDir = @as(Vec3d, @splat(1))/dir;
@@ -932,6 +933,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if (block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 					if (intersection.distance <= closestDistance) {
+						blockIntersectionDistance = intersection.distance;
 						selectedBlockPos = voxelPos;
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
@@ -968,6 +970,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 		}
 		// TODO: Test entities
+		if(main.client.entity_manager.select(pos, dir, item,closestDistance)) |entityIntersection|{
+			if(selectedBlockPos == null or blockIntersectionDistance < entityIntersection.distance){
+				std.log.debug("intersected: {}", .{entityIntersection.entityId});
+			}
+		} 
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {

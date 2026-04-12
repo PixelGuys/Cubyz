@@ -211,3 +211,12 @@ pub fn serverUpdate(time: i16, entityData: []main.entity.EntityNetworkData) void
 		}
 	}
 }
+const Intersection = struct {
+	distance:f64,
+	entityId:u32
+};
+pub fn select(pos: Vec3d, dir: Vec3d, item: main.items.Item, maxDistance:f64) ?Intersection {
+	for (entities.items()) |ent| {
+		
+	}
+}
