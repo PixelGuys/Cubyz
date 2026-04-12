@@ -2264,7 +2264,7 @@ pub fn obfuscateString(allocator: NeverFailingAllocator, string: []const u8) []c
 }
 
 pub fn all(comptime predicate: anytype, sequence: anytype) bool {
-	for(sequence) |element| if(!predicate(element)) return false;
+	for (sequence) |element| if (!predicate(element)) return false;
 	return true;
 }
 

@@ -60,9 +60,9 @@ pub fn castFunctionReturnToOptionalAnyopaque(function: anytype) *const CastFunct
 
 pub fn concatComptime(comptime separator: []const u8, comptime array: anytype) []const u8 {
 	comptime var str: []const u8 = "";
-	comptime for(array, 0..) |fieldName, index| {
+	comptime for (array, 0..) |fieldName, index| {
 		str = str ++ fieldName;
-		if(index < array.len - 1) str = str ++ separator;
+		if (index < array.len - 1) str = str ++ separator;
 	};
 	return str;
 }

@@ -31,17 +31,17 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			allocator: NeverFailingAllocator,
 			args: []const u8,
 			errorMessage: *ListUnmanaged(u8),
-		) switch(mode) {
+		) switch (mode) {
 			.Autocomplete => AutocompleteResult,
 			.Parse => error{ParseError}!T,
 		} {
-			switch(@typeInfo(T)) {
+			switch (@typeInfo(T)) {
 				inline .@"struct" => |s| {
 					return resolveStruct(mode, s, allocator, args, errorMessage);
 				},
 				inline .@"union" => |u| {
-					if(u.tag_type == null) @compileError("Union must have a tag type");
-					return switch(mode) {
+					if (u.tag_type == null) @compileError("Union must have a tag type");
+					return switch (mode) {
 						.Autocomplete => autocompleteUnion(u, allocator, args, errorMessage),
 						.Parse => parseUnion(u, allocator, args, errorMessage),
 					};
@@ -56,7 +56,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			allocator: NeverFailingAllocator,
 			args: []const u8,
 			errorMessage: *ListUnmanaged(u8),
-		) switch(mode) {
+		) switch (mode) {
 			.Autocomplete => AutocompleteResult,
 			.Parse => error{ParseError}!T,
 		} {
@@ -68,11 +68,11 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 
 			var nextArgument: ?[]const u8 = split.next();
 
-			inline for(s.fields) |field| {
+			inline for (s.fields) |field| {
 				const value = resolveArgument(field.type, allocator, field.name[0..], nextArgument, &tempErrorMessage);
 
-				if(value == error.ParseError) {
-					if(@typeInfo(field.type) == .optional) {
+				if (value == error.ParseError) {
+					if (@typeInfo(field.type) == .optional) {
 						@field(result, field.name) = null;
 						tempErrorMessage.clearRetainingCapacity();
 					} else {
@@ -89,7 +89,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			const isLeftoverArgumentWhitespace = nextArgument == null or main.utils.all(std.ascii.isWhitespace, nextArgument.?);
 			const areUnusedArgumentsWhitespace = main.utils.all(std.ascii.isWhitespace, split.rest());
 
-			if(!isLeftoverArgumentWhitespace or !areUnusedArgumentsWhitespace) {
+			if (!isLeftoverArgumentWhitespace or !areUnusedArgumentsWhitespace) {
 				failWithMessage(allocator, errorMessage, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
@@ -98,9 +98,9 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		}
 
 		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Field {
-			switch(@typeInfo(Field)) {
+			switch (@typeInfo(Field)) {
 				inline .optional => |optionalInfo| {
-					if(argument == null) return error.ParseError;
+					if (argument == null) return error.ParseError;
 					return resolveArgument(optionalInfo.child, allocator, name, argument, errorMessage) catch |err| {
 						return err;
 					};
@@ -110,7 +110,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
-					if(!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
+					if (!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
 					return @field(Field, "parse")(allocator, name, arg, errorMessage);
 				},
 				inline .@"enum" => {
@@ -152,15 +152,15 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 
 		fn autocompleteArgument(comptime Field: type, allocator: NeverFailingAllocator, _arg: ?[]const u8) AutocompleteResult {
 			const arg = _arg orelse return .{};
-			switch(@typeInfo(Field)) {
+			switch (@typeInfo(Field)) {
 				inline .@"struct" => {
-					if(!@hasDecl(Field, "autocomplete")) @compileError("Struct must have an autocomplete function");
+					if (!@hasDecl(Field, "autocomplete")) @compileError("Struct must have an autocomplete function");
 					return try @field(Field, "autocomplete")(allocator, arg);
 				},
 				inline .@"enum" => {
 					var result: AutocompleteResult = .{};
-					inline for(std.meta.fieldNames(Field)) |fieldName| {
-						if(!std.mem.startsWith(u8, fieldName, arg)) continue;
+					inline for (std.meta.fieldNames(Field)) |fieldName| {
+						if (!std.mem.startsWith(u8, fieldName, arg)) continue;
 						result.suggestions.append(allocator, allocator.dupe(u8, fieldName));
 					}
 					return result;
@@ -175,13 +175,13 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 
 			tempErrorMessage.appendSlice(allocator, "---");
 
-			inline for(u.fields) |field| {
+			inline for (u.fields) |field| {
 				tempErrorMessage.append(allocator, '\n');
 				tempErrorMessage.appendSlice(allocator, field.name);
 				tempErrorMessage.append(allocator, '\n');
 
 				const result = Parser(field.type, options).resolve(.Parse, allocator, args, &tempErrorMessage);
-				if(result != error.ParseError) {
+				if (result != error.ParseError) {
 					return @unionInit(T, field.name, result catch unreachable);
 				}
 				tempErrorMessage.appendSlice(allocator, "\n---");
@@ -194,7 +194,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		fn autocompleteUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8) AutocompleteResult {
 			var result: AutocompleteResult = .{};
 
-			inline for(u.fields) |field| {
+			inline for (u.fields) |field| {
 				var completion = Parser(field.type).resolve(true, allocator, args);
 				defer completion.deinit(allocator);
 
@@ -216,14 +216,14 @@ pub const AutocompleteResult = struct {
 	suggestions: ListUnmanaged([]const u8) = .{},
 
 	pub fn takeSuggestions(self: *AutocompleteResult, allocator: NeverFailingAllocator, other: *AutocompleteResult) void {
-		for(other.suggestions.items) |message| {
+		for (other.suggestions.items) |message| {
 			self.suggestions.append(allocator, message);
 		}
 		other.suggestions.clearAndFree(allocator);
 	}
 
 	pub fn deinit(self: AutocompleteResult, allocator: NeverFailingAllocator) void {
-		for(self.suggestions.items) |item| {
+		for (self.suggestions.items) |item| {
 			allocator.free(item);
 		}
 		self.suggestions.deinit(allocator);
@@ -234,16 +234,16 @@ const Test = struct {
 	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	var allocator = testingAllocator.allocator();
 
-	const OnlyX = Parser(struct {x: f64}, .{.commandName = ""});
+	const OnlyX = Parser(struct { x: f64 }, .{.commandName = ""});
 
 	const @"Union X or XY" = Parser(union(enum) {
-		x: struct {x: f64},
-		xy: struct {x: f64, y: f64},
+		x: struct { x: f64 },
+		xy: struct { x: f64, y: f64 },
 	}, .{.commandName = ""});
 
 	const @"subCommands foo or bar" = Parser(union(enum) {
-		foo: struct {cmd: enum(u1) {foo}, x: f64},
-		bar: struct {cmd: enum(u1) {bar}, x: f64, y: f64},
+		foo: struct { cmd: enum(u1) { foo }, x: f64 },
+		bar: struct { cmd: enum(u1) { bar }, x: f64, y: f64 },
 	}, .{.commandName = ""});
 };
 
@@ -269,7 +269,7 @@ test "float negative" {
 
 test "enum" {
 	const ArgParser = Parser(struct {
-		cmd: enum(u1) {foo},
+		cmd: enum(u1) { foo },
 	}, .{.commandName = "c"});
 
 	var errors: ListUnmanaged(u8) = .{};

@@ -12,9 +12,9 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/time <phase>": struct {phase: enum {day, night}},
-	@"/time <subcommand>": struct {subcommand: enum {start, stop}},
-	@"/time <number>": struct {number: i64},
+	@"/time <phase>": struct { phase: enum { day, night } },
+	@"/time <subcommand>": struct { subcommand: enum { start, stop } },
+	@"/time <number>": struct { number: i64 },
 	@"/time": struct {},
 };
 
@@ -29,15 +29,15 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	};
 
-	const gameTime: i64 = switch(result) {
+	const gameTime: i64 = switch (result) {
 		.@"/time" => main.server.world.?.gameTime,
 		.@"/time <number>" => |params| params.number,
-		.@"/time <phase>" => |params| switch(params.phase) {
+		.@"/time <phase>" => |params| switch (params.phase) {
 			.day => 0,
 			.night => main.server.ServerWorld.dayCycle/2,
 		},
 		.@"/time <subcommand>" => |params| {
-			switch(params.subcommand) {
+			switch (params.subcommand) {
 				.start => {
 					main.server.world.?.doGameTimeCycle = true;
 					source.sendMessage("#ffff00Time started.", .{});
