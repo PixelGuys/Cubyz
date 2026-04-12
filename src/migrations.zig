@@ -8,12 +8,14 @@ const Assets = main.assets.Assets;
 var blockMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 var itemMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 var biomeMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
+var entityModelMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 var entityComponentMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 
 const MigrationType = enum {
 	block,
 	item,
 	biome,
+	entityModel,
 	entityComponent,
 };
 
@@ -23,6 +25,7 @@ pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZ
 		.block => &blockMigrations,
 		.item => &itemMigrations,
 		.biome => &biomeMigrations,
+		.entityModel => &entityModelMigrations,
 		.entityComponent => &entityComponentMigrations,
 	};
 	var migrationIterator = migrations.iterator();
@@ -91,6 +94,7 @@ pub fn applySingle(comptime typ: MigrationType, assetName: []const u8) []const u
 		.block => blockMigrations,
 		.item => itemMigrations,
 		.biome => biomeMigrations,
+		.entityModel => entityModelMigrations,
 		.entityComponent => entityComponentMigrations,
 	};
 
@@ -104,6 +108,7 @@ pub fn apply(comptime typ: MigrationType, palette: *Palette) void {
 		.block => blockMigrations,
 		.item => itemMigrations,
 		.biome => biomeMigrations,
+		.entityModel => entityModelMigrations,
 		.entityComponent => entityComponentMigrations,
 	};
 	std.log.info("Applying {} migrations to {s} palette", .{migrations.count(), @tagName(typ)});
@@ -119,4 +124,6 @@ pub fn reset() void {
 	biomeMigrations = .{};
 	blockMigrations = .{};
 	itemMigrations = .{};
+	entityModelMigrations = .{};
+	entityComponentMigrations = .{};
 }

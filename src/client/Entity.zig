@@ -29,21 +29,21 @@ height: f64,
 pos: Vec3d = undefined,
 rot: Vec3f = undefined,
 
-model: EntityModel = undefined,
+model: *EntityModel = undefined,
 nodes: [20]EntityModel.Node = undefined,
 matrices: [20]Mat4f = undefined,
 
 id: u32,
 name: []const u8,
-playerIndex: usize, // TODO extract into own component #2760
+playerIndex: ?usize, // TODO extract into own component #2760
 
-pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) void {
+pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !void {
 	self.* = @This(){
 		.id = zon.get(u32, "id", std.math.maxInt(u32)),
 		.width = zon.get(f64, "width", 1),
 		.height = zon.get(f64, "height", 1),
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
-		.playerIndex = zon.get(usize, "playerIndex", std.math.maxInt(usize)),
+		.playerIndex = zon.get(?usize, "playerIndex", null),
 	};
 
 	self.rot = Vec3f{0, 0, 0};
@@ -64,13 +64,17 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) v
 		self.nodes[i] = self.model.nodes[i];
 	}
 	
-	
 	for (0..self.model.nodeCount) |i| {
 		self.matrices[i] = getHierarchyMatrix(self.nodes, self.nodes[i]);
+	}
+
+	if (zon.getChildOrNull("components")) |components| {
+		try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, .client);
 	}
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+	main.entity.client.removeAllComponents(self.id);
 	allocator.free(self.name);
 }
 
@@ -131,9 +135,14 @@ fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f
 }
 
 pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
-	if (main.settings.showPlayerIndexWithName) {
-		try writer.print("{s}@{d}", .{self.name, self.playerIndex});
+	if (main.settings.showPlayerIndexWithName and self.playerIndex != null) {
+		try self.formatWithPlayerIndex(writer);
 	} else {
 		try writer.print("{s}", .{self.name});
 	}
+}
+
+pub fn formatWithPlayerIndex(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+	std.debug.assert(self.playerIndex != null);
+	try writer.print("{s}@{d}", .{self.name, self.playerIndex.?});
 }

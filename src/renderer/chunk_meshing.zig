@@ -1153,17 +1153,17 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, blockEntityData: []const u8, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
-		const blockPos = chunk.BlockPos.fromWorldCoords(_x, _y, _z);
-		var newBlock = _newBlock;
+	pub fn updateBlock(self: *ChunkMesh, blockUpdate: mesh_storage.BlockUpdate, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
+		const blockPos = chunk.BlockPos.fromWorldCoords(blockUpdate.pos[0], blockUpdate.pos[1], blockUpdate.pos[2]);
+		var newBlock = blockUpdate.newBlock;
 		self.mutex.lock();
 		const oldBlock = self.chunk.data.getValue(blockPos.toIndex());
 
 		if (oldBlock == newBlock) {
 			if (newBlock.blockEntity()) |blockEntity| {
-				var reader = main.utils.BinaryReader.init(blockEntityData);
-				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.update = &reader}) catch |err| {
-					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
+				var reader = main.utils.BinaryReader.init(blockUpdate.blockEntityData);
+				blockEntity.updateClientData(blockUpdate.pos, self.chunk, .{.update = &reader}) catch |err| {
+					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockUpdate.blockEntityData, blockUpdate.pos, newBlock.id()});
 				};
 			}
 			self.mutex.unlock();
@@ -1172,8 +1172,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.unlock();
 
 		if (oldBlock.blockEntity()) |blockEntity| {
-			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{_x, _y, _z}, oldBlock.id()});
+			blockEntity.updateClientData(blockUpdate.pos, self.chunk, .remove) catch |err| {
+				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), blockUpdate.pos, oldBlock.id()});
 			};
 		}
 

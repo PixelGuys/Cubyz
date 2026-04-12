@@ -10,6 +10,7 @@ pub const Vec4i = @Vector(4, i32);
 pub const Vec4f = @Vector(4, f32);
 pub const Vec4d = @Vector(4, f64);
 
+// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L1430
 pub const Vec4fComponent = enum { x, y, z, w };
 
 pub inline fn swizzle(
@@ -20,14 +21,6 @@ pub inline fn swizzle(
 	comptime w: Vec4fComponent,
 ) Vec4f {
 	return @shuffle(f32, v, undefined, [4]i32{@intFromEnum(x), @intFromEnum(y), @intFromEnum(z), @intFromEnum(w)});
-}
-
-pub inline fn andInt(v0: anytype, v1: anytype) @TypeOf(v0, v1) {
-	const T = @TypeOf(v0, v1);
-	const Tu = @Vector(@typeInfo(T).vector.len, u32);
-	const v0u = @as(Tu, @bitCast(v0));
-	const v1u = @as(Tu, @bitCast(v1));
-	return @as(T, @bitCast(v0u & v1u)); // andps
 }
 
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
@@ -235,6 +228,16 @@ pub const Mat4f = struct { // MARK: Mat4f
 		};
 	}
 
+	// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L634
+	inline fn andInt(v0: anytype, v1: anytype) @TypeOf(v0, v1) {
+		const T = @TypeOf(v0, v1);
+		const Tu = @Vector(@typeInfo(T).vector.len, u32);
+		const v0u = @as(Tu, @bitCast(v0));
+		const v1u = @as(Tu, @bitCast(v1));
+		return @as(T, @bitCast(v0u & v1u)); // andps
+	}
+
+	// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L2726
 	pub fn rotationQuat(quat: Vec4f) Mat4f {
 		const f32x4_mask3: Vec4f = Vec4f{
 			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
