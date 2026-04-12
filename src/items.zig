@@ -917,9 +917,7 @@ pub const ItemCallbacks = struct {
 
 	fn registerCallbacks(zon: ZonElement) ItemCallbacks {
 		return .{.onLeftClick = blk: {
-			if (std.mem.eql(u8, zon.get([]const u8, "texture", "no"), "cubyz:clay")) std.debug.print("{any}\n", .{zon});
 			break :blk ItemUsedCallback.init(zon.getChildOrNull("onLeftClick") orelse {
-				std.debug.print("NOOOO", .{});
 				break :blk .noop;
 			}) orelse {
 				std.log.err("Failed to load onLeftClick event for item", .{});
