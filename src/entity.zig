@@ -21,7 +21,7 @@ pub const EntityComponentLoadError = error{
 	UnreadableId,
 	UnreadableVersion,
 	UnreadableComponentData,
-	UnknownComponentId,
+	Memory,
 };
 // Analogous to Protocols.
 pub const EntityComponentId = u32;

@@ -73,10 +73,7 @@ fn update() void {
 
 // TODO: this will be removed in future ECS parts
 pub fn initAfterWorld() void {
-	model = (main.entityModel.getById("cubyz:snale") orelse blk: {
-		std.log.err("EntityModel {s} wasn't found", .{"cubyz:snale"});
-		break :blk main.entityModel.default();
-	}).get();
+	model = main.entityModel.getById("cubyz:snale").?.get();
 }
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
@@ -217,6 +214,6 @@ const Intersection = struct {
 };
 pub fn select(pos: Vec3d, dir: Vec3d, item: main.items.Item, maxDistance:f64) ?Intersection {
 	for (entities.items()) |ent| {
-		
+
 	}
 }
