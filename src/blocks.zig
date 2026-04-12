@@ -33,8 +33,8 @@ pub const maxBlockCount: usize = 65536; // 16 bit limit
 pub const BlockDrop = struct {
 	items: []const items.ItemStack,
 	chance: f32,
-	forbiddenTag: ?Tag = null,
-	requiredTag: ?Tag = null,
+	forbiddenTags: ?[]Tag = null,
+	allowedTags: ?[]Tag = null,
 };
 
 /// Ores can be found underground in veins.
@@ -197,8 +197,8 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 		blockDrops[i] = BlockDrop{
 			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
 			.chance = blockDrop.get(f32, "chance", 1),
-			.forbiddenTag = if (blockDrop.getChildOrNull("forbiddenTag")) |tagZon| Tag.loadTagFromZon(tagZon) else null,
-			.requiredTag = if (blockDrop.getChildOrNull("requiredTag")) |tagZon| Tag.loadTagFromZon(tagZon) else null,
+			.forbiddenTags = if (blockDrop.getChildOrNull("forbiddenTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
+			.allowedTags = if (blockDrop.getChildOrNull("allowedTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
 		};
 	}
 	return blockDrops;

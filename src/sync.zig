@@ -1501,15 +1501,26 @@ pub const Command = struct { // MARK: Command
 				for (0..dropAmount) |_| {
 					for (self.oldBlock.blockDrops()) |drop| {
 						if (handItem == .proceduralItem) {
-							const proceduralItem = handItem.proceduralItem;
-							if (drop.forbiddenTag) |forbiddenTag| {
-								if (proceduralItem.hasBlockTag(forbiddenTag)) continue;
+							const item = handItem.proceduralItem;
+
+							if (drop.forbiddenTags) |tags| {
+								var isForbidden: bool = false;
+								for (tags) |tag| if (item.hasBlockTag(tag)) {
+									isForbidden = true;
+									break;
+								};
+								if (isForbidden) continue;
 							}
-							if (drop.requiredTag) |requiredTag| {
-								if (!proceduralItem.hasBlockTag(requiredTag)) continue;
+							if (drop.allowedTags) |tags| {
+								var hasMatch: bool = false;
+								for (tags) |tag| if (item.hasBlockTag(tag)) {
+									hasMatch = true;
+									break;
+								};
+								if (!hasMatch) continue;
 							}
 						} else {
-							if (drop.requiredTag != null) continue;
+							if (drop.allowedTags != null) continue;
 						}
 
 						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
