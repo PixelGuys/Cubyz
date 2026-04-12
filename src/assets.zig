@@ -538,7 +538,7 @@ pub const Palette = struct { // MARK: Palette
 var loadedAssets: bool = false;
 pub var worldAssetFolder: []const u8 = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, proceduralItemPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -579,12 +579,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	// EntityModels:
 	{
-		// First blocks from the palette to enforce ID values.
+		// First models from the palette to enforce ID values.
 		for (entityModelPalette.palette.items) |entityModelId| {
 			std.log.debug("Registering entity model {s}", .{entityModelId});
 			_ = main.entityModel.register(assetFolder, entityModelId, worldAssets.entityModelDescriptions.get(entityModelId) orelse .null);
 		}
-		// Then all the blocks that were missing in palette but are present in the game.
+		// Then all the models that were missing in palette but are present in the game.
 		var entModelIterator = worldAssets.entityModelDescriptions.iterator();
 		while (entModelIterator.next()) |entry| {
 			const entityModelId = entry.key_ptr.*;
