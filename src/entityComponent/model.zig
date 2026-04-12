@@ -41,7 +41,7 @@ pub const client = struct {
 	}
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
-		const entityModel = reader.readInt(u32) catch return;
+		const entityModel = reader.readInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
 
 		const ptr = renderComponents.get(@enumFromInt(entity)) orelse renderComponents.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = RenderComponent{
@@ -77,7 +77,7 @@ pub const server = struct {
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = version;
-		const entityModel = reader.readInt(u32) catch return;
+		const entityModel = reader.readInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
 
 		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel});
 	}
