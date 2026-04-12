@@ -39,35 +39,36 @@ pub fn getAll() []server.Entity {
 	return entities.dense.items;
 }
 
-var freeId = 0;
+var freeId: u32 = 0;
 pub fn add() u32 {
-	// TODO: add a freed list.
-	var entityId: i32 = undefined;
+	var entityId: u32 = undefined;
 	var ent: *server.Entity = undefined;
 	if (freedList.items.len > 0) {
 		entityId = freedList.items[0];
-		freedList.swapRemove(entityId);
-		ent = entities.add(main.globalAllocator, entityId);
+		_ = freedList.swapRemove(entityId);
+		ent = entities.add(main.globalAllocator, @enumFromInt(entityId));
 	} else {
 		entityId = freeId;
 		freeId += 1;
-		ent = entities.get(entityId) orelse entities.add(main.globalAllocator, entityId);
+		ent = entities.get(@enumFromInt(entityId)) orelse entities.add(main.globalAllocator, @enumFromInt(entityId));
 	}
 	ent.* = server.Entity{};
 	ent.id = entityId;
 	return entityId;
 }
 pub fn remove(entityId: u32) void {
-	if (entities.get(entityId)) |entity| {
+	if (entities.get(@enumFromInt(entityId))) |entity| {
 		entity.deinit(.server);
-		entities.remove(entityId);
+		entities.remove(@enumFromInt(entityId)) catch {
+			std.log.err("failed to remove entityId {}", .{entityId});
+		};
 		freedList.addOne(main.globalAllocator).* = entityId;
 	}
 }
 pub fn getEntity(entityId: u32) ?*server.Entity {
-	return entities.get(entityId);
+	return entities.get(@enumFromInt(entityId));
 }
-pub fn getEntitiesBasicInfo(allocator: *main.heap.NeverFailingAllocator) main.ZonElement {
+pub fn getEntitiesBasicInfo(allocator: main.heap.NeverFailingAllocator) main.ZonElement {
 	const zonArray = main.ZonElement.initArray(allocator);
 	for (entities.dense.items) |entity| {
 		const entityZon = entity.save(allocator, .playerNearby);
@@ -75,8 +76,8 @@ pub fn getEntitiesBasicInfo(allocator: *main.heap.NeverFailingAllocator) main.Zo
 	}
 	return zonArray;
 }
-pub fn getEntityBasicInfo(entityId: u32, allocator: *main.heap.NeverFailingAllocator) ?main.ZonElement {
-	const entity = entities.get(entityId);
+pub fn getEntityBasicInfo(entityId: u32, allocator: main.heap.NeverFailingAllocator) ?main.ZonElement {
+	const entity = entities.get(@enumFromInt(entityId));
 	if (entity) |ent| {
 		return ent.save(allocator, .playerNearby);
 	} else {
