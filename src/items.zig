@@ -481,8 +481,8 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			sum *= property.resultScale;
 			proceduralItem.getProperty(property.destination orelse continue).* += sum;
 		}
-		proceduralItem.damage = @round(proceduralItem.damage * 10) / 10;
-		proceduralItem.swingSpeed = @round(proceduralItem.swingSpeed * 10) / 10;
+		proceduralItem.damage = @round(proceduralItem.damage*10)/10;
+		proceduralItem.swingSpeed = @round(proceduralItem.swingSpeed*10)/10;
 		for (0..25) |i| {
 			const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for (material.modifiers) |newMod| {
