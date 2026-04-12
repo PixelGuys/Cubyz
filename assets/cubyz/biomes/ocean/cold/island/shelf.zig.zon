@@ -7,6 +7,17 @@
 		"2 to 3 cubyz:gravel",
 	},
 	.maxSubBiomeCount = 1,
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:amber_ore:cubyz:gravel",
+			.chance = 0.005,
+			.width = 1,
+			.variation = 2,
+			.depth = 1,
+			.smoothness = 0.1,
+		},
+	},
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:ocean/cold/base",
