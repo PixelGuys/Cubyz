@@ -248,7 +248,7 @@ pub const Biome = struct { // MARK: Biome
 	vegetationModels: []SimpleStructureModel = &.{},
 	caveSdfModels: []terrain.sdf.SdfModel = &.{},
 	stripes: []Stripe = &.{},
-	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
+	subBiomes: main.utils.AliasTable(SubBiomeData) = .{.items = &.{}, .aliasData = &.{}},
 	transitionBiomes: []TransitionBiome = &.{},
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
@@ -317,7 +317,11 @@ pub const Biome = struct { // MARK: Biome
 		const parentBiomeList = zon.getChild("parentBiomes");
 		for (parentBiomeList.toSlice()) |parent| {
 			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
-			result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
+			result.value_ptr.append(main.globalAllocator, .{
+				.biomeId = self.id,
+				.chance = parent.get(f32, "chance", 1),
+				.parentEdgeDistance = parent.get(f32, "parentEdgeDistance", terrain.SurfaceMap.MapFragment.biomeSize),
+			});
 		}
 
 		const transitionBiomeList = zon.getChild("transitionBiomes").toSlice();
@@ -578,11 +582,17 @@ var biomesById: std.StringHashMapUnmanaged(*Biome) = .{};
 var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
 pub var byTypeBiomes: *TreeNode = undefined;
 
+const SubBiomeData = struct {
+	biome: *const Biome,
+	parentEdgeDistance: f32,
+};
+
 const UnfinishedSubBiomeData = struct {
 	biomeId: []const u8,
 	chance: f32,
-	pub fn getItem(self: UnfinishedSubBiomeData) *const Biome {
-		return getById(self.biomeId);
+	parentEdgeDistance: f32,
+	pub fn getItem(self: UnfinishedSubBiomeData) SubBiomeData {
+		return .{.biome = getById(self.biomeId), .parentEdgeDistance = self.parentEdgeDistance};
 	}
 };
 var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};

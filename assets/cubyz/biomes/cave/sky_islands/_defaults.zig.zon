@@ -25,7 +25,7 @@
 		.{
 			.id = "cubyz:flower_patch",
 			.blocks = .{"cubyz:daffodil"},
-			.chance = 0.01,
+			.chance = 0.008,
 			.width = 6,
 			.variation = 3,
 			.density = 0.1,
@@ -33,9 +33,9 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:castilleja"},
-			.chance = 0.006,
-			.width = 8,
+			.blocks = .{"cubyz:lumiflora"},
+			.chance = 0.012,
+			.width = 6,
 			.variation = 3,
 			.density = 0.1,
 			.priority = 0.1,
