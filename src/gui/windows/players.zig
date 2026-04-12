@@ -42,14 +42,15 @@ pub fn onOpen() void {
 		}
 
 		for (main.client.entity_manager.entities.items()) |ent| {
-			if (ent.playerIndex == null) continue;
-			const row = HorizontalList.init();
+			if (main.entity.components.@"cubyz:player".client.get(ent.id)) |playerComponent| {
+				const row = HorizontalList.init();
 
-			const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{std.fmt.alt(ent, .formatWithPlayerIndex)}) catch unreachable;
-			defer main.stackAllocator.free(string);
-			row.add(Label.init(.{0, 0}, 200, string, .left));
-			row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithInt(kickByPlayerIndex, ent.playerIndex.?)));
-			list.add(row);
+				const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{std.fmt.alt(ent, .formatWithPlayerIndex)}) catch unreachable;
+				defer main.stackAllocator.free(string);
+				row.add(Label.init(.{0, 0}, 200, string, .left));
+				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithInt(kickByPlayerIndex, playerComponent.playerIndex)));
+				list.add(row);
+			}
 		}
 	} else {
 		main.server.connectionManager.mutex.lock();
