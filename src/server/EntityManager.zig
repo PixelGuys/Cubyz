@@ -68,7 +68,7 @@ pub fn remove(entityId: u32) void {
 pub fn getEntity(entityId: u32) ?*server.Entity {
 	return entities.get(@enumFromInt(entityId));
 }
-pub fn getEntitiesBasicInfo(allocator: main.heap.NeverFailingAllocator) main.ZonElement {
+pub fn getEntitiesNearbyInfo(allocator: main.heap.NeverFailingAllocator) main.ZonElement {
 	const zonArray = main.ZonElement.initArray(allocator);
 	for (entities.dense.items) |entity| {
 		const entityZon = entity.save(allocator, .playerNearby);
@@ -76,7 +76,7 @@ pub fn getEntitiesBasicInfo(allocator: main.heap.NeverFailingAllocator) main.Zon
 	}
 	return zonArray;
 }
-pub fn getEntityBasicInfo(entityId: u32, allocator: main.heap.NeverFailingAllocator) ?main.ZonElement {
+pub fn getEntityNearbyInfo(entityId: u32, allocator: main.heap.NeverFailingAllocator) ?main.ZonElement {
 	const entity = entities.get(@enumFromInt(entityId));
 	if (entity) |ent| {
 		return ent.save(allocator, .playerNearby);

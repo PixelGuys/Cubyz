@@ -145,7 +145,9 @@ pub const User = struct { // MARK: User
 	permissions: permission.Permissions = undefined,
 
 	pub fn player(self: *User) *Entity {
-		return EntityManager.getEntity(self.id) orelse unreachable; // TODO change this. to give optional (in case player has no entity)
+		// A player should always have an entity.
+		std.debug.assert(EntityManager.getEntity(self.id)!=0); 
+		return EntityManager.getEntity(self.id).?;
 	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
@@ -773,7 +775,7 @@ pub fn connectInternal(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const zonArray = EntityManager.getEntitiesBasicInfo(main.stackAllocator);
+		const zonArray = EntityManager.getEntitiesNearbyInfo(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
