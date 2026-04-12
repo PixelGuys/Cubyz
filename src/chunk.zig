@@ -379,7 +379,7 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeShift: u5,
 	voxelSizeMask: i32,
 
-	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntityIndex),
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntity),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
@@ -410,21 +410,21 @@ pub const Chunk = struct { // MARK: Chunk
 		self.data.deferredDeinit();
 	}
 
-	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
+	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.sync.Side) void {
 		self.blockPosToEntityDataMapMutex.lock();
 		defer self.blockPosToEntityDataMapMutex.unlock();
 		var iterator = self.blockPosToEntityDataMap.iterator();
 		while (iterator.next()) |elem| {
 			const pos = elem.key_ptr.*;
-			const entityDataIndex = elem.value_ptr.*;
+			const entity = elem.value_ptr.*;
 			const block = self.data.getValue(pos.toIndex());
 			const blockEntity = block.blockEntity() orelse unreachable;
 			switch (side) {
 				.client => {
-					blockEntity.onUnloadClient(entityDataIndex);
+					blockEntity.onUnloadClient(entity);
 				},
 				.server => {
-					blockEntity.onUnloadServer(entityDataIndex);
+					blockEntity.onUnloadServer(entity);
 				},
 			}
 		}
@@ -596,6 +596,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	}
 
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
+		if (other.super.pos.wz > 9000 and self.super.pos.voxelSize > 4) return; // We don't want to generate LODs for the sky
 		const xOffset = if (other.super.pos.wx != self.super.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
 		const yOffset = if (other.super.pos.wy != self.super.pos.wy) chunkSize/2 else 0;
 		const zOffset = if (other.super.pos.wz != self.super.pos.wz) chunkSize/2 else 0;

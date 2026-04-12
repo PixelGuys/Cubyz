@@ -1,5 +1,5 @@
 .{
-	.tags = .{.fluid},
+	.tags = .{.fluid, .hot},
 	.drops = .{},
 	.selectable = false,
 	.replacable = true,
