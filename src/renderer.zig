@@ -1045,12 +1045,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if (inventory.getItem(slot).onLeftClick().run(.{.item = inventory.getItem(slot), .target = .{.block = .{.block = block, .blockPos = selectedPos}}, .mod = .{}, .deltaTime = deltaTime}) == .handled) return;
 
 			const stack = inventory.getStack(slot);
-			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
-			if (isSelectionWand) {
-				game.Player.selectionPosition1 = selectedPos;
-				main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
-				return;
-			}
 
 			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
