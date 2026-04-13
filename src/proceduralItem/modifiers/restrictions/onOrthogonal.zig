@@ -47,6 +47,6 @@ pub fn printTooltip(self: *const OnOrthogonal, outString: *main.List(u8)) void {
 	if (self.range == null) {
 		outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on orthoganal axis"});
 	} else {
-		outString.print("{} .{s} {s} {}", .{self.amount, self.tag.getName(), "in orthoganal range", self.range});
+		outString.print("{} .{s} {s} {?}", .{self.amount, self.tag.getName(), "in orthoganal range", self.range});
 	}
 }
