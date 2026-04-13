@@ -39,4 +39,8 @@
 		.inputs = .{"{mod}:planks/{type}", "cubyz:sulfur_ore"},
 		.output = "8 cubyz:sulfur_torch",
 	},
+	.{
+		.inputs = .{"{mod}:planks/{type}", "cubyz:lumiflora"},
+		.output = "8 cubyz:torch/lumi",
+	},
 }

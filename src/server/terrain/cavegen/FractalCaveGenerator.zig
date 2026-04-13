@@ -12,7 +12,7 @@ const Vec3i = vec.Vec3i;
 
 pub const id = "cubyz:fractal_cave";
 
-pub const priority = 65536;
+pub const priority = 131072;
 
 pub const generatorSeed = 0xb898ec9ce9d2ef37;
 
@@ -34,26 +34,25 @@ const branchChance = 0.4;
 const minRadius = 2.0;
 const maxInitialRadius = 5;
 const heightVariance = 0.15;
-const maxCaveHeight = 128;
-const caveHeightWithMaxDensity = -512;
-const maxCaveDensity = 1.0/32.0;
 
 // TODO: Should probably use fixed point arithmetic to avoid crashes at the world border.
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if (map.pos.voxelSize > 2) return;
 
-	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize + maxCaveHeight*3);
+	const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize + range*3/2);
 	defer biomeMap.deinit();
 	// Generate caves from all nearby chunks:
-	var wx = map.pos.wx -% range;
-	while (wx -% map.pos.wx -% CaveMapFragment.width*map.pos.voxelSize -% range < 0) : (wx +%= chunkSize) {
-		var wy = map.pos.wy -% 2*range;
-		while (wy -% map.pos.wy -% CaveMapFragment.width*map.pos.voxelSize -% range < 0) : (wy +%= chunkSize) {
-			var wz = map.pos.wz -% 2*range;
-			while (wz -% map.pos.wz -% CaveMapFragment.height*map.pos.voxelSize -% range < 0) : (wz +%= chunkSize) {
+	var wz = map.pos.wz -% 2*range;
+	while (wz -% map.pos.wz -% CaveMapFragment.height*map.pos.voxelSize -% range < 0) : (wz +%= chunkSize) {
+		const caveLayer = terrain.cave_layers.getLayer(wz);
+
+		var wx = map.pos.wx -% range;
+		while (wx -% map.pos.wx -% CaveMapFragment.width*map.pos.voxelSize -% range < 0) : (wx +%= chunkSize) {
+			var wy = map.pos.wy -% 2*range;
+			while (wy -% map.pos.wy -% CaveMapFragment.width*map.pos.voxelSize -% range < 0) : (wy +%= chunkSize) {
 				var seed: u64 = random.initSeed3D(worldSeed, .{wx, wy, wz});
-				considerCoordinates(wx, wy, wz, map, &biomeMap, &seed, worldSeed);
+				considerCoordinates(wx, wy, wz, map, &biomeMap, caveLayer, &seed, worldSeed);
 			}
 		}
 	}
@@ -271,16 +270,15 @@ fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, biomeMap: *co
 	generateBranchingCaveBetween(random.nextInt(u64, &seed), map, biomeMap, mid, endRelPos, bias*@as(Vec3f, @splat(w2)), midRadius, endRadius, seedPos, branchLength, randomness, false, isEnd);
 }
 
-fn considerCoordinates(wx: i32, wy: i32, wz: i32, map: *CaveMapFragment, biomeMap: *const CaveBiomeMapView, seed: *u64, worldSeed: u64) void {
+fn considerCoordinates(wx: i32, wy: i32, wz: i32, map: *CaveMapFragment, biomeMap: *const CaveBiomeMapView, caveLayer: terrain.cave_layers.CaveLayer, seed: *u64, worldSeed: u64) void {
 	// Choose some in world coordinates to start generating:
-	const startWorldPos = Vec3f{
+	const startRelPos = Vec3f{
 		@floatFromInt(wx +% random.nextIntBounded(u8, seed, chunkSize) -% map.pos.wx),
 		@floatFromInt(wy +% random.nextIntBounded(u8, seed, chunkSize) -% map.pos.wy),
 		@floatFromInt(wz +% random.nextIntBounded(u8, seed, chunkSize) -% map.pos.wz),
 	};
 
-	// At z = caveHeightWithMaxDensity blocks the chance is saturated, while at maxCaveHeight the chance gets 0:
-	if (random.nextFloat(seed) >= maxCaveDensity*@min(1, @as(f32, @floatFromInt(maxCaveHeight -% wz))/(maxCaveHeight - caveHeightWithMaxDensity))) return;
+	if (random.nextFloat(seed) >= caveLayer.caveDensity) return;
 
 	var starters = 1 + random.nextIntBounded(u8, seed, 4);
 	while (starters != 0) : (starters -= 1) {
@@ -288,15 +286,15 @@ fn considerCoordinates(wx: i32, wy: i32, wz: i32, map: *CaveMapFragment, biomeMa
 		const endY = wy +% random.nextIntBounded(u31, seed, 2*range - 3*chunkSize) -% range +% chunkSize & ~@as(i32, chunkSize - 1);
 		const endZ = wz +% random.nextIntBounded(u31, seed, 2*range - 3*chunkSize) -% range +% chunkSize & ~@as(i32, chunkSize - 1);
 		seed.* = random.initSeed3D(worldSeed, .{endX, endY, endZ}); // Every chunk has the same start/destination position, to increase cave connectivity.
-		const endWorldPos = Vec3f{
+		const endRelPos = Vec3f{
 			@floatFromInt(endX +% random.nextIntBounded(u8, seed, chunkSize) -% map.pos.wx),
 			@floatFromInt(endY +% random.nextIntBounded(u8, seed, chunkSize) -% map.pos.wy),
 			@floatFromInt(endZ +% random.nextIntBounded(u8, seed, chunkSize) -% map.pos.wz),
 		};
 		const startRadius: f32 = random.nextFloat(seed)*maxInitialRadius + 2*minRadius;
 		const endRadius: f32 = random.nextFloat(seed)*maxInitialRadius + 2*minRadius;
-		const caveLength = vec.length(startWorldPos - endWorldPos);
-		generateBranchingCaveBetween(random.nextInt(u64, seed), map, biomeMap, startWorldPos, endWorldPos, Vec3f{
+		const caveLength = vec.length(startRelPos - endRelPos);
+		generateBranchingCaveBetween(random.nextInt(u64, seed), map, biomeMap, startRelPos, endRelPos, Vec3f{
 			caveLength*random.nextFloatSigned(seed)/2,
 			caveLength*random.nextFloatSigned(seed)/2,
 			caveLength*random.nextFloatSigned(seed)/4,
