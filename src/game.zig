@@ -621,7 +621,6 @@ pub const World = struct { // MARK: World
 	entityComponentPalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
-	hostPlayerZonFile: main.ZonElement = undefined,
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		main.heap.allocators.createWorldArena();
@@ -636,16 +635,16 @@ pub const World = struct { // MARK: World
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
+		main.Window.c.glfwMakeContextCurrent(null);
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
-		
+		main.Window.c.glfwMakeContextCurrent(main.Window.window);
+
 		main.Window.setMouseGrabbed(true);
 		
 		main.blocks.meshes.generateTextureArray();
-		main.entityModel.loadModelsAndTexture();
 		main.client.entity_manager.initAfterWorld();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
-		try Player.loadFrom(self.hostPlayerZonFile);
 	}
 
 	pub fn deinit(self: *World) void {
@@ -707,10 +706,13 @@ pub const World = struct { // MARK: World
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
 
-		// try Player.loadFrom(zon.getChild("player"));
-		self.hostPlayerZonFile = zon.getChild("player").clone(main.worldArena);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+
+		main.Window.c.glfwMakeContextCurrent(main.Window.window);
+		main.entityModel.loadModelsAndTexture();
+		try Player.loadFrom(zon);
+		main.Window.c.glfwMakeContextCurrent(null);
 	}
 
 	fn dayNightLightFactor(gameTime: i64) struct { f32, Vec3f } {
