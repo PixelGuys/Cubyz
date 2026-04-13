@@ -710,7 +710,7 @@ pub const World = struct { // MARK: World
 
 		main.Window.c.glfwMakeContextCurrent(main.Window.window);
 		main.entityModel.loadModelsAndTexture();
-		try Player.loadFrom(zon);
+		try Player.loadFrom(zon.getChild("player"));
 		main.Window.c.glfwMakeContextCurrent(null);
 	}
 
