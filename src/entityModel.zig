@@ -175,20 +175,22 @@ pub const EntityModel = struct {
 		var nodes: [20]Node = std.mem.zeroes([20]Node);
 		var nodeIdx: u8 = 0;
 
-		for (data.nodes, 0..data.nodes_count) |node, _| {
-			if (node.children_count == 0) continue;
+		std.debug.print("\nMODEL NAME: {s}\n", .{self.modelId.?});
 
+		for (data.nodes, 0..data.nodes_count) |node, _| {
+			if (node.children_count == 0 and !(node.children_count == 0 and node.parent == null)) continue;
 			const nameC = std.mem.span(node.name);
-			std.debug.print("\n{s}", .{nameC});
+			std.debug.print("\n{s}\n", .{nameC});
+
 			const name = main.globalArena.alloc(u8, nameC.len);
 			@memcpy(name, nameC);
 			nodeReverse.put(name, @intCast(nodeIdx)) catch unreachable;
 			if (nodeReverse.get(std.mem.span(node.name)) == null) {} else {}
 
 			nodes[nodeIdx] = Node{
-				.pos = Vec3f{-node.translation[0], node.translation[2], node.translation[1]},
-				.rot = Vec4f{-node.rotation[0], node.rotation[2], node.rotation[1], node.rotation[3]},
-				.scale = Vec3f{node.scale[0], node.scale[2], node.scale[1]},
+				.pos = convertCoordinateSystemVec(node.translation, self.coordinateSystem),
+				.rot = convertCoordinateSystemQuat(node.rotation, self.coordinateSystem),
+				.scale = convertCoordinateSystemScale(node.scale, self.coordinateSystem),
 			};
 			nodeIdx += 1;
 		}
@@ -199,60 +201,62 @@ pub const EntityModel = struct {
 			nodes[curNode].parent = nodeReverse.get(std.mem.span(node.parent.*.name)).?;
 		}
 		for (data.nodes[0..data.nodes_count]) |node| {
-			if (node.mesh != null) {
-				const finalMat = getHierarchyMatrix(node, self.coordinateSystem);
+			if (node.mesh == null) continue;
 
-				const parentNodeID = nodeReverse.get(std.mem.span(node.parent.*.name)).?;
+			var finalMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, self.coordinateSystem));
+			finalMat = finalMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
+			finalMat = finalMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
 
-				const primitives = node.mesh.*.primitives;
-				for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
-					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
-						std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
-						continue;
+			const parentNodeID = if (node.parent) |p| nodeReverse.get(std.mem.span(p.*.name)).? else 0;
+
+			const primitives = node.mesh.*.primitives;
+			for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
+				if (primitive.type != gltf.cgltf_primitive_type_triangles) {
+					std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
+					continue;
+				}
+
+				const indicesAccessor = primitive.indices.*;
+				const vertCount = primitive.attributes[0].data.*.count;
+				var indicesSlice = indices.addMany(indicesAccessor.count);
+				baseVertex = @intCast(vertices.items.len);
+				const vertSlice: []Vertex = vertices.addMany(vertCount);
+
+				for (0..indicesAccessor.count) |i| {
+					const idx = indicesAccessor.index(i);
+					indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+				}
+
+				var positionAttr: gltf.cgltf_accessor = undefined;
+				var normalAttr: gltf.cgltf_accessor = undefined;
+				var uvAttr: gltf.cgltf_accessor = undefined;
+				for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
+					const attribAccessor = attrib.data.*;
+
+					switch (attrib.type) {
+						gltf.cgltf_attribute_type_position => positionAttr = attribAccessor,
+						gltf.cgltf_attribute_type_normal => normalAttr = attribAccessor,
+						gltf.cgltf_attribute_type_texcoord => uvAttr = attribAccessor,
+						else => continue,
 					}
+				}
 
-					const indicesAccessor = primitive.indices.*;
-					const vertCount = primitive.attributes[0].data.*.count;
-					var indicesSlice = indices.addMany(indicesAccessor.count);
-					baseVertex = @intCast(vertices.items.len);
-					const vertSlice: []Vertex = vertices.addMany(vertCount);
+				for (0..positionAttr.count) |v| {
+					var p: [3]f32 = undefined;
+					_ = positionAttr.float(v, @ptrCast(&p), 3);
+					const p2 = convertCoordinateSystemVec(p, self.coordinateSystem);
+					const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
+					vertSlice[v].pos = vec.xyz(pos);
 
-					for (0..indicesAccessor.count) |i| {
-						const idx = indicesAccessor.index(i);
-						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
-					}
+					var normal: [3]f32 = undefined;
+					_ = normalAttr.float(v, @ptrCast(&normal), 3);
+					vertSlice[v].normal = convertCoordinateSystemVec(normal, self.coordinateSystem);
 
-					var positionAttr: gltf.cgltf_accessor = undefined;
-					var normalAttr: gltf.cgltf_accessor = undefined;
-					var uvAttr: gltf.cgltf_accessor = undefined;
-					for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
-						const attribAccessor = attrib.data.*;
+					var uv: [2]f32 = undefined;
+					_ = uvAttr.float(v, @ptrCast(&uv), 2);
+					vertSlice[v].uv = .{uv[0], 1 - uv[1]};
 
-						switch (attrib.type) {
-							gltf.cgltf_attribute_type_position => positionAttr = attribAccessor,
-							gltf.cgltf_attribute_type_normal => normalAttr = attribAccessor,
-							gltf.cgltf_attribute_type_texcoord => uvAttr = attribAccessor,
-							else => continue,
-						}
-					}
-
-					for (0..positionAttr.count) |v| {
-						var p: [3]f32 = undefined;
-						_ = positionAttr.float(v, @ptrCast(&p), 3);
-						const p2 = convertCoordinateSystemVec(p, self.coordinateSystem);
-						const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
-						vertSlice[v].pos = vec.xyz(pos);
-
-						var normal: [3]f32 = undefined;
-						_ = normalAttr.float(v, @ptrCast(&normal), 3);
-						vertSlice[v].normal = convertCoordinateSystemVec(normal, self.coordinateSystem);
-
-						var uv: [2]f32 = undefined;
-						_ = uvAttr.float(v, @ptrCast(&uv), 2);
-						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
-
-						vertSlice[v].nodeID = @intCast(parentNodeID);
-					}
+					vertSlice[v].nodeID = @intCast(parentNodeID);
 				}
 			}
 		}
