@@ -105,4 +105,3 @@ pub const server = struct {
 		return renderComponents.get(@enumFromInt(entity));
 	}
 };
-  

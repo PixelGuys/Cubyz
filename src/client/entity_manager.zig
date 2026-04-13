@@ -72,8 +72,7 @@ fn update() void {
 }
 
 // TODO: this will be removed in future ECS parts
-pub fn initAfterWorld() void {
-}
+pub fn initAfterWorld() void {}
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
 	defer mutex.unlock();
