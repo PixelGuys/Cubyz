@@ -29,7 +29,7 @@ pub const EntityModel = struct {
 
 	nodeReverse: std.StringHashMap(u16) = undefined,
 	nodes: [20]Node = undefined,
-	nodeCount: u8 = undefined,
+	nodeCount: u8,
 
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
@@ -95,6 +95,10 @@ pub const EntityModel = struct {
 		self.indexCount = 0;
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
 
+		self.nodeReverse = .init(main.worldArena.allocator);
+		self.nodes = std.mem.zeroes([20]Node);
+		self.nodeCount = 0;
+
 		// get TexturePath
 		{
 			self.texturePath = &.{};
@@ -131,6 +135,9 @@ pub const EntityModel = struct {
 			.indexCount = 0,
 			.defaultTexture = null,
 			.coordinateSystem = self.coordinateSystem,
+			.nodeReverse = self.nodeReverse.clone() catch unreachable,
+			.nodes = self.nodes,
+			.nodeCount = self.nodeCount,
 		};
 	}
 
@@ -171,23 +178,20 @@ pub const EntityModel = struct {
 		defer indices.deinit();
 		var baseVertex: u32 = 0;
 
-		var nodeReverse: std.StringHashMap(u16) = .init(main.globalArena.allocator);
-		var nodes: [20]Node = std.mem.zeroes([20]Node);
 		var nodeIdx: u8 = 0;
 
 		std.debug.print("\nMODEL NAME: {s}\n", .{self.modelId.?});
 
 		for (data.nodes, 0..data.nodes_count) |node, _| {
-			if (node.children_count == 0 and !(node.children_count == 0 and node.parent == null)) continue;
+			if (node.children_count == 0) continue;
 			const nameC = std.mem.span(node.name);
 			std.debug.print("\n{s}\n", .{nameC});
 
 			const name = main.globalArena.alloc(u8, nameC.len);
 			@memcpy(name, nameC);
-			nodeReverse.put(name, @intCast(nodeIdx)) catch unreachable;
-			if (nodeReverse.get(std.mem.span(node.name)) == null) {} else {}
+			self.nodeReverse.put(name, @intCast(nodeIdx)) catch unreachable;
 
-			nodes[nodeIdx] = Node{
+			self.nodes[nodeIdx] = Node{
 				.pos = convertCoordinateSystemVec(node.translation, self.coordinateSystem),
 				.rot = convertCoordinateSystemQuat(node.rotation, self.coordinateSystem),
 				.scale = convertCoordinateSystemScale(node.scale, self.coordinateSystem),
@@ -197,8 +201,8 @@ pub const EntityModel = struct {
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count == 0 or node.parent == null) continue;
 
-			const curNode = nodeReverse.get(std.mem.span(node.name)).?;
-			nodes[curNode].parent = nodeReverse.get(std.mem.span(node.parent.*.name)).?;
+			const curNode = self.nodeReverse.get(std.mem.span(node.name)).?;
+			self.nodes[curNode].parent = self.nodeReverse.get(std.mem.span(node.parent.*.name)).?;
 		}
 		for (data.nodes[0..data.nodes_count]) |node| {
 			if (node.mesh == null) continue;
@@ -207,7 +211,7 @@ pub const EntityModel = struct {
 			finalMat = finalMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
 			finalMat = finalMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
 
-			const parentNodeID = if (node.parent) |p| nodeReverse.get(std.mem.span(p.*.name)).? else 0;
+			const parentNodeID = if (node.parent) |p| self.nodeReverse.get(std.mem.span(p.*.name)).? else 0;
 
 			const primitives = node.mesh.*.primitives;
 			for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
@@ -263,6 +267,7 @@ pub const EntityModel = struct {
 
 		self.vao = .init(Vertex, vertices.items, indices.items);
 		self.indexCount = @intCast(indices.items.len);
+		self.nodeCount = nodeIdx;
 	}
 
 	fn convertCoordinateSystemVec(v: Vec3f, sys: CoordinateSystem) Vec3f {

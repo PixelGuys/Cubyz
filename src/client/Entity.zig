@@ -96,30 +96,32 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
 
-	const headId = self.model.nodeReverse.get("Head").?;
-	const rightArmId = self.model.nodeReverse.get("RightArm").?;
-	const rightItemId = self.model.nodeReverse.get("RightItem").?;
-
+	const head = self.model.nodeReverse.get("Head");
 	if (self.model.nodeReverse.get("Eyestalks")) |eyestalksId|{
 		const stalkRot = self.rot[0]*0.25;
 		const headRot = self.rot[0]*0.75;
 		self.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
 		self.matrices[eyestalksId] = getHierarchyMatrix(self.nodes, self.nodes[eyestalksId]);
 
+		const headId = head.?;
 		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
 		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
-	} else {
+	} else if (head) |headId| {
 		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
 		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
 	}
 
 	ueee += 0.05;
 
-	self.nodes[rightItemId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/5);
-	self.matrices[rightItemId] = getHierarchyMatrix(self.nodes, self.nodes[rightItemId]);
+	if (self.model.nodeReverse.get("RightItem")) |rightItemId| {
+		self.nodes[rightItemId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/5);
+		self.matrices[rightItemId] = getHierarchyMatrix(self.nodes, self.nodes[rightItemId]);
+	}
 
-	self.nodes[rightArmId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/3);
-	self.matrices[rightArmId] = getHierarchyMatrix(self.nodes, self.nodes[rightArmId]);
+	if (self.model.nodeReverse.get("RightArm")) |rightArmId| {
+		self.nodes[rightArmId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/3);
+		self.matrices[rightArmId] = getHierarchyMatrix(self.nodes, self.nodes[rightArmId]);
+	}
 }
 
 fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
