@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ModifierRestriction = main.items.ModifierRestriction;
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
 
 const Encased = struct {
@@ -12,29 +12,29 @@ const Encased = struct {
 	range: usize,
 };
 
-pub fn satisfied(self: *const Encased, tool: *const Tool, x: i32, y: i32) bool {
+pub fn satisfied(self: *const Encased, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
 	const lowBound = 0;
 	const highBound = self.range*2 + 1;
 	for (lowBound..highBound) |dx| {
 		const checkedX = x + @as(i32, @intCast(dx - self.range));
 		const checkedY = y + @as(i32, @intCast(2));
-		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
+		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	for (lowBound..highBound) |dx| {
 		const checkedX = x + @as(i32, @intCast(dx - self.range));
 		const checkedY = y + @as(i32, @intCast(-2));
-		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
+		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	for ((lowBound + 1)..(highBound - 1)) |dy| {
 		const checkedX = x + @as(i32, @intCast(-2));
 		const checkedY = y + @as(i32, @intCast(dy - self.range));
-		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
+		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	for ((lowBound + 1)..(highBound - 1)) |dy| {
 		const checkedX = x + @as(i32, @intCast(2));
 		const checkedY = y + @as(i32, @intCast(dy - self.range));
-		if ((tool.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
+		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	return count >= self.amount;
 }
