@@ -167,6 +167,9 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			c.glUniformMatrix4fv(uniforms.nodeMatrices, main.entityModel.EntityModel.maxNodesCount, c.GL_TRUE, @ptrCast(&modelComp.matrices));
 			c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
+
+			
+			main.itemdrop.ItemDropRenderer.renderOtherEntityDisplayItem(ambientLight, lightVals, modelMatrix, );
 		}
 	}
 }

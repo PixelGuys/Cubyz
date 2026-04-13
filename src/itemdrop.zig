@@ -875,4 +875,54 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			drawItem(vertices, modelMatrix);
 		}
 	}
+
+	pub fn renderOtherEntityDisplayItem(ambientLight: Vec3f, light: [6]u8, modelMatrix: Mat4f, nodeMatrix: Mat4f) void {
+		if (!ItemDisplayManager.showItem) return;
+
+		bindCommonUniforms(main.game.camera.projMatrix, main.game.camera.viewMatrix, ambientLight);
+
+		const item = game.Player.inventory.getItem(game.Player.selectedSlot);
+		if (item != .null) {
+			bindLightUniform(light, ambientLight);
+
+			var pos: Vec3f = @splat(0);
+			const rot: Vec3f = @splat(0);
+
+			const model = getModel(item);
+			var vertices: u31 = 36;
+
+			const isBlock: bool = item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
+			var scale: f32 = 0;
+			var blockType: u16 = 0;
+			if (isBlock) {
+				blockType = item.baseItem.block().?;
+				vertices = model.len/2*6;
+				scale = 0.3;
+				pos = Vec3d{0.4, 0.55, -0.32};
+			} else {
+				scale = 0.57;
+				pos = Vec3d{0.4, 0.65, -0.3};
+			}
+			bindModelUniforms(model.index, blockType);
+
+			var finalMatrix = nodeMatrix.mul(Mat4f.rotationZ(-rot[2]));
+			finalMatrix = finalMatrix.mul(Mat4f.rotationY(-rot[1]));
+			finalMatrix = finalMatrix.mul(Mat4f.rotationX(-rot[0]));
+			finalMatrix = finalMatrix.mul(Mat4f.translation(@floatCast(pos)));
+			if (!isBlock) {
+				if (item == .proceduralItem) {
+					finalMatrix = finalMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
+					finalMatrix = finalMatrix.mul(Mat4f.rotationY(std.math.pi*0.25));
+				} else {
+					finalMatrix = finalMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
+				}
+			} else {
+				finalMatrix = finalMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.2));
+			}
+			finalMatrix = finalMatrix.mul(Mat4f.scale(@splat(scale)));
+			finalMatrix = finalMatrix.mul(Mat4f.translation(@splat(-0.5)));
+			finalMatrix = finalMatrix.mul(modelMatrix);
+			drawItem(vertices, finalMatrix);
+		}
+	}
 };
