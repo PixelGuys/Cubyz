@@ -1,5 +1,4 @@
 const std = @import("std");
-
 const main = @import("main");
 const Block = main.blocks.Block;
 const vec = main.vec;

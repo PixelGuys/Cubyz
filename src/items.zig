@@ -915,10 +915,21 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 pub const ItemCallbacks = struct {
 	onLeftClick: ItemUsedCallback,
 
+	var defaultItemUsedCallback: ItemCallbacks = undefined;
+
+	fn init() void {
+		const zon = ZonElement.initObject(main.stackAllocator);
+		defer zon.deinit(main.stackAllocator);
+		zon.put("type", "breakBlock");
+		defaultItemUsedCallback = .{
+			.onLeftClick = ItemUsedCallback.init(zon) orelse .noop,
+		};
+	}
+
 	fn registerCallbacks(zon: ZonElement) ItemCallbacks {
 		return .{.onLeftClick = blk: {
 			break :blk ItemUsedCallback.init(zon.getChildOrNull("onLeftClick") orelse {
-				break :blk .noop;
+				break :blk defaultItemUsedCallback.onLeftClick;
 			}) orelse {
 				std.log.err("Failed to load onLeftClick event for item", .{});
 				break :blk .noop;
@@ -1069,7 +1080,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		return switch (self) {
 			.baseItem => |item| item.callbacks().onLeftClick,
 			.proceduralItem => |item| item.type.callbacks().onLeftClick,
-			.null => unreachable,
+			.null => ItemCallbacks.defaultItemUsedCallback.onLeftClick,
 		};
 	}
 };
@@ -1222,6 +1233,7 @@ pub fn globalInit() void {
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
+	ItemCallbacks.init();
 	Inventory.ClientSide.init();
 }
 
