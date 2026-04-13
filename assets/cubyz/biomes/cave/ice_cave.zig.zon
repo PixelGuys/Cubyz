@@ -1,8 +1,8 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.caveNoiseStrength = 10,
 	.maxHeight = -256,
-	.minHeight = -48250,
 	.chance = 0.2,
 	.fogDensity = 20,
 	.fogColor = 0xbabfbf,
@@ -40,7 +40,7 @@
 	},
 	.caveModels = .{
 		.{
-			.id = "cubyz:hemisphere",
+			.id = "cubyz:partial_sphere",
 			.minAmount = 10,
 			.maxAmount = 20,
 			.minRadius = 4,
