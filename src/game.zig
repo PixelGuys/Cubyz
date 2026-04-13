@@ -635,12 +635,13 @@ pub const World = struct { // MARK: World
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
+		main.Window.c.glfwMakeContextCurrent(null);
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		main.Window.c.glfwMakeContextCurrent(main.Window.window);
 
 		main.Window.setMouseGrabbed(true);
-
+		
 		main.blocks.meshes.generateTextureArray();
-		main.entityModel.loadModelsAndTexture();
 		main.client.entity_manager.initAfterWorld();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
@@ -704,9 +705,14 @@ pub const World = struct { // MARK: World
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
-		try Player.loadFrom(zon.getChild("player"));
+
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+
+		main.Window.c.glfwMakeContextCurrent(main.Window.window);
+		main.entityModel.loadModelsAndTexture();
+		try Player.loadFrom(zon.getChild("player"));
+		main.Window.c.glfwMakeContextCurrent(null);
 	}
 
 	fn dayNightLightFactor(gameTime: i64) struct { f32, Vec3f } {

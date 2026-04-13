@@ -31,6 +31,7 @@ pub const client = struct {
 	};
 	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
 
+	var countToCrash = 0;
 	pub fn init() void {}
 	pub fn deinit() void {
 		components.deinit(main.globalAllocator);
@@ -48,35 +49,21 @@ pub const client = struct {
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
 		};
-		// const model = ptr.entityModel.get();
+		const model = ptr.entityModel.get();
 
-		// for (0..model.nodeCount) |i| {
-			// ptr.nodes[i] = model.nodes[i];
-		// }
+		for (0..model.nodeCount) |i| {
+			ptr.nodes[i] = model.nodes[i];
+		}
 
-		// for (0..model.nodeCount) |i| {
-			// ptr.matrices[i] = ptr.nodes[i].getHierarchyMatrix(ptr.nodes);
-		// }
+		for (0..model.nodeCount) |i| {
+			ptr.matrices[i] = ptr.nodes[i].getHierarchyMatrix(ptr.nodes);
+		}
 	}
 	pub fn unload(entity: u32) void {
 		components.remove(@enumFromInt(entity)) catch {};
 	}
 	pub fn get(entity: u32) ?*Component {
-		const comp = components.get(@enumFromInt(entity));
-		if (comp != null and !comp.?.hasLoaded) {
-			comp.?.hasLoaded = true;
-			const model = comp.?.entityModel.get();
-
-			// std.log.debug("UEEEEEEEEEE {s}", .{model.modelId.?});
-			for (0..model.nodeCount) |i| {
-				comp.?.nodes[i] = model.nodes[i];
-			}
-
-			for (0..model.nodeCount) |i| {
-				comp.?.matrices[i] = comp.?.nodes[i].getHierarchyMatrix(comp.?.nodes);
-			}
-		}
-		return comp;
+		return components.get(@enumFromInt(entity));
 	}
 };
 
