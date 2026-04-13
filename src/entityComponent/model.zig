@@ -49,6 +49,9 @@ pub const client = struct {
 	pub fn unload(entity: u32) void {
 		components.remove(@enumFromInt(entity)) catch {};
 	}
+	pub fn get(entity: u32) ?*Component {
+		return components.get(@enumFromInt(entity));
+	}
 };
 
 // ############################# Server only stuff ################################
