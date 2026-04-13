@@ -637,7 +637,7 @@ pub const World = struct { // MARK: World
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
-		
+
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
