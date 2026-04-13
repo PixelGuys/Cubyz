@@ -37,11 +37,12 @@ pub const EntityModel = struct {
 	coordinateSystem: CoordinateSystem,
 
 	pub const Node = struct {
-		pos: Vec3f,
-		rot: Vec4f,
-		scale: Vec3f,
+		pos: Vec3f = @splat(0),
+		rot: Vec4f = Vec4f{0, 0, 0, 1},
+		scale: Vec3f = @splat(1),
 
-		// TODO: add a matrix and a dirty flag
+		originMat: Mat4f,
+
 		parent: ?u16 = null,
 	};
 
@@ -191,19 +192,22 @@ pub const EntityModel = struct {
 			@memcpy(name, nameC);
 			self.nodeReverse.put(name, @intCast(nodeIdx)) catch unreachable;
 
+			var originMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, self.coordinateSystem));
+			originMat = originMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
+			originMat = originMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
 			self.nodes[nodeIdx] = Node{
-				.pos = convertCoordinateSystemVec(node.translation, self.coordinateSystem),
-				.rot = convertCoordinateSystemQuat(node.rotation, self.coordinateSystem),
-				.scale = convertCoordinateSystemScale(node.scale, self.coordinateSystem),
+				.originMat = originMat,
 			};
 			nodeIdx += 1;
 		}
+
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count == 0 or node.parent == null) continue;
 
 			const curNode = self.nodeReverse.get(std.mem.span(node.name)).?;
 			self.nodes[curNode].parent = self.nodeReverse.get(std.mem.span(node.parent.*.name)).?;
 		}
+
 		for (data.nodes[0..data.nodes_count]) |node| {
 			if (node.mesh == null) continue;
 
@@ -293,18 +297,6 @@ pub const EntityModel = struct {
 			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
 			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
 		};
-	}
-
-	fn getHierarchyMatrix(node: gltf.cgltf_node, sys: CoordinateSystem) Mat4f {
-		var currentMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, sys));
-		currentMat = currentMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, sys)));
-		currentMat = currentMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, sys)));
-
-		if (node.parent == null) {
-			return currentMat;
-		}
-
-		return getHierarchyMatrix(node.parent.*, sys).mul(currentMat);
 	}
 
 	fn getGltfError(result: gltf.cgltf_result) anyerror {

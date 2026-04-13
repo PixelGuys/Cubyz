@@ -63,7 +63,7 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 	for (0..self.model.nodeCount) |i| {
 		self.nodes[i] = self.model.nodes[i];
 	}
-	
+
 	for (0..self.model.nodeCount) |i| {
 		self.matrices[i] = getHierarchyMatrix(self.nodes, self.nodes[i]);
 	}
@@ -97,7 +97,7 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
 
 	const head = self.model.nodeReverse.get("Head");
-	if (self.model.nodeReverse.get("Eyestalks")) |eyestalksId|{
+	if (self.model.nodeReverse.get("Eyestalks")) |eyestalksId| {
 		const stalkRot = self.rot[0]*0.25;
 		const headRot = self.rot[0]*0.75;
 		self.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
@@ -125,7 +125,7 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 }
 
 fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
-	var mat = Mat4f.translation(node.pos);
+	var mat = node.originMat.mul(Mat4f.translation(node.pos));
 	mat = mat.mul(Mat4f.rotationQuat(node.rot));
 	mat = mat.mul(Mat4f.scale(node.scale));
 
