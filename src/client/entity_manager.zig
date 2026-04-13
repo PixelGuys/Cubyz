@@ -169,6 +169,7 @@ pub fn drawModel(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, pMode
 	c.glUniform1f(uniforms.contrast, 0.12);
 
 	pModel.bind();
+	const defaultHeight:f32 = 2;
 	const lightVals: [6]u8 = @splat(255);
 	const light = (@as(u32, lightVals[0] >> 3) << 25 |
 		@as(u32, lightVals[1] >> 3) << 20 |
@@ -179,12 +180,12 @@ pub fn drawModel(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, pMode
 
 	c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
 
-	const pos: Vec3d = .{0,pModel.height/2/std.math.tan(std.math.degreesToRadians(20/2)),0};
+	const pos: Vec3d = .{0,defaultHeight/2/std.math.tan(std.math.degreesToRadians(20/2)),0};
 	const modelMatrix = (Mat4f.identity()
 		.mul(Mat4f.translation(Vec3f{
 			@floatCast(pos[0]),
 			@floatCast(pos[1]),
-			@floatCast(pos[2] - pModel.height/2),
+			@floatCast(pos[2] - defaultHeight/2),
 		}))
 		.mul(Mat4f.rotationZ(@floatCast(rotation))));
 	const viewMatrix = Mat4f.identity();
