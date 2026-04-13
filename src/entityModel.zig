@@ -269,6 +269,11 @@ pub const EntityModel = struct {
 			}
 		}
 
+		std.log.err("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", .{});
+		std.log.err("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", .{});
+		std.log.err("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", .{});
+		
+
 		self.vao = .init(Vertex, vertices.items, indices.items);
 		self.indexCount = @intCast(indices.items.len);
 		self.nodeCount = nodeIdx;

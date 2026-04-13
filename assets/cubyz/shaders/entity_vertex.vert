@@ -35,9 +35,8 @@ vec3 calcLight(uint fullLight) {
 }
 
 void main() {
-	normal = inNormal; //nodeMatrices[inNodeID]
+	normal = inNormal;
 
-	// vec4 mvPos = viewMatrix * vec4(inPos, 1);
 	vec4 mvPos = viewMatrix * nodeMatrices[inNodeID] * vec4(inPos, 1);
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
