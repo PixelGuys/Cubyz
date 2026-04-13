@@ -13,6 +13,9 @@
 		.ceiling = "cubyz:sign/ceiling",
 		.floor = "cubyz:sign/floor",
 	},
-	.blockEntity = .sign,
+	.blockEntity = "cubyz:sign",
+	.onInteract = .{
+		.type = .editSign,
+	},
 	.lodReplacement = "cubyz:air",
 }

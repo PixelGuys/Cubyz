@@ -45,21 +45,17 @@ var lastRD: u16 = 0;
 var mutex: std.Thread.Mutex = .{};
 
 pub const BlockUpdate = struct {
-	x: i32,
-	y: i32,
-	z: i32,
+	pos: Vec3i,
 	newBlock: blocks.Block,
 	blockEntityData: []const u8,
 
 	pub fn init(pos: Vec3i, block: blocks.Block, blockEntityData: []const u8) BlockUpdate {
-		return .{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = blockEntityData};
+		return .{.pos = pos, .newBlock = block, .blockEntityData = blockEntityData};
 	}
 
 	pub fn initManaged(allocator: main.heap.NeverFailingAllocator, template: BlockUpdate) BlockUpdate {
 		return .{
-			.x = template.x,
-			.y = template.y,
-			.z = template.z,
+			.pos = template.pos,
 			.newBlock = template.newBlock,
 			.blockEntityData = allocator.dupe(u8, template.blockEntityData),
 		};
@@ -178,17 +174,6 @@ pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
 	const mesh = node.mesh.load(.acquire) orelse return null;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	return block;
-}
-
-pub fn triggerOnInteractBlockFromRenderThread(x: i32, y: i32, z: i32) main.callbacks.Result {
-	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
-	const mesh = node.mesh.load(.acquire) orelse return .ignored;
-	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
-	if (block.blockEntity()) |blockEntity| {
-		return blockEntity.onInteract(.{x, y, z}, mesh.chunk);
-	}
-	// Event was not handled.
-	return .ignored;
 }
 
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
@@ -807,9 +792,9 @@ fn batchUpdateBlocks() void {
 	// First of all process all the block updates:
 	while (blockUpdateList.popFront()) |blockUpdate| {
 		defer blockUpdate.deinitManaged(main.globalAllocator);
-		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
+		const pos = chunk.ChunkPosition{.wx = blockUpdate.pos[0], .wy = blockUpdate.pos[1], .wz = blockUpdate.pos[2], .voxelSize = 1};
 		if (getMesh(pos)) |mesh| {
-			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
+			mesh.updateBlock(blockUpdate, &lightRefreshList, &regenerateMeshList);
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 	for (regenerateMeshList.items) |mesh| {
