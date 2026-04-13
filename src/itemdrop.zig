@@ -876,17 +876,17 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		}
 	}
 
-	pub fn renderOtherEntityDisplayItem(ambientLight: Vec3f, light: [6]u8, modelMatrix: Mat4f, nodeMatrix: Mat4f) void {
+	pub fn renderOtherEntityDisplayItem(ambientLight: Vec3f, light: [6]u8, projMatrix: Mat4f, modelMatrix: Mat4f, nodeMatrix: Mat4f) void {
 		if (!ItemDisplayManager.showItem) return;
 
-		bindCommonUniforms(main.game.camera.projMatrix, main.game.camera.viewMatrix, ambientLight);
+		bindCommonUniforms(projMatrix, main.game.camera.viewMatrix, ambientLight);
 
 		const item = game.Player.inventory.getItem(game.Player.selectedSlot);
 		if (item != .null) {
 			bindLightUniform(light, ambientLight);
 
 			var pos: Vec3f = @splat(0);
-			const rot: Vec3f = @splat(0);
+			// const rot: Vec3f = @splat(0);
 
 			const model = getModel(item);
 			var vertices: u31 = 36;
@@ -897,31 +897,39 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			if (isBlock) {
 				blockType = item.baseItem.block().?;
 				vertices = model.len/2*6;
-				scale = 0.3;
-				pos = Vec3d{0.4, 0.55, -0.32};
+				scale = 0.25;
+				pos = Vec3f{0.015, 0.11, -0.05};
 			} else {
-				scale = 0.57;
-				pos = Vec3d{0.4, 0.65, -0.3};
+				if (item == .proceduralItem) {
+					scale = 0.7;
+					pos = Vec3f{0, 0.3, 0};
+				} else {
+					scale = 0.45;
+					pos = Vec3f{0, 0.175, 0};
+				}
 			}
 			bindModelUniforms(model.index, blockType);
 
-			var finalMatrix = nodeMatrix.mul(Mat4f.rotationZ(-rot[2]));
-			finalMatrix = finalMatrix.mul(Mat4f.rotationY(-rot[1]));
-			finalMatrix = finalMatrix.mul(Mat4f.rotationX(-rot[0]));
-			finalMatrix = finalMatrix.mul(Mat4f.translation(@floatCast(pos)));
+			// var finalMatrix = nodeMatrix.mul(Mat4f.rotationZ(-rot[2]));
+			// finalMatrix = finalMatrix.mul(Mat4f.rotationY(-rot[1]));
+			// finalMatrix = finalMatrix.mul(Mat4f.rotationX(-rot[0]));
+			var finalMatrix = nodeMatrix.mul(Mat4f.translation(@floatCast(pos)));
 			if (!isBlock) {
 				if (item == .proceduralItem) {
-					finalMatrix = finalMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
-					finalMatrix = finalMatrix.mul(Mat4f.rotationY(std.math.pi*0.25));
+					finalMatrix = finalMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.5));
+					finalMatrix = finalMatrix.mul(Mat4f.rotationY(std.math.pi*1.75));
 				} else {
-					finalMatrix = finalMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
+					finalMatrix = finalMatrix.mul(Mat4f.rotationX(-std.math.pi*0.5));
+					// finalMatrix = finalMatrix.mul(Mat4f.rotationY(std.math.pi));
+					// finalMatrix = finalMatrix.mul(Mat4f.rotationZ(std.math.pi*0.5));
 				}
 			} else {
 				finalMatrix = finalMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.2));
+				finalMatrix = finalMatrix.mul(Mat4f.rotationY(std.math.pi*0.1));
 			}
 			finalMatrix = finalMatrix.mul(Mat4f.scale(@splat(scale)));
 			finalMatrix = finalMatrix.mul(Mat4f.translation(@splat(-0.5)));
-			finalMatrix = finalMatrix.mul(modelMatrix);
+			finalMatrix = modelMatrix.mul(finalMatrix);
 			drawItem(vertices, finalMatrix);
 		}
 	}

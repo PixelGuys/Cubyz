@@ -80,13 +80,19 @@ pub fn initAfterWorld() void {
 	}).get();
 
 	// TODO: remove before merge
-	// addEntity(ZonElement.parseFromString(main.globalArena, null,
-	// \\ .{
-	// \\    .id = 1,
-	// \\    .name = "bobik",
-	// \\
-	// \\  }
-	// )) catch unreachable;
+	addEntity(ZonElement.parseFromString(main.globalArena, null,
+	\\ .{
+	\\    .id = 1,
+	\\    .name = "bobik",
+	\\
+	\\  }
+	)) catch unreachable;
+	 var w = utils.BinaryWriter.init(main.stackAllocator);
+        w.deinit();
+        w.writeVarInt(u32, 4);
+        var r = utils.BinaryReader.init(w.data.items);
+
+	main.entity.components.@"cubyz:model".client.load(1, &r,0) catch unreachable;
 }
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
@@ -168,8 +174,10 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 			c.glUniformMatrix4fv(uniforms.nodeMatrices, main.entityModel.EntityModel.maxNodesCount, c.GL_TRUE, @ptrCast(&modelComp.matrices));
 			c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
 
-			
-			main.itemdrop.ItemDropRenderer.renderOtherEntityDisplayItem(ambientLight, lightVals, modelMatrix, );
+			if (modelComp.entityModel.get().nodeReverse.get("RightItem")) |rightHandItemId| {
+				const nodeMat = modelComp.nodes[rightHandItemId].getHierarchyMatrix(modelComp.nodes);
+				main.itemdrop.ItemDropRenderer.renderOtherEntityDisplayItem(ambientLight, lightVals, projMatrix, modelMatrix, nodeMat);
+			}
 		}
 	}
 }
