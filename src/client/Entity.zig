@@ -86,7 +86,6 @@ pub fn updatePosition(self: *@This(), pos: *const [6]f64, vel: *const [6]f64, ti
 	self.interpolatedValues.updatePosition(pos, vel, time);
 }
 
-var ueee: f32 = 0;
 pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.interpolatedValues.update(time, lastTime);
 	self.pos[0] = self.interpolatedValues.outPos[0];
@@ -109,18 +108,6 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	} else if (head) |headId| {
 		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
 		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
-	}
-
-	ueee += 0.05;
-
-	if (self.model.nodeReverse.get("RightItem")) |rightItemId| {
-		self.nodes[rightItemId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/5);
-		self.matrices[rightItemId] = getHierarchyMatrix(self.nodes, self.nodes[rightItemId]);
-	}
-
-	if (self.model.nodeReverse.get("RightArm")) |rightArmId| {
-		self.nodes[rightArmId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ueee/3);
-		self.matrices[rightArmId] = getHierarchyMatrix(self.nodes, self.nodes[rightArmId]);
 	}
 }
 
