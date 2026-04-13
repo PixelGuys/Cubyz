@@ -83,7 +83,7 @@ pub const EntityModel = struct {
 		};
 	};
 
-	pub fn init(assetFolder: []const u8, zon: ZonElement) EntityModel {
+	pub fn init(assetFolder: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
 		if (zon.get(?[]const u8, "model", null)) |modelId| {
 			self.modelId = main.worldArena.dupe(u8, modelId);
@@ -99,6 +99,12 @@ pub const EntityModel = struct {
 		self.nodeReverse = .init(main.worldArena.allocator);
 		self.nodes = std.mem.zeroes([20]Node);
 		self.nodeCount = 0;
+
+		if (zon.getChildOrNull("isPlayerModel")) |isPlayerModel| {
+			if (isPlayerModel.as(bool, false)) {
+				playerEntityModels.append(main.worldArena, index);
+			}
+		}
 
 		// get TexturePath
 		{
@@ -269,11 +275,6 @@ pub const EntityModel = struct {
 			}
 		}
 
-		std.log.err("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", .{});
-		std.log.err("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", .{});
-		std.log.err("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", .{});
-		
-
 		self.vao = .init(Vertex, vertices.items, indices.items);
 		self.indexCount = @intCast(indices.items.len);
 		self.nodeCount = nodeIdx;
@@ -333,13 +334,15 @@ pub const EntityModelIndex = struct {
 	}
 };
 
+pub var playerEntityModels: main.ListUnmanaged(EntityModelIndex) = .{};
+
 pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
 pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
-pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) usize {
-	const index = entityModels.items.len;
-	entityModels.append(main.worldArena, EntityModel.init(assetFolder, zon));
-	reverseIndices.put(main.worldArena.allocator, entityModelId, EntityModelIndex{.index = @truncate(index)}) catch unreachable;
+pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModelIndex {
+	const index = EntityModelIndex{.index = @truncate(entityModels.items.len)};
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, index, zon));
+	reverseIndices.put(main.worldArena.allocator, entityModelId, index) catch unreachable;
 	return index;
 }
 pub fn reset() void {
@@ -348,6 +351,7 @@ pub fn reset() void {
 	}
 	entityModels = .{};
 	reverseIndices = .{};
+	playerEntityModels = .{};
 }
 
 pub fn getById(id: []const u8) ?EntityModelIndex {

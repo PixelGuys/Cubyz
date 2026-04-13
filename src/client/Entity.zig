@@ -46,8 +46,6 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 		.playerIndex = zon.get(?usize, "playerIndex", null),
 	};
 
-	self.rot = Vec3f{0, 0, 0};
-	self.pos = Vec3d{0, 0, 0};
 	self._interpolationPos = [_]f64{
 		self.pos[0],
 		self.pos[1],
