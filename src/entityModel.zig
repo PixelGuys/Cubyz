@@ -28,13 +28,17 @@ pub const EntityModel = struct {
 	modelId: ?[]const u8,
 
 	nodeReverse: std.StringHashMap(u16) = undefined,
-	nodes: [20]Node = undefined,
+	nodes: NodeList = undefined,
 	nodeCount: u8,
 
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
+
+	pub const maxNodesCount = 20;
+	pub const NodeList = [maxNodesCount]Node;
+	pub const MatrixList = [maxNodesCount]Mat4f;
 
 	pub const Node = struct {
 		pos: Vec3f = @splat(0),
@@ -44,6 +48,18 @@ pub const EntityModel = struct {
 		originMat: Mat4f,
 
 		parent: ?u16 = null,
+
+		pub fn getHierarchyMatrix(self: Node, nodes: NodeList) Mat4f {
+			var mat = self.originMat.mul(Mat4f.translation(self.pos));
+			mat = mat.mul(Mat4f.rotationQuat(self.rot));
+			mat = mat.mul(Mat4f.scale(self.scale));
+
+			if (self.parent == null) {
+				return mat;
+			}
+
+			return nodes[self.parent.?].getHierarchyMatrix(nodes).mul(mat);
+		}
 	};
 
 	pub const CoordinateSystem = enum {

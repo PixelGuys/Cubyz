@@ -29,10 +29,6 @@ height: f64,
 pos: Vec3d = undefined,
 rot: Vec3f = undefined,
 
-model: *EntityModel = undefined,
-nodes: [20]EntityModel.Node = undefined,
-matrices: [20]Mat4f = undefined,
-
 id: u32,
 name: []const u8,
 playerIndex: ?usize, // TODO extract into own component #2760
@@ -56,15 +52,6 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 	};
 	self._interpolationVel = @splat(0);
 	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
-
-	self.model = main.client.entity_manager.model;
-	for (0..self.model.nodeCount) |i| {
-		self.nodes[i] = self.model.nodes[i];
-	}
-
-	for (0..self.model.nodeCount) |i| {
-		self.matrices[i] = getHierarchyMatrix(self.nodes, self.nodes[i]);
-	}
 
 	if (zon.getChildOrNull("components")) |components| {
 		try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, .client);
@@ -93,32 +80,24 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
 
-	const head = self.model.nodeReverse.get("Head");
-	if (self.model.nodeReverse.get("Eyestalks")) |eyestalksId| {
-		const stalkRot = self.rot[0]*0.25;
-		const headRot = self.rot[0]*0.75;
-		self.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
-		self.matrices[eyestalksId] = getHierarchyMatrix(self.nodes, self.nodes[eyestalksId]);
+	if (main.entity.components.@"cubyz:model".client.get(self.id)) |modelComp| {
+		const model = modelComp.entityModel.get();
 
-		const headId = head.?;
-		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
-		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
-	} else if (head) |headId| {
-		self.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
-		self.matrices[headId] = getHierarchyMatrix(self.nodes, self.nodes[headId]);
+		const head = model.nodeReverse.get("Head");
+		if (model.nodeReverse.get("Eyestalks")) |eyestalksId| {
+			const stalkRot = self.rot[0]*0.25;
+			const headRot = self.rot[0]*0.75;
+			modelComp.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
+			modelComp.matrices[eyestalksId] = modelComp.nodes[eyestalksId].getHierarchyMatrix(modelComp.nodes);
+
+			const headId = head.?;
+			modelComp.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
+			modelComp.matrices[headId] = modelComp.nodes[headId].getHierarchyMatrix(modelComp.nodes);
+		} else if (head) |headId| {
+			modelComp.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
+			modelComp.matrices[headId] = modelComp.nodes[headId].getHierarchyMatrix(modelComp.nodes);
+		}
 	}
-}
-
-fn getHierarchyMatrix(nodes: [20]EntityModel.Node, node: EntityModel.Node) Mat4f {
-	var mat = node.originMat.mul(Mat4f.translation(node.pos));
-	mat = mat.mul(Mat4f.rotationQuat(node.rot));
-	mat = mat.mul(Mat4f.scale(node.scale));
-
-	if (node.parent == null) {
-		return mat;
-	}
-
-	return getHierarchyMatrix(nodes, nodes[node.parent.?]).mul(mat);
 }
 
 pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
