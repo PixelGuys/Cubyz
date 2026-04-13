@@ -157,6 +157,42 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 		c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
 	}
 }
+pub fn drawModel(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, pModel: *main.entityModel.EntityModel,rotation:f64) !void {
+	_= playerPos;
+	mutex.lock();
+	defer mutex.unlock();
+
+	pipeline.bind(null);
+
+	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
+	c.glUniform1f(uniforms.contrast, 0.12);
+
+	pModel.bind();
+	const lightVals: [6]u8 = @splat(255);
+	const light = (@as(u32, lightVals[0] >> 3) << 25 |
+		@as(u32, lightVals[1] >> 3) << 20 |
+		@as(u32, lightVals[2] >> 3) << 15 |
+		@as(u32, lightVals[3] >> 3) << 10 |
+		@as(u32, lightVals[4] >> 3) << 5 |
+		@as(u32, lightVals[5] >> 3) << 0);
+
+	c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
+
+	const pos: Vec3d = .{0,pModel.height/2/std.math.tan(std.math.degreesToRadians(20/2)),0};
+	const modelMatrix = (Mat4f.identity()
+		.mul(Mat4f.translation(Vec3f{
+			@floatCast(pos[0]),
+			@floatCast(pos[1]),
+			@floatCast(pos[2] - pModel.height/2),
+		}))
+		.mul(Mat4f.rotationZ(@floatCast(rotation))));
+	const viewMatrix = Mat4f.identity();
+	//const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
+	const modelViewMatrix = viewMatrix.mul(modelMatrix);
+	c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
+	c.glDrawElements(c.GL_TRIANGLES, pModel.indexCount, c.GL_UNSIGNED_INT, null);
+}
 
 pub fn addEntity(zon: ZonElement) !void {
 	mutex.lock();
