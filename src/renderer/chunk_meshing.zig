@@ -350,6 +350,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 	};
 	completeList: main.MultiArray(FaceData, FaceGroups) = .{},
+	finishedLighting: bool = false,
 	lock: main.utils.ReadWriteLock = .{},
 	bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	vertexCount: u31 = 0,
@@ -366,6 +367,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 
 	fn replaceRange(self: *PrimitiveMesh, group: FaceGroups, items: []const FaceData) void {
 		self.lock.lockWrite();
+		self.finishedLighting = false;
 		self.completeList.replaceRange(main.globalAllocator, group, items);
 		self.lock.unlockWrite();
 	}
@@ -374,7 +376,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.min = @splat(std.math.floatMax(f32));
 		self.max = @splat(-std.math.floatMax(f32));
 
-		self.lock.lockRead();
+		self.lock.lockWrite();
 		for (self.completeList.getEverything()) |*face| {
 			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex);
 			const result = lightMap.getOrPut(light) catch unreachable;
@@ -393,7 +395,8 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				self.max = @max(self.max, basePos + cornerPos);
 			}
 		}
-		self.lock.unlockRead();
+		self.finishedLighting = true;
+		self.lock.unlockWrite();
 	}
 
 	const LightVector = @Vector(8, u16);
@@ -535,8 +538,8 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	}
 
 	fn uploadData(self: *PrimitiveMesh, isNeighborLod: [6]bool) void {
-		self.lock.lockRead();
-		defer self.lock.unlockRead();
+		self.lock.assertLockedRead();
+		std.debug.assert(self.finishedLighting); // Needs to be checked on the outside
 		var len: usize = 0;
 		const coreList = self.completeList.getRange(.core);
 		len += coreList.len;
@@ -1361,15 +1364,23 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn uploadData(self: *ChunkMesh) void {
-		self.opaqueMesh.uploadData(self.isNeighborLod);
-		self.transparentMesh.uploadData(self.isNeighborLod);
-
 		self.mutex.lock();
+		defer self.mutex.unlock();
+		{
+			self.opaqueMesh.lock.lockRead();
+			defer self.opaqueMesh.lock.unlockRead();
+			self.transparentMesh.lock.lockRead();
+			defer self.transparentMesh.lock.unlockRead();
+			if (!self.opaqueMesh.finishedLighting or !self.transparentMesh.finishedLighting) return;
+			self.opaqueMesh.uploadData(self.isNeighborLod);
+			self.transparentMesh.uploadData(self.isNeighborLod);
+			self.updateTransparencyDataAfterMeshUpload();
+		}
+
 		if (self.lightListNeedsUpload) {
 			self.lightListNeedsUpload = false;
 			lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].uploadData(self.lightList, &self.lightAllocation);
 		}
-		self.mutex.unlock();
 
 		self.uploadChunkPosition();
 	}
@@ -1574,39 +1585,40 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		quadsDrawn += self.opaqueMesh.vertexCount/6;
 	}
 
+	fn updateTransparencyDataAfterMeshUpload(self: *ChunkMesh) void {
+		self.transparentMesh.lock.assertLockedRead();
+		var len: usize = 0;
+		const coreList = self.transparentMesh.completeList.getRange(.core);
+		len += coreList.len;
+		var list: [6][]FaceData = undefined;
+		for (0..6) |i| {
+			if (!self.isNeighborLod[i]) {
+				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@enumFromInt(i)));
+			} else {
+				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@enumFromInt(i)));
+			}
+			len += list[i].len;
+		}
+		self.currentSorting = main.globalAllocator.realloc(self.currentSorting, len);
+		self.sortingOutputBuffer = main.globalAllocator.realloc(self.sortingOutputBuffer, len + self.blockBreakingFaces.items.len);
+		for (0..coreList.len) |i| {
+			self.currentSorting[i].face = coreList[i];
+		}
+		var offset = coreList.len;
+		for (0..6) |n| {
+			for (0..list[n].len) |i| {
+				self.currentSorting[offset + i].face = list[n][i];
+			}
+			offset += list[n].len;
+		}
+	}
+
 	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
 		if (self.transparentMesh.vertexCount == 0 and self.blockBreakingFaces.items.len == 0) return;
 
 		var needsUpdate: bool = false;
 		if (self.transparentMesh.wasChanged) {
 			self.transparentMesh.wasChanged = false;
-			self.transparentMesh.lock.lockRead();
-			defer self.transparentMesh.lock.unlockRead();
-			var len: usize = 0;
-			const coreList = self.transparentMesh.completeList.getRange(.core);
-			len += coreList.len;
-			var list: [6][]FaceData = undefined;
-			for (0..6) |i| {
-				if (!self.isNeighborLod[i]) {
-					list[i] = self.transparentMesh.completeList.getRange(.neighbor(@enumFromInt(i)));
-				} else {
-					list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@enumFromInt(i)));
-				}
-				len += list[i].len;
-			}
-			self.currentSorting = main.globalAllocator.realloc(self.currentSorting, len);
-			self.sortingOutputBuffer = main.globalAllocator.realloc(self.sortingOutputBuffer, len + self.blockBreakingFaces.items.len);
-			for (0..coreList.len) |i| {
-				self.currentSorting[i].face = coreList[i];
-			}
-			var offset = coreList.len;
-			for (0..6) |n| {
-				for (0..list[n].len) |i| {
-					self.currentSorting[offset + i].face = list[n][i];
-				}
-				offset += list[n].len;
-			}
-
 			needsUpdate = true;
 		}
 
