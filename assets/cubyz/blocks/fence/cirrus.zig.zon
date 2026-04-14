@@ -3,6 +3,6 @@
 	.texture_top = "cubyz:fence/top/cirrus",
 	.texture_bottom = "cubyz:fence/top/cirrus",
 	.item = .{
-		.texture = "fence/palm.png",
+		.texture = "fence/cirrus.png",
 	},
 }
