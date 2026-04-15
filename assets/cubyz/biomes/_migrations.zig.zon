@@ -27,4 +27,5 @@
 	.{.old = "cave/toadstool_big", .new = "cave/mushroom/big/toadstool"},
 	.{.old = "cave/bolete_big", .new = "cave/mushroom/big/bolete"},
 	.{.old = "flatland", .new = "development/flat"},
+	.{.old = "bush_lands", .new = "bushlands/base"},
 }
