@@ -195,7 +195,7 @@ pub fn generateData(
 	blockPlacing: bool,
 ) bool {
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode();
-  
+
 	if (blockPlacing or canConnectToNeighbor or !neighborBlock.replaceable()) {
 		const neighborModel = blocks.meshes.model(neighborBlock).model();
 

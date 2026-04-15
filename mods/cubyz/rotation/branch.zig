@@ -373,7 +373,6 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	if (canConnectToNeighbor) {
 		const neighborData = BranchData.init(neighborBlock.data);
 		currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
-
 	} else if (neighborBlock.replaceable()) {
 		currentData.setConnection(neighbor, false);
 	}
