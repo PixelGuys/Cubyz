@@ -11,6 +11,9 @@
 	.emittedLight = 0x392862,
 	.collide = false,
 	.rotation = "cubyz:torch",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 	.model = .{
 		.base = "cubyz:glimmergill/floor",
 		.side = "cubyz:glimmergill/shelf",

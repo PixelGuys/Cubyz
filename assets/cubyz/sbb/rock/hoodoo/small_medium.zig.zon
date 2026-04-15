@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rock/hoodoo/small/0"},
+		.{.id = "cubyz:rock/hoodoo/medium/0"},
+		.{.id = "cubyz:rock/hoodoo/medium/1"},
+		.{.id = "cubyz:rock/hoodoo/medium/2"},
+		.{.id = "cubyz:rock/hoodoo/medium/3"},
+		.{.id = "cubyz:rock/hoodoo/medium/4"},
+		.{.id = "cubyz:rock/hoodoo/medium/5"},
+	},
+}

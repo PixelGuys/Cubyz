@@ -15,6 +15,7 @@
 		.{
 			.id = "cubyz:volcano/slope4",
 			.chance = 1,
+			.parentEdgeDistance = 16,
 		},
 	},
 
@@ -23,5 +24,5 @@
 	.ground_structure = .{
 		"0 to 10 cubyz:magma",
 	},
-	.stoneBlock = "cubyz:basalt",
+	.stoneBlock = "cubyz:basalt/base",
 }

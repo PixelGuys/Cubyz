@@ -1,0 +1,45 @@
+.{
+	.properties = .{
+		.cold,
+		.wet,
+	},
+	.roughness = 0,
+	.minHeightLimit = 7,
+	.minHeight = 22,
+	.maxHeight = 40,
+	.maxHeightLimit = 60,
+	.hills = 15,
+	.mountains = 8,
+	.stoneBlock = "cubyz:glacite/base",
+	.ground_structure = .{
+		"2 to 3 cubyz:snow",
+		"1 to 2 cubyz:permafrost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rare/snow_snale",
+			.placeMode = .degradable,
+			.chance = 0.004,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:ice",
+			.generationMode = .water_surface,
+			.chance = 0.9,
+			.width = 8,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.01,
+			.block = "cubyz:snow",
+			.size = 5,
+			.size_variance = 2,
+		},
+	},
+	.fogDensity = 1.5,
+	.fogColor = 0xe2f2ff,
+}

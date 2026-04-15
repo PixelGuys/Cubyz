@@ -10,6 +10,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Vec3i = main.vec.Vec3i;
 
 const terrain = @import("terrain.zig");
+const GeneratorState = terrain.GeneratorState;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 /// Cave data represented in a 1-Bit per block format, where 0 means empty and 1 means not empty.
@@ -41,7 +42,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	}
 
 	pub fn deferredDeinit(self: *CaveMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.utils.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	fn getIndex(x: i32, y: i32) usize {
@@ -53,8 +54,8 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	/// start inclusive
 	/// end exclusive
 	fn getMask(start: i32, end: i32) u64 {
-		const maskLower = if(start <= 0) (0) else if(start >= 64) (std.math.maxInt(u64)) else (@as(u64, std.math.maxInt(u64)) >> @intCast(64 - start));
-		const maskUpper = if(end <= 0) (std.math.maxInt(u64)) else if(end >= 64) (0) else (@as(u64, std.math.maxInt(u64)) << @intCast(end));
+		const maskLower = if (start <= 0) (0) else if (start >= 64) (std.math.maxInt(u64)) else (@as(u64, std.math.maxInt(u64)) >> @intCast(64 - start));
+		const maskUpper = if (end <= 0) (std.math.maxInt(u64)) else if (end >= 64) (0) else (@as(u64, std.math.maxInt(u64)) << @intCast(end));
 		return maskLower | maskUpper;
 	}
 
@@ -77,18 +78,19 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	pub fn getColumnData(self: *CaveMapFragment, _relX: i32, _relY: i32) u64 {
 		const relX = _relX >> self.voxelShift;
 		const relY = _relY >> self.voxelShift;
-		return (&self.data)[getIndex(relX, relY)]; // TODO: #13938
+		return self.data[getIndex(relX, relY)];
 	}
 };
 
 /// A generator for the cave map.
 pub const CaveGenerator = struct { // MARK: CaveGenerator
-	init: *const fn(parameters: ZonElement) void,
-	generate: *const fn(map: *CaveMapFragment, seed: u64) void,
+	init: *const fn (parameters: ZonElement) void,
+	generate: *const fn (map: *CaveMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
+	defaultState: GeneratorState,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(CaveGenerator) = .{};
 
@@ -98,26 +100,28 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 			.generate = &Generator.generate,
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,
+			.defaultState = Generator.defaultState,
 		};
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveGenerator {
-		const list = allocator.alloc(CaveGenerator, generatorRegistry.size);
+		var list: main.ListUnmanaged(CaveGenerator) = .initCapacity(allocator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
-		var i: usize = 0;
-		while(iterator.next()) |generator| {
-			list[i] = generator.value_ptr.*;
-			list[i].init(settings.getChild(generator.key_ptr.*));
-			i += 1;
+		while (iterator.next()) |generatorEntry| {
+			const generator = generatorEntry.value_ptr.*;
+			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
+			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			generator.init(generatorSettings);
+			list.appendAssumeCapacity(generator);
 		}
 		const lessThan = struct {
 			fn lessThan(_: void, lhs: CaveGenerator, rhs: CaveGenerator) bool {
 				return lhs.priority < rhs.priority;
 			}
 		}.lessThan;
-		std.sort.insertion(CaveGenerator, list, {}, lessThan);
-		return list;
+		std.sort.insertion(CaveGenerator, list.items, {}, lessThan);
+		return list.toOwnedSlice(allocator);
 	}
 };
 
@@ -156,11 +160,11 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 			),
 		};
 		var wx = lowerCorner[0];
-		while(wx -% higherCorner[0] <= 0) : (wx += @as(u31, 1) << widthShift) {
+		while (wx -% higherCorner[0] <= 0) : (wx += @as(u31, 1) << widthShift) {
 			var wy = lowerCorner[1];
-			while(wy -% higherCorner[1] <= 0) : (wy += @as(u31, 1) << widthShift) {
+			while (wy -% higherCorner[1] <= 0) : (wy += @as(u31, 1) << widthShift) {
 				var wz = lowerCorner[2];
-				while(wz -% higherCorner[2] <= 0) : (wz += @as(u31, 1) << heightShift) {
+				while (wz -% higherCorner[2] <= 0) : (wz += @as(u31, 1) << heightShift) {
 					const x: usize = @intCast((wx -% lowerCorner[0]) >> widthShift);
 					const y: usize = @intCast((wy -% lowerCorner[1]) >> widthShift);
 					const z: usize = @intCast((wz -% lowerCorner[2]) >> heightShift);
@@ -204,7 +208,7 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 		const fragmentRelX = wx - fragment.pos.wx;
 		const fragmentRelY = wy - fragment.pos.wy;
 		const height = fragment.getColumnData(fragmentRelX, fragmentRelY);
-		if(deltaZ == 0) {
+		if (deltaZ == 0) {
 			return @truncate(height);
 		} else {
 			return @intCast(height >> 32);
@@ -226,10 +230,10 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 		const fragmentRelY = wy - fragment.pos.wy;
 		var height: u64 = fragment.getColumnData(fragmentRelX, fragmentRelY) >> @intCast(relativeZ);
 		const startFilled = (height & 1) != 0;
-		if(relativeZ != 0 and z + 1 < self.fragments.height) {
+		if (relativeZ != 0 and z + 1 < self.fragments.height) {
 			height |= self.fragments.get(x, y, z + 1).getColumnData(fragmentRelX, fragmentRelY) << @intCast(CaveMapFragment.height - relativeZ);
 		}
-		if(startFilled) {
+		if (startFilled) {
 			height = ~height;
 		}
 		const result: i32 = relativeZ + @ctz(height);
@@ -251,10 +255,10 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 		const fragmentRelY = wy - fragment.pos.wy;
 		var height: u64 = fragment.getColumnData(fragmentRelX, fragmentRelY) << (CaveMapFragment.height - 1 - @as(u6, @intCast(relativeZ)));
 		const startFilled = height & 1 << 63 != 0;
-		if(relativeZ != CaveMapFragment.height - 1 and z != 0) {
+		if (relativeZ != CaveMapFragment.height - 1 and z != 0) {
 			height |= self.fragments.get(x, y, z - 1).getColumnData(fragmentRelX, fragmentRelY) >> @as(u6, @intCast(relativeZ + 1));
 		}
-		if(startFilled) {
+		if (startFilled) {
 			height = ~height;
 		}
 		const result: i32 = relativeZ - @clz(height);
@@ -274,7 +278,7 @@ var memoryPool: main.heap.MemoryPool(CaveMapFragment) = undefined;
 fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy, pos.wz, pos.voxelSize);
-	for(profile.caveGenerators) |generator| {
+	for (profile.caveGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
 	return mapFragment;
@@ -282,7 +286,7 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 
 pub fn globalInit() void {
 	const list = @import("cavegen/_list.zig");
-	inline for(@typeInfo(list).@"struct".decls) |decl| {
+	inline for (@typeInfo(list).@"struct".decls) |decl| {
 		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
 	memoryPool = .init(main.globalAllocator);

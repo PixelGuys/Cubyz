@@ -9,7 +9,7 @@
 	.maxRadius = 320,
 	.roughness = 1,
 	.hills = 8,
-	.chance = 0.02,
+	.chance = 0.01,
 	.validPlayerSpawn = false,
 	.stoneBlock = "cubyz:cloth/block/grey",
 	.ground_structure = .{
@@ -25,7 +25,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:cloth/green",
+			.blocks = .{"cubyz:cloth/green"},
 			.chance = 0.5,
 			.width = 10,
 			.variation = 6,
@@ -34,7 +34,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:cloth/yellow",
+			.blocks = .{"cubyz:cloth/yellow"},
 			.chance = 0.02,
 			.width = 10,
 			.variation = 5,

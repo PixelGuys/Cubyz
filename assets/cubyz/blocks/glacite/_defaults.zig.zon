@@ -1,0 +1,32 @@
+.{
+	.tags = .{.stone, .mineable, .glacite},
+	.blockHealth = 25,
+	.blockResistance = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.material = .{
+			.durability = 65,
+			.massDamage = 1.0,
+			.hardnessDamage = 4.3,
+			.swingSpeed = 2.6,
+			.textureRoughness = 2.0,
+			.colors = .{
+				0xff6E757F, 0xff86898E, 0xffA4A7AA, 0xffB9BCBF, 0xffCACCCE,
+			},
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .glacite,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

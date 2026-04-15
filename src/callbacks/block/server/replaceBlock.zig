@@ -16,12 +16,10 @@ pub fn init(zon: main.ZonElement) ?*@This() {
 }
 
 pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
-	const wx = params.chunk.super.pos.wx + params.x;
-	const wy = params.chunk.super.pos.wy + params.y;
-	const wz = params.chunk.super.pos.wz + params.z;
+	const wx = params.chunk.super.pos.wx + params.blockPos.x;
+	const wy = params.chunk.super.pos.wy + params.blockPos.y;
+	const wz = params.chunk.super.pos.wz + params.blockPos.z;
 
-	main.items.Inventory.Sync.ServerSide.mutex.lock();
-	defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 	_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, self.block);
 	return .handled;
 }
