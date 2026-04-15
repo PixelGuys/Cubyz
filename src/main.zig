@@ -558,7 +558,7 @@ pub fn clientMain() void { // MARK: clientMain()
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 
-	audio.setMusic("cubyz:TotalDemented/Cubyz");
+	audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 
 	while (c.glfwWindowShouldClose(Window.window) == 0) {
 		heap.GarbageCollection.syncPoint();
@@ -626,7 +626,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				game.world = null;
 			}
 			gui.openWindow("main");
-			audio.setMusic("cubyz:TotalDemented/Cubyz");
+			audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 		}
 	}
 
