@@ -1817,6 +1817,7 @@ pub const VertexArray = struct { // MARK: VertexArray
 				c.VK_FORMAT_R32G32_SFLOAT => c.GL_FLOAT,
 				c.VK_FORMAT_R32G32B32_SFLOAT => c.GL_FLOAT,
 				c.VK_FORMAT_R32G32B32A32_SFLOAT => c.GL_FLOAT,
+				c.VK_FORMAT_R32_UINT => c.GL_UNSIGNED_INT,
 				else => @compileError("Unrecognized format"),
 			};
 			const size = comptime switch (desc.format) {
@@ -1824,9 +1825,14 @@ pub const VertexArray = struct { // MARK: VertexArray
 				c.VK_FORMAT_R32G32_SFLOAT => 2,
 				c.VK_FORMAT_R32G32B32_SFLOAT => 3,
 				c.VK_FORMAT_R32G32B32A32_SFLOAT => 4,
+				c.VK_FORMAT_R32_UINT => 1,
 				else => @compileError("Unrecognized format"),
 			};
-			c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset));
+			switch (glType) {
+				c.GL_UNSIGNED_INT => c.glVertexAttribIPointer(desc.location, size, glType, @sizeOf(T), @ptrFromInt(desc.offset)),
+				c.GL_FLOAT => c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset)),
+				else => unreachable,
+			}
 		}
 
 		c.glBindVertexArray(0);

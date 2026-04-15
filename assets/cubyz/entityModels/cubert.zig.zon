@@ -2,5 +2,6 @@
 	.model = "cubyz:cubert",
 	.defaultTexture = "cubyz:cubert",
 	.height = 2,
+	.isPlayerModel = true,
 	.coordinateSystem = .right_handed_z_up,
 }
