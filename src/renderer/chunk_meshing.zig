@@ -1327,6 +1327,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				mesh.generateMesh(&lightRefreshList);
 			}
 			for (lightRefreshList.items) |pos| {
+				if (mesh_storage.getMesh(pos)) |mesh| {
+					mesh.needsLightRefresh.store(true, .release);
+				}
 				ChunkMesh.scheduleLightRefresh(pos);
 			}
 			for (regenerateMeshList.items) |mesh| {
