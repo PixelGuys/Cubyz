@@ -12,7 +12,7 @@
 		.{
 			.id = "cubyz:stalagmite",
 			.block = "cubyz:slate/base",
-			.chance = 0.048,
+			.chance = 0.03,
 			.size = 3,
 			.size_variation = 6,
 		},
