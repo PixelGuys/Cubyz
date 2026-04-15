@@ -11,7 +11,7 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:amber_ore:cubyz:gravel",
-			.chance = 0.005,
+			.chance = 0.012,
 			.width = 1,
 			.variation = 2,
 			.depth = 1,
