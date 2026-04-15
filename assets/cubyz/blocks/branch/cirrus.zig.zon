@@ -12,22 +12,22 @@
 	.texture5 = "cubyz:branch/cirrus/cross",
 	.item = .{
 		.material = .{
-			.durability = 28,
-			.massDamage = 1.1,
-			.hardnessDamage = 0.46,
-			.swingSpeed = 4.75,
+			.durability = 50,
+			.massDamage = 2.3,
+			.hardnessDamage = 2,
+			.swingSpeed = 4.3,
 			.textureRoughness = 0.7,
 			.colors = .{
-				0xff312a1e, 0xff3c3324, 0xff4a3c28, 0xff614e33, 0xff4a3c28,
+				0xff7a8e95, 0xff9aadb3, 0xffb4cecf, 0xffdbeaec, 0xffb4cecf,
 			},
 			.modifiers = .{
 				.{
-					.id = "durable",
-					.strength = 0.45,
+					.id = "light",
+					.strength = 0.15,
 				},
 			},
 		},
-		.texture = "branch/pine.png",
+		.texture = "branch/cirrus.png",
 	},
 	.decayProhibitor = true,
 }

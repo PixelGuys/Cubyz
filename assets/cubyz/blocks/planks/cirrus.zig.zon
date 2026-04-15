@@ -1,18 +1,18 @@
 .{
 	.item = .{
 		.material = .{
-			.durability = 28,
-			.massDamage = 0.95,
-			.hardnessDamage = 0.95,
+			.durability = 40,
+			.massDamage = 2.1,
+			.hardnessDamage = 2.4,
 			.swingSpeed = 4.8,
 			.textureRoughness = 0.7,
 			.colors = .{
-				0xff835e37, 0xffa37543, 0xffbd8a4f, 0xffd3a164, 0xffe5b570,
+				0xff506786, 0xff607d9c, 0xff6c91b1, 0xff7daacd, 0xff91c3ec,
 			},
 			.modifiers = .{
 				.{
-					.id = "durable",
-					.strength = 0.4,
+					.id = "light",
+					.strength = 0.1,
 				},
 			},
 		},
