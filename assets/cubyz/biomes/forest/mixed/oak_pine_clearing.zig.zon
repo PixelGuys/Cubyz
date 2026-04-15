@@ -3,7 +3,8 @@
 	.keepOriginalTerrain = 1,
 	.minHeight = 22,
 	.maxHeight = 45,
-	.properties = .{
+	.properties = .{},
+	.tags = .{
 		.pine,
 	},
 	.minRadius = 20,

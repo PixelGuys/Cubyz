@@ -1,6 +1,8 @@
 .{
 	.properties = .{
 		.wet,
+	},
+	.tags = .{
 		.pine,
 	},
 	.minHeightLimit = 7,

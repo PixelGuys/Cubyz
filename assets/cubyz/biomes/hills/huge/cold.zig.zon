@@ -1,8 +1,10 @@
 .{
 	.properties = .{
 		.cold,
-		.pine,
 		},
+	.tags = .{
+		.pine,
+	},
 	.ground_structure = .{
 		"cubyz:cold_grass",
 		"cubyz:soil",

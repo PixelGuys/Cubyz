@@ -1,6 +1,8 @@
 .{
 	.properties = .{
 		.cold,
+	},
+	.tags = .{
 		.pine,
 	},
 	.ground_structure = .{
