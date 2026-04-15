@@ -1,4 +1,5 @@
 .{
+	.chance = 0.8,
 	.isCave = true,
 	.tags = .{.cave_layer},
 	.maxHeight = -100,
