@@ -26,12 +26,13 @@ var uniforms: struct {
 	light: c_int,
 	contrast: c_int,
 	ambientLight: c_int,
+	nodeMatrices: c_int,
 } = undefined;
 
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: std.Thread.Mutex = .{};
-var model: *main.entityModel.EntityModel = undefined;
+pub var model: *main.entityModel.EntityModel = undefined;
 pub fn init() void {
 	entities = .init();
 	pipeline = graphics.Pipeline.init(
@@ -77,6 +78,15 @@ pub fn initAfterWorld() void {
 		std.log.err("EntityModel {s} wasn't found", .{"cubyz:snale"});
 		break :blk main.entityModel.default();
 	}).get();
+
+	// TODO: remove before merge
+	// addEntity(ZonElement.parseFromString(main.globalArena, null,
+	// \\ .{
+	// \\    .id = 1,
+	// \\    .name = "bobik",
+	// \\
+	// \\  }
+	// )) catch unreachable;
 }
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
@@ -132,29 +142,32 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	for (entities.items()) |ent| {
 		if (ent.id == game.Player.id) continue; // don't render local player
 
-		model.bind();
-		const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
-		const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
-		const light = (@as(u32, lightVals[0] >> 3) << 25 |
-			@as(u32, lightVals[1] >> 3) << 20 |
-			@as(u32, lightVals[2] >> 3) << 15 |
-			@as(u32, lightVals[3] >> 3) << 10 |
-			@as(u32, lightVals[4] >> 3) << 5 |
-			@as(u32, lightVals[5] >> 3) << 0);
+		if (main.entity.components.@"cubyz:model".client.get(ent.id)) |modelComp| {
+			modelComp.entityModel.get().bind();
+			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
+			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
+			const light = (@as(u32, lightVals[0] >> 3) << 25 |
+				@as(u32, lightVals[1] >> 3) << 20 |
+				@as(u32, lightVals[2] >> 3) << 15 |
+				@as(u32, lightVals[3] >> 3) << 10 |
+				@as(u32, lightVals[4] >> 3) << 5 |
+				@as(u32, lightVals[5] >> 3) << 0);
 
-		c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
+			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
 
-		const pos: Vec3d = ent.getRenderPosition() - playerPos;
-		const modelMatrix = (Mat4f.identity()
-			.mul(Mat4f.translation(Vec3f{
-				@floatCast(pos[0]),
-				@floatCast(pos[1]),
-				@floatCast(pos[2] - 1.0 + 0.09375),
-			}))
-			.mul(Mat4f.rotationZ(-ent.rot[2])));
-		const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-		c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
+			const pos: Vec3d = ent.getRenderPosition() - playerPos;
+			const modelMatrix = (Mat4f.identity()
+				.mul(Mat4f.translation(Vec3f{
+					@floatCast(pos[0]),
+					@floatCast(pos[1]),
+					@floatCast(pos[2] - 1.0 + 0.09375),
+				}))
+				.mul(Mat4f.rotationZ(-ent.rot[2])));
+			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
+			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
+			c.glUniformMatrix4fv(uniforms.nodeMatrices, main.entityModel.EntityModel.maxNodesCount, c.GL_TRUE, @ptrCast(&modelComp.matrices));
+			c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
+		}
 	}
 }
 
