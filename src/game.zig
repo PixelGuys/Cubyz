@@ -635,9 +635,9 @@ pub const World = struct { // MARK: World
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
-		main.Window.c.glfwMakeContextCurrent(null);
+
+		main.entityModel.loadModelsAndTexture();
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
-		main.Window.c.glfwMakeContextCurrent(main.Window.window);
 
 		main.Window.setMouseGrabbed(true);
 
@@ -708,10 +708,7 @@ pub const World = struct { // MARK: World
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 
-		main.Window.c.glfwMakeContextCurrent(main.Window.window);
-		main.entityModel.loadModelsAndTexture();
 		try Player.loadFrom(zon.getChild("player"));
-		main.Window.c.glfwMakeContextCurrent(null);
 	}
 
 	fn dayNightLightFactor(gameTime: i64) struct { f32, Vec3f } {
