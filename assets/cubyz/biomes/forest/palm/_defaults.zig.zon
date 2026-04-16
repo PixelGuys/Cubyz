@@ -2,6 +2,9 @@
 	.fogDensity = 1.5,
 	.fogColor = 0xb0e9d2,
 	.properties = .{.wet, .hot},
+	.tags = .{
+		.mahogany
+	},
 	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 60,
