@@ -68,12 +68,13 @@ pub const client = struct {
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		for (entityComponent.@"cubyz:model".client.components.dense.items, 0..) |*component, i| {
-			const entityId = entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items[i];
-			const ent = main.client.entity_manager.entities.items()[@intFromEnum(entityId)];
+		for (main.client.entity_manager.entities.items()) |*ent| {
+			if(ent.id == game.Player.id)  // don't render local player
+				continue;
+
+			const component = entityComponent.@"cubyz:model".client.components.get(@enumFromInt(ent.id)) orelse continue;
 			const entModel = component.entityModel.get();
 
-			if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
@@ -109,15 +110,13 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (entityComponent.@"cubyz:model".client.components.dense.items, 0..) |component, i| {
-			const entityId = entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items[i];
-			if (entityId == .noValue)
+		for (main.client.entity_manager.entities.items()) |*ent| {
+			if(ent.id == game.Player.id)  // don't render local player
 				continue;
 
-			const ent = main.client.entity_manager.getEntity(@intFromEnum(entityId));
+			const component = entityComponent.@"cubyz:model".client.components.get(@enumFromInt(ent.id)) orelse continue;
 			const entModel = component.entityModel.get();
 
-			if (ent.id == game.Player.id) continue; // don't render local player
 
 			entModel.bind();
 			const entTexture = entModel.defaultTexture;
