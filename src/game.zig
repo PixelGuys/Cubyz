@@ -636,7 +636,6 @@ pub const World = struct { // MARK: World
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		main.entityModel.loadModelsAndTexture();
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
@@ -644,6 +643,7 @@ pub const World = struct { // MARK: World
 		main.blocks.meshes.generateTextureArray();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
+		main.entityModel.loadModelsAndTexture();
 	}
 
 	pub fn deinit(self: *World) void {
