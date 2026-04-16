@@ -18,81 +18,81 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
 
-pub var entityComponentID: u32 = undefined;
+pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
-	const PlayerComponent = struct {
-		playerIndex: u32, // model
+	const Component = struct {
+		playerIndex: u32,
 	};
-	pub var playerComponents: main.utils.SparseSet(PlayerComponent, main.entity.Entity) = undefined;
+	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
 
-	pub fn init() void {
-		playerComponents = .{};
-	}
+	pub fn init() void {}
 	pub fn deinit() void {
-		playerComponents.deinit(main.globalAllocator);
+		components.deinit(main.globalAllocator);
 	}
 	pub fn clear() void {
-		playerComponents.deinit(main.globalAllocator);
-		playerComponents = .{};
+		components.clear();
 	}
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		_ = version;
+		if(version != 0)
+			return main.entity.EntityComponentLoadError.InvalidComponentVersion;
 		const playerIndex = reader.readVarInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
 
-		const ptr = playerComponents.get(@enumFromInt(entity)) orelse playerComponents.add(main.globalAllocator, @enumFromInt(entity));
-		ptr.* = PlayerComponent{
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		ptr.* = Component{
 			.playerIndex = playerIndex,
 		};
 	}
 	pub fn unload(entity: u32) void {
-		playerComponents.remove(@enumFromInt(entity)) catch {};
+		components.remove(@enumFromInt(entity)) catch {};
 	}
-	pub fn get(entity: u32) ?*PlayerComponent {
-		return playerComponents.get(@enumFromInt(entity));
+	pub fn get(entity: u32) ?*Component {
+		return components.get(@enumFromInt(entity));
 	}
 };
 
 // ############################# Server only stuff ################################
 
 pub const server = struct {
-	pub const PlayerComponent = struct {
+	pub const component = struct {
 		playerIndex: u32, // model
-		pub fn save(self: PlayerComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
-			_ = audience;
+		pub fn save(self: component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			writer.writeVarInt(u32, self.playerIndex);
+			if(audience == .disk)
+				return .discard;
 			return .save;
 		}
 	};
-	var playerComponents: main.utils.SparseSet(PlayerComponent, main.entity.Entity) = undefined;
+	var components: main.utils.SparseSet(component, main.entity.Entity) = undefined;
 	pub fn init() void {
-		playerComponents = .{};
+		components = .{};
 	}
 	pub fn deinit() void {
-		playerComponents.deinit(main.globalAllocator);
+		components.deinit(main.globalAllocator);
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		_ = version;
+		if(version != 0)
+			return main.entity.EntityComponentLoadError.InvalidComponentVersion;
 		const playerIndex = reader.readVarInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
 
 		try load(entity, playerIndex);
 	}
 	pub fn load(entity: u32, playerIndex: u32) main.entity.EntityComponentLoadError!void {
-		const ptr = playerComponents.get(@enumFromInt(entity)) orelse playerComponents.add(main.globalAllocator, @enumFromInt(entity));
-		ptr.* = PlayerComponent{
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		ptr.* = component{
 			.playerIndex = playerIndex,
 		};
 	}
 	pub fn unload(entity: u32) void {
-		playerComponents.remove(@enumFromInt(entity)) catch {};
+		components.remove(@enumFromInt(entity)) catch {};
 	}
-	pub fn put(entity: u32, renderComponent: PlayerComponent) void {
-		const ptr = playerComponents.get(@enumFromInt(entity)) orelse playerComponents.add(main.globalAllocator, @enumFromInt(entity));
+	pub fn put(entity: u32, renderComponent: component) void {
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = renderComponent;
 	}
-	pub fn get(entity: u32) ?*PlayerComponent {
-		return playerComponents.get(@enumFromInt(entity));
+	pub fn get(entity: u32) ?*component {
+		return components.get(@enumFromInt(entity));
 	}
 };
