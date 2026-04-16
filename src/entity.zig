@@ -22,8 +22,12 @@ pub const EntityComponentLoadError = error{
 	UnreadableVersion,
 	UnreadableComponentData,
 	UnknownComponentId,
+	InvalidComponentVersion,
 };
-// Analogous to Protocols.
+pub const Entity = enum(u32) {
+	noValue = std.math.maxInt(u32),
+	_,
+};
 pub const EntityComponentId = u32;
 const EntityComponentVTable = struct {
 	serverLoad: *const fn (entityId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
@@ -126,6 +130,17 @@ pub const client = struct {
 		const list = main.entity.components;
 		inline for (@typeInfo(list).@"struct".decls) |decl| {
 			@field(list, decl.name).client.unload(id);
+		}
+	}
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+		main.client.entity_manager.update();
+		inline for (@typeInfo(systems).@"struct".decls) |decl| {
+			@field(systems, decl.name).client.render(projMatrix, ambientLight, playerPos, deltaTime);
+		}
+	}
+	pub fn renderHud(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+		inline for (@typeInfo(systems).@"struct".decls) |decl| {
+			@field(systems, decl.name).client.renderHud(projMatrix, ambientLight, playerPos);
 		}
 	}
 };
