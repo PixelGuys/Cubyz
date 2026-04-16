@@ -11,6 +11,6 @@
 		.overgrown,
 	},
 	.tags = .{
-		.mahogany
+		.mahogany,
 	},
 }
