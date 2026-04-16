@@ -36,7 +36,7 @@ pub const client = struct {
 		components.clear();
 	}
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		if(version != 0)
+		if (version != 0)
 			return main.entity.EntityComponentLoadError.InvalidComponentVersion;
 		const playerIndex = reader.readVarInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
 
@@ -60,7 +60,7 @@ pub const server = struct {
 		playerIndex: u32, // model
 		pub fn save(self: component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			writer.writeVarInt(u32, self.playerIndex);
-			if(audience == .disk)
+			if (audience == .disk)
 				return .discard;
 			return .save;
 		}
@@ -73,7 +73,7 @@ pub const server = struct {
 		components.deinit(main.globalAllocator);
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		if(version != 0)
+		if (version != 0)
 			return main.entity.EntityComponentLoadError.InvalidComponentVersion;
 		const playerIndex = reader.readVarInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
 
