@@ -3,6 +3,9 @@
 		.hot,
 		.dry,
 	},
+	.tags = .{
+		.baobab
+	},
 	.minHeightLimit = 7,
 	.minHeight = 30,
 	.maxHeight = 40,

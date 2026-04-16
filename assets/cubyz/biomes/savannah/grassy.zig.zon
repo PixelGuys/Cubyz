@@ -3,6 +3,9 @@
 		.hot,
 		.dry,
 	},
+	.tags = .{
+		.baobab
+	},
 	.chance = 0,
 	.keepOriginalTerrain = 0.6,
 	.minHeightLimit = 7,
