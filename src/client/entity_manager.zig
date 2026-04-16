@@ -127,7 +127,7 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	for (entities.items()) |ent| {
 		if (ent.id == game.Player.id) continue; // don't render local player
 
-		const model = main.entity.components.@"cubyz:model".client.renderComponents.get(@enumFromInt(ent.id)).?.entityModel.get();
+		const model = main.entity.components.@"cubyz:model".client.components.get(@enumFromInt(ent.id)).?.entityModel.get();
 		model.bind();
 		const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 		const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
