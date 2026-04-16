@@ -68,8 +68,9 @@ pub const client = struct {
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		for (entityComponent.@"cubyz:model".client.renderComponents.dense.items) |*component| {
-			const ent = main.client.entity_manager.entities.items()[component.entity];
+		for (entityComponent.@"cubyz:model".client.components.dense.items, 0..) |*component, i| {
+			const entityId = entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items[i];
+			const ent = main.client.entity_manager.entities.items()[@intFromEnum(entityId)];
 			const entModel = component.entityModel.get();
 
 			if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
@@ -98,17 +99,22 @@ pub const client = struct {
 			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
-	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+		_ = deltaTime;
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 		pipeline.bind(null);
-		main.renderer.chunk_meshing.vao.bind();
+
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (entityComponent.@"cubyz:model".client.renderComponents.dense.items) |component| {
-			const ent = main.client.entity_manager.getEntity(component.entity);
+		for (entityComponent.@"cubyz:model".client.components.dense.items, 0..) |component, i| {
+			const entityId = entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items[i];
+			if (entityId == .noValue)
+				continue;
+
+			const ent = main.client.entity_manager.getEntity(@intFromEnum(entityId));
 			const entModel = component.entityModel.get();
 
 			if (ent.id == game.Player.id) continue; // don't render local player
