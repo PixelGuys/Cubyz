@@ -22,6 +22,7 @@ pub const EntityComponentLoadError = error{
 	UnreadableVersion,
 	UnreadableComponentData,
 	UnknownComponentId,
+	InvalidComponentVersion,
 };
 pub const Entity = enum(u32) {
 	noValue = std.math.maxInt(u32),
