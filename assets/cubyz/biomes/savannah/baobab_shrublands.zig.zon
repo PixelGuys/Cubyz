@@ -4,7 +4,7 @@
 		.dry,
 	},
 	.tags = .{
-		.baobab
+		.baobab,
 	},
 	.minHeightLimit = 30,
 	.minHeight = 24,

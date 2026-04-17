@@ -1,6 +1,6 @@
 .{
 	.tags = .{
-		.baobab
+		.baobab,
 	},
 	.minHeightLimit = 1,
 	.minHeight = 5,
