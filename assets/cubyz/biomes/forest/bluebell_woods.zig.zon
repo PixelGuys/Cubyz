@@ -1,6 +1,5 @@
 .{
-	.properties = .{
-	},
+	.properties = .{},
 	.tags = .{
 		.oak,
 	},
