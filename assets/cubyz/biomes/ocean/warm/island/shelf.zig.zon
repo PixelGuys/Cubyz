@@ -12,5 +12,9 @@
 			.id = "cubyz:ocean/warm/base",
 			.chance = 1,
 		},
+		.{
+			.id = "cubyz:ocean/warm/archipelago",
+			.chance = 15,
+		},
 	},
 }
