@@ -151,7 +151,7 @@ pub const Assets = struct {
 			defer dir.close();
 
 			var iterator = dir.iterate();
-			outer: while (iterator.next() catch |err| blk: {
+			outer: while (iterator.next(main.io) catch |err| blk: {
 				std.log.err("Got error while iterating over asset path {s}: {s}", .{path, @errorName(err)});
 				break :blk null;
 			}) |addon| {
@@ -244,7 +244,7 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while (walker.next() catch |err| blk: {
+			while (walker.next(main.io) catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{assetType, @errorName(err)});
 				break :blk null;
 			}) |entry| {
@@ -286,7 +286,7 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while (walker.next() catch |err| blk: {
+			while (walker.next(main.io) catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 				break :blk null;
 			}) |entry| {
@@ -316,7 +316,7 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while (walker.next() catch |err| blk: {
+			while (walker.next(main.io) catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 				break :blk null;
 			}) |entry| {
@@ -753,7 +753,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	};
 	defer dir.close();
 	var dirIterator = dir.iterate();
-	while (dirIterator.next() catch |err| blk: {
+	while (dirIterator.next(main.io) catch |err| blk: {
 		std.log.err("Got error while iterating over asset path {s}: {s}", .{"assets", @errorName(err)});
 		break :blk null;
 	}) |addon| {
@@ -795,7 +795,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	};
 	defer dir.close();
 	var dirIterator = dir.iterate();
-	while (dirIterator.next() catch |err| blk: {
+	while (dirIterator.next(main.io) catch |err| blk: {
 		std.log.err("Got error while iterating over asset path {s}: {s}", .{"assets", @errorName(err)});
 		break :blk null;
 	}) |addon| {

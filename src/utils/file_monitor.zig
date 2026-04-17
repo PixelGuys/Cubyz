@@ -59,7 +59,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	var fd: c_int = undefined;
 	var watchDescriptors: std.StringHashMap(*DirectoryInfo) = undefined;
 	var callbacks: std.AutoHashMap(c_int, *DirectoryInfo) = undefined;
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 
 	fn init() void {
 		fd = c.inotify_init();
@@ -93,7 +93,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		};
 		defer iterableDir.close();
 		var iterator = iterableDir.iterate();
-		while (iterator.next() catch |err| {
+		while (iterator.next(main.io) catch |err| {
 			std.log.err("Error while iterating dir {s}: {s}", .{path, @errorName(err)});
 			return;
 		}) |entry| {
@@ -218,7 +218,7 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 	var notificationHandlers: std.StringHashMap(*DirectoryInfo) = undefined;
 	var callbacks: main.List(*DirectoryInfo) = undefined;
 	var justTheHandles: main.List(HANDLE) = undefined;
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 
 	const DirectoryInfo = struct {
 		callback: CallbackFunction,

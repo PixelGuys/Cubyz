@@ -339,7 +339,7 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
-pub const Block = packed struct { // MARK: Block
+pub const Block = packed struct(u32) { // MARK: Block
 	typ: u16,
 	data: u16,
 
@@ -701,7 +701,7 @@ pub const meshes = struct { // MARK: meshes
 				return err2;
 			};
 		};
-		file.close(); // It was only openend to check if it exists.
+		file.close(main.io); // It was only openend to check if it exists.
 		// Otherwise read it into the list:
 		result = @intCast(textureIDs.items.len);
 

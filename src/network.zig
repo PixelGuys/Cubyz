@@ -72,7 +72,14 @@ const Socket = struct {
 					}
 					break :blk socket;
 				} else {
-					break :blk try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
+					const result = std.c.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
+					switch (std.c.errno(result)) {
+						.SUCCESS => break :blk result,
+						else => |err| {
+							std.log.warn("Got error while creating socket: {s}", .{@tagName(err)});
+							return error.SocketCreationFailed;
+						},
+					}
 				}
 			},
 		};
@@ -86,7 +93,14 @@ const Socket = struct {
 				try windowsError(ws2.WSAGetLastError());
 			}
 		} else {
-			try posix.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
+			const result = std.c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
+			switch (std.c.errno(result)) {
+				.SUCCESS => {},
+				else => |err| {
+					std.log.warn("Got error while binding socket: {s}", .{@tagName(err)});
+					return error.SocketCreationFailed;
+				},
+			}
 		}
 		return self;
 	}
@@ -95,7 +109,13 @@ const Socket = struct {
 		if (builtin.os.tag == .windows) {
 			_ = ws2.closesocket(self.socketID);
 		} else {
-			posix.close(self.socketID);
+			const err = std.c.errno(std.c.close(self.socketID));
+			switch (err) {
+				.SUCCESS => {},
+				else => {
+					std.log.warn("Got error while closing socket: {s}", .{@tagName(err)});
+				},
+			}
 		}
 	}
 
@@ -113,10 +133,15 @@ const Socket = struct {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);
 			}
 		} else {
-			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
-				return;
-			});
+			const result = std.c.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			switch (std.c.errno(result)) {
+				.SUCCESS => {
+					std.debug.assert(data.len == result);
+				},
+				else => |err| {
+					std.log.warn("Got error while sending to {f}: {s}", .{destination, @tagName(err)});
+				},
+			}
 		}
 	}
 
@@ -150,7 +175,14 @@ const Socket = struct {
 				break :blk @intCast(result);
 			} else {
 				var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-				break :blk try posix.recvfrom(self.socketID, buffer, 0, @ptrCast(&addr), &addrLen);
+				const result = std.c.recvfrom(self.socketID, buffer.ptr, buffer.len, 0, @ptrCast(&addr), &addrLen);
+				switch (std.c.errno(result)) {
+					.SUCCESS => break :blk @intCast(result),
+					else => |err| {
+						std.log.warn("recvfrom failed with error {s}", .{@tagName(err)});
+						return error.Failed;
+					},
+				}
 			}
 		};
 		resultAddress.ip = addr.addr;
@@ -163,19 +195,15 @@ const Socket = struct {
 		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
 		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
 		if (name.len == 0) return error.UnknownHostName;
-		std.Io.net.HostName.lookup(.{.bytes = name}, main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
+		try std.Io.net.HostName.lookup(.{.bytes = name}, main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
 		while (true) {
-			const entry = resultQueue.getOneUncancelable(main.io);
+			const entry = resultQueue.getOneUncancelable(main.io) catch break;
 			switch (entry) {
 				.address => |addr| {
 					if (addr != .ip4) continue;
 					return std.mem.bytesToValue(u32, addr.ip4.bytes[0..4]);
 				},
 				.canonical_name => {},
-				.end => |err| {
-					try err;
-					break;
-				},
 			}
 		}
 		return error.ReachedEndWithoutFindingAnything;
@@ -190,7 +218,14 @@ const Socket = struct {
 			}
 		} else {
 			var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-			try posix.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+			const result = std.c.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+			switch (std.c.errno(result)) {
+				.SUCCESS => {},
+				else => |err| {
+					std.log.warn("Failed to get the port from getsockname: {s}", .{@tagName(err)});
+					return error.Failed;
+				},
+			}
 		}
 		return @byteSwap(addr.port);
 	}
@@ -226,7 +261,7 @@ pub const Address = struct {
 const Request = struct {
 	address: Address,
 	data: []const u8,
-	requestNotifier: std.Thread.Condition = std.Thread.Condition{},
+	requestNotifier: main.utils.Condition = .{},
 };
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
@@ -359,7 +394,7 @@ const stun = struct { // MARK: stun
 				},
 				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
 			};
-			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, 500*1000000)) |answer| {
+			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, .fromMilliseconds(500))) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
 					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
@@ -449,8 +484,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	connections: main.List(*Connection) = undefined,
 	requests: main.List(*Request) = undefined,
 
-	mutex: std.Thread.Mutex = .{},
-	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
+	mutex: main.utils.Mutex = .{},
+	waitingToFinishReceive: main.utils.Condition = .{},
 	allowNewConnections: Atomic(bool) = .init(false),
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
@@ -477,7 +512,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.* = .{};
 		result.connections = .init(main.globalAllocator);
 		result.requests = .init(main.globalAllocator);
-		result.packetSendRequests = .init(main.globalAllocator.allocator, {});
+		result.packetSendRequests = .initContext({});
 
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
@@ -491,7 +526,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if (localPort == 0) result.localPort = try result.socket.getPort();
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
-		result.thread.setName("Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		if (online) {
 			result.makeOnline();
 		}
@@ -514,10 +549,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			request.requestNotifier.signal();
 		}
 		self.requests.deinit();
-		while (self.packetSendRequests.removeOrNull()) |packet| {
+		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
-		self.packetSendRequests.deinit();
+		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
 		main.globalAllocator.destroy(self);
 	}
@@ -533,7 +568,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if (nanoTime) |time| {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.packetSendRequests.add(.{
+			self.packetSendRequests.push(main.globalAllocator.allocator, .{
 				.data = main.globalAllocator.dupe(u8, data),
 				.target = target,
 				.time = time,
@@ -543,7 +578,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
-	pub fn sendRequest(self: *ConnectionManager, allocator: NeverFailingAllocator, data: []const u8, target: Address, timeout_ns: u64) ?[]const u8 {
+	pub fn sendRequest(self: *ConnectionManager, allocator: NeverFailingAllocator, data: []const u8, target: Address, timeout: std.Io.Duration) ?[]const u8 {
 		self.socket.send(data, target);
 		var request = Request{.address = target, .data = data};
 		{
@@ -551,7 +586,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			defer self.mutex.unlock();
 			self.requests.append(&request);
 
-			request.requestNotifier.timedWait(&self.mutex, timeout_ns) catch {};
+			request.requestNotifier.timedWait(&self.mutex, timeout) catch {};
 
 			for (self.requests.items, 0..) |req, i| {
 				if (req == &request) {
@@ -677,7 +712,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				self.mutex.lock();
 				defer self.mutex.unlock();
 				while (self.packetSendRequests.peek() != null and self.packetSendRequests.peek().?.time -% curTime <= 0) {
-					const packet = self.packetSendRequests.remove();
+					const packet = self.packetSendRequests.pop().?;
 					self.socket.send(packet.data, packet.target);
 					main.globalAllocator.free(packet.data);
 				}
@@ -946,7 +981,7 @@ pub const Connection = struct { // MARK: Connection
 				return .lt;
 			}
 		};
-		unconfirmedRanges: std.PriorityQueue(Range, void, Range.compareTime),
+		unconfirmedRanges: std.PriorityQueue(Range, void, Range.compareTime) = .initContext({}),
 		lostRanges: main.utils.CircularBufferQueue(Range),
 		buffer: main.utils.CircularBufferQueue(u8),
 		fullyConfirmedIndex: SequenceIndex,
@@ -956,7 +991,6 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init(index: SequenceIndex) SendBuffer {
 			return .{
-				.unconfirmedRanges = .init(main.globalAllocator.allocator, {}),
 				.lostRanges = .init(main.globalAllocator, 1 << 10),
 				.buffer = .init(main.globalAllocator, 1 << 20),
 				.fullyConfirmedIndex = index,
@@ -966,8 +1000,8 @@ pub const Connection = struct { // MARK: Connection
 			};
 		}
 
-		pub fn deinit(self: SendBuffer) void {
-			self.unconfirmedRanges.deinit();
+		pub fn deinit(self: *SendBuffer) void {
+			self.unconfirmedRanges.deinit(main.globalAllocator.allocator);
 			self.lostRanges.deinit();
 			self.buffer.deinit();
 		}
@@ -1017,7 +1051,7 @@ pub const Connection = struct { // MARK: Connection
 						.considerForCongestionControl = range.considerForCongestionControl,
 						.packetLen = range.len,
 					};
-					_ = self.unconfirmedRanges.removeIndex(i);
+					_ = self.unconfirmedRanges.popIndex(i);
 					break;
 				}
 			}
@@ -1044,7 +1078,7 @@ pub const Connection = struct { // MARK: Connection
 			while (true) {
 				var range = self.unconfirmedRanges.peek() orelse break;
 				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
-				_ = self.unconfirmedRanges.remove();
+				_ = self.unconfirmedRanges.pop();
 				if (self.fullyConfirmedIndex == range.start) {
 					// In TCP effectively only the second loss of the lowest unconfirmed packet is counted for congestion control
 					// This decreases the chance of triggering congestion control from random packet loss
@@ -1062,7 +1096,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, allowedDelay: i64) ?usize {
-			self.unconfirmedRanges.ensureUnusedCapacity(1) catch unreachable;
+			self.unconfirmedRanges.ensureUnusedCapacity(main.globalAllocator.allocator, 1) catch unreachable;
 			// Resend old packet:
 			if (self.lostRanges.popFront()) |_range| {
 				var range = _range;
@@ -1079,7 +1113,7 @@ pub const Connection = struct { // MARK: Connection
 				self.buffer.getSliceAtOffset(@intCast(range.start -% self.fullyConfirmedIndex), buf[0..@intCast(range.len)]) catch unreachable;
 				range.timestamp = time;
 				byteIndex.* = range.start;
-				self.unconfirmedRanges.add(range) catch unreachable;
+				self.unconfirmedRanges.push(main.globalAllocator.allocator, range) catch unreachable;
 				return @intCast(range.len);
 			}
 
@@ -1091,7 +1125,7 @@ pub const Connection = struct { // MARK: Connection
 
 			self.buffer.getSliceAtOffset(@intCast(self.highestSentIndex -% self.fullyConfirmedIndex), buf[0..@intCast(len)]) catch unreachable;
 			byteIndex.* = self.highestSentIndex;
-			self.unconfirmedRanges.add(.{
+			self.unconfirmedRanges.push(main.globalAllocator.allocator, .{
 				.start = self.highestSentIndex,
 				.len = len,
 				.timestamp = time,
@@ -1178,7 +1212,7 @@ pub const Connection = struct { // MARK: Connection
 		serverCertificate: c.mbedtls_x509_crt = .{},
 		serverKey: c.mbedtls_pk_context = .{},
 		dataToReceive: []const u8 = &.{},
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		side: main.sync.Side,
 		finishedCollectingClientVerificationData: bool = false,
@@ -1425,14 +1459,14 @@ pub const Connection = struct { // MARK: Connection
 
 	connectionState: Atomic(ConnectionState),
 	handShakeState: Atomic(HandShakeState) = .init(.start),
-	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
+	handShakeWaiting: main.utils.Condition = .{},
 	lastConnectionTime: ?i64,
 
 	// To distinguish different connections from the same computer to avoid multiple reconnects
 	connectionIdentifier: i64,
 	remoteConnectionIdentifier: i64,
 
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
@@ -1602,7 +1636,7 @@ pub const Connection = struct { // MARK: Connection
 		self.tryReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
 			if (@errorReturnTrace()) |trace| {
-				std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
+				std.log.info("{f}", .{main.fmt.FormatErrorTrace{.stackTrace = trace.*}});
 			}
 			std.log.debug("Packet data: {any}", .{data});
 			self.disconnect();

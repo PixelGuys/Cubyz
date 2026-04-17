@@ -12,7 +12,7 @@ fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
 			@panic("Out of Memory");
 		}));
 	} else {
-		return (std.posix.mmap(null, len, std.posix.PROT.NONE, .{.TYPE = .PRIVATE, .ANONYMOUS = true, .NORESERVE = true}, -1, 0) catch |err| {
+		return (std.posix.mmap(null, len, .{}, .{.TYPE = .PRIVATE, .ANONYMOUS = true, .NORESERVE = true}, -1, 0) catch |err| {
 			std.log.err("Got error while reserving virtual memory of size {}: {s}", .{len, @errorName(err)});
 			@panic("Out of Memory");
 		}).ptr;
@@ -26,10 +26,11 @@ fn commitMemory(start: [*]align(page_size_min) u8, len: usize) void {
 			@panic("Out of Memory");
 		};
 	} else {
-		std.posix.mprotect(start[0..len], std.posix.PROT.READ | std.posix.PROT.WRITE) catch |err| {
-			std.log.err("Got error while committing virtual memory of size {}: {s}.", .{len, @errorName(err)});
+		const err = std.posix.errno(std.os.linux.mprotect(start, len, .{.READ = true, .WRITE = true}));
+		if (err != .SUCCESS) {
+			std.log.err("Got error while committing virtual memory of size {}: {x}", .{len, @tagName(err)});
 			@panic("Out of Memory");
-		};
+		}
 	}
 }
 
