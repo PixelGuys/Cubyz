@@ -1,4 +1,7 @@
 .{
+	.tags = .{
+		.pine
+	},
 	.ground_structure = .{
 		"cubyz:grass/dew",
 		"2 to 3 cubyz:clay",

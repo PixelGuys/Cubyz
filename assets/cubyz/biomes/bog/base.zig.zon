@@ -3,6 +3,9 @@
 		.wet,
 		.overgrown,
 	},
+	.tags = .{
+		.pine
+	},
 	.minHeightLimit = 0,
 	.minHeight = 4,
 	.maxHeight = 4,

@@ -3,6 +3,9 @@
 	.keepOriginalTerrain = 1,
 	.minRadius = 16,
 	.maxRadius = 48,
+	.tags = .{
+		.pine
+	},
 	.ground_structure = .{
 		"2 to 3 cubyz:soil",
 	},
