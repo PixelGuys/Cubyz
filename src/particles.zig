@@ -127,7 +127,7 @@ pub const ParticleManager = struct {
 		const worldAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/particles/textures/{s}{s}", .{assetsFolder, mod, id, suffix}) catch unreachable;
 		defer main.stackAllocator.free(worldAssetsPath);
 
-		return graphics.Image.readFromFile(main.worldArena, worldAssetsPath, .{ .is_flipped_vertically = true }) catch graphics.Image.readFromFile(main.worldArena, gameAssetsPath, .{ .is_flipped_vertically = true }) catch {
+		return graphics.Image.readFromFile(main.worldArena, worldAssetsPath, .{.is_flipped_vertically = true}) catch graphics.Image.readFromFile(main.worldArena, gameAssetsPath, .{.is_flipped_vertically = true}) catch {
 			if (status == .isMandatory) std.log.err("Particle texture not found in {s} and {s}.", .{worldAssetsPath, gameAssetsPath});
 			return default;
 		};

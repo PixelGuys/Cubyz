@@ -280,7 +280,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
 		} else {
-			self.image = graphics.Image.readFromFile(allocator, texturePath, .{ .is_flipped_vertically = true }) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{ .is_flipped_vertically = true }) catch blk: {
+			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.is_flipped_vertically = true}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.is_flipped_vertically = true}) catch blk: {
 				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 				break :blk graphics.Image.defaultImage;
 			};
@@ -1216,13 +1216,13 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	const proceduralItem = split.rest();
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix}) catch unreachable;
 	defer main.stackAllocator.free(path);
-	const image = main.graphics.Image.readFromFile(main.stackAllocator, path, .{ .is_flipped_vertically = true }) catch |err| blk: {
+	const image = main.graphics.Image.readFromFile(main.stackAllocator, path, .{.is_flipped_vertically = true}) catch |err| blk: {
 		if (err != error.FileNotFound) {
 			std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
 		}
 		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
 		defer main.stackAllocator.free(replacementPath);
-		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{ .is_flipped_vertically = true }) catch |err2| {
+		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{.is_flipped_vertically = true}) catch |err2| {
 			if (layerPostfix.len == 0 or err2 != error.FileNotFound)
 				std.log.err("Error while reading procedural item image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
 			break :blk main.graphics.Image.emptyImage;
