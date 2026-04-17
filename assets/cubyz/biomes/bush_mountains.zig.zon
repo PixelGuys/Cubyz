@@ -2,6 +2,7 @@
 	.properties = .{
 		.mountain,
 	},
+	.tags = .{.snowy},
 	.minHeightLimit = 7,
 	.minHeight = 80,
 	.maxHeight = 256,

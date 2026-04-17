@@ -21,6 +21,7 @@ fn reorderHudCallbackFunction() void {
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(Button.initText(.{0, 0}, 128, "Players", gui.openWindowCallback("players")));
 	if (main.server.world != null) {
 		list.add(Button.initText(.{0, 0}, 128, "Invite Player", gui.openWindowCallback("invite")));
 	}

@@ -179,7 +179,7 @@ pub fn build(b: *std.Build) !void {
 
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
-	const version = b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
+	const version = b.fmt("0.3.0{s}", .{if (isRelease) "" else "-dev"});
 	if (b.option([]const u8, "version", "used by the CI to check if the git tag and game version match")) |tagVersion| {
 		const tagVersionUpperbound: usize = std.mem.indexOfScalar(u8, tagVersion, '-') orelse tagVersion.len;
 		const versionUpperbound: usize = std.mem.indexOfScalar(u8, version, '-') orelse version.len;

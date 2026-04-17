@@ -29,26 +29,23 @@ fn hasSubBlock(stairData: u8, x: u1, y: u1, z: u1) bool {
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	@setEvalBranchQuota(65_536);
 
-	comptime var rotationTable: [4][256]u8 = undefined;
+	comptime var rotationTable: [4][256]u8 = @splat(@splat(0));
 	comptime for (0..4) |a| {
-		for (0..256) |old| {
-			var new: u8 = 0b11_11_11_11;
+		const sin: f32 = @sin((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
+		const cos: f32 = @cos((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
 
-			for (0..2) |i| for (0..2) |j| for (0..2) |k| {
-				const sin: f32 = @sin((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
-				const cos: f32 = @cos((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
-
+		for (0..2) |i| {
+			for (0..2) |j| {
 				const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
 				const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
-
 				const rX = @intFromBool(x*cos - y*sin > 0);
 				const rY = @intFromBool(x*sin + y*cos > 0);
-
-				if (hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
-					new &= ~subBlockMask(rX, rY, @intCast(k));
+				const oldShift = std.math.log2_int(u8, subBlockMask(@intCast(i), @intCast(j), 0));
+				const newShift = std.math.log2_int(u8, subBlockMask(rX, rY, 0));
+				for (0..256) |old| {
+					rotationTable[a][old] |= ((old >> oldShift) & 0b11) << newShift;
 				}
-			};
-			rotationTable[a][old] = new;
+			}
 		}
 	};
 	if (data >= 256) return 0;
@@ -276,8 +273,8 @@ fn closestRay(comptime typ: enum { bit, intersection }, block: Block, relativePl
 
 pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 	switch (item) {
-		.tool => |tool| {
-			const tags = tool.type.blockTags();
+		.proceduralItem => |proceduralItem| {
+			const tags = proceduralItem.type.blockTags();
 			for (tags) |tag| {
 				if (tag == .chiselable) {
 					return closestRay(.intersection, block, relativePlayerPos, playerDir);
@@ -291,8 +288,8 @@ pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: V
 
 pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	switch (item) {
-		.tool => |tool| {
-			for (tool.type.blockTags()) |tag| {
+		.proceduralItem => |proceduralItem| {
+			for (proceduralItem.type.blockTags()) |tag| {
 				if (tag == .chiselable) {
 					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
 					if (currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
@@ -308,7 +305,7 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	if (oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 	if (oldBlock.data == newBlock.data) return .no;
-	if (item.item == .tool) {
+	if (item.item == .proceduralItem) {
 		return .{.yes_costsDurability = 1};
 	}
 	return .no;

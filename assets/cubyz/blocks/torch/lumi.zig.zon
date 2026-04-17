@@ -1,0 +1,25 @@
+.{
+	.tags = .{.choppable},
+	.blockHealth = 0.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.replacable = true,
+	.emittedLight = 0xc0616a,
+	.viewThrough = true,
+	.absorbedLight = 0x010101,
+	.collide = false,
+	.rotation = "cubyz:torch",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
+	.model = .{
+		.base = "cubyz:torch",
+		.side = "cubyz:torch_side",
+	},
+	.texture = "cubyz:torch/lumi",
+	.item = .{
+		.texture = "torch/lumi.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

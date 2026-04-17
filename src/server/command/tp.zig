@@ -9,7 +9,7 @@ pub const description = "Teleport to location.";
 pub const usage =
 	\\/tp <biome>
 	\\/tp <x> <y> <z>
-	\\/tp @<playerId>
+	\\/tp @<playerIndex>
 ;
 
 pub fn execute(args: []const u8, source: *User) void {
@@ -74,7 +74,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		if (std.mem.startsWith(u8, args, "@")) {
 			const target = command.Target.init(&split, source) catch return;
 			defer target.deinit();
-			break :blk target.user.player.pos;
+			break :blk target.user.player().pos;
 		} else {
 			break :blk command.parseCoordinates(&split, source) catch return;
 		}

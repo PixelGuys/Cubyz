@@ -275,7 +275,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		return writer.data.toOwnedSlice();
 	}
 
-	pub fn loadChunk(ch: *chunk.Chunk, comptime side: main.utils.Side, data: []const u8) !void {
+	pub fn loadChunk(ch: *chunk.Chunk, comptime side: main.sync.Side, data: []const u8) !void {
 		var reader = BinaryReader.init(data);
 		try decompressBlockData(ch, &reader);
 		try decompressBlockEntityData(ch, side, &reader);
@@ -429,7 +429,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		}
 	}
 
-	pub fn decompressBlockEntityData(ch: *chunk.Chunk, comptime side: main.utils.Side, reader: *BinaryReader) !void {
+	pub fn decompressBlockEntityData(ch: *chunk.Chunk, comptime side: main.sync.Side, reader: *BinaryReader) !void {
 		if (reader.remaining.len == 0) return;
 
 		const compressionAlgo = try reader.readEnum(BlockEntityCompressionAlgo);

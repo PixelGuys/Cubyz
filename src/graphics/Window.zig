@@ -742,7 +742,7 @@ pub fn init() void { // MARK: init()
 		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
 	} else {
 		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
-		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.vulkanTestingWindow));
+		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.launchConfig.vulkanTestingMode));
 		vulkanWindow = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 		vulkan.init(vulkanWindow) catch |err| {
 			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
