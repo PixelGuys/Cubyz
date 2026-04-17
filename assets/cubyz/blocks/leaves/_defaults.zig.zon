@@ -7,8 +7,8 @@
 		},
 	},
 	.drops = .{
-		.{.items = .{.auto}, .allowedTags = .{.cuttable}},
-		.{.chance = 1.0, .items = .{"cubyz:apple"}, .forbiddenTags = .{.cuttable}},
+		.{.items = .{.auto}},
+		.{.chance = 0.01, .items = .{"cubyz:apple"}},
 	},
 	.rotation = "cubyz:decayable",
 	.tags = .{.cuttable, .leaf},
