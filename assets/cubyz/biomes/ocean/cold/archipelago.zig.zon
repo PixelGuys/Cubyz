@@ -3,7 +3,6 @@
 		.cold,
 		.ocean,
 	},
-	.type = .arctic_ocean,
 	.minHeight = -30,
 	.maxHeight = -10,
 	.maxHeightLimit = 7,
