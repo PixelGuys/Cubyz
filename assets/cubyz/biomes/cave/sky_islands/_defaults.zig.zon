@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.tags = .{.sky_island_layer},
+	.tags = .{.sky_island_layer, .cirrus},
 	.fogColor = 0xbbebff,
 	.fogDensity = 5.0,
 	.fogLower = 1e10,

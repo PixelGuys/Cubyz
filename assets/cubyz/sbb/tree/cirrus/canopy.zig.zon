@@ -2,6 +2,7 @@
 	.blueprints = .{
 		.{.id = "cubyz:tree/cirrus/canopy/0"},
 		.{.id = "cubyz:tree/cirrus/canopy/1"},
+		.{.id = "cubyz:tree/cirrus/canopy/2"},
 	},
 	.children = .{
 		.blue = "cubyz:tree/cirrus/vine",
