@@ -706,7 +706,7 @@ pub const Skybox = struct {
 	}
 
 	fn init() void {
-		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png") catch |err| {
+		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png", .{ .is_flipped_vertically = true }) catch |err| {
 			std.log.err("Failed to load star image: {s}", .{@errorName(err)});
 			return;
 		};
