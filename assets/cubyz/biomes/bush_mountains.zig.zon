@@ -3,6 +3,7 @@
 		.mountain,
 	},
 	.tags = .{
+		.snowy,
 		.oak,
 	},
 	.minHeightLimit = 7,

@@ -1,5 +1,6 @@
 .{
 	.properties = .{.mountain},
+	.tags = .{.snowy},
 	.radius = 90,
 	.minHeight = 768,
 	.maxHeight = 768,
@@ -15,6 +16,7 @@
 		.{
 			.id = "cubyz:tall_mountain/slope5",
 			.chance = 1,
+			.parentEdgeDistance = 0,
 		},
 	},
 
