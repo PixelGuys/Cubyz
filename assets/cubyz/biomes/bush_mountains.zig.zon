@@ -1,6 +1,8 @@
 .{
 	.properties = .{
 		.mountain,
+	},
+	.tags = .{
 		.oak,
 	},
 	.minHeightLimit = 7,

@@ -1,6 +1,7 @@
 .{
 	.chance = 0,
-	.properties = .{
+	.properties = .{},
+	.tags = .{
 		.oak,
 	},
 	.radius = 32,

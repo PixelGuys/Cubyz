@@ -1,6 +1,8 @@
 .{
 	.properties = .{
 		.hot,
+	},
+	.tags = .{
 		.oak,
 	},
 	.minHeightLimit = 7,
