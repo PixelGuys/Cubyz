@@ -494,7 +494,7 @@ pub const User = struct { // MARK: User
 		};
 	}
 
-	pub fn getSpawnPoint(user: *User) Vec3d {
+	pub fn getSpawnPos(user: *User) Vec3d {
 		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
 	}
 
