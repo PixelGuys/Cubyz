@@ -33,6 +33,9 @@ var hoveredAWindow: bool = false;
 pub var reorderWindows: bool = false;
 pub var hideGui: bool = false;
 
+var textures: main.ListUnmanaged(graphics.Texture) = .{};
+var textureIdToTexture: std.StringHashMapUnmanaged(*graphics.Texture) = .{};
+
 pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
@@ -130,6 +133,8 @@ pub fn deinitWindowList() void {
 }
 
 pub fn init() void { // MARK: init()
+	initTextures();
+
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(windowStruct, "init")) {
@@ -168,6 +173,30 @@ pub fn deinit() void {
 		if (@hasDecl(WindowStruct, "deinit")) {
 			WindowStruct.deinit();
 		}
+	}
+	deinitTextures();
+}
+
+fn initTextures() void {
+	const textureCount = main.assets.uiImages().count();
+	textures = .initCapacity(main.globalArena, textureCount);
+	textureIdToTexture.ensureTotalCapacity(main.globalArena.allocator, textureCount) catch unreachable;
+
+	var iterator = main.assets.uiImages().iterator();
+	while (iterator.next()) |key_value| {
+		const id = main.globalArena.dupe(u8, key_value.key_ptr.*);
+
+		const texture = textures.addOneAssumeCapacity();
+		texture.* = graphics.Texture.init();
+		texture.generate(key_value.value_ptr.*);
+
+		textureIdToTexture.putNoClobber(main.globalArena.allocator, id, texture) catch unreachable;
+	}
+}
+
+fn deinitTextures() void {
+	for (textures.items) |texture| {
+		texture.deinit();
 	}
 }
 
