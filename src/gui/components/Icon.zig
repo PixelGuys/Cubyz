@@ -43,7 +43,7 @@ pub fn updateTexture(self: *Icon, newTexture: Texture) !void {
 }
 
 pub fn render(self: *Icon, _: Vec2f) void {
-	if(self.hasShadow) {
+	if (self.hasShadow) {
 		draw.setColor(0xff000000);
 		self.texture.render(self.pos + Vec2f{1, 1}, self.size);
 	}

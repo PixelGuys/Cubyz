@@ -1,10 +1,10 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.fogDensity = 35,
 	.fogColor = 0x000C14,
 	.chance = 0.01,
 	.maxHeight = -5000,
-	.minHeight = -48250,
 	.music = "cubyz:cubyz",
 	.stoneBlock = "cubyz:chalk/black",
 
@@ -20,7 +20,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:glimmergill",
+			.blocks = .{"cubyz:glimmergill"},
 			.chance = 0.015,
 			.width = 8,
 			.variation = 4,
@@ -45,6 +45,15 @@
 			.structure = "cubyz:mushroom/big/glimmergill",
 			.placeMode = .degradable,
 			.chance = 0.02,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 1,
+			.maxAmount = 5,
+			.minRadius = 30,
+			.maxRadius = 40,
 		},
 	},
 }

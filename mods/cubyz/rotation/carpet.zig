@@ -30,11 +30,11 @@ const CarpetData = packed struct(u6) {
 
 pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	comptime var rotationTable: [4][64]u8 = undefined;
-	comptime for(0..64) |i| {
+	comptime for (0..64) |i| {
 		rotationTable[0][i] = @intCast(i);
 	};
-	comptime for(1..4) |a| {
-		for(0..64) |i| {
+	comptime for (1..4) |a| {
+		for (0..64) |i| {
 			const old: CarpetData = @bitCast(@as(u6, @intCast(rotationTable[a - 1][i])));
 			const new: CarpetData = .{
 				.posZ = old.posZ,
@@ -47,7 +47,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 			rotationTable[a][i] = @as(u6, @bitCast(new));
 		}
 	};
-	if(data >= 64) return 0;
+	if (data >= 64) return 0;
 	const runtimeTable = rotationTable;
 	return runtimeTable[@intFromEnum(angle)][data];
 }
@@ -66,7 +66,7 @@ pub fn reset() void {
 
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	const modelId = zon.as([]const u8, "cubyz:cube");
-	if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+	if (rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex(modelId).model();
 	// Rotate the model:
@@ -76,39 +76,39 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	var posYModel: ModelIndex = undefined;
 	var negZModel: ModelIndex = undefined;
 	var posZModel: ModelIndex = undefined;
-	for(1..64) |i| {
+	for (1..64) |i| {
 		const carpetData: CarpetData = @bitCast(@as(u6, @intCast(i)));
-		if(i & i - 1 == 0) {
-			if(carpetData.negX) negXModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
-			if(carpetData.posX) posXModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
-			if(carpetData.negY) negYModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
-			if(carpetData.posY) posYModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi).mul(Mat4f.rotationX(-std.math.pi/2.0))});
-			if(carpetData.negZ) negZModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.identity()});
-			if(carpetData.posZ) posZModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
+		if (i & i - 1 == 0) {
+			if (carpetData.negX) negXModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+			if (carpetData.posX) posXModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+			if (carpetData.negY) negYModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
+			if (carpetData.posY) posYModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+			if (carpetData.negZ) negZModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.identity()});
+			if (carpetData.posZ) posZModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
 		} else {
 			var models: [6]ModelIndex = undefined;
 			var amount: usize = 0;
-			if(carpetData.negX) {
+			if (carpetData.negX) {
 				models[amount] = negXModel;
 				amount += 1;
 			}
-			if(carpetData.posX) {
+			if (carpetData.posX) {
 				models[amount] = posXModel;
 				amount += 1;
 			}
-			if(carpetData.negY) {
+			if (carpetData.negY) {
 				models[amount] = negYModel;
 				amount += 1;
 			}
-			if(carpetData.posY) {
+			if (carpetData.posY) {
 				models[amount] = posYModel;
 				amount += 1;
 			}
-			if(carpetData.negZ) {
+			if (carpetData.negZ) {
 				models[amount] = negZModel;
 				amount += 1;
 			}
-			if(carpetData.posZ) {
+			if (carpetData.posZ) {
 				models[amount] = posZModel;
 				amount += 1;
 			}
@@ -125,24 +125,24 @@ pub fn model(block: Block) ModelIndex {
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, _: ?Neighbor, currentData: *Block, neighbor: Block, _: bool) bool {
-	if(neighbor.mode() == currentData.mode()) parallelPlacing: {
+	if (neighbor.mode() == currentData.mode()) parallelPlacing: {
 		const bit = closestRay(.bit, neighbor, .null, relativePlayerPos - @as(Vec3f, @floatFromInt(relativeDir)), playerDir);
 		const bitData: CarpetData = @bitCast(@as(u6, @truncate(bit)));
-		if((bitData.negX or bitData.posX) and relativeDir[0] != 0) break :parallelPlacing;
-		if((bitData.negY or bitData.posY) and relativeDir[1] != 0) break :parallelPlacing;
-		if((bitData.negZ or bitData.posZ) and relativeDir[2] != 0) break :parallelPlacing;
-		if(currentData.data & bit == bit) return false;
+		if ((bitData.negX or bitData.posX) and relativeDir[0] != 0) break :parallelPlacing;
+		if ((bitData.negY or bitData.posY) and relativeDir[1] != 0) break :parallelPlacing;
+		if ((bitData.negZ or bitData.posZ) and relativeDir[2] != 0) break :parallelPlacing;
+		if (currentData.data & bit == bit) return false;
 		currentData.data |= bit;
 		return true;
 	}
 	var data: CarpetData = @bitCast(@as(u6, @truncate(currentData.data)));
-	if(relativeDir[0] == 1) data.posX = true;
-	if(relativeDir[0] == -1) data.negX = true;
-	if(relativeDir[1] == 1) data.posY = true;
-	if(relativeDir[1] == -1) data.negY = true;
-	if(relativeDir[2] == 1) data.posZ = true;
-	if(relativeDir[2] == -1) data.negZ = true;
-	if(@as(u6, @bitCast(data)) != currentData.data) {
+	if (relativeDir[0] == 1) data.posX = true;
+	if (relativeDir[0] == -1) data.negX = true;
+	if (relativeDir[1] == 1) data.posY = true;
+	if (relativeDir[1] == -1) data.negY = true;
+	if (relativeDir[2] == 1) data.posZ = true;
+	if (relativeDir[2] == -1) data.negZ = true;
+	if (@as(u6, @bitCast(data)) != currentData.data) {
 		currentData.data = @as(u6, @bitCast(data));
 		return true;
 	} else {
@@ -150,21 +150,21 @@ pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, pla
 	}
 }
 
-fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+fn closestRay(comptime typ: enum { bit, intersection }, block: Block, _: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if (typ == .intersection) ?RayIntersectionResult else u16 {
 	var result: ?RayIntersectionResult = null;
 	var resultBit: u16 = 0;
-	for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
-		if(block.data & bit != 0) {
+	for ([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
+		if (block.data & bit != 0) {
 			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(bit - 1);
-			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-				if(result == null or result.?.distance > intersection.distance) {
+			if (RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+				if (result == null or result.?.distance > intersection.distance) {
 					result = intersection;
 					resultBit = bit;
 				}
 			}
 		}
 	}
-	if(typ == .bit) return resultBit;
+	if (typ == .bit) return resultBit;
 	return result;
 }
 
@@ -175,7 +175,7 @@ pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: V
 pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
 	currentData.data &= ~bit;
-	if(currentData.data == 0) currentData.typ = 0;
+	if (currentData.data == 0) currentData.typ = 0;
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
@@ -183,7 +183,7 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 }
 
 pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
-	if(newBlock.typ != oldBlock.typ) return @popCount(oldBlock.data);
+	if (newBlock.typ != oldBlock.typ) return @popCount(oldBlock.data);
 	return @popCount(oldBlock.data) -| @popCount(newBlock.data);
 }
 
@@ -191,12 +191,12 @@ pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
 
 pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
 	var data: CarpetData = @bitCast(@as(u6, @truncate(block.data)));
-	if(!neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
-	if(!neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
-	if(!neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
-	if(!neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
-	if(!neighborSupportive[Neighbor.dirDown.toInt()]) data.negZ = false;
-	if(!neighborSupportive[Neighbor.dirUp.toInt()]) data.posZ = false;
+	if (!neighborSupportive[Neighbor.dirNegX.toInt()]) data.negX = false;
+	if (!neighborSupportive[Neighbor.dirPosX.toInt()]) data.posX = false;
+	if (!neighborSupportive[Neighbor.dirNegY.toInt()]) data.negY = false;
+	if (!neighborSupportive[Neighbor.dirPosY.toInt()]) data.posY = false;
+	if (!neighborSupportive[Neighbor.dirDown.toInt()]) data.negZ = false;
+	if (!neighborSupportive[Neighbor.dirUp.toInt()]) data.posZ = false;
 	block.data = @as(u6, @bitCast(data));
-	if(block.data == 0) block.* = .air;
+	if (block.data == 0) block.* = .air;
 }

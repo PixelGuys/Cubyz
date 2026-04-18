@@ -2,6 +2,9 @@
 	.properties = .{
 		.cold,
 	},
+	.tags = .{
+		.oak,
+	},
 	.chance = 0.5,
 	.minHeightLimit = 7,
 	.minHeight = 30,
@@ -94,7 +97,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:red_leaf_pile",
+			.blocks = .{"cubyz:red_leaf_pile"},
 			.chance = 0.05,
 			.width = 10,
 			.variation = 6,
@@ -103,7 +106,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:yellow_leaf_pile",
+			.blocks = .{"cubyz:yellow_leaf_pile"},
 			.chance = 0.05,
 			.width = 10,
 			.variation = 6,

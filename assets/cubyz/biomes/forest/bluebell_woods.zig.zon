@@ -1,5 +1,8 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.oak,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 35,
 	.maxHeight = 40,
@@ -60,7 +63,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bluebells",
+			.blocks = .{"cubyz:bluebells"},
 			.chance = 0.35,
 			.width = 6,
 			.variation = 3,
@@ -69,7 +72,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:vetch",
+			.blocks = .{"cubyz:vetch"},
 			.chance = 0.2,
 			.width = 6,
 			.variation = 3,
@@ -78,7 +81,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:grass_vegetation",
+			.blocks = .{"cubyz:grass_vegetation"},
 			.chance = 0.2,
 			.width = 6,
 			.variation = 3,

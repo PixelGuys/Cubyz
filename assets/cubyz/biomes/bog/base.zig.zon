@@ -3,6 +3,9 @@
 		.wet,
 		.overgrown,
 	},
+	.tags = .{
+		.willow,
+	},
 	.minHeightLimit = 0,
 	.minHeight = 4,
 	.maxHeight = 4,
@@ -21,7 +24,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:lush_grass_vegetation",
+			.blocks = .{"cubyz:lush_grass_vegetation"},
 			.chance = 0.25,
 			.width = 6,
 			.variation = 3,
@@ -37,7 +40,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daffodil",
+			.blocks = .{"cubyz:daffodil"},
 			.chance = 0.15,
 			.width = 4,
 			.variation = 2,
@@ -46,7 +49,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bolete",
+			.blocks = .{"cubyz:bolete"},
 			.chance = 0.04,
 			.width = 6,
 			.variation = 6,
@@ -55,7 +58,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:toadstool",
+			.blocks = .{"cubyz:toadstool"},
 			.chance = 0.02,
 			.width = 6,
 			.variation = 6,

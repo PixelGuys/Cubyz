@@ -98,38 +98,41 @@ pub const RotationMode = struct { // MARK: RotationMode
 		}
 		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto {
 			shouldDropSourceBlockOnSuccess.* = true;
-			if(oldBlock == newBlock) return .no;
-			if(oldBlock.typ == newBlock.typ) return .yes;
-			if(!oldBlock.replacable()) {
+			if (oldBlock == newBlock) return .no;
+			if (oldBlock.typ == newBlock.typ) return .yes;
+			if (!oldBlock.replaceable()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isTool = item.item == .tool;
-				if(isTool) {
-					damage = item.item.tool.getBlockDamage(oldBlock);
+				const isProceduralItem = item.item == .proceduralItem;
+				if (isProceduralItem) {
+					damage = item.item.proceduralItem.getBlockDamage(oldBlock);
 				}
 				damage -= oldBlock.blockResistance();
-				if(damage > 0) {
-					if(isTool and item.item.tool.isEffectiveOn(oldBlock)) {
+				if (damage > 0) {
+					if (isProceduralItem and item.item.proceduralItem.isEffectiveOn(oldBlock)) {
 						return .{.yes_costsDurability = 1};
 					} else return .yes;
 				}
 			} else {
-				if(item.item == .baseItem) {
-					if(item.item.baseItem.block() != null and item.item.baseItem.block().? == newBlock.typ) {
+				if (item.item == .baseItem) {
+					if (item.item.baseItem.block() != null and item.item.baseItem.block().? == newBlock.typ) {
 						return .{.yes_costsItems = 1};
 					}
 				}
-				if(newBlock.typ == 0) {
+				if (newBlock.typ == 0) {
 					return .yes;
 				}
 			}
 			return .no;
 		}
 		pub fn itemDropsOnChange(oldBlock: Block, newBlock: Block) u16 {
-			if(newBlock.typ != oldBlock.typ) return 1;
+			if (newBlock.typ != oldBlock.typ) return 1;
 			return 0;
 		}
 		pub fn getBlockTags() []const Tag {
 			return &.{};
+		}
+		pub fn formatBlockData(block: Block, _list: *main.List(u8)) void {
+			_list.print("{}", .{block.data});
 		}
 	};
 
@@ -146,38 +149,40 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// The default rotation data intended for generation algorithms
 	naturalStandard: u16 = 0,
 
-	model: *const fn(block: Block) ModelIndex = &DefaultFunctions.model,
+	model: *const fn (block: Block) ModelIndex = &DefaultFunctions.model,
 
 	// Rotates block data counterclockwise around the Z axis.
-	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
+	rotateZ: *const fn (data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
 
-	createBlockModel: *const fn(block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
+	createBlockModel: *const fn (block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
-	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
+	generateData: *const fn (world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
-	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
+	updateData: *const fn (block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
 
-	modifyBlock: *const fn(block: *Block, newType: u16) bool = DefaultFunctions.modifyBlock,
+	modifyBlock: *const fn (block: *Block, newType: u16) bool = DefaultFunctions.modifyBlock,
 
-	rayIntersection: *const fn(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn (block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 
-	onBlockBreaking: *const fn(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
+	onBlockBreaking: *const fn (item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 
-	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
+	canBeChangedInto: *const fn (oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
 
-	itemDropsOnChange: *const fn(oldBlock: Block, newBlock: Block) u16 = DefaultFunctions.itemDropsOnChange,
+	itemDropsOnChange: *const fn (oldBlock: Block, newBlock: Block) u16 = DefaultFunctions.itemDropsOnChange,
 
-	getBlockTags: *const fn() []const Tag = DefaultFunctions.getBlockTags,
+	getBlockTags: *const fn () []const Tag = DefaultFunctions.getBlockTags,
+
+	formatBlockData: *const fn (block: Block, _list: *main.List(u8)) void = DefaultFunctions.formatBlockData,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
 
 pub fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat4f) void {
 	quad.normal = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(quad.normal, 0)));
-	for(&quad.corners) |*corner| {
+	for (&quad.corners) |*corner| {
 		corner.* = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(corner.* - Vec3f{0.5, 0.5, 0.5}, 1))) + Vec3f{0.5, 0.5, 0.5};
 	}
 }
@@ -220,26 +225,26 @@ fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) 
 
 pub fn init() void {
 	rotationModes = .init(main.globalAllocator.allocator);
-	inline for(@typeInfo(list).@"struct".decls) |declaration| {
+	inline for (@typeInfo(list).@"struct".decls) |declaration| {
 		register(declaration.name, @field(list, declaration.name));
 	}
 }
 
 pub fn reset() void {
-	inline for(@typeInfo(list).@"struct".decls) |declaration| {
+	inline for (@typeInfo(list).@"struct".decls) |declaration| {
 		@field(list, declaration.name).reset();
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for(@typeInfo(list).@"struct".decls) |declaration| {
+	inline for (@typeInfo(list).@"struct".decls) |declaration| {
 		@field(list, declaration.name).deinit();
 	}
 }
 
 pub fn getByID(id: []const u8) *const RotationMode {
-	if(rotationModes.getPtr(id)) |mode| return mode;
+	if (rotationModes.getPtr(id)) |mode| return mode;
 	std.log.err("Could not find rotation mode {s}. Using cubyz:no_rotation instead.", .{id});
 	return rotationModes.getPtr("cubyz:no_rotation").?;
 }
@@ -247,9 +252,9 @@ pub fn getByID(id: []const u8) *const RotationMode {
 pub fn register(comptime id: []const u8, comptime Mode: type) void {
 	Mode.init();
 	var result: RotationMode = RotationMode{};
-	inline for(@typeInfo(RotationMode).@"struct".fields) |field| {
-		if(@hasDecl(Mode, field.name)) {
-			if(field.type == @TypeOf(@field(Mode, field.name))) {
+	inline for (@typeInfo(RotationMode).@"struct".fields) |field| {
+		if (@hasDecl(Mode, field.name)) {
+			if (field.type == @TypeOf(@field(Mode, field.name))) {
 				@field(result, field.name) = @field(Mode, field.name);
 			} else {
 				@field(result, field.name) = &@field(Mode, field.name);

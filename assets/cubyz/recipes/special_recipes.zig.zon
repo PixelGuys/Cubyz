@@ -49,7 +49,11 @@
 	},
 	.{
 		.inputs = .{"1 cubyz:iron_ingot"},
-		.output = "2 cubyz:chain/iron",
+		.output = "4 cubyz:chain/iron",
+	},
+	.{
+		.inputs = .{"{mod}:{type}_ingot"},
+		.output = "4 {mod}:bars/{type}",
 	},
 	.{
 		.inputs = .{"4 cubyz:silver_ingot"},
@@ -146,6 +150,19 @@
 	.{
 		.inputs = .{"cubyz:cut_ruby_block"},
 		.output = "4 cubyz:ruby_ore",
+	},
+	.{
+		.inputs = .{"4 cubyz:jade_ore"},
+		.output = "cubyz:jade_block",
+		.reversible = true,
+	},
+	.{
+		.inputs = .{"cubyz:jade_block"},
+		.output = "cubyz:cut_jade_block",
+	},
+	.{
+		.inputs = .{"cubyz:cut_jade_block"},
+		.output = "4 cubyz:jade_ore",
 	},
 	.{
 		.inputs = .{"cubyz:gravel"},

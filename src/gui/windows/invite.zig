@@ -42,12 +42,12 @@ fn discoverIpAddressFromNewThread() void {
 }
 
 fn invite() void {
-	if(thread) |_thread| {
+	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
 	}
 	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
-		if(err != error.AlreadyConnected) {
+		if (err != error.AlreadyConnected) {
 			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
 		}
 		return;
@@ -74,7 +74,6 @@ pub fn onOpen() void {
 	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .init(invite)));
-	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
 	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.allowNewConnections.load(.monotonic), &makePublic));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -89,25 +88,25 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(thread) |_thread| {
+	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
 	}
-	if(ipAddress.len != 0) {
+	if (ipAddress.len != 0) {
 		main.globalAllocator.free(ipAddress);
 		ipAddress = "";
 	}
 
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
 
 pub fn update() void {
-	if(gotIpAddress.load(.acquire)) {
+	if (gotIpAddress.load(.acquire)) {
 		gotIpAddress.store(false, .monotonic);
 
-		if(main.settings.streamerMode) {
+		if (main.settings.streamerMode) {
 			const obfuscatedIp = main.utils.obfuscateString(main.stackAllocator, ipAddress);
 			defer main.stackAllocator.free(obfuscatedIp);
 			ipAddressLabel.updateText(obfuscatedIp);
