@@ -62,5 +62,21 @@
 			.height = 1,
 			.height_variation = 0,
 		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:vine/cirrus",
+			.generationMode = .ceiling,
+			.chance = 0.2,
+			.height = 9,
+			.height_variation = 8,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:nimbusite/base",
+			.generationMode = .ceiling,
+			.chance = 0.048,
+			.size = 4,
+			.size_variation = 6,
+		},
 	},
 }
