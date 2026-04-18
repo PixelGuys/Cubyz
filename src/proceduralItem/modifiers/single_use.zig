@@ -16,7 +16,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
-	proceduralItem.maxDurability = data.strength;
+	proceduralItem.getPropertyPtr(.maxDurability).* = data.strength;
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {

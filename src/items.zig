@@ -23,6 +23,8 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("proceduralItem/modifiers/_list.zig");
 const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
 
+const ItemUsedCallback = main.callbacks.ItemUsedCallback;
+
 pub const recipes_zig = @import("items/recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
@@ -260,6 +262,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
+	pub fn callbacks(self: BaseItemIndex) ItemCallbacks {
+		return itemList[@intFromEnum(self)].callbacks;
+	}
 };
 
 pub const BaseItem = struct { // MARK: BaseItem
@@ -269,6 +274,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	name: []const u8,
 	tags: []const Tag,
 	tooltip: []const u8,
+	callbacks: ItemCallbacks,
 
 	stackSize: u16,
 	material: ?Material,
@@ -319,6 +325,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			_ = tooltip.swapRemove(tooltip.items.len - 1);
 		}
 		self.tooltip = tooltip.toOwnedSlice();
+		self.callbacks = .registerCallbacks(zon);
 	}
 
 	fn hashCode(self: BaseItem) u32 {
@@ -458,9 +465,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
-		inline for (comptime std.meta.fieldNames(ProceduralItemProperty)) |name| {
-			@field(proceduralItem, name) = 0;
-		}
+		proceduralItem.properties = @splat(0);
 		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
 		defer tempModifiers.deinit();
 		for (proceduralItem.type.properties()) |property| {
@@ -479,10 +484,10 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 				},
 			}
 			sum *= property.resultScale;
-			proceduralItem.getProperty(property.destination orelse continue).* += sum;
+			proceduralItem.getPropertyPtr(property.destination orelse continue).* += sum;
 		}
-		if (proceduralItem.damage < 1) proceduralItem.damage = 1/(2 - proceduralItem.damage);
-		if (proceduralItem.swingSpeed < 1) proceduralItem.swingSpeed = 1/(2 - proceduralItem.swingSpeed);
+		if (proceduralItem.getProperty(.damage) < 1) proceduralItem.getPropertyPtr(.damage).* = 1/(2 - proceduralItem.getProperty(.damage));
+		if (proceduralItem.getProperty(.swingSpeed) < 1) proceduralItem.getPropertyPtr(.swingSpeed).* = 1/(2 - proceduralItem.getProperty(.swingSpeed));
 		for (0..25) |i| {
 			const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for (material.modifiers) |newMod| {
@@ -506,12 +511,12 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			mod.changeProceduralItemParameters(proceduralItem);
 		}
 
-		proceduralItem.maxDurability = @round(proceduralItem.maxDurability);
-		if (proceduralItem.maxDurability < 1) proceduralItem.maxDurability = 1;
-		proceduralItem.durability = std.math.lossyCast(u32, proceduralItem.maxDurability);
+		proceduralItem.getPropertyPtr(.maxDurability).* = @round(proceduralItem.getProperty(.maxDurability));
+		if (proceduralItem.getProperty(.maxDurability) < 1) proceduralItem.getPropertyPtr(.maxDurability).* = 1;
+		proceduralItem.durability = std.math.lossyCast(u32, proceduralItem.getProperty(.maxDurability));
 
 		if (!checkConnectivity(proceduralItem)) {
-			proceduralItem.maxDurability = 0;
+			proceduralItem.getPropertyPtr(.maxDurability).* = 0;
 			proceduralItem.durability = 1;
 		}
 	}
@@ -615,6 +620,9 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn pixelSourcesOverlay(self: ProceduralItemTypeIndex) *const [16][16]u8 {
 		return &proceduralItemTypeList.items[@intFromEnum(self)].pixelSourcesOverlay;
 	}
+	pub fn callbacks(self: ProceduralItemTypeIndex) ItemCallbacks {
+		return proceduralItemTypeList.items[@intFromEnum(self)].callbacks;
+	}
 };
 
 pub const ProceduralItemType = struct { // MARK: ProceduralItemType
@@ -624,11 +632,13 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
+	callbacks: ItemCallbacks,
 };
 
 const ProceduralItemProperty = enum {
 	damage,
 	maxDurability,
+	/// swings per second
 	swingSpeed,
 
 	fn fromString(string: []const u8) ?ProceduralItemProperty {
@@ -652,15 +662,9 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	seed: u32,
 	type: ProceduralItemTypeIndex,
 
-	damage: f32,
+	properties: [@typeInfo(ProceduralItemProperty).@"enum".fields.len]f32 = @splat(0),
 
 	durability: u32,
-	maxDurability: f32,
-
-	/// swings per second
-	swingSpeed: f32,
-
-	mass: f32,
 
 	///  Where the player holds the procedural Item.
 	handlePosition: Vec2f,
@@ -702,11 +706,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			.texture = null,
 			.seed = self.seed,
 			.type = self.type,
-			.damage = self.damage,
+			.properties = self.properties,
 			.durability = self.durability,
-			.maxDurability = self.maxDurability,
-			.swingSpeed = self.swingSpeed,
-			.mass = self.mass,
 			.handlePosition = self.handlePosition,
 			.inertiaHandle = self.inertiaHandle,
 			.centerOfMass = self.centerOfMass,
@@ -759,7 +760,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
 			break :blk ProceduralItemTypeIndex.fromId("cubyz:pickaxe") orelse @panic("cubyz:pickaxe procedural item not found. Did you load the game with the correct assets?");
 		});
-		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.maxDurability));
+		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.getProperty(.maxDurability)));
 		return self;
 	}
 
@@ -844,10 +845,12 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.craftingGrid[@intCast(x + y*5)];
 	}
 
-	fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) *f32 {
-		switch (prop) {
-			inline else => |field| return &@field(self, @tagName(field)),
-		}
+	pub fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) f32 {
+		return self.properties[@intFromEnum(prop)];
+	}
+
+	pub fn getPropertyPtr(self: *ProceduralItem, prop: ProceduralItemProperty) *f32 {
+		return &self.properties[@intFromEnum(prop)];
 	}
 
 	fn getTexture(self: *ProceduralItem) graphics.Texture {
@@ -867,10 +870,10 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
-			self.swingSpeed,
-			self.damage,
+			self.getProperty(.swingSpeed),
+			self.getProperty(.damage),
 			self.durability,
-			std.math.lossyCast(u32, self.maxDurability),
+			std.math.lossyCast(u32, self.getProperty(.maxDurability)),
 		});
 		if (self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
@@ -893,7 +896,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn getBlockDamage(self: *ProceduralItem, block: main.blocks.Block) f32 {
-		var damage = self.damage;
+		var damage = self.getProperty(.damage);
 		for (self.modifiers) |modifier| {
 			damage = modifier.changeBlockDamage(damage, block);
 		}
@@ -906,6 +909,32 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	pub fn onUseReturnBroken(self: *ProceduralItem) bool {
 		self.durability -|= 1;
 		return self.durability == 0;
+	}
+};
+
+pub const ItemCallbacks = struct {
+	onLeftClick: ItemUsedCallback,
+
+	var defaultItemUsedCallback: ItemCallbacks = undefined;
+
+	fn init() void {
+		const zon = ZonElement.initObject(main.stackAllocator);
+		defer zon.deinit(main.stackAllocator);
+		zon.put("type", "breakBlock");
+		defaultItemUsedCallback = .{
+			.onLeftClick = ItemUsedCallback.init(zon) orelse .noop,
+		};
+	}
+
+	fn registerCallbacks(zon: ZonElement) ItemCallbacks {
+		return .{.onLeftClick = blk: {
+			break :blk ItemUsedCallback.init(zon.getChildOrNull("onLeftClick") orelse {
+				break :blk defaultItemUsedCallback.onLeftClick;
+			}) orelse {
+				std.log.err("Failed to load onLeftClick event for item", .{});
+				break :blk .noop;
+			};
+		}};
 	}
 };
 
@@ -1044,6 +1073,14 @@ pub const Item = union(ItemType) { // MARK: Item
 		return switch (self) {
 			.null => unreachable,
 			inline else => |item| item.hashCode(),
+		};
+	}
+
+	pub fn onLeftClick(self: Item) ItemUsedCallback {
+		return switch (self) {
+			.baseItem => |item| item.callbacks().onLeftClick,
+			.proceduralItem => |item| item.type.callbacks().onLeftClick,
+			.null => ItemCallbacks.defaultItemUsedCallback.onLeftClick,
 		};
 	}
 };
@@ -1196,6 +1233,7 @@ pub fn globalInit() void {
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
+	ItemCallbacks.init();
 	Inventory.ClientSide.init();
 }
 
@@ -1295,6 +1333,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.properties = parameterMatrices.toOwnedSlice(),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
+		.callbacks = .registerCallbacks(zon),
 	});
 	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(proceduralItemTypeList.items.len - 1)) catch unreachable;
 
