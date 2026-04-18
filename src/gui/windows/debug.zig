@@ -54,6 +54,8 @@ pub fn render() void {
 			player.hyperSpeed.load(.monotonic),
 		}, 0, y, 8, .left);
 		y += 8;
+		draw.print("Day: {d}", .{@divTrunc(main.game.world.?.gameTime.load(.monotonic) + main.game.World.dayCycle/4, main.game.World.dayCycle) + 1}, 0, y, 8, .left);
+		y += 8;
 		draw.print("OnGround: {} JumpCooldown: {d:.3} JumpCoyote: {d:.3}", .{
 			player.onGround,
 			player.jumpCooldown,
