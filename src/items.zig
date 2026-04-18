@@ -481,8 +481,8 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			sum *= property.resultScale;
 			proceduralItem.getProperty(property.destination orelse continue).* += sum;
 		}
-		if (proceduralItem.damage < 1) proceduralItem.damage = 1/(2 - proceduralItem.damage);
-		if (proceduralItem.swingSpeed < 1) proceduralItem.swingSpeed = 1/(2 - proceduralItem.swingSpeed);
+		if (proceduralItem.damage < 1) proceduralItem.damage = @round(proceduralItem.damage*10)/10;
+		if (proceduralItem.swingSpeed < 1) proceduralItem.swingSpeed = @round(proceduralItem.swingSpeed*10)/10;
 		for (0..25) |i| {
 			const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for (material.modifiers) |newMod| {
@@ -862,8 +862,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.print(
 			\\{s}
-			\\{d:.2} swings/s
-			\\Damage: {d:.2}
+			\\{d:.1} swings/s
+			\\Damage: {d:.1}
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
