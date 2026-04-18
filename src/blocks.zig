@@ -13,6 +13,7 @@ const Image = graphics.Image;
 const Color = graphics.Color;
 const TextureArray = graphics.TextureArray;
 const items = @import("items.zig");
+const Item = items.Item;
 const models = @import("models.zig");
 const ModelIndex = models.ModelIndex;
 const rotation = @import("rotation.zig");
@@ -33,6 +34,23 @@ pub const maxBlockCount: usize = 65536; // 16 bit limit
 pub const BlockDrop = struct {
 	items: []const items.ItemStack,
 	chance: f32,
+	forbiddenTags: ?[]Tag = null,
+	allowedTags: ?[]Tag = null,
+
+	pub fn isDroppedByItem(self: BlockDrop, item: Item) bool {
+		if (item != .proceduralItem) return self.allowedTags == null;
+
+		const proceduralItem = item.proceduralItem;
+		if (self.forbiddenTags) |tags| {
+			for (tags) |tag| if (proceduralItem.hasBlockTag(tag)) return false;
+		}
+		if (self.allowedTags) |tags| {
+			for (tags) |tag| if (proceduralItem.hasBlockTag(tag)) return true;
+			return false;
+		}
+
+		return true;
+	}
 };
 
 /// Ores can be found underground in veins.
@@ -165,7 +183,6 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for (drops, 0..) |blockDrop, i| {
-		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
 		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
@@ -192,7 +209,13 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
-		blockDrops[i].items = main.worldArena.dupe(main.items.ItemStack, resultItems.items);
+
+		blockDrops[i] = BlockDrop{
+			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
+			.chance = blockDrop.get(f32, "chance", 1),
+			.forbiddenTags = if (blockDrop.getChildOrNull("forbiddenTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
+			.allowedTags = if (blockDrop.getChildOrNull("allowedTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
+		};
 	}
 	return blockDrops;
 }
