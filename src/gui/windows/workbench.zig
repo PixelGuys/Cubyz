@@ -50,7 +50,7 @@ var needsUpdate: bool = false;
 fn toggleProceduralItem() void {
 	currentProceduralItemType += 1;
 	currentProceduralItemType %= proceduralItemTypes.items.len;
-	proceduralItemButton.child.label.updateText(proceduralItemTypes.items[currentProceduralItemType].id());
+	proceduralItemButton.child.label.updateText(main.lang.translate(.tool, proceduralItemTypes.items[currentProceduralItemType].id()));
 	needsUpdate = true;
 }
 
@@ -82,7 +82,7 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
+	proceduralItemButton = Button.initText(.{8, 0}, 116, main.lang.translate(.tool, proceduralItemTypes.items[currentProceduralItemType].id()), .init(toggleProceduralItem));
 	verticalThing.add(proceduralItemButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
@@ -124,9 +124,16 @@ pub fn render() void {
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
-	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.maxDurability != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.proceduralItem.maxDurability))}, offsetX, offsetY, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.swingSpeed}, offsetX, offsetY + fontSize, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.damage}, offsetX, offsetY + 2*fontSize, fontSize, .left);
+	const swingSpeedString = main.lang.format(main.stackAllocator, .stat, "cubyz:swingSpeed", &.{.fromFloat(currentResult.proceduralItem.swingSpeed, .@"{d:.1}")});
+	defer main.stackAllocator.free(swingSpeedString);
+	const damageString = main.lang.format(main.stackAllocator, .stat, "cubyz:damage", &.{.fromFloat(currentResult.proceduralItem.damage, .@"{d:.1}")});
+	defer main.stackAllocator.free(damageString);
+	const durabilityString = main.lang.format(main.stackAllocator, .stat, "cubyz:maxDurability", &.{.fromFloat(currentResult.proceduralItem.maxDurability, .@"{d:.0}")});
+	defer main.stackAllocator.free(durabilityString);
+
+	main.graphics.draw.print("#ffffff{s}", .{swingSpeedString}, offsetX, offsetY, fontSize, .left);
+	main.graphics.draw.print("#ffffff{s}", .{damageString}, offsetX, offsetY + fontSize, fontSize, .left);
+	main.graphics.draw.print("{s}{s}", .{if (currentResult.proceduralItem.maxDurability != 0) "#ffffff" else "#ff0000", durabilityString}, offsetX, offsetY + 2*fontSize, fontSize, .left);
 }
 
 pub fn onOpen() void {

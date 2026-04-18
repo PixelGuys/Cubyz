@@ -101,7 +101,9 @@ const Material = struct { // MARK: Material
 
 	pub fn printTooltip(self: Material, outString: *main.List(u8)) void {
 		if (self.modifiers.len == 0) {
-			outString.appendSlice("§#808080Material\n");
+			const materialText = std.mem.concat(main.stackAllocator.allocator, u8, &.{"§#808080", main.lang.translate(.tag, "material"), "\n"}) catch unreachable;
+			defer main.stackAllocator.free(materialText);
+			outString.appendSlice(materialText);
 		}
 		for (self.modifiers) |modifier| {
 			if (modifier.restriction.vTable == modifierRestrictions.get("always") orelse unreachable) {
@@ -302,7 +304,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		self.foodValue = zon.get(f32, "food", 0);
 
 		var tooltip: main.List(u8) = .init(allocator);
-		tooltip.appendSlice(self.name);
+		tooltip.appendSlice(main.lang.translate(.item, self.name));
 		tooltip.append('\n');
 		if (self.material) |mat| {
 			mat.printTooltip(&tooltip);
@@ -311,8 +313,8 @@ pub const BaseItem = struct { // MARK: BaseItem
 			tooltip.appendSlice("§#808080");
 			for (self.tags, 0..) |tag, i| {
 				if (i != 0) tooltip.append(' ');
-				tooltip.append('.');
-				tooltip.appendSlice(tag.getName());
+				tooltip.appendSlice(main.lang.translate(.tag, tag.getName()));
+				if (i + 1 != self.tags.len) tooltip.append(',');
 			}
 		}
 		if (tooltip.items[tooltip.items.len - 1] == '\n') {
@@ -859,18 +861,25 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	fn getTooltip(self: *ProceduralItem) []const u8 {
+		const durabilityString = main.lang.format(main.stackAllocator, .stat, "cubyz:durability", &.{.fromInt(self.durability), .fromFloat(self.maxDurability, .@"{d:.0}")});
+		defer main.stackAllocator.free(durabilityString);
+		const swingSpeedString = main.lang.format(main.stackAllocator, .stat, "cubyz:swingSpeed", &.{.fromFloat(self.swingSpeed, .@"{d:.2}")});
+		defer main.stackAllocator.free(swingSpeedString);
+		const damageString = main.lang.format(main.stackAllocator, .stat, "cubyz:damage", &.{.fromFloat(self.damage, .@"{d:.2}")});
+		defer main.stackAllocator.free(damageString);
+
 		self.tooltip.clearRetainingCapacity();
+
 		self.tooltip.print(
 			\\{s}
-			\\{d:.2} swings/s
-			\\Damage: {d:.2}
-			\\Durability: {}/{}
+			\\{s}
+			\\{s}
+			\\{s}
 		, .{
-			self.type.id(),
-			self.swingSpeed,
-			self.damage,
-			self.durability,
-			std.math.lossyCast(u32, self.maxDurability),
+			main.lang.translate(.tool, self.type.id()),
+			swingSpeedString,
+			damageString,
+			durabilityString,
 		});
 		if (self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
