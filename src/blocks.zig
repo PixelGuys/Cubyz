@@ -60,7 +60,7 @@ var _blockHealth: [maxBlockCount]f32 = undefined;
 var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
-var _replacable: [maxBlockCount]bool = undefined;
+var _replaceable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
@@ -122,7 +122,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
-	_replacable[size] = zon.get(bool, "replacable", false);
+	_replaceable[size] = zon.get(bool, "replaceable", false);
 
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -339,7 +339,7 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
-pub const Block = packed struct { // MARK: Block
+pub const Block = packed struct(u32) { // MARK: Block
 	typ: u16,
 	data: u16,
 
@@ -380,8 +380,8 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	/// Whether you can replace it with another block, mainly used for fluids/gases
-	pub inline fn replacable(self: Block) bool {
-		return _replacable[self.typ];
+	pub inline fn replaceable(self: Block) bool {
+		return _replaceable[self.typ];
 	}
 
 	pub inline fn selectable(self: Block) bool {
@@ -701,7 +701,7 @@ pub const meshes = struct { // MARK: meshes
 				return err2;
 			};
 		};
-		file.close(); // It was only openend to check if it exists.
+		file.close(main.io); // It was only openend to check if it exists.
 		// Otherwise read it into the list:
 		result = @intCast(textureIDs.items.len);
 
