@@ -19,7 +19,7 @@ jobs:
         with:
           version: ${{ env.VERSION }}
       - run: sudo apt install glslang-tools
-      - run: wget -O ./Cubyz-fmt https://github.com/PixelGuys/Cubyz-formatter/releases/download/0.16.0+3/Cubyz-fmt-x86_64-linux
+      - run: wget -O ./Cubyz-fmt https://github.com/PixelGuys/Cubyz-formatter/releases/download/0.16.0+0/Cubyz-fmt-x86_64-linux
       - run: chmod +x ./Cubyz-fmt
       - run: |
           shopt -s nullglob
