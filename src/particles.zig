@@ -244,32 +244,24 @@ pub const ParticleSystem = struct {
 
 			if (particleLocal.collides) {
 				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
-				const size = ParticleManager.types.items[particle.typ].size;
-				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
+				const size = @as(f64, @floatCast(ParticleManager.types.items[particle.typ].size))*0.5;
+				const hitBox: game.collision.Box = .{.min = @splat(-size), .max = @splat(size)};
 
-				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
+				inline for (0..3) |j| {
+					const move = particleLocal.velAndRotationVel[j]*deltaTime;
+					if (main.game.collision.collides(.client, @enumFromInt(j), move, v3Pos, hitBox)) |box| {
+						const skin = 0.0001;
+						v3Pos[j] = if (move < 0)
+							box.max[j] + (size + skin)
+						else
+							box.min[j] - (size + skin);
 
-				v3Pos[0] += posDelta[0];
-				if (game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
-					v3Pos[0] = if (posDelta[0] < 0)
-						box.max[0] - hitBox.min[0]
-					else
-						box.min[0] - hitBox.max[0];
+						particleLocal.velAndRotationVel[j] = 0;
+					} else {
+						v3Pos[j] += move;
+					}
 				}
-				v3Pos[1] += posDelta[1];
-				if (game.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
-					v3Pos[1] = if (posDelta[1] < 0)
-						box.max[1] - hitBox.min[1]
-					else
-						box.min[1] - hitBox.max[1];
-				}
-				v3Pos[2] += posDelta[2];
-				if (game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-					v3Pos[2] = if (posDelta[2] < 0)
-						box.max[2] - hitBox.min[2]
-					else
-						box.min[2] - hitBox.max[2];
-				}
+
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
