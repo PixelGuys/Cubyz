@@ -3,6 +3,9 @@
 		.wet,
 		.hot,
 	},
+	.tags = .{
+		.willow,
+	},
 	.minHeight = -2,
 	.maxHeight = -2,
 	.roughness = 2,

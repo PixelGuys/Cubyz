@@ -380,7 +380,7 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeMask: i32,
 
 	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntity),
-	blockPosToEntityDataMapMutex: std.Thread.Mutex,
+	blockPosToEntityDataMapMutex: main.utils.Mutex,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
@@ -476,7 +476,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	wasStored: bool = false,
 	shouldStoreNeighbors: bool = false,
 
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 	refCount: std.atomic.Value(u16),
 
 	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {

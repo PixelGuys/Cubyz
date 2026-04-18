@@ -32,7 +32,7 @@ label: *Label,
 button: *Button,
 mouseAnchor: f32 = undefined,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/slider.png");
 }
 

@@ -94,7 +94,7 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	// Make sure there remains no trace of the password in memory
-	main.network.authentication.secureZero(@TypeOf(textComponent.textBuffer.glyphs[0]), textComponent.textBuffer.glyphs);
+	std.crypto.secureZero(@TypeOf(textComponent.textBuffer.glyphs[0]), textComponent.textBuffer.glyphs);
 	std.crypto.secureZero(u8, textComponent.currentString.items);
 	main.Window.setClipboardString("");
 	gui.openWindow("clipboard_deleted");

@@ -136,14 +136,14 @@ pub fn init() void { // MARK: init()
 			windowStruct.init();
 		}
 	}
-	GuiWindow.__init();
-	Button.__init();
-	CheckBox.__init();
-	ItemSlot.__init();
-	ScrollBar.__init();
-	ContinuousSlider.__init();
-	DiscreteSlider.__init();
-	TextInput.__init();
+	GuiWindow.globalInit();
+	Button.globalInit();
+	CheckBox.globalInit();
+	ItemSlot.globalInit();
+	ScrollBar.globalInit();
+	ContinuousSlider.globalInit();
+	DiscreteSlider.globalInit();
+	TextInput.globalInit();
 	load();
 	GamepadCursor.init();
 }

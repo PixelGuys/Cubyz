@@ -42,7 +42,7 @@ var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
 var lastRD: u16 = 0;
-var mutex: std.Thread.Mutex = .{};
+var mutex: main.utils.Mutex = .{};
 
 pub const BlockUpdate = struct {
 	pos: Vec3i,

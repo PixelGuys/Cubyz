@@ -47,7 +47,7 @@ fn extractColor(in: u32) [3]u8 {
 
 pub const ChannelChunk = struct {
 	data: main.utils.PaletteCompressedRegion(LightValue, chunk.chunkVolume),
-	mutex: std.Thread.Mutex,
+	mutex: main.utils.Mutex,
 	ch: *chunk.Chunk,
 	isSun: bool,
 

@@ -94,7 +94,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 
 	var freeIndexList: main.ListUnmanaged(BlockEntity) = .{};
 	var nextIndex: BlockEntity = @enumFromInt(0);
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 
 	fn globalDeinit() void {
 		freeIndexList.deinit(main.globalAllocator);
@@ -127,7 +127,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 	return struct {
 		pub const DataT = T;
 		var storage: main.utils.SparseSet(DataT, BlockEntity) = undefined;
-		pub var mutex: std.Thread.Mutex = .{};
+		pub var mutex: main.utils.Mutex = .{};
 
 		pub fn init() void {
 			storage = .{};
@@ -276,7 +276,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 					const chestComponent = StorageServer.remove(pos, chunk) orelse return;
 					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
 				},
-				.update => |_| {
+				.update => {
 					StorageServer.mutex.lock();
 					defer StorageServer.mutex.unlock();
 					const data = StorageServer.getOrPut(pos, chunk);
@@ -312,7 +312,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			}
 		});
 		var textureDeinitList: main.List(graphics.Texture) = undefined;
-		var textureDeinitLock: std.Thread.Mutex = .{};
+		var textureDeinitLock: main.utils.Mutex = .{};
 		var pipeline: graphics.Pipeline = undefined;
 		var uniforms: struct {
 			ambientLight: c_int,

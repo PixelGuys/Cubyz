@@ -3,6 +3,9 @@
 		.hot,
 		.dry,
 	},
+	.tags = .{
+		.cactus,
+	},
 	.minHeight = 64,
 	.maxHeight = 65,
 	.minRadius = 80,

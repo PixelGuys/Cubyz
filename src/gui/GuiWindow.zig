@@ -106,7 +106,7 @@ pub var borderUniforms: struct {
 	effectLength: c_int,
 } = undefined;
 
-pub fn __init() void {
+pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/button.vert",
 		"assets/cubyz/shaders/ui/button.frag",

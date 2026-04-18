@@ -424,7 +424,7 @@ pub const Player = struct { // MARK: Player
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
-	pub var mutex: std.Thread.Mutex = .{};
+	pub var mutex: main.utils.Mutex = .{};
 	pub const inventorySize = 32;
 	pub var inventory: ClientInventory = undefined;
 	pub var selectedSlot: u32 = 0;
@@ -670,6 +670,7 @@ pub const World = struct { // MARK: World
 		self.entityModelPalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
+		main.entityModel.reset();
 
 		Player.super.deinit(.client);
 

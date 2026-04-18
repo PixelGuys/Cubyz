@@ -1,5 +1,8 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.oak,
+	},
 	.chance = 0.25,
 	.minHeightLimit = 7,
 	.minHeight = 20,
