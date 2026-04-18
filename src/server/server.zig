@@ -25,6 +25,7 @@ pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const EntityManager = @import("EntityManager.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
@@ -100,7 +101,6 @@ pub const User = struct { // MARK: User
 	conn: *Connection = undefined,
 	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
-	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
 	lastSaveTime: std.Io.Timestamp = .fromNanoseconds(0),
 	name: []const u8 = "",
@@ -144,7 +144,9 @@ pub const User = struct { // MARK: User
 	permissions: permission.Permissions = undefined,
 
 	pub fn player(self: *User) *Entity {
-		return &self.innerPlayer;
+		// A player should always have an entity.
+		std.debug.assert(EntityManager.getEntity(self.id) != null);
+		return EntityManager.getEntity(self.id).?;
 	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
@@ -181,9 +183,10 @@ pub const User = struct { // MARK: User
 
 		self.permissions.deinit();
 
-		self.worldEditData.deinit();
-
 		self.player().deinit(.server);
+		EntityManager.remove(self.id);
+
+		self.worldEditData.deinit();
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -244,16 +247,18 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User) void {
-		self.id = freeId;
-		freeId += 1;
+		self.id = EntityManager.add();
 
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
-		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
+		self.player().memoryAddressChanged();
 		self.loadUnloadChunks();
+
+		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex)) catch {
+			self.conn.disconnect();
+		};
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -446,7 +451,7 @@ pub const User = struct { // MARK: User
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
-		self.interpolation.update(time, self.lastTime);
+		self.player().interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
 		const saveTime = main.timestamp();
@@ -475,7 +480,7 @@ pub const User = struct { // MARK: User
 		self.player().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
-		self.interpolation.updatePosition(&position, &velocity, time);
+		self.player().interpolation.updatePosition(&position, &velocity, time);
 	}
 
 	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
@@ -532,6 +537,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	EntityManager.init();
 	main.entity.server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
@@ -583,6 +589,7 @@ fn deinit() void {
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
 	main.entity.server.deinit();
+	EntityManager.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -641,13 +648,13 @@ fn update() void { // MARK: update()
 	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
-	for (userList) |user| {
-		const id = user.id; // TODO
+	for (EntityManager.getAll()) |*ent| {
+		const id = ent.id; // TODO (why is this todo here?)
 		entityData.append(.{
 			.id = id,
-			.pos = user.player().pos,
-			.vel = user.player().vel,
-			.rot = user.player().rot,
+			.pos = ent.pos,
+			.vel = ent.vel,
+			.rot = ent.rot,
 		});
 	}
 	for (userList) |user| {
@@ -765,8 +772,6 @@ pub fn connectInternal(user: *User) void {
 		defer zonArray.deinit(main.stackAllocator);
 
 		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
-		entityZon.put("name", user.name);
-		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -775,14 +780,8 @@ pub fn connectInternal(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = EntityManager.getEntitiesNearbyInfo(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		for (userList) |other| {
-			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
-			entityZon.put("name", other.name);
-			entityZon.put("playerIndex", other.playerIndex);
-			zonArray.array.append(entityZon);
-		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		if (user.connected.load(.monotonic)) main.network.protocols.entity.send(user.conn, data);

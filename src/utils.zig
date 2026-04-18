@@ -2154,6 +2154,10 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn fetchRemove(self: *Self, id: IdType) !T {
+			return try self.fetchRemoveAndUpdateMemoryAddressSwapped(id, null);
+		}
+
+		pub fn fetchRemoveAndUpdateMemoryAddressSwapped(self: *Self, id: IdType, updatedSwappedMemory: ?*const fn (swapped: *T) void) !T {
 			if (!self.contains(id)) return error.ElementNotFound;
 
 			const denseId = @intFromEnum(self.sparseToDenseIndex.items[@intFromEnum(id)]);
@@ -2163,6 +2167,9 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 			_ = self.denseToSparseIndex.swapRemove(denseId);
 
 			if (denseId != self.dense.items.len) {
+				if (updatedSwappedMemory) |updateMemory| {
+					updateMemory(&self.dense.items[denseId]);
+				}
 				self.sparseToDenseIndex.items[@intFromEnum(self.denseToSparseIndex.items[denseId])] = @enumFromInt(denseId);
 			}
 			return result;

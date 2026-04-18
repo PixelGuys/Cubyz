@@ -18,6 +18,8 @@ maxEnergy: f32 = 8,
 name: ?[]const u8 = null,
 id: u32 = 0,
 
+interpolation: main.utils.GenericInterpolation(3) = undefined,
+
 pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.sync.Side) !void {
 	self.id = id;
 	self.pos = zon.get(Vec3d, "position", .{0, 0, 0});
@@ -69,4 +71,8 @@ pub fn deinit(self: *@This(), comptime side: main.sync.Side) void {
 	if (side == .server) {
 		main.entity.server.removeAllComponents(self.id);
 	}
+}
+
+pub fn memoryAddressChanged(self: *@This()) void {
+	self.interpolation.init(@ptrCast(&self.pos), @ptrCast(&self.vel));
 }
