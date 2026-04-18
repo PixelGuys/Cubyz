@@ -19,6 +19,7 @@ pub const Compression = struct { // MARK: Compression
 		var buffer: [65536]u8 = undefined;
 		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
 		compress.writer.writeAll(data) catch unreachable;
+		compress.finish() catch unreachable;
 		compress.writer.flush() catch unreachable;
 		result.writer.flush() catch unreachable;
 		return result.toOwnedSlice() catch unreachable;
@@ -61,6 +62,7 @@ pub const Compression = struct { // MARK: Compression
 				_ = try comp.writer.writeAll(fileData);
 			}
 		}
+		try comp.finish();
 		try comp.writer.flush();
 		try writer.flush();
 	}

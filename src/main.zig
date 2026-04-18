@@ -437,6 +437,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
 	}
 
+	settings.environment.init(args.environ);
 	settings.launchConfig.init();
 
 	const headless = settings.launchConfig.headlessServer;
