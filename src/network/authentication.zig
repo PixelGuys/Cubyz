@@ -113,7 +113,8 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 		switch (typ) {
 			inline else => |_typ| {
 				const AlgorithmType = _typ.getAlgorithmType();
-				const randomBytes = std.crypto.random.array(u8, AlgorithmType.noise_length);
+				var randomBytes: [AlgorithmType.noise_length]u8 = undefined;
+				main.io.random(&randomBytes);
 				const signature = @field(Storage, @tagName(_typ)).sign(message, randomBytes) catch |err| {
 					std.debug.panic("Failed to sign message with error {s}. Maybe try reconnecting, if the error persists, I'd suggest creating a new account", .{@errorName(err)});
 				};
@@ -239,7 +240,7 @@ pub const AccountCode = struct {
 		if (wordlist == null) @panic("Cannot generate new Account without a valid wordlist.");
 		var bits: [21]u8 = undefined;
 		defer std.crypto.secureZero(u8, &bits);
-		std.crypto.random.bytes(bits[0..20]);
+		main.io.random(bits[0..20]);
 		var sha256Result: [32]u8 = undefined;
 		defer std.crypto.secureZero(u8, &sha256Result);
 		std.crypto.hash.sha2.Sha256.hash(bits[0..20], &sha256Result, .{});
@@ -283,7 +284,8 @@ pub const PasswordEncodedAccountCode = struct {
 	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
 
 	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8) PasswordEncodedAccountCode {
-		var salt: [32]u8 = std.crypto.random.array(u8, 32);
+		var salt: [32]u8 = undefined;
+		main.io.random(&salt);
 		const saltBase64 = allocator.alloc(u8, std.base64.standard.Encoder.calcSize(salt.len));
 		std.debug.assert(std.base64.standard.Encoder.encode(saltBase64, &salt).len == saltBase64.len);
 
@@ -293,7 +295,8 @@ pub const PasswordEncodedAccountCode = struct {
 
 		const encryptedBuffer = allocator.alloc(u8, accountCode.text.len);
 		var authenticationTag: [std.crypto.aead.aes_gcm.Aes256Gcm.tag_length]u8 = undefined;
-		const nonce = std.crypto.random.array(u8, std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length);
+		var nonce: [std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length]u8 = undefined;
+		main.io.random(&nonce);
 		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, accountCode.text, &.{}, nonce, key);
 
 		return .{
@@ -354,7 +357,7 @@ pub const PasswordEncodedAccountCode = struct {
 					.t = 10,
 					.m = 32000,
 					.p = 1,
-				}, .argon2id) catch unreachable;
+				}, .argon2id, main.io) catch unreachable;
 			},
 		}
 	}

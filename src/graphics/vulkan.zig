@@ -59,7 +59,7 @@ const VkResultEnum = enum(c_int) { // MARK: VkResultEnum
 };
 
 pub fn checkResult(result: c.VkResult) void {
-	const resultEnum = std.meta.intToEnum(VkResultEnum, result) catch {
+	const resultEnum = std.enums.fromInt(VkResultEnum, result) orelse {
 		std.log.err("Encountered a vulkan error with unknown error code {}", .{result});
 		return;
 	};

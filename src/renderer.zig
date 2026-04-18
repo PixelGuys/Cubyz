@@ -565,7 +565,7 @@ pub const MenuBackGround = struct {
 			fileList.deinit();
 		}
 
-		while (try walker.next()) |entry| {
+		while (try walker.next(main.io)) |entry| {
 			if (entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
 				fileList.append(main.stackAllocator.dupe(u8, entry.path));
 			}
@@ -910,7 +910,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
-		const step: Vec3i = @intFromFloat(std.math.sign(dir));
+		const step: Vec3i = std.math.sign(dir);
 		const invDir = @as(Vec3d, @splat(1))/dir;
 		const tDelta = @abs(invDir);
 		var tMax = (@floor(pos) - pos)*invDir;
