@@ -4,6 +4,7 @@
 		.{.id = "cubyz:tree/cirrus/canopy/1"},
 		.{.id = "cubyz:tree/cirrus/canopy/2"},
 		.{.id = "cubyz:tree/cirrus/canopy/3"},
+		.{.id = "cubyz:tree/cirrus/canopy/4"},
 	},
 	.children = .{
 		.blue = "cubyz:tree/cirrus/vine",
