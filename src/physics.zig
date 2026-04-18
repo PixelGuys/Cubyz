@@ -16,14 +16,24 @@ pub const airTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
 const playerDensity = 1.2;
 
-pub fn calculateProperties() void {
-	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
-		Player.volumeProperties = collision.calculateVolumeProperties(.client, Player.super.pos, Player.outerBoundingBox, .{.density = airDensity, .terminalVelocity = airTerminalVelocity, .maxDensity = airDensity, .mobileFriction = 1.0/airTerminalVelocity});
-		const groundFriction = if (!Player.onGround and !Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 20).friction;
-		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
-		const mobileFriction: f32 = @floatCast(gravity*Player.volumeProperties.mobileFriction);
-		Player.currentFriction = if (Player.isFlying.load(.monotonic)) 20 else groundFriction + volumeFrictionCoeffecient;
-		Player.mobileFriction = if (Player.isFlying.load(.monotonic)) 20 else groundFriction + mobileFriction;
+pub const FrictionState = struct {
+	current: f32,
+	mobile: f32,
+};
+
+pub fn calculateVolumeProperties(volumeProperties: *collision.VolumeProperties, pos: @Vector(3,f64), hitBox: collision.Box) void {
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+		volumeProperties.* = collision.calculateVolumeProperties(.client, Player.super.pos, hitBox, .{.density = airDensity, .terminalVelocity = airTerminalVelocity, .maxDensity = airDensity, .mobileFriction = 1.0/airTerminalVelocity});
+	}
+}
+
+pub fn calculateFriction(volumeProperties: *const collision.VolumeProperties, friction: *FrictionState, pos: @Vector(3,f64), hitBox: collision.Box, onGround: bool) void {
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+		const groundFriction = if (!onGround) 0 else collision.calculateSurfaceProperties(.client, pos, hitBox, 20).friction;
+		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
+		const mobileFriction: f32 = @floatCast(gravity*volumeProperties.mobileFriction);
+		friction.current = groundFriction + volumeFrictionCoeffecient;
+		friction.mobile = groundFriction + mobileFriction;
 	}
 }
 
@@ -37,7 +47,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			acc[2] -= effectiveGravity;
 		}
 
-		const baseFrictionCoefficient: f32 = Player.currentFriction;
+		const baseFrictionCoefficient: f32 = Player.friction.current;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 
 		// This our model for movement on a single frame:
@@ -158,7 +168,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 		}
 		steppingHeight = @min(steppingHeight, Player.eye.pos[2] - Player.eye.box.min[2]);
 
-		const slipLimit = 0.25*Player.currentFriction;
+		const slipLimit = 0.25*Player.friction.current;
 
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
