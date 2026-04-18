@@ -96,6 +96,9 @@ const Socket = struct {
 			const result = std.c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
 			switch (std.c.errno(result)) {
 				.SUCCESS => {},
+				.ADDRINUSE => {
+					return error.AddressInUse;
+				},
 				else => |err| {
 					std.log.warn("Got error while binding socket: {s}", .{@tagName(err)});
 					return error.SocketCreationFailed;
