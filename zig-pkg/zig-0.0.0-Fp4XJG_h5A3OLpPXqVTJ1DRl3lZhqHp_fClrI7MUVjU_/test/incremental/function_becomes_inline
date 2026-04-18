@@ -1,0 +1,41 @@
+#target=x86_64-linux-selfhosted
+//#target=x86_64-windows-selfhosted
+#target=x86_64-linux-cbe
+#target=x86_64-windows-cbe
+#target=x86_64-linux-llvm
+//#target=wasm32-wasi-selfhosted
+#update=non-inline version
+#file=main.zig
+pub fn main() !void {
+    try foo();
+}
+fn foo() !void {
+    try std.Io.File.stdout().writeStreamingAll(io, "Hello, World!\n");
+}
+const std = @import("std");
+const io = std.Io.Threaded.global_single_threaded.io();
+#expect_stdout="Hello, World!\n"
+
+#update=make function inline
+#file=main.zig
+pub fn main() !void {
+    try foo();
+}
+inline fn foo() !void {
+    try std.Io.File.stdout().writeStreamingAll(io, "Hello, World!\n");
+}
+const std = @import("std");
+const io = std.Io.Threaded.global_single_threaded.io();
+#expect_stdout="Hello, World!\n"
+
+#update=change string
+#file=main.zig
+pub fn main() !void {
+    try foo();
+}
+inline fn foo() !void {
+    try std.Io.File.stdout().writeStreamingAll(io, "Hello, `inline` World!\n");
+}
+const std = @import("std");
+const io = std.Io.Threaded.global_single_threaded.io();
+#expect_stdout="Hello, `inline` World!\n"

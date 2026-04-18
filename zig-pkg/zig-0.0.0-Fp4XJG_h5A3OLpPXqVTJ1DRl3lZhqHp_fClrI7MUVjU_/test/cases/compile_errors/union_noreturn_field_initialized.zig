@@ -1,0 +1,41 @@
+pub export fn entry1() void {
+    const U = union(enum) {
+        a: u32,
+        b: noreturn,
+        fn foo(_: @This()) void {}
+        fn bar() noreturn {
+            unreachable;
+        }
+    };
+
+    var a = U{ .b = undefined };
+    _ = &a;
+}
+pub export fn entry2() void {
+    const U = union(enum) {
+        a: noreturn,
+    };
+    const u: U = .a;
+    _ = u;
+}
+pub export fn entry3() void {
+    const U = union(enum) {
+        a: noreturn,
+        b: void,
+    };
+    var e = @typeInfo(U).@"union".tag_type.?.a;
+    var u: U = undefined;
+    u = (&e).*;
+}
+
+// error
+//
+// :11:14: error: cannot initialize union field with uninstantiable type 'noreturn'
+// :4:9: note: field 'b' declared here
+// :2:15: note: union declared here
+// :18:19: error: cannot initialize union field with uninstantiable type 'noreturn'
+// :16:9: note: field 'a' declared here
+// :15:15: note: union declared here
+// :28:13: error: runtime coercion from enum '@typeInfo(tmp.entry3.U).@"union".tag_type.?' to union 'tmp.entry3.U' which has non-void fields
+// :23:9: note: field 'a' has uninstantiable type 'noreturn'
+// :22:15: note: union declared here

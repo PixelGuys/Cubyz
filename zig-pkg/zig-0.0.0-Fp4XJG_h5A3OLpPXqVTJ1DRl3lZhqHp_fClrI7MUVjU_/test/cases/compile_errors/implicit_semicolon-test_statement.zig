@@ -1,0 +1,13 @@
+export fn entry() void {
+    if (foo()) |_| {}
+    var good = {};
+    if (foo()) |_| ({})
+    var bad = {};
+    _ = good;
+    _ = bad;
+}
+fn foo() void {}
+
+// error
+//
+// :4:24: error: expected ';' or 'else' after statement

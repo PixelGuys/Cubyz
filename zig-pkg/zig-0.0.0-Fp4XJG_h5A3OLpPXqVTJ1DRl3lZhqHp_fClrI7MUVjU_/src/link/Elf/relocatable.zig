@@ -1,0 +1,482 @@
+const std = @import("std");
+const assert = std.debug.assert;
+const elf = std.elf;
+const math = std.math;
+const mem = std.mem;
+const Path = std.Build.Cache.Path;
+const log = std.log.scoped(.link);
+const state_log = std.log.scoped(.link_state);
+
+const build_options = @import("build_options");
+
+const eh_frame = @import("eh_frame.zig");
+const link = @import("../../link.zig");
+const Archive = @import("Archive.zig");
+const Compilation = @import("../../Compilation.zig");
+const Elf = @import("../Elf.zig");
+const File = @import("file.zig").File;
+const Object = @import("Object.zig");
+const Symbol = @import("Symbol.zig");
+
+pub fn flushStaticLib(elf_file: *Elf, comp: *Compilation) !void {
+    const gpa = comp.gpa;
+    const io = comp.io;
+    const diags = &comp.link_diags;
+
+    if (diags.hasErrors()) return error.LinkFailure;
+
+    // First, we flush relocatable object file generated with our backends.
+    if (elf_file.zigObjectPtr()) |zig_object| {
+        try zig_object.resolveSymbols(elf_file);
+        elf_file.markEhFrameAtomsDead();
+        try elf_file.addCommentString();
+        try elf_file.finalizeMergeSections();
+        zig_object.claimUnresolvedRelocatable(elf_file);
+
+        try initSections(elf_file);
+        try Elf.sortShdrs(
+            gpa,
+            &elf_file.section_indexes,
+            &elf_file.sections,
+            elf_file.shstrtab.items,
+            elf_file.merge_sections.items,
+            elf_file.group_sections.items,
+            elf_file.zigObjectPtr(),
+            elf_file.files,
+        );
+        try zig_object.addAtomsToRelaSections(elf_file);
+        try elf_file.updateMergeSectionSizes();
+        try updateSectionSizes(elf_file);
+
+        try allocateAllocSections(elf_file);
+        try elf_file.allocateNonAllocSections();
+
+        if (build_options.enable_logging) {
+            state_log.debug("{f}", .{elf_file.dumpState()});
+        }
+
+        try elf_file.writeMergeSections();
+        try writeSyntheticSections(elf_file);
+        try elf_file.writeShdrTable();
+        try elf_file.writeElfHeader();
+
+        // TODO we can avoid reading in the file contents we just wrote if we give the linker
+        // ability to write directly to a buffer.
+        try zig_object.readFileContents(elf_file);
+    }
+
+    var files = std.array_list.Managed(File.Index).init(gpa);
+    defer files.deinit();
+    try files.ensureTotalCapacityPrecise(elf_file.objects.items.len + 1);
+    if (elf_file.zigObjectPtr()) |zig_object| files.appendAssumeCapacity(zig_object.index);
+    for (elf_file.objects.items) |index| files.appendAssumeCapacity(index);
+
+    // Update ar symtab from parsed objects
+    var ar_symtab: Archive.ArSymtab = .{};
+    defer ar_symtab.deinit(gpa);
+
+    for (files.items) |index| {
+        try elf_file.file(index).?.updateArSymtab(&ar_symtab, elf_file);
+    }
+
+    ar_symtab.sort();
+
+    // Save object paths in filenames strtab.
+    var ar_strtab: Archive.ArStrtab = .{};
+    defer ar_strtab.deinit(gpa);
+
+    for (files.items) |index| {
+        const file_ptr = elf_file.file(index).?;
+        try file_ptr.updateArStrtab(gpa, &ar_strtab);
+        try file_ptr.updateArSize(elf_file);
+    }
+
+    // Update file offsets of contributing objects.
+    const total_size: usize = blk: {
+        var pos: usize = elf.ARMAG.len;
+        pos += @sizeOf(elf.ar_hdr) + ar_symtab.size(.p64);
+        pos = mem.alignForward(usize, pos, 2);
+
+        if (ar_strtab.size() > 0) {
+            pos += @sizeOf(elf.ar_hdr) + ar_strtab.size();
+            pos = mem.alignForward(usize, pos, 2);
+        }
+
+        for (files.items) |index| {
+            const file_ptr = elf_file.file(index).?;
+            const state = switch (file_ptr) {
+                .zig_object => |x| &x.output_ar_state,
+                .object => |x| &x.output_ar_state,
+                else => unreachable,
+            };
+            state.file_off = pos;
+            pos += @sizeOf(elf.ar_hdr) + (math.cast(usize, state.size) orelse return error.Overflow);
+            pos = mem.alignForward(usize, pos, 2);
+        }
+
+        break :blk pos;
+    };
+
+    if (build_options.enable_logging) {
+        state_log.debug("ar_symtab\n{f}\n", .{ar_symtab.fmt(elf_file)});
+        state_log.debug("ar_strtab\n{f}\n", .{ar_strtab});
+    }
+
+    const buffer = try gpa.alloc(u8, total_size);
+    defer gpa.free(buffer);
+
+    var writer: std.Io.Writer = .fixed(buffer);
+
+    // Write magic
+    try writer.writeAll(elf.ARMAG);
+
+    // Write symtab
+    try ar_symtab.write(.p64, elf_file, &writer);
+    if (!mem.isAligned(writer.end, 2)) try writer.writeByte(0);
+
+    // Write strtab
+    if (ar_strtab.size() > 0) {
+        try ar_strtab.write(&writer);
+        if (!mem.isAligned(writer.end, 2)) try writer.writeByte(0);
+    }
+
+    // Write object files
+    for (files.items) |index| {
+        try elf_file.file(index).?.writeAr(elf_file, &writer);
+        if (!mem.isAligned(writer.end, 2)) try writer.writeByte(0);
+    }
+
+    assert(writer.buffered().len == total_size);
+
+    try elf_file.base.file.?.setLength(io, total_size);
+    try elf_file.base.file.?.writePositionalAll(io, writer.buffered(), 0);
+
+    if (diags.hasErrors()) return error.LinkFailure;
+}
+
+pub fn flushObject(elf_file: *Elf, comp: *Compilation) !void {
+    const diags = &comp.link_diags;
+
+    if (diags.hasErrors()) return error.LinkFailure;
+
+    // Now, we are ready to resolve the symbols across all input files.
+    // We will first resolve the files in the ZigObject, next in the parsed
+    // input Object files.
+    try elf_file.resolveSymbols();
+    elf_file.markEhFrameAtomsDead();
+    try elf_file.resolveMergeSections();
+    try elf_file.addCommentString();
+    try elf_file.finalizeMergeSections();
+    claimUnresolved(elf_file);
+
+    try initSections(elf_file);
+    try Elf.sortShdrs(
+        comp.gpa,
+        &elf_file.section_indexes,
+        &elf_file.sections,
+        elf_file.shstrtab.items,
+        elf_file.merge_sections.items,
+        elf_file.group_sections.items,
+        elf_file.zigObjectPtr(),
+        elf_file.files,
+    );
+    if (elf_file.zigObjectPtr()) |zig_object| {
+        try zig_object.addAtomsToRelaSections(elf_file);
+    }
+    for (elf_file.objects.items) |index| {
+        const object = elf_file.file(index).?.object;
+        try object.addAtomsToRelaSections(elf_file);
+    }
+    try elf_file.updateMergeSectionSizes();
+    try updateSectionSizes(elf_file);
+
+    try allocateAllocSections(elf_file);
+    try elf_file.allocateNonAllocSections();
+
+    if (build_options.enable_logging) {
+        state_log.debug("{f}", .{elf_file.dumpState()});
+    }
+
+    try writeAtoms(elf_file);
+    try elf_file.writeMergeSections();
+    try writeSyntheticSections(elf_file);
+    try elf_file.writeShdrTable();
+    try elf_file.writeElfHeader();
+
+    if (diags.hasErrors()) return error.LinkFailure;
+}
+
+fn claimUnresolved(elf_file: *Elf) void {
+    if (elf_file.zigObjectPtr()) |zig_object| {
+        zig_object.claimUnresolvedRelocatable(elf_file);
+    }
+    for (elf_file.objects.items) |index| {
+        elf_file.file(index).?.object.claimUnresolvedRelocatable(elf_file);
+    }
+}
+
+fn initSections(elf_file: *Elf) !void {
+    if (elf_file.zigObjectPtr()) |zo| {
+        try zo.initRelaSections(elf_file);
+    }
+    for (elf_file.objects.items) |index| {
+        const object = elf_file.file(index).?.object;
+        try object.initOutputSections(elf_file);
+        try object.initRelaSections(elf_file);
+    }
+
+    for (elf_file.merge_sections.items) |*msec| {
+        if (msec.finalized_subsections.items.len == 0) continue;
+        try msec.initOutputSection(elf_file);
+    }
+
+    const needs_eh_frame = blk: {
+        if (elf_file.zigObjectPtr()) |zo|
+            if (zo.eh_frame_index != null) break :blk true;
+        break :blk for (elf_file.objects.items) |index| {
+            if (elf_file.file(index).?.object.cies.items.len > 0) break true;
+        } else false;
+    };
+    if (needs_eh_frame) {
+        if (elf_file.section_indexes.eh_frame == null) {
+            elf_file.section_indexes.eh_frame = elf_file.sectionByName(".eh_frame") orelse
+                try elf_file.addSection(.{
+                    .name = try elf_file.insertShString(".eh_frame"),
+                    .type = if (elf_file.getTarget().cpu.arch == .x86_64)
+                        elf.SHT_X86_64_UNWIND
+                    else
+                        elf.SHT_PROGBITS,
+                    .flags = elf.SHF_ALLOC,
+                    .addralign = elf_file.ptrWidthBytes(),
+                });
+        }
+        elf_file.section_indexes.eh_frame_rela = elf_file.sectionByName(".rela.eh_frame") orelse
+            try elf_file.addRelaShdr(
+                try elf_file.insertShString(".rela.eh_frame"),
+                elf_file.section_indexes.eh_frame.?,
+            );
+    }
+
+    try initGroups(elf_file);
+    try elf_file.initSymtab();
+    try elf_file.initShStrtab();
+}
+
+fn initGroups(elf_file: *Elf) !void {
+    const gpa = elf_file.base.comp.gpa;
+
+    for (elf_file.objects.items) |index| {
+        const object = elf_file.file(index).?.object;
+        for (object.groups.items, 0..) |cg, cg_index| {
+            if (!cg.alive) continue;
+            const cg_sec = try elf_file.group_sections.addOne(gpa);
+            cg_sec.* = .{
+                .shndx = try elf_file.addSection(.{
+                    .name = try elf_file.insertShString(".group"),
+                    .type = elf.SHT_GROUP,
+                    .entsize = @sizeOf(u32),
+                    .addralign = @alignOf(u32),
+                }),
+                .cg_ref = .{ .index = @intCast(cg_index), .file = index },
+            };
+        }
+    }
+}
+
+fn updateSectionSizes(elf_file: *Elf) !void {
+    const slice = elf_file.sections.slice();
+    for (slice.items(.atom_list_2)) |*atom_list| {
+        if (atom_list.atoms.keys().len == 0) continue;
+        if (!atom_list.dirty) continue;
+        atom_list.updateSize(elf_file);
+        try atom_list.allocate(elf_file);
+        atom_list.dirty = false;
+    }
+
+    for (slice.items(.shdr), 0..) |*shdr, shndx| {
+        const atom_list = slice.items(.atom_list)[shndx];
+        if (shdr.sh_type != elf.SHT_RELA) continue;
+        if (@as(u32, @intCast(shndx)) == elf_file.section_indexes.eh_frame) continue;
+        for (atom_list.items) |ref| {
+            const atom_ptr = elf_file.atom(ref) orelse continue;
+            if (!atom_ptr.alive) continue;
+            const relocs = atom_ptr.relocs(elf_file);
+            shdr.sh_size += shdr.sh_entsize * relocs.len;
+        }
+
+        if (shdr.sh_size == 0) shdr.sh_offset = 0;
+    }
+
+    if (elf_file.section_indexes.eh_frame) |index| {
+        slice.items(.shdr)[index].sh_size = try eh_frame.calcEhFrameSize(elf_file);
+    }
+    if (elf_file.section_indexes.eh_frame_rela) |index| {
+        const shdr = &slice.items(.shdr)[index];
+        shdr.sh_size = eh_frame.calcEhFrameRelocs(elf_file) * shdr.sh_entsize;
+    }
+
+    try elf_file.updateSymtabSize();
+    updateGroupsSizes(elf_file);
+    elf_file.updateShStrtabSize();
+}
+
+fn updateGroupsSizes(elf_file: *Elf) void {
+    for (elf_file.group_sections.items) |cg| {
+        const shdr = &elf_file.sections.items(.shdr)[cg.shndx];
+        shdr.sh_size = cg.size(elf_file);
+        shdr.sh_link = elf_file.section_indexes.symtab.?;
+
+        const sym = cg.symbol(elf_file);
+        shdr.sh_info = sym.outputSymtabIndex(elf_file) orelse sym.outputShndx(elf_file).?;
+    }
+}
+
+/// Allocates alloc sections when merging relocatable objects files together.
+fn allocateAllocSections(elf_file: *Elf) !void {
+    for (elf_file.sections.items(.shdr), 0..) |*shdr, shndx| {
+        if (shdr.sh_type == elf.SHT_NULL) continue;
+        if (shdr.sh_flags & elf.SHF_ALLOC == 0) continue;
+        if (shdr.sh_type == elf.SHT_NOBITS) {
+            shdr.sh_offset = 0;
+            continue;
+        }
+        const needed_size = shdr.sh_size;
+        if (needed_size > elf_file.allocatedSize(shdr.sh_offset)) {
+            shdr.sh_size = 0;
+            const new_offset = try elf_file.findFreeSpace(needed_size, shdr.sh_addralign);
+
+            log.debug("moving {s} from 0x{x} to 0x{x}", .{
+                elf_file.getShString(shdr.sh_name),
+                shdr.sh_offset,
+                new_offset,
+            });
+
+            if (shdr.sh_offset > 0) {
+                const existing_size = elf_file.sectionSize(@intCast(shndx));
+                try elf_file.base.copyRangeAll(shdr.sh_offset, new_offset, existing_size);
+            }
+
+            shdr.sh_offset = new_offset;
+            shdr.sh_size = needed_size;
+        }
+    }
+}
+
+fn writeAtoms(elf_file: *Elf) !void {
+    const gpa = elf_file.base.comp.gpa;
+
+    var buffer = std.array_list.Managed(u8).init(gpa);
+    defer buffer.deinit();
+
+    const slice = elf_file.sections.slice();
+    for (slice.items(.shdr), slice.items(.atom_list_2)) |shdr, atom_list| {
+        if (shdr.sh_type == elf.SHT_NOBITS) continue;
+        if (atom_list.atoms.keys().len == 0) continue;
+        try atom_list.writeRelocatable(&buffer, elf_file);
+    }
+}
+
+fn writeSyntheticSections(elf_file: *Elf) !void {
+    const comp = elf_file.base.comp;
+    const io = comp.io;
+    const gpa = comp.gpa;
+    const slice = elf_file.sections.slice();
+
+    const SortRelocs = struct {
+        pub fn lessThan(ctx: void, lhs: elf.Elf64_Rela, rhs: elf.Elf64_Rela) bool {
+            _ = ctx;
+            return lhs.r_offset < rhs.r_offset;
+        }
+    };
+
+    for (slice.items(.shdr), slice.items(.atom_list), 0..) |shdr, atom_list, shndx| {
+        if (shdr.sh_type != elf.SHT_RELA) continue;
+        if (atom_list.items.len == 0) continue;
+        if (@as(u32, @intCast(shndx)) == elf_file.section_indexes.eh_frame) continue;
+
+        const num_relocs = math.cast(usize, @divExact(shdr.sh_size, shdr.sh_entsize)) orelse
+            return error.Overflow;
+        var relocs = try std.array_list.Managed(elf.Elf64_Rela).initCapacity(gpa, num_relocs);
+        defer relocs.deinit();
+
+        for (atom_list.items) |ref| {
+            const atom_ptr = elf_file.atom(ref) orelse continue;
+            if (!atom_ptr.alive) continue;
+            try atom_ptr.writeRelocs(elf_file, &relocs);
+        }
+        assert(relocs.items.len == num_relocs);
+        // Sort output relocations by r_offset which is usually an expected (and desired) condition
+        // by the linkers.
+        mem.sortUnstable(elf.Elf64_Rela, relocs.items, {}, SortRelocs.lessThan);
+
+        log.debug("writing {s} from 0x{x} to 0x{x}", .{
+            elf_file.getShString(shdr.sh_name),
+            shdr.sh_offset,
+            shdr.sh_offset + shdr.sh_size,
+        });
+
+        try elf_file.base.file.?.writePositionalAll(io, @ptrCast(relocs.items), shdr.sh_offset);
+    }
+
+    if (elf_file.section_indexes.eh_frame) |shndx| {
+        const existing_size = existing_size: {
+            const zo = elf_file.zigObjectPtr() orelse break :existing_size 0;
+            const sym = zo.symbol(zo.eh_frame_index orelse break :existing_size 0);
+            break :existing_size sym.atom(elf_file).?.size;
+        };
+        const shdr = slice.items(.shdr)[shndx];
+        const sh_size = math.cast(usize, shdr.sh_size) orelse return error.Overflow;
+        const buffer = try gpa.alloc(u8, @intCast(sh_size - existing_size));
+        defer gpa.free(buffer);
+        var writer: std.Io.Writer = .fixed(buffer);
+        try eh_frame.writeEhFrameRelocatable(elf_file, &writer);
+        log.debug("writing .eh_frame from 0x{x} to 0x{x}", .{
+            shdr.sh_offset + existing_size,
+            shdr.sh_offset + sh_size,
+        });
+        assert(writer.buffered().len == sh_size - existing_size);
+        try elf_file.base.file.?.writePositionalAll(io, writer.buffered(), shdr.sh_offset + existing_size);
+    }
+    if (elf_file.section_indexes.eh_frame_rela) |shndx| {
+        const shdr = slice.items(.shdr)[shndx];
+        const num_relocs = math.cast(usize, @divExact(shdr.sh_size, shdr.sh_entsize)) orelse
+            return error.Overflow;
+        var relocs = try std.array_list.Managed(elf.Elf64_Rela).initCapacity(gpa, num_relocs);
+        defer relocs.deinit();
+        try eh_frame.writeEhFrameRelocs(elf_file, &relocs);
+        assert(relocs.items.len == num_relocs);
+        // Sort output relocations by r_offset which is usually an expected (and desired) condition
+        // by the linkers.
+        mem.sortUnstable(elf.Elf64_Rela, relocs.items, {}, SortRelocs.lessThan);
+
+        log.debug("writing .rela.eh_frame from 0x{x} to 0x{x}", .{
+            shdr.sh_offset,
+            shdr.sh_offset + shdr.sh_size,
+        });
+        try elf_file.base.file.?.writePositionalAll(io, @ptrCast(relocs.items), shdr.sh_offset);
+    }
+
+    try writeGroups(elf_file);
+    try elf_file.writeSymtab();
+    try elf_file.writeShStrtab();
+}
+
+fn writeGroups(elf_file: *Elf) !void {
+    const comp = elf_file.base.comp;
+    const io = comp.io;
+    const gpa = comp.gpa;
+    for (elf_file.group_sections.items) |cgs| {
+        const shdr = elf_file.sections.items(.shdr)[cgs.shndx];
+        const sh_size = math.cast(usize, shdr.sh_size) orelse return error.Overflow;
+        const buffer = try gpa.alloc(u8, sh_size);
+        defer gpa.free(buffer);
+        var writer: std.Io.Writer = .fixed(buffer);
+        try cgs.write(elf_file, &writer);
+        assert(writer.buffered().len == sh_size);
+        log.debug("writing group from 0x{x} to 0x{x}", .{
+            shdr.sh_offset,
+            shdr.sh_offset + shdr.sh_size,
+        });
+        try elf_file.base.file.?.writePositionalAll(io, writer.buffered(), shdr.sh_offset);
+    }
+}

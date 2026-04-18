@@ -1,0 +1,31 @@
+const std = @import("std");
+
+const Error = error{InvalidCharacter};
+
+const Direction = enum { upside_down };
+
+const Barrrr = union(enum) {
+    float: f64,
+    direction: Direction,
+};
+
+fn fooey(bar: std.meta.Tag(Barrrr), args: []const []const u8) !Barrrr {
+    return switch (bar) {
+        .float => .{ .float = try std.fmt.parseFloat(f64, args[0]) },
+        .direction => if (std.mem.eql(u8, args[0], "upside_down"))
+            Barrrr{ .direction = .upside_down }
+        else
+            error.InvalidDirection,
+    };
+}
+
+pub fn main() Error!void {
+    std.debug.print("{}", .{try fooey(.direction, &[_][]const u8{ "one", "two", "three" })});
+}
+
+// error
+// target=x86_64-linux
+//
+// :23:29: error: expected type 'error{InvalidCharacter}!void', found '@typeInfo(@typeInfo(@TypeOf(tmp.fooey)).@"fn".return_type.?).error_union.error_set'
+// :23:29: note: 'error.InvalidDirection' not a member of destination error set
+// :22:20: note: function return type declared here
