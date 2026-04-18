@@ -3,4 +3,4 @@ pub const @"and" = @import("and.zig");
 pub const encased = @import("encased.zig");
 pub const not = @import("not.zig");
 pub const @"or" = @import("or.zig");
-pub const onDiagonal = @import("onDiagonal.zig");
+pub const on_diagonal = @import("on_diagonal.zig");
