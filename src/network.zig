@@ -148,7 +148,7 @@ const Socket = struct {
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
 		if (builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
 			var pfd = [1]ws2.pollfd{
-				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
+				.{.fd = self.socketID, .events = ws2.POLLRDNORM | ws2.POLLRDBAND, .revents = undefined},
 			};
 			const length = ws2.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
 			if (length == ws2.SOCKET_ERROR) {

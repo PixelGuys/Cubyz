@@ -1642,24 +1642,32 @@ pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 
 /// A wrapper over Zig's mutex to avoid having to pass the io everywhere
 pub const Mutex = struct { // MARK: Mutex
-	super: std.Io.Mutex = .init,
+	super: if (builtin.os.tag == .windows) @import("utils/Mutex.zig") else std.Io.Mutex = .init,
 
 	pub fn tryLock(self: *Mutex) bool {
 		return self.super.tryLock();
 	}
 
 	pub fn lock(self: *Mutex) void {
-		self.super.lockUncancelable(main.io);
+		if (builtin.os.tag == .windows) {
+			self.super.lock();
+		} else {
+			self.super.lockUncancelable(main.io);
+		}
 	}
 
 	pub fn unlock(self: *Mutex) void {
-		self.super.unlock(main.io);
+		if (builtin.os.tag == .windows) {
+			self.super.unlock();
+		} else {
+			self.super.unlock(main.io);
+		}
 	}
 };
 
 /// A read-write lock with read priority.
 pub const ReadWriteLock = struct { // MARK: ReadWriteLock
-	condition: std.Io.Condition = .init,
+	condition: Condition = .{},
 	mutex: main.utils.Mutex = .{},
 	readers: u32 = 0,
 
@@ -1673,7 +1681,7 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 		self.mutex.lock();
 		self.readers -= 1;
 		if (self.readers == 0) {
-			self.condition.broadcast(main.io);
+			self.condition.broadcast();
 		}
 		self.mutex.unlock();
 	}
@@ -1681,7 +1689,7 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 	pub fn lockWrite(self: *ReadWriteLock) void {
 		self.mutex.lock();
 		while (self.readers != 0) {
-			self.condition.waitUncancelable(main.io, &self.mutex.super);
+			self.condition.wait(&self.mutex);
 		}
 	}
 

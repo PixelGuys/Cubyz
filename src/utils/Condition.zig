@@ -142,11 +142,22 @@ const SingleThreadedImpl = struct {
 };
 
 const WindowsImpl = struct {
-    condition: os.windows.CONDITION_VARIABLE = .{},
+    condition: c.CONDITION_VARIABLE = .{},
+
+	const c = @cImport({
+		@cInclude("windows.h");
+	});
+
+	pub extern "ntdll" fn RtlWakeConditionVariable(
+		ConditionVariable: *c.CONDITION_VARIABLE,
+	) callconv(.winapi) void;
+	pub extern "ntdll" fn RtlWakeAllConditionVariable(
+		ConditionVariable: *c.CONDITION_VARIABLE,
+	) callconv(.winapi) void;
 
     fn wait(self: *Impl, mutex: *Mutex, timeout: ?u64) error{Timeout}!void {
         var timeout_overflowed = false;
-        var timeout_ms: os.windows.DWORD = os.windows.INFINITE;
+        var timeout_ms: os.windows.DWORD = c.INFINITE;
 
         if (timeout) |timeout_ns| {
             // Round the nanoseconds to the nearest millisecond,
@@ -155,29 +166,21 @@ const WindowsImpl = struct {
             timeout_ms = std.math.cast(os.windows.DWORD, ms) orelse std.math.maxInt(os.windows.DWORD);
 
             // Track if the timeout overflowed into INFINITE and make sure not to wait forever.
-            if (timeout_ms == os.windows.INFINITE) {
+            if (timeout_ms == c.INFINITE) {
                 timeout_overflowed = true;
                 timeout_ms -= 1;
             }
         }
 
-        if (builtin.mode == .Debug) {
-            // The internal state of the DebugMutex needs to be handled here as well.
-            mutex.impl.locking_thread.store(0, .unordered);
-        }
-        const rc = os.windows.kernel32.SleepConditionVariableSRW(
+        const rc = c.SleepConditionVariableSRW(
             &self.condition,
-            if (builtin.mode == .Debug) &mutex.impl.impl.srwlock else &mutex.impl.srwlock,
+            @ptrCast(&mutex.super.impl.srwlock),
             timeout_ms,
             0, // the srwlock was assumed to acquired in exclusive mode not shared
         );
-        if (builtin.mode == .Debug) {
-            // The internal state of the DebugMutex needs to be handled here as well.
-            mutex.impl.locking_thread.store(std.Thread.getCurrentId(), .unordered);
-        }
 
         // Return error.Timeout if we know the timeout elapsed correctly.
-        if (rc == os.windows.FALSE) {
+        if (rc == c.FALSE) {
             assert(os.windows.GetLastError() == .TIMEOUT);
             if (!timeout_overflowed) return error.Timeout;
         }
@@ -185,8 +188,8 @@ const WindowsImpl = struct {
 
     fn wake(self: *Impl, comptime notify: Notify) void {
         switch (notify) {
-            .one => os.windows.ntdll.RtlWakeConditionVariable(&self.condition),
-            .all => os.windows.ntdll.RtlWakeAllConditionVariable(&self.condition),
+            .one => RtlWakeConditionVariable(&self.condition),
+            .all => RtlWakeAllConditionVariable(&self.condition),
         }
     }
 };

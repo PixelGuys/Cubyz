@@ -1,5 +1,7 @@
 // TODO: Remove after https://codeberg.org/ziglang/zig/issues/31912 was merged
 
+// zig fmt: off
+
 //! A mechanism used to block (`wait`) and unblock (`wake`) threads using a
 //! 32bit memory address as hints.
 //!
