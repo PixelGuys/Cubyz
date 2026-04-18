@@ -63,25 +63,25 @@ pub const RotationMode = struct { // MARK: RotationMode
 			var quadList: main.List(main.models.QuadInfo) = .init(main.stackAllocator);
 			defer quadList.deinit();
 			modelData.getRawFaces(&quadList);
-			for(quadList.items) |quad| {
+			for (quadList.items) |quad| {
 				const triangle1: [3]Vec3f = .{quad.cornerVec(0), quad.cornerVec(1), quad.cornerVec(2)};
 				const triangle2: [3]Vec3f = .{quad.cornerVec(1), quad.cornerVec(2), quad.cornerVec(3)};
-				if(rayTriangleIntersection(relativePlayerPos, playerDir, triangle1)) |distance| {
-					if(minimum == null or distance < minimum.?) {
+				if (rayTriangleIntersection(relativePlayerPos, playerDir, triangle1)) |distance| {
+					if (minimum == null or distance < minimum.?) {
 						minimum = distance;
 						normal = quad.normalVec();
 					}
 				}
-				if(rayTriangleIntersection(relativePlayerPos, playerDir, triangle2)) |distance| {
-					if(minimum == null or distance < minimum.?) {
+				if (rayTriangleIntersection(relativePlayerPos, playerDir, triangle2)) |distance| {
+					if (minimum == null or distance < minimum.?) {
 						minimum = distance;
 						normal = quad.normalVec();
 					}
 				}
 			}
-			if(minimum != null) {
+			if (minimum != null) {
 				// Invert the normal if the player is behind the face (eg. cross model)
-				if(vec.dot(normal.?, relativePlayerPos) < 0.0) {
+				if (vec.dot(normal.?, relativePlayerPos) < 0.0) {
 					normal = -normal.?;
 				}
 				return .{
@@ -195,26 +195,26 @@ fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) 
 	const rayCrossE2 = vec.cross(direction, e2);
 	const det = vec.dot(e1, rayCrossE2);
 
-	if(det > -std.math.floatEps(f32) and det < std.math.floatEps(f32)) {
+	if (det > -std.math.floatEps(f32) and det < std.math.floatEps(f32)) {
 		return null;
 	}
 
 	const invDet = 1.0/det;
 	const s = origin - triangle[0];
 	const u = invDet*vec.dot(s, rayCrossE2);
-	if(u < 0.0 or u > 1.0) {
+	if (u < 0.0 or u > 1.0) {
 		return null;
 	}
 
 	const sCrossE1 = vec.cross(s, e1);
 	const v = invDet*vec.dot(direction, sCrossE1);
-	if(v < 0.0 or u + v > 1.0) {
+	if (v < 0.0 or u + v > 1.0) {
 		return null;
 	}
 
 	const t = invDet*vec.dot(e2, sCrossE1);
 
-	if(t > std.math.floatEps(f32)) {
+	if (t > std.math.floatEps(f32)) {
 		return t;
 	} else {
 		return null;
