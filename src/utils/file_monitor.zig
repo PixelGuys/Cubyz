@@ -59,7 +59,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	var fd: c_int = undefined;
 	var watchDescriptors: std.StringHashMap(*DirectoryInfo) = undefined;
 	var callbacks: std.AutoHashMap(c_int, *DirectoryInfo) = undefined;
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 
 	fn init() void {
 		fd = c.inotify_init();
@@ -93,7 +93,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		};
 		defer iterableDir.close();
 		var iterator = iterableDir.iterate();
-		while (iterator.next() catch |err| {
+		while (iterator.next(main.io) catch |err| {
 			std.log.err("Error while iterating dir {s}: {s}", .{path, @errorName(err)});
 			return;
 		}) |entry| {
@@ -212,13 +212,13 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 
 const WindowsImpl = struct { // MARK: WindowsImpl
 	const c = @cImport({
-		@cInclude("fileapi.h");
+		@cInclude("windows.h");
 	});
 	const HANDLE = std.os.windows.HANDLE;
 	var notificationHandlers: std.StringHashMap(*DirectoryInfo) = undefined;
 	var callbacks: main.List(*DirectoryInfo) = undefined;
 	var justTheHandles: main.List(HANDLE) = undefined;
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 
 	const DirectoryInfo = struct {
 		callback: CallbackFunction,
@@ -250,17 +250,17 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 		defer mutex.unlock();
 		while (true) {
 			if (justTheHandles.items.len == 0) break;
-			const waitResult = std.os.windows.kernel32.WaitForMultipleObjects(@intCast(justTheHandles.items.len), justTheHandles.items.ptr, @intFromBool(false), 0);
-			if (waitResult == std.os.windows.WAIT_TIMEOUT) break;
-			if (waitResult == std.os.windows.WAIT_FAILED) {
-				std.log.err("Error while waiting: {}", .{std.os.windows.kernel32.GetLastError()});
+			const waitResult = c.WaitForMultipleObjects(@intCast(justTheHandles.items.len), justTheHandles.items.ptr, @intFromBool(false), 0);
+			if (waitResult == c.WAIT_TIMEOUT) break;
+			if (waitResult == c.WAIT_FAILED) {
+				std.log.err("Error while waiting: {}", .{std.os.windows.GetLastError()});
 				break;
 			}
-			if (waitResult < std.os.windows.WAIT_OBJECT_0 or waitResult - std.os.windows.WAIT_OBJECT_0 >= justTheHandles.items.len) {
+			if (waitResult < c.WAIT_OBJECT_0 or waitResult - c.WAIT_OBJECT_0 >= justTheHandles.items.len) {
 				std.log.err("Windows gave an unexpected wait result: {}", .{waitResult});
 				break;
 			}
-			const callbackInfo = callbacks.items[@intCast(waitResult - std.os.windows.WAIT_OBJECT_0)];
+			const callbackInfo = callbacks.items[@intCast(waitResult - c.WAIT_OBJECT_0)];
 			const result = c.FindNextChangeNotification(callbackInfo.notificationHandler);
 			if (result == 0) {
 				std.log.err("Error on FindNextChangeNotification for path {s}: {}", .{callbackInfo.path, result});
@@ -280,7 +280,7 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 		}
 		const handle = c.FindFirstChangeNotificationA(path.ptr, @intFromBool(true), c.FILE_NOTIFY_CHANGE_LAST_WRITE);
 		if (handle == std.os.windows.INVALID_HANDLE_VALUE) {
-			std.log.err("Got error while creating notification handler for path {s}: {}", .{path, std.os.windows.kernel32.GetLastError()});
+			std.log.err("Got error while creating notification handler for path {s}: {}", .{path, std.os.windows.GetLastError()});
 		}
 
 		const callbackInfo = main.globalAllocator.create(DirectoryInfo);
@@ -304,7 +304,7 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 			_ = callbacks.swapRemove(index);
 			_ = justTheHandles.swapRemove(index);
 			if (c.FindCloseChangeNotification(kv.value.notificationHandler) == 0) {
-				std.log.err("Error while closing notification handler for path {s}: {}", .{path, std.os.windows.kernel32.GetLastError()});
+				std.log.err("Error while closing notification handler for path {s}: {}", .{path, std.os.windows.GetLastError()});
 			}
 			main.globalAllocator.free(kv.key);
 			main.globalAllocator.destroy(kv.value);

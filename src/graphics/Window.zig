@@ -234,7 +234,7 @@ pub const Gamepad = struct {
 	pub fn downloadControllerMappings() void {
 		if (builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
-		const curTimestamp: i96 = (std.Io.Clock.Timestamp.now(main.io, .real) catch unreachable).raw.nanoseconds;
+		const curTimestamp: i96 = std.Io.Clock.Timestamp.now(main.io, .real).raw.nanoseconds;
 		const timestamp: i96 = blk: {
 			const stamp = files.cwd().read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
 			defer main.stackAllocator.free(stamp);
@@ -259,16 +259,12 @@ pub const Gamepad = struct {
 	}
 	pub fn updateControllerMappings() void {
 		std.log.info("Updating controller mappings in-memory...", .{});
-		var _envMap = std.process.getEnvMap(main.stackAllocator.allocator) catch null;
-		if (_envMap) |*envMap| {
-			defer envMap.deinit();
-			if (envMap.get("SDL_GAMECONTROLLERCONFIG")) |controller_config_env| {
-				_ = c.glfwUpdateGamepadMappings(@ptrCast(controller_config_env));
-				return;
-			}
+		if (main.settings.environment.SDL_GAMECONTROLLERCONFIG) |controllerConfig| {
+			_ = c.glfwUpdateGamepadMappings(@ptrCast(controllerConfig));
+			return;
 		}
 		const data = main.files.cwd().read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
-			if (@TypeOf(err) == std.fs.File.OpenError and err == std.fs.File.OpenError.FileNotFound) {
+			if (err == error.FileNotFound) {
 				return; // Ignore not finding mappings.
 			}
 			std.log.err("Error opening gamepad mappings file: {s}", .{@errorName(err)});
@@ -742,7 +738,7 @@ pub fn init() void { // MARK: init()
 		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
 	} else {
 		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
-		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.vulkanTestingWindow));
+		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.launchConfig.vulkanTestingMode));
 		vulkanWindow = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 		vulkan.init(vulkanWindow) catch |err| {
 			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});

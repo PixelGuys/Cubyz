@@ -13,7 +13,9 @@ pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const client = @import("client.zig");
 pub const entity = @import("entity.zig");
+pub const entityModel = @import("entityModel.zig");
 pub const files = @import("files.zig");
+pub const fmt = @import("fmt.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
@@ -71,7 +73,7 @@ pub fn deinitThreadLocals() void {
 }
 
 pub fn timestamp() std.Io.Timestamp {
-	return (std.Io.Clock.Timestamp.now(io, if (@import("builtin").os.tag == .windows) .real else .awake) catch unreachable).raw; // TODO: On windows the awake time is broken
+	return std.Io.Clock.Timestamp.now(io, .awake).raw;
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -81,8 +83,8 @@ fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
-var logFile: ?std.fs.File = undefined;
-var logFileTs: ?std.fs.File = undefined;
+var logFile: ?std.Io.File = undefined;
+var logFileTs: ?std.Io.File = undefined;
 var supportsANSIColors: bool = undefined;
 var openingErrorWindow: bool = false;
 // overwrite the log function:
@@ -91,137 +93,54 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	.logFn = struct {
 		pub fn logFn(
 			comptime level: std.log.Level,
-			comptime _: @Type(.enum_literal),
+			comptime _: @EnumLiteral(),
 			comptime format: []const u8,
 			args: anytype,
 		) void {
-			const color = comptime switch (level) {
-				std.log.Level.err => "\x1b[31m",
-				std.log.Level.info => "",
-				std.log.Level.warn => "\x1b[33m",
-				std.log.Level.debug => "\x1b[37;44m",
-			};
-			const colorReset = "\x1b[0m\n";
-			const filePrefix = "[" ++ comptime level.asText() ++ "]" ++ ": ";
-			const fileSuffix = "\n";
-			comptime var formatString: []const u8 = "";
-			comptime var i: usize = 0;
-			comptime var mode: usize = 0;
-			comptime var sections: usize = 0;
-			comptime var sectionString: []const u8 = "";
-			comptime var sectionResults: []const []const u8 = &.{};
-			comptime var sectionId: []const usize = &.{};
-			inline while (i < format.len) : (i += 1) {
-				if (mode == 0) {
-					if (format[i] == '{') {
-						if (format[i + 1] == '{') {
-							sectionString = sectionString ++ "{{";
-							i += 1;
-							continue;
-						} else {
-							mode = 1;
-							formatString = formatString ++ "{s}{";
-							sectionResults = sectionResults ++ &[_][]const u8{sectionString};
-							sectionString = "";
-							sectionId = sectionId ++ &[_]usize{sections};
-							sections += 1;
-							continue;
-						}
-					} else {
-						sectionString = sectionString ++ format[i .. i + 1];
-					}
-				} else {
-					formatString = formatString ++ format[i .. i + 1];
-					if (format[i] == '}') {
-						sections += 1;
-						mode = 0;
-					}
-				}
+			var runtimeArgs: [args.len]fmt.FormatArg = undefined;
+			inline for (0..args.len) |i| {
+				runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
 			}
-			formatString = formatString ++ "{s}";
-			sectionResults = sectionResults ++ &[_][]const u8{sectionString};
-			sectionId = sectionId ++ &[_]usize{sections};
-			sections += 1;
-			formatString = comptime cacheString("{s}" ++ formatString ++ "{s}");
-
-			comptime var types: []const type = &.{};
-			comptime var i_1: usize = 0;
-			comptime var i_2: usize = 0;
-			inline while (types.len != sections) {
-				if (i_2 < sectionResults.len) {
-					if (types.len == sectionId[i_2]) {
-						types = types ++ &[_]type{[]const u8};
-						i_2 += 1;
-						continue;
-					}
-				}
-				const TI = @typeInfo(@TypeOf(args[i_1]));
-				if (@TypeOf(args[i_1]) == comptime_int) {
-					types = types ++ &[_]type{i64};
-				} else if (@TypeOf(args[i_1]) == comptime_float) {
-					types = types ++ &[_]type{f64};
-				} else if (TI == .pointer and TI.pointer.size == .slice and TI.pointer.child == u8) {
-					types = types ++ &[_]type{[]const u8};
-				} else if (TI == .int and TI.int.bits <= 64) {
-					if (TI.int.signedness == .signed) {
-						types = types ++ &[_]type{i64};
-					} else {
-						types = types ++ &[_]type{u64};
-					}
-				} else {
-					types = types ++ &[_]type{@TypeOf(args[i_1])};
-				}
-				i_1 += 1;
-			}
-			types = &[_]type{[]const u8} ++ types ++ &[_]type{[]const u8};
-
-			const ArgsType = std.meta.Tuple(types);
-			comptime var comptimeTuple: ArgsType = undefined;
-			comptime var len: usize = 0;
-			i_1 = 0;
-			i_2 = 0;
-			inline while (len != sections) : (len += 1) {
-				if (i_2 < sectionResults.len) {
-					if (len == sectionId[i_2]) {
-						comptimeTuple[len + 1] = sectionResults[i_2];
-						i_2 += 1;
-						continue;
-					}
-				}
-				i_1 += 1;
-			}
-			comptimeTuple[0] = filePrefix;
-			comptimeTuple[comptimeTuple.len - 1] = fileSuffix;
-			var resultArgs: ArgsType = comptimeTuple;
-			len = 0;
-			i_1 = 0;
-			i_2 = 0;
-			inline while (len != sections) : (len += 1) {
-				if (i_2 < sectionResults.len) {
-					if (len == sectionId[i_2]) {
-						i_2 += 1;
-						continue;
-					}
-				}
-				resultArgs[len + 1] = args[i_1];
-				i_1 += 1;
-			}
-
-			logToFile(formatString, resultArgs);
-
-			if (supportsANSIColors) {
-				resultArgs[0] = color;
-				resultArgs[resultArgs.len - 1] = colorReset;
-			}
-			logToStdErr(formatString, resultArgs);
-			if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
-				openingErrorWindow = true;
-				gui.openWindow("error_prompt");
-				openingErrorWindow = false;
-			}
+			runtimeLogFn(level, format, &runtimeArgs);
 		}
 	}.logFn,
 };
+
+noinline fn runtimeLogFn(level: std.log.Level, format: []const u8, args: []const fmt.FormatArg) void {
+	var buf: [65536]u8 = undefined;
+	var writer: std.Io.Writer = .fixed(&buf);
+	fmt.format(&writer, format, args) catch {
+		std.log.err("Truncated long log message.", .{});
+	};
+
+	const color: []const u8 = switch (level) {
+		std.log.Level.err => "\x1b[31m",
+		std.log.Level.info => "",
+		std.log.Level.warn => "\x1b[33m",
+		std.log.Level.debug => "\x1b[37;44m",
+	};
+	const colorReset = "\x1b[0m\n";
+	const filePrefix = switch (level) {
+		.err => "error",
+		.warn => "warning",
+		.info => "info",
+		.debug => "debug",
+	};
+	const fileSuffix = "\n";
+
+	logToFile("[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
+	if (supportsANSIColors) {
+		logToStdErr("{s}{s}{s}", .{color, writer.buffered(), colorReset});
+	} else {
+		logToStdErr("[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
+	}
+
+	if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
+		openingErrorWindow = true;
+		gui.openWindow("error_prompt");
+		openingErrorWindow = false;
+	}
+}
 
 fn initLogging() void {
 	logFile = null;
@@ -229,32 +148,32 @@ fn initLogging() void {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
-	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch |err| {
+	logFile = std.Io.Dir.cwd().createFile(io, "logs/latest.log", .{}) catch |err| {
 		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
 		return;
 	};
 
-	const _timestamp = (std.Io.Clock.Timestamp.now(io, .real) catch unreachable).raw;
+	const _timestamp = std.Io.Clock.Timestamp.now(io, .real).raw;
 
 	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
 	defer stackAllocator.free(_path_str);
 
-	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
+	logFileTs = std.Io.Dir.cwd().createFile(io, _path_str, .{}) catch |err| {
 		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
 		return;
 	};
 
-	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
+	supportsANSIColors = std.Io.File.stdout().supportsAnsiEscapeCodes(io) catch unreachable;
 }
 
 fn deinitLogging() void {
 	if (logFile) |_logFile| {
-		_logFile.close();
+		_logFile.close(io);
 		logFile = null;
 	}
 
 	if (logFileTs) |_logFileTs| {
-		_logFileTs.close();
+		_logFileTs.close(io);
 		logFileTs = null;
 	}
 }
@@ -265,8 +184,8 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	(logFile orelse return).writeAll(string) catch {};
-	(logFileTs orelse return).writeAll(string) catch {};
+	(logFile orelse return).writeStreamingAll(io, string) catch {};
+	(logFileTs orelse return).writeStreamingAll(io, string) catch {};
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
@@ -275,9 +194,9 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	const writer = std.debug.lockStderrWriter(&.{});
-	defer std.debug.unlockStderrWriter();
-	nosuspend writer[0].writeAll(string) catch {};
+	const writer = std.debug.lockStderr(&.{});
+	defer std.debug.unlockStderr();
+	nosuspend writer.file_writer.interface.writeAll(string) catch {};
 }
 
 // MARK: Callbacks
@@ -501,12 +420,12 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	return false;
 }
 
-pub fn main() void { // MARK: main()
+pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
-	threadedIo = .init(globalAllocator.allocator);
+	threadedIo = .init(globalAllocator.allocator, .{});
 	defer threadedIo.deinit();
 
 	initLogging();
@@ -518,6 +437,7 @@ pub fn main() void { // MARK: main()
 		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
 	}
 
+	settings.environment.init(args.environ);
 	settings.launchConfig.init();
 
 	const headless = settings.launchConfig.headlessServer;
@@ -525,7 +445,14 @@ pub fn main() void { // MARK: main()
 	if (!headless) gui.initWindowList();
 	defer if (!headless) gui.deinitWindowList();
 
-	files.init();
+	{
+		const homePath = args.environ.getAlloc(stackAllocator.allocator, if (builtin.os.tag == .windows) "USERPROFILE" else "HOME") catch |err| {
+			std.log.err("Failed to get environment variable for home path: {s}", .{@errorName(err)});
+			@panic("Failed to get environment variable for home path");
+		};
+		defer stackAllocator.free(homePath);
+		files.init(homePath);
+	}
 	defer files.deinit();
 
 	settings.init();
@@ -639,7 +566,7 @@ pub fn clientMain() void { // MARK: clientMain()
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 
-	audio.setMusic("cubyz:TotalDemented/Cubyz");
+	audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 
 	while (c.glfwWindowShouldClose(Window.window) == 0) {
 		heap.GarbageCollection.syncPoint();
@@ -707,7 +634,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				game.world = null;
 			}
 			gui.openWindow("main");
-			audio.setMusic("cubyz:TotalDemented/Cubyz");
+			audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 		}
 	}
 
