@@ -12,6 +12,7 @@ pub const GuiComponent = union(enum) {
 	pub const ItemSlot = @import("components/ItemSlot.zig");
 	pub const Label = @import("components/Label.zig");
 	pub const MutexComponent = @import("components/MutexComponent.zig");
+	pub const Selectable = @import("components/Selectable.zig");
 	pub const ScrollBar = @import("components/ScrollBar.zig");
 	pub const ContinuousSlider = @import("components/ContinuousSlider.zig");
 	pub const DiscreteSlider = @import("components/DiscreteSlider.zig");
@@ -25,6 +26,7 @@ pub const GuiComponent = union(enum) {
 	itemSlot: *ItemSlot,
 	label: *Label,
 	mutexComponent: *MutexComponent,
+	selectable: *Selectable,
 	scrollBar: *ScrollBar,
 	continuousSlider: *ContinuousSlider,
 	discreteSlider: *DiscreteSlider,
