@@ -1,9 +1,13 @@
 .{
 	.chance = 0,
 	.keepOriginalTerrain = 1,
+	.radius = 32,
 	.minHeight = 22,
 	.maxHeight = 40,
 	.properties = .{},
+	.tags = .{
+		.oak,
+	},
 	.minRadius = 20,
 	.maxRadius = 32,
 	.music = "cubyz:sunrise",

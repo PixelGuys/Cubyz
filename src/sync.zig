@@ -22,7 +22,7 @@ const ZonElement = main.ZonElement;
 pub const Side = enum { client, server };
 
 pub const ClientSide = struct {
-	pub var mutex: std.Thread.Mutex = .{};
+	pub var mutex: main.utils.Mutex = .{};
 	var commands: utils.CircularBufferQueue(Command) = undefined;
 
 	pub fn init() void {
@@ -711,7 +711,7 @@ pub const Command = struct { // MARK: Command
 
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
-							.spawnPoint = info.target.?.spawnPos,
+							.spawnPoint = info.target.?.getSpawnPos(),
 						}});
 					} else {
 						self.syncOperations.append(allocator, .{.health = .{
@@ -1452,7 +1452,7 @@ pub const Command = struct { // MARK: Command
 			if (!switch (costOfChange) {
 				.no => false,
 				.yes => true,
-				.yes_costsDurability => |_| stack.item == .proceduralItem,
+				.yes_costsDurability => stack.item == .proceduralItem,
 				.yes_costsItems => |amount| stack.amount >= amount,
 			}) {
 				if (ctx.side == .server) {

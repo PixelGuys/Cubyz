@@ -265,7 +265,7 @@ pub const handShake = struct { // MARK: handShake
 
 		conn.mutex.lock();
 		while (true) {
-			conn.handShakeWaiting.timedWait(&conn.mutex, 16_000_000) catch {
+			conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
 				main.heap.GarbageCollection.syncPoint();
 				continue;
 			};

@@ -1,6 +1,7 @@
 compiler/
 logs/
 zig-out/
+zig-pkg/
 zig-cache/
 .zig-cache/
 serverAssets/
