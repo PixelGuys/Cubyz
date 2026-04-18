@@ -1,0 +1,7 @@
+.{
+	.chance = 0,
+	.properties = .{
+		.ocean,
+	},
+	.music = "cubyz:Sincerely",
+}

@@ -59,7 +59,7 @@ hovered: bool = false,
 onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/button.vert",
 		"assets/cubyz/shaders/ui/button.frag",
@@ -116,12 +116,14 @@ pub fn toComponent(self: *Button) GuiComponent {
 	return .{.button = self};
 }
 
-pub fn updateHovered(self: *Button, _: Vec2f) void {
+pub fn updateHovered(self: *Button, _: Vec2f) main.callbacks.Result {
 	self.hovered = true;
+	return .handled;
 }
 
-pub fn mainButtonPressed(self: *Button, _: Vec2f) void {
+pub fn mainButtonPressed(self: *Button, _: Vec2f) main.callbacks.Result {
 	self.pressed = true;
+	return .handled;
 }
 
 pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {

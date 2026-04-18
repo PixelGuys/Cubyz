@@ -3,6 +3,9 @@
 		.hot,
 		.dry,
 	},
+	.tags = .{
+		.cactus,
+	},
 	.minHeight = 64,
 	.maxHeight = 65,
 	.minRadius = 80,
@@ -18,7 +21,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dry_grass_vegetation",
+			.blocks = .{"cubyz:dry_grass_vegetation"},
 			.chance = 0.05,
 			.width = 5,
 			.variation = 8,
@@ -52,7 +55,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:marigold",
+			.blocks = .{"cubyz:marigold"},
 			.chance = 0.03,
 			.width = 5,
 			.variation = 3,

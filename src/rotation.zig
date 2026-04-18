@@ -99,15 +99,15 @@ pub const RotationMode = struct { // MARK: RotationMode
 			shouldDropSourceBlockOnSuccess.* = true;
 			if (oldBlock == newBlock) return .no;
 			if (oldBlock.typ == newBlock.typ) return .yes;
-			if (!oldBlock.replacable()) {
+			if (!oldBlock.replaceable()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isTool = item.item == .tool;
-				if (isTool) {
-					damage = item.item.tool.getBlockDamage(oldBlock);
+				const isProceduralItem = item.item == .proceduralItem;
+				if (isProceduralItem) {
+					damage = item.item.proceduralItem.getBlockDamage(oldBlock);
 				}
 				damage -= oldBlock.blockResistance();
 				if (damage > 0) {
-					if (isTool and item.item.tool.isEffectiveOn(oldBlock)) {
+					if (isProceduralItem and item.item.proceduralItem.isEffectiveOn(oldBlock)) {
 						return .{.yes_costsDurability = 1};
 					} else return .yes;
 				}
@@ -129,6 +129,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 		}
 		pub fn getBlockTags() []const Tag {
 			return &.{};
+		}
+		pub fn formatBlockData(block: Block, _list: *main.List(u8)) void {
+			_list.print("{}", .{block.data});
 		}
 	};
 
@@ -170,6 +173,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 	itemDropsOnChange: *const fn (oldBlock: Block, newBlock: Block) u16 = DefaultFunctions.itemDropsOnChange,
 
 	getBlockTags: *const fn () []const Tag = DefaultFunctions.getBlockTags,
+
+	formatBlockData: *const fn (block: Block, _list: *main.List(u8)) void = DefaultFunctions.formatBlockData,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;

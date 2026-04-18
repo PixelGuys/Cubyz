@@ -60,7 +60,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	indices: [maxCapacity]u16 = undefined,
 
-	emptyMutex: std.Thread.Mutex = .{},
+	emptyMutex: main.utils.Mutex = .{},
 	isEmpty: std.bit_set.ArrayBitSet(usize, maxCapacity),
 
 	changeQueue: main.utils.ConcurrentQueue(union(enum) { add: struct { u16, ItemDrop }, remove: u16 }),
@@ -364,7 +364,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				if (move < 0) {
 					pos.*[i] = box.max[i] + radius;
 				} else {
-					pos.*[i] = box.max[i] - radius;
+					pos.*[i] = box.min[i] - radius;
 				}
 				vel.*[i] = 0;
 			} else {
@@ -439,8 +439,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				continue;
 			}
 			const hitbox = main.game.Player.outerBoundingBox;
-			const min = user.player.pos + hitbox.min;
-			const max = user.player.pos + hitbox.max;
+			const min = user.player().pos + hitbox.min;
+			const max = user.player().pos + hitbox.max;
 			const itemPos = self.list.items(.pos)[i];
 			const dist = @max(min - itemPos, itemPos - max);
 			if (@reduce(.Max, dist) < radius + pickupRange) {
@@ -469,7 +469,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	var instance: ?*ClientItemDropManager = null;
 
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 
 	pub fn init(self: *ClientItemDropManager, allocator: NeverFailingAllocator) void {
 		std.debug.assert(instance == null); // Only one instance allowed.
@@ -733,7 +733,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	fn drawItem(vertices: u31, modelMatrix: Mat4f) void {
 		c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		main.renderer.chunk_meshing.vao.bind();
 		c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
 	}
 
@@ -861,7 +861,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
 			if (!isBlock) {
-				if (item == .tool) {
+				if (item == .proceduralItem) {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
 					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.25));
 				} else {

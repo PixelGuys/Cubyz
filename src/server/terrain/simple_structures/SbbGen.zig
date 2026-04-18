@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const terrain = main.server.terrain;
 const Vec3i = main.vec.Vec3i;
-const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
+const GenerationMode = terrain.structures.SimpleStructureModel.GenerationMode;
 const CaveMapView = terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const sbb = terrain.structure_building_blocks;
@@ -64,7 +64,7 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection orelse origin.direction()), @errorName(err)});
 		return;
 	});
-	const rotated = &blueprints[@intFromEnum(blueprintRotation)];
+	const rotated = &blueprints[@intFromEnum(blueprintRotation.fixed)];
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - (placementDirection orelse origin.direction()).relPos();
 
@@ -72,7 +72,7 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 
 	for (rotated.childBlocks) |childBlock| {
 		const child = structure.getChildStructure(childBlock) orelse continue;
-		const childRotation = rotation.getChildRotation(seed, child.rotation, childBlock.direction());
+		const childRotation = blueprintRotation.getChildRotation(seed, child.rotation, childBlock.direction());
 		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed);
 	}
 }

@@ -29,7 +29,7 @@ fn renderConnectionData(conn: *main.network.Connection, name: []const u8, y: *f3
 	var unconfirmed: [3]usize = @splat(0);
 	var queued: [3]usize = @splat(0);
 	conn.lossyChannel.getStatistics(&unconfirmed[0], &queued[0]);
-	conn.fastChannel.getStatistics(&unconfirmed[1], &queued[1]);
+	conn.secureChannel.getStatistics(&unconfirmed[1], &queued[1]);
 	conn.slowChannel.getStatistics(&unconfirmed[2], &queued[2]);
 	draw.print("{s} | RTT = {d:.1} ms | {d:.0} kiB/RTT", .{name, conn.rttEstimate/1000.0, conn.bandwidthEstimateInBytesPerRtt/1024.0}, 0, y.*, 8, .left);
 	y.* += 8;

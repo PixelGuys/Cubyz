@@ -21,6 +21,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
+const permission = server.permission;
 const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
@@ -31,9 +32,34 @@ const SimulationChunk = main.server.SimulationChunk;
 
 pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
-	allowCheats: bool = false,
+	allowCheats: bool = true,
 	testingMode: bool = false,
 	seed: u64 = undefined,
+
+	pub const defaults: Settings = .{};
+
+	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
+		return .{
+			.seed = zon.get(?u64, "seed", null) orelse {
+				std.log.err("Cannot load world. World has no seed!", .{});
+				return error.NoSeed;
+			},
+			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", @tagName(defaults.defaultGamemode))) orelse defaults.defaultGamemode,
+			.allowCheats = zon.get(bool, "allowCheats", defaults.allowCheats),
+			.testingMode = zon.get(bool, "testingMode", defaults.testingMode),
+		};
+	}
+
+	pub fn toZon(self: Settings, allocator: NeverFailingAllocator) ZonElement {
+		const zon = main.ZonElement.initObject(allocator);
+
+		zon.put("defaultGamemode", @tagName(self.defaultGamemode));
+		zon.put("allowCheats", self.allowCheats);
+		zon.put("testingMode", self.testingMode);
+		zon.put("seed", self.seed);
+
+		return zon;
+	}
 };
 
 fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const u8) []const u8 {
@@ -76,24 +102,15 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: Zo
 	defer worldInfo.deinit(main.stackAllocator);
 
 	worldInfo.put("generatorSettings", preset.clone(main.stackAllocator));
+	worldInfo.put("settings", worldSettings.toZon(main.stackAllocator));
 
-	{
-		const settings = main.ZonElement.initObject(main.stackAllocator);
-
-		settings.put("defaultGamemode", @tagName(worldSettings.defaultGamemode));
-		settings.put("allowCheats", worldSettings.allowCheats);
-		settings.put("testingMode", worldSettings.testingMode);
-		settings.put("seed", worldSettings.seed);
-
-		worldInfo.put("settings", settings);
-	}
 	{
 		const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(worldInfoPath);
 
 		worldInfo.put("name", worldName);
 		worldInfo.put("version", worldDataVersion);
-		worldInfo.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
+		worldInfo.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
 	}
@@ -120,7 +137,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		}
 	};
 	var simulationChunkHashMap: std.HashMap(chunk.ChunkPosition, *SimulationChunk, HashContext, 50) = undefined;
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 
 	fn getSimulationChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*SimulationChunk {
 		std.debug.assert(pos.voxelSize == 1);
@@ -194,7 +211,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch (self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos),
+				.user => |user| return self.pos.getPriority(user.player().pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
@@ -258,7 +275,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if (self.source) |user| {
-				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(user.player().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -294,7 +311,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	pub fn init(world: *ServerWorld, settings: ZonElement) !ChunkManager { // MARK: init()
 		const self = ChunkManager{
 			.world = world,
-			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
+			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.settings.seed),
 		};
 		simulationChunkHashMap = .init(main.globalAllocator.allocator);
 		server.terrain.init(self.terrainGenerationProfile);
@@ -370,7 +387,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 		defer biomeMap.deinit();
 		for (server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
-			generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
+			generator.generate(server.world.?.settings.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
 		}
 		if (pos.voxelSize != 1) { // Generate LOD replacements
 			for (ch.super.data.palette()) |*block| {
@@ -407,8 +424,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	itemDropManager: ItemDropManager = undefined,
 	blockPalette: *main.assets.Palette = undefined,
 	itemPalette: *main.assets.Palette = undefined,
-	toolPalette: *main.assets.Palette = undefined,
+	proceduralItemPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
+	entityModelPalette: *main.assets.Palette = undefined,
+	entityComponentPalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
 	gameTime: i64 = 0,
@@ -419,16 +438,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
 
-	defaultGamemode: main.game.Gamemode = undefined,
-	allowCheats: bool = undefined,
-	testingMode: bool = undefined,
-	seed: u64 = undefined,
+	settings: Settings = undefined,
 
 	path: []const u8,
 	name: []const u8 = &.{},
 	spawn: Vec3i = undefined,
 
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 
 	chunkUpdateQueue: main.utils.CircularBufferQueue(ChunkUpdateRequest),
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
@@ -474,11 +490,17 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette = try loadPalette(arena, path, "item_palette", null);
 		errdefer self.itemPalette.deinit();
 
-		self.toolPalette = try loadPalette(arena, path, "tool_palette", null);
-		errdefer self.toolPalette.deinit();
+		self.proceduralItemPalette = try loadPalette(arena, path, "tool_palette", null);
+		errdefer self.proceduralItemPalette.deinit();
 
 		self.biomePalette = try loadPalette(arena, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
+
+		self.entityModelPalette = try loadPalette(arena, path, "entity_model_palette", "cubyz:missing");
+		errdefer self.entityModelPalette.deinit();
+
+		self.entityComponentPalette = try loadPalette(arena, path, "entity_component_palette", null);
+		errdefer self.entityComponentPalette.deinit();
 
 		errdefer main.assets.unloadAssets();
 
@@ -486,15 +508,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
 		// Store the block palette now that everything is loaded.
 		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
-		try dir.writeZon("tool_palette.zig.zon", self.toolPalette.storeToZon(arena));
+		try dir.writeZon("tool_palette.zig.zon", self.proceduralItemPalette.storeToZon(arena));
 		try dir.writeZon("biome_palette.zig.zon", self.biomePalette.storeToZon(arena));
+		try dir.writeZon("entity_model_palette.zig.zon", self.entityModelPalette.storeToZon(arena));
+		try dir.writeZon("entity_component_palette.zig.zon", self.entityComponentPalette.storeToZon(arena));
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
+
 		return self;
 	}
 
@@ -525,8 +550,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
-		self.toolPalette.deinit();
+		self.proceduralItemPalette.deinit();
 		self.biomePalette.deinit();
+		self.entityModelPalette.deinit();
+		self.entityComponentPalette.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -578,7 +605,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			var playerDir = try dir.openIterableDir("players");
 			defer playerDir.close();
 			var iterator = playerDir.iterate();
-			while (try iterator.next()) |file| {
+			while (try iterator.next(main.io)) |file| {
 				if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
 					fileNames.append(arena.dupe(u8, file.name));
 				}
@@ -586,7 +613,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			for (fileNames.items, 0..) |oldName, i| {
 				const newName = std.fmt.allocPrint(arena.allocator, "{}.zon", .{i}) catch unreachable;
-				try playerDir.dir.rename(oldName, newName);
+				try playerDir.dir.rename(oldName, playerDir.dir, newName, main.io);
 			}
 
 			worldData.put("version", 5);
@@ -597,11 +624,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
 		}
-		const settings = worldData.getChild("settings");
-		self.seed = settings.get(?u64, "seed", null) orelse {
-			std.log.err("Cannot load world. World has no seed!", .{});
-			return error.NoSeed;
-		};
+		self.settings = try .fromZon(worldData.getChild("settings"));
 
 		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.gameTime = worldData.get(i64, "gameTime", 0);
@@ -609,10 +632,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
-
-		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, settings.get([]const u8, "defaultGamemode", "creative")) orelse .creative;
-		self.allowCheats = settings.get(bool, "allowCheats", true);
-		self.testingMode = settings.get(bool, "testingMode", false);
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -621,13 +640,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const worldData = try files.cubyzDir().readToZon(main.stackAllocator, path);
 		defer worldData.deinit(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
-		worldData.put("seed", self.seed);
 		worldData.put("doGameTimeCycle", self.doGameTimeCycle);
 		worldData.put("gameTime", self.gameTime);
 		worldData.put("spawn", self.spawn);
 		worldData.put("biomeChecksum", self.biomeChecksum);
 		worldData.put("name", self.name);
-		worldData.put("lastUsedTime", (try std.Io.Clock.Timestamp.now(main.io, .real)).raw.toMilliseconds());
+		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
 
 		try files.cubyzDir().writeZon(path, worldData);
@@ -637,7 +655,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var playerDir = try dir.openIterableDir("players");
 		defer playerDir.close();
 		var iterator = playerDir.iterate();
-		while (try iterator.next()) |file| {
+		while (try iterator.next(main.io)) |file| {
 			if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
 				const zon = try playerDir.readToZon(main.stackAllocator, file.name);
 				defer zon.deinit(main.stackAllocator);
@@ -774,19 +792,19 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			};
 			defer dirX.close();
 			var iterX = dirX.iterate();
-			while (try iterX.next()) |entryX| {
+			while (try iterX.next(main.io)) |entryX| {
 				if (entryX.kind != .directory) continue;
 				const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
 				var dirY = try dirX.openIterableDir(entryX.name);
 				defer dirY.close();
 				var iterY = dirY.iterate();
-				while (try iterY.next()) |entryY| {
+				while (try iterY.next(main.io)) |entryY| {
 					if (entryY.kind != .directory) continue;
 					const wy = std.fmt.parseInt(i32, entryY.name, 0) catch continue;
 					var dirZ = try dirY.openIterableDir(entryY.name);
 					defer dirZ.close();
 					var iterZ = dirZ.iterate();
-					while (try iterZ.next()) |entryZ| {
+					while (try iterZ.next(main.io)) |entryZ| {
 						if (entryZ.kind != .file) continue;
 						const nameZ = entryZ.name[0 .. std.mem.indexOfScalar(u8, entryZ.name, '.') orelse entryZ.name.len];
 						const wz = std.fmt.parseInt(i32, nameZ, 0) catch continue;
@@ -830,7 +848,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn generate(self: *ServerWorld) !void {
 		if (@reduce(.And, self.spawn == Vec3i{0, 0, 0})) {
-			var seed: u64 = self.seed ^ 275892235728371;
+			var seed: u64 = self.settings.seed ^ 275892235728371;
 			std.log.info("Finding spawn position...", .{});
 			foundPosition: {
 				// Explore chunks in a spiral from the center:
@@ -885,9 +903,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
 			self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 		}
-		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.seed));
+		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.settings.seed));
 		if (newBiomeCheckSum != self.biomeChecksum) {
-			if (self.testingMode) {
+			if (self.settings.testingMode) {
 				const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 				defer main.stackAllocator.free(dir);
 				main.files.cubyzDir().deleteTree("maps") catch |err| {
@@ -918,7 +936,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn loadPlayer(self: *ServerWorld, user: *User) void {
+	pub fn loadPlayer(self: *ServerWorld, user: *User) !void {
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
@@ -937,20 +955,22 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
-		const player = &user.player;
+		const player = user.player();
+		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
-			main.sync.setGamemode(user, self.defaultGamemode);
+			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
-			player.loadFrom(playerData.getChild("entity"));
+			user.permissions.fromZon(playerData);
 
-			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
+			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 
-		user.spawnPos = playerData.get(Vec3d, "playerSpawnPos", @as(Vec3d, @floatFromInt(self.spawn)));
+		user.spawnPos = playerData.get(?Vec3d, "playerSpawnPos", null);
+		return loadingError;
 	}
 
 	fn loadPlayerInventory(size: usize, base64EncodedData: []const u8, source: main.items.Inventory.Source, playerDataFilePath: []const u8) main.items.Inventory.InventoryId {
@@ -969,7 +989,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			readerInput = "";
 		};
 		var reader: main.utils.BinaryReader = .init(readerInput);
-		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, .normal, source, &reader, .{});
+		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, source, &reader, .{});
 	}
 
 	fn savePlayerInventory(allocator: NeverFailingAllocator, inv: main.items.Inventory) []const u8 {
@@ -997,7 +1017,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("name", user.name);
 		playerZon.put("publicKey", user.newKeyString);
 
-		playerZon.put("entity", user.player.save(main.stackAllocator));
+		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
+		user.permissions.toZon(main.stackAllocator, &playerZon);
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
@@ -1011,7 +1032,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
 
-		playerZon.put("playerSpawnPos", user.spawnPos);
+		if (user.spawnPos) |spawnPos| {
+			playerZon.put("playerSpawnPos", spawnPos);
+		}
 
 		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(playerPath);
@@ -1156,9 +1179,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
-		const map = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1, 0);
+		const map = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1, 0);
 		defer map.deinit();
-		return map.getRoughBiome(wx, wy, wz, false, undefined, true);
+		return map.getBiome(wx - map.pos.wx, wy - map.pos.wy, wz - map.pos.wz);
 	}
 
 	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) ?Block {
@@ -1242,7 +1265,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
 		for (userList) |user| {
-			main.network.protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
+			main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx, wy, wz}, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		// onBreak event
 		if (oldBlock) |block| {

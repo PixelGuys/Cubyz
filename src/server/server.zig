@@ -18,6 +18,7 @@ const Blueprint = main.blueprint.Blueprint;
 const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
+const sync = main.sync;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
@@ -26,6 +27,7 @@ pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
+pub const permission = @import("permission.zig");
 
 pub const command = @import("command/_command.zig");
 
@@ -96,7 +98,7 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	player: Entity = .{},
+	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -112,7 +114,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	spawnPos: Vec3d = .{0, 0, 0},
+	spawnPos: ?Vec3d = null,
 	worldEditData: WorldEditData = undefined,
 
 	playerIndex: usize = undefined,
@@ -135,9 +137,15 @@ pub const User = struct { // MARK: User
 
 	refCount: Atomic(u32) = .init(1),
 
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
+
+	permissions: permission.Permissions = undefined,
+
+	pub fn player(self: *User) *Entity {
+		return &self.innerPlayer;
+	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -145,9 +153,11 @@ pub const User = struct { // MARK: User
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.jobQueue = .init(main.globalAllocator);
+		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
+		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -169,7 +179,11 @@ pub const User = struct { // MARK: User
 			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
 		}
 
+		self.permissions.deinit();
+
 		self.worldEditData.deinit();
+
+		self.player().deinit(.server);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
@@ -224,9 +238,9 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
-		try self.key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+		try self.key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
 		if (self.legacyKey) |key| {
-			try key.verifySignature(reader, self.conn.fastChannel.verificationDataForClientSignature.items);
+			try key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
 		}
 	}
 
@@ -235,8 +249,10 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		world.?.loadPlayer(self);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		world.?.loadPlayer(self) catch {
+			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
+		};
+		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
 
@@ -292,7 +308,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -365,15 +381,19 @@ pub const User = struct { // MARK: User
 				};
 			}
 		}
-		if (self.isNetworkQueueFull() or self.jobQueue.size == 0) {
+		if (self.isNetworkQueueFull()) {
 			self.jobQueueScheduled = false;
 			return null;
 		}
+		const task = self.jobQueue.extractMax() orelse {
+			self.jobQueueScheduled = false;
+			return null;
+		};
 		if (self.jobQueue.size == 0) {
 			self.jobQueueScheduled = false;
-			return .{self.jobQueue.extractMax().?, .empty};
+			return .{task, .empty};
 		} else {
-			return .{self.jobQueue.extractMax().?, .hasMoreTasks};
+			return .{task, .hasMoreTasks};
 		}
 	}
 
@@ -388,7 +408,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn isNetworkQueueFull(self: *User) bool {
-		return self.conn.fastChannel.super.sendBuffer.buffer.len > 900000;
+		return self.conn.secureChannel.super.sendBuffer.buffer.len > 900000;
 	}
 
 	fn scheduleJobQueue(self: *User) void {
@@ -452,7 +472,7 @@ pub const User = struct { // MARK: User
 		const position: [3]f64 = try reader.readVec(Vec3d);
 		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.player.rot = rotation;
+		self.player().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
@@ -466,13 +486,28 @@ pub const User = struct { // MARK: User
 	pub fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.protocols.chat.send(self.conn, msg);
 	}
+
+	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
+		return switch (user.permissions.hasPermission(permissionPath)) {
+			.yes => true,
+			.no, .neutral => false,
+		};
+	}
+
+	pub fn getSpawnPos(user: *User) Vec3d {
+		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
+	}
+
+	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.print("{s}@{d}", .{user.name, user.playerIndex});
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
 const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
-var userMutex: std.Thread.Mutex = .{};
+var userMutex: main.utils.Mutex = .{};
 var users: main.List(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
 var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
@@ -497,6 +532,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	main.entity.server.init();
 	main.items.Inventory.ServerSide.init();
 	main.sync.ServerSide.init();
 
@@ -517,13 +553,19 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
+		user.permissions.addPermission(.white, "/");
 	}
 }
 
 fn deinit() void {
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
-		user.deinit();
+		if (user.refCount.load(.monotonic) == 1) {
+			user.decreaseRefCount();
+		} else {
+			std.log.err("Leaked user {f}", .{user});
+			user.deinit();
+		}
 	}
 	userDeinitList.deinit();
 	userConnectList.deinit();
@@ -540,6 +582,7 @@ fn deinit() void {
 
 	main.sync.ServerSide.deinit();
 	main.items.Inventory.ServerSide.deinit();
+	main.entity.server.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -578,6 +621,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 
 fn update() void { // MARK: update()
 	world.?.update();
+	main.entity.server.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
@@ -601,17 +645,17 @@ fn update() void { // MARK: update()
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = user.player.pos,
-			.vel = user.player.vel,
-			.rot = user.player.rot,
+			.pos = user.player().pos,
+			.vel = user.player().vel,
+			.rot = user.player().rot,
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, user.player().pos, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
-		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const pos = @as(Vec3i, @intFromFloat(user.player().pos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
@@ -707,7 +751,7 @@ pub fn connectInternal(user: *User) void {
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Check if a user with that account is already present
-	if (!world.?.testingMode) {
+	if (!world.?.settings.testingMode) {
 		for (userList) |other| {
 			if (other.playerIndex == user.playerIndex) {
 				user.conn.disconnect();
@@ -719,9 +763,10 @@ pub fn connectInternal(user: *User) void {
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		const entityZon = main.ZonElement.initObject(main.stackAllocator);
-		entityZon.put("id", user.id);
+
+		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
 		entityZon.put("name", user.name);
+		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -733,9 +778,9 @@ pub fn connectInternal(user: *User) void {
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
-			entityZon.put("id", other.id);
+			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
 			entityZon.put("name", other.name);
+			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -754,7 +799,7 @@ pub fn connectInternal(user: *User) void {
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
-	main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
+	sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
 }
 
 fn sendRawMessage(msg: []const u8) void {
@@ -768,9 +813,21 @@ fn sendRawMessage(msg: []const u8) void {
 	}
 }
 
-var chatMutex: std.Thread.Mutex = .{};
+var chatMutex: main.utils.Mutex = .{};
 pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
+}
+
+pub fn getUserByIndexAndIncreaseRefCount(index: usize) ?*User {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for (userList) |user| {
+		if (user.playerIndex == index) {
+			user.increaseRefCount();
+			return user;
+		}
+	}
+	return null;
 }

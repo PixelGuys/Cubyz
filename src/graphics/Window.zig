@@ -234,7 +234,7 @@ pub const Gamepad = struct {
 	pub fn downloadControllerMappings() void {
 		if (builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
-		const curTimestamp: i96 = (std.Io.Clock.Timestamp.now(main.io, .real) catch unreachable).raw.nanoseconds;
+		const curTimestamp: i96 = std.Io.Clock.Timestamp.now(main.io, .real).raw.nanoseconds;
 		const timestamp: i96 = blk: {
 			const stamp = files.cwd().read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
 			defer main.stackAllocator.free(stamp);
@@ -259,16 +259,12 @@ pub const Gamepad = struct {
 	}
 	pub fn updateControllerMappings() void {
 		std.log.info("Updating controller mappings in-memory...", .{});
-		var _envMap = std.process.getEnvMap(main.stackAllocator.allocator) catch null;
-		if (_envMap) |*envMap| {
-			defer envMap.deinit();
-			if (envMap.get("SDL_GAMECONTROLLERCONFIG")) |controller_config_env| {
-				_ = c.glfwUpdateGamepadMappings(@ptrCast(controller_config_env));
-				return;
-			}
+		if (main.settings.environment.SDL_GAMECONTROLLERCONFIG) |controllerConfig| {
+			_ = c.glfwUpdateGamepadMappings(@ptrCast(controllerConfig));
+			return;
 		}
 		const data = main.files.cwd().read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
-			if (@TypeOf(err) == std.fs.File.OpenError and err == std.fs.File.OpenError.FileNotFound) {
+			if (err == error.FileNotFound) {
 				return; // Ignore not finding mappings.
 			}
 			std.log.err("Error opening gamepad mappings file: {s}", .{@errorName(err)});
@@ -390,8 +386,6 @@ pub const Key = struct { // MARK: Key
 
 	pub fn getName(self: Key) []const u8 {
 		if (self.mouseButton == -1) {
-			const cName = c.glfwGetKeyName(self.key, self.scancode);
-			if (cName != null) return std.mem.span(cName);
 			return switch (self.key) {
 				c.GLFW_KEY_SPACE => "Space",
 				c.GLFW_KEY_GRAVE_ACCENT => "Grave Accent",
@@ -439,7 +433,23 @@ pub const Key = struct { // MARK: Key
 				c.GLFW_KEY_F23 => "F23",
 				c.GLFW_KEY_F24 => "F24",
 				c.GLFW_KEY_F25 => "F25",
+				c.GLFW_KEY_KP_0 => "Keypad 0",
+				c.GLFW_KEY_KP_1 => "Keypad 1",
+				c.GLFW_KEY_KP_2 => "Keypad 2",
+				c.GLFW_KEY_KP_3 => "Keypad 3",
+				c.GLFW_KEY_KP_4 => "Keypad 4",
+				c.GLFW_KEY_KP_5 => "Keypad 5",
+				c.GLFW_KEY_KP_6 => "Keypad 6",
+				c.GLFW_KEY_KP_7 => "Keypad 7",
+				c.GLFW_KEY_KP_8 => "Keypad 8",
+				c.GLFW_KEY_KP_9 => "Keypad 9",
+				c.GLFW_KEY_KP_DECIMAL => "Keypad Decimal",
+				c.GLFW_KEY_KP_DIVIDE => "Keypad Divide",
+				c.GLFW_KEY_KP_MULTIPLY => "Keypad Multiply",
+				c.GLFW_KEY_KP_SUBTRACT => "Keypad Sutract",
+				c.GLFW_KEY_KP_ADD => "Keypad Add",
 				c.GLFW_KEY_KP_ENTER => "Keypad Enter",
+				c.GLFW_KEY_KP_EQUAL => "Keypad =",
 				c.GLFW_KEY_LEFT_SHIFT => "Left Shift",
 				c.GLFW_KEY_LEFT_CONTROL => "Left Control",
 				c.GLFW_KEY_LEFT_ALT => "Left Alt",
@@ -450,7 +460,14 @@ pub const Key = struct { // MARK: Key
 				c.GLFW_KEY_RIGHT_SUPER => "Right Super",
 				c.GLFW_KEY_MENU => "Menu",
 				c.GLFW_KEY_UNKNOWN => "(Unbound)",
-				else => "Unknown Key",
+				else => {
+					const cName = c.glfwGetKeyName(self.key, self.scancode);
+					if (cName != null) {
+						return std.mem.span(cName);
+					} else {
+						return "Unknown Key";
+					}
+				},
 			};
 		} else {
 			return switch (self.mouseButton) {
@@ -558,18 +575,20 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 				newDelta[1] *= -1;
 			}
 			deltas[deltaBufferPosition] += newDelta;
-			var averagedDelta: Vec2f = Vec2f{0, 0};
-			for (deltas) |delta| {
-				averagedDelta += delta;
-			}
-			averagedDelta /= @splat(deltasLen);
-			main.game.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
-			deltaBufferPosition = (deltaBufferPosition + 1)%deltasLen;
-			deltas[deltaBufferPosition] = Vec2f{0, 0};
 		}
 		ignoreDataAfterRecentGrab = false;
 		currentPos = newPos;
 		lastUsedMouse = true;
+	}
+	fn applyCursorPositionChanges() void {
+		var averagedDelta: Vec2f = Vec2f{0, 0};
+		for (deltas) |delta| {
+			averagedDelta += delta;
+		}
+		averagedDelta /= @splat(deltasLen);
+		main.game.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
+		deltaBufferPosition = (deltaBufferPosition + 1)%deltasLen;
+		deltas[deltaBufferPosition] = Vec2f{0, 0};
 	}
 	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.c) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
@@ -701,6 +720,7 @@ pub fn setClipboardString(string: []const u8) void {
 
 pub fn init() void { // MARK: init()
 	_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
+	const windowTitle = "Cubyz " ++ main.settings.version.version;
 
 	if (builtin.target.os.tag == .macos) {
 		// NOTE(blackedout): Since the Vulkan loader is linked statically for Cubyz on macOS, libvulkan*.dylib is part of the Cubyz executable
@@ -718,8 +738,8 @@ pub fn init() void { // MARK: init()
 		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
 	} else {
 		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
-		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.vulkanTestingWindow));
-		vulkanWindow = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
+		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.launchConfig.vulkanTestingMode));
+		vulkanWindow = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 		vulkan.init(vulkanWindow) catch |err| {
 			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
 		};
@@ -731,7 +751,7 @@ pub fn init() void { // MARK: init()
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
 
-	window = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
+	window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 	iconBlock: {
 		const image = main.graphics.Image.readUnflippedFromFile(main.stackAllocator, "assets/cubyz/logo.png") catch |err| {
 			std.log.err("Error loading logo: {s}", .{@errorName(err)});
@@ -787,6 +807,7 @@ pub fn handleEvents(deltaTime: f64) void {
 	scrollOffsetInteger = 0;
 	c.glfwPollEvents();
 	Gamepad.update(deltaTime);
+	GLFWCallbacks.applyCursorPositionChanges();
 }
 
 var oldX: c_int = 0;

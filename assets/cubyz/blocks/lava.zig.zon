@@ -1,8 +1,8 @@
 .{
-	.tags = .{.fluid},
+	.tags = .{.fluid, .hot},
 	.drops = .{},
 	.selectable = false,
-	.replacable = true,
+	.replaceable = true,
 	.degradable = true,
 	.transparent = true,
 	.hasBackFace = true,

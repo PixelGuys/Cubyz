@@ -34,11 +34,8 @@ pub const camera = struct { // MARK: camera
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
 		// Mouse movement along the y-axis rotates the image along the x-axis.
 		rotation[0] += mouseY;
-		if (rotation[0] > std.math.pi/2.0) {
-			rotation[0] = std.math.pi/2.0;
-		} else if (rotation[0] < -std.math.pi/2.0) {
-			rotation[0] = -std.math.pi/2.0;
-		}
+		const bound = std.math.pi/2.0 - 0.001;
+		rotation[0] = std.math.clamp(rotation[0], -bound, bound);
 		// Mouse movement along the x-axis rotates the image along the z-axis.
 		rotation[2] += mouseX;
 	}
@@ -98,7 +95,7 @@ pub const collision = struct {
 		return .{.box = resultBox orelse return null, .dist = minDistance};
 	}
 
-	pub fn collides(comptime side: main.utils.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: Box) ?Box {
+	pub fn collides(comptime side: main.sync.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: Box) ?Box {
 		var boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -162,7 +159,7 @@ pub const collision = struct {
 		bounciness: f32,
 	};
 
-	pub fn calculateSurfaceProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
+	pub fn calculateSurfaceProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -238,7 +235,7 @@ pub const collision = struct {
 		return @reduce(.Mul, max - min);
 	}
 
-	pub fn calculateVolumeProperties(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaults: VolumeProperties) VolumeProperties {
+	pub fn calculateVolumeProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaults: VolumeProperties) VolumeProperties {
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
@@ -301,7 +298,7 @@ pub const collision = struct {
 		};
 	}
 
-	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
+	pub fn collideOrStep(comptime side: main.sync.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
 		const index = @intFromEnum(dir);
 
 		// First argument is amount we end up moving in dir, second argument is how far up we step
@@ -348,7 +345,7 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, deltaTime: f64) void {
+	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.sync.Side, deltaTime: f64) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
@@ -427,7 +424,7 @@ pub const Player = struct { // MARK: Player
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
-	pub var mutex: std.Thread.Mutex = .{};
+	pub var mutex: main.utils.Mutex = .{};
 	pub const inventorySize = 32;
 	pub var inventory: ClientInventory = undefined;
 	pub var selectedSlot: u32 = 0;
@@ -457,8 +454,8 @@ pub const Player = struct { // MARK: Player
 	};
 	pub const jumpHeight = 1.25;
 
-	fn loadFrom(zon: ZonElement) void {
-		super.loadFrom(zon);
+	fn loadFrom(zon: ZonElement) !void {
+		try super.loadFrom(id, zon, .client);
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -530,14 +527,12 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
-		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
-			if (!mods.shift) {
-				if (main.renderer.mesh_storage.triggerOnInteractBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) == .handled) return;
-			}
-			const block = main.renderer.mesh_storage.getBlockFromRenderThread(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
+		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| blk: {
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse break :blk;
+			const block = mesh.chunk.getBlock(blockPos[0] - mesh.pos.wx, blockPos[1] - mesh.pos.wy, blockPos[2] - mesh.pos.wz);
 			const onInteract = block.onInteract();
 			if (!mods.shift) {
-				if (onInteract.run(.{.blockPos = blockPos, .block = block}) == .handled) return;
+				if (onInteract.run(.{.blockPos = blockPos, .block = block, .chunk = mesh.chunk}) == .handled) return;
 			}
 		}
 
@@ -620,8 +615,10 @@ pub const World = struct { // MARK: World
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
-	toolPalette: *assets.Palette = undefined,
+	proceduralItemPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
+	entityModelPalette: *assets.Palette = undefined,
+	entityComponentPalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
@@ -643,6 +640,8 @@ pub const World = struct { // MARK: World
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
+		main.entityModel.loadModelsAndTexture();
+		main.client.entity_manager.initAfterWorld();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 	}
@@ -661,14 +660,20 @@ pub const World = struct { // MARK: World
 		main.sync.ClientSide.reset();
 
 		main.threadPool.clear();
-		main.entity.ClientEntityManager.clear();
+		main.entity.client.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
-		self.toolPalette.deinit();
+		self.proceduralItemPalette.deinit();
 		self.biomePalette.deinit();
+		self.entityComponentPalette.deinit();
+		self.entityModelPalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
+		main.entityModel.reset();
+
+		Player.super.deinit(.client);
+
 		if (main.server.thread) |serverThread| {
 			serverThread.join();
 			main.server.thread = null;
@@ -688,15 +693,19 @@ pub const World = struct { // MARK: World
 		errdefer self.biomePalette.deinit();
 		self.itemPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("itemPalette"), null);
 		errdefer self.itemPalette.deinit();
-		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
-		errdefer self.toolPalette.deinit();
+		self.proceduralItemPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
+		errdefer self.proceduralItemPalette.deinit();
+		self.entityModelPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityModelPalette"), "cubyz:missing");
+		errdefer self.entityModelPalette.deinit();
+		self.entityComponentPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityComponentPalette"), null);
+		errdefer self.entityComponentPalette.deinit();
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
+		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .normal, .serverShared, .{.playerInventory = Player.id}, .{});
-		Player.loadFrom(zon.getChild("player"));
+		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
+		try Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
@@ -832,10 +841,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
 	const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
 	var movementDir: Vec3d = .{0, 0, 0};
-	var movementSpeed: f64 = 0;
 
 	if (main.Window.grabbed) {
 		const walkingSpeed: f64 = if (Player.crouching) 2.5 else 4.5;
+		var movementSpeed: f64 = walkingSpeed*@min(1, vec.length(Vec2f{
+			@max(KeyBoard.key("forward").value, KeyBoard.key("backward").value),
+			@max(KeyBoard.key("left").value, KeyBoard.key("right").value),
+		}));
 		if (KeyBoard.key("forward").value > 0.0) {
 			if (KeyBoard.key("sprint").pressed and !Player.crouching) {
 				if (Player.isGhost.load(.monotonic)) {
@@ -849,20 +861,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 				}
 			} else {
-				movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("forward").value);
 				movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 			}
 		}
 		if (KeyBoard.key("backward").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("backward").value);
 			movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
 		}
 		if (KeyBoard.key("left").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("left").value);
 			movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
 		}
 		if (KeyBoard.key("right").value > 0.0) {
-			movementSpeed = @max(movementSpeed, walkingSpeed*KeyBoard.key("right").value);
 			movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 		}
 		if (KeyBoard.key("jump").pressed) {
@@ -932,7 +940,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
-	Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
+	Player.crouching = main.Window.grabbed and KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
 	if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,

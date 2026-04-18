@@ -60,7 +60,7 @@ var _blockHealth: [maxBlockCount]f32 = undefined;
 var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
-var _replacable: [maxBlockCount]bool = undefined;
+var _replaceable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
@@ -122,7 +122,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
-	_replacable[size] = zon.get(bool, "replacable", false);
+	_replaceable[size] = zon.get(bool, "replaceable", false);
 
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -147,7 +147,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		ores.append(main.worldArena, .{
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
-			.maxHeight = oreProperties.get(i32, "height", 0),
+			.maxHeight = oreProperties.get(i32, "maxHeight", std.math.maxInt(i32)),
 			.minHeight = oreProperties.get(i32, "minHeight", std.math.minInt(i32)),
 			.density = oreProperties.get(f32, "density", 0.5),
 			.blockType = @intCast(size),
@@ -278,9 +278,13 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
-fn parseBlockData(fullBlockId: []const u8, data: []const u8) ?u16 {
+const ParseBlockConfig = struct {
+	applyMigrations: bool = false,
+};
+
+fn parseBlockData(fullBlockId: []const u8, data: []const u8, comptime config: ParseBlockConfig) ?u16 {
 	if (std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
-		const oreChild = parseBlock(data);
+		const oreChild = parseBlockWithOptions(data, config);
 		if (oreChild.data != 0) {
 			std.log.warn("Error while parsing ore block data of '{s}': Parent block data must be 0.", .{fullBlockId});
 		}
@@ -293,11 +297,18 @@ fn parseBlockData(fullBlockId: []const u8, data: []const u8) ?u16 {
 }
 
 pub fn parseBlock(data: []const u8) Block {
+	return parseBlockWithOptions(data, .{});
+}
+
+pub fn parseBlockWithOptions(data: []const u8, comptime config: ParseBlockConfig) Block {
 	var id: []const u8 = data;
 	var blockData: ?u16 = null;
 	if (std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
-		blockData = parseBlockData(data, data[pos + 1 ..]);
+		blockData = parseBlockData(data, data[pos + 1 ..], config);
+	}
+	if (config.applyMigrations) {
+		id = main.migrations.applySingle(.block, id);
 	}
 	if (reverseIndices.get(id)) |resultType| {
 		var result: Block = .{.typ = resultType, .data = 0};
@@ -316,14 +327,6 @@ pub fn getBlockById(idAndData: []const u8) !u16 {
 	return reverseIndices.get(id) orelse return error.NotFound;
 }
 
-pub fn getBlockByIdWithMigrations(idAndData: []const u8) !u16 {
-	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
-	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
-	var id = idAndData[0..blockIdEndIndex];
-	id = main.migrations.applySingle(.block, id);
-	return reverseIndices.get(id) orelse return error.NotFound;
-}
-
 pub fn getBlockData(idLikeString: []const u8) !?u16 {
 	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
 	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
@@ -336,7 +339,7 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
-pub const Block = packed struct { // MARK: Block
+pub const Block = packed struct(u32) { // MARK: Block
 	typ: u16,
 	data: u16,
 
@@ -361,6 +364,13 @@ pub const Block = packed struct { // MARK: Block
 		return _id[self.typ];
 	}
 
+	pub inline fn idAndData(self: Block, list: *main.List(u8)) void {
+		list.appendSlice(self.id());
+		if (self.data == 0) return;
+		list.append(':');
+		self.mode().formatBlockData(self, list);
+	}
+
 	pub inline fn blockHealth(self: Block) f32 {
 		return _blockHealth[self.typ];
 	}
@@ -370,8 +380,8 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	/// Whether you can replace it with another block, mainly used for fluids/gases
-	pub inline fn replacable(self: Block) bool {
-		return _replacable[self.typ];
+	pub inline fn replaceable(self: Block) bool {
+		return _replaceable[self.typ];
 	}
 
 	pub inline fn selectable(self: Block) bool {
@@ -691,7 +701,7 @@ pub const meshes = struct { // MARK: meshes
 				return err2;
 			};
 		};
-		file.close(); // It was only openend to check if it exists.
+		file.close(main.io); // It was only openend to check if it exists.
 		// Otherwise read it into the list:
 		result = @intCast(textureIDs.items.len);
 
