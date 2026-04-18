@@ -409,7 +409,7 @@ pub const DamageType = enum(u8) {
 			.acid => main.server.sendMessage("{s}§#ffffff was atomically taken apart by acid", .{name}),
 			.explosion => main.server.sendMessage("{s}§#ffffff blew up", .{name}),
 			.poison => main.server.sendMessage("{s}§#ffffff ate something bad", .{name}),
-			.venom  => main.server.sendMessage("{s}§#ffffff succumbed to venom", .{name}),
+			.venom => main.server.sendMessage("{s}§#ffffff succumbed to venom", .{name}),
 			.drowning => main.server.sendMessage("{s}§#ffffff started breathing water", .{name}),
 			.cold => main.server.sendMessage("{s}§#ffffff became a frozen statue", .{name}),
 		}
