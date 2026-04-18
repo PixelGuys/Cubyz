@@ -1071,7 +1071,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if (damage > 0) {
-					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.swingSpeed else 0.5;
+					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
 					if (currentSwingTime > swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = 0;
