@@ -634,7 +634,7 @@ pub const meshes = struct { // MARK: meshes
 	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
 		const path = extendedPath(main.stackAllocator, _path, ending);
 		defer main.stackAllocator.free(path);
-		return Image.readFromFile(main.worldArena, path) catch default;
+		return Image.readFromFile(main.worldArena, path, .{.is_flipped_vertically = true}) catch default;
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
