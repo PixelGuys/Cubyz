@@ -253,7 +253,7 @@ pub const ParticleSystem = struct {
 						const skin = 0.0001;
 						v3Pos[j] = if (move < 0)
 							box.max[j] + (size + skin)
-						else 
+						else
 							box.min[j] - (size + skin);
 						
 						particleLocal.velAndRotationVel[j] = 0;
