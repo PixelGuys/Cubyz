@@ -6,13 +6,13 @@ const ModifierRestriction = main.items.ModifierRestriction;
 const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
 
-const OnOrthogonal = struct {
+const On_orthogonal = struct {
 	tag: main.Tag,
 	amount: usize,
 	range: ?usize,
 };
 
-pub fn satisfied(self: *const OnOrthogonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
+pub fn satisfied(self: *const On_orthogonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
 	const gridSize: usize = proceduralItem.craftingGrid.len;
 	const rangeChecked = @min(self.range orelse gridSize, gridSize);
@@ -33,8 +33,8 @@ pub fn satisfied(self: *const OnOrthogonal, proceduralItem: *const ProceduralIte
 	return count >= self.amount;
 }
 
-pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnOrthogonal {
-	const result = allocator.create(OnOrthogonal);
+pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const On_orthogonal {
+	const result = allocator.create(On_orthogonal);
 	result.* = .{
 		.tag = main.Tag.find(zon.get([]const u8, "tag", "not specified")),
 		.amount = zon.get(usize, "amount", 8),
@@ -43,7 +43,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnO
 	return result;
 }
 
-pub fn printTooltip(self: *const OnOrthogonal, outString: *main.List(u8)) void {
+pub fn printTooltip(self: *const On_orthogonal, outString: *main.List(u8)) void {
 	if (self.range == null) {
 		outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on orthoganal axis"});
 	} else {
