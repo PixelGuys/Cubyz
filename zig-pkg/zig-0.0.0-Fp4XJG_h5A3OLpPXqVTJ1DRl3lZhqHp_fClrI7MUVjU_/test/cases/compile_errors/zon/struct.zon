@@ -1,4 +1,0 @@
-.{
-    .boolean = true,
-    .number = 123,
-}

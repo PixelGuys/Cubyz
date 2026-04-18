@@ -1,1 +1,0 @@
-export fn foo() void {}
