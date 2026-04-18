@@ -1,4 +1,5 @@
 pub const bad_at = @import("bad_at.zig");
+pub const devouring = @import("devouring.zig");
 pub const durable = @import("durable.zig");
 pub const fragile = @import("fragile.zig");
 pub const good_at = @import("good_at.zig");
