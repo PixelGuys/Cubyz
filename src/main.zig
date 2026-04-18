@@ -73,7 +73,7 @@ pub fn deinitThreadLocals() void {
 }
 
 pub fn timestamp() std.Io.Timestamp {
-	return std.Io.Clock.Timestamp.now(io, if (@import("builtin").os.tag == .windows) .real else .awake).raw; // TODO: On windows the awake time is broken
+	return std.Io.Clock.Timestamp.now(io, .awake).raw;
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {

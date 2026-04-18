@@ -412,7 +412,3 @@ pub const PasswordEncodedAccountCode = struct {
 		return zon;
 	}
 };
-
-pub fn secureZero(comptime T: type, s: []volatile T) void { // TODO: Remove after zig#31197
-	@memset(s, std.mem.zeroes(T));
-}
