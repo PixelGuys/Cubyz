@@ -1634,12 +1634,6 @@ pub fn assertLocked(mutex: *const main.utils.Mutex) void { // MARK: assertLocked
 	}
 }
 
-pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
-	if (builtin.mode == .Debug) {
-		std.debug.assert(!@constCast(lock).tryLock());
-	}
-}
-
 /// A wrapper over Zig's mutex to avoid having to pass the io everywhere
 pub const Mutex = struct { // MARK: Mutex
 	super: if (builtin.os.tag == .windows) @import("utils/Mutex.zig") else std.Io.Mutex = .init,
@@ -1894,7 +1888,7 @@ const ReadWriteTest = struct {
 		defer writer.deinit();
 		writer.writeInt(IntT, expected);
 
-		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8);
+		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8) catch unreachable;
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);
