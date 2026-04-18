@@ -2,6 +2,9 @@
 	.properties = .{
 		.ocean,
 	},
+	.tags = .{
+		.palm,
+	},
 	.radius = 500,
 	.minHeight = 5,
 	.maxHeight = 7,
