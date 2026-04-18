@@ -194,8 +194,7 @@ const Socket = struct {
 		var nameBuf: [255]u8 = undefined;
 		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
 		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
-		if (name.len == 0) return error.UnknownHostName;
-		try std.Io.net.HostName.lookup(.{.bytes = name}, main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
+		try std.Io.net.HostName.lookup(try .init(name), main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
 		while (true) {
 			const entry = resultQueue.getOneUncancelable(main.io) catch break;
 			switch (entry) {
