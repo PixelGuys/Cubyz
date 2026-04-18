@@ -14,11 +14,11 @@
 	},
 	.{
 		.inputs = .{"5 cubyz:grass_seeds", "cubyz:{type}_grass_vegetation"},
-		.output = "cubyz:{type}_grass_vegetation",
+		.output = "2 cubyz:{type}_grass_vegetation",
 	},
 	.{
 		.inputs = .{"5 cubyz:grass_seeds", "cubyz:grass/vegetation/{type}"},
-		.output = "cubyz:grass/vegetation/{type}",
+		.output = "2 cubyz:grass/vegetation/{type}",
 	},
 	.{
 		.inputs = .{"cubyz:grass/{type}"},
