@@ -255,7 +255,7 @@ pub const ParticleSystem = struct {
 							box.max[j] + (size + skin)
 						else
 							box.min[j] - (size + skin);
-						
+
 						particleLocal.velAndRotationVel[j] = 0;
 					} else {
 						v3Pos[j] += move;
