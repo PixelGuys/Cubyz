@@ -2,6 +2,9 @@
 	.tags = .{.choppable, .wood, .branch},
 	.onUpdate = .{
 		.type = .decay,
+		.drops = .{
+			.{.chance = 0.5, .items = .{.auto}},
+		},
 	},
 	.blockHealth = 4,
 	.texture0 = "cubyz:branch/mahogany/dot",
