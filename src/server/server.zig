@@ -114,7 +114,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	spawnPos: Vec3d = .{0, 0, 0},
+	spawnPos: ?Vec3d = null,
 	worldEditData: WorldEditData = undefined,
 
 	playerIndex: usize = undefined,
@@ -492,6 +492,10 @@ pub const User = struct { // MARK: User
 			.yes => true,
 			.no, .neutral => false,
 		};
+	}
+
+	pub fn getSpawnPos(user: *User) Vec3d {
+		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
 	}
 
 	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
