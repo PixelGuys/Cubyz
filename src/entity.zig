@@ -34,7 +34,6 @@ const EntityComponentVTable = struct {
 var componentList: []?EntityComponentVTable = undefined;
 
 pub fn initComponents() void {
-	if (true) return; // @till++ please fix
 	var tmpComponentList: main.ListUnmanaged(?EntityComponentVTable) = .{};
 	inline for (@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).client.init();

@@ -740,6 +740,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 				@field(main.entity.components, decl.name).entityComponentID = id;
 			} else {
 				entityComponentPalette.add(name);
+				@field(main.entity.components, decl.name).entityComponentID = index;
 				index += 1;
 			}
 		}
