@@ -8,6 +8,8 @@ const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 const Pattern = main.blueprint.Pattern;
 
+const command = @import("../_command.zig");
+
 pub const description = "Enable/disable decay on decayable blocks.";
 pub const usage =
 	\\/toggledecay <selection/clipboard> <on/off>
@@ -59,17 +61,9 @@ pub fn execute(argsString: []const u8, source: *User) void {
 
 	var blueprint: Blueprint = switch (args.target) {
 		.selection => blk: {
-			const pos1 = source.worldEditData.selectionPosition1 orelse {
-				return source.sendMessage("#ff0000Position 1 is not set.", .{});
-			};
-			const pos2 = source.worldEditData.selectionPosition2 orelse {
-				return source.sendMessage("#ff0000Position 2 is not set.", .{});
-			};
+			const pos1, const pos2 = command.getSelectionBounds(source) catch return;
 
-			const posStart: Vec3i = @min(pos1, pos2);
-			const posEnd: Vec3i = @max(pos1, pos2);
-
-			const blueprint = switch (Blueprint.capture(main.globalAllocator, posStart, posEnd)) {
+			const blueprint = switch (Blueprint.capture(main.globalAllocator, pos1, pos2)) {
 				.success => |bp| bp,
 				.failure => |e| {
 					source.sendMessage("#ff0000Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
@@ -78,7 +72,7 @@ pub fn execute(argsString: []const u8, source: *User) void {
 				},
 			};
 
-			source.worldEditData.undoHistory.push(.init(blueprint, posStart, "toggledecay"));
+			source.worldEditData.undoHistory.push(.init(blueprint, pos1, "toggledecay"));
 			source.worldEditData.redoHistory.clear();
 
 			break :blk blueprint.clone(main.stackAllocator);
