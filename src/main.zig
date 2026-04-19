@@ -668,3 +668,11 @@ test "abc" {
 	refAllDeclsRecursiveExceptCImports(@This());
 	_ = @import("zon.zig");
 }
+
+test "allocators" {
+	const allocation1 = stackAllocator.create(u64);
+	stackAllocator.destroy(allocation1);
+
+	const allocation2 = globalAllocator.create(u64);
+	globalAllocator.destroy(allocation2);
+}
