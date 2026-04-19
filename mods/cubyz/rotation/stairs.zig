@@ -311,6 +311,6 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 	return .no;
 }
 
-pub fn getTags() []const Tag {
+pub fn getBlockTags() []const Tag {
 	return &.{.chiselable};
 }
