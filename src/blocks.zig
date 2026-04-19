@@ -42,10 +42,10 @@ pub const BlockDrop = struct {
 
 		const proceduralItem = item.proceduralItem;
 		if (self.forbiddenToolTags) |tags| {
-			for (tags) |tag| if (proceduralItem.hasBlockTag(tag)) return false;
+			for (tags) |tag| if (proceduralItem.hasTag(tag)) return false;
 		}
 		if (self.allowedToolTags) |tags| {
-			for (tags) |tag| if (proceduralItem.hasBlockTag(tag)) return true;
+			for (tags) |tag| if (proceduralItem.hasTag(tag)) return true;
 			return false;
 		}
 

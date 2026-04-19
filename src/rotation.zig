@@ -127,7 +127,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			if (newBlock.typ != oldBlock.typ) return 1;
 			return 0;
 		}
-		pub fn getBlockTags() []const Tag {
+		pub fn getTags() []const Tag {
 			return &.{};
 		}
 		pub fn formatBlockData(block: Block, _list: *main.List(u8)) void {
@@ -172,7 +172,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	itemDropsOnChange: *const fn (oldBlock: Block, newBlock: Block) u16 = DefaultFunctions.itemDropsOnChange,
 
-	getBlockTags: *const fn () []const Tag = DefaultFunctions.getBlockTags,
+	getTags: *const fn () []const Tag = DefaultFunctions.getTags,
 
 	formatBlockData: *const fn (block: Block, _list: *main.List(u8)) void = DefaultFunctions.formatBlockData,
 };
