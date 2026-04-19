@@ -892,7 +892,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 
 	pub fn isEffectiveOn(self: *ProceduralItem, block: main.blocks.Block) bool {
 		for (block.tags()) |tag| {
-			if (hasTag(self, tag)) return true;
+			if (self.hasTag(tag)) return true;
 		}
 		return false;
 	}

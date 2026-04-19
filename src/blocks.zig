@@ -210,7 +210,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
-		blockDrops[i] = BlockDrop{
+		blockDrops[i] = .{
 			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
 			.chance = blockDrop.get(f32, "chance", 1),
 			.forbiddenToolTags = if (blockDrop.getChildOrNull("forbiddenToolTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
