@@ -102,7 +102,7 @@ pub const Target = struct {
 				source.sendMessage("#ff0000Too few arguments for command", .{});
 				return error.TooFewArguments;
 			};
-			if (userIndex[0] == '@') {
+			if (userIndex.len > 0 and userIndex[0] == '@') {
 				const user = parsePlayerIndexAndIncreaseRefCount(userIndex, source) catch return error.InvalidArgs;
 				increasedRefCount = true;
 				_ = split.next();
