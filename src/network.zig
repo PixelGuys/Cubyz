@@ -26,7 +26,7 @@ inline fn networkTimestamp() i64 {
 
 const Socket = std.Io.net.Socket;
 
-pub fn init() void {
+pub fn init() !void {
 	protocols.init();
 	authentication.init();
 	try Connection.SecureChannel.checkResult(c.psa_crypto_init(), "psa_crypto_init");
@@ -181,9 +181,9 @@ const stun = struct { // MARK: stun
 					std.log.err("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
-				if(oldAddress) |other| {
+				if (oldAddress) |other| {
 					std.log.info("{f}", .{result});
-					if(other.eql(&result)) {
+					if (other.eql(&result)) {
 						return result;
 					} else {
 						//result.isSymmetricNAT = true; TODOFIX
@@ -220,7 +220,7 @@ const stun = struct { // MARK: stun
 							addressData[5] ^= MAGIC_COOKIE[3];
 						}
 						return Address.parseLiteral(&addressData);
-					} else if(data[1] == 0x02) {
+					} else if (data[1] == 0x02) {
 						data = data[(len + 3) & ~@as(usize, 3) ..]; // Pad to 32 Bit.
 						continue; // I don't care about IPv6.
 					} else {
@@ -246,14 +246,6 @@ const stun = struct { // MARK: stun
 		}
 	}
 };
-
-//if I try to use the normal setPort method I get an error: else prong requierd when switching on type '*Io.net.IpAddress' Tracking issue on codeberg: #30716
-//The only difference is a.* instead of a
-fn setPort(a: *Address, port: u16) void {
-	switch(a.*) {
-		inline .ip4, .ip6 => |*x| x.port = port,
-	}
-}
 
 pub const ConnectionManager = struct { // MARK: ConnectionManager
 	socket: Socket = undefined,
@@ -299,15 +291,15 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.localPort = localPort;
 		var address = try Address.parse("127.0.0.1", localPort);
 		result.socket = address.bind(main.io, .{.protocol = std.Io.net.Protocol.udp, .mode = Socket.Mode.dgram}) catch |err| blk: {
-			if(err == error.AddressInUse) {
-				setPort(&address, 0);
+			if (err == error.AddressInUse) {
+				address.setPort(0);
 				const socket = try address.bind(main.io, .{.protocol = std.Io.net.Protocol.udp, .mode = Socket.Mode.dgram});
 				result.localPort = socket.address.getPort();
 				break :blk socket;
 			} else return err;
 		};
 		errdefer result.socket.close(main.io);
-		if(localPort == 0) result.localPort = result.socket.address.getPort();
+		if (localPort == 0) result.localPort = result.socket.address.getPort();
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
 		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
@@ -397,8 +389,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected}!void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		for(self.connections.items) |other| {
-			if(other.remoteAddress.eql(&conn.remoteAddress)) return error.AlreadyConnected;
+		for (self.connections.items) |other| {
+			if (other.remoteAddress.eql(&conn.remoteAddress)) return error.AlreadyConnected;
 		}
 		self.connections.append(conn);
 	}
@@ -424,8 +416,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	//copied from the eql Method of zig ipAddress
 	fn ipEqlWithoutPort(a: *const Address, b: *const Address) bool {
-		return switch(a.*) {
-			.ip4 => |a_ip4| switch(b.*) {
+		return switch (a.*) {
+			.ip4 => |a_ip4| switch (b.*) {
 				.ip4 => |b_ip4| {
 					const a_int: u32 = @bitCast(a_ip4.bytes);
 					const b_int: u32 = @bitCast(b_ip4.bytes);
@@ -433,7 +425,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				},
 				else => false,
 			},
-			.ip6 => |a_ip6| switch(b.*) {
+			.ip6 => |a_ip6| switch (b.*) {
 				.ip6 => |b_ip6| std.mem.eql(u8, &a_ip6.bytes, &b_ip6.bytes),
 				else => false,
 			},
@@ -444,13 +436,13 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
 
-		for(self.connections.items) |conn| {
-			if(ipEqlWithoutPort(&conn.remoteAddress, &source)) {
-				if(conn.bruteforcingPort) {
-					setPort(&conn.remoteAddress, source.getPort());
+		for (self.connections.items) |conn| {
+			if (ipEqlWithoutPort(&conn.remoteAddress, &source)) {
+				if (conn.bruteforcingPort) {
+					conn.remoteAddress.setPort(source.getPort());
 					conn.bruteforcingPort = false;
 				}
-				if(conn.remoteAddress.getPort() == source.getPort()) {
+				if (conn.remoteAddress.getPort() == source.getPort()) {
 					self.mutex.unlock();
 					conn.receive(data);
 					return;
@@ -460,17 +452,17 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		{
 			defer self.mutex.unlock();
 			// Check if it's part of an active request:
-			for(self.requests.items) |request| {
-				if(request.address.eql(&source)) {
+			for (self.requests.items) |request| {
+				if (request.address.eql(&source)) {
 					request.data = main.globalAllocator.dupe(u8, data);
 					request.requestNotifier.signal();
 					return;
 				}
 			}
-			if(self.online.load(.acquire) and source.eql(&self.externalAddress)) return;
+			if (self.online.load(.acquire) and source.eql(&self.externalAddress)) return;
 		}
-		if(self.allowNewConnections.load(.monotonic) or source.eql(&(Address.parseIp4("127.0.0.1", source.getPort()) catch unreachable))) {
-			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
+		if (self.allowNewConnections.load(.monotonic) or source.eql(&(Address.parseIp4("127.0.0.1", source.getPort()) catch unreachable))) {
+			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
@@ -497,7 +489,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
-			if(self.socket.receiveTimeout(main.io, &self.receiveBuffer, .{.duration = .{.raw = .fromMilliseconds(1), .clock = .real}})) |message| {
+			if (self.socket.receiveTimeout(main.io, &self.receiveBuffer, .{.duration = .{.raw = .fromMilliseconds(1), .clock = .real}})) |message| {
 				self.onReceive(message.data, message.from);
 			} else |err| {
 				if (err == error.Timeout) {
@@ -512,8 +504,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			{
 				self.mutex.lock();
 				defer self.mutex.unlock();
-				while(self.packetSendRequests.peek() != null and self.packetSendRequests.peek().?.time -% curTime <= 0) {
-					const packet = self.packetSendRequests.remove();
+				while (self.packetSendRequests.peek() != null and self.packetSendRequests.peek().?.time -% curTime <= 0) {
+					const packet = self.packetSendRequests.pop().?;
 					self.socket.send(main.io, &packet.target, packet.data) catch unreachable;
 					main.globalAllocator.free(packet.data);
 				}
@@ -1298,9 +1290,9 @@ pub const Connection = struct { // MARK: Connection
 		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
 
 		result.remoteAddress = try Address.parseLiteral(ipPort);
-		if(result.remoteAddress.getPort() == 0) {
+		if (result.remoteAddress.getPort() == 0) {
 			std.log.err("Could not parse port. Using default port instead.", .{});
-			setPort(&result.remoteAddress, settings.defaultPort);
+			result.remoteAddress.setPort(settings.defaultPort);
 		}
 
 		try result.manager.addConnection(result);
