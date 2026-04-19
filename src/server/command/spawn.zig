@@ -19,7 +19,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
 	const target = command.Target.init(&split, source) catch return;
 	defer target.deinit();
-	if (split.peek().?.len > 0) {
+	if (split.peek() != null and split.peek().?.len > 0) {
 		if (std.mem.eql(u8, split.peek().?, "world")) {
 			_ = split.next();
 			if (split.peek() == null or split.peek().?.len == 0) {
