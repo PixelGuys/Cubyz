@@ -34,16 +34,14 @@ pub const maxBlockCount: usize = 65536; // 16 bit limit
 pub const BlockDrop = struct {
 	items: []const items.ItemStack,
 	chance: f32,
-	forbiddenToolTags: ?[]Tag = null,
+	forbiddenToolTags: []Tag,
 	allowedToolTags: ?[]Tag = null,
 
 	pub fn isDroppedWhenBrokenWithItem(self: BlockDrop, item: Item) bool {
 		if (item != .proceduralItem) return self.allowedToolTags == null;
 
 		const proceduralItem = item.proceduralItem;
-		if (self.forbiddenToolTags) |tags| {
-			for (tags) |tag| if (proceduralItem.hasTag(tag)) return false;
-		}
+		for (self.forbiddenToolTags) |tag| if (proceduralItem.hasTag(tag)) return false;
 		if (self.allowedToolTags) |tags| {
 			for (tags) |tag| if (proceduralItem.hasTag(tag)) return true;
 			return false;
@@ -210,11 +208,20 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
+		var allowedToolTags: ?[]Tag = null;
+		if (blockDrop.getChildOrNull("allowedToolTags")) |tagZon| {
+			const tags = Tag.loadTagsFromZon(main.stackAllocator, tagZon);
+			if (tags.len == 0) {
+				std.log.err("Field '.allowedToolTags' is an empty array. No tool can drop this blockDrop", .{});
+			}
+			allowedToolTags = tags;
+		}
+
 		blockDrops[i] = .{
 			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
 			.chance = blockDrop.get(f32, "chance", 1),
-			.forbiddenToolTags = if (blockDrop.getChildOrNull("forbiddenToolTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
-			.allowedToolTags = if (blockDrop.getChildOrNull("allowedToolTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
+			.forbiddenToolTags = Tag.loadTagsFromZon(main.stackAllocator, blockDrop.getChild("forbiddenToolTags")),
+			.allowedToolTags = allowedToolTags,
 		};
 	}
 	return blockDrops;
