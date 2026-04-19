@@ -12,12 +12,8 @@ pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 pub const allocators = struct { // MARK: allocators
 	pub var globalGpa = std.heap.DebugAllocator(.{.thread_safe = true}){};
 	pub var handledGpa = ErrorHandlingAllocator.init(globalGpa.allocator());
-
-	pub var testingGpa = if (builtin.is_test) ErrorHandlingAllocator.init(std.testing.allocator) else undefined;
-
 	pub var globalArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = .init(.init(handledGpa.allocator()));
 	pub var worldArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = undefined;
-
 	var worldArenaOpenCount: usize = 0;
 	var worldArenaMutex: main.utils.Mutex = .{};
 
