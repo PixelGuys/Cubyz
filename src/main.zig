@@ -50,10 +50,10 @@ const file_monitor = utils.file_monitor;
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 
-pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
+pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.allocators.testingGpa.allocator() else undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
-pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
+pub const globalAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.allocators.testingGpa.allocator() else heap.allocators.handledGpa.allocator();
 pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
