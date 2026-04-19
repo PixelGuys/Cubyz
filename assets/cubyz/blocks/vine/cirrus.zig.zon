@@ -2,6 +2,6 @@
 	.texture0 = "cubyz:vine/cirrus/top",
 	.texture1 = "cubyz:vine/cirrus/bottom",
 	.item = .{
-		.texture = "vine/willow.png",
+		.texture = "vine/cirrus.png",
 	},
 }
