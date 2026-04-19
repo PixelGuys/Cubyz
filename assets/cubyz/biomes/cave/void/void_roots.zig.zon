@@ -1,11 +1,10 @@
 .{
 	.isCave = true,
-	.maxHeight = -50000,
+	.tags = .{.root_layer, .root_transition_layer},
 	.fogDensity = 10,
 	.fogColor = 0x272334,
-	.chance = 100,
+	.chance = 1,
 	.caveRadiusFactor = -1,
-	.caves = 0.5,
 
 	.music = "cubyz:heart-of-the-beast",
 
@@ -51,8 +50,18 @@
 			.id = "cubyz:boulder",
 			.chance = 0.016,
 			.block = "cubyz:slate/base",
-			.size = 4,
-			.size_variance = 4,
+			.size = 2,
+			.size_variance = 5,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:sphere",
+			.minAmount = 1,
+			.maxAmount = 1,
+			.minRadius = 80,
+			.maxRadius = 80,
+			.maxBiomeCenterDistance = 0,
 		},
 	},
 }

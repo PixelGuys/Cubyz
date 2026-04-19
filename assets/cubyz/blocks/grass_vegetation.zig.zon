@@ -13,5 +13,9 @@
 	.item = .{
 		.texture = "grass.png",
 	},
+	.replaceable = true,
 	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
 }

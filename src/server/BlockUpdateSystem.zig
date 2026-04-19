@@ -8,7 +8,7 @@ const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 list: main.ListUnmanaged(BlockPos) = .{},
-mutex: std.Thread.Mutex = .{},
+mutex: main.utils.Mutex = .{},
 
 pub fn init() @This() {
 	return .{};
@@ -31,7 +31,7 @@ pub fn update(self: *@This(), ch: *main.chunk.ServerChunk) void {
 	self.mutex.unlock();
 
 	// handle events
-	for(list.items) |event| {
+	for (list.items) |event| {
 		ch.mutex.lock();
 		const block = ch.getBlock(event.x, event.y, event.z);
 		ch.mutex.unlock();

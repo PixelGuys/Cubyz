@@ -1,7 +1,7 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.maxHeight = -512,
-	.minHeight = -48250,
 	.music = "cubyz:la_kubisa_caverna",
 	.ground_structure = .{
 		"2 to 3 cubyz:soil",
@@ -15,6 +15,15 @@
 			.variation = 5,
 			.depth = 2,
 			.smoothness = 0.5,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 10,
+			.maxAmount = 30,
+			.minRadius = 10,
+			.maxRadius = 20,
 		},
 	},
 }
