@@ -186,7 +186,7 @@ const stun = struct { // MARK: stun
 					if (other.eql(&result)) {
 						return result;
 					} else {
-						//result.isSymmetricNAT = true; TODOFIX
+						// result.isSymmetricNAT = true; TODOFIX
 						return result;
 					}
 				} else {
@@ -414,7 +414,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
-	//copied from the eql Method of zig ipAddress
+	// copied from the eql Method of zig ipAddress but without the port check
 	fn ipEqlWithoutPort(a: *const Address, b: *const Address) bool {
 		return switch (a.*) {
 			.ip4 => |a_ip4| switch (b.*) {
