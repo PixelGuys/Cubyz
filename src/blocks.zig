@@ -210,7 +210,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 
 		var allowedToolTags: ?[]Tag = null;
 		if (blockDrop.getChildOrNull("allowedToolTags")) |tagZon| {
-			const tags = Tag.loadTagsFromZon(main.stackAllocator, tagZon);
+			const tags = Tag.loadTagsFromZon(main.worldArena, tagZon);
 			if (tags.len == 0) {
 				std.log.err("Field '.allowedToolTags' is an empty array. No tool can drop this blockDrop", .{});
 			}
@@ -220,7 +220,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 		blockDrops[i] = .{
 			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
 			.chance = blockDrop.get(f32, "chance", 1),
-			.forbiddenToolTags = Tag.loadTagsFromZon(main.stackAllocator, blockDrop.getChild("forbiddenToolTags")),
+			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,
 		};
 	}
