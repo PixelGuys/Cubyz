@@ -468,6 +468,52 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return result;
 	}
 
+	pub fn getLightWithTransform(parent: *ChunkMesh, model: Mat4f, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
+		const quadInfo = quadIndex.quadInfo().*;
+		const normal = vec.normalize(vec.xyz(model.mulVec(vec.combine(quadInfo.normal, 0))));
+		if (!blocks.meshes.textureOcclusionData[textureIndex].load(.monotonic)) { // No ambient occlusion (→ no smooth lighting)
+			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
+			return packLightValues(@splat(fullValues));
+		}
+		var rawVals: [4]LightVector = undefined;
+		for (0..4) |i| {
+			const vertexPos: Vec3f = vec.xyz(model.mulVec(vec.combine(quadInfo.corners[i], 1.0)));
+			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
+			const containingBlockPos: Vec3i = @intFromFloat(@floor(lightPos));
+			const interp = std.math.clamp(lightPos - @as(Vec3f, @floatFromInt(containingBlockPos)), @as(Vec3f, @splat(0)), @as(Vec3f, @splat(1)));
+
+			var cornerVals: [2][2][2]LightVector = undefined;
+			{
+				var dx: u31 = 0;
+				while (dx <= 1) : (dx += 1) {
+					var dy: u31 = 0;
+					while (dy <= 1) : (dy += 1) {
+						var dz: u31 = 0;
+						while (dz <= 1) : (dz += 1) {
+							cornerVals[dx][dy][dz] = getCornerLight(parent, containingBlockPos +% Vec3i{dx, dy, dz}, normal);
+						}
+					}
+				}
+			}
+
+			var val: LightVector = @splat(0);
+			for (0..2) |dx| {
+				for (0..2) |dy| {
+					for (0..2) |dz| {
+						var weight: f32 = 0;
+						if (dx == 0) weight = 1 - interp[0] else weight = interp[0];
+						if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
+						if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
+						const integerWeight: u16 = @intFromFloat(weight*256);
+						val += cornerVals[dx][dy][dz]*@as(LightVector, @splat(integerWeight));
+					}
+				}
+			}
+			rawVals[i] = val/@as(LightVector, @splat(256));
+		}
+		return packLightValues(rawVals);
+	}
+
 	pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
 		const quadInfo = quadIndex.quadInfo();
 		const extraQuadInfo = quadIndex.extraQuadInfo();
