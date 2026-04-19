@@ -1500,7 +1500,7 @@ pub const Command = struct { // MARK: Command
 				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 				for (0..dropAmount) |_| {
 					for (self.oldBlock.blockDrops()) |drop| {
-						if (!drop.isDroppedByItem(handItem)) continue;
+						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
 
 						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 							self.dropLocation.drop(self.pos, self.newBlock, drop);

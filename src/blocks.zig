@@ -34,17 +34,17 @@ pub const maxBlockCount: usize = 65536; // 16 bit limit
 pub const BlockDrop = struct {
 	items: []const items.ItemStack,
 	chance: f32,
-	forbiddenTags: ?[]Tag = null,
-	allowedTags: ?[]Tag = null,
+	forbiddenToolTags: ?[]Tag = null,
+	allowedToolTags: ?[]Tag = null,
 
-	pub fn isDroppedByItem(self: BlockDrop, item: Item) bool {
-		if (item != .proceduralItem) return self.allowedTags == null;
+	pub fn isDroppedWhenBrokenWithItem(self: BlockDrop, item: Item) bool {
+		if (item != .proceduralItem) return self.allowedToolTags == null;
 
 		const proceduralItem = item.proceduralItem;
-		if (self.forbiddenTags) |tags| {
+		if (self.forbiddenToolTags) |tags| {
 			for (tags) |tag| if (proceduralItem.hasBlockTag(tag)) return false;
 		}
-		if (self.allowedTags) |tags| {
+		if (self.allowedToolTags) |tags| {
 			for (tags) |tag| if (proceduralItem.hasBlockTag(tag)) return true;
 			return false;
 		}
@@ -86,7 +86,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockTags: [maxBlockCount][]Tag = undefined;
+var _tags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -123,13 +123,13 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
-	const rotation_tags = _mode[size].getBlockTags();
+	const rotation_tags = _mode[size].getTags();
 	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 	defer main.stackAllocator.free(block_tags);
-	_blockTags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
+	_tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
 
-	if (_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
-	for (_blockTags[size]) |tag| {
+	if (_tags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	for (_tags[size]) |tag| {
 		if (tag == Tag.sbbChild) {
 			sbb.registerChildBlock(@intCast(size), _id[size]);
 			break;
@@ -213,8 +213,8 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 		blockDrops[i] = BlockDrop{
 			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
 			.chance = blockDrop.get(f32, "chance", 1),
-			.forbiddenTags = if (blockDrop.getChildOrNull("forbiddenTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
-			.allowedTags = if (blockDrop.getChildOrNull("allowedTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
+			.forbiddenToolTags = if (blockDrop.getChildOrNull("forbiddenToolTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
+			.allowedToolTags = if (blockDrop.getChildOrNull("allowedToolTags")) |tagZon| Tag.loadTagsFromZon(main.stackAllocator, tagZon) else null,
 		};
 	}
 	return blockDrops;
@@ -433,12 +433,12 @@ pub const Block = packed struct { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn blockTags(self: Block) []const Tag {
-		return _blockTags[self.typ];
+	pub inline fn tags(self: Block) []const Tag {
+		return _tags[self.typ];
 	}
 
 	pub inline fn hasTag(self: Block, tag: Tag) bool {
-		return std.mem.containsAtLeastScalar(Tag, self.blockTags(), 1, tag);
+		return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
 	}
 
 	pub inline fn light(self: Block) u32 {
