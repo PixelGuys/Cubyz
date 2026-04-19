@@ -4,7 +4,8 @@
 	.minRadius = 16,
 	.maxRadius = 48,
 	.tags = .{
-		.pine
+		.oak,
+		.pine,
 	},
 	.ground_structure = .{
 		"2 to 3 cubyz:soil",

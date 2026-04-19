@@ -3,7 +3,7 @@
 		.cold,
 	},
 	.tags = .{
-		.pine
+		.pine,
 	},
 	.chance = 0.5,
 	.minHeightLimit = 7,

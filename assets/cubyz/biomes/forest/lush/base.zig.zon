@@ -1,6 +1,7 @@
 .{
 	.tags = .{
-		.pine
+		.oak,
+		.pine,
 	},
 	.ground_structure = .{
 		"cubyz:grass/dew",
