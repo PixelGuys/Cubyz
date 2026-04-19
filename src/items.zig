@@ -513,7 +513,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			proceduralItem.setProperty(.maxDurability, 0);
 			proceduralItem.durability = 1;
 		}
-		proceduralItem.finished = true;
+		proceduralItem.finishedPropertyEvaluation = true;
 	}
 
 	fn checkConnectivity(proceduralItem: *ProceduralItem) bool {
@@ -652,7 +652,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	texture: ?graphics.Texture,
 	seed: u32,
 	type: ProceduralItemTypeIndex,
-	finished: bool = false,
+	finishedPropertyEvaluation: bool = false,
 
 	properties: [@typeInfo(ProceduralItemProperty).@"enum".fields.len]f32 = @splat(0),
 
@@ -842,7 +842,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn setProperty(self: *ProceduralItem, prop: ProceduralItemProperty, value: f32) void {
-		std.debug.assert(!self.finished);
+		std.debug.assert(!self.finishedPropertyEvaluation);
 		self.properties[@intFromEnum(prop)] = value;
 	}
 
