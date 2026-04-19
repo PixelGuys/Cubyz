@@ -114,7 +114,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	spawnPos: Vec3d = .{0, 0, 0},
+	spawnPos: ?Vec3d = null,
 	worldEditData: WorldEditData = undefined,
 
 	playerIndex: usize = undefined,
@@ -137,7 +137,7 @@ pub const User = struct { // MARK: User
 
 	refCount: Atomic(u32) = .init(1),
 
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
@@ -494,6 +494,10 @@ pub const User = struct { // MARK: User
 		};
 	}
 
+	pub fn getSpawnPos(user: *User) Vec3d {
+		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
+	}
+
 	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
 		try writer.print("{s}@{d}", .{user.name, user.playerIndex});
 	}
@@ -503,7 +507,7 @@ pub const updatesPerSec: u32 = 20;
 const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
-var userMutex: std.Thread.Mutex = .{};
+var userMutex: main.utils.Mutex = .{};
 var users: main.List(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
 var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
@@ -809,7 +813,7 @@ fn sendRawMessage(msg: []const u8) void {
 	}
 }
 
-var chatMutex: std.Thread.Mutex = .{};
+var chatMutex: main.utils.Mutex = .{};
 pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
 	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	defer main.stackAllocator.free(msg);
