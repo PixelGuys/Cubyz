@@ -629,7 +629,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 const ProceduralItemProperty = enum {
 	damage,
 	maxDurability,
-	/// swings per second
+	/// how long it takes before the next swing happens
 	swingSpeed,
 
 	fn fromString(string: []const u8) ?ProceduralItemProperty {
