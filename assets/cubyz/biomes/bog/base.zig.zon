@@ -4,7 +4,8 @@
 		.overgrown,
 	},
 	.tags = .{
-		.pine
+		.pine,
+		.willow,
 	},
 	.minHeightLimit = 0,
 	.minHeight = 4,
