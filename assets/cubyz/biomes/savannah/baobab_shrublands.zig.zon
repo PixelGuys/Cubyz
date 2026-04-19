@@ -4,6 +4,7 @@
 		.dry,
 	},
 	.tags = .{
+		.oak,
 		.baobab,
 	},
 	.minHeightLimit = 30,
