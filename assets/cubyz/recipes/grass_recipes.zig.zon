@@ -12,10 +12,6 @@
 		.output = "5 cubyz:grass_seeds",
 	},
 	.{
-		.inputs = .{"cubyz:grass/{type}"},
-		.output = "5 cubyz:grass_seeds",
-	},
-	.{
 		.inputs = .{"cubyz:soil", "cubyz:grass_seeds"},
 		.output = "cubyz:grass",
 	},
