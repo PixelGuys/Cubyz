@@ -18,15 +18,15 @@ pub fn satisfied(self: *const On_diagonal, proceduralItem: *const ProceduralItem
 	const rangeChecked = @min(self.range orelse (gridSize - 1), (gridSize - 1));
 	const lowBound = 0;
 	const highBound = rangeChecked*2 + 1;
-	for (lowBound..highBound) |dx| {
-		const checkedX = x + (@as(i32, @intCast(dx)) - rangeChecked);
-		const checkedY = y + (@as(i32, @intCast(dx)) - rangeChecked);
+	for (lowBound..highBound) |i| {
+		const checkedX = x + (@as(i32, @intCast(i)) - rangeChecked);
+		const checkedY = y + (@as(i32, @intCast(i)) - rangeChecked);
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
-	for (lowBound..highBound) |dx| {
-		const checkedX = x + (@as(i32, @intCast(dx)) - rangeChecked);
-		const checkedY = y - (@as(i32, @intCast(dx)) - rangeChecked);
-		if (dx != 0) {
+	for (lowBound..highBound) |i| {
+		const checkedX = x + (@as(i32, @intCast(i)) - rangeChecked);
+		const checkedY = y - (@as(i32, @intCast(i)) - rangeChecked);
+		if (i) {
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
