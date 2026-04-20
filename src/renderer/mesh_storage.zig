@@ -697,8 +697,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		const mesh = node.mesh.load(.acquire).?; // no other thread is allowed to overwrite the mesh (unless it's null).
 
 		if (mesh.needsMeshUpdate) {
-			mesh.uploadData();
 			mesh.needsMeshUpdate = false;
+			mesh.uploadData();
 		}
 		// Remove empty meshes.
 		if (!mesh.isEmpty()) {
