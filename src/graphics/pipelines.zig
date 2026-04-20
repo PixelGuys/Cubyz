@@ -494,7 +494,7 @@ const ColorBlendState = struct { // MARK: ColorBlendState
 	}
 };
 
-pub const DescriptorSetLayoutBinding = extern struct {
+pub const DescriptorSetLayoutBinding = extern struct { // MARK: DescriptorSetLayoutBinding
 	binding: u32,
 	type: enum(c_int) {
 		sampler = c.VK_DESCRIPTOR_TYPE_SAMPLER,
@@ -528,6 +528,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 	multisampleState: MultisampleState = .{}, // TODO: Not implemented
 	depthStencilState: DepthStencilState,
 	blendState: ColorBlendState,
+	vulkanCreationSuccessful: bool = false, // TODO: Remove after all Vulkan pipelines compile
 	pipelineLayout: c.VkPipelineLayout = undefined,
 	descriptorSetLayout: c.VkDescriptorSetLayout = undefined,
 	graphicsPipeline: c.VkPipeline = undefined,
@@ -612,6 +613,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.pSetLayouts = &self.descriptorSetLayout,
 		};
 		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
+		errdefer c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
 
 		const pipelineInfo = c.VkGraphicsPipelineCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -655,6 +657,11 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 	pub fn deinit(self: Pipeline) void {
 		self.shader.deinit();
+		if (self.vulkanCreationSuccessful) {
+			c.vkDestroyPipeline(vulkan.device, self.graphicsPipeline, null);
+			c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
+			c.vkDestroyDescriptorSetLayout(vulkan.device, self.descriptorSetLayout, null);
+		}
 	}
 
 	fn conditionalEnable(typ: c.GLenum, val: bool) void {
