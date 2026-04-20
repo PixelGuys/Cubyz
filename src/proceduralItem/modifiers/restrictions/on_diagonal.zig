@@ -15,6 +15,7 @@ const On_diagonal = struct {
 pub fn satisfied(self: *const On_diagonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
 	const gridSize: usize = proceduralItem.craftingGrid.len;
+	std.log.err(,)
 	const rangeChecked = @min(self.range orelse 5, gridSize);
 	const lowBound = 0;
 	const highBound = rangeChecked*2 + 1;
