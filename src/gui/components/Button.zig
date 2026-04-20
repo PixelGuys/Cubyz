@@ -65,6 +65,7 @@ pub fn globalInit() void {
 		"assets/cubyz/shaders/ui/button.frag",
 		"",
 		&buttonUniforms,
+		graphics.draw.SimpleVertex2D,
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},

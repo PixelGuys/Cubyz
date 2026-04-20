@@ -185,6 +185,7 @@ pub const ParticleSystem = struct {
 			"assets/cubyz/shaders/particles/particles.frag",
 			"",
 			&uniforms,
+			graphics.VertexArray.EmptyVertex,
 			.{},
 			.{.depthTest = true, .depthWrite = true},
 			.{.attachments = &.{.noBlending}},
