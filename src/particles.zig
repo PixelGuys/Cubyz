@@ -166,7 +166,7 @@ pub const ParticleSystem = struct {
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
 	var previousPlayerPos: Vec3d = undefined;
 
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 	var networkCreationQueue: main.ListUnmanaged(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .{};
 
 	var particlesSSBO: SSBO = undefined;
@@ -185,6 +185,7 @@ pub const ParticleSystem = struct {
 			"assets/cubyz/shaders/particles/particles.frag",
 			"",
 			&uniforms,
+			graphics.VertexArray.EmptyVertex,
 			.{},
 			.{.depthTest = true, .depthWrite = true},
 			.{.attachments = &.{.noBlending}},

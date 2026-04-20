@@ -3,6 +3,9 @@
 	.properties = .{
 		.wet,
 	},
+	.tags = .{
+		.oak,
+	},
 	.radius = 32,
 	.minHeight = 22,
 	.maxHeight = 40,

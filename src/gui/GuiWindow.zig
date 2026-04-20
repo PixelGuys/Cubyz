@@ -106,12 +106,13 @@ pub var borderUniforms: struct {
 	effectLength: c_int,
 } = undefined;
 
-pub fn __init() void {
+pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/button.vert",
 		"assets/cubyz/shaders/ui/button.frag",
 		"",
 		&windowUniforms,
+		graphics.draw.SimpleVertex2D,
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},
@@ -121,6 +122,7 @@ pub fn __init() void {
 		"assets/cubyz/shaders/ui/window_border.frag",
 		"",
 		&borderUniforms,
+		graphics.draw.SimpleVertex2D,
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},

@@ -10,4 +10,7 @@
 		.hot,
 		.overgrown,
 	},
+	.tags = .{
+		.mahogany,
+	},
 }

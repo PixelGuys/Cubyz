@@ -80,6 +80,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
 		"",
 		&uniforms,
+		graphics.VertexArray.EmptyVertex,
 		.{},
 		.{.depthTest = true, .depthWrite = true},
 		.{.attachments = &.{.noBlending}},
@@ -89,6 +90,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/chunks/transparent_fragment.frag",
 		"#define transparent\n",
 		&transparentUniforms,
+		graphics.VertexArray.EmptyVertex,
 		.{},
 		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
 		.{.attachments = &.{.{
@@ -106,6 +108,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
 		"",
 		&occlusionTestUniforms,
+		graphics.VertexArray.EmptyVertex,
 		.{},
 		.{.depthTest = true, .depthWrite = false},
 		.{.attachments = &.{.{
@@ -649,7 +652,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	finishedMeshing: bool = false, // Must be synced with node.finishedMeshing in mesh_storage.zig
 	finishedLighting: bool = false,
 	litNeighbors: Atomic(u32) = .init(0),
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 	chunkAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
@@ -704,6 +707,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn scheduleLightRefresh(pos: chunk.ChunkPosition) void {
+		if (mesh_storage.getMesh(pos)) |mesh| {
+			mesh.needsLightRefresh.store(true, .release);
+		}
 		LightRefreshTask.schedule(pos);
 	}
 	const LightRefreshTask = struct {
@@ -1327,9 +1333,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				mesh.generateMesh(&lightRefreshList);
 			}
 			for (lightRefreshList.items) |pos| {
-				if (mesh_storage.getMesh(pos)) |mesh| {
-					mesh.needsLightRefresh.store(true, .release);
-				}
 				ChunkMesh.scheduleLightRefresh(pos);
 			}
 			for (regenerateMeshList.items) |mesh| {
@@ -1388,7 +1391,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.uploadChunkPosition();
 	}
 
-	fn deadlockFreeDoubleLock(m1: *std.Thread.Mutex, m2: *std.Thread.Mutex) void {
+	fn deadlockFreeDoubleLock(m1: *main.utils.Mutex, m2: *main.utils.Mutex) void {
 		if (@intFromPtr(m1) < @intFromPtr(m2)) {
 			m1.lock();
 			m2.lock();

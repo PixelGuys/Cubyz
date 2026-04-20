@@ -1,5 +1,9 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.pine,
+		.oak,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 45,

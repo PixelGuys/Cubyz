@@ -4,6 +4,7 @@
 	.properties = .{.wet, .hot},
 	.tags = .{
 		.palm,
+		.mahogany,
 	},
 	.minHeightLimit = 7,
 	.minHeight = 20,

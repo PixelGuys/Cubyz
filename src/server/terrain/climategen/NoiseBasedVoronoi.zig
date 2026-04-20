@@ -383,7 +383,7 @@ const GenerationStructure = struct {
 
 	fn addTransitionBiomes(map: *[preMapSize][preMapSize]BiomeSample) void {
 		const neighborData = main.stackAllocator.create([16][preMapSize][preMapSize]u15);
-		defer main.stackAllocator.free(neighborData);
+		defer main.stackAllocator.destroy(neighborData);
 		for (0..preMapSize) |x| {
 			for (0..preMapSize) |y| {
 				neighborData[0][x][y] = @bitCast(map[x][y].biome.properties);
