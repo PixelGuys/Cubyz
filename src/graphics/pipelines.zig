@@ -494,6 +494,34 @@ const ColorBlendState = struct { // MARK: ColorBlendState
 	}
 };
 
+pub const DescriptorSetLayoutBinding = extern struct {
+	binding: u32,
+	type: enum(c_int) {
+		sampler = c.VK_DESCRIPTOR_TYPE_SAMPLER,
+		combinedImageSampler = c.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		sampledImage = c.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		storageImage = c.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+		uniformTexelBuffer = c.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+		storageTexelBuffer = c.VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+		uniformBuffer = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		storageBuffer = c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		uniformBufferDynamic = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		storageBufferDynamic = c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+		inputAttachment = c.VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+	},
+	count: u32,
+	stageFlags: packed struct(c_int) {
+		vertex: bool = false,
+		tessellationControl: bool = false,
+		tessellationEvaluation: bool = false,
+		geometriy: bool = false,
+		fragment: bool = false,
+		compute: bool = false,
+		_: u26 = 0,
+	},
+	immutableSamplers: ?[*]const c.VkSampler = null,
+};
+
 pub const Pipeline = struct { // MARK: Pipeline
 	shader: Shader,
 	rasterState: RasterizationState,
@@ -501,9 +529,10 @@ pub const Pipeline = struct { // MARK: Pipeline
 	depthStencilState: DepthStencilState,
 	blendState: ColorBlendState,
 	pipelineLayout: c.VkPipelineLayout = undefined,
+	descriptorSetLayout: c.VkDescriptorSetLayout = undefined,
 	graphicsPipeline: c.VkPipeline = undefined,
 
-	fn initVulkan(self: *Pipeline, vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, VertexType: type) !void {
+	fn initVulkan(self: *Pipeline, vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, VertexType: type, bindings: []const DescriptorSetLayoutBinding) !void {
 		const vertModule = try Shader.createShaderModule(vertexPath, defines, .vert);
 		defer c.vkDestroyShaderModule(vulkan.device, vertModule, null);
 		const fragModule = try Shader.createShaderModule(fragmentPath, defines, .frag);
@@ -569,8 +598,18 @@ pub const Pipeline = struct { // MARK: Pipeline
 		}
 		const blendState = self.blendState.toVulkan(attachments);
 
+		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.bindingCount = @intCast(bindings.len),
+			.pBindings = @ptrCast(bindings.ptr),
+		};
+		try vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &self.descriptorSetLayout));
+		errdefer c.vkDestroyDescriptorSetLayout(vulkan.device, self.descriptorSetLayout, null);
+
 		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+			.setLayoutCount = 1,
+			.pSetLayouts = &self.descriptorSetLayout,
 		};
 		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
 
@@ -591,9 +630,10 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.subpass = 0,
 		};
 		try vulkan.checkResultErr(c.vkCreateGraphicsPipelines(vulkan.device, null, 1, &pipelineInfo, null, &self.graphicsPipeline));
+		self.vulkanCreationSuccessful = true;
 	}
 
-	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, VertexType: type, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) Pipeline {
+	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, VertexType: type, bindings: []const DescriptorSetLayoutBinding, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) Pipeline {
 		std.debug.assert(depthStencilState.depthBoundsTest == null); // Only available in Vulkan 1.3
 		std.debug.assert(depthStencilState.stencilTest == null); // TODO: Not yet implemented
 		std.debug.assert(rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
@@ -606,7 +646,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.blendState = blendState,
 		};
 		if (main.settings.launchConfig.vulkanTestingMode) {
-			self.initVulkan(vertexPath, fragmentPath, defines, VertexType) catch |err| {
+			self.initVulkan(vertexPath, fragmentPath, defines, VertexType, bindings) catch |err| {
 				std.log.err("Vulkan pipeline creation for paths {s} {s} failed with error {s}", .{vertexPath, fragmentPath, @errorName(err)});
 			};
 		}
