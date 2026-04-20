@@ -4,6 +4,9 @@
 	.minHeight = 22,
 	.maxHeight = 45,
 	.properties = .{},
+	.tags = .{
+		.pine,
+	},
 	.minRadius = 20,
 	.maxRadius = 32,
 	.music = "cubyz:sunrise",
