@@ -66,6 +66,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/deferred_render_pass.frag",
 		"",
 		&deferredUniforms,
+		graphics.draw.SimpleVertex2D,
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
@@ -75,6 +76,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/fake_reflection.frag",
 		"",
 		&fakeReflectionUniforms,
+		graphics.draw.SimpleVertex2D,
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
@@ -359,6 +361,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/first_pass.frag",
 			"",
 			null,
+			graphics.draw.SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -368,6 +371,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/second_pass.frag",
 			"",
 			null,
+			graphics.draw.SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -377,6 +381,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/color_extractor_downsample.frag",
 			"",
 			&colorExtractUniforms,
+			graphics.draw.SimpleVertex2D,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -479,15 +484,6 @@ pub const MenuBackGround = struct {
 	var angle: f32 = 0;
 
 	fn init() void {
-		pipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/background/vertex.vert",
-			"assets/cubyz/shaders/background/fragment.frag",
-			"",
-			&uniforms,
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
-		);
 		const MenuBackgroundVertex = struct {
 			pos: [3]f32,
 			uv: [2]f32,
@@ -505,6 +501,16 @@ pub const MenuBackGround = struct {
 				},
 			};
 		};
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/background/vertex.vert",
+			"assets/cubyz/shaders/background/fragment.frag",
+			"",
+			&uniforms,
+			MenuBackgroundVertex,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]MenuBackgroundVertex{
 			.{.pos = .{-1, 1, -1}, .uv = .{1, 1}},
@@ -565,7 +571,7 @@ pub const MenuBackGround = struct {
 			fileList.deinit();
 		}
 
-		while (try walker.next()) |entry| {
+		while (try walker.next(main.io)) |entry| {
 			if (entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
 				fileList.append(main.stackAllocator.dupe(u8, entry.path));
 			}
@@ -717,6 +723,7 @@ pub const Skybox = struct {
 			"assets/cubyz/shaders/skybox/star.frag",
 			"",
 			&starUniforms,
+			graphics.VertexArray.EmptyVertex,
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.{
@@ -880,6 +887,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			"assets/cubyz/shaders/block_selection_fragment.frag",
 			"",
 			&uniforms,
+			graphics.VertexArray.EmptyVertex,
 			.{.cullMode = .none},
 			.{.depthTest = true, .depthWrite = true},
 			.{.attachments = &.{.alphaBlending}},
@@ -899,7 +907,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
-	var selectionFace: chunk.Neighbor = undefined;
+	var selectionNormal: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
@@ -910,7 +918,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
-		const step: Vec3i = @intFromFloat(std.math.sign(dir));
+		const step: Vec3i = std.math.sign(dir);
 		const invDir = @as(Vec3d, @splat(1))/dir;
 		const tDelta = @abs(invDir);
 		var tMax = (@floor(pos) - pos)*invDir;
@@ -935,7 +943,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						selectedBlockPos = voxelPos;
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
-						selectionFace = intersection.face;
+						selectionNormal = intersection.normal;
 						break;
 					}
 				}
@@ -1015,7 +1023,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								return;
 							}
 						} else {
-							if (!block.replacable()) return;
+							if (!block.replaceable()) return;
 							block.typ = itemBlock;
 							block.data = 0;
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
@@ -1128,7 +1136,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.source = .{.inv = source.super, .slot = slot},
 				.pos = pos,
 				.dropLocation = .{
-					.dir = selectionFace,
+					.normalDir = selectionNormal,
 					.min = selectionMin,
 					.max = selectionMax,
 				},

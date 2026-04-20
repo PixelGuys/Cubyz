@@ -47,7 +47,7 @@ fn extractColor(in: u32) [3]u8 {
 
 pub const ChannelChunk = struct {
 	data: main.utils.PaletteCompressedRegion(LightValue, chunk.chunkVolume),
-	mutex: std.Thread.Mutex,
+	mutex: main.utils.Mutex,
 	ch: *chunk.Chunk,
 	isSun: bool,
 
@@ -163,10 +163,7 @@ pub const ChannelChunk = struct {
 				return;
 			}
 		}
-		if (mesh_storage.getMesh(self.ch.pos)) |mesh| {
-			mesh.needsLightRefresh.store(true, .release);
-			lightRefreshList.append(self.ch.pos);
-		}
+		lightRefreshList.append(self.ch.pos);
 	}
 
 	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.List(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {

@@ -1,4 +1,8 @@
 .{
+	.tags = .{
+		.baobab,
+		.cactus,
+	},
 	.minHeightLimit = 1,
 	.minHeight = 5,
 	.maxHeight = 10,
