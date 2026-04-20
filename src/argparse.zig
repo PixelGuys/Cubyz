@@ -18,6 +18,13 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 	return struct {
 		const Self = @This();
 
+		/// Parse the string `args` according to the schema defined in `T` type parameter of the Parser.
+		/// Result is returned from this function as a value of type `T`.
+		///
+		/// Arguments:
+		/// - `allocator` - will be used for dynamic allocations of the parsing result returned.
+		/// - `args` - unprocessed string containing command arguments without command name.
+		/// - `errorMessage` - out parameter used to store and return errors, if any occur. Has to be allocated with stackAllocator.
 		pub fn parse(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!T {
 			return resolve(ResolveMode.Parse, allocator, args, errorMessage);
 		}
@@ -64,7 +71,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			var split = std.mem.splitScalar(u8, args, ' ');
 
 			var tempErrorMessage: ListUnmanaged(u8) = .{};
-			defer tempErrorMessage.deinit(allocator);
+			defer tempErrorMessage.deinit(main.stackAllocator);
 
 			var nextArgument: ?[]const u8 = split.next();
 
@@ -76,7 +83,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 						@field(result, field.name) = null;
 						tempErrorMessage.clearRetainingCapacity();
 					} else {
-						errorMessage.appendSlice(allocator, tempErrorMessage.items);
+						errorMessage.appendSlice(main.stackAllocator, tempErrorMessage.items);
 						return error.ParseError;
 					}
 				} else {
@@ -90,7 +97,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			const areUnusedArgumentsWhitespace = main.utils.all(std.ascii.isWhitespace, split.rest());
 
 			if (!isLeftoverArgumentWhitespace or !areUnusedArgumentsWhitespace) {
-				failWithMessage(allocator, errorMessage, "Too many arguments for command, expected {}", .{s.fields.len});
+				failWithMessage(errorMessage, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
 
@@ -107,7 +114,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				},
 				inline .@"struct" => {
 					const arg = argument orelse {
-						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
+						failWithMessage(errorMessage, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
 					if (!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
@@ -115,32 +122,32 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				},
 				inline .@"enum" => {
 					const arg = argument orelse {
-						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
+						failWithMessage(errorMessage, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
 					return std.meta.stringToEnum(Field, arg) orelse {
 						const str = main.meta.concatComptime("/", std.meta.fieldNames(Field));
-						failWithMessage(allocator, errorMessage, "Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
+						failWithMessage(errorMessage, "Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
 						return error.ParseError;
 					};
 				},
 				inline .float => |floatInfo| return {
 					const arg = argument orelse {
-						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
+						failWithMessage(errorMessage, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
 					return std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg) catch {
-						failWithMessage(allocator, errorMessage, "Expected a number for <{s}>, found \"{s}\"", .{name, arg});
+						failWithMessage(errorMessage, "Expected a number for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					};
 				},
 				inline .int => |intInfo| {
 					const arg = argument orelse {
-						failWithMessage(allocator, errorMessage, missingArgumentMessage, .{name});
+						failWithMessage(errorMessage, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
 					return std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
-						failWithMessage(allocator, errorMessage, "Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
+						failWithMessage(errorMessage, "Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					};
 				},
@@ -206,10 +213,10 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 	};
 }
 
-fn failWithMessage(allocator: NeverFailingAllocator, errorMessage: *ListUnmanaged(u8), comptime fmt: []const u8, args: anytype) void {
-	const msg = std.fmt.allocPrint(allocator.allocator, fmt, args) catch unreachable;
-	defer allocator.free(msg);
-	errorMessage.appendSlice(allocator, msg);
+fn failWithMessage(errorMessage: *ListUnmanaged(u8), comptime fmt: []const u8, args: anytype) void {
+	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	defer main.stackAllocator.free(msg);
+	errorMessage.appendSlice(main.stackAllocator, msg);
 }
 
 pub const AutocompleteResult = struct {
@@ -231,9 +238,6 @@ pub const AutocompleteResult = struct {
 };
 
 const Test = struct {
-	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
-	var allocator = testingAllocator.allocator();
-
 	const OnlyX = Parser(struct { x: f64 }, .{.commandName = ""});
 
 	const @"Union X or XY" = Parser(union(enum) {
@@ -249,9 +253,9 @@ const Test = struct {
 
 test "float" {
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.OnlyX.parse(Test.allocator, "33.0", &errors);
+	const result = try Test.OnlyX.parse(main.stackAllocator, "33.0", &errors);
 
 	try std.testing.expect(errors.items.len == 0);
 	try std.testing.expect(result.x == 33.0);
@@ -259,9 +263,9 @@ test "float" {
 
 test "float negative" {
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = Test.OnlyX.parse(Test.allocator, "foo", &errors);
+	const result = Test.OnlyX.parse(main.stackAllocator, "foo", &errors);
 
 	try std.testing.expectError(error.ParseError, result);
 	try std.testing.expect(errors.items.len != 0);
@@ -273,9 +277,9 @@ test "enum" {
 	}, .{.commandName = "c"});
 
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = try ArgParser.parse(Test.allocator, "foo", &errors);
+	const result = try ArgParser.parse(main.stackAllocator, "foo", &errors);
 
 	try std.testing.expect(errors.items.len == 0);
 	try std.testing.expect(result.cmd == .foo);
@@ -289,9 +293,9 @@ test "float int float" {
 	}, .{.commandName = ""});
 
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = try ArgParser.parse(Test.allocator, "33.0 154 -5654.0", &errors);
+	const result = try ArgParser.parse(main.stackAllocator, "33.0 154 -5654.0", &errors);
 
 	try std.testing.expect(errors.items.len == 0);
 	try std.testing.expect(result.x == 33.0);
@@ -307,9 +311,9 @@ test "float int optional float missing" {
 	}, .{.commandName = ""});
 
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = try ArgParser.parse(Test.allocator, "33.0 154", &errors);
+	const result = try ArgParser.parse(main.stackAllocator, "33.0 154", &errors);
 
 	try std.testing.expect(errors.items.len == 0);
 	try std.testing.expect(result.x == 33.0);
@@ -319,9 +323,9 @@ test "float int optional float missing" {
 
 test "x or xy case x" {
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.@"Union X or XY".parse(Test.allocator, "0.9", &errors);
+	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
 
 	try std.testing.expect(errors.items.len == 0);
 	try std.testing.expect(result.x.x == 0.9);
@@ -329,9 +333,9 @@ test "x or xy case x" {
 
 test "x or xy case xy" {
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.@"Union X or XY".parse(Test.allocator, "0.9 1.0", &errors);
+	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
 
 	try std.testing.expect(errors.items.len == 0);
 	try std.testing.expect(result.xy.x == 0.9);
@@ -340,9 +344,9 @@ test "x or xy case xy" {
 
 test "x or xy negative empty" {
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = Test.@"Union X or XY".parse(Test.allocator, "", &errors);
+	const result = Test.@"Union X or XY".parse(main.stackAllocator, "", &errors);
 
 	try std.testing.expect(errors.items.len != 0);
 	try std.testing.expectError(error.ParseError, result);
@@ -350,9 +354,9 @@ test "x or xy negative empty" {
 
 test "x or xy negative too much" {
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = Test.@"Union X or XY".parse(Test.allocator, "1.0 3.0 5.0", &errors);
+	const result = Test.@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
 
 	try std.testing.expect(errors.items.len != 0);
 	try std.testing.expectError(error.ParseError, result);
@@ -360,9 +364,9 @@ test "x or xy negative too much" {
 
 test "subCommands foo" {
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.@"subCommands foo or bar".parse(Test.allocator, "foo 1.0", &errors);
+	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
 
 	try std.testing.expect(errors.items.len == 0);
 	try std.testing.expect(result.foo.cmd == .foo);
@@ -371,9 +375,9 @@ test "subCommands foo" {
 
 test "subCommands bar" {
 	var errors: ListUnmanaged(u8) = .{};
-	defer errors.deinit(Test.allocator);
+	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.@"subCommands foo or bar".parse(Test.allocator, "bar 2.0 3.0", &errors);
+	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);
 
 	try std.testing.expect(errors.items.len == 0);
 	try std.testing.expect(result.bar.cmd == .bar);
