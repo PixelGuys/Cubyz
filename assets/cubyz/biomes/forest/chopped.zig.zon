@@ -2,6 +2,7 @@
 	.properties = .{},
 	.tags = .{
 		.birch,
+		.oak,
 	},
 	.minHeight = 22,
 	.maxHeight = 40,

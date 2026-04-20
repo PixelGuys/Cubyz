@@ -2,6 +2,9 @@
 	.properties = .{
 		.mountain,
 	},
+	.tags = .{
+		.oak,
+	},
 	.radius = 400,
 	.minHeightLimit = 7,
 	.minHeight = 60,
@@ -19,14 +22,10 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
-			.chance = 0.8,
-			.type = .round,
-			.height = 3,
-			.height_variation = 3,
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.4,
 		},
 	},
 }
