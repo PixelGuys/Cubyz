@@ -1,0 +1,17 @@
+.{
+	.properties = .{
+		.mountain,
+		.wet,
+		.hot,
+		.overgrown
+	},
+	.minHeightLimit = 7,
+	.minHeight = 64,
+	.maxHeight = 256,
+	.smoothBeaches = true,
+	.soilCreep = 1,
+
+	.mountains = 80,
+	.hills = 20,
+	.stoneBlock = "cubyz:basalt/base",
+}
