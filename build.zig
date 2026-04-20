@@ -157,6 +157,9 @@ fn createLaunchConfig(b: *std.Build) !void {
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
 			\\    // .preferredAuthenticationAlgorithm = .ed25519, // Uncomment and change this if you own a server in an outdated game version where the default algorithm got compromised.
+			\\    // .createIfMissing = false, // When true (and headlessServer is true), the world named in autoEnterWorld is created if it doesn't exist yet.
+			\\    // .worldSeed = 0, // Seed used when auto-creating a world. If unset, a random seed is generated.
+			\\    // .worldPreset = "cubyz:default", // World preset used when auto-creating a world.
 			\\}
 		;
 		try std.Io.Dir.cwd().writeFile(io.io(), .{
