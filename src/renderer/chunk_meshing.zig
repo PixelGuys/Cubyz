@@ -704,6 +704,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn scheduleLightRefresh(pos: chunk.ChunkPosition) void {
+		if (mesh_storage.getMesh(pos)) |mesh| {
+			mesh.needsLightRefresh.store(true, .release);
+		}
 		LightRefreshTask.schedule(pos);
 	}
 	const LightRefreshTask = struct {
@@ -1327,9 +1330,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				mesh.generateMesh(&lightRefreshList);
 			}
 			for (lightRefreshList.items) |pos| {
-				if (mesh_storage.getMesh(pos)) |mesh| {
-					mesh.needsLightRefresh.store(true, .release);
-				}
 				ChunkMesh.scheduleLightRefresh(pos);
 			}
 			for (regenerateMeshList.items) |mesh| {

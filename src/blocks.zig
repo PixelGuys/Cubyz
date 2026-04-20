@@ -13,6 +13,7 @@ const Image = graphics.Image;
 const Color = graphics.Color;
 const TextureArray = graphics.TextureArray;
 const items = @import("items.zig");
+const Item = items.Item;
 const models = @import("models.zig");
 const ModelIndex = models.ModelIndex;
 const rotation = @import("rotation.zig");
@@ -33,6 +34,21 @@ pub const maxBlockCount: usize = 65536; // 16 bit limit
 pub const BlockDrop = struct {
 	items: []const items.ItemStack,
 	chance: f32,
+	forbiddenToolTags: []Tag,
+	allowedToolTags: ?[]Tag = null,
+
+	pub fn isDroppedWhenBrokenWithItem(self: BlockDrop, item: Item) bool {
+		if (item != .proceduralItem) return self.allowedToolTags == null;
+
+		const proceduralItem = item.proceduralItem;
+		for (self.forbiddenToolTags) |tag| if (proceduralItem.hasTag(tag)) return false;
+		if (self.allowedToolTags) |tags| {
+			for (tags) |tag| if (proceduralItem.hasTag(tag)) return true;
+			return false;
+		}
+
+		return true;
+	}
 };
 
 /// Ores can be found underground in veins.
@@ -68,7 +84,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockTags: [maxBlockCount][]Tag = undefined;
+var _tags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -108,10 +124,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	const rotation_tags = _mode[size].getBlockTags();
 	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 	defer main.stackAllocator.free(block_tags);
-	_blockTags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
+	_tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
 
-	if (_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
-	for (_blockTags[size]) |tag| {
+	if (_tags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	for (_tags[size]) |tag| {
 		if (tag == Tag.sbbChild) {
 			sbb.registerChildBlock(@intCast(size), _id[size]);
 			break;
@@ -165,7 +181,6 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for (drops, 0..) |blockDrop, i| {
-		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
 		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
@@ -192,7 +207,22 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
-		blockDrops[i].items = main.worldArena.dupe(main.items.ItemStack, resultItems.items);
+
+		var allowedToolTags: ?[]Tag = null;
+		if (blockDrop.getChildOrNull("allowedToolTags")) |tagZon| {
+			const tags = Tag.loadTagsFromZon(main.worldArena, tagZon);
+			if (tags.len == 0) {
+				std.log.err("Field '.allowedToolTags' is an empty array. No tool can drop this blockDrop", .{});
+			}
+			allowedToolTags = tags;
+		}
+
+		blockDrops[i] = .{
+			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
+			.chance = blockDrop.get(f32, "chance", 1),
+			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
+			.allowedToolTags = allowedToolTags,
+		};
 	}
 	return blockDrops;
 }
@@ -410,12 +440,12 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn blockTags(self: Block) []const Tag {
-		return _blockTags[self.typ];
+	pub inline fn tags(self: Block) []const Tag {
+		return _tags[self.typ];
 	}
 
 	pub inline fn hasTag(self: Block, tag: Tag) bool {
-		return std.mem.containsAtLeastScalar(Tag, self.blockTags(), 1, tag);
+		return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
 	}
 
 	pub inline fn light(self: Block) u32 {
