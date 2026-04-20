@@ -1518,9 +1518,9 @@ pub const Pipeline = struct { // MARK: Pipeline
 				.cullMode = @intFromEnum(self.cullMode),
 				.frontFace = @intFromEnum(self.frontFace),
 				.depthBiasEnable = @intFromBool(self.depthBias != null),
-				.depthBiasConstantFactor = if (self.depthBias) |d| d.constantFactor else undefined,
-				.depthBiasClamp = if (self.depthBias) |d| d.clamp else undefined,
-				.depthBiasSlopeFactor = if (self.depthBias) |d| d.slopeFactor else undefined,
+				.depthBiasConstantFactor = if (self.depthBias) |d| d.constantFactor else 0,
+				.depthBiasClamp = if (self.depthBias) |d| d.clamp else 0,
+				.depthBiasSlopeFactor = if (self.depthBias) |d| d.slopeFactor else 0,
 			};
 		}
 	};
@@ -1653,12 +1653,12 @@ pub const Pipeline = struct { // MARK: Pipeline
 		};
 		pub const noBlending: ColorBlendAttachmentState = .{
 			.enabled = false,
-			.srcColorBlendFactor = undefined,
-			.dstColorBlendFactor = undefined,
-			.colorBlendOp = undefined,
-			.srcAlphaBlendFactor = undefined,
-			.dstAlphaBlendFactor = undefined,
-			.alphaBlendOp = undefined,
+			.srcColorBlendFactor = .zero,
+			.dstColorBlendFactor = .zero,
+			.colorBlendOp = .add,
+			.srcAlphaBlendFactor = .zero,
+			.dstAlphaBlendFactor = .zero,
+			.alphaBlendOp = .add,
 		};
 
 		const BlendFactor = enum(c.VkBlendFactor) {
