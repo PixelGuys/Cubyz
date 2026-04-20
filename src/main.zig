@@ -669,7 +669,7 @@ test "abc" {
 	_ = @import("zon.zig");
 }
 
-test "allocators" {
+test "allocators are usable in tests" {
 	const allocation1 = stackAllocator.create(u64);
 	stackAllocator.destroy(allocation1);
 
