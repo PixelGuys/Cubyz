@@ -4,6 +4,7 @@
 		.dry,
 	},
 	.tags = .{
+		.baobab,
 		.cactus,
 	},
 	.minHeightLimit = 7,
