@@ -30,8 +30,7 @@ pub fn satisfied(self: *const On_diagonal, proceduralItem: *const ProceduralItem
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
-	std.log.err("test case {}", .{count});
-	std.log.err("test case grid size {}", .{gridSize});
+
 	return count >= self.amount;
 }
 
