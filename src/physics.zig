@@ -16,7 +16,6 @@ pub const airTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
 const playerDensity = 1.2;
 
-
 pub const collision = struct {
 	pub const Box = struct {
 		min: Vec3d,
@@ -354,7 +353,6 @@ pub const collision = struct {
 		}
 	}
 };
-
 
 pub const FrictionState = struct {
 	current: f32,
