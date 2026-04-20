@@ -19,13 +19,13 @@ pub fn satisfied(self: *const On_diagonal, proceduralItem: *const ProceduralItem
 	const lowBound = 0;
 	const highBound = rangeChecked*2 + 1;
 	for (lowBound..highBound) |dx| {
-		const checkedX = x + @as(i32, @intCast(dx - rangeChecked));
-		const checkedY = y + @as(i32, @intCast(dx - rangeChecked));
+		const checkedX = x + (@as(i32, @intCast(dx)) - rangeChecked);
+		const checkedY = y + (@as(i32, @intCast(dx)) - rangeChecked);
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	for (lowBound..highBound) |dx| {
-		const checkedX = x + @as(i32, @intCast(dx - rangeChecked));
-		const checkedY = y - @as(i32, (@intCast(dx - rangeChecked)));
+		const checkedX = x + (@as(i32, @intCast(dx)) - rangeChecked);
+		const checkedY = y - (@as(i32, @intCast(dx)) - rangeChecked);
 		if (dx != 0) {
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
