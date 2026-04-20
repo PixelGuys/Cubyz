@@ -14,19 +14,19 @@ const On_orthogonal = struct {
 
 pub fn satisfied(self: *const On_orthogonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
-	const gridSize: usize = proceduralItem.craftingGrid.len;
+	const gridSize: usize = proceduralItem.materialGrid.len - 1;
 	const rangeChecked = @min(self.range orelse gridSize, gridSize);
 	const lowBound = 0;
 	const highBound = rangeChecked*2 + 1;
 	for (lowBound..highBound) |dx| {
-		const checkedX = x + @as(i32, @intCast(dx - rangeChecked));
-		const checkedY = y + @as(i32, @intCast(0 - rangeChecked));
+		const checkedX = x + (@as(i32, @intCast(dx)) - rangeChecked);
+		const checkedY = y + (@as(i32, @intCast(0)) - rangeChecked);
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	for (lowBound..highBound) |dy| {
-		const checkedX = x + @as(i32, @intCast(0 - rangeChecked));
-		const checkedY = y + @as(i32, @intCast(dy - rangeChecked));
-		if (dy != 0) {
+		const checkedX = x + (@as(i32, @intCast(0)) - rangeChecked);
+		const checkedY = y + (@as(i32, @intCast(dy)) - rangeChecked);
+		if (dy != 0) {// prevents double counting
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
