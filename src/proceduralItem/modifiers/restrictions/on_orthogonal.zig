@@ -26,7 +26,7 @@ pub fn satisfied(self: *const On_orthogonal, proceduralItem: *const ProceduralIt
 	for (lowBound..highBound) |dy| {
 		const checkedX = x + (@as(i32, @intCast(0)) - rangeChecked);
 		const checkedY = y + (@as(i32, @intCast(dy)) - rangeChecked);
-		if (dy != 0) {// prevents double counting
+		if (dy != 0) { // prevents double counting
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
