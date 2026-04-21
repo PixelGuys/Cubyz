@@ -342,6 +342,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 					"",
 					&uniforms,
 					graphics.VertexArray.EmptyVertex,
+					&.{},
 					.{},
 					.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
 					.{.attachments = &.{.alphaBlending}},

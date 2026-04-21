@@ -81,6 +81,7 @@ pub fn init() void {
 		"",
 		&uniforms,
 		graphics.VertexArray.EmptyVertex,
+		&.{},
 		.{},
 		.{.depthTest = true, .depthWrite = true},
 		.{.attachments = &.{.noBlending}},
@@ -91,6 +92,7 @@ pub fn init() void {
 		"#define transparent\n",
 		&transparentUniforms,
 		graphics.VertexArray.EmptyVertex,
+		&.{},
 		.{},
 		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
 		.{.attachments = &.{.{
@@ -109,6 +111,7 @@ pub fn init() void {
 		"",
 		&occlusionTestUniforms,
 		graphics.VertexArray.EmptyVertex,
+		&.{},
 		.{},
 		.{.depthTest = true, .depthWrite = false},
 		.{.attachments = &.{.{

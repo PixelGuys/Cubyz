@@ -66,6 +66,7 @@ pub fn globalInit() void {
 		"",
 		&buttonUniforms,
 		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},

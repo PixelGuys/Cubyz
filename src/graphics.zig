@@ -171,6 +171,7 @@ pub const draw = struct { // MARK: draw
 			"",
 			&rectUniforms,
 			SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -240,6 +241,7 @@ pub const draw = struct { // MARK: draw
 			"",
 			&rectBorderUniforms,
 			RectBorderVertex,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -306,6 +308,7 @@ pub const draw = struct { // MARK: draw
 			"",
 			&lineUniforms,
 			SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -382,6 +385,7 @@ pub const draw = struct { // MARK: draw
 			"",
 			&circleUniforms,
 			SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -440,6 +444,7 @@ pub const draw = struct { // MARK: draw
 			"",
 			&imageUniforms,
 			SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -1148,6 +1153,7 @@ const TextRendering = struct { // MARK: TextRendering
 			"",
 			&uniforms,
 			draw.SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -1280,6 +1286,7 @@ pub fn init() void { // MARK: init()
 }
 
 pub fn deinit() void {
+	RenderPass.deinitRenderPasses();
 	draw.deinitCircle();
 	draw.deinitImage();
 	draw.deinitLine();
@@ -1299,7 +1306,11 @@ pub const RenderPass = struct { // MARK: RenderPass
 		renderToWindow = try RenderPass.init();
 	}
 
-	fn init() !RenderPass {
+	fn deinitRenderPasses() void {
+		renderToWindow.deinit();
+	}
+
+	pub fn init() !RenderPass {
 		const colorAttachment = c.VkAttachmentDescription{
 			.format = vulkan.SwapChain.imageFormat, // TODO: This needs to be configurable to be able to render to f16 framebuffer
 			.samples = c.VK_SAMPLE_COUNT_1_BIT,
@@ -1340,6 +1351,10 @@ pub const RenderPass = struct { // MARK: RenderPass
 		var self: RenderPass = undefined;
 		try vulkan.checkResultErr(c.vkCreateRenderPass(vulkan.device, &renderPassInfo, null, &self.renderPass));
 		return self;
+	}
+
+	pub fn deinit(self: RenderPass) void {
+		c.vkDestroyRenderPass(vulkan.device, self.renderPass, null);
 	}
 };
 
@@ -2163,6 +2178,7 @@ const block_texture = struct { // MARK: block_texture
 			"",
 			&uniforms,
 			VertexArray.EmptyVertex,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},

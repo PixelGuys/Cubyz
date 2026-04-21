@@ -186,6 +186,7 @@ pub const ParticleSystem = struct {
 			"",
 			&uniforms,
 			graphics.VertexArray.EmptyVertex,
+			&.{},
 			.{},
 			.{.depthTest = true, .depthWrite = true},
 			.{.attachments = &.{.noBlending}},

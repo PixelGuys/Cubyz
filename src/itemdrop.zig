@@ -679,6 +679,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			"",
 			&itemUniforms,
 			graphics.VertexArray.EmptyVertex,
+			&.{},
 			.{},
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},
