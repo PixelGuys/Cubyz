@@ -489,6 +489,7 @@ pub const Key = struct { // MARK: Key
 	}
 
 	fn action(self: *Key, typ: enum { press, release, repeat }, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
+		if (hasNextInputListenter()) return;
 		if (typ == .press) self.grabbedOnPress = isGrabbed;
 		if (!self.notifyRequirement.met(self.grabbedOnPress)) return;
 		if (!self.requiredModifiers.satisfiedBy(mods)) return;
@@ -647,7 +648,7 @@ pub fn setNextGamepadListener(listener: ?*const fn (?GamepadAxis, c_int) void) !
 	nextGamepadListener = listener;
 }
 
-pub fn hasNextInputListenter() bool {
+fn hasNextInputListenter() bool {
 	return (nextKeypressListener != null or nextGamepadListener != null);
 }
 
