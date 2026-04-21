@@ -1665,6 +1665,13 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 	mutex: main.utils.Mutex = .{},
 	readers: u32 = 0,
 
+	pub fn tryLockRead(self: *ReadWriteLock) bool {
+		if (!self.mutex.tryLock()) return false;
+		self.readers += 1;
+		self.mutex.unlock();
+		return true;
+	}
+
 	pub fn lockRead(self: *ReadWriteLock) void {
 		self.mutex.lock();
 		self.readers += 1;
