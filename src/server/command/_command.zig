@@ -70,7 +70,7 @@ pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *Use
 			output[i] = try parseAxis(split.next() orelse {
 				source.sendMessage("#ff0000Too few arguments for position", .{});
 				return error.TooFewArguments;
-			}, source.player.pos[i], source);
+			}, source.player().pos[i], source);
 		}
 		break :blk output;
 	};
@@ -81,7 +81,7 @@ fn parsePlayerIndexAndIncreaseRefCount(playerIndex: []const u8, source: *User) !
 		source.sendMessage("#ff0000Player index specifiers always start with @, found \"{s}\"", .{playerIndex});
 		return error.InvalidArg;
 	}
-	const index = std.fmt.parseInt(u32, playerIndex[1..], 10) catch {
+	const index = std.fmt.parseInt(usize, playerIndex[1..], 10) catch {
 		source.sendMessage("#ff0000Player index must be an integer, found \"{s}\"", .{playerIndex[1..]});
 		return error.InvalidArg;
 	};
@@ -102,7 +102,7 @@ pub const Target = struct {
 				source.sendMessage("#ff0000Too few arguments for command", .{});
 				return error.TooFewArguments;
 			};
-			if (userIndex[0] == '@') {
+			if (userIndex.len > 0 and userIndex[0] == '@') {
 				const user = parsePlayerIndexAndIncreaseRefCount(userIndex, source) catch return error.InvalidArgs;
 				increasedRefCount = true;
 				_ = split.next();

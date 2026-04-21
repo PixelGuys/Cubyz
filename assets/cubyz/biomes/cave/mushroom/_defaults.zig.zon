@@ -1,5 +1,6 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.fogDensity = 2,
 	.music = "cubyz:heart-of-the-beast",
 	.structures = .{

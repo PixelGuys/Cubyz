@@ -101,7 +101,7 @@ const AudioData = struct {
 };
 
 var activeTasks: main.ListUnmanaged([]const u8) = .{};
-var taskMutex: std.Thread.Mutex = .{};
+var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
 
@@ -245,7 +245,7 @@ const animationLengthInSeconds = 5.0;
 var curIndex: u16 = 0;
 var curEndIndex: std.atomic.Value(u16) = .{.value = sampleRate/60 & ~@as(u16, 1)};
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: main.utils.Mutex = .{};
 var preferredMusic: []const u8 = "";
 
 pub fn setMusic(music: []const u8) void {

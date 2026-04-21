@@ -1,5 +1,8 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.cactus,
+	},
 	.minRadius = 32,
 	.maxRadius = 48,
 	.chance = 0,

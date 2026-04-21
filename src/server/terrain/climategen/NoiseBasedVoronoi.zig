@@ -351,11 +351,14 @@ const GenerationStructure = struct {
 		var fails: usize = 0;
 		while (i < biomeCount) : (i += 1) {
 			if (biomeCount - i < random.nextFloat(&seed)) break;
-			const subBiome = biome.biome.subBiomes.sample(&seed).*;
+			const subBiomeData = biome.biome.subBiomes.sample(&seed).*;
+			const subBiome = subBiomeData.biome;
 			const subRadius = subBiome.radius + subBiome.radiusVariation*random.nextFloatSigned(&seed);
 			var maxCenterOffset: f32 = biome.radius - subRadius;
 			if (radius == .unknown) {
 				maxCenterOffset += biome.radius/2;
+			} else {
+				maxCenterOffset -= subBiomeData.parentEdgeDistance;
 			}
 			if (maxCenterOffset < 0) {
 				maxCenterOffset = 0;
@@ -366,6 +369,7 @@ const GenerationStructure = struct {
 				if (fails < @as(usize, @intFromFloat(biomeCount))) {
 					i -= 1;
 				}
+				continue;
 			};
 			extraBiomes.append(.{
 				.biome = subBiome,
@@ -379,7 +383,7 @@ const GenerationStructure = struct {
 
 	fn addTransitionBiomes(map: *[preMapSize][preMapSize]BiomeSample) void {
 		const neighborData = main.stackAllocator.create([16][preMapSize][preMapSize]u15);
-		defer main.stackAllocator.free(neighborData);
+		defer main.stackAllocator.destroy(neighborData);
 		for (0..preMapSize) |x| {
 			for (0..preMapSize) |y| {
 				neighborData[0][x][y] = @bitCast(map[x][y].biome.properties);

@@ -5,9 +5,9 @@ const items = main.items;
 const BaseItem = items.BaseItem;
 const ClientInventory = items.Inventory.ClientInventory;
 const Item = items.Item;
-const Tool = items.Tool;
-const ToolType = items.ToolType;
-const ToolTypeIndex = items.ToolTypeIndex;
+const ProceduralItem = items.ProceduralItem;
+const ProceduralItemType = items.ProceduralItemType;
+const ProceduralItemTypeIndex = items.ProceduralItemTypeIndex;
 const Player = main.game.Player;
 const Texture = main.graphics.Texture;
 const Vec2f = main.vec.Vec2f;
@@ -35,26 +35,34 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var inv: ClientInventory = undefined;
+pub var craftingGridInv: ClientInventory = undefined;
+var craftingResultInv: ClientInventory = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
-var toolTypes: main.ListUnmanaged(ToolTypeIndex) = undefined;
-var currentToolType: usize = 0;
+var proceduralItemTypes: main.ListUnmanaged(ProceduralItemTypeIndex) = undefined;
+var currentProceduralItemType: usize = 0;
 
-var toolButton: *Button = undefined;
+var proceduralItemButton: *Button = undefined;
 
 var needsUpdate: bool = false;
 
-fn toggleTool() void {
-	currentToolType += 1;
-	currentToolType %= toolTypes.items.len;
-	toolButton.child.label.updateText(toolTypes.items[currentToolType].id());
+fn toggleProceduralItem() void {
+	currentProceduralItemType += 1;
+	currentProceduralItemType %= proceduralItemTypes.items.len;
+	proceduralItemButton.child.label.updateText(proceduralItemTypes.items[currentProceduralItemType].id());
 	needsUpdate = true;
 }
 
+fn updateResult(_: main.items.Inventory.Source) void {
+	craftingResultInv.super._items[0].deinit();
+	craftingResultInv.super._items[0] = .{};
+	craftingResultInv.super._items[0] = .{.item = Item{.proceduralItem = main.items.ProceduralItem.initFromInventory(craftingGridInv.super) orelse return}, .amount = 1};
+}
+
 fn openInventory() void {
-	inv = ClientInventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .serverShared, .other, .{});
+	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult});
+	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .{.workbenchResult = craftingGridInv.super.id}, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -63,8 +71,8 @@ fn openInventory() void {
 			const row = HorizontalList.init();
 			for (0..5) |x| {
 				const index = x + y*5;
-				const slotInfo = toolTypes.items[currentToolType].slotInfos()[index];
-				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
+				const slotInfo = proceduralItemTypes.items[currentProceduralItemType].slotInfos()[index];
+				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
 			}
@@ -74,12 +82,12 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentToolType].id(), .init(toggleTool));
-	verticalThing.add(toolButton);
+	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
+	verticalThing.add(proceduralItemButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
 	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
-	craftingResultList.add(ItemSlot.init(.{8, 0}, inv, 25, .craftingResult, .takeOnly));
+	craftingResultList.add(ItemSlot.init(.{8, 0}, craftingResultInv, 0, .craftingResult, .takeOnly));
 	craftingResultList.finish(.{padding, padding}, .center);
 	verticalThing.add(craftingResultList);
 	verticalThing.size[1] += buttonHeight + 2*padding; // Centering the thing
@@ -92,7 +100,8 @@ fn openInventory() void {
 }
 
 fn closeInventory() void {
-	inv.deinit(main.globalAllocator);
+	craftingGridInv.deinit(main.globalAllocator);
+	craftingResultInv.deinit(main.globalAllocator);
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
@@ -108,31 +117,31 @@ pub fn update() void {
 }
 
 pub fn render() void {
-	const currentResult = inv.getItem(25);
+	const currentResult = craftingResultInv.getItem(0);
 	if (currentResult == .null) return;
 
 	const offsetX = 5*ItemSlot.sizeWithBorder + 20;
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
-	main.graphics.draw.print("{s}{} durability", .{if (currentResult.tool.maxDurability != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.tool.maxDurability))}, offsetX, offsetY, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.tool.swingSpeed}, offsetX, offsetY + fontSize, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.tool.damage}, offsetX, offsetY + 2*fontSize, fontSize, .left);
+	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.getProperty(.maxDurability) != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.proceduralItem.getProperty(.maxDurability)))}, offsetX, offsetY, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.getProperty(.swingSpeed)}, offsetX, offsetY + fontSize, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.getProperty(.damage)}, offsetX, offsetY + 2*fontSize, fontSize, .left);
 }
 
 pub fn onOpen() void {
-	currentToolType = 0;
+	currentProceduralItemType = 0;
 
-	toolTypes = .{};
-	var iterator = ToolTypeIndex.iterator();
-	while (iterator.next()) |toolType| {
-		toolTypes.append(main.globalAllocator, toolType);
+	proceduralItemTypes = .{};
+	var iterator = ProceduralItemTypeIndex.iterator();
+	while (iterator.next()) |proceduralItemType| {
+		proceduralItemTypes.append(main.globalAllocator, proceduralItemType);
 	}
 
 	openInventory();
 }
 
 pub fn onClose() void {
-	toolTypes.deinit(main.globalAllocator);
+	proceduralItemTypes.deinit(main.globalAllocator);
 	closeInventory();
 }
