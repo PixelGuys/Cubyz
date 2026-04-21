@@ -341,6 +341,8 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 					"assets/cubyz/shaders/block_entity/sign.frag",
 					"",
 					&uniforms,
+					graphics.VertexArray.EmptyVertex,
+					&.{},
 					.{},
 					.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
 					.{.attachments = &.{.alphaBlending}},

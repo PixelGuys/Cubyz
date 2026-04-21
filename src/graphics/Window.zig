@@ -9,18 +9,7 @@ const Vec2f = vec.Vec2f;
 
 const vulkan = @import("vulkan.zig");
 
-pub const c = @cImport({
-	@cInclude("glad/gl.h");
-
-	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
-	if (builtin.target.os.tag == .macos) {
-		@cInclude("vulkan/vulkan.h");
-		@cInclude("vulkan/vulkan_beta.h");
-	} else {
-		@cInclude("glad/vulkan.h");
-	}
-	@cInclude("GLFW/glfw3.h");
-});
+pub const c = main.graphics.c;
 
 var isFullscreen: bool = false;
 pub var lastUsedMouse: bool = true;
@@ -743,6 +732,10 @@ pub fn init() void { // MARK: init()
 		vulkan.init(vulkanWindow) catch |err| {
 			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
 		};
+		if (!settings.launchConfig.vulkanTestingMode) {
+			c.glfwDestroyWindow(vulkanWindow);
+			vulkan.deinit();
+		}
 	}
 
 	c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_OPENGL_API);
@@ -790,8 +783,10 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
-	c.glfwDestroyWindow(vulkanWindow);
-	vulkan.deinit();
+	if (settings.launchConfig.vulkanTestingMode) {
+		c.glfwDestroyWindow(vulkanWindow);
+		vulkan.deinit();
+	}
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;

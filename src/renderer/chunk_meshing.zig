@@ -80,6 +80,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
 		"",
 		&uniforms,
+		graphics.VertexArray.EmptyVertex,
+		&.{},
 		.{},
 		.{.depthTest = true, .depthWrite = true},
 		.{.attachments = &.{.noBlending}},
@@ -89,6 +91,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/chunks/transparent_fragment.frag",
 		"#define transparent\n",
 		&transparentUniforms,
+		graphics.VertexArray.EmptyVertex,
+		&.{},
 		.{},
 		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
 		.{.attachments = &.{.{
@@ -106,6 +110,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
 		"",
 		&occlusionTestUniforms,
+		graphics.VertexArray.EmptyVertex,
+		&.{},
 		.{},
 		.{.depthTest = true, .depthWrite = false},
 		.{.attachments = &.{.{
@@ -632,6 +638,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	opaqueMesh: PrimitiveMesh,
 	transparentMesh: PrimitiveMesh,
 	lightList: []u32 = &.{},
+	lightListMutex: main.utils.Mutex = .{},
 	lightListNeedsUpload: bool = false,
 	lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 
@@ -704,6 +711,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn scheduleLightRefresh(pos: chunk.ChunkPosition) void {
+		if (mesh_storage.getMesh(pos)) |mesh| {
+			mesh.needsLightRefresh.store(true, .release);
+		}
 		LightRefreshTask.schedule(pos);
 	}
 	const LightRefreshTask = struct {
@@ -1327,9 +1337,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				mesh.generateMesh(&lightRefreshList);
 			}
 			for (lightRefreshList.items) |pos| {
-				if (mesh_storage.getMesh(pos)) |mesh| {
-					mesh.needsLightRefresh.store(true, .release);
-				}
 				ChunkMesh.scheduleLightRefresh(pos);
 			}
 			for (regenerateMeshList.items) |mesh| {
@@ -1358,21 +1365,23 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.opaqueMesh.finish(self, &lightList, &lightMap);
 		self.transparentMesh.finish(self, &lightList, &lightMap);
 
-		self.lightList = main.globalAllocator.realloc(self.lightList, lightList.items.len);
-		@memcpy(self.lightList, lightList.items);
-		self.lightListNeedsUpload = true;
+		{
+			self.lightListMutex.lock();
+			defer self.lightListMutex.unlock();
+			self.lightList = main.globalAllocator.realloc(self.lightList, lightList.items.len);
+			@memcpy(self.lightList, lightList.items);
+			self.lightListNeedsUpload = true;
+		}
 
 		self.min = @min(self.opaqueMesh.min, self.transparentMesh.min);
 		self.max = @max(self.opaqueMesh.max, self.transparentMesh.max);
 	}
 
 	pub fn uploadData(self: *ChunkMesh) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
 		{
-			self.opaqueMesh.lock.lockRead();
+			if (!self.opaqueMesh.lock.tryLockRead()) return;
 			defer self.opaqueMesh.lock.unlockRead();
-			self.transparentMesh.lock.lockRead();
+			if (!self.transparentMesh.lock.tryLockRead()) return;
 			defer self.transparentMesh.lock.unlockRead();
 			if (!self.opaqueMesh.finishedLighting or !self.transparentMesh.finishedLighting) return;
 			self.opaqueMesh.uploadData(self.isNeighborLod);
@@ -1380,9 +1389,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			self.updateTransparencyDataAfterMeshUpload();
 		}
 
-		if (self.lightListNeedsUpload) {
-			self.lightListNeedsUpload = false;
-			lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].uploadData(self.lightList, &self.lightAllocation);
+		{
+			self.lightListMutex.lock();
+			defer self.lightListMutex.unlock();
+			if (self.lightListNeedsUpload) {
+				self.lightListNeedsUpload = false;
+				lightBuffers[std.math.log2_int(u32, self.pos.voxelSize)].uploadData(self.lightList, &self.lightAllocation);
+			}
 		}
 
 		self.uploadChunkPosition();

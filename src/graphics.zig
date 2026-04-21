@@ -31,21 +31,28 @@ const Window = main.Window;
 
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+const pipelines = @import("graphics/pipelines.zig");
+pub const ComputePipeline = pipelines.ComputePipeline;
+pub const Pipeline = pipelines.Pipeline;
+pub const vulkan = @import("graphics/vulkan.zig");
+
 pub const c = @cImport({
 	@cInclude("glad/gl.h");
+
 	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
-	@cInclude(if (builtin.target.os.tag == .macos) "vulkan/vulkan.h" else "glad/vulkan.h");
+	if (builtin.target.os.tag == .macos) {
+		@cInclude("vulkan/vulkan.h");
+		@cInclude("vulkan/vulkan_beta.h");
+	} else {
+		@cInclude("glad/vulkan.h");
+	}
+	@cInclude("GLFW/glfw3.h");
 });
 
 pub const stb_image = @cImport({
 	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
 	@cInclude("stb/stb_image.h");
 	@cInclude("stb/stb_image_write.h");
-});
-
-const glslang = @cImport({
-	@cInclude("glslang/Include/glslang_c_interface.h");
-	@cInclude("glslang/Public/resource_limits_c.h");
 });
 
 pub const draw = struct { // MARK: draw
@@ -134,7 +141,7 @@ pub const draw = struct { // MARK: draw
 		clip = previousClip;
 	}
 
-	const SimpleVertex2D = struct {
+	pub const SimpleVertex2D = struct {
 		pos: [2]f32,
 
 		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
@@ -163,6 +170,8 @@ pub const draw = struct { // MARK: draw
 			"assets/cubyz/shaders/graphics/Rect.frag",
 			"",
 			&rectUniforms,
+			SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -215,15 +224,6 @@ pub const draw = struct { // MARK: draw
 	var rectBorderVao: VertexArray = undefined;
 
 	fn initRectBorder() void {
-		rectBorderPipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/RectBorder.vert",
-			"assets/cubyz/shaders/graphics/RectBorder.frag",
-			"",
-			&rectBorderUniforms,
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}},
-		);
 		const RectBorderVertex = struct {
 			pos: [4]f32,
 
@@ -235,6 +235,17 @@ pub const draw = struct { // MARK: draw
 				},
 			};
 		};
+		rectBorderPipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/RectBorder.vert",
+			"assets/cubyz/shaders/graphics/RectBorder.frag",
+			"",
+			&rectBorderUniforms,
+			RectBorderVertex,
+			&.{},
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]RectBorderVertex{
 			.{.pos = .{0, 0, 0, 0}},
 			.{.pos = .{0, 0, 1, 1}},
@@ -296,6 +307,8 @@ pub const draw = struct { // MARK: draw
 			"assets/cubyz/shaders/graphics/Line.frag",
 			"",
 			&lineUniforms,
+			SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -371,6 +384,8 @@ pub const draw = struct { // MARK: draw
 			"assets/cubyz/shaders/graphics/Circle.frag",
 			"",
 			&circleUniforms,
+			SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -428,6 +443,8 @@ pub const draw = struct { // MARK: draw
 			"assets/cubyz/shaders/graphics/Image.frag",
 			"",
 			&imageUniforms,
+			SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -1135,6 +1152,8 @@ const TextRendering = struct { // MARK: TextRendering
 			"assets/cubyz/shaders/graphics/Text.frag",
 			"",
 			&uniforms,
+			draw.SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.alphaBlending}},
@@ -1262,10 +1281,12 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
-	if (glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
+	pipelines.init();
+	RenderPass.initRenderPasses() catch @panic("Failed to create render passes");
 }
 
 pub fn deinit() void {
+	RenderPass.deinitRenderPasses();
 	draw.deinitCircle();
 	draw.deinitImage();
 	draw.deinitLine();
@@ -1273,513 +1294,71 @@ pub fn deinit() void {
 	draw.deinitRectBorder();
 	TextRendering.deinit();
 	block_texture.deinit();
-	glslang.glslang_finalize_process();
+	pipelines.deinit();
 }
 
-const Shader = struct { // MARK: Shader
-	id: c_uint,
+pub const RenderPass = struct { // MARK: RenderPass
+	renderPass: c.VkRenderPass,
 
-	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: glslang.glslang_stage_t) ![]c_uint {
-		const versionLineEnd = if (std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
-		const versionLine = source[0..versionLineEnd];
-		const sourceLines = source[versionLineEnd..];
+	pub var renderToWindow: RenderPass = undefined;
 
-		var sourceWithDefines = main.List(u8).init(main.stackAllocator);
-		defer sourceWithDefines.deinit();
-		sourceWithDefines.appendSlice(versionLine);
-		sourceWithDefines.appendSlice(defines);
-		sourceWithDefines.appendSlice(sourceLines);
-		sourceWithDefines.append(0);
-
-		const input = glslang.glslang_input_t{
-			.language = glslang.GLSLANG_SOURCE_GLSL,
-			.stage = shaderStage,
-			.client = glslang.GLSLANG_CLIENT_OPENGL,
-			.client_version = glslang.GLSLANG_TARGET_OPENGL_450,
-			.target_language = glslang.GLSLANG_TARGET_SPV,
-			.target_language_version = glslang.GLSLANG_TARGET_SPV_1_0,
-			.code = sourceWithDefines.items.ptr,
-			.default_version = 100,
-			.default_profile = glslang.GLSLANG_NO_PROFILE,
-			.force_default_version_and_profile = glslang.false,
-			.forward_compatible = glslang.false,
-			.messages = glslang.GLSLANG_MSG_DEFAULT_BIT,
-			.resource = glslang.glslang_default_resource(),
-			.callbacks = .{}, // TODO: Add support for shader includes
-			.callbacks_ctx = null,
-		};
-		const shader = glslang.glslang_shader_create(&input);
-		defer glslang.glslang_shader_delete(shader);
-		if (glslang.glslang_shader_preprocess(shader, &input) == 0) {
-			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
-			return error.FailedCompiling;
-		}
-
-		if (glslang.glslang_shader_parse(shader, &input) == 0) {
-			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
-			return error.FailedCompiling;
-		}
-
-		const program = glslang.glslang_program_create();
-		defer glslang.glslang_program_delete(program);
-		glslang.glslang_program_add_shader(program, shader);
-
-		if (glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
-			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
-			return error.FailedCompiling;
-		}
-
-		glslang.glslang_program_SPIRV_generate(program, shaderStage);
-		const result = allocator.alloc(c_uint, glslang.glslang_program_SPIRV_get_size(program));
-		glslang.glslang_program_SPIRV_get(program, result.ptr);
-		return result;
-	}
-
-	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const source = main.files.cwd().read(main.stackAllocator, filename) catch |err| {
-			std.log.err("Couldn't read shader file: {s}", .{filename});
-			return err;
-		};
-		defer main.stackAllocator.free(source);
-
-		// SPIR-V will be used for the Vulkan, now it's completely useless due to lack of support in Vulkan drivers
-		const glslangStage: glslang.glslang_stage_t = if (shaderStage == c.GL_VERTEX_SHADER) glslang.GLSLANG_STAGE_VERTEX else if (shaderStage == c.GL_FRAGMENT_SHADER) glslang.GLSLANG_STAGE_FRAGMENT else glslang.GLSLANG_STAGE_COMPUTE;
-		main.stackAllocator.free(try compileToSpirV(main.stackAllocator, source, filename, defines, glslangStage));
-
-		const shader = c.glCreateShader(shaderStage);
-		defer c.glDeleteShader(shader);
-
-		const versionLineEnd = if (std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
-		const versionLine = source[0..versionLineEnd];
-		const sourceLines = source[versionLineEnd..];
-
-		const sourceLen: [3]c_int = .{@intCast(versionLine.len), @intCast(defines.len), @intCast(sourceLines.len)};
-		c.glShaderSource(shader, 3, &[3][*c]const u8{versionLine.ptr, defines.ptr, sourceLines.ptr}, &sourceLen);
-
-		c.glCompileShader(shader);
-
-		var success: c_int = undefined;
-		c.glGetShaderiv(shader, c.GL_COMPILE_STATUS, &success);
-		if (success != c.GL_TRUE) {
-			var len: u32 = undefined;
-			c.glGetShaderiv(shader, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
-			var buf: [4096]u8 = undefined;
-			c.glGetShaderInfoLog(shader, 4096, @ptrCast(&len), &buf);
-			std.log.err("Error compiling shader {s}:\n{s}\n", .{filename, buf[0..len]});
-			return error.FailedCompiling;
-		}
-
-		c.glAttachShader(self.id, shader);
-	}
-
-	fn link(self: *const Shader, file: []const u8) !void {
-		c.glLinkProgram(self.id);
-
-		var success: c_int = undefined;
-		c.glGetProgramiv(self.id, c.GL_LINK_STATUS, &success);
-		if (success != c.GL_TRUE) {
-			var len: u32 = undefined;
-			c.glGetProgramiv(self.id, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
-			var buf: [4096]u8 = undefined;
-			c.glGetProgramInfoLog(self.id, 4096, @ptrCast(&len), &buf);
-			std.log.err("Error Linking Shader program {s}:\n{s}\n", .{file, buf[0..len]});
-			return error.FailedLinking;
+	fn initRenderPasses() !void {
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			renderToWindow = try RenderPass.init();
 		}
 	}
 
-	fn init(vertex: []const u8, fragment: []const u8, defines: []const u8, uniformStruct: anytype) Shader {
-		const shader = Shader{.id = c.glCreateProgram()};
-		shader.addShader(vertex, defines, c.GL_VERTEX_SHADER) catch return shader;
-		shader.addShader(fragment, defines, c.GL_FRAGMENT_SHADER) catch return shader;
-		shader.link(fragment) catch return shader;
-
-		if (@TypeOf(uniformStruct) != @TypeOf(null)) {
-			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
-				if (field.type == c_int) {
-					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
-				}
-			}
-		}
-		return shader;
-	}
-
-	fn initCompute(compute: []const u8, defines: []const u8, uniformStruct: anytype) Shader {
-		const shader = Shader{.id = c.glCreateProgram()};
-		shader.addShader(compute, defines, c.GL_COMPUTE_SHADER) catch return shader;
-		shader.link(compute) catch return shader;
-
-		if (@TypeOf(uniformStruct) != @TypeOf(null)) {
-			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
-				if (field.type == c_int) {
-					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
-				}
-			}
-		}
-		return shader;
-	}
-
-	fn bind(self: *const Shader) void {
-		c.glUseProgram(self.id);
-	}
-
-	fn deinit(self: *const Shader) void {
-		c.glDeleteProgram(self.id);
-	}
-};
-
-pub const Pipeline = struct { // MARK: Pipeline
-	shader: Shader,
-	rasterState: RasterizationState,
-	multisampleState: MultisampleState = .{}, // TODO: Not implemented
-	depthStencilState: DepthStencilState,
-	blendState: ColorBlendState,
-
-	const RasterizationState = struct {
-		depthClamp: bool = true,
-		rasterizerDiscard: bool = false,
-		polygonMode: PolygonMode = .fill,
-		cullMode: CullModeFlags = .back,
-		frontFace: FrontFace = .counterClockwise,
-		depthBias: ?DepthBias = null,
-		lineWidth: f32 = 1,
-
-		const PolygonMode = enum(c.VkPolygonMode) {
-			fill = c.VK_POLYGON_MODE_FILL,
-			line = c.VK_POLYGON_MODE_LINE,
-			point = c.VK_POLYGON_MODE_POINT,
-		};
-
-		const CullModeFlags = enum(c.VkCullModeFlags) {
-			none = c.VK_CULL_MODE_NONE,
-			front = c.VK_CULL_MODE_FRONT_BIT,
-			back = c.VK_CULL_MODE_BACK_BIT,
-			frontAndBack = c.VK_CULL_MODE_FRONT_AND_BACK,
-		};
-
-		const FrontFace = enum(c.VkFrontFace) {
-			counterClockwise = c.VK_FRONT_FACE_COUNTER_CLOCKWISE,
-			clockwise = c.VK_FRONT_FACE_CLOCKWISE,
-		};
-
-		const DepthBias = struct {
-			constantFactor: f32,
-			clamp: f32,
-			slopeFactor: f32,
-		};
-	};
-
-	const MultisampleState = struct {
-		rasterizationSamples: Count = .@"1",
-		sampleShading: bool = false,
-		minSampleShading: f32 = undefined,
-		sampleMask: [*]const c.VkSampleMask = &.{0, 0},
-		alphaToCoverage: bool = false,
-		alphaToOne: bool = false,
-
-		const Count = enum(c.VkSampleCountFlags) {
-			@"1" = c.VK_SAMPLE_COUNT_1_BIT,
-			@"2" = c.VK_SAMPLE_COUNT_2_BIT,
-			@"4" = c.VK_SAMPLE_COUNT_4_BIT,
-			@"8" = c.VK_SAMPLE_COUNT_8_BIT,
-			@"16" = c.VK_SAMPLE_COUNT_16_BIT,
-			@"32" = c.VK_SAMPLE_COUNT_32_BIT,
-			@"64" = c.VK_SAMPLE_COUNT_64_BIT,
-		};
-	};
-
-	const DepthStencilState = struct {
-		depthTest: bool,
-		depthWrite: bool = true,
-		depthCompare: CompareOp = .less,
-		depthBoundsTest: ?DepthBoundsTest = null,
-		stencilTest: ?StencilTest = null,
-
-		const CompareOp = enum(c.VkCompareOp) {
-			never = c.VK_COMPARE_OP_NEVER,
-			less = c.VK_COMPARE_OP_LESS,
-			equal = c.VK_COMPARE_OP_EQUAL,
-			lessOrEqual = c.VK_COMPARE_OP_LESS_OR_EQUAL,
-			greater = c.VK_COMPARE_OP_GREATER,
-			notEqual = c.VK_COMPARE_OP_NOT_EQUAL,
-			greateOrEqual = c.VK_COMPARE_OP_GREATER_OR_EQUAL,
-			always = c.VK_COMPARE_OP_ALWAYS,
-		};
-
-		const StencilTest = struct {
-			front: StencilOpState,
-			back: StencilOpState,
-
-			const StencilOpState = struct {
-				failOp: StencilOp,
-				passOp: StencilOp,
-				depthFailOp: StencilOp,
-				compareOp: CompareOp,
-				compareMask: u32,
-				writeMask: u32,
-				reference: u32,
-
-				const StencilOp = enum(c.VkStencilOp) {
-					keep = c.VK_STENCIL_OP_KEEP,
-					zero = c.VK_STENCIL_OP_ZERO,
-					replace = c.VK_STENCIL_OP_REPLACE,
-					incrementAndClamp = c.VK_STENCIL_OP_INCREMENT_AND_CLAMP,
-					decrementAndClamp = c.VK_STENCIL_OP_DECREMENT_AND_CLAMP,
-					invert = c.VK_STENCIL_OP_INVERT,
-					incrementAndWrap = c.VK_STENCIL_OP_INCREMENT_AND_WRAP,
-					decrementAndWrap = c.VK_STENCIL_OP_DECREMENT_AND_WRAP,
-				};
-			};
-		};
-
-		const DepthBoundsTest = struct {
-			min: f32,
-			max: f32,
-		};
-	};
-
-	const ColorBlendAttachmentState = struct {
-		enabled: bool = true,
-		srcColorBlendFactor: BlendFactor,
-		dstColorBlendFactor: BlendFactor,
-		colorBlendOp: BlendOp,
-		srcAlphaBlendFactor: BlendFactor,
-		dstAlphaBlendFactor: BlendFactor,
-		alphaBlendOp: BlendOp,
-		colorWriteMask: ColorComponentFlags = .all,
-
-		pub const alphaBlending: ColorBlendAttachmentState = .{
-			.srcColorBlendFactor = .srcAlpha,
-			.dstColorBlendFactor = .oneMinusSrcAlpha,
-			.colorBlendOp = .add,
-			.srcAlphaBlendFactor = .srcAlpha,
-			.dstAlphaBlendFactor = .oneMinusSrcAlpha,
-			.alphaBlendOp = .add,
-		};
-		pub const noBlending: ColorBlendAttachmentState = .{
-			.enabled = false,
-			.srcColorBlendFactor = undefined,
-			.dstColorBlendFactor = undefined,
-			.colorBlendOp = undefined,
-			.srcAlphaBlendFactor = undefined,
-			.dstAlphaBlendFactor = undefined,
-			.alphaBlendOp = undefined,
-		};
-
-		const BlendFactor = enum(c.VkBlendFactor) {
-			zero = c.VK_BLEND_FACTOR_ZERO,
-			one = c.VK_BLEND_FACTOR_ONE,
-			srcColor = c.VK_BLEND_FACTOR_SRC_COLOR,
-			oneMinusSrcColor = c.VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
-			dstColor = c.VK_BLEND_FACTOR_DST_COLOR,
-			oneMinusDstColor = c.VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
-			srcAlpha = c.VK_BLEND_FACTOR_SRC_ALPHA,
-			oneMinusSrcAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-			dstAlpha = c.VK_BLEND_FACTOR_DST_ALPHA,
-			oneMinusDstAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
-			constantColor = c.VK_BLEND_FACTOR_CONSTANT_COLOR,
-			oneMinusConstantColor = c.VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
-			constantAlpha = c.VK_BLEND_FACTOR_CONSTANT_ALPHA,
-			oneMinusConstantAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
-			srcAlphaSaturate = c.VK_BLEND_FACTOR_SRC_ALPHA_SATURATE,
-			src1Color = c.VK_BLEND_FACTOR_SRC1_COLOR,
-			oneMinusSrc1Color = c.VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR,
-			src1Alpha = c.VK_BLEND_FACTOR_SRC1_ALPHA,
-			oneMinusSrc1Alpha = c.VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
-
-			fn toGl(self: BlendFactor) c.GLenum {
-				return switch (self) {
-					.zero => c.GL_ZERO,
-					.one => c.GL_ONE,
-					.srcColor => c.GL_SRC_COLOR,
-					.oneMinusSrcColor => c.GL_ONE_MINUS_SRC_COLOR,
-					.dstColor => c.GL_DST_COLOR,
-					.oneMinusDstColor => c.GL_ONE_MINUS_DST_COLOR,
-					.srcAlpha => c.GL_SRC_ALPHA,
-					.oneMinusSrcAlpha => c.GL_ONE_MINUS_SRC_ALPHA,
-					.dstAlpha => c.GL_DST_ALPHA,
-					.oneMinusDstAlpha => c.GL_ONE_MINUS_DST_ALPHA,
-					.constantColor => c.GL_CONSTANT_COLOR,
-					.oneMinusConstantColor => c.GL_ONE_MINUS_CONSTANT_COLOR,
-					.constantAlpha => c.GL_CONSTANT_ALPHA,
-					.oneMinusConstantAlpha => c.GL_ONE_MINUS_CONSTANT_ALPHA,
-					.srcAlphaSaturate => c.GL_SRC_ALPHA_SATURATE,
-					.src1Color => c.GL_SRC1_COLOR,
-					.oneMinusSrc1Color => c.GL_ONE_MINUS_SRC1_COLOR,
-					.src1Alpha => c.GL_SRC1_ALPHA,
-					.oneMinusSrc1Alpha => c.GL_ONE_MINUS_SRC1_ALPHA,
-				};
-			}
-		};
-
-		const BlendOp = enum(c.VkBlendOp) {
-			add = c.VK_BLEND_OP_ADD,
-			subtract = c.VK_BLEND_OP_SUBTRACT,
-			reverseSubtract = c.VK_BLEND_OP_REVERSE_SUBTRACT,
-			min = c.VK_BLEND_OP_MIN,
-			max = c.VK_BLEND_OP_MAX,
-
-			fn toGl(self: BlendOp) c.GLenum {
-				return switch (self) {
-					.add => c.GL_FUNC_ADD,
-					.subtract => c.GL_FUNC_SUBTRACT,
-					.reverseSubtract => c.GL_FUNC_REVERSE_SUBTRACT,
-					.min => c.GL_MIN,
-					.max => c.GL_MAX,
-				};
-			}
-		};
-
-		const ColorComponentFlags = packed struct {
-			r: bool,
-			g: bool,
-			b: bool,
-			a: bool,
-			pub const all: ColorComponentFlags = .{.r = true, .g = true, .b = true, .a = true};
-			pub const none: ColorComponentFlags = .{.r = false, .g = false, .b = false, .a = false};
-		};
-	};
-
-	const ColorBlendState = struct {
-		logicOp: ?LogicOp = null,
-		attachments: []const ColorBlendAttachmentState,
-		blendConstants: [4]f32 = .{0, 0, 0, 0},
-
-		const LogicOp = enum(c.VkLogicOp) {
-			clear = c.VK_LOGIC_OP_CLEAR,
-			@"and" = c.VK_LOGIC_OP_AND,
-			andReverse = c.VK_LOGIC_OP_AND_REVERSE,
-			copy = c.VK_LOGIC_OP_COPY,
-			andInverted = c.VK_LOGIC_OP_AND_INVERTED,
-			noOp = c.VK_LOGIC_OP_NO_OP,
-			xor = c.VK_LOGIC_OP_XOR,
-			@"or" = c.VK_LOGIC_OP_OR,
-			nor = c.VK_LOGIC_OP_NOR,
-			equivalent = c.VK_LOGIC_OP_EQUIVALENT,
-			invert = c.VK_LOGIC_OP_INVERT,
-			orReverse = c.VK_LOGIC_OP_OR_REVERSE,
-			copyInverted = c.VK_LOGIC_OP_COPY_INVERTED,
-			orInverted = c.VK_LOGIC_OP_OR_INVERTED,
-			nand = c.VK_LOGIC_OP_NAND,
-			set = c.VK_LOGIC_OP_SET,
-		};
-	};
-
-	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) Pipeline {
-		std.debug.assert(depthStencilState.depthBoundsTest == null); // Only available in Vulkan 1.3
-		std.debug.assert(depthStencilState.stencilTest == null); // TODO: Not yet implemented
-		std.debug.assert(rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
-		std.debug.assert(blendState.logicOp == null); // TODO: Not yet implemented
-		return .{
-			.shader = .init(vertexPath, fragmentPath, defines, uniformStruct),
-			.rasterState = rasterState,
-			.multisampleState = .{}, // TODO: Not implemented
-			.depthStencilState = depthStencilState,
-			.blendState = blendState,
-		};
-	}
-
-	pub fn deinit(self: Pipeline) void {
-		self.shader.deinit();
-	}
-
-	fn conditionalEnable(typ: c.GLenum, val: bool) void {
-		if (val) {
-			c.glEnable(typ);
-		} else {
-			c.glDisable(typ);
+	fn deinitRenderPasses() void {
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			renderToWindow.deinit();
 		}
 	}
 
-	pub fn bind(self: Pipeline, scissor: ?c.VkRect2D) void {
-		self.shader.bind();
-		if (scissor) |s| {
-			c.glEnable(c.GL_SCISSOR_TEST);
-			c.glScissor(s.offset.x, s.offset.y, @intCast(s.extent.width), @intCast(s.extent.height));
-		} else {
-			c.glDisable(c.GL_SCISSOR_TEST);
-		}
-
-		conditionalEnable(c.GL_DEPTH_CLAMP, self.rasterState.depthClamp);
-		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
-		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
-		c.glPolygonMode(c.GL_FRONT_AND_BACK, switch (self.rasterState.polygonMode) {
-			.fill => c.GL_FILL,
-			.line => c.GL_LINE,
-			.point => c.GL_POINT,
-		});
-		if (self.rasterState.cullMode != .none) {
-			c.glEnable(c.GL_CULL_FACE);
-			c.glCullFace(switch (self.rasterState.cullMode) {
-				.front => c.GL_FRONT,
-				.back => c.GL_BACK,
-				.frontAndBack => c.GL_FRONT_AND_BACK,
-				else => unreachable,
-			});
-		} else {
-			c.glDisable(c.GL_CULL_FACE);
-		}
-		c.glFrontFace(switch (self.rasterState.frontFace) {
-			.counterClockwise => c.GL_CCW,
-			.clockwise => c.GL_CW,
-		});
-		if (self.rasterState.depthBias) |depthBias| {
-			c.glEnable(c.GL_POLYGON_OFFSET_FILL);
-			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
-			c.glEnable(c.GL_POLYGON_OFFSET_POINT);
-			c.glPolygonOffset(depthBias.slopeFactor, depthBias.constantFactor);
-		} else {
-			c.glDisable(c.GL_POLYGON_OFFSET_FILL);
-			c.glDisable(c.GL_POLYGON_OFFSET_LINE);
-			c.glDisable(c.GL_POLYGON_OFFSET_POINT);
-		}
-		c.glLineWidth(self.rasterState.lineWidth);
-
-		// TODO: Multisampling
-
-		conditionalEnable(c.GL_DEPTH_TEST, self.depthStencilState.depthTest);
-		c.glDepthMask(@intFromBool(self.depthStencilState.depthWrite));
-		c.glDepthFunc(switch (self.depthStencilState.depthCompare) {
-			.never => c.GL_NEVER,
-			.less => c.GL_LESS,
-			.equal => c.GL_EQUAL,
-			.lessOrEqual => c.GL_LEQUAL,
-			.greater => c.GL_GREATER,
-			.notEqual => c.GL_NOTEQUAL,
-			.greateOrEqual => c.GL_GEQUAL,
-			.always => c.GL_ALWAYS,
-		});
-		// TODO: stencilTest
-
-		// TODO: logicOp
-		for (self.blendState.attachments, 0..) |attachment, i| {
-			c.glColorMask(@intFromBool(attachment.colorWriteMask.r), @intFromBool(attachment.colorWriteMask.g), @intFromBool(attachment.colorWriteMask.b), @intFromBool(attachment.colorWriteMask.a));
-			if (!attachment.enabled) {
-				c.glDisable(c.GL_BLEND);
-				continue;
-			}
-			c.glEnable(c.GL_BLEND);
-			c.glBlendEquationSeparatei(@intCast(i), attachment.colorBlendOp.toGl(), attachment.alphaBlendOp.toGl());
-			c.glBlendFuncSeparatei(@intCast(i), attachment.srcColorBlendFactor.toGl(), attachment.dstColorBlendFactor.toGl(), attachment.srcAlphaBlendFactor.toGl(), attachment.dstAlphaBlendFactor.toGl());
-		}
-		c.glBlendColor(self.blendState.blendConstants[0], self.blendState.blendConstants[1], self.blendState.blendConstants[2], self.blendState.blendConstants[3]);
-	}
-};
-
-pub const ComputePipeline = struct { // MARK: ComputePipeline
-	shader: Shader,
-
-	pub fn init(computePath: []const u8, defines: []const u8, uniformStruct: anytype) ComputePipeline {
-		return .{
-			.shader = .initCompute(computePath, defines, uniformStruct),
+	pub fn init() !RenderPass {
+		const colorAttachment = c.VkAttachmentDescription{
+			.format = vulkan.SwapChain.imageFormat, // TODO: This needs to be configurable to be able to render to f16 framebuffer
+			.samples = c.VK_SAMPLE_COUNT_1_BIT,
+			.loadOp = c.VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = c.VK_ATTACHMENT_STORE_OP_STORE,
+			.stencilLoadOp = c.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+			.stencilStoreOp = c.VK_ATTACHMENT_STORE_OP_DONT_CARE,
+			.initialLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+			.finalLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 		};
+		const colorAttachmentRef = c.VkAttachmentReference{
+			.attachment = 0,
+			.layout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		};
+		const subpass = c.VkSubpassDescription{
+			.pipelineBindPoint = c.VK_PIPELINE_BIND_POINT_GRAPHICS,
+			.colorAttachmentCount = 1,
+			.pColorAttachments = &colorAttachmentRef,
+		};
+		const dependency = c.VkSubpassDependency{
+			.srcSubpass = c.VK_SUBPASS_EXTERNAL,
+			.dstSubpass = 0,
+			.srcStageMask = c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			.srcAccessMask = 0,
+			.dstStageMask = c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+		};
+		const renderPassInfo = c.VkRenderPassCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+			.attachmentCount = 1,
+			.pAttachments = &colorAttachment,
+			.subpassCount = 1,
+			.pSubpasses = &subpass,
+			.dependencyCount = 1,
+			.pDependencies = &dependency,
+		};
+
+		var self: RenderPass = undefined;
+		try vulkan.checkResultErr(c.vkCreateRenderPass(vulkan.device, &renderPassInfo, null, &self.renderPass));
+		return self;
 	}
 
-	pub fn deinit(self: ComputePipeline) void {
-		self.shader.deinit();
-	}
-
-	pub fn bind(self: ComputePipeline) void {
-		self.shader.bind();
+	pub fn deinit(self: RenderPass) void {
+		c.vkDestroyRenderPass(vulkan.device, self.renderPass, null);
 	}
 };
 
@@ -2602,6 +2181,8 @@ const block_texture = struct { // MARK: block_texture
 			"assets/cubyz/shaders/item_texture_post.frag",
 			"",
 			&uniforms,
+			VertexArray.EmptyVertex,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
