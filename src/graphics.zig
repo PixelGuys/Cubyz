@@ -1303,11 +1303,15 @@ pub const RenderPass = struct { // MARK: RenderPass
 	pub var renderToWindow: RenderPass = undefined;
 
 	fn initRenderPasses() !void {
-		renderToWindow = try RenderPass.init();
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			renderToWindow = try RenderPass.init();
+		}
 	}
 
 	fn deinitRenderPasses() void {
-		renderToWindow.deinit();
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			renderToWindow.deinit();
+		}
 	}
 
 	pub fn init() !RenderPass {
