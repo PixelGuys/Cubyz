@@ -14,7 +14,7 @@ const camera = main.game.camera;
 pub const gravity = 30.0;
 pub const airTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
-const playerDensity = 1.2;
+pub const playerDensity = 1.2;
 
 pub const FrictionState = struct {
 	current: f32,
@@ -37,32 +37,33 @@ pub fn calculateFriction(volumeProperties: *const collision.VolumeProperties, fr
 	}
 }
 
-pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: update()
+pub fn calculateMotion(deltaTime: f64, friction: *const FrictionState, volumeProperties: *const collision.VolumeProperties, density: f64, pos: Vec3d, velocity: *Vec3d, inputAcc: Vec3d, applyGravity: bool, jumpHeight: f64) Vec3d {
 	var move: Vec3d = .{0, 0, 0};
-	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
-		const effectiveGravity = gravity*(playerDensity - Player.volumeProperties.density)/playerDensity;
-		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/Player.volumeProperties.terminalVelocity);
+
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+		const effectiveGravity = gravity*(density - volumeProperties.density)/density;
+		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
+		
 		var acc = inputAcc;
-		if (!Player.isFlying.load(.monotonic)) {
+		if (applyGravity) {
 			acc[2] -= effectiveGravity;
 		}
 
-		const baseFrictionCoefficient: f32 = Player.friction.current;
-		var directionalFrictionCoefficients: Vec3f = @splat(0);
+		const baseFrictionCoefficient: f32 = friction.current;
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
 		// dx/dt = v
 		// Where a is the acceleration and λ is the friction coefficient
 		inline for (0..3) |i| {
-			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
-			if (i == 2 and jumping) { // No friction while jumping
+			var frictionCoefficient = baseFrictionCoefficient;
+			if (i == 2 and jumpHeight > 0.0) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
-				const jumpVelocity = @sqrt(Player.jumpHeight*gravity*2);
-				Player.super.vel[i] = @max(jumpVelocity, Player.super.vel[i] + jumpVelocity);
+				const jumpVelocity = @sqrt(jumpHeight*gravity*2);
+				velocity[i] = @max(jumpVelocity, velocity[i] + jumpVelocity);
 				frictionCoefficient = volumeFrictionCoeffecient;
 			}
-			const v_0 = Player.super.vel[i];
+			const v_0 = velocity[i];
 			const a = acc[i];
 			// Here the solution can be easily derived:
 			// dv/dt = a - λ·v
@@ -77,11 +78,18 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			// With x(0) = 0 we get C = c_1/λ
 			// x(t) = a/λt - c_1/λ e^(λ (-t)) + c_1/λ
 			const c_1 = v_0 - a/frictionCoefficient;
-			Player.super.vel[i] = a/frictionCoefficient + c_1*@exp(-frictionCoefficient*deltaTime);
+			velocity[i] = a/frictionCoefficient + c_1*@exp(-frictionCoefficient*deltaTime);
 			move[i] = a/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
 		}
+	}
+	return move;
+}
 
-		acc = @splat(0);
+pub fn update(deltaTime: f64, motion: Vec3d) void { // MARK: update()
+	var move = motion;
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
+		var directionalFrictionCoefficients: Vec3f = @splat(0);
+		var acc: Vec3d = @splat(0);
 		// Apply springs to the eye position:
 		var springConstants = Vec3d{0, 0, 0};
 		{
