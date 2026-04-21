@@ -43,7 +43,7 @@ pub fn calculateMotion(deltaTime: f64, friction: *const FrictionState, volumePro
 	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
 		const effectiveGravity = gravity*(density - volumeProperties.density)/density;
 		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
-		
+
 		var acc = inputAcc;
 		if (applyGravity) {
 			acc[2] -= effectiveGravity;
