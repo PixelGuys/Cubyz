@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/cirrus/upper_trunk/0"},
+	},
+	.children = .{
+		.white = "cubyz:tree/cirrus/branch",
+		.blue = "cubyz:tree/cirrus/topper",
+	},
+}
