@@ -1,5 +1,0 @@
-.{
-	.blueprints = .{
-		.{.id = "cubyz:tree/cirrus/topper/0"},
-	},
-}
