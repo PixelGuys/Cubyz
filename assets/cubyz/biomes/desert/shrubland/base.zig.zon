@@ -13,7 +13,7 @@
 			.structure = "cubyz:tree/baobab/shrub",
 			.placeMode = .degradable,
 			.chance = 0.14,
-		},	
+		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:cactus/saguaro",
