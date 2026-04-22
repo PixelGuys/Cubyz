@@ -3,6 +3,7 @@
 		.cold,
 	},
 	.tags = .{
+		.oak,
 		.pine,
 	},
 	.chance = 0.5,

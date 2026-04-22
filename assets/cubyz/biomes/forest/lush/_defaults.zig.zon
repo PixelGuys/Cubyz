@@ -3,6 +3,7 @@
 		.wet,
 	},
 	.tags = .{
+		.oak,
 		.pine,
 	},
 	.minHeightLimit = 7,
