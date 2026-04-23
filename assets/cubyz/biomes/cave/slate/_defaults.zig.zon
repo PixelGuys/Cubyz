@@ -1,8 +1,6 @@
 .{
-	.chance = 0.8,
 	.isCave = true,
 	.tags = .{.cave_layer},
-	.maxHeight = -100,
 	.fogDensity = 2,
 	.caveNoiseStrength = 10,
 	.music = "cubyz:heart-of-the-beast",

@@ -1,4 +1,6 @@
 .{
+	.chance = 0.8,
+	.maxHeight = -100,
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
