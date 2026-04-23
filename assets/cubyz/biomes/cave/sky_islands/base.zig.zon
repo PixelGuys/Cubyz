@@ -1,5 +1,6 @@
 .{
 	.chance = 1,
+	.caveNoiseStrength = 16,
 
 	.caveModels = .{
 		.{
