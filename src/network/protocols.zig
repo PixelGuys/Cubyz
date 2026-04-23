@@ -319,17 +319,67 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 
 pub const chunkTransmission = struct { // MARK: chunkTransmission
 	pub const id: u8 = 3;
-	pub const asynchronous = true;
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const pos = chunk.ChunkPosition{
-			.wx = try reader.readInt(i32),
-			.wy = try reader.readInt(i32),
-			.wz = try reader.readInt(i32),
-			.voxelSize = try reader.readInt(u31),
+	pub const asynchronous = false;
+
+	pub const MeshGenerationTask = struct {
+		pos: chunk.ChunkPosition,
+		data: []const u8,
+
+		pub const vtable = utils.ThreadPool.VTable{
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+			.taskType = .meshgenAndLighting,
 		};
-		const ch = chunk.Chunk.init(pos);
-		try main.server.storage.ChunkCompression.loadChunk(ch, .client, reader.remaining);
-		renderer.mesh_storage.updateChunkMesh(ch);
+
+		fn schedule(mesh: *chunk.Chunk) void {
+			const task = main.globalAllocator.create(MeshGenerationTask);
+			task.* = MeshGenerationTask{
+				.mesh = mesh,
+			};
+			main.threadPool.addTask(task, &vtable);
+		}
+
+		pub fn getPriority(self: *MeshGenerationTask) f32 {
+			return self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+		}
+
+		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
+			const distanceSqr = self.pos.getMinDistanceSquared(@intFromFloat(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.pos.voxelSize;
+			maxRenderDistance += 2*self.pos.voxelSize*chunk.chunkSize;
+			return distanceSqr < maxRenderDistance*maxRenderDistance;
+		}
+
+		pub fn run(self: *MeshGenerationTask) void {
+			defer self.clean();
+			const pos = self.pos;
+			const mesh = main.renderer.chunk_meshing.ChunkMesh.init(pos, self.data) catch |err| {
+				std.log.err("Could not load chunk mesh from server: {s} Disconnecting.", .{@errorName(err)});
+				main.game.world.?.conn.disconnect();
+				return;
+			};
+			mesh.generateLightingData() catch mesh.deferredDeinit();
+		}
+
+		pub fn clean(self: *MeshGenerationTask) void {
+			main.globalAllocator.free(self.data);
+			main.globalAllocator.destroy(self);
+		}
+	};
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const task = main.globalAllocator.create(MeshGenerationTask);
+		task.* = .{
+			.pos = .{
+				.wx = try reader.readInt(i32),
+				.wy = try reader.readInt(i32),
+				.wz = try reader.readInt(i32),
+				.voxelSize = try reader.readInt(u31),
+			},
+			.data = main.globalAllocator.dupe(u8, reader.remaining),
+		};
+		main.threadPool.addTask(task, &MeshGenerationTask.vtable);
 	}
 	fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
 		ch.mutex.lock();

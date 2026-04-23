@@ -804,50 +804,6 @@ pub fn finishMesh(pos: chunk.ChunkPosition) void {
 	updatableList.append(pos);
 }
 
-pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
-	mesh: *chunk.Chunk,
-
-	pub const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.meta.castFunctionSelfToAnyopaque(run),
-		.clean = main.meta.castFunctionSelfToAnyopaque(clean),
-		.taskType = .meshgenAndLighting,
-	};
-
-	fn schedule(mesh: *chunk.Chunk) void {
-		const task = main.globalAllocator.create(MeshGenerationTask);
-		task.* = MeshGenerationTask{
-			.mesh = mesh,
-		};
-		main.threadPool.addTask(task, &vtable);
-	}
-
-	pub fn getPriority(self: *MeshGenerationTask) f32 {
-		return self.mesh.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
-	}
-
-	pub fn isStillNeeded(self: *MeshGenerationTask) bool {
-		const distanceSqr = self.mesh.pos.getMinDistanceSquared(@intFromFloat(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
-		var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
-		maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;
-		return distanceSqr < maxRenderDistance*maxRenderDistance;
-	}
-
-	pub fn run(self: *MeshGenerationTask) void {
-		defer main.globalAllocator.destroy(self);
-		const pos = self.mesh.pos;
-		const mesh = ChunkMesh.init(pos, self.mesh);
-		mesh.generateLightingData() catch mesh.deferredDeinit();
-	}
-
-	pub fn clean(self: *MeshGenerationTask) void {
-		self.mesh.unloadBlockEntities(.client);
-		self.mesh.deinit();
-		main.globalAllocator.destroy(self);
-	}
-};
-
 // MARK: updaters
 
 pub fn updateBlock(blockUpdate: BlockUpdate) void {
@@ -855,10 +811,6 @@ pub fn updateBlock(blockUpdate: BlockUpdate) void {
 	if (getMesh(pos)) |mesh| {
 		mesh.updateBlock(blockUpdate);
 	} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
-}
-
-pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
-	MeshGenerationTask.schedule(mesh);
 }
 
 pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
