@@ -274,7 +274,7 @@ fn closestRay(comptime typ: enum { bit, intersection }, block: Block, relativePl
 pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 	switch (item) {
 		.proceduralItem => |proceduralItem| {
-			const tags = proceduralItem.type.blockTags();
+			const tags = proceduralItem.type.tags();
 			for (tags) |tag| {
 				if (tag == .chiselable) {
 					return closestRay(.intersection, block, relativePlayerPos, playerDir);
@@ -289,7 +289,7 @@ pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: V
 pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	switch (item) {
 		.proceduralItem => |proceduralItem| {
-			for (proceduralItem.type.blockTags()) |tag| {
+			for (proceduralItem.type.tags()) |tag| {
 				if (tag == .chiselable) {
 					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
 					if (currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
