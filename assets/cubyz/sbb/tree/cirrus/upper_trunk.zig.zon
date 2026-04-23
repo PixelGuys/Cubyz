@@ -1,8 +1,8 @@
 .{
 	.blueprints = .{
 		.{.id = "cubyz:tree/cirrus/upper_trunk/0"},
-		.{.id = "cubyz:tree/cirrus/canopy/2", .chance = 0.2},
-		.{.id = "cubyz:tree/cirrus/canopy/3", .chance = 0.2},
+		.{.id = "cubyz:tree/cirrus/canopy/0", .chance = 0.2},
+		.{.id = "cubyz:tree/cirrus/canopy/1", .chance = 0.2},
 	},
 	.children = .{
 		.white = "cubyz:tree/cirrus/rings/bottom",
