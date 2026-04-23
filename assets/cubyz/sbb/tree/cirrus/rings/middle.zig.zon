@@ -6,6 +6,7 @@
 		.{.id = "cubyz:tree/cirrus/rings/middle/3"},
 		.{.id = "cubyz:tree/cirrus/rings/middle/4"},
 		.{.id = "cubyz:tree/cirrus/rings/middle/no_top"},
+		.{.id = "cubyz:tree/cirrus/rings/middle/double"},
 	},
 	.children = .{
 		.white = "cubyz:tree/cirrus/rings/top",
