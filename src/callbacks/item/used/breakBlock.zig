@@ -61,16 +61,16 @@ pub fn run(_: *@This(), params: main.callbacks.ItemUsedCallback.Params) main.cal
 				currentSwingTime = damagePerSwing/damage*swingTime;
 			}
 			if (currentBlockProgress < 0.9999) {
-				mesh_storage.removeBreakingAnimation(MeshSelection.lastSelectedBlockPos);
+				mesh_storage.removeBreakingAnimation(selectedPos);
 				if (currentBlockProgress != 0) {
-					mesh_storage.addBreakingAnimation(MeshSelection.lastSelectedBlockPos, currentBlockProgress);
+					mesh_storage.addBreakingAnimation(selectedPos, currentBlockProgress);
 				}
 				main.sync.ClientSide.mutex.unlock();
 
 				return .handled;
 			} else {
 				currentSwingProgress = 0;
-				mesh_storage.removeBreakingAnimation(MeshSelection.lastSelectedBlockPos);
+				mesh_storage.removeBreakingAnimation(selectedPos);
 				currentBlockProgress = 0;
 				currentSwingTime = 0;
 			}
@@ -79,7 +79,7 @@ pub fn run(_: *@This(), params: main.callbacks.ItemUsedCallback.Params) main.cal
 			return .handled;
 		}
 	} else {
-		mesh_storage.removeBreakingAnimation(MeshSelection.lastSelectedBlockPos);
+		mesh_storage.removeBreakingAnimation(selectedPos);
 	}
 
 	var newBlock = block;
