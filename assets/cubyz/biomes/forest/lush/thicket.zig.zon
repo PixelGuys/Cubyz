@@ -3,6 +3,10 @@
 	.keepOriginalTerrain = 1,
 	.minRadius = 16,
 	.maxRadius = 48,
+	.tags = .{
+		.oak,
+		.pine,
+	},
 	.ground_structure = .{
 		"2 to 3 cubyz:soil",
 	},
@@ -11,7 +15,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
-			.chance = 0.1,
+			.chance = 0.07,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.03,
 		},
 		.{
 			.id = "cubyz:sbb",

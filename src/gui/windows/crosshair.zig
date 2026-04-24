@@ -38,6 +38,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/graphics/Image.frag",
 		"",
 		&uniforms,
+		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.{

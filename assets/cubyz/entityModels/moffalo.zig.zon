@@ -1,5 +1,6 @@
 .{
 	.model = "cubyz:moffalo",
-	.texture = "moffalo.png",
+	.defaultTexture = "cubyz:moffalo",
 	.height = 1.8,
+	.coordinateSystem = .right_handed_z_up,
 }

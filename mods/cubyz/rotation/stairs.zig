@@ -273,8 +273,8 @@ fn closestRay(comptime typ: enum { bit, intersection }, block: Block, relativePl
 
 pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 	switch (item) {
-		.tool => |tool| {
-			const tags = tool.type.blockTags();
+		.proceduralItem => |proceduralItem| {
+			const tags = proceduralItem.type.tags();
 			for (tags) |tag| {
 				if (tag == .chiselable) {
 					return closestRay(.intersection, block, relativePlayerPos, playerDir);
@@ -288,8 +288,8 @@ pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: V
 
 pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 	switch (item) {
-		.tool => |tool| {
-			for (tool.type.blockTags()) |tag| {
+		.proceduralItem => |proceduralItem| {
+			for (proceduralItem.type.tags()) |tag| {
 				if (tag == .chiselable) {
 					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
 					if (currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
@@ -305,7 +305,7 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 	if (oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 	if (oldBlock.data == newBlock.data) return .no;
-	if (item.item == .tool) {
+	if (item.item == .proceduralItem) {
 		return .{.yes_costsDurability = 1};
 	}
 	return .no;

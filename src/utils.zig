@@ -9,12 +9,17 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 pub const file_monitor = @import("utils/file_monitor.zig");
 pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 
+pub const Condition = @import("utils/Condition.zig");
+pub const Futex = @import("utils/Futex.zig");
+pub const Semaphore = @import("utils/Semaphore.zig");
+
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
 		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
 		var buffer: [65536]u8 = undefined;
 		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
 		compress.writer.writeAll(data) catch unreachable;
+		compress.finish() catch unreachable;
 		compress.writer.flush() catch unreachable;
 		result.writer.flush() catch unreachable;
 		return result.toOwnedSlice() catch unreachable;
@@ -33,7 +38,7 @@ pub const Compression = struct { // MARK: Compression
 		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
-		while (try walker.next()) |entry| {
+		while (try walker.next(main.io)) |entry| {
 			if (entry.kind == .file) {
 				var relPath: []const u8 = entry.path;
 				if (builtin.os.tag == .windows) { // I hate you
@@ -57,6 +62,7 @@ pub const Compression = struct { // MARK: Compression
 				_ = try comp.writer.writeAll(fileData);
 			}
 		}
+		try comp.finish();
 		try comp.writer.flush();
 		try writer.flush();
 	}
@@ -137,7 +143,7 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 			const currentChances = main.stackAllocator.alloc(f32, items.len);
 			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
-			for (items, 0..) |*item, i| {
+			for (items, 0..) |item, i| {
 				totalChance += item.chance;
 				currentChances[i] = item.chance;
 			}
@@ -588,7 +594,7 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 	return struct {
 		const Self = @This();
 		super: CircularBufferQueue(T),
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
 			return .{
@@ -628,7 +634,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 		const initialSize = 16;
 		size: usize,
 		array: []T,
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 		allocator: NeverFailingAllocator,
 
 		pub fn init(allocator: NeverFailingAllocator) @This() {
@@ -752,6 +758,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 
 pub const ThreadPool = struct { // MARK: ThreadPool
 	pub const TaskType = enum(usize) {
+		blockUpdate,
 		chunkgen,
 		meshgenAndLighting,
 		misc,
@@ -775,7 +782,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		taskType: TaskType = .misc,
 	};
 	pub const Performance = struct {
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 		tasks: [taskTypes]u32 = undefined,
 		utime: [taskTypes]i64 = undefined,
 
@@ -808,7 +815,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	currentTasks: []Atomic(?*const VTable),
 	loadList: ConcurrentMaxHeap(Task),
 	playerJobQueue: ConcurrentQueue(*main.server.User),
-	semaphore: std.Thread.Semaphore = .{},
+	semaphore: main.utils.Semaphore = .{},
 	allocator: NeverFailingAllocator,
 	running: Atomic(bool) = .init(true),
 
@@ -833,7 +840,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				@panic("ThreadPool Creation Failed.");
 			};
 			var buf: [std.Thread.max_name_len]u8 = undefined;
-			thread.setName(std.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+			thread.setName(main.io, std.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		}
 		return self;
 	}
@@ -872,7 +879,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
-				self.semaphore.timedWait(0) catch {};
+				self.semaphore.timedWait(.zero) catch {};
 			} else {
 				i += 1;
 			}
@@ -919,7 +926,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		outer: while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 
-			self.semaphore.timedWait(10_000_000) catch continue :outer;
+			self.semaphore.timedWait(.fromMilliseconds(10)) catch continue :outer;
 
 			{
 				const task = self.getNextTask() orelse continue :outer;
@@ -937,7 +944,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
 				defer temporaryTaskList.deinit();
 				while (self.loadList.extractAny()) |task| {
-					self.semaphore.timedWait(0) catch {};
+					self.semaphore.timedWait(.zero) catch {};
 					if (!task.vtable.isStillNeeded(task.self)) {
 						task.vtable.clean(task.self);
 						_ = self.trueQueueSize.fetchSub(1, .monotonic);
@@ -978,7 +985,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	pub fn clear(self: *ThreadPool) void {
 		// Clear the remaining tasks:
 		while (self.loadList.extractAny()) |task| {
-			self.semaphore.timedWait(0) catch {};
+			self.semaphore.timedWait(.zero) catch {};
 			task.vtable.clean(task.self);
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
@@ -986,7 +993,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			while (player.getTaskFromJobQueue()) |task| {
 				task[0].vtable.clean(task[0].self);
 			}
-			self.semaphore.timedWait(0) catch {};
+			self.semaphore.timedWait(.zero) catch {};
 			player.decreaseRefCount();
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
@@ -1341,7 +1348,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 	if (numberOfBuckets & hashMask != 0) @compileError("The number of buckets should be a power of 2!");
 
 	const Bucket = struct {
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 		items: [bucketSize]?*T = @splat(null),
 
 		fn find(self: *@This(), compare: anytype) ?*T {
@@ -1621,23 +1628,49 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 	}
 };
 
-pub fn assertLocked(mutex: *const std.Thread.Mutex) void { // MARK: assertLocked()
+pub fn assertLocked(mutex: *const main.utils.Mutex) void { // MARK: assertLocked()
 	if (builtin.mode == .Debug) {
 		std.debug.assert(!@constCast(mutex).tryLock());
 	}
 }
 
-pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
-	if (builtin.mode == .Debug) {
-		std.debug.assert(!@constCast(lock).tryLock());
+/// A wrapper over Zig's mutex to avoid having to pass the io everywhere
+pub const Mutex = struct { // MARK: Mutex
+	super: if (builtin.os.tag == .windows) @import("utils/Mutex.zig") else std.Io.Mutex = .init,
+
+	pub fn tryLock(self: *Mutex) bool {
+		return self.super.tryLock();
 	}
-}
+
+	pub fn lock(self: *Mutex) void {
+		if (builtin.os.tag == .windows) {
+			self.super.lock();
+		} else {
+			self.super.lockUncancelable(main.io);
+		}
+	}
+
+	pub fn unlock(self: *Mutex) void {
+		if (builtin.os.tag == .windows) {
+			self.super.unlock();
+		} else {
+			self.super.unlock(main.io);
+		}
+	}
+};
 
 /// A read-write lock with read priority.
 pub const ReadWriteLock = struct { // MARK: ReadWriteLock
-	condition: std.Thread.Condition = .{},
-	mutex: std.Thread.Mutex = .{},
+	condition: Condition = .{},
+	mutex: main.utils.Mutex = .{},
 	readers: u32 = 0,
+
+	pub fn tryLockRead(self: *ReadWriteLock) bool {
+		if (!self.mutex.tryLock()) return false;
+		self.readers += 1;
+		self.mutex.unlock();
+		return true;
+	}
 
 	pub fn lockRead(self: *ReadWriteLock) void {
 		self.mutex.lock();
@@ -1678,11 +1711,6 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 			}
 		}
 	}
-};
-
-pub const Side = enum {
-	client,
-	server,
 };
 
 const endian: std.builtin.Endian = .big;
@@ -1750,7 +1778,7 @@ pub const BinaryReader = struct {
 
 	pub fn readEnum(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag }!T {
 		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
-		return std.meta.intToEnum(T, int);
+		return std.enums.fromInt(T, int) orelse error.InvalidEnumTag;
 	}
 
 	pub fn readBool(self: *BinaryReader) error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag }!bool {
@@ -1867,7 +1895,7 @@ const ReadWriteTest = struct {
 		defer writer.deinit();
 		writer.writeInt(IntT, expected);
 
-		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8);
+		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8) catch unreachable;
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);

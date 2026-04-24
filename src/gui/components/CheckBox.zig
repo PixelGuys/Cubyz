@@ -35,7 +35,7 @@ hovered: bool = false,
 onAction: *const fn (bool) void,
 label: *Label,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	textureCheckedNormal = Texture.initFromFile("assets/cubyz/ui/checked_box.png");
 	textureCheckedHovered = Texture.initFromFile("assets/cubyz/ui/checked_box_hovered.png");
 	textureCheckedPressed = Texture.initFromFile("assets/cubyz/ui/checked_box_pressed.png");

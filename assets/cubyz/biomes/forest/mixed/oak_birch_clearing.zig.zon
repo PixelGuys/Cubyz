@@ -1,11 +1,15 @@
 .{
 	.chance = 0,
-	.properties = .{},
+	.keepOriginalTerrain = 1,
 	.radius = 32,
 	.minHeight = 22,
 	.maxHeight = 40,
-	.roughness = 1,
-	.hills = 5,
+	.properties = .{},
+	.tags = .{
+		.oak,
+	},
+	.minRadius = 20,
+	.maxRadius = 32,
 	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
@@ -13,6 +17,30 @@
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
+			.chance = 0.004,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.001,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/1",
+			.placeMode = .degradable,
+			.chance = 0.001,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/2",
+			.placeMode = .degradable,
+			.chance = 0.001,
+		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.005,
@@ -24,7 +52,7 @@
 			.id = "cubyz:fallen_tree",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_log",
-			.chance = 0.05,
+			.chance = 0.02,
 			.height = 6,
 			.height_variation = 3,
 		},
@@ -32,7 +60,7 @@
 			.id = "cubyz:fallen_tree",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_log",
-			.chance = 0.02,
+			.chance = 0.01,
 			.height = 6,
 			.height_variation = 3,
 		},
@@ -74,7 +102,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:forest/mixed/oak_birch",
-			.chance = 0.25,
+			.chance = 2,
 		},
 	},
 }

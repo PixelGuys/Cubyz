@@ -1,5 +1,6 @@
 .{
 	.model = "cubyz:cubert",
-	.texture = "cubert.png",
+	.defaultTexture = "cubyz:cubert",
 	.height = 2,
+	.coordinateSystem = .right_handed_z_up,
 }

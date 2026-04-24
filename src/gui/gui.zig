@@ -136,14 +136,14 @@ pub fn init() void { // MARK: init()
 			windowStruct.init();
 		}
 	}
-	GuiWindow.__init();
-	Button.__init();
-	CheckBox.__init();
-	ItemSlot.__init();
-	ScrollBar.__init();
-	ContinuousSlider.__init();
-	DiscreteSlider.__init();
-	TextInput.__init();
+	GuiWindow.globalInit();
+	Button.globalInit();
+	CheckBox.globalInit();
+	ItemSlot.globalInit();
+	ScrollBar.globalInit();
+	ContinuousSlider.globalInit();
+	DiscreteSlider.globalInit();
+	TextInput.globalInit();
 	load();
 	GamepadCursor.init();
 }
@@ -677,9 +677,9 @@ pub const inventory = struct { // MARK: inventory
 					}
 				} else if (itemSlot.inventory.type == .workbenchResult) {
 					if (mainGuiButton.modsOnPress.shift) {
-						itemSlot.inventory.craftTool(&.{main.game.Player.inventory});
+						itemSlot.inventory.craftProceduralItem(&.{main.game.Player.inventory});
 					} else {
-						itemSlot.inventory.craftTool(&.{carried});
+						itemSlot.inventory.craftProceduralItem(&.{carried});
 					}
 				}
 			}
