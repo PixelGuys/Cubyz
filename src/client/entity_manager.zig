@@ -40,6 +40,7 @@ pub fn init() void {
 		"",
 		&uniforms,
 		main.entityModel.EntityModel.Vertex,
+		&.{},
 		.{},
 		.{.depthTest = true},
 		.{.attachments = &.{.alphaBlending}},

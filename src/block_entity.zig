@@ -342,6 +342,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 					"",
 					&uniforms,
 					graphics.VertexArray.EmptyVertex,
+					&.{},
 					.{},
 					.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
 					.{.attachments = &.{.alphaBlending}},
@@ -530,7 +531,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 
 				c.glUniform1i(uniforms.quadIndex, @intFromEnum(quad));
 				const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
-				const light: [4]u32 = main.renderer.chunk_meshing.PrimitiveMesh.getLight(mesh, signData.blockPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, 0, quad);
+				const light: [4]u32 = main.renderer.lighting.getLight(mesh, signData.blockPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, 0, quad);
 				c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
 				c.glUniform3i(uniforms.chunkPos, signData.blockPos[0] & ~main.chunk.chunkMask, signData.blockPos[1] & ~main.chunk.chunkMask, signData.blockPos[2] & ~main.chunk.chunkMask);
 				c.glUniform3i(uniforms.blockPos, signData.blockPos[0] & main.chunk.chunkMask, signData.blockPos[1] & main.chunk.chunkMask, signData.blockPos[2] & main.chunk.chunkMask);
