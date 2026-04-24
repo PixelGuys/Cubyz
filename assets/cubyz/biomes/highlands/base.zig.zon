@@ -1,4 +1,8 @@
 .{
+	.tags = .{
+		.pine,
+		.oak,
+	},
 	.minHeightLimit = 50,
 	.minHeight = 80,
 	.maxHeight = 150,

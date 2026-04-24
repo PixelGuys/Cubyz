@@ -1,4 +1,8 @@
 .{
+	.tags = .{
+		.pine,
+		.oak,
+	},
 	.keepOriginalTerrain = 1,
 	.chance = 0,
 	.minHeightLimit = 50,
