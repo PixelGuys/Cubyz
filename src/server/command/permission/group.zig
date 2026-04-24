@@ -4,9 +4,12 @@ const main = @import("main");
 const User = main.server.User;
 const permission = main.server.permission;
 
-pub const description = "lets you create, delete, join, leave groups and modify there permission paths";
+const command = @import("../_command.zig");
+
+pub const description = "Lets you create and delete groups, add and remove players and modify their permission paths";
 pub const usage =
-	\\/group <create/delete/join/leave> <groupName>
+	\\/group <create/delete> <groupName>
+	\\/group <add/remove> <groupName> @<playerIndex>
 	\\/group <whitelist/blacklist> <groupName> <add/remove> <permissionPath>
 	\\/group <whitelist/blacklist> <groupName> <permissionPath>
 ;
@@ -14,8 +17,8 @@ pub const usage =
 const Operation = enum {
 	create,
 	delete,
-	join,
-	leave,
+	add,
+	remove,
 	whitelist,
 	blacklist,
 };
@@ -45,7 +48,8 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	};
 	switch (op) {
-		.create, .delete, .join, .leave => handleGroupChanges(op, groupName, &split, source),
+		.create, .delete => handleGroupChanges(op, groupName, &split, source),
+		.add, .remove => handleGroupUserChanges(op, groupName, &split, source),
 		.whitelist, .blacklist => handleGroupPermissionChanges(op, groupName, &split, source),
 	}
 }
@@ -59,24 +63,44 @@ fn handleGroupChanges(op: Operation, groupName: []const u8, split: *std.mem.Spli
 		.create => {
 			permission.createGroup(groupName) catch {
 				source.sendMessage("#ff0000Group {s}#ff0000 already exists.", .{groupName});
+				return;
 			};
+			source.sendMessage("#00ff00Group {s} created", .{groupName});
 		},
 		.delete => {
 			if (!permission.deleteGroup(groupName)) {
 				source.sendMessage("#ff0000Group {s}#ff0000 could not be removed as it already doesn't exist.", .{groupName});
+				return;
 			}
+			source.sendMessage("#00ff00Group {s} deleted", .{groupName});
 		},
-		.join => {
-			source.addToGroup(groupName) catch {
+		else => unreachable,
+	}
+}
+
+fn handleGroupUserChanges(op: Operation, groupName: []const u8, split: *std.mem.SplitIterator(u8, .scalar), source: *User) void {
+	const target = command.Target.init(split, source) catch return;
+	defer target.deinit();
+	if (split.next() != null) {
+		source.sendMessage("#ff0000Too many arguments for command /group. Usage: " ++ usage, .{});
+		return;
+	}
+	switch (op) {
+		.add => {
+			target.user.addToGroup(groupName) catch {
 				source.sendMessage("#ff0000Group {s}#ff0000 does not exist.", .{groupName});
+				return;
 			};
+			source.sendMessage("#00ff00User {f} added to group {s}", .{target.user, groupName});
 		},
-		.leave => {
-			if (!source.removeFromGroup(groupName)) {
-				source.sendMessage("#ff0000Could not leave group {s}#ff0000 as user was already not a member", .{groupName});
+		.remove => {
+			if (!target.user.removeFromGroup(groupName)) {
+				source.sendMessage("#ff0000Could not leave group {s}#ff0000 as {f} was already not a member", .{groupName, target.user});
+				return;
 			}
+			source.sendMessage("#00ff00User {f} removed from group {s}", .{target.user, groupName});
 		},
-		.whitelist, .blacklist => unreachable,
+		else => unreachable,
 	}
 }
 
@@ -119,11 +143,16 @@ fn handleGroupPermissionChanges(op: Operation, groupName: []const u8, split: *st
 	}
 	if (pathOp) |_op| {
 		switch (_op) {
-			.add => group.permissions.addPermission(listType, path),
+			.add => {
+				group.permissions.addPermission(listType, path);
+				source.sendMessage("#00ff00Permission path {s} added to group {s}'s permission {s}list", .{path, groupName, @tagName(listType)});
+			},
 			.remove => {
 				if (!group.permissions.removePermission(listType, path)) {
 					source.sendMessage("#ff0000Permission path {s} is not present inside group {s} permission {s}list", .{path, groupName, @tagName(listType)});
+					return;
 				}
+				source.sendMessage("#00ff00Permission path {s} removed from group {s}'s permission {s}list", .{path, groupName, @tagName(listType)});
 			},
 		}
 	} else {

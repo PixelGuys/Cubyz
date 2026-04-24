@@ -496,7 +496,11 @@ pub const User = struct { // MARK: User
 	pub fn addToGroup(self: *User, groupName: []const u8) error{GroupNotFound}!void {
 		sync.threadContext.assertCorrectContext(.server);
 		const group = try permission.getGroup(groupName);
-		self.permissionGroups.put(main.globalAllocator.allocator, main.globalAllocator.dupe(u8, groupName), group) catch unreachable;
+		const result = self.permissionGroups.getOrPut(main.globalAllocator.allocator, groupName) catch unreachable;
+		if (!result.found_existing) {
+			result.key_ptr.* = main.globalAllocator.dupe(u8, groupName);
+			result.value_ptr.* = group;
+		}
 	}
 
 	pub fn removeFromGroup(self: *User, groupName: []const u8) bool {
