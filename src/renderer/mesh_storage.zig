@@ -42,7 +42,7 @@ var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
 var lastRD: u16 = 0;
-var mutex: std.Thread.Mutex = .{};
+var mutex: main.utils.Mutex = .{};
 
 pub const BlockUpdate = struct {
 	pos: Vec3i,
@@ -66,13 +66,10 @@ pub const BlockUpdate = struct {
 	}
 };
 
-var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
-
 pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
-	blockUpdateList = .init(main.globalAllocator, 16);
 	meshMemoryPool = .init(main.globalAllocator);
 	for (&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
@@ -111,10 +108,6 @@ pub fn deinit() void {
 	}
 	mapUpdatableList.deinit();
 	priorityMeshUpdateList.deinit();
-	while (blockUpdateList.popFront()) |blockUpdate| {
-		blockUpdate.deinitManaged(main.globalAllocator);
-	}
-	blockUpdateList.deinit();
 	meshList.clearAndFree();
 	main.heap.GarbageCollection.waitForFreeCompletion();
 	meshMemoryPool.deinit();
@@ -704,8 +697,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		const mesh = node.mesh.load(.acquire).?; // no other thread is allowed to overwrite the mesh (unless it's null).
 
 		if (mesh.needsMeshUpdate) {
-			mesh.uploadData();
 			mesh.needsMeshUpdate = false;
+			mesh.uploadData();
 		}
 		// Remove empty meshes.
 		if (!mesh.isEmpty()) {
@@ -717,8 +710,6 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 }
 
 pub fn updateMeshes(targetTime: std.Io.Timestamp) void { // MARK: updateMeshes()
-	if (!blockUpdateList.isEmpty()) batchUpdateBlocks();
-
 	mutex.lock();
 	defer mutex.unlock();
 	while (priorityMeshUpdateList.popFront()) |pos| {
@@ -779,32 +770,6 @@ pub fn updateMeshes(targetTime: std.Io.Timestamp) void { // MARK: updateMeshes()
 			mesh.uploadData();
 		}
 		if (targetTime.durationTo(main.timestamp()).nanoseconds >= 0) break; // Update at least one mesh.
-	}
-}
-
-fn batchUpdateBlocks() void {
-	var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
-	defer lightRefreshList.deinit();
-
-	var regenerateMeshList = main.List(*ChunkMesh).init(main.stackAllocator);
-	defer regenerateMeshList.deinit();
-
-	// First of all process all the block updates:
-	while (blockUpdateList.popFront()) |blockUpdate| {
-		defer blockUpdate.deinitManaged(main.globalAllocator);
-		const pos = chunk.ChunkPosition{.wx = blockUpdate.pos[0], .wy = blockUpdate.pos[1], .wz = blockUpdate.pos[2], .voxelSize = 1};
-		if (getMesh(pos)) |mesh| {
-			mesh.updateBlock(blockUpdate, &lightRefreshList, &regenerateMeshList);
-		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
-	}
-	for (regenerateMeshList.items) |mesh| {
-		mesh.generateMesh(&lightRefreshList);
-	}
-	for (lightRefreshList.items) |pos| {
-		ChunkMesh.scheduleLightRefresh(pos);
-	}
-	for (regenerateMeshList.items) |mesh| {
-		mesh.uploadData();
 	}
 }
 
@@ -885,8 +850,11 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 
 // MARK: updaters
 
-pub fn updateBlock(update: BlockUpdate) void {
-	blockUpdateList.pushBack(BlockUpdate.initManaged(main.globalAllocator, update));
+pub fn updateBlock(blockUpdate: BlockUpdate) void {
+	const pos = chunk.ChunkPosition{.wx = blockUpdate.pos[0], .wy = blockUpdate.pos[1], .wz = blockUpdate.pos[2], .voxelSize = 1};
+	if (getMesh(pos)) |mesh| {
+		mesh.updateBlock(blockUpdate);
+	} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {

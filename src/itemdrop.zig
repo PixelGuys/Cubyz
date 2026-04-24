@@ -12,6 +12,7 @@ const items = @import("items.zig");
 const ItemStack = items.ItemStack;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const physics = main.physics;
 const random = @import("random.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
@@ -60,7 +61,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	indices: [maxCapacity]u16 = undefined,
 
-	emptyMutex: std.Thread.Mutex = .{},
+	emptyMutex: main.utils.Mutex = .{},
 	isEmpty: std.bit_set.ArrayBitSet(usize, maxCapacity),
 
 	changeQueue: main.utils.ConcurrentQueue(union(enum) { add: struct { u16, ItemDrop }, remove: u16 }),
@@ -352,15 +353,15 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		const hitBox = main.game.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
-		if (main.game.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
+		const hitBox = physics.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
+		if (physics.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
 		vel.* += Vec3d{0, 0, -gravity*deltaTime};
 		inline for (0..3) |i| {
 			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
-			if (main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
+			if (main.physics.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
 				if (move < 0) {
 					pos.*[i] = box.max[i] + radius;
 				} else {
@@ -427,7 +428,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			defer ch.mutex.unlock();
 			block = ch.getBlock(blockPos[0] - ch.super.pos.wx, blockPos[1] - ch.super.pos.wy, blockPos[2] - ch.super.pos.wz);
 		}
-		return main.game.collision.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
+		return main.physics.collision.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
 	}
 
 	pub fn checkEntity(self: *ItemDropManager, user: *main.server.User) void {
@@ -469,7 +470,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	var instance: ?*ClientItemDropManager = null;
 
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 
 	pub fn init(self: *ClientItemDropManager, allocator: NeverFailingAllocator) void {
 		std.debug.assert(instance == null); // Only one instance allowed.
@@ -678,6 +679,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			"assets/cubyz/shaders/item_drop.frag",
 			"",
 			&itemUniforms,
+			graphics.VertexArray.EmptyVertex,
+			&.{},
 			.{},
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},

@@ -160,7 +160,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 	var inventories: main.utils.VirtualList(ServerInventory, 1 << 24) = undefined;
 	var maxId: InventoryId = @enumFromInt(0);
 	var freeIdList: main.List(InventoryId) = undefined;
-	var inventoryCreationMutex: std.Thread.Mutex = .{};
+	var inventoryCreationMutex: main.utils.Mutex = .{};
 
 	pub fn init() void {
 		inventories = .init();

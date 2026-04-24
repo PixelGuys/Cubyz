@@ -22,7 +22,7 @@ const ZonElement = main.ZonElement;
 pub const Side = enum { client, server };
 
 pub const ClientSide = struct {
-	pub var mutex: std.Thread.Mutex = .{};
+	pub var mutex: main.utils.Mutex = .{};
 	var commands: utils.CircularBufferQueue(Command) = undefined;
 
 	pub fn init() void {
@@ -711,7 +711,7 @@ pub const Command = struct { // MARK: Command
 
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
-							.spawnPoint = info.target.?.spawnPos,
+							.spawnPoint = info.target.?.getSpawnPos(),
 						}});
 					} else {
 						self.syncOperations.append(allocator, .{.health = .{
@@ -1377,7 +1377,7 @@ pub const Command = struct { // MARK: Command
 		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
 
 		const BlockDropLocation = struct {
-			dir: Neighbor,
+			normalDir: Vec3f,
 			min: Vec3f,
 			max: Vec3f,
 
@@ -1411,19 +1411,25 @@ pub const Command = struct { // MARK: Command
 			}
 			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
+				const random = self.randomOffset();
+				const minorVectors = minors(self);
+				const minor1Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[0])))*minorVectors[0];
+				const minor2Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[1])))*minorVectors[1];
+				return pos + minor1Offset + minor2Offset + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
 			}
 			fn directionOffset(self: BlockDropLocation) Vec3d {
 				return half + self.direction()*half;
 			}
-			inline fn direction(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(self.dir.relPos());
+			inline fn direction(self: BlockDropLocation) Vec3f {
+				return self.normalDir;
 			}
-			inline fn major(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(@abs(self.dir.relPos()));
+			inline fn major(self: BlockDropLocation) Vec3f {
+				return @abs(self.normalDir);
 			}
-			inline fn minor(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(self.dir.orthogonalComponents());
+			inline fn minors(self: BlockDropLocation) struct { Vec3f, Vec3f } {
+				const minor1 = vec.normalize(vec.cross(self.normalDir, if (@reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0}));
+				const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
+				return .{minor1, minor2};
 			}
 			fn dropDir(self: BlockDropLocation) Vec3f {
 				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
@@ -1452,7 +1458,7 @@ pub const Command = struct { // MARK: Command
 			if (!switch (costOfChange) {
 				.no => false,
 				.yes => true,
-				.yes_costsDurability => |_| stack.item == .proceduralItem,
+				.yes_costsDurability => stack.item == .proceduralItem,
 				.yes_costsItems => |amount| stack.amount >= amount,
 			}) {
 				if (ctx.side == .server) {
@@ -1479,6 +1485,7 @@ pub const Command = struct { // MARK: Command
 			}
 
 			// Apply inventory changes:
+			const handItem = self.source.inv.getItem(self.source.slot); // State should be stored before procedural item breaks
 			switch (costOfChange) {
 				.no => unreachable,
 				.yes => {},
@@ -1499,6 +1506,8 @@ pub const Command = struct { // MARK: Command
 				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 				for (0..dropAmount) |_| {
 					for (self.oldBlock.blockDrops()) |drop| {
+						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
+
 						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 							self.dropLocation.drop(self.pos, self.newBlock, drop);
 						}
@@ -1510,7 +1519,7 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: UpdateBlock, writer: *BinaryWriter) void {
 			self.source.write(writer);
 			writer.writeVec(Vec3i, self.pos);
-			writer.writeEnum(Neighbor, self.dropLocation.dir);
+			writer.writeVec(Vec3f, self.dropLocation.normalDir);
 			writer.writeVec(Vec3f, self.dropLocation.min);
 			writer.writeVec(Vec3f, self.dropLocation.max);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
@@ -1522,7 +1531,7 @@ pub const Command = struct { // MARK: Command
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.pos = try reader.readVec(Vec3i),
 				.dropLocation = .{
-					.dir = try reader.readEnum(Neighbor),
+					.normalDir = try reader.readVec(Vec3f),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),
 				},

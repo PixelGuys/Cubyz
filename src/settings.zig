@@ -228,3 +228,11 @@ pub const launchConfig = struct {
 		vulkanTestingMode = zon.get(bool, "vulkanTestingMode", false);
 	}
 };
+
+pub const environment = struct {
+	pub var SDL_GAMECONTROLLERCONFIG: ?[]const u8 = null;
+
+	pub fn init(env: std.process.Environ) void {
+		SDL_GAMECONTROLLERCONFIG = env.getAlloc(main.globalArena.allocator, "SDL_GAMECONTROLLERCONFIG") catch null;
+	}
+};

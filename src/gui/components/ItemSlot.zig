@@ -57,7 +57,7 @@ const TextureParamType = union(enum) {
 	}
 };
 
-pub fn __init() void {
+pub fn globalInit() void {
 	defaultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
 	immutableTexture = Texture.initFromFile("assets/cubyz/ui/inventory/immutable_slot.png");
 	craftingResultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_result_slot.png");

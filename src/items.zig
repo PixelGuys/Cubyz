@@ -607,8 +607,8 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn id(self: ProceduralItemTypeIndex) []const u8 {
 		return proceduralItemTypeList.items[@intFromEnum(self)].id;
 	}
-	pub fn blockTags(self: ProceduralItemTypeIndex) []const Tag {
-		return proceduralItemTypeList.items[@intFromEnum(self)].blockTags;
+	pub fn tags(self: ProceduralItemTypeIndex) []const Tag {
+		return proceduralItemTypeList.items[@intFromEnum(self)].tags;
 	}
 	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
 		return proceduralItemTypeList.items[@intFromEnum(self)].properties;
@@ -629,7 +629,7 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 
 pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	id: []const u8,
-	blockTags: []main.Tag,
+	tags: []main.Tag,
 	properties: []PropertyMatrix,
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
@@ -890,11 +890,16 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.tooltip.items;
 	}
 
+	pub fn hasTag(self: *ProceduralItem, tag: Tag) bool {
+		for (self.type.tags()) |proceduralItemTag| {
+			if (proceduralItemTag == tag) return true;
+		}
+		return false;
+	}
+
 	pub fn isEffectiveOn(self: *ProceduralItem, block: main.blocks.Block) bool {
-		for (block.blockTags()) |blockTag| {
-			for (self.type.blockTags()) |ProceduralItemTag| {
-				if (ProceduralItemTag == blockTag) return true;
-			}
+		for (block.tags()) |tag| {
+			if (self.hasTag(tag)) return true;
 		}
 		return false;
 	}
@@ -1332,7 +1337,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	const idDupe = main.worldArena.dupe(u8, id);
 	proceduralItemTypeList.append(main.worldArena, .{
 		.id = idDupe,
-		.blockTags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("blockTags")),
+		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		.slotInfos = slotInfos,
 		.properties = parameterMatrices.toOwnedSlice(),
 		.pixelSources = pixelSources,
