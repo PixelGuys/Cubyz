@@ -262,8 +262,8 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
-	pub fn callbacks(self: BaseItemIndex) ItemCallbacks {
-		return itemList[@intFromEnum(self)].callbacks;
+	pub fn onLeftClick(self: BaseItemIndex) ItemUsedCallback {
+		return itemList[@intFromEnum(self)].callbacks.onLeftClick;
 	}
 };
 
@@ -919,6 +919,10 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
+
+	pub fn onLeftClick(self: *ProceduralItem) ItemUsedCallback {
+		return self.type.callbacks().onLeftClick;
+	}
 };
 
 pub const ItemCallbacks = struct {
@@ -1087,9 +1091,8 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn onLeftClick(self: Item) ItemUsedCallback {
 		return switch (self) {
-			.baseItem => |item| item.callbacks().onLeftClick,
-			.proceduralItem => |item| item.type.callbacks().onLeftClick,
 			.null => ItemCallbacks.defaultItemUsedCallback.onLeftClick,
+			inline else => |item| item.onLeftClick(),
 		};
 	}
 };
