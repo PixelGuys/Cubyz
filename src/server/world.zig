@@ -662,7 +662,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var groupDir = try dir.openIterableDir("groups");
 		defer groupDir.close();
 		var iterator = groupDir.iterate();
-		while (try iterator.next()) |file| {
+		while (try iterator.next(main.io)) |file| {
 			if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
 				const zon = try groupDir.readToZon(main.stackAllocator, file.name);
 				defer zon.deinit(main.stackAllocator);
