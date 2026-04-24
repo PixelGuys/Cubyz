@@ -2,6 +2,7 @@
 	.blueprints = .{
 		.{.id = "cubyz:ruins/slate/circle/treasure/coal"},
 		.{.id = "cubyz:ruins/slate/circle/treasure/copper"},
+		.{.id = "cubyz:ruins/slate/circle/treasure/silver"},
 		.{.id = "cubyz:ruins/slate/circle/treasure/meteorite", .chance = 0.5},
 	},
 }

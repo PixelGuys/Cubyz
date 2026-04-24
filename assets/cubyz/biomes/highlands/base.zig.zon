@@ -121,7 +121,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:ruins/slate/circle",
 			.placeMode = .all,
-			.chance = 0.0003,
+			.chance = 0.0001,
 		},
 	},
 }
