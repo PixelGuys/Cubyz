@@ -93,10 +93,8 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				}
 			}
 
-			const isLeftoverArgumentWhitespace = nextArgument == null or main.utils.all(std.ascii.isWhitespace, nextArgument.?);
-			const areUnusedArgumentsWhitespace = main.utils.all(std.ascii.isWhitespace, split.rest());
 
-			if (!isLeftoverArgumentWhitespace or !areUnusedArgumentsWhitespace) {
+			if (nextArgument == null) {
 				failWithMessage(errorMessage, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
