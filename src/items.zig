@@ -469,6 +469,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
 		defer tempModifiers.deinit();
 		for (proceduralItem.type.properties()) |property| {
+			if (property.destination == null) continue;
 			var sum: f32 = 0;
 			var weight: f32 = 0;
 			for (0..25) |i| {
@@ -484,10 +485,10 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 				},
 			}
 			sum *= property.resultScale;
-			proceduralItem.getPropertyPtr(property.destination orelse continue).* += sum;
+			proceduralItem.setProperty(property.destination.?, proceduralItem.getProperty(property.destination.?) + sum);
 		}
-		if (proceduralItem.getProperty(.damage) < 1) proceduralItem.getPropertyPtr(.damage).* = 1/(2 - proceduralItem.getProperty(.damage));
-		if (proceduralItem.getProperty(.swingSpeed) < 1) proceduralItem.getPropertyPtr(.swingSpeed).* = 1/(2 - proceduralItem.getProperty(.swingSpeed));
+		if (proceduralItem.getProperty(.damage) < 1) proceduralItem.setProperty(.damage, 1/(2 - proceduralItem.getProperty(.damage)));
+		if (proceduralItem.getProperty(.swingSpeed) < 1) proceduralItem.setProperty(.swingSpeed, 1/(2 - proceduralItem.getProperty(.swingSpeed)));
 		for (0..25) |i| {
 			const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for (material.modifiers) |newMod| {
@@ -511,14 +512,15 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			mod.changeProceduralItemParameters(proceduralItem);
 		}
 
-		proceduralItem.getPropertyPtr(.maxDurability).* = @round(proceduralItem.getProperty(.maxDurability));
-		if (proceduralItem.getProperty(.maxDurability) < 1) proceduralItem.getPropertyPtr(.maxDurability).* = 1;
+		proceduralItem.setProperty(.maxDurability, @round(proceduralItem.getProperty(.maxDurability)));
+		if (proceduralItem.getProperty(.maxDurability) < 1) proceduralItem.setProperty(.maxDurability, 1);
 		proceduralItem.durability = std.math.lossyCast(u32, proceduralItem.getProperty(.maxDurability));
 
 		if (!checkConnectivity(proceduralItem)) {
-			proceduralItem.getPropertyPtr(.maxDurability).* = 0;
+			proceduralItem.setProperty(.maxDurability, 0);
 			proceduralItem.durability = 1;
 		}
+		proceduralItem.finishedPropertyEvaluation = true;
 	}
 
 	fn checkConnectivity(proceduralItem: *ProceduralItem) bool {
@@ -638,7 +640,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 const ProceduralItemProperty = enum {
 	damage,
 	maxDurability,
-	/// swings per second
+	/// how long it takes before the next swing happens
 	swingSpeed,
 
 	fn fromString(string: []const u8) ?ProceduralItemProperty {
@@ -661,6 +663,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	texture: ?graphics.Texture,
 	seed: u32,
 	type: ProceduralItemTypeIndex,
+	finishedPropertyEvaluation: bool = false,
 
 	properties: [@typeInfo(ProceduralItemProperty).@"enum".fields.len]f32 = @splat(0),
 
@@ -849,8 +852,9 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.properties[@intFromEnum(prop)];
 	}
 
-	pub fn getPropertyPtr(self: *ProceduralItem, prop: ProceduralItemProperty) *f32 {
-		return &self.properties[@intFromEnum(prop)];
+	pub fn setProperty(self: *ProceduralItem, prop: ProceduralItemProperty, value: f32) void {
+		std.debug.assert(!self.finishedPropertyEvaluation);
+		self.properties[@intFromEnum(prop)] = value;
 	}
 
 	fn getTexture(self: *ProceduralItem) graphics.Texture {
