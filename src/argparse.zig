@@ -10,8 +10,8 @@ pub const Options = struct {
 };
 
 const ResolveMode = enum {
-	Parse,
-	Autocomplete,
+	parse,
+	autocomplete,
 };
 
 pub fn Parser(comptime T: type, comptime options: Options) type {
@@ -26,11 +26,11 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		/// - `args` - unprocessed string containing command arguments without command name.
 		/// - `errorMessage` - out parameter used to store and return errors, if any occur. Has to be allocated with stackAllocator.
 		pub fn parse(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!T {
-			return resolve(ResolveMode.Parse, allocator, args, errorMessage);
+			return resolve(ResolveMode.parse, allocator, args, errorMessage);
 		}
 
 		pub fn autocomplete(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) AutocompleteResult {
-			return resolve(ResolveMode.Autocomplete, allocator, args, errorMessage);
+			return resolve(ResolveMode.autocomplete, allocator, args, errorMessage);
 		}
 
 		pub fn resolve(
@@ -39,8 +39,8 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			args: []const u8,
 			errorMessage: *ListUnmanaged(u8),
 		) switch (mode) {
-			.Autocomplete => AutocompleteResult,
-			.Parse => error{ParseError}!T,
+			.autocomplete => AutocompleteResult,
+			.parse => error{ParseError}!T,
 		} {
 			switch (@typeInfo(T)) {
 				inline .@"struct" => |s| {
@@ -49,8 +49,8 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				inline .@"union" => |u| {
 					if (u.tag_type == null) @compileError("Union must have a tag type");
 					return switch (mode) {
-						.Autocomplete => autocompleteUnion(u, allocator, args, errorMessage),
-						.Parse => parseUnion(u, allocator, args, errorMessage),
+						.autocomplete => autocompleteUnion(u, allocator, args, errorMessage),
+						.parse => parseUnion(u, allocator, args, errorMessage),
 					};
 				},
 				else => @compileError("Only structs and unions are supported"),
@@ -64,8 +64,8 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			args: []const u8,
 			errorMessage: *ListUnmanaged(u8),
 		) switch (mode) {
-			.Autocomplete => AutocompleteResult,
-			.Parse => error{ParseError}!T,
+			.autocomplete => AutocompleteResult,
+			.parse => error{ParseError}!T,
 		} {
 			var result: T = undefined;
 			var split = std.mem.splitScalar(u8, args, ' ');
@@ -187,7 +187,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				tempErrorMessage.appendSlice(allocator, field.name);
 				tempErrorMessage.append(allocator, '\n');
 
-				const result = Parser(field.type, options).resolve(.Parse, allocator, args, &tempErrorMessage);
+				const result = Parser(field.type, options).resolve(.parse, allocator, args, &tempErrorMessage);
 				if (result != error.ParseError) {
 					return @unionInit(T, field.name, result catch unreachable);
 				}
