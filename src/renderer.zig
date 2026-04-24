@@ -915,7 +915,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var selectionMax: Vec3f = undefined;
 	var selectionNormal: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
-	pub var lastDir: Vec3f = undefined;
+	var lastDir: Vec3f = undefined;
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
@@ -1056,14 +1056,19 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, _deltaTime: f64) void {
 		var deltaTime = _deltaTime;
 		if (selectedBlockPos) |selectedPos| {
-			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
 				deltaTime = 0;
 			}
 
-			if (inventory.getItem(slot).onLeftClick().run(.{.item = inventory.getItem(slot), .target = .{.block = .{.block = block, .blockPos = selectedPos}}, .mod = .{}, .deltaTime = deltaTime}) == .handled) return;
+			if (inventory.getItem(slot).onLeftClick().run(.{
+				.item = inventory.getItem(slot),
+				.selectedBlockPos = selectedPos,
+				.lastDir = lastDir,
+				.mod = .{},
+				.deltaTime = deltaTime,
+			}) == .handled) return;
 		}
 	}
 

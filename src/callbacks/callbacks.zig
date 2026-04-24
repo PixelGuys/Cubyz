@@ -4,6 +4,7 @@ const main = @import("main");
 const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const Vec3f = vec.Vec3f;
 
 pub const ClientBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.Chunk, blockPos: Vec3i }, @import("block/client/_list.zig"));
 pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.ServerChunk, blockPos: main.chunk.BlockPos }, @import("block/server/_list.zig"));
@@ -12,11 +13,8 @@ pub const BlockTouchCallback = Callback(struct { entity: *main.server.Entity, so
 
 pub const ItemUsedCallback = Callback(struct {
 	item: main.items.Item,
-	target: union(enum) {
-		block: struct { block: Block, blockPos: Vec3i },
-		entity: *main.server.Entity,
-		null: void,
-	},
+	selectedBlockPos: ?Vec3i = null,
+	lastDir: Vec3f,
 	mod: main.Window.Key.Modifiers,
 	deltaTime: f64,
 }, @import("item/used/_list.zig"));

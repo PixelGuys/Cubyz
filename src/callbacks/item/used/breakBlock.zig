@@ -19,18 +19,18 @@ pub fn init(_: ZonElement) ?*@This() {
 }
 
 pub fn run(_: *@This(), params: main.callbacks.ItemUsedCallback.Params) main.callbacks.Result {
-	if (params.target != .block) return .ignored;
+	const selectedPos = params.selectedBlockPos orelse return .ignored;
 	if (params.deltaTime == 0) {
 		currentBlockProgress = 0;
 		currentSwingProgress = 0;
 		currentSwingTime = 0;
 	}
-	const block = params.target.block.block;
+	const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return .ignored;
 
 	const holdingTargetedBlock = params.item == .baseItem and params.item.baseItem.block() == block.typ;
 	if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return .ignored;
 
-	const relPos: Vec3f = @floatCast(main.game.Player.super.pos - @as(Vec3d, @floatFromInt(params.target.block.blockPos)));
+	const relPos: Vec3f = @floatCast(main.game.Player.super.pos - @as(Vec3d, @floatFromInt(selectedPos)));
 
 	main.sync.ClientSide.mutex.lock();
 	if (!main.game.Player.isCreative()) {
@@ -83,11 +83,11 @@ pub fn run(_: *@This(), params: main.callbacks.ItemUsedCallback.Params) main.cal
 	}
 
 	var newBlock = block;
-	block.mode().onBlockBreaking(params.item, relPos, MeshSelection.lastDir, &newBlock);
+	block.mode().onBlockBreaking(params.item, relPos, params.lastDir, &newBlock);
 	main.sync.ClientSide.mutex.unlock();
 
 	if (newBlock != block) {
-		MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, main.game.Player.selectedSlot, params.target.block.blockPos, block, newBlock);
+		MeshSelection.updateBlockAndSendUpdate(main.game.Player.inventory, main.game.Player.selectedSlot, selectedPos, block, newBlock);
 	}
 	return .handled;
 }
