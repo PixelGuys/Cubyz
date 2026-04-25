@@ -1,0 +1,20 @@
+.{
+	.tags = .{.mineable, .choppable},
+	.blockHealth = 1.0,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.bounciness = 0.5,
+	.viewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:trampoline",
+	.texture4 = "cubyz:trampoline/net",
+	.texture8 = "cubyz:trampoline/underside",
+	.texture9 = "cubyz:trampoline/feet",
+	.texture12 = "cubyz:trampoline/top",
+	.texture13 = "cubyz:trampoline/side",
+	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
+}
