@@ -7,12 +7,12 @@
 		.overgrown,
 	},
 	.minHeightLimit = 7,
-	.minHeight = 64,
+	.minHeight = 120,
 	.maxHeight = 256,
 	.smoothBeaches = true,
 	.soilCreep = 1,
 
-	.mountains = 80,
-	.hills = 20,
+	.mountains = 75,
+	.hills = 10,
 	.stoneBlock = "cubyz:basalt/base",
 }
