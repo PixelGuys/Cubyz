@@ -575,6 +575,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
 				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
 				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
+				Player.frictionCoyote = Player.frictionCoyoteTimeConstant + deltaTime;
 				Player.eye.vel[2] *= 2;
 			} else {
 				velocityChange = Player.super.vel[2];
@@ -595,6 +596,7 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 			// We add deltaTime because we subtract deltaTime at the bottom of update
 			Player.eye.coyote = @sqrt(2*Player.steppingHeight()[2]/gravity) + deltaTime;
 			Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
+			Player.frictionCoyote = Player.frictionCoyoteTimeConstant + deltaTime;
 			Player.eye.pos[2] -= move[2];
 		} else if (Player.eye.coyote > 0) {
 			Player.eye.pos[2] -= move[2];
@@ -608,4 +610,5 @@ pub fn update(deltaTime: f64, inputAcc: Vec3d, jumping: bool) void { // MARK: up
 	Player.eye.pos = @max(Player.eye.box.min, @min(Player.eye.pos, Player.eye.box.max));
 	Player.eye.coyote -= deltaTime;
 	Player.jumpCoyote -= deltaTime;
+	Player.frictionCoyote -= deltaTime;
 }
