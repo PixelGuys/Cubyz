@@ -934,8 +934,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if (block.typ != 0) blk: {
 				const isSelectable: bool = rules: {
-					const holdingTargetedBlock = item == .baseItem and item.baseItem.block() == block.typ;
-					if (holdingTargetedBlock) break :rules true;
+					if (item == .baseItem and item.baseItem.block() == block.typ) break :rules true;
 
 					if (block.hasTag(.air)) break :rules false;
 					if (block.hasTag(.fluid)) {
