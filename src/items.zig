@@ -844,8 +844,8 @@ pub const Tool = struct { // MARK: Tool
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.print(
 			\\{s}
-			\\{d:.2} swings/s
-			\\Damage: {d:.2}
+			\\{d:.1} swings/s
+			\\Damage: {d:.1}
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
