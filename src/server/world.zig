@@ -957,6 +957,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		const player = user.player();
 		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
+
+		// override the name for players.
+		if (player.name) |name| {
+			main.globalAllocator.free(name);
+		}
+		player.name = main.globalAllocator.dupe(u8, user.name);
+
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 

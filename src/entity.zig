@@ -22,9 +22,14 @@ pub const EntityComponentLoadError = error{
 	UnreadableVersion,
 	UnreadableComponentData,
 	UnknownComponentId,
+	InvalidComponentVersion,
 };
-// Analogous to Protocols.
+pub const Entity = enum(u32) {
+	noValue = std.math.maxInt(u32),
+	_,
+};
 pub const EntityComponentId = u32;
+// Analogous to Protocols.
 const EntityComponentVTable = struct {
 	serverLoad: *const fn (entityId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
 	clientLoad: *const fn (entityId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
@@ -105,22 +110,22 @@ pub const client = struct {
 		main.client.entity_manager.init();
 	}
 	pub fn deinit() void {
+		main.client.entity_manager.deinit();
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).client.deinit();
 		}
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
 			@field(systems, decl.name).client.deinit();
 		}
-		main.client.entity_manager.deinit();
 	}
 	pub fn clear() void {
+		main.client.entity_manager.clear();
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
 			@field(systems, decl.name).client.clear();
 		}
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).client.clear();
 		}
-		main.client.entity_manager.clear();
 	}
 	pub fn removeAllComponents(id: u32) void {
 		const list = main.entity.components;
