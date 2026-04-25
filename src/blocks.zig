@@ -526,6 +526,22 @@ pub const Block = packed struct(u32) { // MARK: Block
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
+
+	pub fn isSelectableByItem(self: Block, item: Item) bool {
+		if (item == .baseItem and item.baseItem.block() == self.typ) return true;
+
+		if (self.hasTag(.air)) return false;
+		if (self.hasTag(.fluid)) {
+			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+			return fluidPlaceable;
+		}
+
+		return switch (self.selectionRule()) {
+			.always => true,
+			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
+			.none => false,
+		};
+	}
 };
 
 pub const meshes = struct { // MARK: meshes
