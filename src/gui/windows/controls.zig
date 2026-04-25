@@ -80,6 +80,8 @@ fn sensitivityFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) 
 
 fn toggleKeyboard() void {
 	editingKeyboard = !editingKeyboard;
+	selectedKey = null;
+	main.Window.resetNextInputListenters();
 	needsUpdate = true;
 }
 fn unbindKey(keyPtr: usize) void {
