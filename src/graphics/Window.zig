@@ -489,7 +489,6 @@ pub const Key = struct { // MARK: Key
 	}
 
 	fn action(self: *Key, typ: enum { press, release, repeat }, isGrabbed: bool, mods: Modifiers, textKeyPressedInTextField: bool) void {
-		if (hasNextInputListenter()) return;
 		if (typ == .press) self.grabbedOnPress = isGrabbed;
 		if (!self.notifyRequirement.met(self.grabbedOnPress)) return;
 		if (!self.requiredModifiers.satisfiedBy(mods)) return;
@@ -511,17 +510,18 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const textKeyPressedInTextField = main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null;
 		const isGrabbed = grabbed;
 		if (action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
+			if (action == c.GLFW_PRESS) {
+				if (nextKeypressListener) |listener| {
+					listener(glfw_key, -1, scancode);
+					nextKeypressListener = null;
+					return;
+				}
+			}
 			for (&main.KeyBoard.keys) |*key| {
 				if (glfw_key == key.key) {
 					if (glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
 					}
-				}
-			}
-			if (action == c.GLFW_PRESS) {
-				if (nextKeypressListener) |listener| {
-					listener(glfw_key, -1, scancode);
-					nextKeypressListener = null;
 				}
 			}
 		} else if (action == c.GLFW_REPEAT) {
@@ -584,15 +584,16 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		const isGrabbed = grabbed;
 		if (action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
-			for (&main.KeyBoard.keys) |*key| {
-				if (button == key.mouseButton) {
-					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
-				}
-			}
 			if (action == c.GLFW_PRESS) {
 				if (nextKeypressListener) |listener| {
 					listener(c.GLFW_KEY_UNKNOWN, button, 0);
 					nextKeypressListener = null;
+					return;
+				}
+			}
+			for (&main.KeyBoard.keys) |*key| {
+				if (button == key.mouseButton) {
+					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
 				}
 			}
 		}
@@ -646,10 +647,6 @@ var nextGamepadListener: ?*const fn (?GamepadAxis, c_int) void = null;
 pub fn setNextGamepadListener(listener: ?*const fn (?GamepadAxis, c_int) void) !void {
 	if (nextGamepadListener != null) return error.AlreadyUsed;
 	nextGamepadListener = listener;
-}
-
-fn hasNextInputListenter() bool {
-	return (nextKeypressListener != null or nextGamepadListener != null);
 }
 
 fn updateCursor() void {
