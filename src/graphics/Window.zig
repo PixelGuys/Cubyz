@@ -80,7 +80,7 @@ pub const Gamepad = struct {
 					if ((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
 						nextGamepadListener.?(null, @intCast(btn));
 						nextGamepadListener = null;
-						break;
+						return;
 					}
 				}
 			}
@@ -91,7 +91,7 @@ pub const Gamepad = struct {
 					if (newAxis != 0 and oldAxis == 0) {
 						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.axes[axis] > 0}, -1);
 						nextGamepadListener = null;
-						break;
+						return;
 					}
 				}
 			}
