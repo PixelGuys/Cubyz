@@ -71,7 +71,7 @@ pub const client = struct {
 		const fontScreenSize = fontBaseSize*screenUnits;
 
 		for (main.client.entity_manager.entities.items()) |*ent| {
-			if(ent.id == game.Player.id)  // don't render local player
+			if (ent.id == game.Player.id) // don't render local player
 				continue;
 
 			const component = entityComponent.@"cubyz:model".client.components.get(@enumFromInt(ent.id)) orelse continue;
@@ -116,12 +116,11 @@ pub const client = struct {
 		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for (main.client.entity_manager.entities.items()) |*ent| {
-			if(ent.id == game.Player.id)  // don't render local player
+			if (ent.id == game.Player.id) // don't render local player
 				continue;
 
 			const component = entityComponent.@"cubyz:model".client.components.get(@enumFromInt(ent.id)) orelse continue;
 			const entModel = component.entityModel.get();
-
 
 			entModel.bind();
 			const entTexture = entModel.defaultTexture;
@@ -137,7 +136,6 @@ pub const client = struct {
 				@as(u32, lightVals[5] >> 3) << 0);
 
 			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
-
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (Mat4f.identity()
