@@ -139,7 +139,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
-	_selectionRule[size] = zon.get(SelectionRule, "selectionRule", SelectionRule.always);
+	_selectionRule[size] = zon.get(SelectionRule, "selectionRule", .always);
 	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
