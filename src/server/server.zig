@@ -142,7 +142,7 @@ pub const User = struct { // MARK: User
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
 	permissions: permission.Permissions = undefined,
-	permissionGroups: std.StringHashMapUnmanaged(*permission.PermissionGroup) = .{},
+	permissionGroups: std.StringHashMapUnmanaged(*permission.Group) = .{},
 
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;
