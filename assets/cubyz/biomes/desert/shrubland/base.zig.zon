@@ -6,7 +6,6 @@
 	.minRadius = 60,
 	.maxRadius = 80,
 	.hills = 20,
-	.maxSubBiomeCount = 1,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
