@@ -5,8 +5,7 @@
 	.maxHeightLimit = 50,
 	.minRadius = 256,
 	.maxRadius = 320,
-	.hills = 20,
-	.maxSubBiomeCount = 1,
+	.hills = 30,
 	.chance = 1.0,
 	.structures = .{
 		.{
