@@ -8,17 +8,19 @@
 	.collide = false,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
-	.model = "cubyz:octillo",
-	.rotation = "cubyz:planar",
-	.texture8 = "cubyz:octillo/bottom_stem1",
-	.texture9 = "cubyz:octillo/bottom_stem2",
-	.texture12 = "cubyz:octillo/top_flowers1",
-	.texture13 = "cubyz:octillo/top_flowers2",
+	.model = "cubyz:ocotillo",
+	.texture_top = "cubyz:ocotillo/top",
+	.texture_bottom = "cubyz:ocotillo/bottom",
 	.item = .{
-		.texture = "monstera/leaf.png",
+		.texture = "ocotillo.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
 		.type = .checkSupportBlocks,
+	},
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 0.5,
+		.damageType = .spiky,
 	},
 }
