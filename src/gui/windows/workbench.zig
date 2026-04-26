@@ -124,9 +124,9 @@ pub fn render() void {
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
-	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.maxDurability != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.proceduralItem.maxDurability))}, offsetX, offsetY, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.swingSpeed}, offsetX, offsetY + fontSize, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.damage}, offsetX, offsetY + 2*fontSize, fontSize, .left);
+	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.getProperty(.maxDurability) != 0) "#ffffff" else "#ff0000", @as(usize, @intFromFloat(currentResult.proceduralItem.getProperty(.maxDurability)))}, offsetX, offsetY, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.getProperty(.swingSpeed)}, offsetX, offsetY + fontSize, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.getProperty(.damage)}, offsetX, offsetY + 2*fontSize, fontSize, .left);
 }
 
 pub fn onOpen() void {

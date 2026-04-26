@@ -1,0 +1,8 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:ruins/slate/circle/treasure/spacer"},
+	},
+	.children = .{
+		.lime = "cubyz:ruins/slate/circle/treasure",
+	},
+}

@@ -46,6 +46,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/graphics/graph.frag",
 		"",
 		&uniforms,
+		graphics.VertexArray.EmptyVertex,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},

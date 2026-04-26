@@ -30,7 +30,7 @@ var uniforms: struct {
 
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
-pub var mutex: std.Thread.Mutex = .{};
+pub var mutex: main.utils.Mutex = .{};
 
 pub fn init() void {
 	entities = .init();
@@ -39,6 +39,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/entity_fragment.frag",
 		"",
 		&uniforms,
+		main.entityModel.EntityModel.Vertex,
+		&.{},
 		.{},
 		.{.depthTest = true},
 		.{.attachments = &.{.alphaBlending}},

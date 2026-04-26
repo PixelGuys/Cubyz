@@ -39,7 +39,7 @@ pub const EntityModel = struct {
 		left_handed_y_up,
 	};
 
-	const Vertex = extern struct {
+	pub const Vertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
@@ -76,10 +76,16 @@ pub const EntityModel = struct {
 		self.indexCount = 0;
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
 
-		if (zon.getChildOrNull("isPlayerModel")) |isPlayerModel| {
-			if (isPlayerModel.as(bool, false)) {
-				playerEntityModels.append(main.worldArena, index);
+		var isPlayerModel = false;
+		const tags = main.Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
+		for (tags) |tag| {
+			if (tag == .playerModel) {
+				isPlayerModel = true;
 			}
+		}
+
+		if (isPlayerModel) {
+			playerEntityModels.append(main.worldArena, index);
 		}
 
 		// get TexturePath
@@ -91,7 +97,7 @@ pub const EntityModel = struct {
 				const mod = split.first();
 				const textureName = split.next() orelse unreachable;
 				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding}) catch unreachable;
-				main.files.cubyzDir().dir.access(self.texturePath, .{}) catch {
+				main.files.cubyzDir().dir.access(main.io, self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
 					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}{s}", .{mod, textureName, fileEnding}) catch unreachable;
 				};
@@ -176,7 +182,7 @@ pub const EntityModel = struct {
 					const vertSlice: []Vertex = vertices.addMany(vertCount);
 
 					for (0..indicesAccessor.count) |i| {
-						const idx = indicesAccessor.index(i);
+						const idx = indicesAccessor.read_index(i);
 						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
 					}
 
@@ -196,17 +202,17 @@ pub const EntityModel = struct {
 
 					for (0..positionAttr.count) |v| {
 						var p: [3]f32 = undefined;
-						_ = positionAttr.float(v, @ptrCast(&p), 3);
+						_ = positionAttr.read_float(v, @ptrCast(&p), 3);
 						const p2 = convertCoordinateSystemVec(p, self.coordinateSystem);
 						const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
 						vertSlice[v].pos = vec.xyz(pos);
 
 						var normal: [3]f32 = undefined;
-						_ = normalAttr.float(v, @ptrCast(&normal), 3);
+						_ = normalAttr.read_float(v, @ptrCast(&normal), 3);
 						vertSlice[v].normal = convertCoordinateSystemVec(normal, self.coordinateSystem);
 
 						var uv: [2]f32 = undefined;
-						_ = uvAttr.float(v, @ptrCast(&uv), 2);
+						_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
 						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
 					}
 				}
@@ -289,7 +295,7 @@ pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
 pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
 pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModelIndex {
-	const index = EntityModelIndex{.index = @truncate(entityModels.items.len)};
+	const index = EntityModelIndex{.index = @intCast(entityModels.items.len)};
 	entityModels.append(main.worldArena, EntityModel.init(assetFolder, index, zon));
 	reverseIndices.put(main.worldArena.allocator, entityModelId, index) catch unreachable;
 	return index;

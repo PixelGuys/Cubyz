@@ -17,7 +17,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 {
-	for (block.blockTags()) |tag| {
+	for (block.tags()) |tag| {
 		if (tag == data.tag) return damage*(1 - data.strength);
 	}
 	return damage;

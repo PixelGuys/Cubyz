@@ -42,7 +42,7 @@ var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
 var lastRD: u16 = 0;
-var mutex: std.Thread.Mutex = .{};
+var mutex: main.utils.Mutex = .{};
 
 pub const BlockUpdate = struct {
 	pos: Vec3i,
@@ -66,13 +66,10 @@ pub const BlockUpdate = struct {
 	}
 };
 
-var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
-
 pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
-	blockUpdateList = .init(main.globalAllocator, 16);
 	meshMemoryPool = .init(main.globalAllocator);
 	for (&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
@@ -111,10 +108,6 @@ pub fn deinit() void {
 	}
 	mapUpdatableList.deinit();
 	priorityMeshUpdateList.deinit();
-	while (blockUpdateList.popFront()) |blockUpdate| {
-		blockUpdate.deinitManaged(main.globalAllocator);
-	}
-	blockUpdateList.deinit();
 	meshList.clearAndFree();
 	main.heap.GarbageCollection.waitForFreeCompletion();
 	meshMemoryPool.deinit();
@@ -704,8 +697,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		const mesh = node.mesh.load(.acquire).?; // no other thread is allowed to overwrite the mesh (unless it's null).
 
 		if (mesh.needsMeshUpdate) {
-			mesh.uploadData();
 			mesh.needsMeshUpdate = false;
+			mesh.uploadData();
 		}
 		// Remove empty meshes.
 		if (!mesh.isEmpty()) {
@@ -717,8 +710,6 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 }
 
 pub fn updateMeshes(targetTime: std.Io.Timestamp) void { // MARK: updateMeshes()
-	if (!blockUpdateList.isEmpty()) batchUpdateBlocks();
-
 	mutex.lock();
 	defer mutex.unlock();
 	while (priorityMeshUpdateList.popFront()) |pos| {
@@ -782,32 +773,6 @@ pub fn updateMeshes(targetTime: std.Io.Timestamp) void { // MARK: updateMeshes()
 	}
 }
 
-fn batchUpdateBlocks() void {
-	var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
-	defer lightRefreshList.deinit();
-
-	var regenerateMeshList = main.List(*ChunkMesh).init(main.stackAllocator);
-	defer regenerateMeshList.deinit();
-
-	// First of all process all the block updates:
-	while (blockUpdateList.popFront()) |blockUpdate| {
-		defer blockUpdate.deinitManaged(main.globalAllocator);
-		const pos = chunk.ChunkPosition{.wx = blockUpdate.pos[0], .wy = blockUpdate.pos[1], .wz = blockUpdate.pos[2], .voxelSize = 1};
-		if (getMesh(pos)) |mesh| {
-			mesh.updateBlock(blockUpdate, &lightRefreshList, &regenerateMeshList);
-		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
-	}
-	for (regenerateMeshList.items) |mesh| {
-		mesh.generateMesh(&lightRefreshList);
-	}
-	for (lightRefreshList.items) |pos| {
-		ChunkMesh.scheduleLightRefresh(pos);
-	}
-	for (regenerateMeshList.items) |mesh| {
-		mesh.uploadData();
-	}
-}
-
 // MARK: adders
 
 pub fn addToUpdateList(mesh: *chunk_meshing.ChunkMesh) void {
@@ -839,58 +804,13 @@ pub fn finishMesh(pos: chunk.ChunkPosition) void {
 	updatableList.append(pos);
 }
 
-pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
-	mesh: *chunk.Chunk,
-
-	pub const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.meta.castFunctionSelfToAnyopaque(run),
-		.clean = main.meta.castFunctionSelfToAnyopaque(clean),
-		.taskType = .meshgenAndLighting,
-	};
-
-	fn schedule(mesh: *chunk.Chunk) void {
-		const task = main.globalAllocator.create(MeshGenerationTask);
-		task.* = MeshGenerationTask{
-			.mesh = mesh,
-		};
-		main.threadPool.addTask(task, &vtable);
-	}
-
-	pub fn getPriority(self: *MeshGenerationTask) f32 {
-		return self.mesh.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
-	}
-
-	pub fn isStillNeeded(self: *MeshGenerationTask) bool {
-		const distanceSqr = self.mesh.pos.getMinDistanceSquared(@intFromFloat(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
-		var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
-		maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;
-		return distanceSqr < maxRenderDistance*maxRenderDistance;
-	}
-
-	pub fn run(self: *MeshGenerationTask) void {
-		defer main.globalAllocator.destroy(self);
-		const pos = self.mesh.pos;
-		const mesh = ChunkMesh.init(pos, self.mesh);
-		mesh.generateLightingData() catch mesh.deferredDeinit();
-	}
-
-	pub fn clean(self: *MeshGenerationTask) void {
-		self.mesh.unloadBlockEntities(.client);
-		self.mesh.deinit();
-		main.globalAllocator.destroy(self);
-	}
-};
-
 // MARK: updaters
 
-pub fn updateBlock(update: BlockUpdate) void {
-	blockUpdateList.pushBack(BlockUpdate.initManaged(main.globalAllocator, update));
-}
-
-pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
-	MeshGenerationTask.schedule(mesh);
+pub fn updateBlock(blockUpdate: BlockUpdate) void {
+	const pos = chunk.ChunkPosition{.wx = blockUpdate.pos[0], .wy = blockUpdate.pos[1], .wz = blockUpdate.pos[2], .voxelSize = 1};
+	if (getMesh(pos)) |mesh| {
+		mesh.updateBlock(blockUpdate);
+	} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 }
 
 pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
