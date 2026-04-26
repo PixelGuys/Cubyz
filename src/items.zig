@@ -19,6 +19,7 @@ const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
+const User = main.server.User;
 
 const modifierList = @import("proceduralItem/modifiers/_list.zig");
 const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
@@ -159,6 +160,7 @@ const Modifier = struct {
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: main.blocks.Block, data: Data) f32,
+		onBlockUpdate: *const fn (proceduralItem: *ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool, data: Data) void,
 		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
@@ -168,12 +170,16 @@ const Modifier = struct {
 			pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
 				return damage;
 			}
+			pub fn onBlockUpdate(_: *ProceduralItem, _: main.sync.Command.UpdateBlock, _: main.sync.Command.Context, _: *bool, _: Data) void {
+				return;
+			}
 		};
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
 			return comptime .{
-				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
-				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.changeProceduralItemParameters = if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) @ptrCast(&ModifierStruct.changeProceduralItemParameters) else &VTable.Defaults.changeProceduralItemParameters,
+				.changeBlockDamage = if (@hasDecl(ModifierStruct, "changeBlockDamage")) @ptrCast(&ModifierStruct.changeBlockDamage) else &VTable.Defaults.changeBlockDamage,
+				.onBlockUpdate = if (@hasDecl(ModifierStruct, "onBlockUpdate")) @ptrCast(&ModifierStruct.onBlockUpdate) else &VTable.Defaults.onBlockUpdate,
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 				.loadData = @ptrCast(&ModifierStruct.loadData),
@@ -201,6 +207,10 @@ const Modifier = struct {
 
 	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
 		self.vTable.printTooltip(outString, self.data);
+	}
+
+	pub fn onBlockUpdate(self: Modifier, proceduralItem: *ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
+		self.vTable.onBlockUpdate(proceduralItem, blockUpdate, ctx, shouldDropSourceBlockOnSuccess, self.data);
 	}
 };
 
@@ -259,6 +269,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	}
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
+	}
+	pub fn onBlockUpdate(self: BaseItemIndex, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
+		return itemList[@intFromEnum(self)].onBlockUpdate(blockUpdate, ctx, shouldDropSourceBlockOnSuccess);
 	}
 };
 
@@ -355,6 +368,14 @@ pub const BaseItem = struct { // MARK: BaseItem
 			if (other == tag) return true;
 		}
 		return false;
+	}
+
+	pub fn onBlockUpdate(self: BaseItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
+		_ = self;
+		_ = blockUpdate;
+		_ = ctx;
+		_ = shouldDropSourceBlockOnSuccess;
+		return;
 	}
 };
 
@@ -910,6 +931,12 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
+
+	pub fn onBlockUpdate(self: *ProceduralItem, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
+		for (self.modifiers) |modifier| {
+			modifier.onBlockUpdate(self, blockUpdate, ctx, shouldDropSourceBlockOnSuccess);
+		}
+	}
 };
 
 const ItemType = enum(u7) {
@@ -1047,6 +1074,14 @@ pub const Item = union(ItemType) { // MARK: Item
 		return switch (self) {
 			.null => unreachable,
 			inline else => |item| item.hashCode(),
+		};
+	}
+
+	/// Called when item causes a block update to happen.
+	pub fn onBlockUpdate(self: Item, blockUpdate: main.sync.Command.UpdateBlock, ctx: main.sync.Command.Context, shouldDropSourceBlockOnSuccess: *bool) void {
+		return switch (self) {
+			.null => unreachable,
+			inline else => |item| item.onBlockUpdate(blockUpdate, ctx, shouldDropSourceBlockOnSuccess),
 		};
 	}
 };
