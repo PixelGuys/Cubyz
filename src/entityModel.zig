@@ -76,7 +76,16 @@ pub const EntityModel = struct {
 		self.indexCount = 0;
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
 
-		if (zon.get(bool, "isPlayerModel", false)) {
+		var isPlayerModel = false;
+		if (zon.getChildOrNull("tags")) |tags| {
+			for (tags.toSlice()) |tagZon| {
+				const tag = tagZon.as([]const u8, "invalid");
+				if (std.mem.eql(u8, tag, "playerModel")) {
+					isPlayerModel = true;
+				}
+			}
+		}
+		if (isPlayerModel) {
 			playerEntityModels.append(main.worldArena, index);
 		}
 
