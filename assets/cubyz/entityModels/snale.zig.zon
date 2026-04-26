@@ -5,6 +5,5 @@
 	.model = "cubyz:snale",
 	.defaultTexture = "cubyz:snale",
 	.height = 2,
-	.isPlayerModel = true,
 	.coordinateSystem = .left_handed_y_up,
 }

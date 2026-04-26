@@ -28,23 +28,11 @@ var uniforms: struct {
 	ambientLight: c_int,
 } = undefined;
 
-var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
 pub var mutex: main.utils.Mutex = .{};
 
 pub fn init() void {
 	entities = .init();
-	pipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/entity_vertex.vert",
-		"assets/cubyz/shaders/entity_fragment.frag",
-		"",
-		&uniforms,
-		main.entityModel.EntityModel.Vertex,
-		&.{},
-		.{},
-		.{.depthTest = true},
-		.{.attachments = &.{.alphaBlending}},
-	);
 }
 
 pub fn deinit() void {
@@ -52,7 +40,6 @@ pub fn deinit() void {
 		ent.deinit(main.globalAllocator);
 	}
 	entities.deinit();
-	pipeline.deinit();
 }
 
 pub fn clear() void {
@@ -67,7 +54,6 @@ pub fn update() void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	main.utils.assertLocked(&mutex);
 	var time: i16 = @truncate(main.timestamp().toMilliseconds() -% settings.entityLookback);
 	time -%= timeDifference.difference.load(.monotonic);
 	for (entities.items()) |*ent| {

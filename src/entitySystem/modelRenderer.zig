@@ -49,6 +49,8 @@ pub const client = struct {
 			"assets/cubyz/shaders/entity_fragment.frag",
 			"",
 			&uniforms,
+			main.entityModel.EntityModel.Vertex,
+			&.{},
 			.{},
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},
@@ -93,7 +95,10 @@ pub const client = struct {
 			const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
 			graphics.draw.setColor(alpha << 24);
 
-			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
+			const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
+			defer main.stackAllocator.free(renderedName);
+
+			var buf = graphics.TextBuffer.init(main.stackAllocator, renderedName, .{.color = 0xffffff}, false, .center);
 			defer buf.deinit();
 			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
 			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
@@ -132,6 +137,7 @@ pub const client = struct {
 				@as(u32, lightVals[5] >> 3) << 0);
 
 			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
+
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (Mat4f.identity()
