@@ -530,7 +530,6 @@ pub const Block = packed struct(u32) { // MARK: Block
 	pub fn isSelectableByItem(self: Block, item: Item) bool {
 		if (item == .baseItem and item.baseItem.block() == self.typ) return true;
 
-		if (self.hasTag(.air)) return false;
 		if (self.hasTag(.fluid)) {
 			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
 			return fluidPlaceable;
