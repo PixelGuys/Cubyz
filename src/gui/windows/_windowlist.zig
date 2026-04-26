@@ -21,6 +21,7 @@ pub const inventory = @import("inventory.zig");
 pub const inventory_crafting = @import("inventory_crafting.zig");
 pub const invite = @import("invite.zig");
 pub const main = @import("main.zig");
+pub const playerModelSelection = @import("playerModelSelection.zig");
 pub const players = @import("players.zig");
 pub const multiplayer = @import("multiplayer.zig");
 pub const notification = @import("notification.zig");

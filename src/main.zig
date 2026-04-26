@@ -207,6 +207,7 @@ fn escape(mods: Window.Key.Modifiers) void {
 fn inventory(_: Window.Key.Modifiers) void {
 	if (game.world == null) return;
 	gui.openWindow("inventory");
+	gui.openWindow("playerModelSelection");
 	gui.openWindow("hotbar");
 	gui.toggleGameMenu();
 }
