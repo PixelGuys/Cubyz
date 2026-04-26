@@ -76,10 +76,8 @@ pub const EntityModel = struct {
 		self.indexCount = 0;
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
 
-		if (zon.getChildOrNull("isPlayerModel")) |isPlayerModel| {
-			if (isPlayerModel.as(bool, false)) {
-				playerEntityModels.append(main.worldArena, index);
-			}
+		if (zon.get(bool, "isPlayerModel", false)) {
+			playerEntityModels.append(main.worldArena, index);
 		}
 
 		// get TexturePath
@@ -289,7 +287,7 @@ pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
 pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
 pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModelIndex {
-	const index = EntityModelIndex{.index = @truncate(entityModels.items.len)};
+	const index = EntityModelIndex{.index = @intCast(entityModels.items.len)};
 	entityModels.append(main.worldArena, EntityModel.init(assetFolder, index, zon));
 	reverseIndices.put(main.worldArena.allocator, entityModelId, index) catch unreachable;
 	return index;
