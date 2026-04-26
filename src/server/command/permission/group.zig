@@ -62,17 +62,17 @@ fn handleGroupChanges(op: Operation, groupName: []const u8, split: *std.mem.Spli
 	switch (op) {
 		.create => {
 			permission.createGroup(groupName) catch {
-				source.sendMessage("#ff0000Group {s}#ff0000 already exists.", .{groupName});
+				source.sendMessage("#ff0000Group {s}§#ff0000 already exists.", .{groupName});
 				return;
 			};
 			source.sendMessage("#00ff00Group {s} created", .{groupName});
 		},
 		.delete => {
 			if (!permission.deleteGroup(groupName)) {
-				source.sendMessage("#ff0000Group {s}#ff0000 could not be removed as it already doesn't exist.", .{groupName});
+				source.sendMessage("#ff0000Group {s}§#ff0000 could not be removed as it already doesn't exist.", .{groupName});
 				return;
 			}
-			source.sendMessage("#00ff00Group {s} deleted", .{groupName});
+			source.sendMessage("#00ff00Group {s}§#00ff00 deleted", .{groupName});
 		},
 		else => unreachable,
 	}
@@ -88,17 +88,17 @@ fn handleGroupUserChanges(op: Operation, groupName: []const u8, split: *std.mem.
 	switch (op) {
 		.add => {
 			target.user.addToGroup(groupName) catch {
-				source.sendMessage("#ff0000Group {s}#ff0000 does not exist.", .{groupName});
+				source.sendMessage("#ff0000Group {s}§#ff0000 does not exist.", .{groupName});
 				return;
 			};
-			source.sendMessage("#00ff00User {f} added to group {s}", .{target.user, groupName});
+			source.sendMessage("#00ff00User {f}§#00ff00 added to group {s}", .{target.user, groupName});
 		},
 		.remove => {
 			if (!target.user.removeFromGroup(groupName)) {
-				source.sendMessage("#ff0000Could not leave group {s}#ff0000 as {f} was already not a member", .{groupName, target.user});
+				source.sendMessage("#ff0000Could not leave group {s}§#ff0000 as {f}§#ff0000 was already not a member", .{groupName, target.user});
 				return;
 			}
-			source.sendMessage("#00ff00User {f} removed from group {s}", .{target.user, groupName});
+			source.sendMessage("#00ff00User {f}§#00ff00 removed from group {s}", .{target.user, groupName});
 		},
 		else => unreachable,
 	}
@@ -111,7 +111,7 @@ fn handleGroupPermissionChanges(op: Operation, groupName: []const u8, split: *st
 		else => unreachable,
 	};
 	const group = permission.getGroup(groupName) catch {
-		source.sendMessage("#ff0000Group with name {s} not found", .{groupName});
+		source.sendMessage("#ff0000Group with name {s}§#ff0000 not found", .{groupName});
 		return;
 	};
 
@@ -145,21 +145,21 @@ fn handleGroupPermissionChanges(op: Operation, groupName: []const u8, split: *st
 		switch (_op) {
 			.add => {
 				group.permissions.addPermission(listType, path);
-				source.sendMessage("#00ff00Permission path {s} added to group {s}'s permission {s}list", .{path, groupName, @tagName(listType)});
+				source.sendMessage("#00ff00Permission path {s} added to group {s}§#00ff00's permission {s}list", .{path, groupName, @tagName(listType)});
 			},
 			.remove => {
 				if (!group.permissions.removePermission(listType, path)) {
-					source.sendMessage("#ff0000Permission path {s} is not present inside group {s} permission {s}list", .{path, groupName, @tagName(listType)});
+					source.sendMessage("#ff0000Permission path {s} is not present inside group {s}§#ff0000 permission {s}list", .{path, groupName, @tagName(listType)});
 					return;
 				}
-				source.sendMessage("#00ff00Permission path {s} removed from group {s}'s permission {s}list", .{path, groupName, @tagName(listType)});
+				source.sendMessage("#00ff00Permission path {s} removed from group {s}§#00ff00's permission {s}list", .{path, groupName, @tagName(listType)});
 			},
 		}
 	} else {
 		if (group.hasPermission(path) == .yes) {
-			source.sendMessage("#00ff00Group {s} has permission for path: {s}", .{groupName, path});
+			source.sendMessage("#00ff00Group {s}§#00ff00 has permission for path: {s}", .{groupName, path});
 		} else {
-			source.sendMessage("#ff0000Group {s} has no permission for path: {s}", .{groupName, path});
+			source.sendMessage("#ff0000Group {s}§#ff0000 has no permission for path: {s}", .{groupName, path});
 		}
 	}
 }
