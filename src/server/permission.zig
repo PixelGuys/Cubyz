@@ -139,6 +139,7 @@ pub const Group = struct { // MARK: Group
 	}
 
 	pub fn toZon(self: *Group, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+		sync.threadContext.assertCorrectContext(.server);
 		self.permissions.toZon(allocator, zon);
 	}
 
@@ -210,10 +211,10 @@ pub fn saveGroups(allocator: NeverFailingAllocator, groupsPath: []const u8) !voi
 
 	const metadatPath = std.fmt.allocPrint(allocator.allocator, "{s}/metadata.zon", .{groupsPath}) catch unreachable;
 	defer allocator.free(metadatPath);
-	var metadatZon: ZonElement = .initObject(main.stackAllocator);
-	defer metadatZon.deinit(main.stackAllocator);
-	metadatZon.put("currentId", currentId);
-	try main.files.cubyzDir().writeZon(metadatPath, metadatZon);
+	var metadataZon: ZonElement = .initObject(main.stackAllocator);
+	defer metadataZon.deinit(main.stackAllocator);
+	metadataZon.put("currentId", currentId);
+	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
 
 	var it = groups.iterator();
 	while (it.next()) |group| {
