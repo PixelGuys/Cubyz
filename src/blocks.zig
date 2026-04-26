@@ -68,7 +68,7 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionRule = enum { always, toolEffective, none };
+const SelectionRule = enum { always, toolEffective, never };
 
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
@@ -539,7 +539,7 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return switch (self.selectionRule()) {
 			.always => true,
 			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
-			.none => false,
+			.never => false,
 		};
 	}
 };
