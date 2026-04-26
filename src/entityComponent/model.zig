@@ -24,7 +24,7 @@ pub const entityComponentVersion = 0;
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
-		entityModel: main.entityModel.EntityModelIndex, // model
+		entityModel: main.entityModel.EntityModelIndex,
 	};
 	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
 
@@ -37,9 +37,9 @@ pub const client = struct {
 	}
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0)
-			return main.entity.EntityComponentLoadError.InvalidComponentVersion;
+			return error.InvalidComponentVersion;
 
-		const entityModel = reader.readVarInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
+		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
 		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = Component{
@@ -58,7 +58,7 @@ pub const client = struct {
 
 pub const server = struct {
 	pub const Component = struct {
-		entityModel: main.entityModel.EntityModelIndex, // model
+		entityModel: main.entityModel.EntityModelIndex,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = audience;
 			writer.writeVarInt(u32, self.entityModel.index);
@@ -75,9 +75,9 @@ pub const server = struct {
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0)
 			return error.InvalidComponentVersion;
-		const entityModel = reader.readVarInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
+		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel});
+		try loadByIndex(entity, .{.index = entityModel});
 	}
 	pub fn loadByID(entity: u32, entityModelID: []const u8) main.entity.EntityComponentLoadError!void {
 		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
