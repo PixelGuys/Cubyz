@@ -942,10 +942,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if (block.typ != 0) blk: {
-				const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-				const holdingTargetedBlock = item == .baseItem and item.baseItem.block() == block.typ;
-				if (block.hasTag(.air) and !holdingTargetedBlock) break :blk;
-				if (block.hasTag(.fluid) and !fluidPlaceable and !holdingTargetedBlock) break :blk; // TODO: Buckets could select fluids
+				if (!block.isSelectableByItem(item)) break :blk;
+
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if (block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 					if (intersection.distance <= closestDistance) {
