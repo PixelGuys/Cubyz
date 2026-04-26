@@ -527,8 +527,12 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	blockBreakingFacesSortingData: []SortingData = &.{},
 	blockBreakingFacesChanged: bool = false,
 
-	pub fn init(pos: chunk.ChunkPosition, ch: *chunk.Chunk) *ChunkMesh {
+	pub fn init(pos: chunk.ChunkPosition, chunkData: []const u8) !*ChunkMesh {
 		const self = mesh_storage.meshMemoryPool.create();
+		errdefer mesh_storage.meshMemoryPool.destroy(self);
+		self.chunk = .init(pos);
+		errdefer self.chunk.deinit();
+		try main.server.storage.ChunkCompression.loadChunk(self.chunk, .client, chunkData);
 		self.* = ChunkMesh{
 			.pos = pos,
 			.size = chunk.chunkSize*pos.voxelSize,
@@ -539,10 +543,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				.lod = @intCast(std.math.log2_int(u32, pos.voxelSize)),
 			},
 			.blockUpdateQueue = .init(main.globalAllocator, 8),
-			.chunk = ch,
+			.chunk = self.chunk,
 			.lightingData = .{
-				lighting.ChannelChunk.init(ch, false),
-				lighting.ChannelChunk.init(ch, true),
+				lighting.ChannelChunk.init(self.chunk, false),
+				lighting.ChannelChunk.init(self.chunk, true),
 			},
 			.blockBreakingFaces = .init(main.globalAllocator),
 		};
