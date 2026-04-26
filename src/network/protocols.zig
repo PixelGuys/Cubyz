@@ -370,6 +370,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 	};
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const task = main.globalAllocator.create(MeshGenerationTask);
+		errdefer main.globalAllocator.destroy(task);
 		task.* = .{
 			.pos = .{
 				.wx = try reader.readInt(i32),
