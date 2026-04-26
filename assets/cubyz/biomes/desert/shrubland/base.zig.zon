@@ -6,7 +6,6 @@
 	.minRadius = 60,
 	.maxRadius = 80,
 	.hills = 20,
-	.maxSubBiomeCount = 1,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -47,7 +46,7 @@
 		.{
 			.id = "cubyz:simple_vegetation",
 			.chance = 0.02,
-			.block = "cubyz:octillo",
+			.block = "cubyz:ocotillo",
 			.height = 1,
 			.height_variation = 0,
 		},

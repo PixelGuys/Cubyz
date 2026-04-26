@@ -28,8 +28,8 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:dirt",
-			.chance = 0.24,
-			.width = 5,
+			.chance = 0.34,
+			.width = 7,
 			.variation = 6,
 			.depth = 3,
 			.smoothness = 0.2,
@@ -57,11 +57,27 @@
 			.height = 1,
 			.height_variation = 0,
 		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:moss:cubyz:slate/base",
+			.chance = 0.05,
+			.width = 2,
+			.variation = 2,
+			.depth = 1,
+			.smoothness = 0.6,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.03,
+			.block = "cubyz:slate/cobble",
+			.size = 2,
+			.size_variance = 2,
+		},
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:desert/shrubland/base",
-			.chance = 0.6,
+			.id = "cubyz:desert_shrubland/base",
+			.chance = 10,
 		},
 	},
 }
