@@ -138,6 +138,10 @@ pub const Group = struct { // MARK: Group
 		return self;
 	}
 
+	pub fn toZon(self: *Group, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+		self.permissions.toZon(allocator, zon);
+	}
+
 	pub fn deinit(self: *Group, allocator: NeverFailingAllocator) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.permissions.deinit();
@@ -174,6 +178,33 @@ pub fn addGroupFromZon(id: u32, zon: ZonElement) void {
 	groups.put(groupsArena.allocator().allocator, groupsArena.allocator().dupe(u8, name), .fromZon(groupsArena.allocator(), zon, id)) catch unreachable;
 }
 
+pub fn loadGroups(dir: main.files.Dir) !void {
+	const metaDataZon: ZonElement = dir.readToZon(main.stackAllocator, "metadata.zon") catch .initObject(main.stackAllocator);
+	defer metaDataZon.deinit(main.stackAllocator);
+
+	init(main.globalAllocator, metaDataZon.get(u32, "currentId", 0));
+
+	var iterator = dir.iterate();
+	while (try iterator.next(main.io)) |file| {
+		if (file.kind != .file) continue;
+		if (!std.mem.endsWith(u8, file.name, ".zon")) continue;
+
+		const zon = try dir.readToZon(main.stackAllocator, file.name);
+		defer zon.deinit(main.stackAllocator);
+		if (std.mem.eql(u8, file.name, "metadata.zon")) continue;
+		const fileNameBase = file.name[0 .. std.mem.findScalar(u8, file.name, '.') orelse unreachable];
+		if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
+			std.log.err("Group file {s} contains leading zeroes. Skipping.", .{file.name});
+			continue;
+		}
+		const id = std.fmt.parseInt(u32, fileNameBase, 10) catch |err| {
+			std.log.err("Couldn't parse group file {s}: {s} Skipping.", .{file.name, @errorName(err)});
+			continue;
+		};
+		addGroupFromZon(id, zon);
+	}
+}
+
 pub fn saveGroups(allocator: NeverFailingAllocator, groupsPath: []const u8) !void {
 	sync.threadContext.assertCorrectContext(.server);
 
@@ -191,7 +222,7 @@ pub fn saveGroups(allocator: NeverFailingAllocator, groupsPath: []const u8) !voi
 		var groupZon: ZonElement = .initObject(allocator);
 		defer groupZon.deinit(allocator);
 		groupZon.put("name", group.key_ptr.*);
-		group.value_ptr.*.permissions.toZon(allocator, &groupZon);
+		group.value_ptr.*.toZon(allocator, &groupZon);
 		try main.files.cubyzDir().writeZon(path, groupZon);
 	}
 }
