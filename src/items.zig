@@ -505,6 +505,8 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			mod.changeProceduralItemParameters(proceduralItem);
 		}
 
+		proceduralItem.setProperty(.damage, @round(10*proceduralItem.getProperty(.damage))/10);
+		proceduralItem.setProperty(.swingSpeed, @round(10*proceduralItem.getProperty(.swingSpeed))/10);
 		proceduralItem.setProperty(.maxDurability, @round(proceduralItem.getProperty(.maxDurability)));
 		if (proceduralItem.getProperty(.maxDurability) < 1) proceduralItem.setProperty(.maxDurability, 1);
 		proceduralItem.durability = std.math.lossyCast(u32, proceduralItem.getProperty(.maxDurability));
@@ -858,8 +860,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.print(
 			\\{s}
-			\\{d:.2} swings/s
-			\\Damage: {d:.2}
+			\\{d:.1} swings/s
+			\\Damage: {d:.1}
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
