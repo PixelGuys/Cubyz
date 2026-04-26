@@ -68,7 +68,7 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionRule = enum { always, toolEffective, never };
+const SelectionRule = enum { always, toolEffective, placeable, never };
 
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
@@ -530,14 +530,10 @@ pub const Block = packed struct(u32) { // MARK: Block
 	pub fn isSelectableByItem(self: Block, item: Item) bool {
 		if (item == .baseItem and item.baseItem.block() == self.typ) return true;
 
-		if (self.hasTag(.fluid)) {
-			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-			return fluidPlaceable;
-		}
-
 		return switch (self.selectionRule()) {
 			.always => true,
 			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
+			.placeable => item == .baseItem and item.baseItem.isPlaceableOn(self),
 			.never => false,
 		};
 	}

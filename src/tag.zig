@@ -9,9 +9,8 @@ pub const Tag = enum(u32) {
 	air = 0,
 	fluid = 1,
 	sbbChild = 2,
-	fluidPlaceable = 3,
-	chiselable = 4,
-	playerModel = 5,
+	chiselable = 3,
+	playerModel = 4,
 	_,
 
 	pub fn initTags() void {

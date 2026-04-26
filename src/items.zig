@@ -251,6 +251,12 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasTag(tag);
 	}
+	pub fn hasPlacementTag(self: BaseItemIndex, tag: Tag) bool {
+		return itemList[@intFromEnum(self)].hasPlacementTag(tag);
+	}
+	pub fn isPlaceableOn(self: BaseItemIndex, targetedBlock: main.blocks.Block) bool {
+		return itemList[@intFromEnum(self)].isPlaceableOn(targetedBlock);
+	}
 	pub fn hashCode(self: BaseItemIndex) u32 {
 		return itemList[@intFromEnum(self)].hashCode();
 	}
@@ -268,6 +274,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	id: []const u8,
 	name: []const u8,
 	tags: []const Tag,
+	placementTags: []const Tag,
 	tooltip: []const u8,
 
 	stackSize: u16,
@@ -287,6 +294,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		}
 		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
 		self.tags = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
+		self.placementTags = Tag.loadTagsFromZon(allocator, zon.getChild("placementTags"));
 		self.stackSize = zon.get(u16, "stackSize", 120);
 		const material = zon.getChild("material");
 		if (material == .object) {
@@ -353,6 +361,20 @@ pub const BaseItem = struct { // MARK: BaseItem
 	pub fn hasTag(self: *const BaseItem, tag: Tag) bool {
 		for (self.tags) |other| {
 			if (other == tag) return true;
+		}
+		return false;
+	}
+
+	pub fn hasPlacementTag(self: *const BaseItem, tag: Tag) bool {
+		for (self.placementTags) |other| {
+			if (other == tag) return true;
+		}
+		return false;
+	}
+
+	pub fn isPlaceableOn(self: *const BaseItem, block: main.blocks.Block) bool {
+		for (block.tags()) |tag| {
+			if (self.hasPlacementTag(tag)) return true;
 		}
 		return false;
 	}
