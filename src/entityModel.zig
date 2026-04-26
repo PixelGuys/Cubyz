@@ -77,14 +77,13 @@ pub const EntityModel = struct {
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
 
 		var isPlayerModel = false;
-		if (zon.getChildOrNull("tags")) |tags| {
-			for (tags.toSlice()) |tagZon| {
-				const tag = tagZon.as([]const u8, "invalid");
-				if (std.mem.eql(u8, tag, "playerModel")) {
-					isPlayerModel = true;
-				}
+		const tags = main.Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
+		for (tags) |tag| {
+			if (tag == .playerModel) {
+				isPlayerModel = true;
 			}
 		}
+
 		if (isPlayerModel) {
 			playerEntityModels.append(main.worldArena, index);
 		}
