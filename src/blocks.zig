@@ -13,6 +13,7 @@ const Image = graphics.Image;
 const Color = graphics.Color;
 const TextureArray = graphics.TextureArray;
 const items = @import("items.zig");
+const Item = items.Item;
 const models = @import("models.zig");
 const ModelIndex = models.ModelIndex;
 const rotation = @import("rotation.zig");
@@ -33,6 +34,21 @@ pub const maxBlockCount: usize = 65536; // 16 bit limit
 pub const BlockDrop = struct {
 	items: []const items.ItemStack,
 	chance: f32,
+	forbiddenToolTags: []Tag,
+	allowedToolTags: ?[]Tag = null,
+
+	pub fn isDroppedWhenBrokenWithItem(self: BlockDrop, item: Item) bool {
+		if (item != .proceduralItem) return self.allowedToolTags == null;
+
+		const proceduralItem = item.proceduralItem;
+		for (self.forbiddenToolTags) |tag| if (proceduralItem.hasTag(tag)) return false;
+		if (self.allowedToolTags) |tags| {
+			for (tags) |tag| if (proceduralItem.hasTag(tag)) return true;
+			return false;
+		}
+
+		return true;
+	}
 };
 
 /// Ores can be found underground in veins.
@@ -52,6 +68,8 @@ pub const Ore = struct {
 	seed: u64,
 };
 
+const SelectionRule = enum { always, toolEffective, never };
+
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
@@ -60,15 +78,15 @@ var _blockHealth: [maxBlockCount]f32 = undefined;
 var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
-var _replacable: [maxBlockCount]bool = undefined;
-var _selectable: [maxBlockCount]bool = undefined;
+var _replaceable: [maxBlockCount]bool = undefined;
+var _selectionRule: [maxBlockCount]SelectionRule = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockTags: [maxBlockCount][]Tag = undefined;
+var _tags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -108,10 +126,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	const rotation_tags = _mode[size].getBlockTags();
 	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 	defer main.stackAllocator.free(block_tags);
-	_blockTags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
+	_tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
 
-	if (_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
-	for (_blockTags[size]) |tag| {
+	if (_tags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	for (_tags[size]) |tag| {
 		if (tag == Tag.sbbChild) {
 			sbb.registerChildBlock(@intCast(size), _id[size]);
 			break;
@@ -121,9 +139,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
-	_selectable[size] = zon.get(bool, "selectable", true);
-	_replacable[size] = zon.get(bool, "replacable", false);
-
+	_selectionRule[size] = zon.get(SelectionRule, "selectionRule", .always);
+	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -165,7 +182,6 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
 	for (drops, 0..) |blockDrop, i| {
-		blockDrops[i].chance = blockDrop.get(f32, "chance", 1);
 		const itemZons = blockDrop.getChild("items").toSlice();
 		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
 		defer resultItems.deinit();
@@ -192,7 +208,22 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
-		blockDrops[i].items = main.worldArena.dupe(main.items.ItemStack, resultItems.items);
+
+		var allowedToolTags: ?[]Tag = null;
+		if (blockDrop.getChildOrNull("allowedToolTags")) |tagZon| {
+			const tags = Tag.loadTagsFromZon(main.worldArena, tagZon);
+			if (tags.len == 0) {
+				std.log.err("Field '.allowedToolTags' is an empty array. No tool can drop this blockDrop", .{});
+			}
+			allowedToolTags = tags;
+		}
+
+		blockDrops[i] = .{
+			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
+			.chance = blockDrop.get(f32, "chance", 1),
+			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
+			.allowedToolTags = allowedToolTags,
+		};
 	}
 	return blockDrops;
 }
@@ -339,7 +370,7 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
-pub const Block = packed struct { // MARK: Block
+pub const Block = packed struct(u32) { // MARK: Block
 	typ: u16,
 	data: u16,
 
@@ -380,12 +411,12 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	/// Whether you can replace it with another block, mainly used for fluids/gases
-	pub inline fn replacable(self: Block) bool {
-		return _replacable[self.typ];
+	pub inline fn replaceable(self: Block) bool {
+		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectable(self: Block) bool {
-		return _selectable[self.typ];
+	pub inline fn selectionRule(self: Block) SelectionRule {
+		return _selectionRule[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []const BlockDrop {
@@ -410,12 +441,12 @@ pub const Block = packed struct { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn blockTags(self: Block) []const Tag {
-		return _blockTags[self.typ];
+	pub inline fn tags(self: Block) []const Tag {
+		return _tags[self.typ];
 	}
 
 	pub inline fn hasTag(self: Block, tag: Tag) bool {
-		return std.mem.containsAtLeastScalar(Tag, self.blockTags(), 1, tag);
+		return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
 	}
 
 	pub inline fn light(self: Block) u32 {
@@ -494,6 +525,21 @@ pub const Block = packed struct { // MARK: Block
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
+	}
+
+	pub fn isSelectableByItem(self: Block, item: Item) bool {
+		if (item == .baseItem and item.baseItem.block() == self.typ) return true;
+
+		if (self.hasTag(.fluid)) {
+			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+			return fluidPlaceable;
+		}
+
+		return switch (self.selectionRule()) {
+			.always => true,
+			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
+			.never => false,
+		};
 	}
 };
 
@@ -701,7 +747,7 @@ pub const meshes = struct { // MARK: meshes
 				return err2;
 			};
 		};
-		file.close(); // It was only openend to check if it exists.
+		file.close(main.io); // It was only openend to check if it exists.
 		// Otherwise read it into the list:
 		result = @intCast(textureIDs.items.len);
 

@@ -57,7 +57,7 @@ const TextureParamType = union(enum) {
 	}
 };
 
-pub fn __init() void {
+pub fn globalInit() void {
 	defaultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
 	immutableTexture = Texture.initFromFile("assets/cubyz/ui/inventory/immutable_slot.png");
 	craftingResultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_result_slot.png");
@@ -148,7 +148,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		}
 		if (item == .proceduralItem) {
 			const proceduralItem = item.proceduralItem;
-			const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.maxDurability;
+			const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.getProperty(.maxDurability);
 
 			if (durabilityPercentage < 1) {
 				const width = durabilityPercentage*(self.size[0] - 2*border);

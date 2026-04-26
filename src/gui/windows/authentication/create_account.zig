@@ -56,7 +56,7 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	// Make sure there remains no trace of the account code in memory
-	main.network.authentication.secureZero(@TypeOf(accountCodeLabel.text.glyphs[0]), accountCodeLabel.text.glyphs);
+	std.crypto.secureZero(@TypeOf(accountCodeLabel.text.glyphs[0]), accountCodeLabel.text.glyphs);
 	accountCode.deinit();
 	// This also serves as a measure to ensure that the user indeed copied it somewhere else before closing the window
 	main.Window.setClipboardString("");
