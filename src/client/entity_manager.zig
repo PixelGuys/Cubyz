@@ -80,10 +80,10 @@ pub fn removeEntity(id: u32) void {
 	const ent = entities.fetchRemove(@enumFromInt(id)) catch unreachable;
 	ent.deinit(main.globalAllocator);
 
-	if(entities.dense.items.len > oldIndex){
+	if (entities.dense.items.len > oldIndex) {
 		entities.dense.items[oldIndex].interpolatedValues.outPos = &entities.dense.items[oldIndex]._interpolationPos;
-		entities.dense.items[oldIndex].interpolatedValues.outVel = &entities.dense.items[oldIndex]._interpolationVel;	
-	}	
+		entities.dense.items[oldIndex].interpolatedValues.outVel = &entities.dense.items[oldIndex]._interpolationVel;
+	}
 }
 
 pub fn serverUpdate(time: i16, entityData: []main.entity.EntityNetworkData) void {
@@ -108,7 +108,7 @@ pub fn serverUpdate(time: i16, entityData: []main.entity.EntityNetworkData) void
 			0,
 			0,
 		};
-		if(getEntity(data.id))|ent|{
+		if (getEntity(data.id)) |ent| {
 			ent.updatePosition(&pos, &vel, time);
 		}
 	}

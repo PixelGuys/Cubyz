@@ -74,8 +74,8 @@ pub const client = struct {
 			if (ent.id == game.Player.id) // don't render local player
 				continue;
 
-			var offsetText:f32 = 0;
-			if(main.entity.components.@"cubyz:model".client.get(ent.id))|component|{
+			var offsetText: f32 = 0;
+			if (main.entity.components.@"cubyz:model".client.get(ent.id)) |component| {
 				const entModel = component.entityModel.get();
 				offsetText = entModel.height/2;
 			}
@@ -118,7 +118,7 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (entityComponent.@"cubyz:model".client.components.dense.items,0..) |component,index| {
+		for (entityComponent.@"cubyz:model".client.components.dense.items, 0..) |component, index| {
 			const id = entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items[index];
 
 			if (@intFromEnum(id) == game.Player.id) // don't render local player
@@ -126,7 +126,6 @@ pub const client = struct {
 
 			const entModel = component.entityModel.get();
 			const ent = main.client.entity_manager.getEntity(@intFromEnum(id)) orelse continue;
-
 
 			entModel.bind();
 			const entTexture = entModel.defaultTexture;
