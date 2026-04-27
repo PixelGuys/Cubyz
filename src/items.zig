@@ -158,14 +158,14 @@ const Modifier = struct {
 		const Data = packed struct(u128) { pad: u128 };
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
-		changeBlockDamage: *const fn (damage: f32, block: main.blocks.Block, data: Data) f32,
+		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
 		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
 
 		const Defaults = struct {
 			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
-			pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
+			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
 			}
 		};
@@ -195,7 +195,7 @@ const Modifier = struct {
 		self.vTable.changeProceduralItemParameters(proceduralItem, self.data);
 	}
 
-	pub fn changeBlockDamage(self: Modifier, damage: f32, block: main.blocks.Block) f32 {
+	pub fn changeBlockDamage(self: Modifier, damage: f32, block: Block) f32 {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
@@ -888,14 +888,14 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return false;
 	}
 
-	pub fn isEffectiveOn(self: *ProceduralItem, block: main.blocks.Block) bool {
+	pub fn isEffectiveOn(self: *ProceduralItem, block: Block) bool {
 		for (block.tags()) |tag| {
 			if (self.hasTag(tag)) return true;
 		}
 		return false;
 	}
 
-	pub fn getBlockDamage(self: *ProceduralItem, block: main.blocks.Block) f32 {
+	pub fn getBlockDamage(self: *ProceduralItem, block: Block) f32 {
 		var damage = self.getProperty(.damage);
 		for (self.modifiers) |modifier| {
 			damage = modifier.changeBlockDamage(damage, block);
