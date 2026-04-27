@@ -68,12 +68,12 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-pub const SelectionRule = enum {
+pub const SelectionCapability = enum {
     always,
     toolEffective,
     never,
 
-    pub fn allowsItemSelection(self: SelectionRule, item: Item, block: Block) bool {
+    pub fn allowsItemSelection(self: SelectionCapability, item: Item, block: Block) bool {
         return switch (self) {
             .always => true,
             .toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
@@ -91,7 +91,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectionRules: [maxBlockCount]?[]SelectionRule = undefined;
+var _selectionCapabilities: [maxBlockCount]?[]SelectionCapability = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -152,13 +152,13 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 
-	const selectionRules = zon.get(?[]SelectionRule, "selectionRules", null);
-	if (selectionRules) |rules| {
-		if (rules.len == 0) {
-			std.log.err("Field '.selectionRules' is an empty array. This block can never be selected. Did you mean '.selectionRules = .{{.never}}' instead?", .{});
+	const selectionCapabilities = zon.get(?[]SelectionCapability, "selectionCapabilities", null);
+	if (selectionCapabilities) |capabilities| {
+		if (capabilities.len == 0) {
+			std.log.err("Field '.selectionCapabilities' is an empty array. This block can never be selected. Did you mean '.selectionCapabilities = .{{.never}}' instead?", .{});
 		}
 	}
-	_selectionRules[size] = selectionRules;
+	_selectionCapabilities[size] = selectionCapabilities;
 
 	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
@@ -435,8 +435,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectionRules(self: Block) ?[]SelectionRule {
-		return _selectionRules[self.typ];
+	pub inline fn selectionCapabilities(self: Block) ?[]SelectionCapability {
+		return _selectionCapabilities[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []const BlockDrop {
@@ -555,9 +555,9 @@ pub const Block = packed struct(u32) { // MARK: Block
 			return fluidPlaceable;
 		}
 
-		const rules = self.selectionRules() orelse return true;
-		for (rules) |rule| {
-			if (rule.allowsItemSelection(item, self)) return true;
+		const capabilities = self.selectionCapabilities() orelse return true;
+		for (capabilities) |capability| {
+			if (capability.allowsItemSelection(item, self)) return true;
 		}
 		return false;
 	}
