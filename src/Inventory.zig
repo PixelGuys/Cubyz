@@ -689,6 +689,63 @@ pub const InventoryAndSlot = struct {
 	}
 };
 
+pub const BagInventory = struct { // MARK: BagInventory
+	sizeLimit: u32,
+	slots: main.List(ItemStack),
+
+	pub fn init(allocator: NeverFailingAllocator, sizeLimit: u32) BagInventory {
+		return .{
+			.sizeLimit = sizeLimit,
+			.slots = .init(allocator),
+		};
+	}
+
+	pub fn deinit(self: BagInventory) void {
+		for (self.slots.items) |*item| {
+			item.deinit();
+		}
+		self.slots.deinit();
+	}
+
+	pub fn fromBytes(self: *BagInventory, reader: *BinaryReader) !void {
+		const amount = try reader.readVarInt(u32);
+		for (0..amount) |_| {
+			self.slots.append(try .fromBytes(reader));
+		}
+	}
+
+	pub fn toBytes(self: BagInventory, writer: *BinaryWriter) void {
+		writer.writeVarInt(u32, @intCast(self.slots.items.len));
+		for (self.slots.items) |item| {
+			item.toBytes(writer);
+		}
+	}
+
+	/// returns the remaining amount
+	pub fn push(self: *BagInventory, stack_: ItemStack) u16 {
+		var stack = stack_;
+		if (self.slots.items.len != 0 and std.meta.eql(self.slots.items[self.slots.items.len - 1].item, stack.item)) {
+			const amount = @min(stack.amount, stack.item.stackSize() - self.slots.items[self.slots.items.len - 1].amount);
+			self.slots.items[self.slots.items.len - 1].amount += amount;
+			stack.amount -= amount;
+		}
+		if (self.slots.items.len >= self.sizeLimit) {
+			return stack.amount;
+		}
+		if (stack.amount != 0) self.slots.append(stack);
+		return 0;
+	}
+
+	pub fn pop(self: *BagInventory) ItemStack {
+		return self.slots.popOrNull() orelse .{};
+	}
+
+	pub fn peek(self: BagInventory, offsetFromTop: usize) ItemStack {
+		if (offsetFromTop >= self.slots.items.len) return .{};
+		return self.slots.items[self.slots.items.len - 1 - offsetFromTop];
+	}
+};
+
 pub const Inventories = struct { // MARK: Inventories
 	inventories: []const Inventory,
 
