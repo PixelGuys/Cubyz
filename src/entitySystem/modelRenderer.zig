@@ -33,7 +33,7 @@ const entityComponent = main.entity.components;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
-	var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
+	var pipeline: graphics.Pipeline = undefined;
 
 	var uniforms: struct {
 		projectionMatrix: c_int,
@@ -70,12 +70,13 @@ pub const client = struct {
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		for (main.client.entity_manager.entities.items()) |*ent| {
-			if (ent.id == game.Player.id) // don't render local player
+		for (entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items) |id| {
+			if (@intFromEnum(id) == game.Player.id) // don't render local player
 				continue;
 
-			const component = entityComponent.@"cubyz:model".client.components.get(@enumFromInt(ent.id)) orelse continue;
+			const component = entityComponent.@"cubyz:model".client.get(@intFromEnum(id)) orelse continue;
 			const entModel = component.entityModel.get();
+			const ent = main.client.entity_manager.getEntity(@intFromEnum(id));
 
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
@@ -115,12 +116,13 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (main.client.entity_manager.entities.items()) |*ent| {
-			if (ent.id == game.Player.id) // don't render local player
+		for (entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items) |id| {
+			if (@intFromEnum(id) == game.Player.id) // don't render local player
 				continue;
 
-			const component = entityComponent.@"cubyz:model".client.components.get(@enumFromInt(ent.id)) orelse continue;
+			const component = entityComponent.@"cubyz:model".client.get(@intFromEnum(id)) orelse continue;
 			const entModel = component.entityModel.get();
+			const ent = main.client.entity_manager.getEntity(@intFromEnum(id));
 
 			entModel.bind();
 			const entTexture = entModel.defaultTexture;
