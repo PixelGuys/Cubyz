@@ -11,7 +11,7 @@ const settings = @import("settings.zig");
 const Player = main.game.Player;
 const camera = main.game.camera;
 
-pub const gravity = 30.0;
+pub const baseGravity = 30.0;
 pub const airTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
 pub const playerDensity = 1.2;
@@ -368,24 +368,22 @@ pub fn calculateVolumeProperties(volumeProperties: *collision.VolumeProperties, 
 pub fn calculateFriction(volumeProperties: *const collision.VolumeProperties, friction: *FrictionState, pos: @Vector(3, f64), hitBox: collision.Box, onGround: bool) void {
 	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
 		const groundFriction = if (!onGround) 0 else collision.calculateSurfaceProperties(.client, pos, hitBox, 20).friction;
-		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
-		const mobileFriction: f32 = @floatCast(gravity*volumeProperties.mobileFriction);
+		const volumeFrictionCoeffecient: f32 = @floatCast(baseGravity/volumeProperties.terminalVelocity);
+		const mobileFriction: f32 = @floatCast(baseGravity*volumeProperties.mobileFriction);
 		friction.current = groundFriction + volumeFrictionCoeffecient;
 		friction.mobile = groundFriction + mobileFriction;
 	}
 }
 
-pub fn calculateMotion(deltaTime: f64, friction: *const FrictionState, volumeProperties: *const collision.VolumeProperties, density: f64, pos: Vec3d, velocity: *Vec3d, inputAcc: Vec3d, applyGravity: bool, jumpHeight: f64) Vec3d {
+pub fn calculateMotion(deltaTime: f64, friction: FrictionState, volumeProperties: collision.VolumeProperties, density: f64, pos: Vec3d, velocity: *Vec3d, inputAcc: Vec3d, gravity: f64, jumpHeight: f64) Vec3d {
 	var move: Vec3d = .{0, 0, 0};
 
 	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
 		const effectiveGravity = gravity*(density - volumeProperties.density)/density;
-		const volumeFrictionCoeffecient: f32 = @floatCast(gravity/volumeProperties.terminalVelocity);
+		const volumeFrictionCoeffecient: f32 = @floatCast(baseGravity/volumeProperties.terminalVelocity);
 
 		var acc = inputAcc;
-		if (applyGravity) {
-			acc[2] -= effectiveGravity;
-		}
+		acc[2] -= effectiveGravity;
 
 		const baseFrictionCoefficient: f32 = friction.current;
 
@@ -397,7 +395,7 @@ pub fn calculateMotion(deltaTime: f64, friction: *const FrictionState, volumePro
 			var frictionCoefficient = baseFrictionCoefficient;
 			if (i == 2 and jumpHeight > 0.0) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
-				const jumpVelocity = @sqrt(jumpHeight*gravity*2);
+				const jumpVelocity = @sqrt(jumpHeight*baseGravity*2);
 				velocity[i] = @max(jumpVelocity, velocity[i] + jumpVelocity);
 				frictionCoefficient = volumeFrictionCoeffecient;
 			}
@@ -510,7 +508,7 @@ pub fn update(deltaTime: f64, motion: Vec3d) void { // MARK: update()
 		const hitBox = Player.outerBoundingBox;
 		var steppingHeight = Player.steppingHeight()[2];
 		if (Player.super.vel[2] > 0) {
-			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
+			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/baseGravity/2;
 		}
 		steppingHeight = @min(steppingHeight, Player.eye.pos[2] - Player.eye.box.min[2]);
 
@@ -588,7 +586,7 @@ pub fn update(deltaTime: f64, motion: Vec3d) void { // MARK: update()
 				velocityChange = Player.super.vel[2];
 				Player.super.vel[2] = 0;
 			}
-			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*gravity) - 7, 0))/2);
+			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*baseGravity) - 7, 0))/2);
 			if (damage > 0.01) {
 				main.sync.addHealth(-damage, .fall, .client, Player.id);
 			}
@@ -601,7 +599,7 @@ pub fn update(deltaTime: f64, motion: Vec3d) void { // MARK: update()
 			// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
 			// This calculates how long the player has to fall until we know they're not walking over a small gap.
 			// We add deltaTime because we subtract deltaTime at the bottom of update
-			Player.eye.coyote = @sqrt(2*Player.steppingHeight()[2]/gravity) + deltaTime;
+			Player.eye.coyote = @sqrt(2*Player.steppingHeight()[2]/baseGravity) + deltaTime;
 			Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			Player.eye.pos[2] -= move[2];
 		} else if (Player.eye.coyote > 0) {
