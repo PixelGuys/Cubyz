@@ -68,7 +68,19 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionRule = enum { always, toolEffective, never };
+pub const SelectionRule = enum {
+    always,
+    toolEffective,
+    never,
+
+    pub fn allowsItemSelection(self: SelectionRule, item: Item, block: Block) bool {
+        return switch (self) {
+            .always => true,
+            .toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
+            .never => false,
+        };
+    }
+};
 
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
@@ -79,7 +91,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectionRule: [maxBlockCount]SelectionRule = undefined;
+var _selectionRules: [maxBlockCount]?[]SelectionRule = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -139,7 +151,15 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
-	_selectionRule[size] = zon.get(SelectionRule, "selectionRule", .always);
+
+	const selectionRules = zon.get(?[]SelectionRule, "selectionRules", null);
+	if (selectionRules) |rules| {
+		if (rules.len == 0) {
+			std.log.err("Field '.selectionRules' is an empty array. This block can never be selected. Did you mean '.selectionRules = .{{.never}}' instead?", .{});
+		}
+	}
+	_selectionRules[size] = selectionRules;
+
 	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -415,8 +435,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectionRule(self: Block) SelectionRule {
-		return _selectionRule[self.typ];
+	pub inline fn selectionRules(self: Block) ?[]SelectionRule {
+		return _selectionRules[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []const BlockDrop {
@@ -535,11 +555,11 @@ pub const Block = packed struct(u32) { // MARK: Block
 			return fluidPlaceable;
 		}
 
-		return switch (self.selectionRule()) {
-			.always => true,
-			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
-			.never => false,
-		};
+		const rules = self.selectionRules() orelse return true;
+		for (rules) |rule| {
+			if (rule.allowsItemSelection(item, self)) return true;
+		}
+		return false;
 	}
 };
 
