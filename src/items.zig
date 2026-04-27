@@ -254,7 +254,7 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn hasPlacementTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasPlacementTag(tag);
 	}
-	pub fn isPlaceableOn(self: BaseItemIndex, targetedBlock: main.blocks.Block) bool {
+	pub fn isPlaceableOn(self: BaseItemIndex, targetedBlock: Block) bool {
 		return itemList[@intFromEnum(self)].isPlaceableOn(targetedBlock);
 	}
 	pub fn hashCode(self: BaseItemIndex) u32 {
@@ -372,7 +372,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		return false;
 	}
 
-	pub fn isPlaceableOn(self: *const BaseItem, block: main.blocks.Block) bool {
+	pub fn isPlaceableOn(self: *const BaseItem, block: Block) bool {
 		for (block.tags()) |tag| {
 			if (self.hasPlacementTag(tag)) return true;
 		}
