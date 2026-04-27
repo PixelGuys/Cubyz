@@ -1,7 +1,7 @@
 .{
 	.tags = .{.fluid},
 	.drops = .{},
-	.selectionRules = .{.toolEffective},
+	.selectionCapabilities = .{.toolEffective},
 	.replaceable = true,
 	.degradable = true,
 	.transparent = true,
