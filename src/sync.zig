@@ -19,6 +19,8 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
+const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
+
 pub const Side = enum { client, server };
 
 pub const ClientSide = struct {
@@ -231,6 +233,8 @@ pub const Command = struct { // MARK: Command
 		fillAnyFromCreative = 14,
 		depositOrDrop = 7,
 		depositToAny = 11,
+		moveToPlayerBag = 16,
+		takeFromPlayerBag = 17,
 		craftFrom = 13,
 		craftProceduralItem = 15,
 		clear = 8,
@@ -249,6 +253,8 @@ pub const Command = struct { // MARK: Command
 		fillAnyFromCreative: FillAnyFromCreative,
 		depositOrDrop: DepositOrDrop,
 		depositToAny: DepositToAny,
+		moveToPlayerBag: MoveToPlayerBag,
+		takeFromPlayerBag: TakeFromPlayerBag,
 		craftFrom: CraftFrom,
 		craftProceduralItem: CraftProceduralItem,
 		clear: Clear,
@@ -262,6 +268,8 @@ pub const Command = struct { // MARK: Command
 		swap = 1,
 		delete = 2,
 		create = 3,
+		moveToBag = 7,
+		takeFromBag = 8,
 		useDurability = 4,
 		addHealth = 5,
 		addEnergy = 6,
@@ -285,6 +293,16 @@ pub const Command = struct { // MARK: Command
 		create: struct {
 			dest: InventoryAndSlot,
 			item: Item,
+			amount: u16,
+		},
+		moveToBag: struct {
+			dest: *Inventory.BagInventory,
+			source: InventoryAndSlot,
+			amount: u16,
+		},
+		takeFromBag: struct {
+			dest: InventoryAndSlot,
+			source: *Inventory.BagInventory,
 			amount: u16,
 		},
 		useDurability: struct {
@@ -562,6 +580,32 @@ pub const Command = struct { // MARK: Command
 					}
 					info.dest.inv.update();
 				},
+				.moveToBag => |info| {
+					const item = info.dest.peek(0).item;
+					std.debug.assert(std.meta.eql(info.source.ref().item, item) or info.source.ref().item == .null);
+
+					var remainingAmount = info.amount;
+					while (remainingAmount != 0) {
+						var stack = info.dest.pop();
+						if (stack.amount > remainingAmount) {
+							stack.amount -= remainingAmount;
+							remainingAmount = 0;
+							std.debug.assert(info.dest.push(stack) == 0);
+							break;
+						}
+						remainingAmount -= stack.amount;
+					}
+					std.debug.assert(remainingAmount == 0);
+					info.source.ref().* = .{.item = item, .amount = info.amount};
+				},
+				.takeFromBag => |info| {
+					std.debug.assert(info.amount < info.dest.ref().amount);
+					std.debug.assert(info.source.push(.{.item = info.dest.ref().item, .amount = info.amount}) == 0);
+					info.dest.ref().amount -= info.amount;
+					if (info.dest.ref().amount == 0) {
+						info.dest.ref().item = .null;
+					}
+				},
 				.useDurability => |info| {
 					std.debug.assert(info.source.ref().item == .null or std.meta.eql(info.source.ref().item, info.item));
 					info.source.ref().item = info.item;
@@ -581,7 +625,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .addHealth, .addEnergy => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -692,6 +736,38 @@ pub const Command = struct { // MARK: Command
 			.create => |info| {
 				self.executeAddOperation(allocator, side, info.dest, info.amount, info.item);
 				info.dest.inv.update();
+			},
+			.moveToBag => |*info| {
+				const source = info.source.ref();
+				const amount = @min(source.amount, info.amount);
+				source.amount = info.dest.push(.{.item = source.item, .amount = amount});
+				if (source.amount == 0) {
+					source.item = .null;
+				}
+				info.amount = amount - source.amount;
+			},
+			.takeFromBag => |*info| {
+				const dest = info.dest.ref();
+				if (dest.item == .null) {
+					dest.item = info.source.peek(0).item;
+				}
+				info.amount = @min(info.amount, dest.item.stackSize());
+				var remainingAmount = info.amount;
+				while (remainingAmount != 0) {
+					var stack = info.source.peek(0);
+					if (stack.item == .null) break;
+					if (!std.meta.eql(stack.item, dest.item)) break;
+					_ = info.source.pop();
+					if (stack.amount > remainingAmount) {
+						stack.amount -= remainingAmount;
+						remainingAmount = 0;
+						std.debug.assert(info.source.push(stack) == 0);
+						break;
+					}
+					remainingAmount -= stack.amount;
+				}
+				info.amount -= remainingAmount;
+				dest.amount += info.amount;
 			},
 			.useDurability => |*info| {
 				info.item = info.source.ref().item;
@@ -1226,6 +1302,58 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.destinations = destinations,
 				.source = try InventoryAndSlot.read(reader, side, user),
+				.amount = try reader.readInt(u16),
+			};
+		}
+	};
+
+	const MoveToPlayerBag = struct { // MARK: MoveToPlayerBag
+		source: InventoryAndSlot,
+		amount: u16,
+
+		fn run(self: MoveToPlayerBag, ctx: Context) error{serverFailure}!void {
+			std.debug.assert(ctx.side == .client or ctx.user != null);
+			const bag = switch (ctx.side) {
+				.client => @"cubyz:bag".client.getBag(main.game.Player.id).?,
+				.server => @"cubyz:bag".server.getBag((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
+			};
+			ctx.execute(.{.moveToBag = .{.dest = bag, .source = self.source, .amount = self.amount}});
+		}
+
+		fn serialize(self: MoveToPlayerBag, writer: *BinaryWriter) void {
+			self.source.write(writer);
+			writer.writeInt(u16, self.amount);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !MoveToPlayerBag {
+			return .{
+				.source = try InventoryAndSlot.read(reader, side, user),
+				.amount = try reader.readInt(u16),
+			};
+		}
+	};
+
+	const TakeFromPlayerBag = struct { // MARK: TakeFromPlayerBag
+		dest: InventoryAndSlot,
+		amount: u16,
+
+		fn run(self: TakeFromPlayerBag, ctx: Context) error{serverFailure}!void {
+			std.debug.assert(ctx.side == .client or ctx.user != null);
+			const bag = switch (ctx.side) {
+				.client => @"cubyz:bag".client.getBag(main.game.Player.id).?,
+				.server => @"cubyz:bag".server.getBag((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
+			};
+			ctx.execute(.{.takeFromBag = .{.source = bag, .dest = self.dest, .amount = self.amount}});
+		}
+
+		fn serialize(self: TakeFromPlayerBag, writer: *BinaryWriter) void {
+			self.dest.write(writer);
+			writer.writeInt(u16, self.amount);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !TakeFromPlayerBag {
+			return .{
+				.dest = try InventoryAndSlot.read(reader, side, user),
 				.amount = try reader.readInt(u16),
 			};
 		}
