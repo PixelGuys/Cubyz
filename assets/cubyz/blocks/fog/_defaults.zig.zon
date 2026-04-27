@@ -2,7 +2,7 @@
 	.tags = .{.air},
 	.blockHealth = 2,
 	.drops = .{},
-	.selectionRule = .never,
+	.selectionRules = .{.never},
 	.degradable = true,
 	.transparent = true,
 	.hasBackFace = true,
