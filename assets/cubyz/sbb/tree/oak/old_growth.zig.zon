@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/oak/old_growth/trunk/0"},
+		.{.id = "cubyz:tree/oak/old_growth/trunk/1"},
+	},
+	.children = .{
+		.brown = "cubyz:tree/oak/old_growth/root",
+		.green = "cubyz:tree/oak/old_growth/branch",
+		.lime = "cubyz:tree/oak/old_growth/top",
+	},
+}

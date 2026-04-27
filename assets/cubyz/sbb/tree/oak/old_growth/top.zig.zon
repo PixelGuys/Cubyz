@@ -1,0 +1,5 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/oak/old_growth/top/0"},
+	},
+}

@@ -23,7 +23,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/oak/white",
+			.structure = "cubyz:tree/oak/old_growth",
 			.placeMode = .degradable,
 			.chance = 0.1,
 		},
