@@ -21,7 +21,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
-var entityCount: u32 = 0;
+var entityCount: usize = 0;
 
 fn kickbyConnection(conn: *main.network.Connection) void {
 	conn.disconnect();
@@ -35,13 +35,13 @@ fn kickByPlayerIndex(playerIndex: usize) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	if (main.server.world == null) blk: {
-		entityCount = main.client.entity_manager.entities.len;
+		entityCount = main.client.entity_manager.entities.dense.items.len;
 		if (entityCount == 0) {
 			list.add(Label.init(.{0, 0}, 200, "No other players", .left));
 			break :blk;
 		}
 
-		for (main.client.entity_manager.entities.items()) |ent| {
+		for (main.client.entity_manager.entities.dense.items) |ent| {
 			if (ent.playerIndex == null) continue;
 			const row = HorizontalList.init();
 
@@ -99,7 +99,7 @@ pub fn onClose() void {
 
 pub fn update() void {
 	if (main.server.world == null) {
-		if (main.client.entity_manager.entities.len != entityCount) {
+		if (main.client.entity_manager.entities.dense.items.len != entityCount) {
 			onClose();
 			onOpen();
 		}

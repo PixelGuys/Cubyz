@@ -70,19 +70,21 @@ pub const client = struct {
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		for (entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items) |id| {
-			if (@intFromEnum(id) == game.Player.id) // don't render local player
+		for (main.client.entity_manager.entities.dense.items) |ent| {
+			if (ent.id == game.Player.id) // don't render local player
 				continue;
 
-			const component = entityComponent.@"cubyz:model".client.get(@intFromEnum(id)) orelse continue;
-			const entModel = component.entityModel.get();
-			const ent = main.client.entity_manager.getEntity(@intFromEnum(id));
+			var offsetText:f32 = 0;
+			if(main.entity.components.@"cubyz:model".client.get(ent.id))|component|{
+				const entModel = component.entityModel.get();
+				offsetText = entModel.height/2;
+			}
 
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
 				@floatCast(pos3d[1]),
-				@floatCast(pos3d[2] + entModel.height - 0.9),
+				@floatCast(pos3d[2] + offsetText + 0.1),
 				1,
 			};
 
@@ -116,13 +118,15 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items) |id| {
+		for (entityComponent.@"cubyz:model".client.components.dense.items,0..) |component,index| {
+			const id = entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items[index];
+
 			if (@intFromEnum(id) == game.Player.id) // don't render local player
 				continue;
 
-			const component = entityComponent.@"cubyz:model".client.get(@intFromEnum(id)) orelse continue;
 			const entModel = component.entityModel.get();
-			const ent = main.client.entity_manager.getEntity(@intFromEnum(id));
+			const ent = main.client.entity_manager.getEntity(@intFromEnum(id)) orelse continue;
+
 
 			entModel.bind();
 			const entTexture = entModel.defaultTexture;
@@ -144,7 +148,7 @@ pub const client = struct {
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
 					@floatCast(pos[1]),
-					@floatCast(pos[2] - 1.0 + 0.09375),
+					@floatCast(pos[2] - entModel.height/2),
 				}))
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);

@@ -28,25 +28,23 @@ var uniforms: struct {
 	ambientLight: c_int,
 } = undefined;
 
-pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
+pub var entities: main.utils.SparseSet(main.client.Entity, main.entity.Entity) = undefined;
 pub var mutex: main.utils.Mutex = .{};
 
 pub fn init() void {
-	entities = .init();
+	entities = .{};
 }
 
 pub fn deinit() void {
-	for (entities.items()) |ent| {
-		ent.deinit(main.globalAllocator);
+	for (entities.dense.items) |*value| {
+		value.deinit(main.globalAllocator);
 	}
-	entities.deinit();
+	entities.deinit(main.globalAllocator);
 }
 
 pub fn clear() void {
-	for (entities.items()) |ent| {
-		ent.deinit(main.globalAllocator);
-	}
-	entities.clearRetainingCapacity();
+	deinit();
+	init();
 	timeDifference = utils.TimeDifference{};
 }
 
@@ -56,7 +54,7 @@ pub fn update() void {
 
 	var time: i16 = @truncate(main.timestamp().toMilliseconds() -% settings.entityLookback);
 	time -%= timeDifference.difference.load(.monotonic);
-	for (entities.items()) |*ent| {
+	for (entities.dense.items) |*ent| {
 		ent.update(time, lastTime);
 	}
 	lastTime = time;
@@ -65,26 +63,27 @@ pub fn update() void {
 pub fn addEntity(zon: ZonElement) !void {
 	mutex.lock();
 	defer mutex.unlock();
-	var ent = entities.addOne();
+
+	const id = zon.get(?u32, "id", null) orelse return error.entityIdMissing;
+	var ent = entities.add(main.globalAllocator, @enumFromInt(id));
 	try ent.init(zon, main.globalAllocator);
 }
-pub fn getEntity(id: u32) *main.client.Entity {
-	return &entities.items()[id];
+pub fn getEntity(id: u32) ?*main.client.Entity {
+	return entities.get(@enumFromInt(id));
 }
 pub fn removeEntity(id: u32) void {
 	mutex.lock();
 	defer mutex.unlock();
-	for (entities.items(), 0..) |*ent, i| {
-		if (ent.id == id) {
-			ent.deinit(main.globalAllocator);
-			_ = entities.swapRemove(i);
-			if (i != entities.len) {
-				entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
-				entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
-			}
-			break;
-		}
-	}
+
+	std.debug.assert(entities.sparseToDenseIndex.items.len > id);
+	const oldIndex = @intFromEnum(entities.sparseToDenseIndex.items[id]);
+	const ent = entities.fetchRemove(@enumFromInt(id)) catch unreachable;
+	ent.deinit(main.globalAllocator);
+
+	if(entities.dense.items.len > oldIndex){
+		entities.dense.items[oldIndex].interpolatedValues.outPos = &entities.dense.items[oldIndex]._interpolationPos;
+		entities.dense.items[oldIndex].interpolatedValues.outVel = &entities.dense.items[oldIndex]._interpolationVel;	
+	}	
 }
 
 pub fn serverUpdate(time: i16, entityData: []main.entity.EntityNetworkData) void {
@@ -109,11 +108,8 @@ pub fn serverUpdate(time: i16, entityData: []main.entity.EntityNetworkData) void
 			0,
 			0,
 		};
-		for (entities.items()) |*ent| {
-			if (ent.id == data.id) {
-				ent.updatePosition(&pos, &vel, time);
-				break;
-			}
+		if(getEntity(data.id))|ent|{
+			ent.updatePosition(&pos, &vel, time);
 		}
 	}
 }
