@@ -972,6 +972,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(?Vec3d, "playerSpawnPos", null);
+
+		if (main.entity.components.@"cubyz:bag".server.get(user.id) == null) {
+			try main.entity.components.@"cubyz:bag".server.loadEmpty(user.id);
+		}
+
 		return loadingError;
 	}
 
