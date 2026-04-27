@@ -26,6 +26,7 @@ const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
 
 pub const chunk_meshing = @import("renderer/chunk_meshing.zig");
+pub const lighting = @import("renderer/lighting.zig");
 pub const mesh_storage = @import("renderer/mesh_storage.zig");
 
 /// Time after which no more chunk meshes are created. This allows the game to run smoother on movement.
@@ -941,10 +942,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if (block.typ != 0) blk: {
-				const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-				const holdingTargetedBlock = item == .baseItem and item.baseItem.block() == block.typ;
-				if (block.hasTag(.air) and !holdingTargetedBlock) break :blk;
-				if (block.hasTag(.fluid) and !fluidPlaceable and !holdingTargetedBlock) break :blk; // TODO: Buckets could select fluids
+				if (!block.isSelectableByItem(item)) break :blk;
+
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if (block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 					if (intersection.distance <= closestDistance) {
@@ -987,7 +986,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
-		if (main.game.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
+		if (main.physics.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
 		}
 		return true; // TODO: Check other entities
@@ -1087,7 +1086,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if (damage > 0) {
-					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.swingSpeed else 0.5;
+					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
 					if (currentSwingTime > swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = 0;
