@@ -93,11 +93,17 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 	const topItem = self.inventory.peek(0);
 	const shouldRenderStackSizeText = topItem.item.stackSize() > 1;
 	if (shouldRenderStackSizeText) {
+		var amount: usize = topItem.amount;
+		for (1..self.inventory.slots.items.len) |i| {
+			const otherItem = self.inventory.peek(i);
+			if (!std.meta.eql(topItem.item, otherItem.item)) break;
+			amount += otherItem.amount;
+		}
 		var buf: [16]u8 = undefined;
 		var text = TextBuffer.init(
 			main.stackAllocator,
-			std.fmt.bufPrint(&buf, "{}", .{topItem.amount}) catch "∞",
-			.{.color = if (topItem.amount == 0) 0xff0000 else 0xffffff},
+			std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞",
+			.{.color = if (amount == 0) 0xff0000 else 0xffffff},
 			false,
 			.right,
 		);
