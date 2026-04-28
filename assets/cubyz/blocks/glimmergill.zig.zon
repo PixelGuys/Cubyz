@@ -4,7 +4,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.replaceable = true,
+	.replaceability = .drop,
 	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,

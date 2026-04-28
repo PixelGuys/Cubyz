@@ -13,7 +13,7 @@
 	.item = .{
 		.texture = "fern.png",
 	},
-	.replaceable = true,
+	.replaceability = .drop,
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
 		.type = .checkSupportBlocks,
