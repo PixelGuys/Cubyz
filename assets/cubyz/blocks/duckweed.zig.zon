@@ -1,5 +1,6 @@
 .{
 	.tags = .{.cuttable},
+	.placementTags = .{.fluid},
 	.blockHealth = 0.1,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -19,7 +20,6 @@
 	.texture3 = "cubyz:duckweed/3",
 	.item = .{
 		.texture = "duckweed.png",
-		.placementTags = .{.fluid},
 	},
 	.lodReplacement = "cubyz:air",
 }

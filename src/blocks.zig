@@ -87,6 +87,7 @@ var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
 var _tags: [maxBlockCount][]Tag = undefined;
+var _placementTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -136,6 +137,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		}
 	}
 
+	_placementTags[size] = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("placementTags"));
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
@@ -449,6 +451,21 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
 	}
 
+	pub inline fn placementTags(self: Block) []const Tag {
+		return _placementTags[self.typ];
+	}
+
+	pub inline fn hasPlacementTag(self: Block, tag: Tag) bool {
+		return std.mem.containsAtLeastScalar(Tag, self.placementTags(), 1, tag);
+	}
+
+	pub inline fn isPlaceableOn(self: Block, block: Block) bool {
+		for (block.tags()) |tag| {
+			if (self.hasPlacementTag(tag)) return true;
+		}
+		return false;
+	}
+
 	pub inline fn light(self: Block) u32 {
 		return _light[self.typ];
 	}
@@ -528,13 +545,21 @@ pub const Block = packed struct(u32) { // MARK: Block
 	}
 
 	pub fn isSelectableByItem(self: Block, item: Item) bool {
-		if (item == .baseItem and item.baseItem.block() == self.typ) return true;
+		const rule = self.selectionRule();
+		if (rule == .always) return true;
+		if (rule == .never) return false;
 
-		return switch (self.selectionRule()) {
-			.always => true,
-			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
-			.placeable => item == .baseItem and item.baseItem.isPlaceableOn(self),
-			.never => false,
+		return switch (item) {
+			.baseItem => |baseItem| {
+				if (baseItem.block()) |blockType| {
+					if (blockType == self.typ) return true;
+					return rule == .placeable and Block.fromInt(blockType).isPlaceableOn(self);
+				} else return false;
+			},
+
+			.proceduralItem => |proceduralItem| rule == .toolEffective and proceduralItem.isEffectiveOn(self),
+
+			else => false,
 		};
 	}
 };

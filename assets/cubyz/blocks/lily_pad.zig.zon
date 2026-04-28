@@ -1,5 +1,6 @@
 .{
 	.tags = .{.cuttable},
+	.placementTags = .{.fluid},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -12,7 +13,6 @@
 	.texture = "cubyz:lily_pad",
 	.item = .{
 		.texture = "lily_pad.png",
-		.placementTags = .{.fluid},
 	},
 	.lodReplacement = "cubyz:air",
 }
