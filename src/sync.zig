@@ -1354,12 +1354,13 @@ pub const Command = struct { // MARK: Command
 				.client => @"cubyz:bag".client.getBag(main.game.Player.id).?,
 				.server => @"cubyz:bag".server.getBag((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
 			};
-			var remainingAmount = @min(self.amount, bag.peek(0).amount);
+			var remainingAmount = self.amount;
 			const item = bag.peek(0).item;
 			outer: for (self.destinations.inventories) |inv| {
 				for (inv._items, 0..) |itemStack, slot| {
 					if (remainingAmount == 0) break :outer;
 					if (itemStack.item != .null and !std.meta.eql(itemStack.item, item)) continue;
+					if (!std.meta.eql(bag.peek(0).item, item)) continue;
 
 					const amount = @min(remainingAmount, item.stackSize() - itemStack.amount);
 					remainingAmount -= amount;
