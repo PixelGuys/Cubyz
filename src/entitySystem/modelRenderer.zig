@@ -118,9 +118,7 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (entityComponent.@"cubyz:model".client.components.dense.items, 0..) |component, index| {
-			const id = entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items[index];
-
+		for (entityComponent.@"cubyz:model".client.components.dense.items, entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (@intFromEnum(id) == game.Player.id) // don't render local player
 				continue;
 
