@@ -1506,10 +1506,8 @@ pub const Command = struct { // MARK: Command
 				const replacedByAir = self.newBlock.hasTag(.air);
 				if (replacedByAir or self.oldBlock.replaceability().dropsOnReplace()) {
 					const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-					const drops = self.oldBlock.blockDrops();
-
 					for (0..dropAmount) |_| {
-						for (drops) |drop| {
+						for (self.oldBlock.blockDrops()) |drop| {
 							if (replacedByAir and !drop.isDroppedWhenBrokenWithItem(handItem)) continue;
 
 							if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
