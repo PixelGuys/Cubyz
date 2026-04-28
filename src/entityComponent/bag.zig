@@ -32,7 +32,7 @@ const random = main.random;
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
-const playerBagSizeLimit = 100;
+const playerBagSizeLimit = 120;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
