@@ -2,7 +2,7 @@
 	.tags = .{.fluid},
 	.drops = .{},
 	.selectionRule = .toolEffective,
-	.replaceable = true,
+	.replaceability = .destroy,
 	.degradable = true,
 	.transparent = true,
 	.hasBackFace = true,

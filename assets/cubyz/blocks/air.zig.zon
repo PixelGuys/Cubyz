@@ -4,7 +4,7 @@
 	.transparent = true,
 	.absorbedLight = 0x000000,
 	.viewThrough = true,
-	.replaceable = true,
+	.replaceability = .destroy,
 	.rotation = "cubyz:no_rotation",
 	.degradable = true,
 	.hasItem = false,

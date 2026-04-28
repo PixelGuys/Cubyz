@@ -6,7 +6,7 @@
 	.degradable = true,
 	.transparent = true,
 	.hasBackFace = true,
-	.replaceable = true,
+	.replaceability = .destroy,
 	.collide = false,
 
 	.model = "cubyz:cube",
