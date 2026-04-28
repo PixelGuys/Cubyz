@@ -85,9 +85,7 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		if (item == .null) continue;
 		const opacity: f32 = std.math.pow(f32, 0.5, @as(f32, @floatFromInt(i)));
 		draw.setColor(0xffffff | @as(u32, @intFromFloat(opacity*255)) << 24);
-		const itemTexture = item.getTexture();
-		itemTexture.bindTo(0);
-		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
+		item.render(self.pos, self.size, border);
 	}
 
 	const topItem = self.inventory.peek(0);
@@ -110,22 +108,6 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		defer text.deinit();
 		const textSize = text.calculateLineBreaks(8, self.size[0] - 2*border);
 		text.render(self.pos[0] + self.size[0] - textSize[0] - border, self.pos[1] + self.size[1] - textSize[1] - border, 8);
-	}
-	if (topItem.item == .proceduralItem) {
-		const proceduralItem = topItem.item.proceduralItem;
-		const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.getProperty(.maxDurability);
-
-		if (durabilityPercentage < 1) {
-			const width = durabilityPercentage*(self.size[0] - 2*border);
-			draw.setColor(0xff000000);
-			draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{self.size[0] - 2*border, (self.size[1] - 2*border)/16.0});
-
-			const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
-			const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
-
-			draw.setColor(0xff000000 | (@as(u32, @intCast(red)) << 16) | (@as(u32, @intCast(green)) << 8));
-			draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{width, (self.size[1] - 2*border)/16.0});
-		}
 	}
 
 	if (self.hovered) {
