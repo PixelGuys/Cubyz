@@ -79,7 +79,9 @@ pub const server = struct {
 	};
 	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
 
-	pub fn init() void {}
+	pub fn init() void {
+		components = .{};
+	}
 	pub fn deinit() void {
 		for (components.dense.items) |bag| bag.bag.deinit();
 		components.deinit(main.globalAllocator);
