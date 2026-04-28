@@ -973,10 +973,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		user.spawnPos = playerData.get(?Vec3d, "playerSpawnPos", null);
 
-		if (main.entity.components.@"cubyz:bag".server.get(user.id) == null) {
-			try main.entity.components.@"cubyz:bag".server.loadEmpty(user.id);
-		}
-
 		return loadingError;
 	}
 

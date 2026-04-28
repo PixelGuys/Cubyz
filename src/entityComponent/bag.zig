@@ -97,7 +97,7 @@ pub const server = struct {
 		bag.* = .init(main.globalAllocator, playerBagSizeLimit);
 		bag.fromBytes(reader) catch return error.UnreadableComponentData;
 	}
-	pub fn loadEmpty(entityId: u32) main.entity.EntityComponentLoadError!void {
+	pub fn loadEmpty(entityId: u32) void {
 		const bag = &components.add(main.globalAllocator, @enumFromInt(entityId)).bag;
 		bag.* = .init(main.globalAllocator, playerBagSizeLimit);
 	}

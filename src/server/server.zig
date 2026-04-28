@@ -256,6 +256,11 @@ pub const User = struct { // MARK: User
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
+
+		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
+		}
+
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
