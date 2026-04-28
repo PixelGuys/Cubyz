@@ -1334,8 +1334,19 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const TakeFromPlayerBag = struct { // MARK: TakeFromPlayerBag
-		dest: InventoryAndSlot,
+		destinations: Inventory.Inventories,
 		amount: u16,
+
+		pub fn init(destinations: []const Inventory.ClientInventory, amount: u16) TakeFromPlayerBag {
+			return .{
+				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
+				.amount = amount,
+			};
+		}
+
+		fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
+			self.destinations.deinit(main.globalAllocator);
+		}
 
 		fn run(self: TakeFromPlayerBag, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(ctx.side == .client or ctx.user != null);
@@ -1343,17 +1354,31 @@ pub const Command = struct { // MARK: Command
 				.client => @"cubyz:bag".client.getBag(main.game.Player.id).?,
 				.server => @"cubyz:bag".server.getBag((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
 			};
-			ctx.execute(.{.takeFromBag = .{.source = bag, .dest = self.dest, .amount = self.amount}});
+			var remainingAmount = @min(self.amount, bag.peek(0).amount);
+			const item = bag.peek(0).item;
+			outer: for (self.destinations.inventories) |inv| {
+				for (inv._items, 0..) |itemStack, slot| {
+					if (remainingAmount == 0) break :outer;
+					if (itemStack.item != .null and !std.meta.eql(itemStack.item, item)) continue;
+
+					const amount = @min(remainingAmount, item.stackSize() - itemStack.amount);
+					remainingAmount -= amount;
+
+					ctx.execute(.{.takeFromBag = .{.source = bag, .dest = .{.inv = inv, .slot = @intCast(slot)}, .amount = amount}});
+				}
+			}
 		}
 
 		fn serialize(self: TakeFromPlayerBag, writer: *BinaryWriter) void {
-			self.dest.write(writer);
+			self.destinations.toBytes(writer);
 			writer.writeInt(u16, self.amount);
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !TakeFromPlayerBag {
+			const destinations = try Inventory.Inventories.fromBytes(main.globalAllocator, reader, side, user);
+			errdefer destinations.deinit(main.globalAllocator);
 			return .{
-				.dest = try InventoryAndSlot.read(reader, side, user),
+				.destinations = destinations,
 				.amount = try reader.readInt(u16),
 			};
 		}

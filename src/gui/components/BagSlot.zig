@@ -68,7 +68,7 @@ pub fn mainButtonReleased(self: *BagSlot, _: Vec2f) void {
 		if (carried.getAmount(0) != 0) {
 			main.sync.ClientSide.executeCommand(.{.moveToPlayerBag = .{.amount = carried.getAmount(0), .source = .{.inv = carried.super, .slot = 0}}});
 		} else {
-			main.sync.ClientSide.executeCommand(.{.takeFromPlayerBag = .{.amount = std.math.maxInt(u16), .dest = .{.inv = carried.super, .slot = 0}}});
+			main.sync.ClientSide.executeCommand(.{.takeFromPlayerBag = .init(&.{carried}, std.math.maxInt(u16))});
 		}
 		self.pressed = false;
 	}
