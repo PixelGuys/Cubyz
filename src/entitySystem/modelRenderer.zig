@@ -70,7 +70,7 @@ pub const client = struct {
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		for (main.client.entity_manager.entities.dense.items) |ent| {
+		for (main.client.entity_manager.entities.items()) |ent| {
 			if (ent.id == game.Player.id) // don't render local player
 				continue;
 
