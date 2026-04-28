@@ -82,12 +82,13 @@ pub fn removeEntity(id: u32) void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	_ = idMapping.remove(id);
 	for (entities.items(), 0..) |*ent, i| {
 		if (ent.id == id) {
+			_ = idMapping.remove(id);
 			ent.deinit(main.globalAllocator);
 			_ = entities.swapRemove(i);
 			if (i != entities.len) {
+				idMapping.put(entities.items()[i].id,&entities.items()[i]) catch unreachable;
 				entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
 				entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
 			}
