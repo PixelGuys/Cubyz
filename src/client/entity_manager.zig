@@ -88,7 +88,7 @@ pub fn removeEntity(id: u32) void {
 			ent.deinit(main.globalAllocator);
 			_ = entities.swapRemove(i);
 			if (i != entities.len) {
-				idMapping.put(entities.items()[i].id,&entities.items()[i]) catch unreachable;
+				idMapping.put(entities.items()[i].id, &entities.items()[i]) catch unreachable;
 				entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
 				entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
 			}
