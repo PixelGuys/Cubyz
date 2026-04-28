@@ -21,7 +21,7 @@ pub const sizeWithBorder = 32 + 2*border;
 var texture: Texture = undefined;
 
 pos: Vec2f,
-size: Vec2f = @splat(sizeWithBorder),
+size: Vec2f = .{sizeWithBorder, sizeWithBorder + 8},
 inventory: *BagInventory,
 hovered: bool = false,
 pressed: bool = false,
@@ -77,7 +77,7 @@ pub fn mainButtonReleased(self: *BagSlot, _: Vec2f) void {
 pub fn render(self: *BagSlot, _: Vec2f) void {
 	draw.setColor(0xffffffff);
 	texture.bindTo(0);
-	draw.boundImage(self.pos, self.size);
+	draw.boundImage(self.pos, @splat(sizeWithBorder));
 
 	for (0..5) |_i| {
 		const i = 4 - _i;
@@ -85,7 +85,7 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		if (item == .null) continue;
 		const opacity: f32 = std.math.pow(f32, 0.5, @as(f32, @floatFromInt(i)));
 		draw.setColor(0xffffff | @as(u32, @intFromFloat(opacity*255)) << 24);
-		item.render(self.pos, self.size, border);
+		item.render(self.pos, @splat(sizeWithBorder), border);
 	}
 
 	const topItem = self.inventory.peek(0);
@@ -107,12 +107,15 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		);
 		defer text.deinit();
 		const textSize = text.calculateLineBreaks(8, self.size[0] - 2*border);
-		text.render(self.pos[0] + self.size[0] - textSize[0] - border, self.pos[1] + self.size[1] - textSize[1] - border, 8);
+		text.render(self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
 	}
+
+	draw.setColor(0xffffffff);
+	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8, .left);
 
 	if (self.hovered) {
 		self.hovered = false;
 		draw.setColor(0x300000ff);
-		draw.rect(self.pos, self.size);
+		draw.rect(self.pos, @splat(sizeWithBorder));
 	}
 }
