@@ -1503,13 +1503,18 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
-				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-				for (0..dropAmount) |_| {
-					for (self.oldBlock.blockDrops()) |drop| {
-						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
+				const replacedByAir = self.newBlock.hasTag(.air);
+				if (replacedByAir or self.oldBlock.replaceability().dropsOnReplace()) {
+					const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
+					const drops = self.oldBlock.blockDrops();
 
-						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-							self.dropLocation.drop(self.pos, self.newBlock, drop);
+					for (0..dropAmount) |_| {
+						for (drops) |drop| {
+							if (replacedByAir and !drop.isDroppedWhenBrokenWithItem(handItem)) continue;
+
+							if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
+								self.dropLocation.drop(self.pos, self.newBlock, drop);
+							}
 						}
 					}
 				}

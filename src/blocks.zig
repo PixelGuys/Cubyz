@@ -70,6 +70,21 @@ pub const Ore = struct {
 
 const SelectionRule = enum { always, toolEffective, never };
 
+/// How this block behaves when trying to place a block in the same position
+const Replaceability = enum {
+	none,
+	destroy,
+	drop,
+
+	pub fn isReplaceable(self: Replaceability) bool {
+		return self != .none;
+	}
+
+	pub fn dropsOnReplace(self: Replaceability) bool {
+		return self == .drop;
+	}
+};
+
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
@@ -77,8 +92,7 @@ var _id: [maxBlockCount][]u8 = undefined;
 var _blockHealth: [maxBlockCount]f32 = undefined;
 var _blockResistance: [maxBlockCount]f32 = undefined;
 
-/// Whether you can replace it with another block, mainly used for fluids/gases
-var _replaceable: [maxBlockCount]bool = undefined;
+var _replaceability: [maxBlockCount]Replaceability = undefined;
 var _selectionRule: [maxBlockCount]SelectionRule = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
@@ -140,7 +154,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectionRule[size] = zon.get(SelectionRule, "selectionRule", .always);
-	_replaceable[size] = zon.get(bool, "replaceable", false);
+	_replaceability[size] = zon.get(Replaceability, "replaceability", .none);
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -410,9 +424,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _blockResistance[self.typ];
 	}
 
-	/// Whether you can replace it with another block, mainly used for fluids/gases
-	pub inline fn replaceable(self: Block) bool {
-		return _replaceable[self.typ];
+	pub inline fn replaceability(self: Block) Replaceability {
+		return _replaceability[self.typ];
 	}
 
 	pub inline fn selectionRule(self: Block) SelectionRule {
