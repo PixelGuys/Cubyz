@@ -195,14 +195,15 @@ pub fn generateData(
 	blockPlacing: bool,
 ) bool {
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode();
+	const neighborIsReplaceable = neighborBlock.replaceability().isReplaceable();
 
-	if (blockPlacing or canConnectToNeighbor or !neighborBlock.replaceable()) {
+	if (blockPlacing or canConnectToNeighbor or !neighborIsReplaceable) {
 		const neighborModel = blocks.meshes.model(neighborBlock).model();
 
 		var currentData = LogData.init(currentBlock.data);
 		// Log block upon placement should extend towards a block it was placed
 		// on if the block is solid or also uses log model.
-		const targetVal = ((!neighborBlock.replaceable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
+		const targetVal = ((!neighborIsReplaceable and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 		currentData.setConnection(neighbor.?, targetVal);
 
 		for (Neighbor.iterable) |side| {

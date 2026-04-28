@@ -1030,7 +1030,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								return;
 							}
 						} else {
-							if (!block.replaceable()) return;
+							if (!block.replaceability().isReplaceable()) return;
 							block.typ = itemBlock;
 							block.data = 0;
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {

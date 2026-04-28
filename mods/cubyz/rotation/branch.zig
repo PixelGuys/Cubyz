@@ -343,14 +343,15 @@ pub fn generateData(
 	blockPlacing: bool,
 ) bool {
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode() and currentBlock.modeData() == neighborBlock.modeData();
+	const neighborIsReplaceable = neighborBlock.replaceability().isReplaceable();
 
-	if (blockPlacing or canConnectToNeighbor or !neighborBlock.replaceable()) {
+	if (blockPlacing or canConnectToNeighbor or !neighborIsReplaceable) {
 		const neighborModel = blocks.meshes.model(neighborBlock).model();
 
 		var currentData = BranchData.init(currentBlock.data);
 		// Branch block upon placement should extend towards a block it was placed
 		// on if the block is solid or also uses branch model.
-		const targetVal = ((!neighborBlock.replaceable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
+		const targetVal = ((!neighborIsReplaceable and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 		currentData.setConnection(neighbor.?, targetVal);
 
 		currentData.placedByHuman = true;
@@ -365,6 +366,7 @@ pub fn generateData(
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
 	const canConnectToNeighbor = block.mode() == neighborBlock.mode() and block.modeData() == neighborBlock.modeData();
+	const neighborIsReplaceable = neighborBlock.replaceability().isReplaceable();
 	var currentData = BranchData.init(block.data);
 
 	// Handle joining with other branches. While placed, branches extend in a
@@ -373,7 +375,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	if (canConnectToNeighbor) {
 		const neighborData = BranchData.init(neighborBlock.data);
 		currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
-	} else if (neighborBlock.replaceable()) {
+	} else if (neighborIsReplaceable) {
 		currentData.setConnection(neighbor, false);
 	}
 
