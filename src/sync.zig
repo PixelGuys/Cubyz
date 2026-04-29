@@ -1354,20 +1354,15 @@ pub const Command = struct { // MARK: Command
 				.client => @"cubyz:bag".client.getBag(main.game.Player.id).?,
 				.server => @"cubyz:bag".server.getBag((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
 			};
-			var remainingAmount = self.amount;
+			var amount: u16 = 0;
 			const item = bag.peek(0).item;
-			outer: for (self.destinations.inventories) |inv| {
-				for (inv._items, 0..) |itemStack, slot| {
-					if (remainingAmount == 0) break :outer;
-					if (itemStack.item != .null and !std.meta.eql(itemStack.item, item)) continue;
-					if (!std.meta.eql(bag.peek(0).item, item)) continue;
-
-					const amount = @min(remainingAmount, item.stackSize() - itemStack.amount);
-					remainingAmount -= amount;
-
-					ctx.execute(.{.takeFromBag = .{.source = bag, .dest = .{.inv = inv, .slot = @intCast(slot)}, .amount = amount}});
-				}
+			for (0..bag.slots.items.len) |i| {
+				const stack = bag.peek(i);
+				if (!std.meta.eql(stack.item, item)) break;
+				amount +|= stack.amount;
 			}
+			amount = @min(amount, self.amount);
+			std.debug.assert(self.destinations.putItemsInto(ctx, amount, .{.bag = bag}) == 0);
 		}
 
 		fn serialize(self: TakeFromPlayerBag, writer: *BinaryWriter) void {

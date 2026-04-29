@@ -805,6 +805,7 @@ pub const Inventories = struct { // MARK: Inventories
 	const Provider = union(enum) {
 		move: InventoryAndSlot,
 		create: Item,
+		bag: *BagInventory,
 
 		pub fn getBaseOperation(provider: Provider, dest: InventoryAndSlot, amount: u16) sync.Command.BaseOperation {
 			return switch (provider) {
@@ -818,6 +819,11 @@ pub const Inventories = struct { // MARK: Inventories
 					.amount = amount,
 					.item = item,
 				}},
+				.bag => |bag| .{.takeFromBag = .{
+					.dest = dest,
+					.amount = amount,
+					.source = bag,
+				}},
 			};
 		}
 
@@ -825,6 +831,7 @@ pub const Inventories = struct { // MARK: Inventories
 			return switch (provider) {
 				.move => |slot| slot.ref().item,
 				.create => |item| item,
+				.bag => |bag| bag.peek(0).item,
 			};
 		}
 	};
