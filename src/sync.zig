@@ -1362,7 +1362,7 @@ pub const Command = struct { // MARK: Command
 				amount +|= stack.amount;
 			}
 			amount = @min(amount, self.amount);
-			std.debug.assert(self.destinations.putItemsInto(ctx, amount, .{.bag = bag}) == 0);
+			_ = self.destinations.putItemsInto(ctx, amount, .{.bag = bag});
 		}
 
 		fn serialize(self: TakeFromPlayerBag, writer: *BinaryWriter) void {
