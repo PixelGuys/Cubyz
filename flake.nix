@@ -40,7 +40,7 @@
           '';
         };
 
-        # Run the built project
+        # Run the built project via 'nix run'
         packages.default = pkgs.writeShellScriptBin "cubyz" ''
           export LD_LIBRARY_PATH="${ldLibraryPath}"
           exec "$PWD/zig-out/bin/Cubyz" "$@"
