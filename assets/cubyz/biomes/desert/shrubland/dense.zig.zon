@@ -61,7 +61,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:desert/shrubland/base",
-			.chance = 0.6,
+			.chance = 0.5,
 		},
 	},
 }
