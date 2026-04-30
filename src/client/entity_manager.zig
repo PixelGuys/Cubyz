@@ -89,20 +89,8 @@ pub fn removeEntity(id: u32) void {
 	const ent = entities.items()[index];
 
 	// remove id
-	{
-		idMapping.items[id] = null;
+	idMapping.items[id] = null;
 
-		// resize array
-		if (id + 1 == idMapping.items.len) {
-			var i = id;
-			while (i > 0) {
-				if (idMapping.items[i - 1] != null)
-					break;
-				_ = idMapping.pop();
-				i -= 1;
-			}
-		}
-	}
 	// remove entity
 	{
 		std.debug.assert(ent.id == id);
