@@ -487,6 +487,14 @@ pub fn hyperSpeedToggle(_: main.Window.Key.Modifiers) void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
+pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?Block {
+	if (side == .client) {
+		return main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z);
+	} else {
+		return main.server.world.?.getBlock(x, y, z);
+	}
+}
+
 pub fn update(deltaTime: f64) void { // MARK: update()
 	physics.calculateVolumeProperties(&Player.volumeProperties, Player.super.pos, Player.outerBoundingBox);
 	if (Player.isFlying.load(.monotonic)) {
