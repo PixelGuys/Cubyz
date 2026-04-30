@@ -20,21 +20,14 @@ const BinaryReader = main.utils.BinaryReader;
 
 var lastTime: i16 = 0;
 var timeDifference: utils.TimeDifference = utils.TimeDifference{};
-var uniforms: struct {
-	projectionMatrix: c_int,
-	viewMatrix: c_int,
-	light: c_int,
-	contrast: c_int,
-	ambientLight: c_int,
-} = undefined;
 
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
-pub var idMapping: std.AutoHashMap(u32, *main.client.Entity) = undefined;
+pub var idMapping: main.List(?u32) = undefined;
 pub var mutex: main.utils.Mutex = .{};
 
 pub fn init() void {
 	entities = .init();
-	idMapping = .init(main.globalAllocator.allocator);
+	idMapping = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -70,29 +63,54 @@ pub fn addEntity(zon: ZonElement) !void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	var ent = entities.addOne();
 	const id = zon.get(?u32, "id", null) orelse return error.entityIdMissing;
-	try idMapping.put(id, ent);
+	const index = entities.len;
+	var ent = entities.addOne();
+
+	if (idMapping.items.len <= id)
+		idMapping.appendNTimes(null, id - idMapping.items.len + 1);
+	idMapping.items[id] = index;
+
 	try ent.init(zon, main.globalAllocator);
 }
 pub fn getEntity(id: u32) ?*main.client.Entity {
-	return idMapping.get(id);
+	if (id < idMapping.items.len)
+		return &entities.items()[idMapping.items[id] orelse return null];
+	return null;
 }
 pub fn removeEntity(id: u32) void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	for (entities.items(), 0..) |*ent, i| {
-		if (ent.id == id) {
-			_ = idMapping.remove(id);
-			ent.deinit(main.globalAllocator);
-			_ = entities.swapRemove(i);
-			if (i != entities.len) {
-				idMapping.put(entities.items()[i].id, &entities.items()[i]) catch unreachable;
-				entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
-				entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
+	if (idMapping.items.len <= id)
+		return;
+	const index: u32 = idMapping.items[id] orelse return;
+	const ent = entities.items()[index];
+
+	// remove id
+	{
+		idMapping.items[id] = null;
+
+		// resize array
+		if (id + 1 == idMapping.items.len) {
+			var i = id;
+			while (i > 0) {
+				if (idMapping.items[i - 1] != null)
+					break;
+				i -= 1;
 			}
-			break;
+			idMapping.resize(i);
+		}
+	}
+	// remove entity
+	{
+		ent.deinit(main.globalAllocator);
+		_ = entities.swapRemove(index);
+
+		if (index != entities.len) {
+			idMapping.items[entities.items()[index].id] = index;
+			entities.items()[index].interpolatedValues.outPos = &entities.items()[index]._interpolationPos;
+			entities.items()[index].interpolatedValues.outVel = &entities.items()[index]._interpolationVel;
 		}
 	}
 }

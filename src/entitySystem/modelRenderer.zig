@@ -73,6 +73,7 @@ pub const client = struct {
 		for (main.client.entity_manager.entities.items()) |ent| {
 			if (ent.id == game.Player.id) // don't render local player
 				continue;
+			if (ent.name.len == 0 and !settings.showPlayerIndexWithName) continue;
 
 			var offsetText: f32 = 0;
 			if (main.entity.components.@"cubyz:model".client.get(ent.id)) |component| {
@@ -150,7 +151,7 @@ pub const client = struct {
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glDrawElements(c.GL_TRIANGLES, 6*entModel.indexCount, c.GL_UNSIGNED_INT, null);
+			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
 	}
 };
