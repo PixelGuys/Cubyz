@@ -311,7 +311,7 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.sync.Side, deltaTime: f64) void {
+	pub fn touchBlocks(comptime side: main.sync.Side, entity: *main.server.Entity, hitBox: Box, deltaTime: f64) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
@@ -600,7 +600,7 @@ pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void
 		} else if (Player.eye.coyote > 0) {
 			Player.eye.pos[2] -= move[2];
 		}
-		collision.touchBlocks(&Player.super, hitBox, .client, deltaTime);
+		collision.touchBlocks(side, &Player.super, hitBox, deltaTime);
 	} else {
 		Player.super.pos += move;
 	}

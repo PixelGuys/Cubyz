@@ -496,11 +496,11 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
-	physics.calculateVolumeProperties(&Player.volumeProperties, Player.super.pos, Player.outerBoundingBox);
+	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox);
 	if (Player.isFlying.load(.monotonic)) {
 		Player.friction = .{.current = 20, .mobile = 20};
 	} else {
-		physics.calculateFriction(&Player.volumeProperties, &Player.friction, Player.super.pos, Player.outerBoundingBox, Player.onGround);
+		physics.calculateFriction(.client, &Player.volumeProperties, &Player.friction, Player.super.pos, Player.outerBoundingBox, Player.onGround);
 	}
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if (Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
@@ -652,8 +652,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const gravity: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
 	const jumpHeight: f64 = if (jumping) Player.jumpHeight else 0.0;
-	const motion = physics.calculateMotion(deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, &Player.super.vel, acc, gravity, jumpHeight);
-	physics.update(deltaTime, motion);
+	const motion = physics.calculateMotion(.client, deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, &Player.super.vel, acc, gravity, jumpHeight);
+	physics.update(.client, deltaTime, motion);
 
 	const time = main.timestamp();
 	if (nextBlockPlaceTime) |*placeTime| {
