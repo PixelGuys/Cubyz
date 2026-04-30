@@ -421,9 +421,8 @@ pub fn calculateMotion(deltaTime: f64, friction: FrictionState, volumeProperties
 	return move;
 }
 
-pub fn update(deltaTime: f64, motion: Vec3d) void { // MARK: update()
-	var move = motion;
-	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
+pub fn calculateEyeMovement(deltaTime: f64, pos: Vec3d, eye: *Player.EyeData) void {
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		var acc: Vec3d = @splat(0);
 		// Apply springs to the eye position:
@@ -439,10 +438,10 @@ pub fn update(deltaTime: f64, motion: Vec3d) void { // MARK: update()
 				30,
 				30,
 			};
-			const strength = (-Player.eye.pos)/(Player.eye.box.max - Player.eye.box.min);
+			const strength = (-eye.pos)/(eye.box.max - eye.box.min);
 			const force = strength*forceMultipliers;
 			const friction = frictionMultipliers;
-			springConstants += forceMultipliers/(Player.eye.box.max - Player.eye.box.min);
+			springConstants += forceMultipliers/(eye.box.max - eye.box.min);
 			directionalFrictionCoefficients += @floatCast(friction);
 			acc += force;
 		}
@@ -452,21 +451,21 @@ pub fn update(deltaTime: f64, motion: Vec3d) void { // MARK: update()
 		// dx/dt = v
 		// Where a is the acceleration, k is the spring constant and λ is the friction coefficient
 		inline for (0..3) |i| blk: {
-			if (Player.eye.step[i]) {
-				const oldPos = Player.eye.pos[i];
-				const newPos = oldPos + Player.eye.vel[i]*deltaTime;
-				if (newPos*std.math.sign(Player.eye.vel[i]) <= -0.1) {
-					Player.eye.pos[i] = newPos;
+			if (eye.step[i]) {
+				const oldPos = eye.pos[i];
+				const newPos = oldPos + eye.vel[i]*deltaTime;
+				if (newPos*std.math.sign(eye.vel[i]) <= -0.1) {
+					eye.pos[i] = newPos;
 					break :blk;
 				} else {
-					Player.eye.step[i] = false;
+					eye.step[i] = false;
 				}
 			}
-			if (i == 2 and Player.eye.coyote > 0) {
+			if (i == 2 and eye.coyote > 0) {
 				break :blk;
 			}
 			const frictionCoefficient = directionalFrictionCoefficients[i];
-			const v_0 = Player.eye.vel[i];
+			const v_0 = eye.vel[i];
 			const k = springConstants[i];
 			const a = acc[i];
 			// here we need to solve the full equation:
@@ -496,11 +495,14 @@ pub fn update(deltaTime: f64, motion: Vec3d) void { // MARK: update()
 			// x(t) = a/k + c_1 e^(1/2 t (-c_3 - λ)) + c_2 e^(1/2 t (c_3 - λ))
 			const firstTerm = c_1.mul((c_3.negate().subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
 			const secondTerm = c_2.mul((c_3.subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
-			Player.eye.vel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
-			Player.eye.pos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
+			eye.vel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
+			eye.pos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
 		}
 	}
+}
 
+pub fn update(deltaTime: f64, motion: Vec3d) void {
+	var move = motion;
 	if (!Player.isGhost.load(.monotonic)) {
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
