@@ -68,7 +68,7 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-pub const SelectionCapability = enum {
+const SelectionCapability = enum {
 	always,
 	toolEffective,
 	never,
