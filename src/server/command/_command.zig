@@ -117,3 +117,17 @@ pub const Target = struct {
 		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
+
+pub fn getSelectionBounds(source: *User) error{PositionNotSet}![2]main.vec.Vec3i {
+	const pos1 = source.worldEditData.selectionPosition1 orelse blk: {
+		source.sendMessage("#ff0000Position 1 is not set.", .{});
+		break :blk null;
+	};
+	const pos2 = source.worldEditData.selectionPosition2 orelse blk: {
+		source.sendMessage("#ff0000Position 2 is not set.", .{});
+		break :blk null;
+	};
+	if (pos1 == null or pos2 == null) return error.PositionNotSet;
+
+	return .{@min(pos1.?, pos2.?), @max(pos1.?, pos2.?)};
+}
