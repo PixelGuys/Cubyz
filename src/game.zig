@@ -96,13 +96,16 @@ pub const Player = struct { // MARK: Player
 	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var friction: physics.FrictionState = .{.current = 0, .mobile = 0};
+	pub var lastGroundFriction: physics.FrictionState = .{.current = 0, .mobile = 0};
 	pub var volumeProperties: physics.collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobileFriction = 0, .terminalVelocity = 0};
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
 	pub var jumpCoyote: f64 = 0;
+	pub var frictionCoyote: f64 = 0;
 	pub const jumpCooldownConstant = 0.3;
 	pub const jumpCoyoteTimeConstant = 0.100;
+	pub const frictionCoyoteTimeConstant = 0.300;
 
 	pub const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
 	pub const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.725};
@@ -209,6 +212,7 @@ pub const Player = struct { // MARK: Player
 
 		Player.eye = .{};
 		Player.jumpCoyote = 0;
+		Player.frictionCoyote = 0;
 	}
 
 	pub fn dropFromHand(mods: main.Window.Key.Modifiers) void {
@@ -501,6 +505,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	var jumping = false;
 	Player.jumpCooldown -= deltaTime;
+	if (Player.onGround) {
+		Player.lastGroundFriction = Player.friction;
+	}
+	if (Player.frictionCoyote > 0.0) {
+		Player.friction.current = @floatCast(@max(Player.friction.current, Player.lastGroundFriction.current*Player.frictionCoyote/Player.frictionCoyoteTimeConstant));
+		Player.friction.mobile = @floatCast(@max(Player.friction.mobile, Player.lastGroundFriction.mobile*Player.frictionCoyote/Player.frictionCoyoteTimeConstant));
+	}
 	// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
 	const fricMul = speedMultiplier*Player.friction.mobile;
 
@@ -561,6 +572,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					Player.eye.coyote = 0;
 				}
 				Player.jumpCoyote = 0;
+				Player.frictionCoyote = 0;
 			} else if (!KeyBoard.key("fall").pressed) {
 				movementSpeed = @max(movementSpeed, walkingSpeed);
 				movementDir[2] += walkingSpeed;
