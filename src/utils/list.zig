@@ -461,11 +461,11 @@ test "ListUnmanaged.print multiple writes" {
 	list.append(main.stackAllocator, '\n');
 
 	const expected =
-	\\
-	\\BarFooSpam { 0.3, 0.4 }
-	\\fooBarSpam 34
-	\\
-;
+		\\
+		\\BarFooSpam { 0.3, 0.4 }
+		\\fooBarSpam 34
+		\\
+	;
 
 	try std.testing.expectEqualStrings(list.items, expected);
 }
