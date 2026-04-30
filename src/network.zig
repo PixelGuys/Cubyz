@@ -152,9 +152,8 @@ const stun = struct { // MARK: stun
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
 
-		const lookupResultbuff = main.stackAllocator.alloc(std.Io.net.HostName.LookupResult, 1);
+		const lookupResultbuff = main.stackAllocator.alloc(std.Io.net.HostName.LookupResult, 17);
 		defer main.stackAllocator.free(lookupResultbuff);
-		var dnsLookUpQueue: std.Io.Queue(std.Io.net.HostName.LookupResult) = .init(lookupResultbuff);
 
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
 		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
@@ -171,6 +170,7 @@ const stun = struct { // MARK: stun
 			random.fill(data[8..]); // Fill the transaction ID.
 
 			var splitter = std.mem.splitScalar(u8, server, ':');
+			var dnsLookUpQueue: std.Io.Queue(std.Io.net.HostName.LookupResult) = .init(lookupResultbuff);
 			const hostname = std.Io.net.HostName.init(splitter.first()) catch |err| {
 				std.log.warn("Cannot parse STUN server hostname, erorr {s}. This is an error in the code and shouldn't happen", .{@errorName(err)});
 				continue;
