@@ -408,22 +408,66 @@ pub fn ListUnmanaged(comptime T: type) type {
 		}
 
 		pub fn print(self: *@This(), allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) void {
-			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator);
-			defer writer.deinit();
+			// It seems that concepts of capacity and current size are managed in a reversed mannor in Writer.
+			// The `writer.buffer` (a slice) contains what we call capacity as its `len`, while the current
+			// use of the buffer is stored by `writer.end` attribute.
+			var buffer = self.items;
+			buffer.len = self.capacity;
+
+			// Unfortinately there is no constructor that would allow us to use partially filled buffer.
+			// We have to just create a buffer from slice and move the end pointer afterwards.
+			var writer = std.Io.Writer.Allocating.initOwnedSlice(allocator.allocator, buffer);
+			writer.writer.end = self.items.len;
+
 			writer.writer.print(fmt, args) catch unreachable;
-			self.appendSlice(allocator, writer.written());
+
+			// We need to reassign the length and capacity, in case buffer was reallocated during printing.
+			// Mind that they have to be swapped again.
+			self.items = writer.written();
+			self.capacity = writer.writer.buffer.len;
 		}
 	};
 }
 
-test "ListUnmanaged.print" {
-	const list: ListUnmanaged(u8) = .{};
+test "ListUnmanaged.print single call" {
+	var list: ListUnmanaged(u8) = .{};
 	defer list.deinit(main.stackAllocator);
 
-	list.print(main.stackAllocator, "foo {} ", .{33});
-	list.print(main.stackAllocator, "bar {}", .{34});
+	list.print(main.stackAllocator, "foo {}", .{34});
 
-	std.testing.expectEqualStrings(list.items, "foo 33 bar 34");
+	try std.testing.expectEqualStrings(list.items, "foo 34");
+}
+
+test "ListUnmanaged.print with a string" {
+	var list: ListUnmanaged(u8) = .{};
+	defer list.deinit(main.stackAllocator);
+
+	list.print(main.stackAllocator, "foo {s}", .{"bar spam BUZZ"});
+
+	try std.testing.expectEqualStrings(list.items, "foo bar spam BUZZ");
+}
+
+test "ListUnmanaged.print multiple writes" {
+	var list: ListUnmanaged(u8) = .{};
+	defer list.deinit(main.stackAllocator);
+
+	// The tricky part of the implementation is to correctly reassign buffer bounds, so every time
+	// we use the list as print destination, we want to make sure it retains normal list behavior
+	// by inserting a single element.
+	list.append(main.stackAllocator, '\n');
+	list.print(main.stackAllocator, "BarFooSpam {}", .{main.vec.Vec2d{0.3, 0.4}});
+	list.append(main.stackAllocator, '\n');
+	list.print(main.stackAllocator, "fooBarSpam {}", .{34});
+	list.append(main.stackAllocator, '\n');
+
+	const expected =
+	\\
+	\\BarFooSpam { 0.3, 0.4 }
+	\\fooBarSpam 34
+	\\
+;
+
+	try std.testing.expectEqualStrings(list.items, expected);
 }
 
 /// Holds multiple arrays sequentially in memory.
