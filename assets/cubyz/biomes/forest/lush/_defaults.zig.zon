@@ -1,5 +1,10 @@
 .{
-	.properties = .{.wet},
+	.properties = .{
+		.wet,
+	},
+	.tags = .{
+		.pine,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 50,

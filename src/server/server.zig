@@ -249,9 +249,18 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
+		if (main.entityModel.playerEntityModels.items.len != 0) {
+			const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
+			main.entity.components.@"cubyz:model".server.loadByIndex(self.id, defaultModel) catch unreachable;
+		}
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
+
+		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
+		}
+
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}

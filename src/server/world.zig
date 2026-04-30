@@ -520,6 +520,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
+		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
+
 		return self;
 	}
 
@@ -970,6 +972,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(?Vec3d, "playerSpawnPos", null);
+
 		return loadingError;
 	}
 

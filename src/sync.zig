@@ -19,6 +19,8 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
+const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
+
 pub const Side = enum { client, server };
 
 pub const ClientSide = struct {
@@ -231,6 +233,8 @@ pub const Command = struct { // MARK: Command
 		fillAnyFromCreative = 14,
 		depositOrDrop = 7,
 		depositToAny = 11,
+		moveToPlayerBag = 16,
+		takeFromPlayerBag = 17,
 		craftFrom = 13,
 		craftProceduralItem = 15,
 		clear = 8,
@@ -249,6 +253,8 @@ pub const Command = struct { // MARK: Command
 		fillAnyFromCreative: FillAnyFromCreative,
 		depositOrDrop: DepositOrDrop,
 		depositToAny: DepositToAny,
+		moveToPlayerBag: MoveToPlayerBag,
+		takeFromPlayerBag: TakeFromPlayerBag,
 		craftFrom: CraftFrom,
 		craftProceduralItem: CraftProceduralItem,
 		clear: Clear,
@@ -262,6 +268,8 @@ pub const Command = struct { // MARK: Command
 		swap = 1,
 		delete = 2,
 		create = 3,
+		moveToBag = 7,
+		takeFromBag = 8,
 		useDurability = 4,
 		addHealth = 5,
 		addEnergy = 6,
@@ -285,6 +293,16 @@ pub const Command = struct { // MARK: Command
 		create: struct {
 			dest: InventoryAndSlot,
 			item: Item,
+			amount: u16,
+		},
+		moveToBag: struct {
+			dest: *Inventory.BagInventory,
+			source: InventoryAndSlot,
+			amount: u16,
+		},
+		takeFromBag: struct {
+			dest: InventoryAndSlot,
+			source: *Inventory.BagInventory,
 			amount: u16,
 		},
 		useDurability: struct {
@@ -562,6 +580,32 @@ pub const Command = struct { // MARK: Command
 					}
 					info.dest.inv.update();
 				},
+				.moveToBag => |info| {
+					const item = info.dest.peek(0).item;
+					std.debug.assert(std.meta.eql(info.source.ref().item, item) or info.source.ref().item == .null);
+
+					var remainingAmount = info.amount;
+					while (remainingAmount != 0) {
+						var stack = info.dest.pop();
+						if (stack.amount > remainingAmount) {
+							stack.amount -= remainingAmount;
+							remainingAmount = 0;
+							std.debug.assert(info.dest.push(stack) == 0);
+							break;
+						}
+						remainingAmount -= stack.amount;
+					}
+					std.debug.assert(remainingAmount == 0);
+					info.source.ref().* = .{.item = item, .amount = info.amount};
+				},
+				.takeFromBag => |info| {
+					std.debug.assert(info.amount < info.dest.ref().amount);
+					std.debug.assert(info.source.push(.{.item = info.dest.ref().item, .amount = info.amount}) == 0);
+					info.dest.ref().amount -= info.amount;
+					if (info.dest.ref().amount == 0) {
+						info.dest.ref().item = .null;
+					}
+				},
 				.useDurability => |info| {
 					std.debug.assert(info.source.ref().item == .null or std.meta.eql(info.source.ref().item, info.item));
 					info.source.ref().item = info.item;
@@ -581,7 +625,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .addHealth, .addEnergy => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -692,6 +736,38 @@ pub const Command = struct { // MARK: Command
 			.create => |info| {
 				self.executeAddOperation(allocator, side, info.dest, info.amount, info.item);
 				info.dest.inv.update();
+			},
+			.moveToBag => |*info| {
+				const source = info.source.ref();
+				const amount = @min(source.amount, info.amount);
+				source.amount = info.dest.push(.{.item = source.item, .amount = amount});
+				if (source.amount == 0) {
+					source.item = .null;
+				}
+				info.amount = amount - source.amount;
+			},
+			.takeFromBag => |*info| {
+				const dest = info.dest.ref();
+				if (dest.item == .null) {
+					dest.item = info.source.peek(0).item;
+				}
+				info.amount = @min(info.amount, dest.item.stackSize());
+				var remainingAmount = info.amount;
+				while (remainingAmount != 0) {
+					var stack = info.source.peek(0);
+					if (stack.item == .null) break;
+					if (!std.meta.eql(stack.item, dest.item)) break;
+					_ = info.source.pop();
+					if (stack.amount > remainingAmount) {
+						stack.amount -= remainingAmount;
+						remainingAmount = 0;
+						std.debug.assert(info.source.push(stack) == 0);
+						break;
+					}
+					remainingAmount -= stack.amount;
+				}
+				info.amount -= remainingAmount;
+				dest.amount += info.amount;
 			},
 			.useDurability => |*info| {
 				info.item = info.source.ref().item;
@@ -1231,6 +1307,79 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
+	const MoveToPlayerBag = struct { // MARK: MoveToPlayerBag
+		source: InventoryAndSlot,
+		amount: u16,
+
+		fn run(self: MoveToPlayerBag, ctx: Context) error{serverFailure}!void {
+			std.debug.assert(ctx.side == .client or ctx.user != null);
+			const bag = switch (ctx.side) {
+				.client => @"cubyz:bag".client.getBag(main.game.Player.id).?,
+				.server => @"cubyz:bag".server.getBag((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
+			};
+			ctx.execute(.{.moveToBag = .{.dest = bag, .source = self.source, .amount = self.amount}});
+		}
+
+		fn serialize(self: MoveToPlayerBag, writer: *BinaryWriter) void {
+			self.source.write(writer);
+			writer.writeInt(u16, self.amount);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !MoveToPlayerBag {
+			return .{
+				.source = try InventoryAndSlot.read(reader, side, user),
+				.amount = try reader.readInt(u16),
+			};
+		}
+	};
+
+	const TakeFromPlayerBag = struct { // MARK: TakeFromPlayerBag
+		destinations: Inventory.Inventories,
+		amount: u16,
+
+		pub fn init(destinations: []const Inventory.ClientInventory, amount: u16) TakeFromPlayerBag {
+			return .{
+				.destinations = .initFromClientInventories(main.globalAllocator, destinations),
+				.amount = amount,
+			};
+		}
+
+		fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
+			self.destinations.deinit(main.globalAllocator);
+		}
+
+		fn run(self: TakeFromPlayerBag, ctx: Context) error{serverFailure}!void {
+			std.debug.assert(ctx.side == .client or ctx.user != null);
+			const bag = switch (ctx.side) {
+				.client => @"cubyz:bag".client.getBag(main.game.Player.id).?,
+				.server => @"cubyz:bag".server.getBag((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
+			};
+			var amount: u16 = 0;
+			const item = bag.peek(0).item;
+			for (0..bag.slots.items.len) |i| {
+				const stack = bag.peek(i);
+				if (!std.meta.eql(stack.item, item)) break;
+				amount +|= stack.amount;
+			}
+			amount = @min(amount, self.amount);
+			_ = self.destinations.putItemsInto(ctx, amount, .{.bag = bag});
+		}
+
+		fn serialize(self: TakeFromPlayerBag, writer: *BinaryWriter) void {
+			self.destinations.toBytes(writer);
+			writer.writeInt(u16, self.amount);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !TakeFromPlayerBag {
+			const destinations = try Inventory.Inventories.fromBytes(main.globalAllocator, reader, side, user);
+			errdefer destinations.deinit(main.globalAllocator);
+			return .{
+				.destinations = destinations,
+				.amount = try reader.readInt(u16),
+			};
+		}
+	};
+
 	const CraftFrom = struct { // MARK: CraftFrom
 		destinations: Inventory.Inventories,
 		sources: Inventory.Inventories,
@@ -1377,7 +1526,7 @@ pub const Command = struct { // MARK: Command
 		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
 
 		const BlockDropLocation = struct {
-			dir: Neighbor,
+			normalDir: Vec3f,
 			min: Vec3f,
 			max: Vec3f,
 
@@ -1411,19 +1560,25 @@ pub const Command = struct { // MARK: Command
 			}
 			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
+				const random = self.randomOffset();
+				const minorVectors = minors(self);
+				const minor1Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[0])))*minorVectors[0];
+				const minor2Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[1])))*minorVectors[1];
+				return pos + minor1Offset + minor2Offset + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
 			}
 			fn directionOffset(self: BlockDropLocation) Vec3d {
 				return half + self.direction()*half;
 			}
-			inline fn direction(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(self.dir.relPos());
+			inline fn direction(self: BlockDropLocation) Vec3f {
+				return self.normalDir;
 			}
-			inline fn major(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(@abs(self.dir.relPos()));
+			inline fn major(self: BlockDropLocation) Vec3f {
+				return @abs(self.normalDir);
 			}
-			inline fn minor(self: BlockDropLocation) Vec3d {
-				return @floatFromInt(self.dir.orthogonalComponents());
+			inline fn minors(self: BlockDropLocation) struct { Vec3f, Vec3f } {
+				const minor1 = vec.normalize(vec.cross(self.normalDir, if (@reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0}));
+				const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
+				return .{minor1, minor2};
 			}
 			fn dropDir(self: BlockDropLocation) Vec3f {
 				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
@@ -1479,6 +1634,7 @@ pub const Command = struct { // MARK: Command
 			}
 
 			// Apply inventory changes:
+			const handItem = self.source.inv.getItem(self.source.slot); // State should be stored before procedural item breaks
 			switch (costOfChange) {
 				.no => unreachable,
 				.yes => {},
@@ -1499,6 +1655,8 @@ pub const Command = struct { // MARK: Command
 				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 				for (0..dropAmount) |_| {
 					for (self.oldBlock.blockDrops()) |drop| {
+						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
+
 						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 							self.dropLocation.drop(self.pos, self.newBlock, drop);
 						}
@@ -1510,7 +1668,7 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: UpdateBlock, writer: *BinaryWriter) void {
 			self.source.write(writer);
 			writer.writeVec(Vec3i, self.pos);
-			writer.writeEnum(Neighbor, self.dropLocation.dir);
+			writer.writeVec(Vec3f, self.dropLocation.normalDir);
 			writer.writeVec(Vec3f, self.dropLocation.min);
 			writer.writeVec(Vec3f, self.dropLocation.max);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
@@ -1522,7 +1680,7 @@ pub const Command = struct { // MARK: Command
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.pos = try reader.readVec(Vec3i),
 				.dropLocation = .{
-					.dir = try reader.readEnum(Neighbor),
+					.normalDir = try reader.readVec(Vec3f),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),
 				},

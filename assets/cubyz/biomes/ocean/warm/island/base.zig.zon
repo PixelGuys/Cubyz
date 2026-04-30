@@ -1,4 +1,7 @@
 .{
+	.tags = .{
+		.palm,
+	},
 	.minHeight = 5,
 	.maxHeight = 6,
 	.radius = 32,

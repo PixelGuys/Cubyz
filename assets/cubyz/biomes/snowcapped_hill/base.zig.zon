@@ -3,6 +3,9 @@
 		.cold,
 		.wet,
 	},
+	.tags = .{
+		.pine,
+	},
 	.minHeightLimit = 50,
 	.minHeight = 100,
 	.maxHeight = 150,

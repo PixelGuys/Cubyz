@@ -29,4 +29,5 @@
 	.{.old = "flatland", .new = "development/flat"},
 	.{.old = "island", .new = "ocean/temperate/island/base"},
 	.{.old = "island_shelf", .new = "ocean/temperate/island/shelf"},
+	.{.old = "cave/cave", .new = "cave/slate/base"},
 }
