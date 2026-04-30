@@ -406,7 +406,24 @@ pub fn ListUnmanaged(comptime T: type) type {
 				self.items.len -= len - new_items.len;
 			}
 		}
+
+		pub fn print(self: *@This(), allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) void {
+			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator);
+			defer writer.deinit();
+			writer.writer.print(fmt, args) catch unreachable;
+			self.appendSlice(allocator, writer.written());
+		}
 	};
+}
+
+test "ListUnmanaged.print" {
+	const list: ListUnmanaged(u8) = .{};
+	defer list.deinit(main.stackAllocator);
+
+	list.print(main.stackAllocator, "foo {} ", .{33});
+	list.print(main.stackAllocator, "bar {}", .{34});
+
+	std.testing.expectEqualStrings(list.items, "foo 33 bar 34");
 }
 
 /// Holds multiple arrays sequentially in memory.
