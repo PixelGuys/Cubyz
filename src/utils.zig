@@ -2242,6 +2242,11 @@ pub fn obfuscateString(allocator: NeverFailingAllocator, string: []const u8) []c
 	return obfuscated;
 }
 
+pub fn all(comptime predicate: anytype, sequence: anytype) bool {
+	for (sequence) |element| if (!predicate(element)) return false;
+	return true;
+}
+
 pub const Base64 = struct {
 	fullBuffer: []u8,
 	base64Encoded: []const u8,
