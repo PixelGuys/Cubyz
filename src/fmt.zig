@@ -30,7 +30,7 @@ pub const FormatArg = union(enum) {
 			.pointer => |ptr| {
 				if (ptr.size == .one and @typeInfo(ptr.child) == .array and @typeInfo(ptr.child).array.child == u8) return .{.string = val.*};
 				if (ptr.size == .slice and ptr.child == u8) return .{.string = val.*};
-				if ((ptr.size == .many or ptr.size == .c) and ptr.child == u8) return .{.nullTerminatedString = val.*};
+				if (((ptr.size == .many and ptr.sentinel() != null) or ptr.size == .c) and ptr.child == u8) return .{.nullTerminatedString = val.*};
 
 				if (ptr.size == .one) return .fromAnytype(ptr.child, val.*);
 			},
@@ -54,7 +54,7 @@ pub const FormatArg = union(enum) {
 				try writer.print("{any}", .{@as(*const T, @ptrCast(@alignCast(ptr))).*});
 			}
 		}.genericFormat;
-		return .{.anyFormatFunction = .{.val = val, .function = genericFormat}};
+		return .{.anyFormatFunction = .{.val = @ptrCast(val), .function = genericFormat}};
 	}
 };
 
@@ -138,6 +138,16 @@ pub const Placeholder = struct { // Copied from std.fmt.Placeholder and adjusted
 			.width = width,
 			.precision = precision,
 		};
+	}
+};
+
+pub const FormatErrorTrace = struct {
+	stackTrace: std.builtin.StackTrace,
+	terminalMode: std.Io.Terminal.Mode = .no_color,
+
+	pub fn format(self: FormatErrorTrace, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.writeByte('\n');
+		try std.debug.writeErrorReturnTrace(&self.stackTrace, .{.writer = writer, .mode = self.terminalMode});
 	}
 };
 

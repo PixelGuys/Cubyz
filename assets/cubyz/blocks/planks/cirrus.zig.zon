@@ -1,0 +1,22 @@
+.{
+	.item = .{
+		.material = .{
+			.durability = 40,
+			.massDamage = 2.1,
+			.hardnessDamage = 2.4,
+			.swingSpeed = 4.8,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff506786, 0xff607d9c, 0xff6c91b1, 0xff7daacd, 0xff91c3ec,
+			},
+			.modifiers = .{
+				.{
+					.id = "light",
+					.strength = 0.1,
+				},
+			},
+		},
+	},
+
+	.texture = "cubyz:planks/cirrus",
+}

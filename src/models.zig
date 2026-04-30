@@ -14,7 +14,7 @@ const Mat4f = vec.Mat4f;
 
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const Box = main.game.collision.Box;
+const Box = main.physics.collision.Box;
 
 var quadSSBO: graphics.SSBO = undefined;
 
