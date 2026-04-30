@@ -74,6 +74,7 @@ pub fn addEntity(zon: ZonElement) !void {
 	try ent.init(zon, main.globalAllocator);
 }
 pub fn getEntity(id: u32) ?*main.client.Entity {
+	main.utils.assertLocked(&mutex);
 	if (id < idMapping.items.len)
 		return &entities.items()[idMapping.items[id] orelse return null];
 	return null;
@@ -97,13 +98,14 @@ pub fn removeEntity(id: u32) void {
 			while (i > 0) {
 				if (idMapping.items[i - 1] != null)
 					break;
+				_ = idMapping.pop();
 				i -= 1;
 			}
-			idMapping.resize(i);
 		}
 	}
 	// remove entity
 	{
+		std.debug.assert(ent.id == id);
 		ent.deinit(main.globalAllocator);
 		_ = entities.swapRemove(index);
 
