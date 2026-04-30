@@ -435,7 +435,8 @@ test "ListUnmanaged.print single call" {
 
 	list.print(main.stackAllocator, "foo {}", .{34});
 
-	try std.testing.expectEqualStrings(list.items, "foo 34");
+	try std.testing.expectEqualStrings("foo 34", list.items);
+	try std.testing.expect(list.items.len <= list.capacity);
 }
 
 test "ListUnmanaged.print with a string" {
@@ -444,7 +445,8 @@ test "ListUnmanaged.print with a string" {
 
 	list.print(main.stackAllocator, "foo {s}", .{"bar spam BUZZ"});
 
-	try std.testing.expectEqualStrings(list.items, "foo bar spam BUZZ");
+	try std.testing.expectEqualStrings("foo bar spam BUZZ", list.items);
+	try std.testing.expect(list.items.len <= list.capacity);
 }
 
 test "ListUnmanaged.print multiple writes" {
@@ -467,7 +469,8 @@ test "ListUnmanaged.print multiple writes" {
 		\\
 	;
 
-	try std.testing.expectEqualStrings(list.items, expected);
+	try std.testing.expectEqualStrings(expected, list.items);
+	try std.testing.expect(list.items.len <= list.capacity);
 }
 
 /// Holds multiple arrays sequentially in memory.
