@@ -69,17 +69,36 @@ pub const Ore = struct {
 };
 
 pub const SelectionCapability = enum {
-    always,
-    toolEffective,
-    never,
+	always,
+	toolEffective,
+	never,
 
-    pub fn allowsItemSelection(self: SelectionCapability, item: Item, block: Block) bool {
-        return switch (self) {
-            .always => true,
-            .toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
-            .never => false,
-        };
-    }
+	pub fn loadSelectionCapabilitiesFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []SelectionCapability {
+		var capabilities = main.List(SelectionCapability).initCapacity(_allocator, zon.toSlice().len);
+		for (zon.toSlice()) |capabilityZon| {
+			switch (capabilityZon) {
+				.string, .stringOwned => |string| {
+					if (std.meta.stringToEnum(SelectionCapability, string)) |capability| {
+						capabilities.appendAssumeCapacity(capability);
+					} else {
+						std.log.err("SelectionCapability '{s}' is invalid. Ignoring", .{string});
+					}
+				},
+				else => {
+					std.log.err("SelectionCapability element is not a string (type: {s}). Ignoring", .{@tagName(capabilityZon)});
+				},
+			}
+		}
+		return capabilities.toOwnedSlice();
+	}
+
+	pub fn allowsItemSelection(self: SelectionCapability, item: Item, block: Block) bool {
+		return switch (self) {
+			.always => true,
+			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
+			.never => false,
+		};
+	}
 };
 
 var _transparent: [maxBlockCount]bool = undefined;
@@ -152,11 +171,14 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 
-	const selectionCapabilities = zon.get(?[]SelectionCapability, "selectionCapabilities", null);
-	if (selectionCapabilities) |capabilities| {
+	var selectionCapabilities: ?[]SelectionCapability = null;
+	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
+		const capabilities = SelectionCapability.loadSelectionCapabilitiesFromZon(main.stackAllocator, capabilitiesZon);
+		defer main.stackAllocator.free(capabilities);
 		if (capabilities.len == 0) {
 			std.log.err("Field '.selectionCapabilities' is an empty array. This block can never be selected. Did you mean '.selectionCapabilities = .{{.never}}' instead?", .{});
 		}
+		selectionCapabilities = main.worldArena.allocator.dupe(SelectionCapability, capabilities) catch unreachable;
 	}
 	_selectionCapabilities[size] = selectionCapabilities;
 
