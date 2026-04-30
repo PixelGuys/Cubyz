@@ -181,8 +181,13 @@ const stun = struct { // MARK: stun
 				continue;
 			};
 			const lookupResult = dnsLookUpQueue.getOne(main.io) catch continue;
-			const serverAddress = lookupResult.address;
-			
+			const serverAddress = switch (lookupResult) {
+				.address => |addr| addr,
+				.canonical_name => (dnsLookUpQueue.getOne(main.io) catch continue).address,
+			};
+
+			std.debug.print("ADDRESS:{f}\n", .{serverAddress});
+
 			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, .fromMilliseconds(500))) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
