@@ -151,6 +151,11 @@ const stun = struct { // MARK: stun
 
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
+
+		const lookupResultbuff = main.stackAllocator.alloc(std.Io.net.HostName.LookupResult, 1);
+		defer main.stackAllocator.free(lookupResultbuff);
+		var dnsLookUpQueue: std.Io.Queue(std.Io.net.HostName.LookupResult) = .init(lookupResultbuff);
+
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
 		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
@@ -166,11 +171,18 @@ const stun = struct { // MARK: stun
 			random.fill(data[8..]); // Fill the transaction ID.
 
 			var splitter = std.mem.splitScalar(u8, server, ':');
-			const ip = splitter.first();
-			const serverAddress = Address.resolve(main.io, ip, std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478) catch |err| {
-				std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{ip, @errorName(err)});
+			const hostname = std.Io.net.HostName.init(splitter.first()) catch |err| {
+				std.log.warn("Cannot parse STUN server hostname, erorr {s}. This is an error in the code and shouldn't happen", .{@errorName(err)});
 				continue;
 			};
+			const port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478;
+			hostname.lookup(main.io, &dnsLookUpQueue, .{.port = port}) catch |err| {
+				std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{hostname.bytes, @errorName(err)});
+				continue;
+			};
+			const lookupResult = dnsLookUpQueue.getOne(main.io) catch continue;
+			const serverAddress = lookupResult.address;
+			
 			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, .fromMilliseconds(500))) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
