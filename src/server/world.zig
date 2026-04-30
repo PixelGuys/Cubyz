@@ -972,6 +972,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(?Vec3d, "playerSpawnPos", null);
+
 		return loadingError;
 	}
 
