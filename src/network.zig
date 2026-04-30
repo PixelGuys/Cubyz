@@ -161,12 +161,14 @@ const stun = struct { // MARK: stun
 		for (0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
 			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len - 1)];
-			var data = [_]u8{
+			const _data = [_]u8{
 				0x00, 0x01, // message type
 				0x00, 0x00, // message length
 				MAGIC_COOKIE[0], MAGIC_COOKIE[1], MAGIC_COOKIE[2], MAGIC_COOKIE[3], // "Magic cookie"
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // transaction ID
 			};
+			var data = main.stackAllocator.dupe(u8, &_data);
+			defer main.stackAllocator.free(data);
 			random.fill(data[8..]); // Fill the transaction ID.
 
 			var splitter = std.mem.splitScalar(u8, server, ':');
@@ -186,9 +188,7 @@ const stun = struct { // MARK: stun
 				.canonical_name => (dnsLookUpQueue.getOne(main.io) catch continue).address,
 			};
 
-			std.debug.print("ADDRESS:{f}\n", .{serverAddress});
-
-			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, .fromMilliseconds(500))) |answer| {
+			if (connection.sendRequest(main.globalAllocator, data, serverAddress, .fromMilliseconds(500))) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
 					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
@@ -216,6 +216,19 @@ const stun = struct { // MARK: stun
 		return Address.parseIp4("127.0.0.1", settings.defaultPort) catch unreachable; // TODO: Return ip address in LAN.
 	}
 
+	fn addressFromBits(data: [6]u8) !Address {
+		const port = std.mem.readInt(u16, data[0..2], .big);
+		const ip = std.mem.readInt(u32, data[2..6], builtin.cpu.arch.endian()); // Needs to stay in big endian → native.
+		const addrString = std.fmt.allocPrint(main.stackAllocator.allocator, "{d}.{d}.{d}.{d}", .{
+			ip & 255,
+			ip >> 8 & 255,
+			ip >> 16 & 255,
+			ip >> 24,
+		}) catch unreachable;
+		defer main.stackAllocator.free(addrString);
+		return Address.parseIp4(addrString, port);
+	}
+
 	fn findIPPort(_data: []const u8) !Address {
 		var data = _data[20..]; // Skip the header.
 		while (data.len > 0) {
@@ -236,7 +249,7 @@ const stun = struct { // MARK: stun
 							addressData[4] ^= MAGIC_COOKIE[2];
 							addressData[5] ^= MAGIC_COOKIE[3];
 						}
-						return Address.parseLiteral(&addressData);
+						return addressFromBits(addressData);
 					} else if (data[1] == 0x02) {
 						data = data[(len + 3) & ~@as(usize, 3) ..]; // Pad to 32 Bit.
 						continue; // I don't care about IPv6.
@@ -306,11 +319,11 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.packetSendRequests = .initContext({});
 
 		result.localPort = localPort;
-		var address = try Address.parse("127.0.0.1", localPort);
-		result.socket = address.bind(main.io, .{.protocol = std.Io.net.Protocol.udp, .mode = Socket.Mode.dgram}) catch |err| blk: {
+		var address = try Address.parse("0.0.0.0", localPort);
+		result.socket = address.bind(main.io, .{.protocol = .udp, .mode = .dgram}) catch |err| blk: {
 			if (err == error.AddressInUse) {
 				address.setPort(0);
-				const socket = try address.bind(main.io, .{.protocol = std.Io.net.Protocol.udp, .mode = Socket.Mode.dgram});
+				const socket = try address.bind(main.io, .{.protocol = .udp, .mode = .dgram});
 				result.localPort = socket.address.getPort();
 				break :blk socket;
 			} else return err;
