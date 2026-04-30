@@ -21,7 +21,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
-var entityCount: u32 = 0;
+var entityCount: usize = 0;
 
 fn kickbyConnection(conn: *main.network.Connection) void {
 	conn.disconnect();
