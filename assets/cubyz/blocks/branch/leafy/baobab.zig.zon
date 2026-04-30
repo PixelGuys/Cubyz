@@ -2,7 +2,7 @@
 	.onUpdate = .{
 		.type = .decay,
 		.drops = .{
-			.{.items = .{"cubyz:branch/baobab"}},
+			.{.chance = 0.5, .items = .{"cubyz:branch/baobab"}},
 		},
 	},
 	.drops = .{
