@@ -1,0 +1,19 @@
+.{
+	.caveModels = .{
+		.{
+			.id = "cubyz:rectangular_cuboid",
+			.minAmount = 1,
+			.maxAmount = 1,
+			.minSideLengths = .{40, 8, 50},
+			.maxSideLengths = .{70, 14, 100},
+			.maxBiomeCenterDistance = 0,
+		},
+		.{
+			.id = "cubyz:hemisphere",
+			.minAmount = 2,
+			.maxAmount = 5,
+			.minRadius = 4,
+			.maxRadius = 10,
+		},
+	},
+}
