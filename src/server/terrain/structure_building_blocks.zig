@@ -215,7 +215,7 @@ pub const Rotation = union(RotationMode) {
 				return error.UnknownString;
 			},
 			.int => |value| .{.fixed = @enumFromInt(@abs(@divTrunc(value, 90))%4)},
-			.float => |value| .{.fixed = @enumFromInt(@abs(@as(u64, @intFromFloat(value/90.0)))%4)},
+			.float => |value| .{.fixed = @enumFromInt(@abs(@as(u64, @trunc(value/90.0)))%4)},
 			.null => Rotation.random,
 			else => return error.UnknownType,
 		};

@@ -284,7 +284,7 @@ pub const ParticleSystem = struct {
 			particleLocal.velAndRotationVel[3] = rotVel;
 
 			const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
-			const intPos: vec.Vec3i = @intFromFloat(@floor(positionf64));
+			const intPos: vec.Vec3i = @floor(positionf64);
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			const compressedLight =
 				@as(u32, light[0] >> 3) << 25 |

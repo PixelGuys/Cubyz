@@ -125,7 +125,7 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 				currentChances[lastOverfullIndex] -= delta;
 				self.aliasData[lastUnderfullIndex] = .{
 					.alias = lastOverfullIndex,
-					.chance = @intFromFloat(delta/desiredChance*std.math.maxInt(u16)),
+					.chance = @trunc(delta/desiredChance*std.math.maxInt(u16)),
 				};
 				if (currentChances[lastOverfullIndex] < desiredChance) {
 					lastUnderfullIndex = @min(lastUnderfullIndex, lastOverfullIndex);

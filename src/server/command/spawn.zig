@@ -33,7 +33,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				return;
 			}
 			const world = main.server.world.?;
-			world.spawn = @intFromFloat(pos);
+			world.spawn = @trunc(pos);
 			return;
 		}
 

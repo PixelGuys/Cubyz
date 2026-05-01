@@ -132,6 +132,17 @@ pub const client = struct {
 			@field(list, decl.name).client.unload(id);
 		}
 	}
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+		main.client.entity_manager.update();
+		inline for (@typeInfo(systems).@"struct".decls) |decl| {
+			@field(systems, decl.name).client.render(projMatrix, ambientLight, playerPos, deltaTime);
+		}
+	}
+	pub fn renderHud(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+		inline for (@typeInfo(systems).@"struct".decls) |decl| {
+			@field(systems, decl.name).client.renderHud(projMatrix, ambientLight, playerPos);
+		}
+	}
 };
 pub const server = struct {
 	pub fn init() void {

@@ -48,7 +48,7 @@ pub fn generate(self: *Boulder, _: GenerationMode, x: i32, y: i32, z: i32, chunk
 	}
 	// My potential functions is ¹⁄ₙ Σ (radius/2)²/(x⃗ - x⃗ₚₒᵢₙₜ)²
 	// This ensures that the entire boulder is inside of a square with sidelength 2*radius.
-	const maxRadius: i32 = @intFromFloat(@ceil(radius));
+	const maxRadius: i32 = @ceil(radius);
 	var px = chunk.startIndex(x - maxRadius);
 	while (px < x + maxRadius) : (px += chunk.super.pos.voxelSize) {
 		var py = chunk.startIndex(y - maxRadius);

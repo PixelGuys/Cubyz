@@ -62,13 +62,13 @@ fn generateSphere_(seed: *u64, map: *CaveMapFragment, relPos: Vec3f, radius: f32
 	const relX = relPos[0];
 	const relY = relPos[1];
 	const relZ = relPos[2];
-	var xMin = @as(i32, @intFromFloat(relX - radius)) - 1;
+	var xMin = @as(i32, @trunc(relX - radius)) - 1;
 	xMin = @max(xMin, 0);
-	var xMax = @as(i32, @intFromFloat(relX + radius)) + 1;
+	var xMax = @as(i32, @trunc(relX + radius)) + 1;
 	xMax = @min(xMax, CaveMapFragment.width*map.pos.voxelSize);
-	var yMin = @as(i32, @intFromFloat(relY - radius)) - 1;
+	var yMin = @as(i32, @trunc(relY - radius)) - 1;
 	yMin = @max(yMin, 0);
-	var yMax = @as(i32, @intFromFloat(relY + radius)) + 1;
+	var yMax = @as(i32, @trunc(relY + radius)) + 1;
 	yMax = @min(yMax, CaveMapFragment.width*map.pos.voxelSize);
 	if (xMin >= xMax or yMin >= yMax or relZ - radius + 1 >= @as(f32, @floatFromInt(CaveMapFragment.height*map.pos.voxelSize)) or relZ + radius + 1 < 0) {
 		return;
@@ -81,12 +81,12 @@ fn generateSphere_(seed: *u64, map: *CaveMapFragment, relPos: Vec3f, radius: f32
 		while (curY < yMax) : (curY += map.pos.voxelSize) {
 			const distToCenterY = (@as(f32, @floatFromInt(curY)) - relY)/radius;
 			const xyDistanceSquared = distToCenterX*distToCenterX + distToCenterY*distToCenterY;
-			var zMin: i32 = @intFromFloat(relZ);
-			var zMax: i32 = @intFromFloat(relZ);
+			var zMin: i32 = @trunc(relZ);
+			var zMax: i32 = @trunc(relZ);
 			if (xyDistanceSquared < 0.9*0.9) {
 				const zDistance = radius*@sqrt(0.9*0.9 - xyDistanceSquared);
-				zMin = @intFromFloat(relZ - zDistance);
-				zMax = @intFromFloat(relZ + zDistance);
+				zMin = @trunc(relZ - zDistance);
+				zMax = @trunc(relZ + zDistance);
 				if (addTerrain) {
 					map.addRange(curX, curY, zMin, zMax); // Add the center range in a single call.
 				} else {
@@ -143,8 +143,8 @@ fn generateCaveBetween(_seed: u64, map: *CaveMapFragment, startRelPos: Vec3f, en
 	const distance = vec.length(startRelPos - endRelPos);
 	const maxFractalShift = distance*randomness;
 	const safetyInterval = maxHeight + maxFractalShift;
-	const min: Vec3i = @intFromFloat(@min(startRelPos, endRelPos) - @as(Vec3f, @splat(safetyInterval)));
-	const max: Vec3i = @intFromFloat(@max(startRelPos, endRelPos) + @as(Vec3f, @splat(safetyInterval)));
+	const min: Vec3i = @trunc(@min(startRelPos, endRelPos) - @as(Vec3f, @splat(safetyInterval)));
+	const max: Vec3i = @trunc(@max(startRelPos, endRelPos) + @as(Vec3f, @splat(safetyInterval)));
 	// Only divide further if the cave may go through the considered chunk.
 	if (min[0] >= CaveMapFragment.width*map.pos.voxelSize or max[0] < 0) return;
 	if (min[1] >= CaveMapFragment.width*map.pos.voxelSize or max[1] < 0) return;
@@ -173,15 +173,15 @@ fn generateCaveBetweenAndCheckBiomeProperties(_seed: u64, map: *CaveMapFragment,
 	const distance = vec.length(startRelPos - endRelPos);
 	const maxFractalShift = distance*randomness;
 	const safetyInterval = maxHeight + maxFractalShift;
-	const min: Vec3i = @intFromFloat(@min(startRelPos, endRelPos) - @as(Vec3f, @splat(safetyInterval)));
-	const max: Vec3i = @intFromFloat(@max(startRelPos, endRelPos) + @as(Vec3f, @splat(safetyInterval)));
+	const min: Vec3i = @trunc(@min(startRelPos, endRelPos) - @as(Vec3f, @splat(safetyInterval)));
+	const max: Vec3i = @trunc(@max(startRelPos, endRelPos) + @as(Vec3f, @splat(safetyInterval)));
 	// Only divide further if the cave may go through the considered chunk.
 	if (min[0] >= CaveMapFragment.width*map.pos.voxelSize or max[0] < 0) return;
 	if (min[1] >= CaveMapFragment.width*map.pos.voxelSize or max[1] < 0) return;
 	if (min[2] >= CaveMapFragment.height*map.pos.voxelSize or max[2] < 0) return;
 
-	const startRadiusFactor = biomeMap.getRoughBiome(map.pos.wx +% @as(i32, @intFromFloat(startRelPos[0])), map.pos.wy +% @as(i32, @intFromFloat(startRelPos[1])), map.pos.wz +% @as(i32, @intFromFloat(startRelPos[2])), false, undefined, false).caveRadiusFactor;
-	const endRadiusFactor = biomeMap.getRoughBiome(map.pos.wx +% @as(i32, @intFromFloat(endRelPos[0])), map.pos.wy +% @as(i32, @intFromFloat(endRelPos[1])), map.pos.wz +% @as(i32, @intFromFloat(endRelPos[2])), false, undefined, false).caveRadiusFactor;
+	const startRadiusFactor = biomeMap.getRoughBiome(map.pos.wx +% @as(i32, @trunc(startRelPos[0])), map.pos.wy +% @as(i32, @trunc(startRelPos[1])), map.pos.wz +% @as(i32, @trunc(startRelPos[2])), false, undefined, false).caveRadiusFactor;
+	const endRadiusFactor = biomeMap.getRoughBiome(map.pos.wx +% @as(i32, @trunc(endRelPos[0])), map.pos.wy +% @as(i32, @trunc(endRelPos[1])), map.pos.wz +% @as(i32, @trunc(endRelPos[2])), false, undefined, false).caveRadiusFactor;
 	generateCaveBetween(_seed, map, startRelPos, endRelPos, bias, startRadius*startRadiusFactor, endRadius*endRadiusFactor, randomness);
 }
 

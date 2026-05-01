@@ -81,12 +81,12 @@ pub const collision = struct {
 				if (amount < 0) boundingBox.min[2] += amount else boundingBox.max[2] += amount;
 			},
 		}
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
+		const minX: i32 = @floor(boundingBox.min[0]);
+		const maxX: i32 = @floor(boundingBox.max[0]);
+		const minY: i32 = @floor(boundingBox.min[1]);
+		const maxY: i32 = @floor(boundingBox.max[1]);
+		const minZ: i32 = @floor(boundingBox.min[2]);
+		const maxZ: i32 = @floor(boundingBox.max[2]);
 
 		const boundingBoxCenter = boundingBox.center();
 		const fullBoundingBoxExtent = boundingBox.extent();
@@ -133,12 +133,12 @@ pub const collision = struct {
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
 		};
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
+		const minX: i32 = @floor(boundingBox.min[0]);
+		const maxX: i32 = @floor(boundingBox.max[0]);
+		const minY: i32 = @floor(boundingBox.min[1]);
+		const maxY: i32 = @floor(boundingBox.max[1]);
 
-		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
+		const z: i32 = @floor(boundingBox.min[2] - 0.01);
 
 		var friction: f64 = 0;
 		var bounciness: f64 = 0;
@@ -207,12 +207,12 @@ pub const collision = struct {
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
 		};
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
+		const minX: i32 = @floor(boundingBox.min[0]);
+		const maxX: i32 = @floor(boundingBox.max[0]);
+		const minY: i32 = @floor(boundingBox.min[1]);
+		const maxY: i32 = @floor(boundingBox.max[1]);
+		const minZ: i32 = @floor(boundingBox.min[2]);
+		const maxZ: i32 = @floor(boundingBox.max[2]);
 
 		var invTerminalVelocitySum: f64 = 0;
 		var densitySum: f64 = 0;
@@ -314,12 +314,12 @@ pub const collision = struct {
 	pub fn touchBlocks(comptime side: main.sync.Side, entity: *main.server.Entity, hitBox: Box, deltaTime: f64) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + 0.01));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - 0.01));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + 0.01));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] + 0.01));
+		const minX: i32 = @floor(boundingBox.min[0] - 0.01);
+		const maxX: i32 = @floor(boundingBox.max[0] + 0.01);
+		const minY: i32 = @floor(boundingBox.min[1] - 0.01);
+		const maxY: i32 = @floor(boundingBox.max[1] + 0.01);
+		const minZ: i32 = @floor(boundingBox.min[2] - 0.01);
+		const maxZ: i32 = @floor(boundingBox.max[2] + 0.01);
 
 		const center: Vec3d = boundingBox.center();
 		const extent: Vec3d = boundingBox.extent();
@@ -355,13 +355,13 @@ pub const FrictionState = struct {
 };
 
 pub fn calculateVolumeProperties(comptime side: main.sync.Side, volumeProperties: *collision.VolumeProperties, pos: @Vector(3, f64), hitBox: collision.Box) void {
-	if (main.game.getBlockWithSide(side, @intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		volumeProperties.* = collision.calculateVolumeProperties(side, pos, hitBox, .{.density = airDensity, .terminalVelocity = airTerminalVelocity, .maxDensity = airDensity, .mobileFriction = 1.0/airTerminalVelocity});
 	}
 }
 
 pub fn calculateFriction(comptime side: main.sync.Side, volumeProperties: *const collision.VolumeProperties, friction: *FrictionState, pos: @Vector(3, f64), hitBox: collision.Box, onGround: bool) void {
-	if (main.game.getBlockWithSide(side, @intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		const groundFriction = if (!onGround) 0 else collision.calculateSurfaceProperties(side, pos, hitBox, 20).friction;
 		const volumeFrictionCoeffecient: f32 = @floatCast(baseGravity/volumeProperties.terminalVelocity);
 		const mobileFriction: f32 = @floatCast(baseGravity*volumeProperties.mobileFriction);
@@ -373,7 +373,7 @@ pub fn calculateFriction(comptime side: main.sync.Side, volumeProperties: *const
 pub fn calculateMotion(comptime side: main.sync.Side, deltaTime: f64, friction: FrictionState, volumeProperties: collision.VolumeProperties, density: f64, pos: Vec3d, velocity: *Vec3d, inputAcc: Vec3d, gravity: f64, jumpHeight: f64) Vec3d {
 	var move: Vec3d = .{0, 0, 0};
 
-	if (main.game.getBlockWithSide(side, @intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		const effectiveGravity = gravity*(density - volumeProperties.density)/density;
 		const volumeFrictionCoeffecient: f32 = @floatCast(baseGravity/volumeProperties.terminalVelocity);
 
@@ -416,9 +416,8 @@ pub fn calculateMotion(comptime side: main.sync.Side, deltaTime: f64, friction: 
 	return move;
 }
 
-pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void { // MARK: update()
-	var move = motion;
-	if (main.game.getBlockWithSide(side, @intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
+pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: Vec3d, eye: *Player.EyeData) void {
+	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		var acc: Vec3d = @splat(0);
 		// Apply springs to the eye position:
@@ -434,10 +433,10 @@ pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void
 				30,
 				30,
 			};
-			const strength = (-Player.eye.pos)/(Player.eye.box.max - Player.eye.box.min);
+			const strength = (-eye.pos)/(eye.box.max - eye.box.min);
 			const force = strength*forceMultipliers;
 			const friction = frictionMultipliers;
-			springConstants += forceMultipliers/(Player.eye.box.max - Player.eye.box.min);
+			springConstants += forceMultipliers/(eye.box.max - eye.box.min);
 			directionalFrictionCoefficients += @floatCast(friction);
 			acc += force;
 		}
@@ -447,21 +446,21 @@ pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void
 		// dx/dt = v
 		// Where a is the acceleration, k is the spring constant and λ is the friction coefficient
 		inline for (0..3) |i| blk: {
-			if (Player.eye.step[i]) {
-				const oldPos = Player.eye.pos[i];
-				const newPos = oldPos + Player.eye.vel[i]*deltaTime;
-				if (newPos*std.math.sign(Player.eye.vel[i]) <= -0.1) {
-					Player.eye.pos[i] = newPos;
+			if (eye.step[i]) {
+				const oldPos = eye.pos[i];
+				const newPos = oldPos + eye.vel[i]*deltaTime;
+				if (newPos*std.math.sign(eye.vel[i]) <= -0.1) {
+					eye.pos[i] = newPos;
 					break :blk;
 				} else {
-					Player.eye.step[i] = false;
+					eye.step[i] = false;
 				}
 			}
-			if (i == 2 and Player.eye.coyote > 0) {
+			if (i == 2 and eye.coyote > 0) {
 				break :blk;
 			}
 			const frictionCoefficient = directionalFrictionCoefficients[i];
-			const v_0 = Player.eye.vel[i];
+			const v_0 = eye.vel[i];
 			const k = springConstants[i];
 			const a = acc[i];
 			// here we need to solve the full equation:
@@ -491,11 +490,14 @@ pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void
 			// x(t) = a/k + c_1 e^(1/2 t (-c_3 - λ)) + c_2 e^(1/2 t (c_3 - λ))
 			const firstTerm = c_1.mul((c_3.negate().subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
 			const secondTerm = c_2.mul((c_3.subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
-			Player.eye.vel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
-			Player.eye.pos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
+			eye.vel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
+			eye.pos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
 		}
 	}
+}
 
+pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void {
+	var move = motion;
 	if (!Player.isGhost.load(.monotonic)) {
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
