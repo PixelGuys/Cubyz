@@ -65,6 +65,10 @@ pub const draw = struct { // MARK: draw
 		color = newColor;
 	}
 
+	pub fn setColorSameAlpha(newColor: u24) void {
+		color = (color & 0xff000000) | newColor;
+	}
+
 	/// Returns the previous translation.
 	pub fn setTranslation(newTranslation: Vec2f) Vec2f {
 		const oldTranslation = translation;

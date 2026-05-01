@@ -29,11 +29,11 @@ const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
 
-const models = main.entity.components.@"cubyz:model";
+const entityComponent = main.entity.components;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
-	var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
+	var pipeline: graphics.Pipeline = undefined;
 
 	var uniforms: struct {
 		projectionMatrix: c_int,
@@ -49,6 +49,8 @@ pub const client = struct {
 			"assets/cubyz/shaders/entity_fragment.frag",
 			"",
 			&uniforms,
+			main.entityModel.EntityModel.Vertex,
+			&.{},
 			.{},
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},
@@ -58,27 +60,32 @@ pub const client = struct {
 		pipeline.deinit();
 	}
 	pub fn clear() void {}
-	pub fn renderHud(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-		_ = ambientLight;
+
+	pub fn renderHud(projMatrix: Mat4f, _: Vec3f, playerPos: Vec3d) void {
 		main.client.entity_manager.mutex.lock();
-		defer main.client.entity.entity_manager.mutex.unlock();
+		defer main.client.entity_manager.mutex.unlock();
 
 		const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
 		const fontBaseSize = 128.0;
 		const fontMinScreenSize = 16.0;
 		const fontScreenSize = fontBaseSize*screenUnits;
 
-		var it = models.client.renderComponents.iterator();
-		while (it.next()) |component| {
-			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
-			const entModel = component.value_ptr.entityModel.get();
+		for (main.client.entity_manager.entities.items()) |ent| {
+			if (ent.id == game.Player.id) // don't render local player
+				continue;
+			if (ent.name.len == 0 and !settings.showPlayerIndexWithName) continue;
 
-			if (ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
+			var offsetText: f32 = 0;
+			if (main.entity.components.@"cubyz:model".client.get(ent.id)) |component| {
+				const entModel = component.entityModel.get();
+				offsetText = entModel.height/2;
+			}
+
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
 				@floatCast(pos3d[1]),
-				@floatCast(pos3d[2] + entModel.height - 0.9),
+				@floatCast(pos3d[2] + offsetText + 0.1),
 				1,
 			};
 
@@ -92,31 +99,35 @@ pub const client = struct {
 			const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
 			graphics.draw.setColor(alpha << 24);
 
-			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0xffffff}, false, .center);
+			const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
+			defer main.stackAllocator.free(renderedName);
+
+			var buf = graphics.TextBuffer.init(main.stackAllocator, renderedName, .{.color = 0xffffff}, false, .center);
 			defer buf.deinit();
 			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
 			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
 			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
-	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+		_ = deltaTime;
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 		pipeline.bind(null);
-		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		var it = models.client.renderComponents.iterator();
-		while (it.next()) |component| {
-			const ent = main.clientEntity.ClientEntityManager.getEntity(component.value_ptr.entity);
-			const entModel = component.value_ptr.entityModel.get();
+		for (entityComponent.@"cubyz:model".client.components.dense.items, entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
+			if (@intFromEnum(id) == game.Player.id) // don't render local player
+				continue;
 
-			if (ent.id == game.Player.id) continue; // don't render local player
+			const entModel = component.entityModel.get();
+			const ent = main.client.entity_manager.getEntity(@intFromEnum(id)) orelse continue;
 
 			entModel.bind();
-			const entTexture = component.value_ptr.customTexture orelse entModel.defaultTexture;
+			const entTexture = entModel.defaultTexture;
 
 			entTexture.?.bindTo(0);
 			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
@@ -135,12 +146,12 @@ pub const client = struct {
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
 					@floatCast(pos[1]),
-					@floatCast(pos[2] - 1.0 + 0.09375),
+					@floatCast(pos[2] - entModel.height/2),
 				}))
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glDrawElements(c.GL_TRIANGLES, 6*entModel.size, c.GL_UNSIGNED_INT, null);
+			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
 	}
 };

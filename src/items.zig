@@ -1049,6 +1049,29 @@ pub const Item = union(ItemType) { // MARK: Item
 			inline else => |item| item.hashCode(),
 		};
 	}
+
+	pub fn render(self: Item, pos: Vec2f, slotSize: Vec2f, border: f32) void {
+		const itemTexture = self.getTexture();
+		itemTexture.bindTo(0);
+		graphics.draw.boundImage(pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
+
+		if (self == .proceduralItem) {
+			const proceduralItem = self.proceduralItem;
+			const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.getProperty(.maxDurability);
+
+			if (durabilityPercentage < 1) {
+				const width = durabilityPercentage*(slotSize[0] - 2*border);
+				graphics.draw.setColorSameAlpha(0x000000);
+				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+
+				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
+				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
+
+				graphics.draw.setColorSameAlpha((@as(u24, @intCast(red)) << 16) | (@as(u24, @intCast(green)) << 8));
+				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+			}
+		}
+	}
 };
 
 pub const ItemStack = struct { // MARK: ItemStack
