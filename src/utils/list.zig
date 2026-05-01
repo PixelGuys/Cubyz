@@ -408,7 +408,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 		}
 
 		pub fn print(self: *@This(), allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) void {
-			// It seems that concepts of capacity and current size are managed in a reversed mannor in Writer.
+			// It seems that concepts of capacity and current size are swapped in Writer compared to our list.
 			// The `writer.buffer` (a slice) contains what we call capacity as its `len`, while the current
 			// use of the buffer is stored by `writer.end` attribute.
 			var buffer = self.items;
