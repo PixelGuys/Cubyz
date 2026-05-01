@@ -87,7 +87,6 @@ var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
 var _tags: [maxBlockCount][]Tag = undefined;
-var _placementTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -137,7 +136,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		}
 	}
 
-	_placementTags[size] = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("placementTags"));
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
@@ -451,21 +449,6 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
 	}
 
-	pub inline fn placementTags(self: Block) []const Tag {
-		return _placementTags[self.typ];
-	}
-
-	pub inline fn hasPlacementTag(self: Block, tag: Tag) bool {
-		return std.mem.containsAtLeastScalar(Tag, self.placementTags(), 1, tag);
-	}
-
-	pub inline fn isPlaceableOn(self: Block, block: Block) bool {
-		for (block.tags()) |tag| {
-			if (self.hasPlacementTag(tag)) return true;
-		}
-		return false;
-	}
-
 	pub inline fn light(self: Block) u32 {
 		return _light[self.typ];
 	}
@@ -542,6 +525,13 @@ pub const Block = packed struct(u32) { // MARK: Block
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
+	}
+
+	pub inline fn isPlaceableOn(self: Block, block: Block) bool {
+		for (block.tags()) |tag| {
+			if (self.hasTag(tag)) return true;
+		}
+		return false;
 	}
 
 	pub fn isSelectableByItem(self: Block, item: Item) bool {
