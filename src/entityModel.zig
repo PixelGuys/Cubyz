@@ -215,12 +215,9 @@ pub const EntityModel = struct {
 
 		var nodeIdx: u8 = 0;
 
-		std.debug.print("\nMODEL NAME: {s}\n", .{self.modelId.?});
-
 		for (data.nodes, 0..data.nodes_count) |node, _| {
 			if (node.children_count == 0) continue;
 			const nameC = std.mem.span(node.name);
-			std.debug.print("\n{s}\n", .{nameC});
 
 			const name = main.globalArena.alloc(u8, nameC.len);
 			@memcpy(name, nameC);

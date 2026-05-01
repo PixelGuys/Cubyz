@@ -1,3 +1,4 @@
+
 const std = @import("std");
 
 pub const Vec2i = @Vector(2, i32);
@@ -114,6 +115,7 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 	} + center;
 }
 
+// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/9f7beb0753bd5cf885285dda8b00361c87c5b6b3/src/root.zig#L3570
 fn sincos32(v: f32) [2]f32 {
 	var y = v - (std.math.pi*2)*@round(v*1.0/(std.math.pi*2));
 
@@ -147,6 +149,7 @@ fn sincos32(v: f32) [2]f32 {
 	return .{sinv, cosv};
 }
 
+// copied from zmath library (MIT Liscence) :  https://github.com/zig-gamedev/zmath/blob/9f7beb0753bd5cf885285dda8b00361c87c5b6b3/src/root.zig#L2985
 pub fn quatFromAxisAngle(axis: Vec3f, angle: f32) Vec4f {
 	const normal = normalize(axis);
 	const n = Vec4f{normal[0], normal[1], normal[2], 1.0};
