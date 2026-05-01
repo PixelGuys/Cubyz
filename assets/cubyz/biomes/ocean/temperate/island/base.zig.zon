@@ -4,6 +4,9 @@
 	.radius = 32,
 	.soilCreep = 1,
 	.hills = 4,
+	.tags = .{
+		.oak,
+	},
 	.ground_structure = .{
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",

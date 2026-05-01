@@ -5,6 +5,7 @@
 	.maxHeight = 45,
 	.properties = .{},
 	.tags = .{
+		.oak,
 		.pine,
 	},
 	.minRadius = 20,
