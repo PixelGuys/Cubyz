@@ -41,6 +41,6 @@ pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) Sdf
 }
 
 pub fn generate(self: *Instance, samplePos: Vec3f) f32 {
-	const dimensionalSdf: Vec3f = samplePos - self.radii;
+	const dimensionalSdf: Vec3f = @abs(samplePos) - self.radii;
 	return vec.length(@max(dimensionalSdf, @as(Vec3f, @splat(0)))) + @min(0, @max(dimensionalSdf[0], dimensionalSdf[1], dimensionalSdf[2]));
 }
