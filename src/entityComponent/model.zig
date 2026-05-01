@@ -24,7 +24,7 @@ pub const entityComponentVersion = 0;
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
-		entityModel: main.entityModel.EntityModelIndex, 
+		entityModel: main.entityModel.EntityModelIndex,
 		hasLoaded: bool = false,
 		nodes: [20]main.entityModel.EntityModel.Node = undefined,
 		matrices: [20]Mat4f = undefined,
