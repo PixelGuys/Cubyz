@@ -49,7 +49,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 	}
 
 	const rotationMatrixShift = 30;
-	const fac: comptime_int = @intFromFloat(@as(comptime_float, 1 << rotationMatrixShift)/25.0);
+	const fac: comptime_int = @trunc(@as(comptime_float, 1 << rotationMatrixShift)/25.0);
 	const rotationMatrix = .{
 		@Vector(3, i64){20*fac, 0*fac, 15*fac},
 		@Vector(3, i64){9*fac, 20*fac, -12*fac},
@@ -429,7 +429,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		const gridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &startMap);
 
 		var start: i32 = 0;
-		var end = @min(returnHeight.*, @as(comptime_int, @intFromFloat(@ceil(CaveBiomeMapFragment.caveBiomeSize*@sqrt(5.0)/2.0)))) & ~@as(i32, voxelSize - 1);
+		var end = @min(returnHeight.*, @as(comptime_int, @ceil(CaveBiomeMapFragment.caveBiomeSize*@sqrt(5.0)/2.0))) & ~@as(i32, voxelSize - 1);
 		{
 			var otherMap: u1 = undefined;
 			const nextGridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos +% CaveBiomeMapFragment.transposeRotationMatrix[2]*@as(Vec3i, @splat(end)) >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &otherMap);

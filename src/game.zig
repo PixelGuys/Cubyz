@@ -296,15 +296,15 @@ pub const World = struct { // MARK: World
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
+
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
-		main.entityModel.loadModelsAndTexture();
-		main.client.entity_manager.initAfterWorld();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
+		main.entityModel.loadModelsAndTexture();
 	}
 
 	pub fn deinit(self: *World) void {
@@ -366,9 +366,10 @@ pub const World = struct { // MARK: World
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
-		try Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+
+		try Player.loadFrom(zon.getChild("player"));
 	}
 
 	fn dayNightLightFactor(gameTime: i64) struct { f32, Vec3f } {
@@ -640,7 +641,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.eye.desiredPos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 	}
 
-	physics.update(deltaTime, acc, jumping);
+	const gravity: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
+	const jumpHeight: f64 = if (jumping) Player.jumpHeight else 0.0;
+	const motion = physics.calculateMotion(deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, &Player.super.vel, acc, gravity, jumpHeight);
+	physics.calculateEyeMovement(deltaTime, Player.super.pos, &Player.eye);
+	physics.update(deltaTime, motion);
 
 	const time = main.timestamp();
 	if (nextBlockPlaceTime) |*placeTime| {

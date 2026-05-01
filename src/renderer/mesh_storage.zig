@@ -218,7 +218,7 @@ pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: u31, neighbor: chunk.N
 
 fn reduceRenderDistance(fullRenderDistance: i64, reduction: i64) i32 {
 	const reducedRenderDistanceSquare: f64 = @floatFromInt(fullRenderDistance*fullRenderDistance - reduction*reduction);
-	const reducedRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(@max(0, reducedRenderDistanceSquare))));
+	const reducedRenderDistance: i32 = @ceil(@as(f64, @sqrt(@max(0, reducedRenderDistanceSquare))));
 	return reducedRenderDistance;
 }
 
@@ -549,7 +549,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *const main.renderer.Frustum, playerPos: Vec3d, renderDistance: u16) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
 	meshList.clearRetainingCapacity();
 
-	const playerPosInt: Vec3i = @intFromFloat(@floor(playerPos));
+	const playerPosInt: Vec3i = @floor(playerPos);
 
 	var meshRequests = main.List(chunk.ChunkPosition).init(main.stackAllocator);
 	defer meshRequests.deinit();
@@ -561,9 +561,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	const olderPz = lastPz;
 	const olderRD = lastRD;
 	mutex.lock();
-	lastPx = @intFromFloat(playerPos[0]);
-	lastPy = @intFromFloat(playerPos[1]);
-	lastPz = @intFromFloat(playerPos[2]);
+	lastPx = @trunc(playerPos[0]);
+	lastPy = @trunc(playerPos[1]);
+	lastPz = @trunc(playerPos[2]);
 	lastRD = renderDistance;
 	mutex.unlock();
 	freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
@@ -580,9 +580,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	defer searchList.deinit();
 	{
 		var firstPos = chunk.ChunkPosition{
-			.wx = @intFromFloat(@floor(playerPos[0])),
-			.wy = @intFromFloat(@floor(playerPos[1])),
-			.wz = @intFromFloat(@floor(playerPos[2])),
+			.wx = @floor(playerPos[0]),
+			.wy = @floor(playerPos[1]),
+			.wz = @floor(playerPos[2]),
 			.voxelSize = 1,
 		};
 		const lod: u3 = settings.highestLod;
@@ -804,50 +804,6 @@ pub fn finishMesh(pos: chunk.ChunkPosition) void {
 	updatableList.append(pos);
 }
 
-pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
-	mesh: *chunk.Chunk,
-
-	pub const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.meta.castFunctionSelfToAnyopaque(run),
-		.clean = main.meta.castFunctionSelfToAnyopaque(clean),
-		.taskType = .meshgenAndLighting,
-	};
-
-	fn schedule(mesh: *chunk.Chunk) void {
-		const task = main.globalAllocator.create(MeshGenerationTask);
-		task.* = MeshGenerationTask{
-			.mesh = mesh,
-		};
-		main.threadPool.addTask(task, &vtable);
-	}
-
-	pub fn getPriority(self: *MeshGenerationTask) f32 {
-		return self.mesh.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
-	}
-
-	pub fn isStillNeeded(self: *MeshGenerationTask) bool {
-		const distanceSqr = self.mesh.pos.getMinDistanceSquared(@intFromFloat(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
-		var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
-		maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;
-		return distanceSqr < maxRenderDistance*maxRenderDistance;
-	}
-
-	pub fn run(self: *MeshGenerationTask) void {
-		defer main.globalAllocator.destroy(self);
-		const pos = self.mesh.pos;
-		const mesh = ChunkMesh.init(pos, self.mesh);
-		mesh.generateLightingData() catch mesh.deferredDeinit();
-	}
-
-	pub fn clean(self: *MeshGenerationTask) void {
-		self.mesh.unloadBlockEntities(.client);
-		self.mesh.deinit();
-		main.globalAllocator.destroy(self);
-	}
-};
-
 // MARK: updaters
 
 pub fn updateBlock(blockUpdate: BlockUpdate) void {
@@ -857,10 +813,6 @@ pub fn updateBlock(blockUpdate: BlockUpdate) void {
 	} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 }
 
-pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
-	MeshGenerationTask.schedule(mesh);
-}
-
 pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
 	mapUpdatableList.pushBack(map);
 }
@@ -868,7 +820,7 @@ pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
 // MARK: Block breaking animation
 
 pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
-	const animationFrame: usize = @intFromFloat(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));
+	const animationFrame: usize = @trunc(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));
 	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
 
 	const block = getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;
@@ -891,9 +843,9 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, textur
 	mesh.mutex.lock();
 	defer mesh.mutex.unlock();
 	const lightIndex = blk: {
+		mesh.meshUploadMutex.lock();
+		defer mesh.meshUploadMutex.unlock();
 		const meshData = if (isTransparent) &mesh.transparentMesh else &mesh.opaqueMesh;
-		meshData.lock.lockRead();
-		defer meshData.lock.unlockRead();
 		for (meshData.completeList.getEverything()) |face| {
 			if (face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
 				break :blk face.position.lightIndex;

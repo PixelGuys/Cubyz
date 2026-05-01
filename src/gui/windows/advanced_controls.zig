@@ -21,7 +21,7 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 fn delayCallback(newValue: f32) void {
-	settings.updateRepeatDelay.nanoseconds = @intFromFloat(newValue);
+	settings.updateRepeatDelay.nanoseconds = @trunc(newValue);
 	settings.save();
 }
 
@@ -30,7 +30,7 @@ fn delayFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []cons
 }
 
 fn speedCallback(newValue: f32) void {
-	settings.updateRepeatSpeed.nanoseconds = @intFromFloat(newValue);
+	settings.updateRepeatSpeed.nanoseconds = @trunc(newValue);
 	settings.save();
 }
 

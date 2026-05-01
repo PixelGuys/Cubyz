@@ -1,0 +1,33 @@
+.{
+	.chance = 0.8,
+	.maxHeight = -100,
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:gravel",
+			.chance = 0.064,
+			.width = 5,
+			.variation = 5,
+			.depth = 3,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:slate/base",
+			.chance = 0.15,
+			.size = 3,
+			.size_variation = 6,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:cylinder",
+			.minAmount = 10,
+			.maxAmount = 16,
+			.minRadius = 16,
+			.maxRadius = 24,
+			.minHeight = 4,
+			.maxHeight = 6,
+		},
+	},
+}

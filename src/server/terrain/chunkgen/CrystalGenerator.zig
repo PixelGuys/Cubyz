@@ -86,12 +86,12 @@ fn considerCrystal(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, seed:
 				size = 0.7
 			else
 				size = 12*(length - j)/length/spikes;
-			const xMin: i32 = @intFromFloat(x2 - size);
-			const xMax: i32 = @intFromFloat(x2 + size);
-			const yMin: i32 = @intFromFloat(y2 - size);
-			const yMax: i32 = @intFromFloat(y2 + size);
-			const zMin: i32 = @intFromFloat(z2 - size);
-			const zMax: i32 = @intFromFloat(z2 + size);
+			const xMin: i32 = @trunc(x2 - size);
+			const xMax: i32 = @trunc(x2 + size);
+			const yMin: i32 = @trunc(y2 - size);
+			const yMax: i32 = @trunc(y2 + size);
+			const zMin: i32 = @trunc(z2 - size);
+			const zMax: i32 = @trunc(z2 + size);
 			var x3: i32 = xMin;
 			while (x3 <= xMax) : (x3 += 1) {
 				var y3: i32 = yMin;
