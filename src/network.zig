@@ -174,7 +174,6 @@ const stun = struct { // MARK: stun
 
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
-
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
 		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
@@ -195,7 +194,6 @@ const stun = struct { // MARK: stun
 				std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{hostname, @errorName(err)});
 				continue;
 			};
-
 			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, .fromMilliseconds(500))) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
@@ -221,7 +219,7 @@ const stun = struct { // MARK: stun
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return .{.address = net.IpAddress.parse("127.0.0.1", settings.defaultPort) catch unreachable}; // TODO: Return ip address in LAN.
+		return .{.address = .{.ip4 = .loopback(settings.defaultPort)}}; // TODO: Return ip address in LAN.
 	}
 
 	fn addressFromBits(data: [6]u8) !net.IpAddress {
@@ -499,7 +497,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if (self.online.load(.acquire) and source.eql(&self.externalAddress.address)) return;
 		}
-		if (self.allowNewConnections.load(.monotonic) or source.eql(&(net.IpAddress.parse("127.0.0.1", source.getPort()) catch unreachable))) {
+		if (self.allowNewConnections.load(.monotonic) or source.eql(&(net.IpAddress{.ip4 = .loopback(source.getPort())}))) {
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
