@@ -42,7 +42,7 @@ pub const Address = struct {
 
 	pub fn format(self: Address, writer: anytype) !void {
 		try self.address.format(writer);
-		if (true or self.isSymmetricNAT) {
+		if (self.isSymmetricNAT) {
 			try writer.print("?", .{});
 		}
 	}
@@ -215,7 +215,7 @@ const stun = struct { // MARK: stun
 					if (other.address.eql(&result.address)) {
 						return result;
 					} else {
-						// result.isSymmetricNAT = true; TODOFIX
+						result.isSymmetricNAT = true;
 						return result;
 					}
 				} else {
@@ -1331,11 +1331,18 @@ pub const Connection = struct { // MARK: Connection
 		errdefer result.secureChannel.deinit();
 		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
 
-		result.remoteAddress = .{.address = try .parseLiteral(ipPort)};
-		if (result.remoteAddress.address.getPort() == 0) {
-			std.log.err("Could not parse port. Using default port instead.", .{});
-			result.remoteAddress.address.setPort(settings.defaultPort);
+		var splitter = std.mem.splitScalar(u8, ipPort, ':');
+		const ip = splitter.first();
+		var port = splitter.rest();
+		if (port.len != 0 and port[port.len - 1] == '?') {
+			result.remoteAddress.isSymmetricNAT = true;
+			result.bruteforcingPort = true;
+			port = port[0 .. port.len - 1];
 		}
+		result.remoteAddress = try .resolveAddress(ip, std.fmt.parseUnsigned(u16, port, 10) catch blk: {
+			if (ip.len != ipPort.len) std.log.err("Could not parse port \"{s}\". Using default port instead.", .{port});
+			break :blk settings.defaultPort;
+		});
 
 		try result.manager.addConnection(result);
 		return result;
