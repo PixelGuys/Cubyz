@@ -36,15 +36,19 @@ pub fn init(zon: ZonElement) ?*@This() {
 
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {
 	const instance = arena.create(Instance);
-	instance.* = .{.radius = self.minRadius + (self.maxRadius - self.minRadius)*main.random.nextFloat(seed), .cutDirection = vec.normalize(self.cutDirection + main.random.nextFloatVectorSigned(3, seed)*@as(Vec3f, @splat(self.cutDirectionRandomness))), .cutPercentage = self.cutPercentage};
-	const bounds: Vec3f = @splat(instance.radius); // TODO: Could be tighter
-	const offset: Vec3f = @splat(0); // TODO: Offset it to do the thing
+	instance.* = .{
+		.radius = self.minRadius + (self.maxRadius - self.minRadius)*main.random.nextFloat(seed),
+		.cutDirection = vec.normalize(self.cutDirection + main.random.nextFloatVectorSigned(3, seed)*@as(Vec3f, @splat(self.cutDirectionRandomness))),
+		.cutPercentage = self.cutPercentage,
+	};
+	const bounds: Vec3f = @splat(instance.radius);
+	const offset: Vec3f = instance.cutDirection*@as(Vec3f, @splat(self.cutPercentage/2*instance.radius));
 	return .{
 		.data = instance,
 		.generateFn = main.meta.castFunctionSelfToAnyopaque(generate),
 		.minBounds = @floor(-bounds + offset),
 		.maxBounds = @ceil(bounds + offset),
-		.centerPosOffset = @ceil(bounds + offset),
+		.centerPosOffset = @ceil(bounds),
 	};
 }
 
