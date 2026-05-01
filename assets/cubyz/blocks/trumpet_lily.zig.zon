@@ -11,7 +11,7 @@
 	.model = "cubyz:flower/height_10",
 	.rotation = "cubyz:planar",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.texture = "cubyz:trumpet_lily",
 	.texture_top = "cubyz:trumpet_lily_top",

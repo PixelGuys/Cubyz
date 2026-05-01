@@ -8,6 +8,6 @@
 	.rotation = "cubyz:planar",
 	.blockEntity = "cubyz:chest",
 	.onInteract = .{
-		.type = .openChest,
+		.type = .open_chest,
 	},
 }

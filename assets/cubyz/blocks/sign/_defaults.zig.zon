@@ -15,7 +15,7 @@
 	},
 	.blockEntity = "cubyz:sign",
 	.onInteract = .{
-		.type = .editSign,
+		.type = .edit_sign,
 	},
 	.lodReplacement = "cubyz:air",
 }
