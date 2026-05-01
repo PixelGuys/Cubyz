@@ -29,8 +29,8 @@ pub fn generate(self: *@This(), output: main.utils.Array3D(f32), interpolationSm
 	const min = @max(@as(Vec3f, @splat(0)), relPosF32 - @as(Vec3f, @splat(radius + perimeter)));
 	const max = @min(dimVector, relPosF32 + @as(Vec3f, @splat(radius + perimeter)));
 
-	const minInt: @Vector(3, u31) = @intFromFloat(min);
-	const maxInt: Vec3i = @intFromFloat(@ceil(max));
+	const minInt: @Vector(3, u31) = @floor(min);
+	const maxInt: Vec3i = @ceil(max);
 
 	var x = minInt[0] & ~(voxelSize - 1);
 	while (x < maxInt[0]) : (x += voxelSize) {

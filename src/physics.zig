@@ -81,12 +81,12 @@ pub const collision = struct {
 				if (amount < 0) boundingBox.min[2] += amount else boundingBox.max[2] += amount;
 			},
 		}
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
+		const minX: i32 = @floor(boundingBox.min[0]);
+		const maxX: i32 = @floor(boundingBox.max[0]);
+		const minY: i32 = @floor(boundingBox.min[1]);
+		const maxY: i32 = @floor(boundingBox.max[1]);
+		const minZ: i32 = @floor(boundingBox.min[2]);
+		const maxZ: i32 = @floor(boundingBox.max[2]);
 
 		const boundingBoxCenter = boundingBox.center();
 		const fullBoundingBoxExtent = boundingBox.extent();
@@ -134,12 +134,12 @@ pub const collision = struct {
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
 		};
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
+		const minX: i32 = @floor(boundingBox.min[0]);
+		const maxX: i32 = @floor(boundingBox.max[0]);
+		const minY: i32 = @floor(boundingBox.min[1]);
+		const maxY: i32 = @floor(boundingBox.max[1]);
 
-		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
+		const z: i32 = @floor(boundingBox.min[2] - 0.01);
 
 		var friction: f64 = 0;
 		var bounciness: f64 = 0;
@@ -210,12 +210,12 @@ pub const collision = struct {
 			.min = pos + hitBox.min,
 			.max = pos + hitBox.max,
 		};
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
+		const minX: i32 = @floor(boundingBox.min[0]);
+		const maxX: i32 = @floor(boundingBox.max[0]);
+		const minY: i32 = @floor(boundingBox.min[1]);
+		const maxY: i32 = @floor(boundingBox.max[1]);
+		const minZ: i32 = @floor(boundingBox.min[2]);
+		const maxZ: i32 = @floor(boundingBox.max[2]);
 
 		var invTerminalVelocitySum: f64 = 0;
 		var densitySum: f64 = 0;
@@ -318,12 +318,12 @@ pub const collision = struct {
 	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.sync.Side, deltaTime: f64) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + 0.01));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - 0.01));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + 0.01));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] + 0.01));
+		const minX: i32 = @floor(boundingBox.min[0] - 0.01);
+		const maxX: i32 = @floor(boundingBox.max[0] + 0.01);
+		const minY: i32 = @floor(boundingBox.min[1] - 0.01);
+		const maxY: i32 = @floor(boundingBox.max[1] + 0.01);
+		const minZ: i32 = @floor(boundingBox.min[2] - 0.01);
+		const maxZ: i32 = @floor(boundingBox.max[2] + 0.01);
 
 		const center: Vec3d = boundingBox.center();
 		const extent: Vec3d = boundingBox.extent();
@@ -360,13 +360,13 @@ pub const FrictionState = struct {
 };
 
 pub fn calculateVolumeProperties(volumeProperties: *collision.VolumeProperties, pos: @Vector(3, f64), hitBox: collision.Box) void {
-	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		volumeProperties.* = collision.calculateVolumeProperties(.client, pos, hitBox, .{.density = airDensity, .terminalVelocity = airTerminalVelocity, .maxDensity = airDensity, .mobileFriction = 1.0/airTerminalVelocity});
 	}
 }
 
 pub fn calculateFriction(volumeProperties: *const collision.VolumeProperties, friction: *FrictionState, pos: @Vector(3, f64), hitBox: collision.Box, onGround: bool) void {
-	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		const groundFriction = if (!onGround) 0 else collision.calculateSurfaceProperties(.client, pos, hitBox, 20).friction;
 		const volumeFrictionCoeffecient: f32 = @floatCast(baseGravity/volumeProperties.terminalVelocity);
 		const mobileFriction: f32 = @floatCast(baseGravity*volumeProperties.mobileFriction);
@@ -378,7 +378,7 @@ pub fn calculateFriction(volumeProperties: *const collision.VolumeProperties, fr
 pub fn calculateMotion(deltaTime: f64, friction: FrictionState, volumeProperties: collision.VolumeProperties, density: f64, pos: Vec3d, velocity: *Vec3d, inputAcc: Vec3d, gravity: f64, jumpHeight: f64) Vec3d {
 	var move: Vec3d = .{0, 0, 0};
 
-	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		const effectiveGravity = gravity*(density - volumeProperties.density)/density;
 		const volumeFrictionCoeffecient: f32 = @floatCast(baseGravity/volumeProperties.terminalVelocity);
 
@@ -422,7 +422,7 @@ pub fn calculateMotion(deltaTime: f64, friction: FrictionState, volumeProperties
 }
 
 pub fn calculateEyeMovement(deltaTime: f64, pos: Vec3d, eye: *Player.EyeData) void {
-	if (main.renderer.mesh_storage.getBlockFromRenderThread(@intFromFloat(@floor(pos[0])), @intFromFloat(@floor(pos[1])), @intFromFloat(@floor(pos[2]))) != null) {
+	if (main.renderer.mesh_storage.getBlockFromRenderThread(@floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		var acc: Vec3d = @splat(0);
 		// Apply springs to the eye position:

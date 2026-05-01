@@ -441,7 +441,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 						light += 4; // illuminate everything by an amount
 						light /= 8; // near-normalize the light value
 						light = @max(@min(light, 1), 0);
-						const colorIndex: usize = @intFromFloat(@round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1))));
+						const colorIndex: usize = @round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1)));
 						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
 					} else {
 						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});

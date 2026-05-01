@@ -4,11 +4,11 @@ const main = @import("main");
 const random = main.random;
 
 fn getSeedX(x: f32, worldSeed: u64) u64 {
-	return worldSeed ^ @as(u64, 54275629861)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x))));
+	return worldSeed ^ @as(u64, 54275629861)*%@as(u32, @bitCast(@as(i32, @trunc(x))));
 }
 
 fn getSeedY(x: f32, worldSeed: u64) u64 {
-	return worldSeed ^ @as(u64, 5478938690717)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x))));
+	return worldSeed ^ @as(u64, 5478938690717)*%@as(u32, @bitCast(@as(i32, @trunc(x))));
 }
 
 fn getGridValue1D(x: f32, worldSeed: u64) f32 {
@@ -91,7 +91,7 @@ fn preGeneratePercentileTable() void {
 pub fn percentile(ratio: f32) f32 {
 	std.debug.assert(ratio >= 0);
 	const scaledToList = ratio*@as(f32, @floatFromInt(percentileTable.len));
-	const index: u32 = @intFromFloat(scaledToList);
+	const index: u32 = @trunc(scaledToList);
 	if (index >= percentileTable.len - 1) return 1;
 	const offset = (scaledToList - @as(f32, @floatFromInt(index)));
 	return (1 - offset)*percentileTable[index] + offset*percentileTable[index + 1];

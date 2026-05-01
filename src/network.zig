@@ -1177,7 +1177,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
-			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
+			const retransmissionTimeout: i64 = @trunc(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
 			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
 		}
 
@@ -1799,7 +1799,7 @@ pub const Connection = struct { // MARK: Connection
 			self.nextPacketTimestamp = timestamp -% 10*ms;
 		}
 
-		if (self.relativeIdleTime + self.relativeSendTime > @as(i64, @intFromFloat(self.rttEstimate))) {
+		if (self.relativeIdleTime + self.relativeSendTime > @as(i64, @trunc(self.rttEstimate))) {
 			self.relativeIdleTime >>= 1;
 			self.relativeSendTime >>= 1;
 		}
@@ -1821,7 +1821,7 @@ pub const Connection = struct { // MARK: Connection
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
-			const packetTime: i64 = @intFromFloat(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
+			const packetTime: i64 = @trunc(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
 			self.nextPacketTimestamp +%= packetTime;
 			self.relativeSendTime += packetTime;
 		}

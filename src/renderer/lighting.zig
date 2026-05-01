@@ -437,7 +437,7 @@ fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) LightVector {
 
 fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) LightVector {
 	const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
-	const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+	const startPos: Vec3i = @floor(lightPos);
 	const interp = lightPos - @floor(lightPos);
 	var val: LightVector = @splat(0);
 	var dx: i32 = 0;
@@ -450,7 +450,7 @@ fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) LightVector {
 				if (dx == 0) weight = 1 - interp[0] else weight = interp[0];
 				if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
 				if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
-				const integerWeight: u16 = @intFromFloat(weight*256);
+				const integerWeight: u16 = @trunc(weight*256);
 				const lightVal: LightVector = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
 				val += lightVal*@as(LightVector, @splat(integerWeight));
 			}
@@ -507,7 +507,7 @@ pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadInde
 		var rawVals: [4]LightVector = undefined;
 		for (0..4) |i| {
 			const vertexPos: Vec3f = quadInfo.corners[i];
-			const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
+			const fullPos = blockPos +% @as(Vec3i, @trunc(vertexPos));
 			rawVals[i] = getCornerLight(parent, fullPos, normal);
 		}
 		return packLightValues(rawVals);
@@ -516,7 +516,7 @@ pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadInde
 	for (0..4) |i| {
 		const vertexPos: Vec3f = quadInfo.corners[i];
 		const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
-		const containingBlockPos: Vec3i = @intFromFloat(@floor(lightPos));
+		const containingBlockPos: Vec3i = @floor(lightPos);
 		const interp = std.math.clamp(lightPos - @as(Vec3f, @floatFromInt(containingBlockPos)), @as(Vec3f, @splat(0)), @as(Vec3f, @splat(1)));
 
 		var cornerVals: [2][2][2]LightVector = undefined;
@@ -541,7 +541,7 @@ pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadInde
 					if (dx == 0) weight = 1 - interp[0] else weight = interp[0];
 					if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
 					if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
-					const integerWeight: u16 = @intFromFloat(weight*256);
+					const integerWeight: u16 = @trunc(weight*256);
 					val += cornerVals[dx][dy][dz]*@as(LightVector, @splat(integerWeight));
 				}
 			}

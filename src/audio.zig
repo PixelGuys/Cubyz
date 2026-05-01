@@ -53,12 +53,12 @@ const AudioData = struct {
 				defer main.stackAllocator.free(tempData);
 				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
-				const newSamples: usize = @intFromFloat(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
+				const newSamples: usize = @trunc(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
 				stepWidth = @as(f32, @floatFromInt(samples))/@as(f32, @floatFromInt(newSamples));
 				self.data = main.globalAllocator.alloc(f32, newSamples*channels);
 				for (0..newSamples) |s| {
 					const samplePosition = @as(f32, @floatFromInt(s))*stepWidth;
-					const firstSample: usize = @intFromFloat(@floor(samplePosition));
+					const firstSample: usize = @floor(samplePosition);
 					const interpolation = samplePosition - @floor(samplePosition);
 					for (0..channels) |ch| {
 						if (firstSample >= samples - 1) {
