@@ -285,13 +285,6 @@ pub fn getGroup(name: []const u8) error{GroupNotFound}!*Group {
 pub fn deleteGroup(name: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
 	const group = groups.fetchRemove(name) orelse return false;
-
-	const users = server.getUserListAndIncreaseRefCount(main.globalAllocator);
-	for (users) |user| {
-		const kv = user.permissionGroups.fetchRemove(name) orelse continue;
-		main.globalAllocator.free(kv.key);
-	}
-	server.freeUserListAndDecreaseRefCount(main.globalAllocator, users);
 	groupDeinitList.pushBack(group.value.id);
 	return true;
 }

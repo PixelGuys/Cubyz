@@ -977,7 +977,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
 			user.permissions.fromZon(playerData);
-			user.groupListFromZon(playerData.getChild("permissionGroups"));
 
 			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
@@ -1035,7 +1034,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
-		playerZon.put("permissionGroups", user.groupListToZon(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{

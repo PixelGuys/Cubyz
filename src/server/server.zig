@@ -142,7 +142,6 @@ pub const User = struct { // MARK: User
 	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
 
 	permissions: permission.Permissions = undefined,
-	permissionGroups: std.StringHashMapUnmanaged(*permission.Group) = .{},
 
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;
@@ -181,11 +180,6 @@ pub const User = struct { // MARK: User
 		}
 
 		self.permissions.deinit();
-		var permissionGroupsIterator = self.permissionGroups.keyIterator();
-		while (permissionGroupsIterator.next()) |key| {
-			main.globalAllocator.free(key.*);
-		}
-		self.permissionGroups.deinit(main.globalAllocator.allocator);
 
 		self.worldEditData.deinit();
 
@@ -502,59 +496,11 @@ pub const User = struct { // MARK: User
 		main.network.protocols.chat.send(self.conn, msg);
 	}
 
-	pub fn addToGroup(self: *User, groupName: []const u8) error{GroupNotFound}!void {
-		sync.threadContext.assertCorrectContext(.server);
-		const group = try permission.getGroup(groupName);
-		const result = self.permissionGroups.getOrPut(main.globalAllocator.allocator, groupName) catch unreachable;
-		if (!result.found_existing) {
-			result.key_ptr.* = main.globalAllocator.dupe(u8, groupName);
-			result.value_ptr.* = group;
-		}
-	}
-
-	pub fn removeFromGroup(self: *User, groupName: []const u8) bool {
-		sync.threadContext.assertCorrectContext(.server);
-		const groupNamePtr = (self.permissionGroups.getKeyPtr(groupName) orelse return false).*;
-		_ = self.permissionGroups.remove(groupName);
-		main.globalAllocator.free(groupNamePtr);
-		return true;
-	}
-
-	pub fn groupListFromZon(self: *User, zon: main.ZonElement) void {
-		if (zon != .array) return;
-
-		for (zon.toSlice()) |item| {
-			const groupName = item.get(?[]const u8, "name", null) orelse continue;
-			const group = permission.getGroup(groupName) catch continue;
-			if (group.id != item.get(u32, "id", 0)) continue;
-			self.addToGroup(groupName) catch unreachable;
-		}
-	}
-
-	pub fn groupListToZon(self: *User, allocator: NeverFailingAllocator) main.ZonElement {
-		var zon: main.ZonElement = .initArray(allocator);
-		var it = self.permissionGroups.iterator();
-		while (it.next()) |entry| {
-			var entryZon: main.ZonElement = .initObject(allocator);
-			entryZon.put("name", entry.key_ptr.*);
-			entryZon.put("id", entry.value_ptr.*.id);
-			zon.append(entryZon);
-		}
-		return zon;
-	}
-
 	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
-		switch (user.permissions.hasPermission(permissionPath)) {
-			.yes => return true,
-			.no => return false,
-			.neutral => {},
-		}
-
-		var groupIt = user.permissionGroups.valueIterator();
-		while (groupIt.next()) |group| {
-			if (group.*.hasPermission(permissionPath) == .yes) return true;
-		}
-		return false;
+		return switch (user.permissions.hasPermission(permissionPath)) {
+			.yes => true,
+			.no, .neutral => false,
+		};
 	}
 
 	pub fn getSpawnPos(user: *User) Vec3d {
