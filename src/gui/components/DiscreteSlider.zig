@@ -108,7 +108,7 @@ fn updateLabel(self: *DiscreteSlider, newValue: []const u8, width: f32) void {
 fn updateValueFromButtonPos(self: *DiscreteSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = @floatFromInt(self.values.len);
-	const selection: u16 = @intFromFloat((self.button.pos[0] - 1.5*border)/range*len);
+	const selection: u16 = @trunc((self.button.pos[0] - 1.5*border)/range*len);
 	if (selection != self.currentSelection) {
 		self.currentSelection = selection;
 		self.updateLabel(self.values[selection], self.size[0]);

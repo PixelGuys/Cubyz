@@ -55,7 +55,7 @@ const CollisionGridInteger = std.meta.Int(.unsigned, collisionGridSize);
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
 	const Vec = @Vector(x.len, std.meta.Child(T));
-	const int = @as(@Vector(x.len, i32), @intFromFloat(std.math.round(@as(Vec, x)*@as(Vec, @splat(gridSize)))));
+	const int = @as(@Vector(x.len, i32), @round(@as(Vec, x)*@as(Vec, @splat(gridSize))));
 	return @as(Vec, @floatFromInt(int))/@as(Vec, @splat(gridSize));
 }
 
@@ -253,8 +253,8 @@ pub const Model = struct {
 		const min: Vec3f = @min(v0, v1, v2);
 		const max: Vec3f = @max(v0, v1, v2);
 
-		const voxelMin: Vec3i = @max(@as(Vec3i, @intFromFloat(@floor(min))), @as(Vec3i, @splat(0)));
-		const voxelMax: Vec3i = @max(@as(Vec3i, @intFromFloat(@ceil(max))), @as(Vec3i, @splat(0)));
+		const voxelMin: Vec3i = @max(@as(Vec3i, @floor(min)), @as(Vec3i, @splat(0)));
+		const voxelMax: Vec3i = @max(@as(Vec3i, @ceil(max)), @as(Vec3i, @splat(0)));
 
 		var p0 = Vec2f{@as([3]f32, v0)[xIndex], @as([3]f32, v0)[yIndex]};
 		var p1 = Vec2f{@as([3]f32, v1)[xIndex], @as([3]f32, v1)[yIndex]};
@@ -286,8 +286,8 @@ pub const Model = struct {
 			const xStart: f32 = @min(xa, xb);
 			const xEnd: f32 = @max(xa, xb);
 
-			const voxelXStart: usize = @intFromFloat(@max(@floor(xStart), 0.0));
-			const voxelXEnd: usize = @intFromFloat(@max(@ceil(xEnd), 0.0));
+			const voxelXStart: usize = @floor(@max(xStart, 0.0));
+			const voxelXEnd: usize = @ceil(@max(xEnd, 0.0));
 
 			for (voxelXStart..voxelXEnd) |x| {
 				if (x < 0 or x >= collisionGridSize) continue;
@@ -295,7 +295,7 @@ pub const Model = struct {
 
 				const zf = solveDepth(normal, v0, xIndex, yIndex, zIndex, xf, yf);
 				if (zf < 0.0) continue;
-				const z: usize = @intFromFloat(zf);
+				const z: usize = @trunc(zf);
 
 				if (z >= collisionGridSize) continue;
 
@@ -441,7 +441,7 @@ pub const Model = struct {
 				minUv = @min(minUv, @as(Vec2f, quad.cornerUV[i]));
 			}
 			minUv = @floor(minUv);
-			quad.textureSlot = @as(u32, @intFromFloat(minUv[1]))*4 + @as(u32, @intFromFloat(minUv[0]));
+			quad.textureSlot = @as(u32, @trunc(minUv[1]))*4 + @as(u32, @trunc(minUv[0]));
 
 			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
 				std.log.err("Uv value for model is outside of 0-1 range", .{});
@@ -727,7 +727,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 		for (0..4) |i| {
 			const vertexPos: Vec3f = info.corners[i];
 			const lightPos = vertexPos;
-			const containingBlockPos: Vec3i = @intFromFloat(@floor(lightPos));
+			const containingBlockPos: Vec3i = @floor(lightPos);
 			const interp = std.math.clamp(lightPos - @as(Vec3f, @floatFromInt(containingBlockPos)), @as(Vec3f, @splat(0)), @as(Vec3f, @splat(1)));
 
 			var dx: u31 = 0;
@@ -740,7 +740,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 						if (dx == 0) weight = 1 - interp[0] else weight = interp[0];
 						if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
 						if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
-						const integerWeight: u16 = @intFromFloat(weight/4.0*256);
+						const integerWeight: u16 = @trunc(weight/4.0*256);
 						if (integerWeight == 0) continue;
 						var weights: [4]u16 = @splat(0);
 						weights[i] = integerWeight;
@@ -784,7 +784,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 fn addCornerLightSamples(lightSamples: *main.ListUnmanaged(LightSample), pos: Vec3i, direction: chunk.Neighbor, weights: [4]u16) void {
 	const normal: Vec3f = @floatFromInt(Vec3i{direction.relX(), direction.relY(), direction.relZ()});
 	const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
-	const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+	const startPos: Vec3i = @floor(lightPos);
 	var dx: i32 = 0;
 	while (dx <= 1) : (dx += 1) {
 		var dy: i32 = 0;

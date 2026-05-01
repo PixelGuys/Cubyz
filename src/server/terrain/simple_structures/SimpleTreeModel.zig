@@ -92,7 +92,7 @@ pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, ch
 
 pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
 	const factor = random.nextFloat(seed);
-	var height = self.height0 + @as(i32, @intFromFloat(factor*@as(f32, @floatFromInt(self.deltaHeight))));
+	var height = self.height0 + @as(i32, @trunc(factor*@as(f32, @floatFromInt(self.deltaHeight))));
 	const leafRadius = self.leafRadius + factor*self.deltaLeafRadius;
 	const leafElongation: f32 = self.leafElongation + random.nextFloatSigned(seed)*self.deltaLeafElongation;
 
@@ -132,8 +132,8 @@ pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i3
 		.round => {
 			self.generateStem(x, y, z, height, chunk, seed);
 
-			const ceilZRadius: i32 = @intFromFloat(@ceil(leafRadius*leafElongation));
-			const ceilRadius: i32 = @intFromFloat(@ceil(leafRadius));
+			const ceilZRadius: i32 = @ceil(leafRadius*leafElongation);
+			const ceilRadius: i32 = @ceil(leafRadius);
 			const radiusSqr: f32 = leafRadius*leafRadius;
 			const randomRadiusSqr: f32 = (leafRadius - 0.25)*(leafRadius - 0.25);
 			const invLeafElongationSqr = 1.0/(leafElongation*leafElongation);

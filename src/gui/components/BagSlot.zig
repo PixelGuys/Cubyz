@@ -86,7 +86,7 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		const item = self.inventory.peek(i).item;
 		if (item == .null) continue;
 		const opacity: f32 = std.math.pow(f32, 0.5, @as(f32, @floatFromInt(i)));
-		draw.setColor(0xffffff | @as(u32, @intFromFloat(opacity*255)) << 24);
+		draw.setColor(0xffffff | @as(u32, @trunc(opacity*255)) << 24);
 		item.render(self.pos, @splat(sizeWithBorder), border);
 	}
 
