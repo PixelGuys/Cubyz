@@ -800,7 +800,8 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
-
+	user.permissions.addPermission(.white, "/command/avatar");
+	
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
