@@ -125,7 +125,7 @@ fn generateMap(map: *CaveMapFragment, output: Array3D(f32), biomeNoiseStrength: 
 				const val110 = getValue(noise, outerSizeShift, x + outerSize, y + outerSize, z);
 				const val111 = getValue(noise, outerSizeShift, x + outerSize, y + outerSize, z + outerSize);
 				// Test if they are all inside or all outside the cave to skip these cases:
-				const measureForEquality = sign(val000) + sign(val001) + sign(val010) + sign(val011) + sign(val100) + sign(val101) + sign(val110) + sign(val111);
+				const measureForEquality = @as(f32, sign(val000)) + @as(f32, sign(val001)) + @as(f32, sign(val010)) + @as(f32, sign(val011)) + @as(f32, sign(val100)) + @as(f32, sign(val101)) + @as(f32, sign(val110)) + @as(f32, sign(val111));
 				if (measureForEquality == 8) {
 					// No cave in here :)
 					continue;

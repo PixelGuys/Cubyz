@@ -240,7 +240,7 @@ pub const handShake = struct { // MARK: handShake
 		zonObject.put("player_id", conn.user.?.id);
 		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
-		zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
+		zonObject.put("toolPalette", main.server.world.?.proceduralItemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
 		zonObject.put("entityModelPalette", main.server.world.?.entityModelPalette.storeToZon(main.stackAllocator));
 		zonObject.put("entityComponentPalette", main.server.world.?.entityComponentPalette.storeToZon(main.stackAllocator));
@@ -265,7 +265,7 @@ pub const handShake = struct { // MARK: handShake
 
 		conn.mutex.lock();
 		while (true) {
-			conn.handShakeWaiting.timedWait(&conn.mutex, 16_000_000) catch {
+			conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
 				main.heap.GarbageCollection.syncPoint();
 				continue;
 			};
@@ -319,17 +319,68 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 
 pub const chunkTransmission = struct { // MARK: chunkTransmission
 	pub const id: u8 = 3;
-	pub const asynchronous = true;
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const pos = chunk.ChunkPosition{
-			.wx = try reader.readInt(i32),
-			.wy = try reader.readInt(i32),
-			.wz = try reader.readInt(i32),
-			.voxelSize = try reader.readInt(u31),
+	pub const asynchronous = false;
+
+	pub const MeshGenerationTask = struct {
+		pos: chunk.ChunkPosition,
+		data: []const u8,
+
+		pub const vtable = utils.ThreadPool.VTable{
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+			.taskType = .meshgenAndLighting,
 		};
-		const ch = chunk.Chunk.init(pos);
-		try main.server.storage.ChunkCompression.loadChunk(ch, .client, reader.remaining);
-		renderer.mesh_storage.updateChunkMesh(ch);
+
+		fn schedule(mesh: *chunk.Chunk) void {
+			const task = main.globalAllocator.create(MeshGenerationTask);
+			task.* = MeshGenerationTask{
+				.mesh = mesh,
+			};
+			main.threadPool.addTask(task, &vtable);
+		}
+
+		pub fn getPriority(self: *MeshGenerationTask) f32 {
+			return self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+		}
+
+		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
+			const distanceSqr = self.pos.getMinDistanceSquared(@intFromFloat(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.pos.voxelSize;
+			maxRenderDistance += 2*self.pos.voxelSize*chunk.chunkSize;
+			return distanceSqr < maxRenderDistance*maxRenderDistance;
+		}
+
+		pub fn run(self: *MeshGenerationTask) void {
+			defer self.clean();
+			const pos = self.pos;
+			const mesh = main.renderer.chunk_meshing.ChunkMesh.init(pos, self.data) catch |err| {
+				std.log.err("Could not load chunk mesh from server: {s} Disconnecting.", .{@errorName(err)});
+				main.game.world.?.conn.disconnect();
+				return;
+			};
+			mesh.generateLightingData() catch mesh.deferredDeinit();
+		}
+
+		pub fn clean(self: *MeshGenerationTask) void {
+			main.globalAllocator.free(self.data);
+			main.globalAllocator.destroy(self);
+		}
+	};
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const task = main.globalAllocator.create(MeshGenerationTask);
+		errdefer main.globalAllocator.destroy(task);
+		task.* = .{
+			.pos = .{
+				.wx = try reader.readInt(i32),
+				.wy = try reader.readInt(i32),
+				.wz = try reader.readInt(i32),
+				.voxelSize = try reader.readInt(u31),
+			},
+			.data = main.globalAllocator.dupe(u8, reader.remaining),
+		};
+		main.threadPool.addTask(task, &MeshGenerationTask.vtable);
 	}
 	fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
 		ch.mutex.lock();
@@ -433,7 +484,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 			world.itemDrops.readPosition(time, itemData.items);
 		}
 	}
-	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
+	pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []const main.entity.EntityNetworkData, itemData: []const main.itemdrop.ItemDropNetworkData) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
@@ -478,9 +529,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		while (reader.remaining.len != 0) {
 			renderer.mesh_storage.updateBlock(.{
-				.x = try reader.readInt(i32),
-				.y = try reader.readInt(i32),
-				.z = try reader.readInt(i32),
+				.pos = try reader.readVec(Vec3i),
 				.newBlock = Block.fromInt(try reader.readInt(u32)),
 				.blockEntityData = try reader.readSlice(try reader.readInt(usize)),
 			});
@@ -491,9 +540,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 		defer writer.deinit();
 
 		for (updates) |update| {
-			writer.writeInt(i32, update.x);
-			writer.writeInt(i32, update.y);
-			writer.writeInt(i32, update.z);
+			writer.writeVec(Vec3i, update.pos);
 			writer.writeInt(u32, update.newBlock.toInt());
 			writer.writeInt(usize, update.blockEntityData.len);
 			writer.writeSlice(update.blockEntityData);
@@ -516,7 +563,7 @@ pub const entity = struct { // MARK: entity
 					main.client.entity_manager.removeEntity(elem.as(u32, 0));
 				},
 				.object => {
-					main.client.entity_manager.addEntity(elem);
+					try main.client.entity_manager.addEntity(elem);
 				},
 				.null => {
 					i += 1;
@@ -945,7 +992,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 
 		for (users) |user| {
-			blockUpdate.send(user.conn, &.{.{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = writer.data.items}});
+			blockUpdate.send(user.conn, &.{.{.pos = pos, .newBlock = block, .blockEntityData = writer.data.items}});
 		}
 	}
 
@@ -959,5 +1006,51 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		const blockEntity = block.blockEntity() orelse return;
 
 		sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
+	}
+};
+
+pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
+	pub const id: u8 = 15;
+	pub const asynchronous = false;
+
+	const ActionType = enum(u8) {
+		unload = 0,
+		load = 1,
+	};
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const entityId = try reader.readVarInt(u32);
+		const componentId = try reader.readVarInt(u32);
+		const actionType: ActionType = try reader.readEnum(ActionType);
+
+		if (actionType == .load) {
+			const componentVersion = try reader.readVarInt(u32);
+			try main.entity.loadComponent(.client, componentId, entityId, reader.remaining, componentVersion);
+		} else if (actionType == .unload) {
+			try main.entity.unloadComponent(.client, componentId, entityId);
+		}
+	}
+	pub fn unload(conn: *Connection, entityId: u32, componentId: u32) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeVarInt(u32, entityId);
+		writer.writeVarInt(u32, componentId);
+		writer.writeEnum(ActionType, ActionType.unload);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+	pub fn load(conn: *Connection, entityId: u32, componentId: u32, version: u32, componentData: []const u8) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeVarInt(u32, entityId);
+		writer.writeVarInt(u32, componentId);
+		writer.writeEnum(ActionType, ActionType.load);
+		// specific to `load`
+		writer.writeVarInt(u32, version);
+		writer.writeSlice(componentData);
+
+		conn.send(.secure, id, writer.data.items);
 	}
 };

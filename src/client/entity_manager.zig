@@ -30,8 +30,8 @@ var uniforms: struct {
 
 var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
-pub var mutex: std.Thread.Mutex = .{};
-
+pub var mutex: main.utils.Mutex = .{};
+var model: *main.entityModel.EntityModel = undefined;
 pub fn init() void {
 	entities = .init();
 	pipeline = graphics.Pipeline.init(
@@ -39,6 +39,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/entity_fragment.frag",
 		"",
 		&uniforms,
+		main.entityModel.EntityModel.Vertex,
+		&.{},
 		.{},
 		.{.depthTest = true},
 		.{.attachments = &.{.alphaBlending}},
@@ -71,6 +73,13 @@ fn update() void {
 	lastTime = time;
 }
 
+// TODO: this will be removed in future ECS parts
+pub fn initAfterWorld() void {
+	model = (main.entityModel.getById("cubyz:snale") orelse blk: {
+		std.log.err("EntityModel {s} wasn't found", .{"cubyz:snale"});
+		break :blk main.entityModel.default();
+	}).get();
+}
 pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 	mutex.lock();
 	defer mutex.unlock();
@@ -154,11 +163,11 @@ pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 	}
 }
 
-pub fn addEntity(zon: ZonElement) void {
+pub fn addEntity(zon: ZonElement) !void {
 	mutex.lock();
 	defer mutex.unlock();
 	var ent = entities.addOne();
-	ent.init(zon, main.globalAllocator);
+	try ent.init(zon, main.globalAllocator);
 }
 
 pub fn removeEntity(id: u32) void {

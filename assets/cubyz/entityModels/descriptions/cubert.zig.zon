@@ -1,4 +1,9 @@
 .{
-	.texture = "cubert.png",
+	.tags = .{
+		.playerModel,
+	},
+	.model = "cubyz:cubert",
+	.defaultTexture = "cubyz:cubert",
 	.height = 2,
+	.coordinateSystem = .right_handed_z_up,
 }

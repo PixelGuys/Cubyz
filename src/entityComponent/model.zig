@@ -18,106 +18,84 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
 
-pub var entityComponentID: u32 = undefined;
+pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
-	const RenderComponent = struct {
-		entity: u32, // entity
-		entityModel: main.entityModel.EntityModelIndex, // model
-		customTexture: ?main.graphics.Texture, // for custom textures. i.e Skins
+	const Component = struct {
+		entityModel: main.entityModel.EntityModelIndex,
 	};
-	pub var renderComponents: std.AutoHashMap(u32, RenderComponent) = undefined;
+	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
 
-	pub fn init() void {
-		renderComponents = .init(main.globalAllocator.allocator);
-	}
+	pub fn init() void {}
 	pub fn deinit() void {
-		renderComponents.deinit();
+		components.deinit(main.globalAllocator);
 	}
 	pub fn clear() void {
-		renderComponents.deinit();
-		renderComponents = .init(main.globalAllocator.allocator);
+		components.clear();
 	}
-	pub fn load(id: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		_ = version;
-		const entityModel = reader.readInt(u32) catch return;
-		const customTexture: ?main.graphics.Texture = null;
+	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		if (version != 0)
+			return error.InvalidComponentVersion;
 
-		renderComponents.put(id, RenderComponent{
-			.entity = id,
-			.customTexture = customTexture,
-			.entityModel = main.entityModel.EntityModelIndex{.index = entityModel},
-		}) catch unreachable;
+		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
+
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		ptr.* = Component{
+			.entityModel = .{.index = entityModel},
+		};
 	}
-	pub fn unload(id: u32) void {
-		_ = renderComponents.remove(id);
+	pub fn unload(entity: u32) void {
+		components.remove(@enumFromInt(entity)) catch {};
+	}
+	pub fn get(entity: u32) ?*Component {
+		return components.get(@enumFromInt(entity));
 	}
 };
 
 // ############################# Server only stuff ################################
 
 pub const server = struct {
-	pub const RenderComponent = struct {
-		entity: u32, // entity
-		entityModel: main.entityModel.EntityModelIndex, // model
-		customTexturePath: ?[]const u8, // customTexture
-		fn deinit(self: RenderComponent) void {
-			if (self.customTexturePath) |path| {
-				main.globalAllocator.free(path);
-			}
-		}
-		pub fn save(self: RenderComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
+	pub const Component = struct {
+		entityModel: main.entityModel.EntityModelIndex,
+		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = audience;
-			writer.writeInt(u32, self.entityModel.index);
-			if (self.customTexturePath) |texture| {
-				writer.writeSliceWithSize(texture);
-			} else writer.writeSliceWithSize("");
+			writer.writeVarInt(u32, self.entityModel.index);
 			return .save;
 		}
 	};
-	var renderComponents: std.AutoHashMap(u32, RenderComponent) = undefined;
+	var components: main.utils.SparseSet(Component, main.entity.Entity) = undefined;
 	pub fn init() void {
-		renderComponents = .init(main.globalAllocator.allocator);
+		components = .{};
 	}
 	pub fn deinit() void {
-		var it = renderComponents.valueIterator();
-		while (it.next()) |component| {
-			component.deinit();
-		}
-		renderComponents.deinit();
+		components.deinit(main.globalAllocator);
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		_ = version;
-		const entityModel = reader.readInt(u32) catch return;
-		const customTexturePath = reader.readSliceWithSize() catch return;
+		if (version != 0)
+			return error.InvalidComponentVersion;
+		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		try loadByIndex(entity, main.entityModel.EntityModelIndex{.index = entityModel}, if (customTexturePath.len == 0) null else customTexturePath);
+		try loadByIndex(entity, .{.index = entityModel});
 	}
-	pub fn loadByID(entity: u32, entityModelID: []const u8, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
-		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse .{.index = 0}, customTexturePath);
+	pub fn loadByID(entity: u32, entityModelID: []const u8) main.entity.EntityComponentLoadError!void {
+		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
 	}
-	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex, customTexturePath: ?[]const u8) main.entity.EntityComponentLoadError!void {
-		if (renderComponents.get(entity)) |old| {
-			old.deinit();
-		}
-		renderComponents.put(entity, RenderComponent{
-			.entity = entity,
-			.customTexturePath = customTexturePath,
+	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex) main.entity.EntityComponentLoadError!void {
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		ptr.* = Component{
 			.entityModel = entityModel,
-		}) catch return main.entity.EntityComponentLoadError.Memory;
+		};
 	}
-	pub fn unload(id: u32) void {
-		_ = renderComponents.remove(id);
+	pub fn unload(entity: u32) void {
+		components.remove(@enumFromInt(entity)) catch {};
 	}
-	pub fn put(id: u32, renderComponent: RenderComponent) void {
-		if (renderComponents.get(id)) |entry| {
-			entry.deinit();
-		}
-		renderComponents.put(id, renderComponent) catch unreachable;
+	pub fn put(entity: u32, renderComponent: Component) void {
+		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		ptr.* = renderComponent;
 	}
-	pub fn get(id: u32) ?RenderComponent {
-		return renderComponents.get(id);
+	pub fn get(entity: u32) ?*Component {
+		return components.get(@enumFromInt(entity));
 	}
 };

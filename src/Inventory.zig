@@ -5,7 +5,7 @@ const BaseItem = main.items.BaseItem;
 const Block = main.blocks.Block;
 const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
-const Tool = main.items.Tool;
+const ProceduralItem = main.items.ProceduralItem;
 const utils = main.utils;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
@@ -18,7 +18,7 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
 const BaseItemIndex = main.items.BaseItemIndex;
-const ToolTypeIndex = main.items.ToolTypeIndex;
+const ProceduralItemTypeIndex = main.items.ProceduralItemTypeIndex;
 
 pub const InventoryId = enum(u32) { _ };
 
@@ -160,7 +160,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 	var inventories: main.utils.VirtualList(ServerInventory, 1 << 24) = undefined;
 	var maxId: InventoryId = @enumFromInt(0);
 	var freeIdList: main.List(InventoryId) = undefined;
-	var inventoryCreationMutex: std.Thread.Mutex = .{};
+	var inventoryCreationMutex: main.utils.Mutex = .{};
 
 	pub fn init() void {
 		inventories = .init();
@@ -408,7 +408,7 @@ pub const Source = union(SourceType) {
 	playerInventory: u32,
 	hand: u32,
 	blockInventory: Vec3i,
-	workbench: struct { playerId: u32, toolIndex: ToolTypeIndex },
+	workbench: struct { playerId: u32, proceduralItemIndex: ProceduralItemTypeIndex },
 	other: void,
 };
 
@@ -521,7 +521,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.type.crafting)});
 	}
 
-	pub fn craftTool(source: ClientInventory, destinations: []const ClientInventory) void {
+	pub fn craftProceduralItem(source: ClientInventory, destinations: []const ClientInventory) void {
 		std.debug.assert(source.type == .workbenchResult);
 		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
 		const workbenchInv = blk: {
@@ -530,7 +530,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			break :blk ClientSide.getInventoryByClientId(source.type.workbenchResult);
 		} orelse return;
 
-		main.sync.ClientSide.executeCommand(.{.craftTool = .init(destinations, workbenchInv)});
+		main.sync.ClientSide.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
@@ -625,7 +625,7 @@ pub fn canHold(self: Inventory, sourceStack: ItemStack) CanHoldReturn {
 
 	var remainingAmount = sourceStack.amount;
 	for (self._items, 0..) |*destStack, destSlot| {
-		if (self.source == .workbench and self.source.workbench.toolIndex.slotInfos()[destSlot].disabled) continue;
+		if (self.source == .workbench and self.source.workbench.proceduralItemIndex.slotInfos()[destSlot].disabled) continue;
 		if (std.meta.eql(destStack.item, sourceStack.item) or destStack.item == .null) {
 			const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 			remainingAmount -= amount;
@@ -783,7 +783,7 @@ pub const Inventories = struct { // MARK: Inventories
 			var emptySlot: ?u32 = null;
 			var hasItem = false;
 			for (dest._items, 0..) |*destStack, destSlot| {
-				if (dest.source == .workbench and dest.source.workbench.toolIndex.slotInfos()[destSlot].disabled) continue;
+				if (dest.source == .workbench and dest.source.workbench.proceduralItemIndex.slotInfos()[destSlot].disabled) continue;
 				if (destStack.item == .null and emptySlot == null) {
 					emptySlot = @intCast(destSlot);
 					if (selectedEmptySlot == null) {

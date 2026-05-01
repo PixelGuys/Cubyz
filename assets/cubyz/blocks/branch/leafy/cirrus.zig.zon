@@ -1,0 +1,20 @@
+.{
+	.onUpdate = .{
+		.type = .decay,
+		.drops = .{
+			.{.items = .{"cubyz:branch/cirrus"}},
+		},
+	},
+	.drops = .{
+		.{.items = .{"cubyz:leaves/cirrus", "cubyz:branch/cirrus"}},
+	},
+	.texture = "cubyz:leaves/cirrus",
+	.texture6 = "cubyz:branch/cirrus/dot",
+	.texture7 = "cubyz:branch/cirrus/half_line",
+	.texture8 = "cubyz:branch/cirrus/line",
+	.texture9 = "cubyz:branch/cirrus/bend",
+	.texture10 = "cubyz:branch/cirrus/intersection",
+	.texture11 = "cubyz:branch/cirrus/cross",
+	.lodReplacement = "cubyz:leaves/opaque/cirrus",
+	.opaqueVariant = "cubyz:leaves/opaque/cirrus",
+}

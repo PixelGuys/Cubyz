@@ -1,4 +1,9 @@
 .{
-	.texture = "snale.png",
+	.tags = .{
+		.playerModel,
+	},
+	.model = "cubyz:snale",
+	.defaultTexture = "cubyz:snale",
 	.height = 2,
+	.coordinateSystem = .left_handed_y_up,
 }
