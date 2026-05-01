@@ -14,7 +14,7 @@ layout(location = 0) uniform mat4 projectionMatrix;
 layout(location = 1) uniform mat4 viewMatrix;
 layout(location = 2) uniform vec3 ambientLight;
 layout(location = 3) uniform uint light;
-layout(location = 6) uniform mat4 nodeMatrices[20]; 
+layout(location = 6) uniform mat4 nodeMatrices[20];
 
 vec3 square(vec3 x) {
 	return x*x;
