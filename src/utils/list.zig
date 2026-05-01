@@ -408,23 +408,15 @@ pub fn ListUnmanaged(comptime T: type) type {
 		}
 
 		pub fn print(self: *@This(), allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) void {
-			// It seems that concepts of capacity and current size are swapped in Writer compared to our list.
-			// The `writer.buffer` (a slice) contains what we call capacity as its `len`, while the current
-			// use of the buffer is stored by `writer.end` attribute.
-			var buffer = self.items;
-			buffer.len = self.capacity;
-
-			// Unfortinately there is no constructor that would allow us to use partially filled buffer.
-			// We have to just create a buffer from slice and move the end pointer afterwards.
-			var writer = std.Io.Writer.Allocating.initOwnedSlice(allocator.allocator, buffer);
-			writer.writer.end = self.items.len;
+			var buffer: std.ArrayList(u8) = .{.items = self.items, .capacity = self.capacity};
+			var writer = std.Io.Writer.Allocating.fromArrayList(allocator.allocator, &buffer);
+			// We don't deinit, we will keep the ownership of the array later on!
 
 			writer.writer.print(fmt, args) catch unreachable;
+			buffer = writer.toArrayList();
 
-			// We need to reassign the length and capacity, in case buffer was reallocated during printing.
-			// Mind that they have to be swapped again.
-			self.items = writer.written();
-			self.capacity = writer.writer.buffer.len;
+			self.items = buffer.items;
+			self.capacity = buffer.capacity;
 		}
 	};
 }
