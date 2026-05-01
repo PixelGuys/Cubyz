@@ -644,6 +644,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
 	const jumpHeight: f64 = if (jumping) Player.jumpHeight else 0.0;
 	const motion = physics.calculateMotion(deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, &Player.super.vel, acc, gravity, jumpHeight);
+	physics.calculateEyeMovement(deltaTime, Player.super.pos, &Player.eye);
 	physics.update(deltaTime, motion);
 
 	const time = main.timestamp();
