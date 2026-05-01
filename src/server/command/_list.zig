@@ -25,3 +25,5 @@ pub const set = @import("worldedit/set.zig");
 pub const mask = @import("worldedit/mask.zig");
 pub const replace = @import("worldedit/replace.zig");
 pub const toggledecay = @import("worldedit/toggledecay.zig");
+
+pub const avatar = @import("entity/avatar.zig");
