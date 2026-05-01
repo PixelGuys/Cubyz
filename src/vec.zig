@@ -1,4 +1,3 @@
-
 const std = @import("std");
 
 pub const Vec2i = @Vector(2, i32);
