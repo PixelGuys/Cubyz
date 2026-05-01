@@ -244,8 +244,6 @@ pub fn saveGroups(allocator: NeverFailingAllocator, groupsPath: []const u8) !voi
 		if (!group.value_ptr.*.updated) continue;
 		group.value_ptr.*.updated = false;
 
-		std.debug.print("Needed to save {s}\n", .{group.key_ptr.*});
-
 		const path = std.fmt.allocPrint(allocator.allocator, "{s}/{d}.zon", .{groupsPath, group.value_ptr.*.id}) catch unreachable;
 		defer allocator.free(path);
 		var groupZon: ZonElement = .initObject(allocator);
